@@ -29,12 +29,17 @@ export const SITE = 'https://myground.work';
  */
 export const SERVICES = {
   /*
-   * COACHING. The hourly rate leads, because a session at a time is how most people start.
+   * COACHING. The month leads, because a month at a time is how most people start.
    *
-   * The annual plan is twelve sessions for $7,500 — $625 a month — and it may be held by a team,
-   * attached to one scenario, or belong to one person.
+   * Priced by the month rather than by the hour: an hourly rate makes the thing being bought an
+   * hour of somebody's time, and it is not - it is having a coach for as long as the work needs
+   * one. Her call, 11 September.
+   *
+   * The annual plan is twelve sessions for $7,500 — $625 a month, which is the discount for
+   * committing to the year — and it may be held by a team, attached to one scenario, or belong to
+   * one person.
    */
-  coachingHourly: '$700',
+  coachingPerMonth: '$700',
   coachingRetainer: '$7,500',
   coachingMonthly: '$625',
   /**

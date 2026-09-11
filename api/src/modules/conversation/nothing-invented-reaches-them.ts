@@ -59,7 +59,7 @@ export type Screened = {
 
 export type Hit = {
   sentence: string;
-  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | 'a second question' | 'an apology' | 'a pronoun with nobody named';
+  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | "called the reader by somebody else's name" | 'a second question' | 'an apology' | 'a pronoun with nobody named';
   offending: string[];
 };
 
@@ -127,6 +127,8 @@ export function whyItFails(
   const names = namesWorthReporting(sentence, personSaid);
   if (names.length) return { check: 'a name nobody said', offending: names };
   if (callsTheReaderByName(sentence, readerName)) return { check: 'called the reader by name', offending: [readerName ?? ''] };
+  const somebodyElse = callsTheReaderSomebodyElse(sentence);
+  if (somebodyElse) return { check: 'called the reader by somebody else\'s name', offending: [somebodyElse] };
   const numbers = numbersNobodySaid(sentence, personSaid);
   if (numbers.length) return { check: 'a number nobody said', offending: numbers };
   return null;
@@ -168,6 +170,40 @@ function callsTheReaderByName(sentence: string, readerName?: string | null): boo
   if (first.length < 3) return false;
   /* Case-sensitive on the capital, so a person called Grace does not lose "handled with grace". */
   return new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(sentence);
+}
+
+/**
+ * AND THE READER CALLED BY SOMEBODY ELSE'S NAME, WHICH IS WORSE.
+ *
+ * Read on a live check-in, 11 September. The participant was Bisi Adeyemi. The check-in opened:
+ *
+ *   "You're the Finance Manager, Dele, and you currently own supplier management."
+ *
+ * Dele is the person who set the check-in up. The model has every name in the check-in in its
+ * context and attached the wrong one to the person it was addressing, in the second sentence of
+ * their own session. Telling somebody they are a different colleague, on the screen where they are
+ * about to give their own account, is the clearest possible signal that nothing here is really
+ * about them.
+ *
+ * The rule above catches the reader's OWN name. This catches every other one, and the two together
+ * say the same thing: a reply written to somebody addresses them as "you" and attaches no name at
+ * all. Any name in apposition to "you" is wrong, whoever it belongs to, so this does not need to
+ * know who the reader is - which is what makes it reliable.
+ *
+ * NARROW ON PURPOSE. Only a name set off by a comma next to a second-person address - the vocative.
+ * "You mentioned that Daniel routes escalations to you" is a legitimate sentence about somebody
+ * else and is left alone.
+ */
+const A_NAME_IN_APPOSITION_TO_YOU =
+  /(?:\b[Yy]ou\b|\b[Yy]ou're)[^.?!]{0,40}?,\s*([A-Z][a-z]{2,})\s*(?=[,.?!]|$)|^([A-Z][a-z]{2,}),\s*[Yy]our?\b/;
+
+function callsTheReaderSomebodyElse(sentence: string): string | null {
+  const m = A_NAME_IN_APPOSITION_TO_YOU.exec(sentence);
+  const name = m?.[1] ?? m?.[2] ?? null;
+  if (!name) return null;
+  /* Words that open a clause and look like a name. A vocative is a name, not a connective. */
+  const NOT_A_NAME = /^(And|But|So|Then|That|This|These|Those|What|When|Where|Which|While|With|Your|Yours|The|They|There|Now|Here|Some|Both|Each|Not|Nothing|Nobody|Once|Only|Since|Because|Before|After|Given|Read|Same|Say|See|Still|Take|Tell|They|Though|Try|Until|Very|Yes|No)$/;
+  return NOT_A_NAME.test(name) ? null : name;
 }
 
 export function screen(reply: string, personSaid: string[], readerName?: string | null, conversation?: string[]): Screened {

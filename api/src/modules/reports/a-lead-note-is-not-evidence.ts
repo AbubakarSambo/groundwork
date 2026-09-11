@@ -159,6 +159,46 @@ export function withoutWhatOnlyTheLeadSaid<T>(
  * says what would make it real - because most of the time the lead is right and
  * nobody has asked the person about it yet.
  */
+/**
+ * WHAT A FINDING THAT RESTS ON THE LEAD ALONE IS LABELLED WITH.
+ *
+ * Read by the person the report is about, so it says what is true without saying they are wrong:
+ * one person has raised this and nobody else's account has touched it yet. That is a fact about
+ * coverage, not about them.
+ */
+export const ONLY_THE_LEAD_HAS_SAID_THIS =
+  'Only the person running this check-in has raised this. Nobody else\'s account has touched it yet, '
+  + 'so read it as something to ask about rather than as something established.';
+
+/**
+ * THE REPORT LABELS THESE NOW. IT DOES NOT DROP THEM.
+ *
+ * `withoutWhatOnlyTheLeadSaid` removed them and told the log, which is read by us and not by the
+ * person the finding is about. Decided by the product owner, 11 September 2026: the report deletes
+ * nothing, it is about how it shows things. A lead's unsupported read of a person is not evidence,
+ * and saying so out loud is a better answer than making it disappear - a reader who can see the
+ * claim and its caveat can go and check it, and a reader who cannot see it cannot.
+ *
+ * Same test, same shape, different verdict: kept, with the reason attached.
+ */
+export function markWhatOnlyTheLeadSaid<T>(
+  items: T[],
+  textOf: (item: T) => string,
+  label: (item: T, caveat: string) => T,
+  leadNotes: LeadNote[],
+  partyEntries: PartyEntry[],
+): { all: T[]; marked: { text: string }[] } {
+  if (!leadNotes.length) return { all: items, marked: [] };
+  const marked: { text: string }[] = [];
+  const all = items.map((item) => {
+    const text = textOf(item) ?? '';
+    if (whatThisRestsOn(text, leadNotes, partyEntries) !== 'the lead alone, and it is a read on a person') return item;
+    marked.push({ text });
+    return label(item, ONLY_THE_LEAD_HAS_SAID_THIS);
+  });
+  return { all, marked };
+}
+
 export function whyItWasDropped(text: string): string {
   return `Dropped a finding that was the lead's read on a person, resting on their private note and on nothing either party said: "${text.slice(0, 140)}". This is not the lead being wrong, and it is not about targets they set - those stay. It is a judgement the record has not been asked about yet, and the way to make it a finding is a question in the next check-in rather than a sentence in this report.`;
 }

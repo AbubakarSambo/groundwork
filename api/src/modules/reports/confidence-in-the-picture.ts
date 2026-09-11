@@ -1,3 +1,5 @@
+import { WELL_COVERED_AT, PARTLY_COVERED_AT, WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
+
 /**
  * CONFIDENCE IN THE PICTURE, NOT A MARK ON THE PERSON. (G30, and the answer to G9)
  *
@@ -39,30 +41,45 @@ export interface PictureConfidence {
  * @param scoredSessions how many sessions have been scored at all
  * @param meanLevel the mean of the scored dimension levels, 0-3
  */
-export function confidenceInThePicture(scoredSessions: number, meanLevel: number): PictureConfidence {
+/**
+ * @param scoredSessions how many sessions carry a level. One is not a picture: the band is capped
+ *   at "partly covered" below two, whatever the mean.
+ * @param meanLevel the mean rank, 0-3, on the order in how-checkable-a-session-was.ts.
+ * @param also.failed how many completed sessions were scored and came back with nothing. A scorer
+ *   that did not run is not a fact about the ground, and must not read as "nobody was asked".
+ */
+export function confidenceInThePicture(scoredSessions: number, meanLevel: number, also: { failed?: number } = {}): PictureConfidence {
   if (scoredSessions === 0) {
+    if ((also.failed ?? 0) > 0) {
+      return {
+        band: 'nothing yet',
+        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on our side, not a fact about anybody.',
+      };
+    }
     return {
       band: 'nothing yet',
       // Not "no data". Nobody has been asked, which is a fact about the ground.
       line: 'Nothing has been scored here yet, so this part of the picture has not been built rather than being empty.',
     };
   }
-  if (meanLevel >= 2) {
+  if (meanLevel >= WELL_COVERED_AT && scoredSessions >= 2) {
     return {
       band: 'well covered',
-      line: 'This part of the picture is well covered: most of what is described here could be checked against something.',
+      line: `This part of the picture is well covered: most of what is described here could be checked against something. ${WHERE_IT_WAS_READ_FROM}`,
     };
   }
-  if (meanLevel >= 1) {
+  if (meanLevel >= PARTLY_COVERED_AT || (meanLevel >= WELL_COVERED_AT && scoredSessions < 2)) {
     return {
       band: 'partly covered',
-      line: 'Part of this picture rests on things that could be checked and part does not. Read the specifics, not the summary.',
+      line: scoredSessions < 2 && meanLevel >= WELL_COVERED_AT
+        ? `One session is not a picture. What it holds could be checked; more sessions would make this well covered. ${WHERE_IT_WAS_READ_FROM}`
+        : `Part of this picture rests on things that could be checked and part does not. Read the specifics, not the summary. ${WHERE_IT_WAS_READ_FROM}`,
     };
   }
   return {
     band: 'thin',
     // The sentence that used to say "low specificity" about a person.
-    line: 'We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody.',
+    line: `We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. ${WHERE_IT_WAS_READ_FROM}`,
   };
 }
 

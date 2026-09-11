@@ -175,9 +175,7 @@ describe('the four things mounting it exposed', () => {
     expect(whichSessionIsThisCheckInOn([[1, 2, 3], [1]])).toBe(2)
   })
 
-  it('and the moment pill says it is a moment', () => {
-    // A small pill under the title next to a green dot is where every product puts a
-    // status, so "Starting" read as one on a finished ground.
-    expect(CODE).toMatch(/Opened for: \{MOMENT_LABELS/)
+  it('and there is no moment pill in the header (10 Sep 2026): the scenario pill on the next line carries what kind of check-in this is', () => {
+    expect(CODE).not.toMatch(/Opened for: \{MOMENT_LABELS/)
   })
 })

@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
+
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 
 export type EntryMessage = ChatTurn
@@ -66,32 +68,53 @@ export const participantStorage = {
   clear: () => localStorage.removeItem(PARTICIPANT_KEY),
 }
 
-// ── Entry API ─────────────────────────────────────────────────────────────────
+// ── Streaming ─────────────────────────────────────────────────────────────────
 
-export const entryApi = {
-  opener: (scenario?: string) =>
-    apiClient.post<{ reply: string }>('/entry/opener', { scenario }).then(r => r.data),
+/**
+ * THE SAME SSE SHAPE THE CHECK-IN PAGE READS. `data:` blocks carry `{type:'delta',text}` while the
+ * model is talking, then one `{type:'done', ...}` with exactly what the plain route would have
+ * returned, then `[DONE]`. Setup is public, so no token travels.
+ */
+async function readEntryStream<T>(
+  path: string,
+  body: unknown,
+  onDelta: (text: string) => void,
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let done: T | null = null
+  let failure: string | null = null
+  for (;;) {
+    const { done: ended, value } = await reader.read()
+    if (ended) break
+    buffer += decoder.decode(value, { stream: true })
+    const blocks = buffer.split('\n\n')
+    buffer = blocks.pop() ?? ''
+    for (const block of blocks) {
+      const line = block.split('\n').find(l => l.startsWith('data: '))
+      if (!line) continue
+      const data = line.slice(6)
+      if (data === '[DONE]') continue
+      try {
+        const evt = JSON.parse(data)
+        if (evt.type === 'delta') onDelta(evt.text)
+        else if (evt.type === 'done') done = evt as T
+        else if (evt.type === 'error') failure = evt.message
+      } catch { /* ignore malformed keepalive lines */ }
+    }
+  }
+  if (done) return done
+  throw new Error(failure ?? 'stream ended without a reply')
+}
 
-  // Supports two call forms:
-  //   new: entryApi.chat(mode, messages)       → posts { mode, messages }
-  //   old: entryApi.chat(messages, scenario?)  → posts { messages, scenario, groundLabel }
-  chat: (
-    modeOrMessages: EntryMode | ChatTurn[],
-    messagesOrScenario?: ChatTurn[] | string,
-    groundLabel?: string,
-    joinToken?: string,
-  ): Promise<{ reply: string; sessionComplete?: boolean }> =>
-    typeof modeOrMessages === 'string'
-      ? apiClient.post<{ reply: string; sessionComplete: boolean }>(
-          '/entry/chat',
-          { mode: modeOrMessages, messages: messagesOrScenario },
-        ).then(r => r.data)
-      : apiClient.post<{ reply: string }>(
-          '/entry/chat',
-          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
-        ).then(r => r.data),
-
-  onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<{
+export interface OnboardResult {
     reply: string;
     extracted: {
       mode?: string; initial?: string; whoInvolved?: string; decision?: string;
@@ -120,14 +143,60 @@ export const entryApi = {
      * invented answer - but they are told, and they add the people afterwards.
      */
     needsPeople: boolean;
-  }> =>
+}
+
+// ── Entry API ─────────────────────────────────────────────────────────────────
+
+export const entryApi = {
+  opener: (scenario?: string) =>
+    apiClient.post<{ reply: string }>('/entry/opener', { scenario }).then(r => r.data),
+
+  // Supports two call forms:
+  //   new: entryApi.chat(mode, messages)       → posts { mode, messages }
+  //   old: entryApi.chat(messages, scenario?)  → posts { messages, scenario, groundLabel }
+  chat: (
+    modeOrMessages: EntryMode | ChatTurn[],
+    messagesOrScenario?: ChatTurn[] | string,
+    groundLabel?: string,
+  ): Promise<{ reply: string; sessionComplete?: boolean }> =>
+    typeof modeOrMessages === 'string'
+      ? apiClient.post<{ reply: string; sessionComplete: boolean }>(
+          '/entry/chat',
+          { mode: modeOrMessages, messages: messagesOrScenario },
+        ).then(r => r.data)
+      : apiClient.post<{ reply: string }>(
+          '/entry/chat',
+          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel },
+        ).then(r => r.data),
+
+  onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<OnboardResult> =>
     /* The situation travels with the messages. Without it the endpoint served one prompt to all
        twenty-two cards, so every situation opened with the same question about the situation - which
        is the one question the person answered by clicking. */
     apiClient.post('/entry/onboard', { messages, scenario, moment }).then(r => r.data),
 
+  /** onboard, streamed: deltas arrive as the model speaks, the resolved value is what onboard returns. */
+  onboardStream: (
+    messages: ChatTurn[],
+    scenario: string | undefined,
+    moment: string | undefined,
+    onDelta: (text: string) => void,
+  ): Promise<OnboardResult> =>
+    readEntryStream('/entry/onboard/stream', { messages, scenario, moment }, onDelta),
+
+  /** chat (old form), streamed. */
+  chatStream: (
+    messages: ChatTurn[],
+    scenario: string | undefined,
+    groundLabel: string | undefined,
+    onDelta: (text: string) => void,
+  ): Promise<{ reply: string; sessionComplete?: boolean }> =>
+    /* No joinToken: the branch it reached served the organiser's brief to whoever supplied one (fix plan D10). */
+    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel }, onDelta),
+
   classifyIntent: (description: string, mode?: string) =>
-    apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),
+    /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */
+    apiClient.post<{ scenario: string | null; confidence: 'high' | 'low' }>('/entry/classify-intent', { description, mode }).then(r => r.data),
 
   faq: (question: string) =>
     apiClient.post<{ reply: string }>('/entry/faq', { question }).then(r => r.data),
@@ -139,6 +208,7 @@ export const entryApi = {
     groundLabel: string
     orgName?: string
     scenario?: string
+    cadenceChosen?: boolean
     history: ChatTurn[]
     report?: EntryReport | null
     contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
@@ -192,6 +262,10 @@ export const joinApi = {
     firstName?: string
     lastName?: string
     roleAsDescribed?: string
+    /** Optional, never inferred; blank means blank. */
+    department?: string
+    /** The honeypot: a filled trap is answered as success and mails nobody. */
+    trapFilled?: boolean
   }) =>
     apiClient.post<{ sent: true; to: string; says: string }>(
       '/entry/join-accept',
@@ -200,7 +274,11 @@ export const joinApi = {
 
   /** The address answered. This is the call that creates anything. */
   confirm: (token: string) =>
-    apiClient.post<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }>(
+    apiClient.post<{
+      groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean
+      /* An admin has to let them in first; `saying` is the server's sentence for that. */
+      queuedForApproval: boolean; saying?: string
+    }>(
       '/entry/join-confirm',
       { token },
     ).then(r => r.data),

@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
@@ -17,7 +18,7 @@ import { withWhatGroundworkIs } from './what-groundwork-is';
  * not to the org, not to the founder. Keep that voice when filling these in.
  */
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private resend: Resend;
   private fromEmail: string;
@@ -51,12 +52,33 @@ export class EmailService {
     return `${this.frontendUrl}/grounds/new`;
   }
 
+  /**
+   * DECIDED ON THE CREDENTIAL AND AN EXPLICIT FLAG, NOT ON NODE_ENV (fix plan D20). This returned
+   * true whenever NODE_ENV was anything but production, so a staging deployment with real
+   * credentials and NODE_ENV unset silently sent nothing, and the log line was the only evidence.
+   * Now: mail goes to Resend only when EMAIL_SENDS_FOR_REAL=true AND the key is real. A misjudged
+   * condition here starts sending real mail from a staging box, so the flag is explicit.
+   */
   private isDev(): boolean {
-    const nodeEnv = process.env.NODE_ENV ?? 'development';
-    if (nodeEnv === 'production') return false;
-    // Secondary guard: also treat placeholder/test keys as dev mode.
+    return !this.canSendForReal();
+  }
+
+  private keyIsAPlaceholder(): boolean {
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
+  }
+
+  private canSendForReal(): boolean {
+    return this.configService.get<boolean>('resend.sendsForReal') === true && !this.keyIsAPlaceholder();
+  }
+
+  /** A deployment that cannot send says so at boot, once, where the deploy log is read. */
+  onModuleInit(): void {
+    const deployed = (process.env.NODE_ENV ?? 'development') === 'production';
+    if (this.canSendForReal()) { this.logger.log('Mail is sent for real through Resend.'); return; }
+    const because = this.keyIsAPlaceholder() ? 'RESEND_API_KEY is missing or a placeholder' : 'EMAIL_SENDS_FOR_REAL is not "true"';
+    const line = `No mail leaves this deployment: ${because}. Every send is logged here instead.`;
+    if (deployed) this.logger.error(line); else this.logger.warn(line);
   }
 
   /**
@@ -66,13 +88,29 @@ export class EmailService {
    * senders and every one of those files looked right on its own. See
    * `nothing-goes-out-that-was-turned-off.ts` for the two kinds and the line between them.
    */
-  private async wouldTheyRatherNot(to: string, sender: string): Promise<string | null> {
+  private async wouldTheyRatherNot(to: string, sender: string, context?: DeliveryContext): Promise<string | null> {
     const kind = whatThisMailIs(sender);
-    if (kind === 'the way back in') return null;
+    if (kind === 'the way back in' || kind === 'operational') return null;
 
     const address = to.trim().toLowerCase();
+    /*
+     * WE STOP WRITING TO A DEAD ADDRESS. A hard bounce was recorded and mirrored, and then the daily
+     * sweeps kept mailing it, damaging the sending domain for every tenant. The latest delivery to
+     * this address decides: bounced, and nothing delivered since, is dead. The way back in is exempt
+     * (it returned above) - refusing a sign-in link to a mailbox that was once full would be a lockout
+     * with no way out, and a successful delivery of it is exactly what revives the address.
+     */
+    const latest = await this.prisma.emailDelivery
+      .findFirst({ where: { email: { equals: address, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' }, select: { status: true } })
+      .catch(() => null);
+    if (latest?.status === 'BOUNCED') return 'the last mail to this address bounced hard, and nothing since has been delivered';
+    /* THE STOP LINK STOPS EVERY ENGINE. `remindersStoppedAt` was read by one nudge engine of three;
+       it is read here, once, whenever the mail is about a participant. */
+    const stopped = context?.participantId
+      ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { remindersStoppedAt: true } }).catch(() => null)
+      : null;
     const [user, preference] = await Promise.all([
-      this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true } }),
+      this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true, isActive: true, deletedAt: true } }),
       /* Preferences are keyed by (organisation, externalId) and hold no address, so the roster is
          the way in. ANY unsubscribed row for this address stops the mail: somebody who used the
          link said "stop hearing from us", not "stop hearing from one of your tenants" — and
@@ -82,28 +120,35 @@ export class EmailService {
           where: { email: { equals: address, mode: 'insensitive' } },
           select: { organizationId: true, externalId: true },
         })
-        .then((people) =>
-          people.length === 0
-            ? null
-            : this.prisma.emailPreference.findFirst({
-                where: {
-                  OR: people.map((p) => ({ organizationId: p.organizationId, personExternalId: p.externalId })),
-                  unsubscribedAt: { not: null },
-                },
-                select: { unsubscribedAt: true },
-              }),
-        )
+        .then(async (people) => {
+          if (people.length === 0) return null;
+          const rows = await this.prisma.emailPreference.findMany({
+            where: { OR: people.map((p) => ({ organizationId: p.organizationId, personExternalId: p.externalId })) },
+            select: { unsubscribedAt: true, roundDigest: true, nudges: true },
+          });
+          if (!rows.length) return null;
+          /* Any unsubscribed row stops; a per-kind switch turned off on any row is off. */
+          return {
+            unsubscribedAt: rows.find((r) => r.unsubscribedAt)?.unsubscribedAt ?? null,
+            roundDigest: rows.every((r) => r.roundDigest),
+            nudges: rows.every((r) => r.nudges),
+          };
+        })
         .catch(() => null),
     ]);
 
     /* Nobody to ask: a participant invited by address has no account and no preference, and
        refusing to write to them would mean nobody could ever be invited. */
-    if (!user && !preference) return null;
+    if (!user && !preference && !stopped) return null;
 
     const answer = whetherToSend(kind, {
       emailNotifications: user?.emailNotifications,
       unsubscribedAt: preference?.unsubscribedAt ?? null,
-    });
+      remindersStoppedAt: stopped?.remindersStoppedAt ?? null,
+      wantsDigest: preference?.roundDigest,
+      wantsNudges: preference?.nudges,
+      stillHere: user ? user.isActive && !user.deletedAt : undefined,
+    }, sender);
     return answer.send ? null : answer.because;
   }
 
@@ -128,8 +173,8 @@ export class EmailService {
       subject: `${who} is waiting to be let into your organisation`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${who}</strong> was invited to check in${checkInLabel ? ` on <strong>${checkInLabel}</strong>` : ''} by ${addedBy}, and they are not in your organisation yet.</p>
-         <p>They have an account and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
+         <p><strong>${escapeHtml(who)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(addedBy)}, and they are not in your organisation yet.</p>
+         <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
     }, undefined, 'sendSomebodyIsWaiting');
@@ -162,11 +207,37 @@ export class EmailService {
       subject: `${who} was not added to your organisation`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin has decided not to add <strong>${who}</strong> to your organisation, so they cannot check in on it.</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${reason}</p>` : ''}
+         <p>An admin has decided not to add <strong>${escapeHtml(who)}</strong> to your organisation, so they cannot check in on it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
          <p>They have not been told. If they should hear anything about it, that is yours to say.</p>`,
       ),
     }, undefined, 'sendTheyWereNotLetIn');
+  }
+
+  /**
+   * The unsubscribe link for this address, minted if it does not exist yet. Preferences are keyed by
+   * (organisation, person on the roster), so an address with no Person row anywhere has nothing to
+   * hang a token on and gets no footer - that is a participant invited by address before they exist
+   * here, and the invite itself already says ignoring it is enough.
+   */
+  private async theWayToStopHearingFromUs(to: string): Promise<string | null> {
+    try {
+      const person = await this.prisma.person.findFirst({
+        where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
+        select: { organizationId: true, externalId: true },
+      });
+      if (!person) return null;
+      const pref = await this.prisma.emailPreference.upsert({
+        where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
+        create: { organizationId: person.organizationId, personExternalId: person.externalId, unsubscribeToken: crypto.randomBytes(32).toString('base64url') },
+        update: {},
+        select: { unsubscribeToken: true },
+      });
+      return `${this.frontendUrl.replace(/\/$/, '')}/unsubscribe/${pref.unsubscribeToken}`;
+    } catch (err: any) {
+      this.logger.warn(`Could not build an unsubscribe link for ${to}: ${err?.message}`);
+      return null;
+    }
   }
 
   private async theWayToStopBeingChased(participantId?: string): Promise<string | null> {
@@ -198,13 +269,68 @@ export class EmailService {
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
   ): Promise<string | undefined> {
-    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender) : null;
+    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null;
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
+      this.writeItDown(options, sender, 'suppressed', rather);
       return undefined;
     }
+
+    /*
+     * NOTHING LANDS AT 3AM, AND NOTHING IS LOST EITHER. Quiet hours were honoured by one sender, the
+     * digest - and it DROPPED the mail, so a round that completed at 21:00 local was never announced.
+     * Every other cron sent on a fixed UTC clock. Now every mail we decided to send asks the one rule
+     * here, and one refused for the hour is written down with the moment it may go, and sent then by
+     * held-mail.cron.ts. The way-back-in and asked-for mails go at once: somebody who just asked for
+     * a sign-in link is awake.
+     */
+    if (sender && whatThisMailIs(sender) === 'we decided to send it') {
+      const held = await this.holdForTheMorning(options, context, sender);
+      if (held) return undefined;
+    }
+    return this.deliverNow(options, context, sender);
+  }
+
+  /** The recipient's zone and quiet hours, from their roster row. Nobody on the roster: no hold. */
+  private async holdForTheMorning(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+    try {
+      const person = await this.prisma.person.findFirst({
+        where: { email: { equals: options.to.trim().toLowerCase(), mode: 'insensitive' } },
+        select: { organizationId: true, externalId: true, timezone: true },
+      });
+      if (!person) return false;
+      const prefs = await this.prisma.emailPreference.findUnique({
+        where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
+        select: { quietBeforeHour: true, quietAfterHour: true },
+      });
+      const now = new Date();
+      if (!inQuietHours(now, person.timezone, prefs)) return false;
+      const notBefore = nextAllowedMoment(now, person.timezone, prefs);
+      await this.prisma.scheduledEmail.create({
+        data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore },
+      });
+      this.logger.log(`Holding "${options.subject}" for ${options.to} until ${notBefore.toISOString()} (quiet hours).`);
+      this.writeItDown(options, sender, 'held', `quiet hours; goes at ${notBefore.toISOString()}`);
+      return true;
+    } catch (err: any) {
+      /* A hold that cannot be written must not lose the mail: it goes now, and the log says why. */
+      this.logger.warn(`Could not hold "${options.subject}" for ${options.to}: ${err?.message}; sending now.`);
+      return false;
+    }
+  }
+
+  /** A held mail, when its moment has come. Skips the hold and the preference gate, both already asked. */
+  async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown }): Promise<void> {
+    await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
+  }
+
+  private async deliverNow(
+    options: { to: string; subject: string; html: string },
+    context?: DeliveryContext,
+    sender?: string,
+  ): Promise<string | undefined> {
 
     /*
      * WHAT GROUNDWORK IS, on the mails where somebody might not know. Appended here rather than
@@ -214,10 +340,22 @@ export class EmailService {
      */
     options = { ...options, html: withWhatGroundworkIs(options.html, sender) };
 
+    /*
+     * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
+     * FORTY-EIGHT SENDERS. The unsubscribe link was composed in one template (the digest) and nowhere
+     * else, and no mail carried a text part or a List-Unsubscribe header, which is what a mail client
+     * shows its own "unsubscribe" button from. The way-back-in mails (a sign-in link, a password
+     * reset) are transactional and carry no footer: stopping those is not something anybody means.
+     */
+    const wayOut = sender && whatThisMailIs(sender) !== 'the way back in' ? await this.theWayToStopHearingFromUs(options.to) : null;
+    if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
+    const text = plainTextOf(options.html);
+    const headers = wayOut ? { 'List-Unsubscribe': `<${wayOut}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
-      const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      /* The body no longer goes to the log (G4): it is somebody's words and it carries their links.
+         The links below are what a local run needs to follow the journey; the prose is not. */
       /* THE LINK, WHICH THE BODY ABOVE HAS JUST THROWN AWAY.
          Stripping the tags leaves the anchor TEXT and drops the href, so the one thing anybody
          testing locally needs — the address the person would click — was the one thing not in the
@@ -246,14 +384,26 @@ export class EmailService {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options });
+    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
+      this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
       throw new Error(`Failed to send email: ${error.message}`);
     }
     this.logger.log(`Email sent to ${options.to} (id: ${data?.id})`);
+    this.writeItDown(options, sender, 'sent', null);
     if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
     return undefined;
+  }
+
+  /**
+   * THE LEDGER. A failure the product knows about, written where a person can find it. Fire-and-forget:
+   * a ledger that cannot be written must not stop a mail that can be sent.
+   */
+  private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): void {
+    this.prisma.notification
+      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because } })
+      .catch((err: any) => this.logger.warn(`Could not record a notification for ${options.to}: ${err?.message}`));
   }
 
   private layout(body: string): string {
@@ -278,7 +428,7 @@ export class EmailService {
       html: `
         <p>${greeting(name)}</p>
         <p>Thanks for asking. Somebody reads these and will come back to you within two working days.</p>
-        <p>So there are no surprises, coaching is $700 an hour with no retainer, or $7,500 a year for twelve sessions. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>So there are no surprises, coaching is $700 per month with no retainer, or $7,500 a year for twelve sessions. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
         <p>We identify a coach suited to the situation: the scenario, the seniority, the language, the industry. You meet them before you commit to anything.</p>
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
         <p>Groundwork</p>
@@ -309,8 +459,8 @@ export class EmailService {
     const url = `${this.frontendUrl}/verify-email?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
     await this.sendEmail({
       to: email,
-      subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
+      subject: 'Activate your Groundwork sign-in',
+      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your sign-in and get started.</p><p><a href="${url}">Activate sign-in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. Nothing is created without clicking the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
@@ -337,7 +487,7 @@ export class EmailService {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each give your own account of a piece of work, and get one shared record of it. Setting a password means you can sign in without Google.</p>` +
+        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can sign in without Google.</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
@@ -361,7 +511,7 @@ export class EmailService {
       html: this.layout(
         `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
          <p style="font-size:22px;font-weight:bold;letter-spacing:0.1em;background:#F5F3EF;border-radius:6px;padding:14px 20px;display:inline-block;">${code}</p>
-         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, create an account, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
+         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, sign up, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
          <p>Any questions, reply to this email.</p>
          <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
       ),
@@ -375,7 +525,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -384,19 +534,35 @@ export class EmailService {
   /** Participant added to a check-in. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
-    /* The paragraph below promises that ignoring this is enough. This is what makes it true. */
+    /*
+     * THE FIRST THING MOST PEOPLE EVER SEE OF THIS PRODUCT, AND IT READ LIKE A SUMMONS.
+     *
+     * "Share your account of", "what you put on record belongs to you", "Add my account" - three
+     * filing-cabinet phrases in one mail, sent to somebody who has never heard of us and is being
+     * asked to be honest about their own work.
+     *
+     * AND IT OVERPROMISED, which has been flagged before. "Nobody reads what you write" is not
+     * true: the model reads it, the shared picture is built from it, and the lead reads that
+     * picture. The narrower claim is the one the product actually enforces - nobody on your team
+     * sees the words - and it is worth more than the broad one precisely because it holds.
+     *
+     * The last paragraph promises that ignoring this is enough. theWayToStopBeingChased is what
+     * makes that true.
+     */
     const stopLine = await this.theWayToStopBeingChased(context?.participantId);
-    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
+    /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
+       with an ampersand or an angle bracket renders as written rather than as half a sentence. */
+    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
-      subject: `${founderName} invited you to check in on: ${groundLabel}`,
+      subject: `${founderName} would like your take on ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p><strong>${founderName}</strong> has invited you to share your account of <strong>${groundLabel}</strong> using Groundwork.</p>
-         <p>What this means: a short private check-in, about 10 minutes, where you give your own version of what is going on. Nobody reads what you write. The shared report shows where your account and theirs agree or differ. It does not quote you.</p>
-         <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
+         <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
+         <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
+         <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Say what I am seeing →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
@@ -422,7 +588,7 @@ export class EmailService {
       subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
+         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendGroundApproved');
@@ -438,8 +604,8 @@ export class EmailService {
       subject: `Your check-in was not approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has not approved <strong>${groundLabel}</strong>, so it will not run and nobody has been invited to it.</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${reason}</p>` : ''}
+         <p>An admin in your organisation has not approved <strong>${escapeHtml(groundLabel)}</strong>, so it will not run and nobody has been invited to it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
          <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
       ),
     }, undefined, 'sendGroundDeclined');
@@ -451,7 +617,7 @@ export class EmailService {
       subject: `${adminName} asked you to lead a check-in: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p><strong>${adminName}</strong> set up <strong>${groundLabel}</strong> on Groundwork and named you to lead it.</p>
+         <p><strong>${escapeHtml(adminName)}</strong> set up <strong>${escapeHtml(groundLabel)}</strong> on Groundwork and named you to lead it.</p>
          <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
          <!--
            W8-6. The Context tab has document upload and context notes, and
@@ -494,11 +660,95 @@ export class EmailService {
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
         `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one — a <code>${eventType}</code> — was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
-        `<p>Anything sent while the endpoint is unreachable is queued and retried the same way, so this is worth looking at rather than waiting out. Nothing has been lost on our side: every attempt and its response is in your delivery log.</p>` +
+        `<p>We have switched this endpoint off, so nothing more queues against a receiver we know we cannot reach. Nothing has been lost on our side: every attempt and its response is in your delivery log. Once it is reachable again, switch it back on from your integrations page and new events flow to it.</p>` +
         `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
         `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
       ),
     }, undefined, 'sendWebhookEndpointDying');
+  }
+
+  /** Two days before their invitation lapses, the invitee is told, with the link that still works. */
+  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your invitation to ${groundLabel} lapses in two days`,
+      html: this.layout(
+        `<p>You were invited to give your account of <strong>${escapeHtml(groundLabel)}</strong>, and the invitation has not been opened. It lapses in two days.</p>` +
+        `<p><a href="${inviteUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
+      ),
+    }, { kind: 'REMINDER', participantId }, 'sendInviteAboutToLapse');
+  }
+
+  /** An invitation lapsed unopened; the lead who sent it can resend or take them off. */
+  async sendInviteLapsed(email: string, firstName: string | null, invitee: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `An invitation to ${groundLabel} has lapsed`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> was never opened and has now lapsed. They are still on the check-in; nothing has been sent to them since the reminder two days ago.</p>` +
+        `<p>Resend it from the check-in, correct the address, or take them off - whichever is true.</p>` +
+        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+      ),
+    }, undefined, 'sendInviteLapsed');
+  }
+
+  /** The invitation bounced hard; the lead who sent it is the one who can fix the address. */
+  async sendInviteBounced(email: string, firstName: string | null, invitee: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `An invitation to ${groundLabel} could not be delivered`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> bounced: that address did not accept it. Nothing more will be sent to it.</p>` +
+        `<p>If the address is wrong, correct it on the check-in and the invitation goes again to the new one. If it is right, they may need to ask their mail administrator why it was refused.</p>` +
+        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+      ),
+    }, undefined, 'sendInviteBounced');
+  }
+
+  /* --- The answer to a request for API access. Somebody asked; these are the three things that can become of it. --- */
+
+  async sendApiAccessApproved(email: string, firstName: string | null, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access is approved',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's request for API access has been approved. The Connect page now shows your keys, the calls, and the reference.</p>` +
+        `<p>Next step: issue a key for the system you are connecting, swap it for a token, and send something - the page ticks off each step as it sees it happen.</p>` +
+        `<p><a href="${link}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open Connect →</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessApproved');
+  }
+
+  async sendApiAccessDeclined(email: string, firstName: string | null, note: string, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access request was not approved',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's request for API access was not approved. The reason given:</p>` +
+        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p>If that changes what you intend to build, you can ask again from the Connect page, and it is read by a person.</p>` +
+        `<p><a href="${link}">Open Connect</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessDeclined');
+  }
+
+  async sendApiAccessWithdrawn(email: string, firstName: string | null, note: string, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access has been withdrawn',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's API access has been withdrawn, effective now: calls made with your keys will be refused from this point. The reason given:</p>` +
+        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p>Nothing you have built is deleted, and your records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
+        `<p><a href="${link}">Open Connect</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessWithdrawn');
   }
 
   /** The base the product's own links are built from, for callers that need to make one. */
@@ -529,7 +779,7 @@ export class EmailService {
         subject: 'Your Groundwork admin code',
         html: this.layout(
           `<p>Your one-time code is <strong>${code}</strong>. It expires in ten minutes.</p>` +
-          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody with your admin account is trying to perform an operation that cannot be undone. Tell the team.</p>`,
+          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody signed in as you is trying to perform an admin operation that cannot be undone. Tell the team.</p>`,
         ),
       }, undefined, 'sendAdminOtp');
       return { sent: true };
@@ -539,10 +789,29 @@ export class EmailService {
     }
   }
 
+  /**
+   * THE TEAM IS TOLD. One short mail to everybody on the back-office roster when something outside
+   * needs a person here: a new organisation, a request for the API, a request for a call or coaching.
+   * Plain lines and one link to where they act. See back-office/the-team-is-told.service.ts.
+   */
+  async sendTeamAlert(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<{ sent: boolean }> {
+    try {
+      await this.sendEmail({
+        to: email,
+        subject,
+        html: this.layout(lines.map((l) => `<p>${l}</p>`).join('') + `<p><a href="${linkUrl}">${linkLabel}</a></p>`),
+      }, undefined, 'sendTeamAlert');
+      return { sent: true };
+    } catch (err: any) {
+      this.logger.error(`Team alert to ${email} did not send: ${err?.message}`);
+      return { sent: false };
+    }
+  }
+
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared record is ready: ${groundLabel}`,
+      subject: `The shared picture for ${groundLabel} is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -552,30 +821,23 @@ export class EmailService {
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
       html: this.layout(
-        `<p>Everybody on <strong>${groundLabel}</strong> has now checked in, so the shared record is open to all of you at the same moment.</p>` +
+        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
         `<p>It shows where your accounts agree, where they differ, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
-        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared record →</a></p>` +
-        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each give their own account of it, privately, and get one shared record back.</p>`,
+        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
       ),
     }, undefined, 'sendReportReady');
   }
 
-  /** Ground activated. Sent to the participant so they know to return. */
-  async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
-    await this.sendEmail({
-      to: email,
-      subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
-      html: this.layout(
-        `<p>${greeting(firstName)}</p>
-         <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
-         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
-      ),
-    }, undefined, 'sendGroundActivated');
-  }
+
 
   /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean, participantId?: string): Promise<void> {
+  /**
+   * `participantId` is REQUIRED. Two of three callers left it out, so whether a person could stop being
+   * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
+   * the context, so it has to be there.
+   */
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, participantId: string): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -597,8 +859,8 @@ export class EmailService {
       to: email,
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
-      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
-    }, undefined, 'sendNudge');
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+    }, { kind: 'REMINDER', participantId }, 'sendNudge');
   }
 
   /**
@@ -607,14 +869,13 @@ export class EmailService {
    * moment a new session becomes available, carrying context from the last
    * check-in so the person doesn't have to remember where they left off.
    */
-  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, lastCheckInContext?: string): Promise<void> {
-    const contextNote = lastCheckInContext
-      ? `<p style="color:#6B6560;">Last time: "${lastCheckInContext}"</p>`
-      : '';
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string): Promise<void> {
+    /* No "Last time: ..." line (NL-007). It quoted the person's own last record entry into a mailbox
+       their administrators can read, forward and export - the one thing the product promises not to do. */
     await this.sendEmail({
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>A new check-in is ready for <strong>${groundLabel}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>A new check-in is ready for <strong>${escapeHtml(groundLabel)}</strong>.</p><p><a href="${checkInUrl}">Check in</a></p>`),
     }, undefined, 'sendSessionReady');
   }
 
@@ -629,9 +890,9 @@ export class EmailService {
   async sendLateCorrectionNotice(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Someone added to what they said on "${groundLabel}"`,
+      subject: `Somebody added to what they said on "${groundLabel}"`,
       html: this.layout(
-        `<p>One of the parties on <strong>${groundLabel}</strong> corrected their account after you had already seen the shared report.</p>
+        `<p>One of the parties on <strong>${escapeHtml(groundLabel)}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the report →</a></p>`,
       ),
@@ -642,9 +903,9 @@ export class EmailService {
   async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared report for "${groundLabel}" is waiting`,
+      subject: `The shared picture for "${groundLabel}" is waiting for you`,
       html: this.layout(
-        `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
+        `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
          <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
          <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
@@ -664,7 +925,7 @@ export class EmailService {
       to: email,
       subject: `Your report for "${groundLabel}" is ready to view`,
       html: this.layout(
-        `<p>Your shared record for <strong>${groundLabel}</strong> has been ready for a few days now.</p>
+        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
          <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
@@ -680,10 +941,10 @@ export class EmailService {
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${participantEmail}</strong> has completed their check-in on <strong>${groundLabel}</strong>. Their account is on record.</p>
+        `<p><strong>${escapeHtml(participantEmail)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and the shared report once it is ready. You cannot see what anybody wrote — accounts stay private until the record is released to everybody at once.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and everybody in it is told the moment the picture is ready.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }
@@ -734,7 +995,7 @@ export class EmailService {
       to: email,
       subject: `"${groundLabel}" has stalled`,
       html: this.layout(
-        `<p>The check-in <strong>${groundLabel}</strong> has reached the end of its timeline without a confirmed outcome.</p>
+        `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has reached the end of its timeline without a confirmed outcome.</p>
          <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the check-in page.</p>
          <p><a href="${groundUrl}">View check-in</a></p>`,
       ),
@@ -746,11 +1007,11 @@ export class EmailService {
     const endStateLabel = this.endStateLabel(endState);
     await this.sendEmail({
       to: email,
-      subject: 'A resolution has been proposed. Your confirmation is needed',
+      subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
-        `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endStateLabel}</em>.</p>
-         <p>The check-in closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
-         <p><a href="${groundUrl}">View and confirm</a></p>`,
+        `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
+         <p>It only closes when everybody still involved says the same thing. Have a look, and either agree or say where you see it differently.</p>
+         <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
     }, undefined, 'sendResolutionProposal');
   }
@@ -762,7 +1023,7 @@ export class EmailService {
       to: email,
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
-        `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endStateLabel}</em>.</p>
+        `<p>All parties have confirmed. <strong>${escapeHtml(groundLabel)}</strong> has been closed with the agreed outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
          <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
@@ -775,7 +1036,7 @@ export class EmailService {
       to: email,
       subject: `One question about "${groundLabel}"`,
       html: this.layout(
-        `<p>Now that <strong>${groundLabel}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
+        `<p>Now that <strong>${escapeHtml(groundLabel)}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
          <p>Your answer takes 20 seconds and helps us make every future check-in better.</p>
          <p><a href="${feedbackUrl}">Share your view</a></p>`,
       ),
@@ -792,10 +1053,13 @@ export class EmailService {
     const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
     await this.sendEmail({
       to: adminEmail,
-      subject: 'Add a card to continue on Groundwork',
+      subject: 'Add a card to open more check-ins on Groundwork',
+      /* This used to say a check-in "has used its free session" and, in the next line, that every free
+         check-in runs unlimited sessions - two sentences that cannot both be true. What happened: the
+         free check-ins are used up. What a card buys: more of them, and more people. */
       html: this.layout(
-        `<p>A check-in in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>Every check-in on the free tier runs unlimited sessions and reports. Subscribe to open more check-ins, or to add more people - the record you have already built is safe and waiting either way.</p>
+        `<p>Your workspace (<strong>${escapeHtml(orgName)}</strong>) has used all of its free check-ins.</p>
+         <p>Every check-in you already have keeps running, with unlimited sessions and reports, and every record stays yours. Adding a card lets your team open more check-ins and add more people.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     }, undefined, 'sendPaymentRequestEmail');
@@ -807,7 +1071,7 @@ export class EmailService {
       to: adminEmail,
       subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
-        `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
+        `<p><strong>${escapeHtml(participantEmail)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but there are no sessions remaining.</p>
          <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
@@ -820,7 +1084,7 @@ export class EmailService {
       to: adminEmail,
       subject: `Action required: payment could not be processed for ${orgName}`,
       html: this.layout(
-        `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your account active. Your records are safe regardless of payment status.</p>
+        `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your team's access active. Your records are safe regardless of payment status.</p>
          <p><a href="${this.frontendUrl}/billing">Update payment method</a></p>`,
       ),
     }, undefined, 'sendPaymentFailed');
@@ -844,10 +1108,10 @@ export class EmailService {
   async sendRecordPortabilityNotice(userEmail: string, firstName: string, downloadUrl: string): Promise<void> {
     await this.sendEmail({
       to: userEmail,
-      subject: 'Your Groundwork record is yours to keep',
+      subject: 'What you shared on Groundwork is yours to keep',
       html: this.layout(
-        `<p>${greeting(firstName)} Your organisation's Groundwork account has been cancelled.</p>
-         <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
+        `<p>${greeting(firstName)} Your organisation's Groundwork subscription has been cancelled.</p>
+         <p>Your record does not disappear. It belongs to you. Sign in and download it from your settings: <a href="${downloadUrl}">what Groundwork holds about you</a>.</p>`,
       ),
     }, undefined, 'sendRecordPortabilityNotice');
   }
@@ -855,7 +1119,8 @@ export class EmailService {
   /** Sent when an org successfully subscribes to a plan. */
   async sendSubscriptionConfirmed(email: string, plan: string, renewalDate: Date): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
-    const renewal = renewalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    /* ISO order, because the recipient's zone is not known on a billing mail and "March 5" is a different day on two continents. */
+    const renewal = onTheDay(renewalDate);
     await this.sendEmail({
       to: email,
       subject: 'Your Groundwork organization subscription is active',
@@ -902,15 +1167,13 @@ export class EmailService {
   /** Sent when a subscription renews successfully. */
   async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
-    const amount = (amountCents / 100).toFixed(2);
-    const next = nextRenewal
-      ? nextRenewal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      : 'your next billing date';
+    const amount = inDollars(amountCents);
+    const next = nextRenewal ? onTheDay(nextRenewal) : 'your next billing date';
     await this.sendEmail({
       to: email,
-      subject: `Groundwork subscription renewed: $${amount}`,
+      subject: `Groundwork subscription renewed: ${amount}`,
       html: this.layout(
-        `<p>Your <strong>${planLabel}</strong> subscription has renewed. $${amount} has been charged to the card on file.</p>
+        `<p>Your <strong>${planLabel}</strong> subscription has renewed. ${amount} has been charged to the card on file.</p>
          <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
@@ -923,7 +1186,7 @@ export class EmailService {
       to: email,
       subject: `Free session added to ${groundLabel}`,
       html: this.layout(
-        `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
+        `<p>Your free session extension has been added to <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>Check-ins on the free tier run unlimited sessions. Subscribe when your team needs more check-ins, or more people.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
@@ -936,7 +1199,7 @@ export class EmailService {
       to: email,
       subject: `One session remaining on ${groundLabel}`,
       html: this.layout(
-        `<p>Your check-in <strong>${groundLabel}</strong> has one session remaining.</p>
+        `<p>Your check-in <strong>${escapeHtml(groundLabel)}</strong> has one session remaining.</p>
          <p>Subscribe before your team's next check-in to keep this check-in running.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
@@ -962,6 +1225,8 @@ export class EmailService {
     to: string,
     name: string,
     groundName: string,
+    /* Still taken, still true, and deliberately not said to them any more - see the note on the
+       body below. Kept in the signature because the caller counts it and the log line wants it. */
     missedCount: number,
     /**
      * A WAY BACK IN, WHICH THIS EMAIL DID NOT HAVE.
@@ -975,12 +1240,21 @@ export class EmailService {
   ): Promise<void> {
     await this.sendEmail({
       to,
-      subject: `Your version is still missing from ${groundName}`,
+      subject: `Still time to say how ${groundName} is going`,
       html: this.layout(
-        `<p>${greeting(name)}</p>
-         <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
-         <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
-         <p><a href="${checkInUrl}">Add your version</a></p>`,
+        /*
+        * THIS ONE GOES TO THE PERSON LEAST LIKELY TO WANT IT.
+        *
+        * It counted their misses to them - "you have missed 2 check-ins in a row", "your record is
+        * incomplete" - which is an attendance register, and the one mail where being told off
+        * guarantees no reply. The count is still true and still useful to us; it is not what this
+        * person needs to read. What they need is that it is not too late and nobody has seen
+        * anything yet.
+        */
+       `<p>${greeting(name)}</p>
+         <p>We have not heard from you on <strong>${groundName}</strong> in a while.</p>
+         <p>There is still time. The shared picture cannot show what you are seeing until you say it, and what you write stays private until everybody is in. It belongs to you, not to the organisation.</p>
+         <p><a href="${checkInUrl}">Say how it is going</a></p>`,
       ),
     }, undefined, 'sendAbsenceReminder');
   }
@@ -1057,7 +1331,7 @@ export class EmailService {
       subject: 'Your Groundwork subscription is active',
       html: this.layout(
         `<p>${greeting(name)}</p>
-         <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
+         <p>Your Groundwork subscription for <strong>${escapeHtml(orgName)}</strong> is now active.</p>
          <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
@@ -1087,7 +1361,34 @@ export class EmailService {
  * about an attacker - it is about a team whose project is called "Q3 <finance & ops>" getting a mail
  * that renders as half a sentence.
  */
-function escapeHtml(s: string): string {
+/** The date alone, in ISO order, so nobody reads it in the wrong month or the wrong zone. */
+function onTheDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Money says its currency. Every amount here is USD cents. */
+function inDollars(cents: number): string {
+  return `${(cents / 100).toFixed(2)} USD`;
+}
+
+/** The plain-text part, from the HTML every sender already composes: links kept as their address. */
+export function plainTextOf(html: string): string {
+  return html
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => `${label.replace(/<[^>]+>/g, '').trim()} (${href})`)
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
+export const UNSUBSCRIBE_FOOTER = (url: string) =>
+  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop these emails: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. A link to sign in will still reach you if you ask for one.</p>`;
+
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

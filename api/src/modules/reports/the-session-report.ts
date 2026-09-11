@@ -1,6 +1,8 @@
+import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
+import { atAGlanceTiles, type AGlanceRead } from './what-this-session-holds';
 
 /**
  * THE PER-SESSION REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -56,21 +58,7 @@ export interface SessionReportSection {
   saying?: string;
 }
 
-/** One of the four reads the product's own front page shows when it shows a report. */
-export interface AGlanceRead {
-  label: string;
-  value: string;
-  /** What it is a read of, in half a sentence. */
-  sub: string;
-  /**
-   * WHETHER THIS IS GOOD NEWS, BAD NEWS OR NEITHER.
-   *
-   * All four used to render identically, so "no blockers noted" and "1 unresolved" looked like the
-   * same kind of fact and the row read as four failures. No blockers is good news. Nothing to
-   * compare yet is neither.
-   */
-  tone: 'good' | 'warn' | 'bad' | 'flat';
-}
+export type { AGlanceRead } from './what-this-session-holds';
 
 /** What one person said they did this session, in their own lines. */
 export interface WhatOnePersonSaid {
@@ -96,7 +84,6 @@ export interface SessionReportShape {
   sections: SessionReportSection[];
   howClearThisWas: {
     level: string | null;
-    recall: string | null;
     saying: string;
   };
   /**
@@ -142,7 +129,7 @@ export interface SessionReportInputs {
   /** This session's entries, already typed at extraction. */
   entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
-  previousEntries: { type: RecordEntryType; text: string; threadKey: string | null }[];
+  previousEntries: { type: RecordEntryType; text: string; who: string | null; threadKey: string | null }[];
   /** What was said at the beginning: the baseline's success statement and the starting point. */
   baselineSuccess: string | null;
   startingPoint: string | null;
@@ -151,7 +138,9 @@ export interface SessionReportInputs {
   /** Documents and other non-recalled evidence this record rests on. */
   evidence: { text: string; who: string | null }[];
   specificityLevel: string | null;
-  recallConfidence: string | null;
+  /** The whole session's line count and documented count, for the confidence read. See howMuchThereIsToGoOn. */
+  saidInAll?: number;
+  documentedInAll?: number;
   centralQuestion: string | null;
   /** How many named targets moved this session, for the movement read. Null when none are set. */
   movedOnTargets: number | null;
@@ -197,8 +186,12 @@ const ofTypes = (
 ): SaidThing[] => entries.filter((e) => types.includes(e.type)).map(said);
 
 export function theSessionReport(input: SessionReportInputs): SessionReportShape {
-  const agreed = input.agreements.length;
-  const stillOpen = input.divergences.length;
+  /* FILTER FIRST, THEN COUNT. These were the raw array lengths while the lists under them went
+     through .filter(Boolean), so "4 still open" could sit above a list of two. */
+  const settled = input.agreements.map(titleOf).filter(Boolean) as string[];
+  const openNow = input.divergences.map(titleOf).filter(Boolean) as string[];
+  const agreed = settled.length;
+  const stillOpen = openNow.length;
 
   /**
    * WHERE THINGS STAND. The one line the site promises every report carries, and the only place
@@ -210,8 +203,6 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
         ? 'Everybody has answered and this has not yet named anything they agree or differ on.'
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
       : `${agreed} settled, ${stillOpen} still open.`;
-  const settled = input.agreements.map(titleOf).filter(Boolean) as string[];
-  const openNow = input.divergences.map(titleOf).filter(Boolean) as string[];
 
   const commitmentsNow = ofTypes(input.entries, [RecordEntryType.COMMITMENT]);
 
@@ -269,9 +260,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       about: 'what people committed to, and what last session\'s commitments were not returned to',
       items: [
         ...commitmentsNow,
+        /*
+          * A CARRIED COMMITMENT KEEPS THE PERSON WHO MADE IT. `who: null` here, and a reader that
+          * prints a missing author as "you", put six of the participant's commitments under the
+          * lead's name on the closing report. The person who said it is the whole point of the line.
+          */
         ...notSpokenTo.map((c) => ({
           text: `From last session, not mentioned again: ${c.text}`,
-          who: null,
+          who: c.who,
           documented: false,
         })),
       ],
@@ -378,72 +374,12 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
      shows as backed, and it does not raise the documented share. */
   const documented = input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
-  const atAGlance: AGlanceRead[] = [
-    {
-      label: 'Differences',
-      value: stillOpen ? `${stillOpen}` : agreed ? 'None' : 'Nothing to compare yet',
-      /*
-       * WHAT THIS COUNT IS OVER, SAID. Agreed and open come from the written report, which a model
-       * produced; no engine measures them. The tile kept the count, because the alternative was a
-       * tile with nothing in it, and now says whose reading it is counting.
-       */
-      sub: stillOpen
-        ? 'still open, as the written report reads it'
-        : agreed ? 'no disagreement, as the written report reads it' : 'one side has answered so far',
-      tone: stillOpen ? 'warn' : agreed ? 'good' : 'flat',
-    },
-    {
-      label: 'Movement',
-      /*
-       * "NO TARGETS SET" WAS TRUE AND USELESS.
-       *
-       * Read on a real twelve-session cohort whose entire purpose was who reaches eight closed
-       * deals: the lead said "each of them at eight closed deals" in EVERY session, and this tile
-       * read "no targets set" for the whole quarter. Both halves true about the target table, and
-       * the quarter's number was sitting in the transcript the tile is printed beside.
-       *
-       * It is deliberately not turned into a target automatically. Reading a number out of a
-       * sentence and making it the thing somebody is measured against is exactly the inference this
-       * product refuses everywhere else - the lead sets the yardstick, on purpose, in one place.
-       */
-      value: input.movedOnTargets == null
-        ? aNumberWasSaid(input) ? 'A number was said' : 'No target set'
-        : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'None',
-      sub: input.movedOnTargets == null
-        ? aNumberWasSaid(input)
-          ? 'somebody named a number and nothing is tracking it'
-          : 'nobody has set something to measure this against'
-        : input.movedOnTargets > 0 ? 'targets moved this session' : 'no target moved this session',
-      tone: input.movedOnTargets == null
-        ? aNumberWasSaid(input) ? 'warn' : 'flat'
-        : input.movedOnTargets > 0 ? 'good' : 'flat',
-    },
-    {
-      label: 'Blockers',
-      /* BLOCKING rows are blockers. WAITING rows are not, but a tile saying "None" over a finding that
-         says two people are waiting on a third for five things read as the report contradicting
-         itself in consecutive lines. Both are counted, in the template's own grammar. */
-      value: input.blocked ? `${input.blocked}` : (input.waiting ?? 0) > 0 ? `${input.waiting} waiting` : 'None',
-      sub: input.blocked
-        ? 'named as holding work up'
-        : (input.waiting ?? 0) > 0 ? 'on someone else, nothing hard-blocked' : 'nobody named anything holding work up',
-      tone: input.blocked ? 'bad' : (input.waiting ?? 0) > 0 ? 'warn' : 'good',
-    },
-    {
-      /* "Solid - 0% evidence backed" put a positive label over a zero. This counts one thing and
-         says which. */
-      label: 'How much was said',
-      value: backedPct == null
-        ? 'Nothing on record yet'
-        : backedPct > 0 ? `${backedPct}% documented` : 'All from memory',
-      sub: backedPct == null
-        ? 'no answers to read'
-        : backedPct > 0
-          ? 'of what was said is anchored to a document'
-          : 'nothing said this session was anchored to a document',
-      tone: backedPct == null ? 'flat' : backedPct > 0 ? 'good' : 'warn',
-    },
-  ];
+  const atAGlance: AGlanceRead[] = atAGlanceTiles({
+    agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
+    backedPct, numberWasSaid: aNumberWasSaid(input),
+    /* So the Differences tile stops saying somebody has not answered when everybody has. */
+    stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
+  });
 
   /**
    * WHAT EACH PERSON SAID THEY DID, under their own name.
@@ -492,11 +428,18 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     };
   });
 
+  /*
+   * ONE POPULATION FOR BOTH TERMS. `entries` is what THIS reader may read - their own lines before
+   * release - while `ofPeople` was everybody, so a participant's confidence score divided their own
+   * lines by the whole head count and fell as more people were invited. The confidence read is a
+   * statement about the record, not about what this reader may see; the caller passes the whole
+   * session's counts when it has them, and the reader-scoping stays on the lines that are rendered.
+   */
   const confidence = howMuchThereIsToGoOn({
     answered: input.answeredThisSession.length,
     ofPeople: input.peopleInAll ?? input.answeredThisSession.length,
-    documented: input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length,
-    saidInAll: input.entries.length,
+    documented: input.documentedInAll ?? input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length,
+    saidInAll: input.saidInAll ?? input.entries.length,
     agreed,
     stillOpen,
     commitments: commitmentsNow.length,
@@ -513,8 +456,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     sections,
     howClearThisWas: {
       level: input.specificityLevel ?? null,
-      recall: input.recallConfidence ?? null,
-      saying: howClear(input.specificityLevel, input.recallConfidence),
+      saying: howClear(input.specificityLevel),
     },
     theConversationWorthHaving: input.centralQuestion ?? null,
   };
@@ -605,24 +547,25 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
  * own it reads as a mark out of five for the person, which this product does not give - so it
  * says what the level MEANS for the report that came out of it.
  */
-function howClear(level: string | null, recall: string | null): string {
+/**
+ * FOUR REACHABLE SENTENCES, ONE PER LEVEL. This switched on `high`/`low`, which the scorer never
+ * emits, so every report with a level printed the middle sentence whatever the score. The recall
+ * clause is gone with the number it read (see scoreSessionSpecificity). Where it was read from is
+ * said, so a keyword count is never presented in the grammar of an assessment.
+ */
+function howClear(level: string | null): string {
   const clarity =
-    level === 'HIGH' || level === 'high'
-      /* "Accounts" is the login word to a reader. What is meant is what people said, so it says
-         that. Three visible sentences at the foot of every shared report. */
+    level === 'specific'
+      /* "Accounts" is the login word to a reader. What is meant is what people said, so it says that. */
       ? 'What people said was specific: dates, numbers and named work rather than impressions.'
-      : level === 'LOW' || level === 'low'
-        ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
-        : level
-          ? 'What people said was specific in places and general in others.'
-          : 'How specific this session was has not been read yet.';
-  const memory =
-    recall === 'LOW' || recall === 'low'
-      ? ' Much of it was recalled rather than checked against anything.'
-      : recall === 'HIGH' || recall === 'high'
-        ? ' Most of it was anchored to something written down.'
-        : '';
-  return `${clarity}${memory}`;
+      : level === 'directional'
+        ? 'What people said was specific in places and general in others.'
+        : level === 'vague'
+          ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
+          : level === 'managed'
+            ? 'Little that could be checked was said in this session. The report names what it can and no more.'
+            : 'How specific this session was has not been read yet.';
+  return level ? `${clarity} ${WHERE_IT_WAS_READ_FROM}` : clarity;
 }
 
 /**

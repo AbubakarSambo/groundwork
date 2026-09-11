@@ -42,6 +42,8 @@ function makeService(checkIn: any, canStartSession: jest.Mock) {
       count: jest.fn(async () => 1),
       findUnique: jest.fn(async () => checkIn),
       update: jest.fn(async () => ({ status: 'COMPLETED', groundId: 'g1' })),
+      /* The completion write is a guarded updateMany now; one row, this one, wins. */
+      updateMany: jest.fn(async () => ({ count: 1 })),
     },
     ground: {
       findUnique: jest.fn(async () => ({ status: 'ACTIVE', organizationId: 'org1', isFreeGround: false })),
@@ -112,7 +114,8 @@ describe('GW-SELFCORRECT-FREE: correcting your own record is never paywalled', (
 
     await service.complete('ci-correction', 'user1');
 
-    expect(prisma.checkIn.update).toHaveBeenCalledWith(
+    /* The completion is a guarded updateMany: whoever flips the status first wins, and this call did. */
+    expect(prisma.checkIn.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'COMPLETED' }) }),
     );
   });
@@ -128,5 +131,6 @@ describe('GW-SELFCORRECT-FREE: correcting your own record is never paywalled', (
 
     await expect(service.complete('ci-correction', 'user1')).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.checkIn.update).not.toHaveBeenCalled();
+    expect(prisma.checkIn.updateMany).not.toHaveBeenCalled();
   });
 });

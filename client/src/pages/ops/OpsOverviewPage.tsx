@@ -35,11 +35,17 @@ function Figure({ value, label, quiet }: { value: string | number; label: string
   )
 }
 
-function Band({ n, question, children }: { n: number; question: string; children: React.ReactNode }) {
+/**
+ * THE NUMBER WAS THE QUESTION'S ID, NOT ITS PLACE ON THE PAGE. This page shows a subset of the
+ * canonical questions, so it counted "1, 2, 4, 6, 12, 14, 15, 13" down the screen and read as
+ * though four sections had failed to load. The question is its own heading; the number stays where
+ * it belongs, at the call site that looks the question up.
+ */
+function Band({ question, children }: { question: string; children: React.ReactNode }) {
   return (
     <section style={{ marginBottom: 18 }}>
       <p style={{ ...LABEL, fontSize: 10, marginBottom: 7 }}>
-        {n}. {question}
+        {question}
       </p>
       {children}
     </section>
@@ -116,7 +122,7 @@ export default function OpsOverviewPage() {
 
       {d && (
         <>
-          <Band n={1} question={ask(1)}>
+          <Band question={ask(1)}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Figure value={money(d.performance.cashCollected)} label="cash collected" />
               <Figure value={d.performance.newCustomers} label="new customers" />
@@ -129,7 +135,7 @@ export default function OpsOverviewPage() {
             </div>
           </Band>
 
-          <Band n={2} question={ask(2)}>
+          <Band question={ask(2)}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Figure value={d.functionHealth.livePipeline} label="live" />
               <Figure value={money(d.functionHealth.pipelineValue)} label="projected" />
@@ -148,7 +154,7 @@ export default function OpsOverviewPage() {
           </Band>
 
           {d.share && (
-            <Band n={4} question={ask(4)}>
+            <Band question={ask(4)}>
               <section style={CARD}>
                 <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 10px' }}>{d.share.says}</p>
                 {d.share.rows.map((r) => (
@@ -170,7 +176,7 @@ export default function OpsOverviewPage() {
             </Band>
           )}
 
-          <Band n={6} question={ask(6)}>
+          <Band question={ask(6)}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Figure value={money(d.performance.retained3Month)} label="past three months" />
               <Figure value={money(d.performance.retained6Month)} label="past six months" />
@@ -179,7 +185,7 @@ export default function OpsOverviewPage() {
             </div>
           </Band>
 
-          <Band n={12} question={ask(12)}>
+          <Band question={ask(12)}>
             <section style={CARD}>
               {d.ledgers.map((l) => (
                 <div
@@ -212,7 +218,7 @@ export default function OpsOverviewPage() {
           </Band>
 
           {performance.data && (
-            <Band n={14} question="How much of what we sold stayed sold?">
+            <Band question="How much of what we sold stayed sold?">
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {/* Three windows, never summed. Money retained at twelve months
                     is a subset of money retained at three, and adding them
@@ -226,7 +232,7 @@ export default function OpsOverviewPage() {
           )}
 
           {health.data && (
-            <Band n={15} question="And how is the function itself doing?">
+            <Band question="And how is the function itself doing?">
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {/* Separate from what it produced, on purpose: a good quarter
                     can sit on top of a pipeline nobody is working. */}
@@ -240,7 +246,7 @@ export default function OpsOverviewPage() {
           )}
 
           {d.claimsWaiting !== null && d.claimsWaiting > 0 && (
-            <Band n={13} question={ask(13)}>
+            <Band question={ask(13)}>
               <p style={{ fontSize: 13.5, color: 'var(--gw-red-t)', margin: 0 }}>
                 {d.claimsWaiting} claim{d.claimsWaiting === 1 ? '' : 's'} of contribution waiting on a
                 decision. Until they are decided, they are not evidence.

@@ -19,6 +19,33 @@ export interface IssuedCredential extends Omit<Credential, 'lastUsedAt' | 'revok
   clientSecret: string
 }
 
+/** Where we tell you: a Slack or Teams incoming webhook. The address is write-only and never comes back. */
+export interface WorkspaceNotifier {
+  kind: 'SLACK' | 'TEAMS'
+  channelSaid: string | null
+  enabled: boolean
+  lastPostedAt: string | null
+  lastError: string | null
+}
+
+/** The embedded panel's configuration, without its signing secret (that is returned once, on setup). */
+export interface RetentionPolicy {
+  turnRetentionDays: number
+  /** False while the organisation runs on the default and has never chosen. */
+  set: boolean
+  floor: number
+  ceiling: number
+  default: number
+}
+
+export interface EmbedConfig {
+  allowedDomains: string[]
+  placement: 'floating' | 'anchor' | string
+  outOfScopeDepartments: string[]
+  frameAncestors?: string
+  createdAt?: string
+}
+
 export interface WebhookEndpoint {
   id: string
   url: string
@@ -69,7 +96,30 @@ export interface ImportDetail extends Omit<ImportJobSummary, 'id' | 'kind'> {
   detectionQuietUntil: string | null
 }
 
+export interface WhatsAppConnection {
+  phoneNumberId: string
+  businessAccountId: string | null
+  displayNumber: string | null
+  verifyToken: string
+  enabled: boolean
+  connectedAt: string
+  lastInboundAt: string | null
+  lastOutboundAt: string | null
+  tokenEndsWith: string
+}
+
 export const integrationsApi = {
+  /* The organisation's own WhatsApp number. Secrets go in and are never read back. */
+  whatsapp: () =>
+    apiClient.get<{ connection: WhatsAppConnection | null; webhookPath: string }>('/integrations/whatsapp').then(r => r.data),
+  connectWhatsapp: (body: { phoneNumberId: string; businessAccountId?: string; displayNumber?: string; accessToken?: string; appSecret?: string }) =>
+    apiClient.put<{ connection: WhatsAppConnection; webhookPath: string }>('/integrations/whatsapp', body).then(r => r.data),
+  setWhatsappEnabled: (enabled: boolean) =>
+    apiClient.post<{ connection: WhatsAppConnection }>('/integrations/whatsapp/enabled', { enabled }).then(r => r.data),
+  testWhatsapp: (to: string) =>
+    apiClient.post<{ sent: boolean }>('/integrations/whatsapp/test', { to }).then(r => r.data),
+  disconnectWhatsapp: () =>
+    apiClient.delete<{ disconnected: boolean }>('/integrations/whatsapp').then(r => r.data),
   // credentials
   /** Whether this organisation has been let in, and what is left if not. */
   myApiAccess: () =>
@@ -85,8 +135,16 @@ export const integrationsApi = {
       }>('/integrations/credentials/access-request')
       .then(r => r.data),
 
-  askForApiAccess: (whatFor: string) =>
-    apiClient.post('/integrations/credentials/access-request', { whatFor }).then(r => r.data),
+  askForApiAccess: (whatFor: string, acceptedTerms: boolean) =>
+    apiClient.post('/integrations/credentials/access-request', { whatFor, acceptedTerms }).then(r => r.data),
+
+  /** The terms accepted at the point of asking. Versioned. */
+  apiTerms: () =>
+    apiClient.get<{ version: string; title: string; says: string; terms: { heading: string; body: string }[] }>('/integrations/credentials/terms').then(r => r.data),
+
+  /** A one-hour path to the API reference. Refused until access is approved. */
+  docsLink: () =>
+    apiClient.get<{ path: string; expiresInMinutes: number }>('/integrations/credentials/docs-link').then(r => r.data),
 
   listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => r.data),
   issueCredential: (name: string, scopes: string[]) =>
@@ -111,8 +169,9 @@ export const integrationsApi = {
     apiClient.get<ImportDetail>(`/integrations/imports/${jobId}`).then(r => r.data),
 
   // webhooks
+  /** `deprecated` maps an old event name to the one to subscribe to instead (B13). */
   webhookEvents: () =>
-    apiClient.get<{ available: string[]; notYetEmitted: string[] }>('/integrations/webhooks/events').then(r => r.data),
+    apiClient.get<{ available: string[]; notYetEmitted: string[]; deprecated?: Record<string, string> }>('/integrations/webhooks/events').then(r => r.data),
   listEndpoints: () => apiClient.get<WebhookEndpoint[]>('/integrations/webhooks/endpoints').then(r => r.data),
   registerEndpoint: (url: string, events: string[]) =>
     apiClient.post<WebhookEndpoint & { secret: string }>('/integrations/webhooks/endpoints', { url, events }).then(r => r.data),
@@ -120,6 +179,28 @@ export const integrationsApi = {
     apiClient.delete<{ removed: boolean }>(`/integrations/webhooks/endpoints/${id}`).then(r => r.data),
   rotateSecret: (id: string) =>
     apiClient.post<{ id: string; secret: string }>(`/integrations/webhooks/endpoints/${id}/rotate-secret`, {}).then(r => r.data),
+  /** Back on, after an endpoint was switched off for being unreachable (the notice mail says so). */
+  reactivateEndpoint: (id: string) =>
+    apiClient.post<{ id: string; active: boolean }>(`/integrations/webhooks/endpoints/${id}/reactivate`, {}).then(r => r.data),
+  /* Where we tell you. Routes existed with no caller; a notice engine with five live call sites read an
+     empty table for every organisation because nothing could write a row. */
+  workspaceNotifiers: () => apiClient.get<WorkspaceNotifier[]>('/integrations/workspace').then(r => r.data),
+  connectWorkspace: (kind: 'slack' | 'teams', url: string, channelSaid?: string) =>
+    apiClient.post<{ kind: string; channelSaid: string | null; enabled: boolean }>(`/integrations/workspace/${kind}`, { url, channelSaid }).then(r => r.data),
+  testWorkspace: (kind: 'slack' | 'teams') =>
+    apiClient.post<{ posted: boolean; because?: string }>(`/integrations/workspace/${kind}/test`, {}).then(r => r.data),
+  turnWorkspace: (kind: 'slack' | 'teams', on: boolean) =>
+    apiClient.post(`/integrations/workspace/${kind}/${on ? 'on' : 'off'}`, {}).then(r => r.data),
+  disconnectWorkspace: (kind: 'slack' | 'teams') =>
+    apiClient.delete(`/integrations/workspace/${kind}`).then(r => r.data),
+  /* How long a departed person's raw turns are kept. Read on every departure; writable here (B12). */
+  retention: () => apiClient.get<RetentionPolicy>('/org/retention').then(r => r.data),
+  setRetention: (turnRetentionDays: number) =>
+    apiClient.patch<RetentionPolicy>('/org/retention', { turnRetentionDays }).then(r => r.data),
+  /* Embed the panel. Over 1,300 lines of served loader, panel and signing scheme, reachable only by a database write. */
+  embedConfig: () => apiClient.get<EmbedConfig | null>('/integrations/embed').then(r => r.data),
+  setUpEmbed: (body: { allowedDomains: string[]; placement: 'floating' | 'anchor'; outOfScopeDepartments: string[] }) =>
+    apiClient.post<EmbedConfig & { signingSecret: string }>('/integrations/embed', body).then(r => r.data),
   deliveries: (status?: string) =>
     apiClient.get<WebhookDelivery[]>(`/integrations/webhooks/deliveries${status ? `?status=${status}` : ''}`).then(r => r.data),
   replay: (id: string) =>

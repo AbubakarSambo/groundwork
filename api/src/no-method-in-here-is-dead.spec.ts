@@ -67,13 +67,11 @@ const NO_CALLER_ON_PURPOSE: Record<string, string> = {
    *   came off this list rather than staying on it with a reason, which is what the
    *   list is for.
    *
-   *   BUILT AHEAD OF ITS SURFACE. pauseGround, the anonymised rollup, the org-wide
-   *   mention view: written before the screen that would call them.
+   *   BUILT AHEAD OF ITS SURFACE. The anonymised rollup, the org-wide mention view:
+   *   written before the screen that would call them. pauseGround was one of these
+   *   until its routes were wired (POST :id/pause and :id/resume) and came off the list.
    */
   'billing.service.ts#isBillingReady': 'a readiness check with no caller; the paths that would use it check their own preconditions',
-  'stripe.service.ts#cancelSubscriptionAtPeriodEnd': 'no cancellation surface exists yet, and cancelling is not a thing to wire in speculatively',
-  'grounds.service.ts#pauseGround': 'built before the surface that would offer pausing',
-  'intelligence.service.ts#rollupAnonymised': 'built before the org-wide intelligence surface',
   'intelligence.service.ts#detectForceMultiplier': 'built before the surface that would show it',
   'patterns.service.ts#getOrgWideMentions': 'built before the org-wide view',
   'whatsapp.service.ts#setPhoneNumber': 'admin toggle plumbing, waiting on the number being provisioned',
@@ -140,6 +138,13 @@ function hasAnyCaller(method: string, declaredIn: string): boolean {
   return false;
 }
 
+/** Whether the method is wired to the event bus rather than to a caller. */
+function isAnEventListener(method: string, text: string): boolean {
+  const at = text.search(new RegExp(`\\basync ${method}\\s*\\(|\\b${method}\\s*\\(`));
+  if (at === -1) return false;
+  return /@OnEvent\([^)]*\)\s*$/.test(text.slice(Math.max(0, at - 300), at).trimEnd());
+}
+
 describe('every public service method has a caller', () => {
   it('or is listed as deliberately without one', () => {
     const dead: string[] = [];
@@ -148,6 +153,9 @@ describe('every public service method has a caller', () => {
       for (const method of publicMethodsOf(sources.get(file)!)) {
         const key = `${basename(file)}#${method}`;
         if (key in NO_CALLER_ON_PURPOSE) continue;
+        /* A listener's caller is the event bus, and the emit is somewhere else entirely. The
+           decorator above the method is the wiring, and it is checked by reading it. */
+        if (isAnEventListener(method, sources.get(file)!)) continue;
         if (!hasAnyCaller(method, file)) dead.push(`${relative(SRC, file)}#${method}`);
       }
     }

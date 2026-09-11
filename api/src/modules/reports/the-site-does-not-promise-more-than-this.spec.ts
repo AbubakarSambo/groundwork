@@ -26,13 +26,42 @@ import { PartyType } from '@prisma/client';
  * it describes - the only place the two are ever compared.
  */
 
-const HOME = path.join(__dirname, '../../../../marketing/src/pages/index.astro');
+const PAGES = path.join(__dirname, '../../../../marketing/src/pages');
+const HOME = path.join(PAGES, 'index.astro');
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
 const copy = () => fs.readFileSync(HOME, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Prose only. A promise inside a source comment is a note, not a claim. */
 function visibleCopy(): string {
   return copy().replace(/<!--[\s\S]*?-->/g, '');
 }
+
+/** Every page, because the first false sentence was removed from the home page and survived on two others. */
+function everyPage(): { page: string; text: string }[] {
+  return fs.readdirSync(PAGES).filter((f) => f.endsWith('.astro')).map((f) => ({ page: f, text: strip(fs.readFileSync(path.join(PAGES, f), 'utf8')) }));
+}
+
+/**
+ * SENTENCES THE SITE STILL MAKES THAT THE PRODUCT DOES NOT KEEP, LEFT AS THEY ARE ON PURPOSE.
+ *
+ * The marketing copy is frozen (fix_plan.md, standing constraints), so a guard over every page
+ * would go red on day one for sentences already known and accepted. Each is listed here with the
+ * finding it leaves open, so the guard catches a NEW overclaim without failing on an old one - and
+ * so that when the product catches up with a sentence, the entry comes off this list rather than
+ * the sentence coming off the page.
+ */
+const ACCEPTED_OVERCLAIMS: { page: string; sentence: RegExp; leavesOpen: string }[] = [
+  { page: 'how-it-works.astro', sentence: /Groundwork never shows anyone's raw answers/, leavesOpen: 'P6B-001: a lead can be shown a paraphrase of a party (fix plan A3); raw turns are not shown' },
+  { page: 'pricing.astro', sentence: /no one sees anyone else's raw answers/, leavesOpen: 'P6B-001, the same sentence on the pricing page' },
+  /* A noun the product abandoned. There is no object called a Ground in the UI; the copy is frozen. */
+  { page: 'how-it-works.astro', sentence: /the rest of the Ground is measured against/, leavesOpen: 'P6B-005: "Ground" as a noun, which the product no longer uses (fix plan F10)' },
+  { page: 'how-it-works.astro', sentence: /the complete history of the Ground/, leavesOpen: 'P6B-005, the same noun' },
+  { page: 'how-it-works.astro', sentence: /The closed Ground stays on record/, leavesOpen: 'P6B-005, the same noun' },
+  { page: 'pricing.astro', sentence: /run Grounds on the free plan/, leavesOpen: 'P6B-005, the same noun on the pricing page' },
+];
+
+/** "Ground" as a noun, not the product's name. The product says check-in. */
+const A_NOUN_THE_PRODUCT_ABANDONED = /\bGrounds?\b(?!work)/;
 
 describe('what the page promises about individual answers', () => {
   it('does not claim answers are never shared, because they are', () => {
@@ -46,23 +75,58 @@ describe('what the page promises about individual answers', () => {
   });
 });
 
+describe('and the same two regressions on every other page', () => {
+  it.each(everyPage().map((p) => [p.page, p.text]))('%s does not claim answers are never shared, or that everyone reads one picture', (_page, text) => {
+    expect(text).not.toMatch(/never shares individual answers/i);
+    expect(text).not.toMatch(/The same picture goes to everyone in it/i);
+  });
+
+  it('a raw-answers promise appears only where it is already accepted, and nowhere new', () => {
+    for (const { page, text } of everyPage()) {
+      const claims = text.match(/[^.]*raw answers[^.]*\./gi) ?? [];
+      for (const claim of claims) {
+        const accepted = ACCEPTED_OVERCLAIMS.find((a) => a.page === page && a.sentence.test(claim));
+        if (!accepted) throw new Error(`${page} makes a raw-answers promise that is not on the accepted list: "${claim.trim()}"`);
+      }
+    }
+  });
+
+  it('"Ground" as a noun appears only where it is already accepted, and nowhere new', () => {
+    for (const { page, text } of everyPage()) {
+      const claims = text.match(/[^.]*\bGrounds?\b(?!work)[^.]*\./g) ?? [];
+      for (const claim of claims.filter((c) => A_NOUN_THE_PRODUCT_ABANDONED.test(c))) {
+        const accepted = ACCEPTED_OVERCLAIMS.find((a) => a.page === page && a.sentence.test(claim));
+        if (!accepted) throw new Error(`${page} says "Ground" as a noun, which the product no longer does: "${claim.trim()}"`);
+      }
+    }
+  });
+
+  it('and every accepted overclaim is still on its page, or its entry is stale', () => {
+    for (const a of ACCEPTED_OVERCLAIMS) {
+      const page = everyPage().find((p) => p.page === a.page);
+      expect(page && a.sentence.test(page.text)).toBe(true);
+    }
+  });
+});
+
 describe('what the page promises about who sees what', () => {
   it('does not claim everyone reads the same picture', () => {
     // THE REGRESSION. True enough on two people, wrong on a cohort.
     expect(visibleCopy()).not.toMatch(/The same picture goes to everyone in it/i);
   });
 
-  it('says the part that is true: everyone gets it at the same moment', () => {
+  it('says the part that is true: the people in it get the same report', () => {
     /**
-     * The claim, not one sentence's wording. It was the heading "Everyone gets the report, at the
-     * same moment." on a section Hafsah later removed, and it survives inside the report example:
-     * "If you are one of the eight, this is your report too. Same report, same moment."
+     * WHAT CHANGED, AND WHY. This pinned "at the same moment", which Hafsah read on the live page
+     * and said plainly is not true - the report does not reach everybody in one instant, and the
+     * page should not say it does. The wording is now "this is your report too. The same one."
      *
-     * Pinned as either phrasing on purpose. What must not disappear is the PROMISE - a page that
-     * describes a private check-in and never says the report is shared simultaneously invites the
-     * reader to assume it is not. Which sentence carries it is a copy decision.
+     * The PROMISE is what must not disappear, and the promise is sameness, not simultaneity: a
+     * page that describes a private check-in and never says the report is shared invites the
+     * reader to assume it is not. Which sentence carries it is a copy decision; that it is carried
+     * is not.
      */
-    expect(visibleCopy()).toMatch(/Everyone gets the report, at the same moment|Same report, same moment/i);
+    expect(visibleCopy()).toMatch(/this is your report too\. The same one/i);
   });
 });
 

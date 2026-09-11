@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { deadlineOf } from './when-the-clock-starts';
+import { A_GROUND_IS_OVER, A_GROUND_IS_HELD } from './a-ground-that-has-ended';
+import { AN_ANSWER } from './an-answer-includes-a-refusal';
+import { recordRoundCompletion } from './round-completion';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -9,14 +12,23 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
-import { recordRoundCompletion } from './round-completion';
+import { ConversationService } from '../conversation/conversation.service';
+import { WARN_BEFORE_IT_LAPSES_DAYS } from '../participants/how-long-an-invite-lasts';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
 const WARNING_WINDOW_START_MS = 11 * 60 * 60 * 1000;       // 11h of inactivity
 const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivity
 
-const TERMINAL: GroundStatus[] = [GroundStatus.RESOLVED, GroundStatus.CLOSED, GroundStatus.STALLED];
+/* One list, in one place: a-ground-that-has-ended.ts. */
+const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
+/**
+ * A HELD CLOCK DOES NOT RUN. Every sweep in here that moves a ground on, invites into it, or
+ * closes and warns about its sessions leaves a paused ground exactly as it found it. The stall
+ * sweep was the worst of these: it counted a paused ground as overdue and wrote it STALLED, which
+ * is terminal, so a legal hold ended the check-in for good. See a-ground-that-has-ended.ts.
+ */
+const HELD: GroundStatus[] = A_GROUND_IS_HELD;
 const NUDGE_THROTTLE_DAYS = 3;
 const OPEN_STATUSES: CheckInStatus[] = [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS];
 
@@ -31,6 +43,8 @@ export class GroundsCron {
     private events: EventEmitter2,
     private patterns: PatternsService,
     private whatsapp: WhatsAppService,
+    /** Last, so the specs that build this positionally keep compiling. The sweep only decides which sessions are stale; finishing one is the conversation module's job. */
+    private conversation: ConversationService,
   ) {}
 
   /**
@@ -72,9 +86,10 @@ export class GroundsCron {
            * meant the invite was held forever on precisely the grounds it was held for.
            *
            * What must be excluded is a ground that has finished. Inviting somebody into a resolved or
-           * stalled ground is worse than never inviting them.
+           * stalled ground is worse than never inviting them. A held one waits too: the invite is not
+           * lost, it goes the morning after the hold is lifted.
            */
-          ground: { status: { notIn: TERMINAL } },
+          ground: { status: { notIn: [...TERMINAL, ...HELD] } },
         },
         select: {
           id: true, email: true, inviteToken: true, groundId: true,
@@ -113,7 +128,7 @@ export class GroundsCron {
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
-        where: { status: { notIn: TERMINAL } },
+        where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true, createdAt: true, startsAt: true, timelineDays: true },
       });
 
@@ -241,7 +256,8 @@ export class GroundsCron {
   async autoCloseStaleCheckIns() {
     await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
       const inProgress = await this.prisma.checkIn.findMany({
-        where: { status: CheckInStatus.IN_PROGRESS },
+        /* A session on a held ground is not stale, it is waiting. Its clock resumes when the ground does. */
+        where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
         select: {
           id: true,
           groundId: true,
@@ -279,24 +295,13 @@ export class GroundsCron {
           ? `session age ${Math.round(sessionAgeMs / 3_600_000)}h >= 48h`
           : `inactivity ${Math.round(lastActivityMs / 3_600_000)}h >= 12h`;
 
-        await this.prisma.checkIn.update({
-          where: { id: checkIn.id },
-          data: { status: CheckInStatus.COMPLETED, completedAt: now },
-        });
-
-        this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
-          checkInId: checkIn.id,
-          participantId: checkIn.participantId,
-          groundId: checkIn.groundId,
-          sessionNumber: checkIn.sessionNumber,
-          source: 'auto-close',
-        } as CheckInCompletedEvent & { source: string });
-
         /*
-         * An auto-closed session still closes a round, and this is the path most likely to be the
-         * last one in: the person who never came back is exactly who a round ends up waiting on.
+         * THE CLOCK FINISHES A SESSION THE WAY A PERSON DOES. This used to write COMPLETED itself,
+         * emit, and close the round - and skip everything else a completion does, so the person who
+         * walked away had an empty record and no next session. One place finishes a session now;
+         * this decides only that it is time. See ConversationService.closeByTheClock.
          */
-        await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+        await this.conversation.closeByTheClock(checkIn.id);
 
         this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
         closed++;
@@ -309,6 +314,40 @@ export class GroundsCron {
   }
 
   /**
+   * NOBODY'S WORDS ARE LEFT HANGING WITHOUT ANYBODY KNOWING.
+   *
+   * Both message routes write the person's turn, call the model, then write the reply. If the model
+   * fails the person's turn is deleted so the record does not hold a question with no answer. If
+   * the PROCESS dies between the two writes - a deploy, a crash, a timeout at the edge - nothing
+   * runs the delete, and the person's turn sits there for ever with no reply after it. The two
+   * writes cannot share a transaction: the model call is between them and can take ten seconds.
+   *
+   * So this counts them. Once an hour: every open session whose LAST turn is the person's and is
+   * more than an hour old. Ids only, never the words. Silent orphans were the problem; a counter
+   * that somebody can see is most of the fix.
+   */
+  @Cron('30 * * * *', { timeZone: 'UTC' })
+  async countOrphanedTurns() {
+    const anHourAgo = new Date(Date.now() - 3600_000);
+    const open = await this.prisma.checkIn.findMany({
+      where: { status: CheckInStatus.IN_PROGRESS, turns: { some: { role: TurnRole.PERSON, createdAt: { lt: anHourAgo } } } },
+      select: { id: true },
+    });
+    const orphaned: string[] = [];
+    for (const c of open) {
+      const last = await this.prisma.conversationTurn.findFirst({
+        where: { checkInId: c.id },
+        orderBy: { createdAt: 'desc' },
+        select: { role: true, createdAt: true },
+      });
+      if (last?.role === TurnRole.PERSON && last.createdAt < anHourAgo) orphaned.push(c.id);
+    }
+    if (orphaned.length > 0) {
+      this.logger.warn(`${orphaned.length} check-in(s) hold a person's turn with no reply after an hour: ${orphaned.join(', ')}`);
+    }
+  }
+
+  /**
    * Fires session-closing warnings every 15 minutes. When a session has been
    * inactive for 11–11h30m, an AI turn is injected informing the person the
    * session auto-closes in 30 minutes. warningFiredAt is set so the warning
@@ -318,7 +357,8 @@ export class GroundsCron {
   async fireSessionClosingWarnings() {
     await this.prisma.withAdvisoryLock(CronLock.SESSION_CLOSING_WARNINGS, async () => {
       const candidates = await this.prisma.checkIn.findMany({
-        where: { status: CheckInStatus.IN_PROGRESS, warningFiredAt: null },
+        /* Same as the auto-close above: nobody is warned that a held session is closing, because it is not. */
+        where: { status: CheckInStatus.IN_PROGRESS, warningFiredAt: null, ground: { status: { notIn: HELD } } },
         select: { id: true, groundId: true, participantId: true, sessionNumber: true },
       });
 
@@ -366,6 +406,49 @@ export class GroundsCron {
   }
 
   /**
+   * AN INVITATION THAT IS ABOUT TO LAPSE, AND ONE THAT HAS (NL-009). Nothing warned before a link
+   * lapsed, so a person who lost the mail quietly never arrived and the lead never knew. Two days out
+   * the invitee is told, with the link that still works; once it has lapsed the lead is told, once.
+   */
+  @Cron('0 7 * * *', { timeZone: 'UTC' })
+  async tellThemBeforeAnInviteLapses() {
+    await this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
+      const now = new Date();
+      const soon = new Date(now.getTime() + WARN_BEFORE_IT_LAPSES_DAYS * 24 * 60 * 60 * 1000);
+      const frontend = this.config.get<string>('resend.frontendUrl') || '';
+      const aboutToLapse = await this.prisma.groundParticipant.findMany({
+        where: { userId: null, inviteToken: { not: null }, inviteExpiryWarnedAt: null, invitedAt: { not: null }, inviteTokenExpiresAt: { gt: now, lte: soon }, ground: { status: { notIn: TERMINAL } } },
+        select: { id: true, email: true, inviteToken: true, ground: { select: { label: true } } },
+        take: 200,
+      });
+      for (const p of aboutToLapse) {
+        try {
+          await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
+          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
+        } catch (err: any) {
+          this.logger.warn(`Could not warn ${p.email} about a lapsing invite: ${err?.message}`);
+        }
+      }
+      const lapsed = await this.prisma.groundParticipant.findMany({
+        where: { userId: null, inviteToken: { not: null }, inviteLapsedToldAt: null, invitedAt: { not: null }, inviteTokenExpiresAt: { lte: now }, ground: { status: { notIn: TERMINAL } } },
+        select: { id: true, email: true, ground: { select: { id: true, label: true, initiator: { select: { email: true, firstName: true } } } } },
+        take: 200,
+      });
+      for (const p of lapsed) {
+        try {
+          if (p.ground.initiator?.email) {
+            await this.email.sendInviteLapsed(p.ground.initiator.email, p.ground.initiator.firstName, p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}`);
+          }
+          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteLapsedToldAt: now } });
+        } catch (err: any) {
+          this.logger.warn(`Could not tell the lead about a lapsed invite for ${p.email}: ${err?.message}`);
+        }
+      }
+      if (aboutToLapse.length || lapsed.length) this.logger.log(`Invite expiry: warned ${aboutToLapse.length}, told the lead about ${lapsed.length}.`);
+    });
+  }
+
+  /**
    * Daily reminders (B1) - grounds die silently without them. Two kinds, both
    * throttled to once per NUDGE_THROTTLE_DAYS per party via lastNudgedAt:
    *   1. Return-nudge: an accepted party with an open, now-due session that
@@ -388,7 +471,9 @@ export class GroundsCron {
    */
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendSessionReadyNotifications() {
-    await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendSessionReadyNotificationsInner());
+    /* Its own lock (NL-037): it shared SEND_REMINDERS with the daily job, and a long pass here
+       overlapping 09:00 skipped the day's reminders with no retry. */
+    await this.prisma.withAdvisoryLock(CronLock.SESSION_READY, async () => this.sendSessionReadyNotificationsInner());
   }
 
   private async sendSessionReadyNotificationsInner() {
@@ -411,7 +496,9 @@ export class GroundsCron {
             id: true,
             email: true,
             ground: { select: { label: true } },
-            recordEntries: { orderBy: { createdAt: 'desc' }, take: 1, select: { text: true } },
+            /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
+               private record line into the mail and the WhatsApp body as "Last time: ...". The product's
+               central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
             user: { select: { phoneNumber: true } },
           },
         },
@@ -421,7 +508,6 @@ export class GroundsCron {
 
     for (const ci of newlyOpen) {
       const p = ci.participant;
-      const lastContext = p.recordEntries[0]?.text;
       const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**
@@ -440,12 +526,11 @@ export class GroundsCron {
          * failure there cannot lose the email, cannot leave the stamp unwritten, and cannot cause the
          * next cron pass to email the same person twice.
          */
-        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, lastContext);
+        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
 
         if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
-          const contextLine = lastContext ? `\n\nLast time: "${lastContext}"` : '';
           try {
-            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`);
+            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
           } catch (waErr: any) {
             // The email is already out. A second channel failing is worth knowing about, not retrying.
             this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);
@@ -511,48 +596,13 @@ export class GroundsCron {
     const throttleBefore = new Date(now.getTime() - NUDGE_THROTTLE_DAYS * 24 * 60 * 60 * 1000);
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
-    // 1. Return-nudges to idle accepted parties with a due, open session.
-    const idleParties = await this.prisma.groundParticipant.findMany({
-      where: {
-        userId: { not: null },
-        ground: { status: { notIn: TERMINAL }, sessionsBalance: { gt: 0 } },
-        OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
-        checkIns: { some: { status: { in: OPEN_STATUSES } } },
-      },
-      select: {
-        id: true,
-        email: true,
-        ground: { select: { label: true } },
-        checkIns: {
-          where: { status: { in: OPEN_STATUSES } },
-          orderBy: { sessionNumber: 'asc' },
-          take: 1,
-          select: { id: true, availableFrom: true },
-        },
-        // GW-23: use the person's last record entry as the "specific thing" in the nudge
-        // so the email names something real from their own words rather than the ground label.
-        recordEntries: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { text: true },
-        },
-      },
-    });
-
-    let returnNudges = 0;
-    for (const p of idleParties) {
-      const ci = p.checkIns[0];
-      if (!ci) continue;
-      if (ci.availableFrom && ci.availableFrom > now) continue; // not due yet
-      const specificThing = p.recordEntries[0]?.text ?? p.ground.label;
-      try {
-        await this.email.sendNudge(p.email, specificThing, this.email.buildCheckInUrl(ci.id));
-        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
-        returnNudges++;
-      } catch (err: any) {
-        this.logger.error(`Return-nudge failed for participant ${p.id}: ${err.message}`);
-      }
-    }
+    /*
+     * THE RETURN-NUDGE HALF OF THIS JOB IS GONE (NL-021). Two engines sent the same nudge: this one
+     * at 09:00 with a three-day throttle, and remind.service at 08:00 with the policy that reads the
+     * lead's chase settings. They coordinated only by the 08:00 job having stamped lastNudgedAt an
+     * hour earlier. remind.service keeps the policy; this job keeps the activation reminders below.
+     */
+    const returnNudges = 0;
 
     // 2. Activation reminders to admins sitting on an unactivated report.
     const reportReady = await this.prisma.ground.findMany({
@@ -628,56 +678,78 @@ export class GroundsCron {
   }
 
   /**
-   * GW-06 synthesis backstop - 4 AM daily. If the CHECK_IN_COMPLETED event
-   * was lost (e.g. a crash between session completion and synthesis), an ACTIVE
-   * ground can sit with both parties done and no report. This sweep finds that
-   * state and re-emits the event; the reports listener is idempotent so re-fire
-   * is safe.
+   * THE BACKSTOP REACHES EVERY ROUND, NOT ONLY THE FIRST.
+   *
+   * GW-06: if the CHECK_IN_COMPLETED event was lost - a crash between a session completing and the
+   * synthesis - a ground can sit with everybody done and no report. This sweep found that state and
+   * re-emitted the event. But it looked for it in exactly one place: `sessionNumber: 1`, on a ground
+   * that was ACTIVE, with `report: { is: null }`. So a failed release on session 5 of a ground that
+   * already had a session-1 report was permanent; and a ground whose FIRST release never fired sits
+   * at AWAITING_PARTIES - it only becomes ACTIVE when a report releases - and could never be reached.
+   *
+   * Now: every live ground, every session anybody has answered. A round is closed when everybody
+   * who is not managing-only has answered it (a decline is an answer) and at least one account is
+   * COMPLETED. A closed round with no completion row, or no report round taken for it, is the
+   * repair: the row is written if missing, and the event is re-emitted as a REPAIR - so the listener
+   * synthesises and releases, and does not mail the admin "X has checked in" again.
    */
   @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
     await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
-      const candidates = await this.prisma.ground.findMany({
-        where: { status: GroundStatus.ACTIVE, report: { is: null } },
+      const grounds = await this.prisma.ground.findMany({
+        where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true },
       });
 
-      if (candidates.length === 0) return;
-
       let triggered = 0;
-      for (const g of candidates) {
-        const active = await this.prisma.groundParticipant.findMany({
-          where: { groundId: g.id, userId: { not: null } },
+      for (const g of grounds) {
+        const parties = await this.prisma.groundParticipant.findMany({
+          where: { groundId: g.id, managingOnly: false },
           select: { id: true },
         });
-        if (active.length < 2) continue;
+        if (parties.length < 2) continue;
+        const ids = parties.map((p) => p.id);
 
-        let allDone = true;
-        let triggerCheckIn: { id: string; participantId: string } | null = null;
-        for (const p of active) {
-          // #36: report triggers after session 1 (both parties' first check-in),
-          // not session 2. Backstop mirrors isReportReady().
-          const s1 = await this.prisma.checkIn.findFirst({
-            where: { participantId: p.id, sessionNumber: 1, status: CheckInStatus.COMPLETED },
-            select: { id: true },
-          });
-          if (!s1) { allDone = false; break; }
-          triggerCheckIn = { id: s1.id, participantId: p.id };
+        const answers = await this.prisma.checkIn.findMany({
+          where: { groundId: g.id, participantId: { in: ids }, status: { in: AN_ANSWER } },
+          select: { id: true, participantId: true, sessionNumber: true, status: true },
+          orderBy: { sessionNumber: 'asc' },
+        });
+        const rounds = new Map<number, typeof answers>();
+        for (const a of answers) rounds.set(a.sessionNumber, [...(rounds.get(a.sessionNumber) ?? []), a]);
+
+        /* Every closed round gets its completion row if it is missing - cheap, idempotent, no model
+           call. Only the LATEST closed round is re-emitted for synthesis: re-running an older round's
+           picture cannot help anybody, and a round whose picture was empty keeps no snapshot at all,
+           so bounding the re-emit to one round per ground is what keeps this from firing daily. */
+        const closed: { sessionNumber: number; anAccount: (typeof answers)[number] }[] = [];
+        for (const [sessionNumber, rows] of rounds) {
+          if (new Set(rows.map((r) => r.participantId)).size < parties.length) continue;
+          const anAccount = rows.find((r) => r.status === CheckInStatus.COMPLETED);
+          if (!anAccount) continue;
+          closed.push({ sessionNumber, anAccount });
         }
-
-        if (!allDone || !triggerCheckIn) continue;
+        for (const { sessionNumber } of closed) {
+          const recorded = await this.prisma.roundCompletion.findUnique({ where: { groundId_sessionNumber: { groundId: g.id, sessionNumber } }, select: { id: true } });
+          if (!recorded) await recordRoundCompletion(this.prisma, this.events, g.id, sessionNumber);
+        }
+        const latest = closed[closed.length - 1];
+        if (!latest) continue;
+        const taken = await this.prisma.reportRound.findUnique({ where: { groundId_sessionNumber: { groundId: g.id, sessionNumber: latest.sessionNumber } }, select: { id: true } });
+        if (taken) continue;
 
         this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
-          checkInId: triggerCheckIn.id,
+          checkInId: latest.anAccount.id,
           groundId: g.id,
-          participantId: triggerCheckIn.participantId,
-          sessionNumber: 1,
+          participantId: latest.anAccount.participantId,
+          sessionNumber: latest.sessionNumber,
+          source: 'repair',
         } satisfies CheckInCompletedEvent);
         triggered++;
       }
 
       if (triggered > 0) {
-        this.logger.warn(`Synthesis backstop: re-triggered synthesis for ${triggered} stuck ground(s)`);
+        this.logger.warn(`Synthesis backstop: re-triggered ${triggered} round(s) that closed and were never recorded or released`);
       }
     });
   }

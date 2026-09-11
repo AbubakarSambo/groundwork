@@ -2,6 +2,7 @@ import { Controller, Get, Post, Param, Body, Req, UseGuards, HttpCode, BadReques
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from '../public-api/machine-token.guard';
+import { mayTouch } from '../public-api/a-fence-around-a-credential';
 import { PrismaService } from '../prisma/prisma.service';
 import { DetectorsService } from './detectors.service';
 import { RolesService, RoleInput, ActionInput } from './roles-and-their-action.service';
@@ -71,11 +72,14 @@ export class DetectorsController {
   @RequiresScope('findings:read')
   @ApiOperation({ summary: 'Findings held for this organisation, evidence only' })
   async findings(@Req() req: { machine: MachineCaller }) {
-    const rows = await this.prisma.detectorResult.findMany({
+    const all = await this.prisma.detectorResult.findMany({
       where: { organizationId: req.machine.organizationId, resolvedAt: null },
       orderBy: [{ severity: 'desc' }, { lastSeenAt: 'desc' }],
       take: 200,
     });
+    /* The same fence `structuredFindings` applies over this same table: a credential bound to some
+       people does not see findings about the others. A finding about no person in particular passes. */
+    const rows = all.filter((r) => !r.personExternalId || mayTouch(req.machine, r.personExternalId));
     return {
       /* Named so a customer can tell "none found" from "not built yet" - the same reasoning as
          only offering webhook events that can fire. */
@@ -88,7 +92,10 @@ export class DetectorsController {
   @Post('findings/run')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)
-  @RequiresScope('findings:read')
+  /* It writes Recommendation rows, so it is the write scope the accept and decline routes already
+     carry. A read-only credential was writing proposals with it (fix plan A11). For one release a
+     credential holding only findings:read is still let through, and logged - see scopes.ts IMPLIED. */
+  @RequiresScope('proposals:write')
   @ApiOperation({ summary: 'Run the detectors now, and propose any conversation they imply' })
   async run(@Req() req: { machine: MachineCaller }) {
     const found = await this.detectors.run(req.machine.organizationId);

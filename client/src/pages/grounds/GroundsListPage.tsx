@@ -1,4 +1,5 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { railAttention } from '@/lib/rail-attention'
@@ -13,6 +14,7 @@ import { personLabel } from '@/lib/utils'
 import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
 import { useHelpStore } from '@/stores/help'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
@@ -68,6 +70,9 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {(() => {
+              /* A check-in that is over says so, rather than "Nothing due". */
+              const over = howItEnded(g as any)
+              if (over) return <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>{over}</span>
               const w = whatThisWants(g, myUserId)
               return w
                 ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: w.bg, color: w.color }}>{w.text}</span>
@@ -152,7 +157,11 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
             // complete, not a count of check-in rows.
             const doneRounds = (g as any).roundsDone as number | undefined
             const sessions = planned != null && doneRounds != null
-              ? `${doneRounds} of ${planned} sessions done`
+              /* A check-in that has ended will never reach the plan, so counting toward it is a
+                 promise it is not keeping. What happened is the number that is true. */
+              ? howItEnded(g as any)
+                ? `${doneRounds} session${doneRounds === 1 ? '' : 's'}`
+                : `${doneRounds} of ${planned} sessions done`
               : planned != null
                 ? `${planned} sessions`
                 : null
@@ -163,6 +172,8 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Visible without opening it: a check-in with one person on it will never produce a shared report (B17). */}
+          {g.status === 'ACTIVE' && (g.participants as any[]).filter((p: any) => !p.managingOnly).length < 2 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Needs a second person for a shared report</span>}
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
           {/* A report was released to this person and they have not opened it.
               Across ten grounds and thirty-three people, not one report was
@@ -171,7 +182,6 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
           {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
-          {g.status === 'AWAITING_LEAD' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Awaiting lead</span>}
           {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
         </div>
       </div>
@@ -230,11 +240,11 @@ export function GroundsListPage() {
    *
    * A ground waiting on an approval, or on its lead accepting it, has not started.
    */
-  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'AWAITING_LEAD', 'DECLINED']
+  /* AWAITING_LEAD went on 10 Sep 2026 - a check-in is open from the moment it is made. */
+  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'DECLINED']
   const active = grounds.filter(
     g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
   )
-  const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   /** What the list holds that the "In progress" tile above it does not count. */
   const closedCount = grounds.length - active.length
   // Count reports waiting for THIS person. The old count was grounds in
@@ -306,9 +316,7 @@ export function GroundsListPage() {
               <h1 className="gw-logo gw-page-h1">Check-ins</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
-            {isAdmin ? 'Admin' : 'Team member'}
-          </span>
+{/* The 'Admin' / 'Team member' pill went: a badge of rank on every screen, saying what the rail already shows. */}
           {/*
             A SECOND NAVIGATION BAR FOR THINGS THE FIRST ONE ALREADY HAD. W-UX-3.
             
@@ -351,8 +359,9 @@ export function GroundsListPage() {
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{a.label}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
                   Set up by {a.createdBy}
-                  {a.timelineDays ? ` · ${a.timelineDays} days` : ''}
-                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}` : ''}
+                  {/* A number the product chose is said to be one, so the admin approving it knows what was decided and what was assumed (B13, P6-002). */}
+                  {a.timelineDays ? ` · ${a.timelineDays} days${a.timelineStated === false ? ' (suggested)' : ''}` : ''}
+                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}${a.cadenceStated === false ? ' (suggested)' : ''}` : ''}
                 </div>
                 {declining === a.id ? (
                   <div style={{ marginTop: 9 }}>
@@ -396,13 +405,21 @@ export function GroundsListPage() {
           </div>
         )}
 
+        {/* ABOVE the admin/member split: this sat inside the member branch, and self-serve signup creates an
+            ADMIN, so the person who had just set a password never saw "You are in." (fix plan C11). */}
+        {justSetUp && (
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>You are in.</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
+          </div>
+        )}
         {isAdmin ? (
           <>
             {/* Stats bar */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
               {[
                 { val: active.length,    label: 'In progress' },
-                { val: checkInsToday,    label: 'Participant sessions today' },
+                /* 'Participant sessions today' went: it counted activity, the one thing the product says it never does. */
                 /**
                  * THE LABEL SAYS WHAT THE NUMBER COUNTS.
                  *
@@ -475,7 +492,7 @@ export function GroundsListPage() {
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a colleague</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5, marginBottom: 12 }}>
-                  They will receive an email with a link to set up their own Groundwork account. They can then open and manage their own check-ins.
+                  They will receive an email with a link to sign in to Groundwork. They can then open and manage their own check-ins.
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
@@ -483,13 +500,13 @@ export function GroundsListPage() {
                     placeholder="colleague@company.com"
                     value={colleagueEmail}
                     onChange={e => setColleagueEmail(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
                     style={{ flex: 1, padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-blue-b)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white' }}
                     autoFocus
                   />
                   <button
-                    onClick={() => { if (colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
-                    disabled={teamInviteMut.isPending || !colleagueEmail.includes('@')}
+                    onClick={() => { if (looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    disabled={teamInviteMut.isPending || !looksLikeAnAddress(colleagueEmail)}
                     style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
                   >
                     {teamInviteMut.isPending ? 'Sending…' : 'Send invite'}
@@ -625,16 +642,18 @@ export function GroundsListPage() {
         ) : (
           <>
             {/* Welcome banner after password setup */}
-            {justSetUp && (
-              <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>Your account is live.</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
-              </div>
-            )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              {/* COUNTED THE SAME WAY THE ADMIN'S LIST COUNTS. This said "In progress (1)" over a
+                   single check-in that had ended, because it counted every row rather than the live
+                   ones. Same split, same words. */}
               <div style={{ fontSize: 16, fontWeight: 700 }}>
-                {grounds.length > 0 ? `In progress (${grounds.length})` : 'In progress'}
+                {active.length > 0 ? `In progress (${active.length})` : closedCount > 0 ? 'Nothing in progress' : 'In progress'}
+                {closedCount > 0 && (
+                  <span style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--gw-sub)', marginLeft: 8 }}>
+                    · {closedCount} closed
+                  </span>
+                )}
               </div>
               {/*
                 A SIGNED-IN PERSON MUST NOT BE SENT TO /start.

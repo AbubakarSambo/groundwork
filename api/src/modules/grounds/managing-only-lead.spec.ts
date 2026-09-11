@@ -112,7 +112,7 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
         }),
       },
       checkIn: {
-        findFirst: jest.fn(async (args: any) => (completedCheckIns.has(args.where.participantId) ? { id: 'ci-' + args.where.participantId } : null)),
+        findFirst: jest.fn(async (args: any) => (completedCheckIns.has(args.where.participantId) ? { id: 'ci-' + args.where.participantId, status: 'COMPLETED' } : null)),
       },
     };
   }

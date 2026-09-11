@@ -130,6 +130,6 @@ describe('and the page shows it once, with the actionable half', () => {
      * that the assurance is on screen, not that this component is the one making it.
      */
     const HEADER = readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8');
-    expect(HEADER).toMatch(/only you see this until the report releases/i);
+    expect(HEADER).toMatch(/Your own check-in\. The report shows/i);
   });
 });

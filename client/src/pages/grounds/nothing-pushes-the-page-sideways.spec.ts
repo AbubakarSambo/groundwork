@@ -25,17 +25,16 @@ describe('nothing pushes the page sideways', () => {
     expect(CODE.length).toBeGreaterThan(5000)
   })
 
-  it('the standing view label is allowed to wrap', () => {
-    const i = CODE.indexOf('Everyone in it - you are running this')
+  it('the standing view label is gone from the lead view (10 Sep 2026): the rail, the card and "Led by" already say it; only the admin variant remains, and it wraps', () => {
+    expect(CODE).not.toMatch(/you are running this/)
+    const i = CODE.indexOf('you are an admin here')
     expect(i).toBeGreaterThan(-1)
-    /* The span that holds it, immediately above. */
-    const span = CODE.slice(Math.max(0, i - 200), i)
-    expect(span).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
+    expect(CODE.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
   })
 
   it('and so is the one on the party view, which says the opposite thing', () => {
     const party = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
-    const i = party.indexOf('Just yours - only you see this')
+    const i = party.indexOf('Your own check-in. The report shows')
     expect(i).toBeGreaterThan(-1)
     expect(party.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
   })

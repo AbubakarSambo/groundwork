@@ -109,8 +109,8 @@ describe('and the two labels cannot collide', () => {
     }
     // The two that were confused for each other: neither may be a prefix of the other.
     expect(labels).toContain('Sessions')
-    expect(labels).toContain('My record')
-    expect('Report'.startsWith('My record')).toBe(false)
+    expect(labels).toContain('What I shared')
+    expect('Report'.startsWith('What I shared')).toBe(false)
   })
 
   it('chat first, report second, on both views', () => {

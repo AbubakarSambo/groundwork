@@ -41,14 +41,16 @@ describe('the board is wired to the same helpers', () => {
     expect(CODE).toMatch(/if \(typeof v === 'string'\) return withNames\(v, visibleNames, allLabels\)/);
   });
 
-  it('and it passes the lead flag, not a constant', () => {
+  it('and it passes who runs this ground, not a constant', () => {
+    /* 10 Sep 2026: widened from the lead alone to `runsThisGround`, which the rest of the page
+       already uses - an organisation admin reads with names, and their words stay walled off. */
     /**
      * THE SECOND GAP THE BITE-CHECK FOUND. Replacing this with `viewerIsLead: false` left
      * all 249 board tests green - so the whole point of the fix, a lead seeing names, was
      * asserted nowhere. The resolution is a tested function now; this pins that the board
      * actually tells it who is reading.
      */
-    expect(CODE).toMatch(/viewerIsLead: isInitiator \|\| isSetupAdmin/);
+    expect(CODE).toMatch(/viewerIsLead: runsThisGround/);
     expect(CODE).toMatch(/viewerParticipantId: me\?\.id \?\? null/);
   });
 

@@ -2,10 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { Resend } from 'resend';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import type { Response as ExpressResponse } from 'express';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { JwtService } from '@nestjs/jwt';
 import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
@@ -23,6 +23,8 @@ function assertProductionConfig(logger: Logger) {
   if (!process.env.STRIPE_SECRET_KEY) problems.push('STRIPE_SECRET_KEY must be set');
   if (!process.env.STRIPE_WEBHOOK_SECRET) problems.push('STRIPE_WEBHOOK_SECRET must be set (webhooks are unverified otherwise)');
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) problems.push('GOOGLE_SERVICE_ACCOUNT_JSON must be set');
+  if (process.env.EMAIL_SENDS_FOR_REAL !== 'true') problems.push("EMAIL_SENDS_FOR_REAL must be 'true' in production (no mail leaves the deployment otherwise)");
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY.startsWith('re_...') || process.env.RESEND_API_KEY === 're_test') problems.push('RESEND_API_KEY must be set to a real key');
   if (problems.length) {
     logger.error(`Refusing to start in production with insecure configuration:\n - ${problems.join('\n - ')}`);
     process.exit(1);
@@ -37,6 +39,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true, // For Stripe webhook signature verification
   });
+  /* Routing and the back-office door agree on spelling: /ADMIN is not /admin (B16, P2-007). */
+  app.set('case sensitive routing', true);
 
   const configService = app.get(ConfigService);
 
@@ -142,54 +146,76 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  /*
+   * THE REFERENCE IS BEHIND THE SAME DOOR AS THE API. Every route of the product, generated from the
+   * code, was readable by anybody at /api/docs: the one document somebody copying us wants most.
+   * It opens with a one-hour key an approved organisation gets from the Connect page (see
+   * CredentialsController.docsLink); the key is kept in a cookie so the reference's own assets load.
+   * DOCS_OPEN=true leaves it open, for local work.
+   */
+  const docsJwt = app.get(JwtService, { strict: false });
+  app.use('/api/docs', (req: ExpressRequest, res: ExpressResponse, next: () => void) => {
+    if (process.env.DOCS_OPEN === 'true') return next();
+    const fromQuery = typeof req.query.key === 'string' ? req.query.key : null;
+    const fromCookie = /(?:^|;\s*)gw_docs=([^;]+)/.exec(req.headers.cookie ?? '')?.[1] ?? null;
+    const key = fromQuery ?? fromCookie;
+    try {
+      const claims: any = key ? docsJwt.verify(key) : null;
+      if (claims?.typ !== 'docs') throw new Error('not a docs key');
+      if (fromQuery) res.setHeader('Set-Cookie', `gw_docs=${fromQuery}; Path=/api/docs; HttpOnly; SameSite=Lax; Max-Age=3600`);
+      return next();
+    } catch {
+      res.status(403).type('text/plain').send('The API reference opens from the Connect page of an organisation with API access.');
+    }
+  });
   SwaggerModule.setup('api/docs', app, document);
 
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req: unknown, res: ExpressResponse) => res.status(200).send('ok'));
 
-  // A health check that never touches the model cannot tell you the model is
-  // unreachable. In a live run every AI call from the running process failed
-  // for the best part of an hour while /health kept returning "ok" - nothing
-  // would have alerted. This one makes a real call, and returns 503 when the
-  // engine is actually down, so a monitor can see it.
+  /*
+   * A HEALTH CHECK THAT NEVER TOUCHES THE MODEL CANNOT TELL YOU THE MODEL IS UNREACHABLE. In a live
+   * run every AI call from the running process failed for the best part of an hour while /health
+   * kept returning "ok" - nothing would have alerted. So this route used to make a real model call
+   * per request. That kept the lesson and opened a second door: it sits on the raw adapter, outside
+   * every guard and the throttler, so anyone on the internet could spend the model budget at
+   * request rate, no account needed.
+   *
+   * The probe has moved, not gone. AnthropicService makes the same real call on a schedule from
+   * inside the process and records what happened; this route reports that record and returns 503
+   * when the last probe failed, is missing, or is stale. A monitor still sees the engine go down
+   * within one probe interval, and a stranger hitting this URL costs us a hash lookup.
+   *
+   * /health/email is gone outright. It sent real mail from our domain to any address in a query
+   * string, unauthenticated and unthrottled - an open relay whose cost was the reputation every
+   * invitation and magic link depends on. Its comment said "safe to leave in". The same answer is
+   * on the Resend dashboard.
+   */
   httpAdapter.get('/health/ai', async (_req: any, res: any) => {
     try {
       const { AnthropicService } = await import('./modules/conversation/anthropic.service');
       const svc = app.get(AnthropicService, { strict: false });
-      const result = await svc.healthCheck();
-      res.status(result.ok ? 200 : 503).json(result);
+      const probe = svc.lastProbeOutcome();
+      res.status(probe.ok ? 200 : 503).json(probe);
     } catch (err: any) {
       res.status(503).json({ ok: false, error: String(err?.message ?? err).slice(0, 300) });
     }
   });
 
-  // Email diagnostic - call GET /health/email?to=you@example.com on the production
-  // server to see exactly what Resend returns. Safe to leave in: no auth bypass,
-  // no data exposure, just a test send to an explicit address.
-  httpAdapter.get('/health/email', async (req: any, res: any) => {
-    const to = req.query?.to;
-    if (!to || !String(to).includes('@')) {
-      return res.status(400).json({ error: 'Pass ?to=your@email.com' });
-    }
-    const apiKey = process.env.RESEND_API_KEY ?? '';
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Groundwork <noreply@myground.work>';
-    if (!apiKey || apiKey.startsWith('re_...')) {
-      return res.status(200).json({ status: 'dev_mode', message: 'RESEND_API_KEY is the placeholder - emails are suppressed and logged only.' });
-    }
+  /*
+   * A CONFIGURATION FAILURE REACHES A PERSON, NOT A LOG LINE. With RESEND_WEBHOOK_SECRET unset in
+   * production every delivery and bounce event is rejected, all tracking is inert, and nothing else
+   * says so. This reports it where a monitor looks, and 503s so the monitor notices.
+   */
+  httpAdapter.get('/health/mail', async (_req: any, res: any) => {
     try {
-      const resend = new Resend(apiKey);
-      const { data, error } = await resend.emails.send({
-        from: fromEmail,
-        to: [String(to)],
-        subject: 'Groundwork email diagnostic',
-        html: '<p>This is a test email from the Groundwork health check endpoint. If you received this, email delivery is working.</p>',
-      });
-      if (error) {
-        return res.status(200).json({ status: 'resend_error', error });
-      }
-      return res.status(200).json({ status: 'sent', id: data?.id, from: fromEmail, to });
+      const { DeliveryService } = await import('./modules/email/delivery.service');
+      const delivery = app.get(DeliveryService, { strict: false });
+      const resendWebhookSecretSet = delivery.webhookSecretConfigured();
+      const ok = resendWebhookSecretSet || process.env.NODE_ENV !== 'production';
+      res.status(ok ? 200 : 503).json({ ok, resendWebhookSecretSet, says: resendWebhookSecretSet ? 'Delivery and bounce events are being read.' : 'RESEND_WEBHOOK_SECRET is not set: every delivery and bounce event is rejected, and dead addresses are not being suppressed.' });
     } catch (err: any) {
-      return res.status(200).json({ status: 'exception', message: err.message });
+      res.status(503).json({ ok: false, error: String(err?.message ?? err).slice(0, 300) });
     }
   });
 

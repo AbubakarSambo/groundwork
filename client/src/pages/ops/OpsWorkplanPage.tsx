@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE WORKPLAN. Five phases, drawn as overlapping because they overlap.
@@ -11,7 +12,7 @@ import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
  */
 
 const asADate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+  whenItWas(iso, 'monthAndYear')
 
 export function OpsWorkplanPage() {
   const plan = useQuery({ queryKey: ['ops', 'workplan'], queryFn: opsApi.workplan, retry: false })

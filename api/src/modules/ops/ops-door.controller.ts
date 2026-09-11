@@ -1,4 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OpsPeopleService, SignedInAccount } from './ops-people.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -33,12 +35,26 @@ import { OpsDoorService } from './the-door-into-the-ops-system';
 @Controller('admin/ops')
 @UseGuards(JwtAuthGuard, PlatformAdminGuard)
 export class OpsDoorController {
-  constructor(private readonly door: OpsDoorService) {}
+  constructor(private readonly door: OpsDoorService, private readonly people: OpsPeopleService) {}
 
   @Get()
   @ApiOperation({ summary: 'Whether the ops system is set up, and whose account opens it' })
   howThingsStand() {
     return this.door.howThingsStand();
+  }
+
+  /**
+   * WALKING IN IS THE WRITE. A read of the back office answers from memory (see identify()); this
+   * is the one request the client makes on the way in that is allowed to put a platform admin on
+   * the roster. The 2026-09-05 decision - a platform admin IS on the team - is kept whole; only a
+   * GET stopped writing it (fix plan A15, as corrected).
+   */
+  @Post('enter')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Take your place on the ops roster, if you are a platform admin not yet on it' })
+  async enter(@CurrentUser() user: SignedInAccount) {
+    const identity = await this.people.identify(user, { admit: true });
+    return { onTheRoster: identity !== null, as: identity?.displayName ?? null };
   }
 
   @Post('setup')
@@ -58,7 +74,7 @@ export class OpsDoorController {
   @Post(':personKey/account/remove')
   @HttpCode(200)
   @ApiOperation({ summary: 'Disconnect an account. The person stays; only the way in goes.' })
-  unlink(@Param('personKey') personKey: string) {
-    return this.door.unlink(personKey);
+  unlink(@Param('personKey') personKey: string, @Body() body?: { email?: string }) {
+    return this.door.unlink(personKey, body?.email);
   }
 }

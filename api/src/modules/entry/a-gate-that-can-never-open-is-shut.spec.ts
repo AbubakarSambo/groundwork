@@ -57,9 +57,16 @@ describe('the setup has stopped asking', () => {
     expect(theSetupHasStoppedAsking(messages, closer)).toBe(true);
   });
 
-  it('but not on the first, which may be one thread closing before another opens', () => {
+  /*
+   * REVERSED ON 10 SEP 2026, ON LIVE EVIDENCE. The closer above names the next screen. Driven in a
+   * browser, the person read "the next screen will ask..." and sat in front of an input with nothing
+   * to say, because this rule wanted a second closer first. A reply that names the hand-off is the
+   * hand-off. The two-closer rule still holds for a plain closer that does not.
+   */
+  it('and on the first when the reply itself names the next screen', () => {
     const messages = [person('we are co-founders bringing on Bob James'), bot('Who else is involved in that?')];
-    expect(theSetupHasStoppedAsking(messages, closer)).toBe(false);
+    expect(theSetupHasStoppedAsking(messages, closer)).toBe(true);
+    expect(theSetupHasStoppedAsking(messages, 'Thank you, that is noted.')).toBe(false);
   });
 
   it('and never while it is still asking something', () => {
@@ -67,14 +74,14 @@ describe('the setup has stopped asking', () => {
     expect(theSetupHasStoppedAsking(messages, 'And why now?')).toBe(false);
   });
 
-  it('and not on two assistant turns with nobody between them', () => {
+  it('a plain closer twice with nobody between them is one reply in two parts, not a close', () => {
     /* One reply arriving in two parts is not a person who cannot get out. */
     const messages = [person('hello'), bot('The next screen will ask who is checking in.')];
-    expect(theSetupHasStoppedAsking(messages, closer)).toBe(false);
+    expect(theSetupHasStoppedAsking(messages, 'Thank you, that is noted.')).toBe(false);
   });
 
   it('and not at the very start, where there is no previous turn to have closed', () => {
-    expect(theSetupHasStoppedAsking([person('hello')], closer)).toBe(false);
+    expect(theSetupHasStoppedAsking([person('hello')], 'Thank you, that is noted.')).toBe(false);
   });
 });
 
@@ -90,5 +97,25 @@ describe('and so the gate opens', () => {
     expect(whatSetupNeverGot({ mode: 'something_new', initial: 'x' })).toEqual(['why now']);
     expect(whatSetupNeverGot({ initial: 'x', decision: 'y', mode: 'z' })).toEqual([]);
     expect(SERVICE).toContain('the assistant had stopped asking');
+  });
+});
+
+import { itHandsOff, theSetupHasStoppedAsking as stopped } from './a-gate-that-can-never-open-is-shut';
+
+describe('a reply that hands off is a close on its own', () => {
+  const handOff = 'Great, that gives me what I need. The next screen will ask who should give their account, and then you go into the check-in itself.';
+  it('reads the hand-off', () => {
+    expect(itHandsOff(handOff)).toBe(true);
+    expect(itHandsOff('Great. Is there anything specific you want the questions to focus on?')).toBe(false);
+    expect(itHandsOff('Thank you. That is noted.')).toBe(false);
+  });
+  it('opens the gate even when the previous turn asked a question', () => {
+    const messages = [
+      { role: 'assistant', content: 'What is the project about?' },
+      { role: 'user', content: 'A website.' },
+      { role: 'assistant', content: 'Is there anything specific you want the questions to focus on?' },
+      { role: 'user', content: 'The timeline.' },
+    ];
+    expect(stopped(messages, handOff)).toBe(true);
   });
 });

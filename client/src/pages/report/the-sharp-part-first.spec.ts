@@ -31,7 +31,10 @@ describe('the order of the shared report', () => {
   })
 
   it('what everyone agrees comes before the prose too', () => {
-    expect(at('<SecH>Alignment reached</SecH>')).toBeLessThan(at('label="What we heard"'))
+    /* Both are folds now - real `<details>`, so every word is still in the document - and the
+       headings they used to carry are the summary lines. The order is what this asserts and the
+       order is unchanged. */
+    expect(at('things you already see')).toBeLessThan(at('summary="The full account"'))
   })
 
   it('and where things stand is still first of all', () => {

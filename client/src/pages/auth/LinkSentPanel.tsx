@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
+import { TextAction } from '@/components/gw/kit'
 
 /**
  * "A LINK IS ON ITS WAY" WAS TWO PAGES. W8-49.
@@ -25,9 +26,11 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
     return () => clearTimeout(t)
   }, [countdown])
 
+  const [resendFailed, setResendFailed] = useState('')
   const resend = useMutation({
     mutationFn: () => authApi.requestMagicLink({ email }),
     onSuccess: () => { setCountdown(30); setCanResend(false) },
+    onError: () => setResendFailed('That link did not send. Try again in a moment.')
   })
 
   return (
@@ -67,12 +70,10 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
         </div>
       ) : (
         <div style={{ marginTop: 8 }}>
-          <span
-            style={{ color: 'var(--gw-navy)', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}
-            onClick={() => resend.mutate()}
-          >
+          {resendFailed && <div className="gw-er" role="alert" style={{ fontSize: 12, marginBottom: 6 }}>{resendFailed}</div>}
+          <TextAction size={12} onClick={() => { if (!resend.isPending) { setResendFailed(''); resend.mutate() } }}>
             {resend.isPending ? 'Sending…' : 'Send another link'}
-          </span>
+          </TextAction>
         </div>
       )}
 
@@ -85,12 +86,8 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
         the more useful of the two exits and goes first.
       */}
       <div style={{ marginTop: 22 }}>
-        <span
-          onClick={onUseDifferent}
-          style={{ fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontWeight: 600 }}
-        >
-          Wrong address? Use a different one
-        </span>
+        {/* The only escape from a mistyped address on a dead-end screen, and it was a span the keyboard could not reach. */}
+        <TextAction size={12.5} strong onClick={onUseDifferent}>Wrong address? Use a different one</TextAction>
       </div>
 
     </div>

@@ -1,7 +1,31 @@
 import * as crypto from 'crypto';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
+/** Did it go. One shape from both numbers; see sendMessage. */
+export type SendResult = { sent: boolean; status?: number; error?: string };
+/** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
+export type SendContext = { checkInId?: string | null; kind?: string };
+
+/**
+ * WHAT META REFUSED, WITHOUT WHAT WE SENT IT (G4).
+ *
+ * A failed send used to log two hundred characters of Meta's response body. That body quotes the
+ * request back, so a delivery failure wrote the message - somebody's check-in question, or their
+ * own report - into the application log. The code and type are what a failure is diagnosed from;
+ * the free-text half is Meta's prose about our request and is not needed to act on it.
+ */
+export function metaErrorCode(body: string): string {
+  try {
+    const e = (JSON.parse(body) ?? {}).error ?? {};
+    const bits = [e.type, e.code, e.error_subcode].filter((b: unknown) => b !== undefined && b !== null);
+    return bits.length ? bits.join('/') : 'no error code';
+  } catch {
+    return 'unparseable error body';
+  }
+}
 import { PrismaService } from '../prisma/prisma.service';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -102,8 +126,23 @@ export class WhatsAppService {
    * Send a WhatsApp message to a phone number. Returns true if actually sent
    * via the API, false if dev-logged only (no credentials configured yet).
    */
-  async sendMessage(phoneNumber: string, text: string): Promise<boolean> {
+  /**
+   * ONE ANSWER TO "DID IT GO", FROM BOTH NUMBERS. `sendMessage` (the platform number) threw on a
+   * non-2xx while `deliver` (an organisation's own number) returned false, so the same failure
+   * reached a caller two different ways and the register's own description of it was half right.
+   * Both return this now, both write a WhatsAppSend row, and neither throws into the flow of the
+   * check-in it was about: a message that could not go is a fact to record, not a failure of the
+   * conversation.
+   */
+  async sendMessage(phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = WhatsAppService.normalize(phoneNumber);
+    const gate = await this.mayInitiate(null, to, context);
+    if (!gate.free) {
+      if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', null, to, text, gate.template, context);
+      const result: SendResult = { sent: false, error: gate.because };
+      this.writeItDown(null, to, result, context);
+      return result;
+    }
     if (!(await this.isEnabled())) {
       /*
        * THE BODY ONLY OUTSIDE PRODUCTION.
@@ -117,40 +156,300 @@ export class WhatsAppService {
       if (process.env.NODE_ENV === 'production') {
         this.logger.warn(`WhatsApp is not configured; a message to ${to} was not sent (${text.length} characters).`);
       } else {
-        this.logger.warn(`[DEV WHATSAPP] To: ${to} | Body: ${text}`);
+        /* The length, never the message. A check-in question and a person's own report both go
+           out this way, and a local log is still a log (G4). */
+        this.logger.warn(`[DEV WHATSAPP] a message of ${text.length} characters was not sent.`);
       }
-      return false;
+      const result: SendResult = { sent: false, error: 'WhatsApp is not configured on this deployment' };
+      this.writeItDown(null, to, result, context);
+      return result;
     }
 
-    const accessToken = this.config.get<string>('whatsapp.accessToken');
-    const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId');
-    const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: to.replace('+', ''),
-        type: 'text',
-        text: { body: text },
-      }),
-    });
+    const accessToken = this.config.get<string>('whatsapp.accessToken') ?? '';
+    const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId') ?? '';
+    const result = await this.post(phoneNumberId, accessToken, to, text);
+    if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
+    this.writeItDown(null, to, result, context);
+    return result;
+  }
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${body}`);
-      throw new Error(`WhatsApp send failed: ${res.status}`);
+  /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
+  private async post(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: text } }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        /* Meta's status and error code, not the body it echoed back to us - that body can carry
+           the message we just tried to send. */
+        this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${metaErrorCode(body)}`);
+        return { sent: false, status: res.status, error: body.slice(0, 500) || `HTTP ${res.status}` };
+      }
+      return { sent: true, status: res.status };
+    } catch (err: any) {
+      this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
+      return { sent: false, error: String(err?.message ?? err).slice(0, 500) };
     }
-    this.logger.log(`WhatsApp message sent to ${to}`);
-    return true;
+  }
+
+  /** The row. Fire-and-forget: a ledger that cannot be written must not stop a reply that can be sent. */
+  private writeItDown(organizationId: string | null, phone: string, result: SendResult, context: SendContext): void {
+    this.prisma.whatsAppSend
+      .create({
+        data: {
+          organizationId,
+          phone,
+          checkInId: context.checkInId ?? null,
+          kind: context.kind ?? null,
+          sentAt: result.sent ? new Date() : null,
+          failedAt: result.sent ? null : new Date(),
+          status: result.status ?? null,
+          error: result.error ?? null,
+        },
+      })
+      .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
+    /* And the same fact in the ledger every channel writes to (Notification), so a failed send is findable beside a suppressed mail. */
+    this.prisma.notification
+      .create({ data: { channel: 'whatsapp', organizationId, toAddress: phone, sender: context.kind ?? null, outcome: result.sent ? 'sent' : 'failed', because: result.sent ? null : (result.error ?? null) } })
+      .catch(() => undefined);
   }
 
   /** Finds the account a check-in link should go to, by phone number - the "auto-detect" step. */
-  async findUserByPhoneNumber(rawNumber: string) {
+  /**
+   * SEND ON THE ORGANISATION'S OWN NUMBER, OR OURS.
+   *
+   * An organisation with a connection sends from its number with its token; one without falls back to
+   * the platform number, which is what every send did before. Returns false when nothing could send,
+   * and never throws into the caller's flow: a notice that could not go is a warning, not a failure of
+   * the check-in it was about.
+   */
+  async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    if (!own || !own.enabled) return this.sendMessage(phoneNumber, text, context);
+    const to = WhatsAppService.normalize(phoneNumber);
+    const gate = await this.mayInitiate(organizationId, to, context);
+    if (!gate.free) {
+      if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
+      const result: SendResult = { sent: false, error: gate.because };
+      this.writeItDown(organizationId, to, result, context);
+      return result;
+    }
+    const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
+    if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
+    this.writeItDown(organizationId, to, result, context);
+    return result;
+  }
+
+  /**
+   * A LIST THEY CAN TAP. Meta's interactive list message, up to ten rows; the text fallback is the
+   * numbered version, sent when the organisation has no connection of its own or the list is refused.
+   */
+  async sendListFor(organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    if (!own || !own.enabled) return (await this.sendMessage(phoneNumber, fallbackText, { kind: 'which-one' })).sent;
+    const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${own.phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${own.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp', to, type: 'interactive',
+          interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
+        }),
+      });
+      if (res.ok) return true;
+      this.logger.warn(`WhatsApp list refused for ${to}: ${res.status}; sending the numbered text instead.`);
+    } catch (err: any) {
+      this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
+    }
+    return (await this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText)).sent;
+  }
+
+  /**
+   * A PHOTO OR A DOCUMENT THEY SENT. Meta hands over an id; the bytes are fetched with the
+   * organisation's own token in two steps, the second signed the same way. Ten megabytes is the
+   * document pipeline's own ceiling.
+   */
+  async fetchMediaFor(organizationId: string, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    const token = own?.accessToken ?? this.config.get<string>('whatsapp.accessToken');
+    if (!token) return null;
+    try {
+      const meta = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!meta.ok) { this.logger.warn(`WhatsApp media lookup failed: ${meta.status}`); return null; }
+      const info = (await meta.json()) as { url?: string; mime_type?: string; file_size?: number };
+      if (!info.url) return null;
+      if ((info.file_size ?? 0) > 10 * 1024 * 1024) return null;
+      const file = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!file.ok) { this.logger.warn(`WhatsApp media download failed: ${file.status}`); return null; }
+      return { buffer: Buffer.from(await file.arrayBuffer()), mimeType: info.mime_type ?? 'application/octet-stream' };
+    } catch (err: any) {
+      this.logger.warn(`WhatsApp media fetch failed: ${err?.message}`);
+      return null;
+    }
+  }
+
+  private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
+    return this.post(phoneNumberId, accessToken, to, text);
+  }
+
+  /**
+   * WHETHER THIS MESSAGE MAY GO AS FREE TEXT. A reply to something the person just wrote always may.
+   * A message the product starts may only inside Meta's 24-hour window, measured from the last time
+   * THIS person wrote to us, and never to somebody who said STOP. Outside the window it goes as an
+   * approved template or is recorded as not sent, with the reason - checked before anything is
+   * composed or paid for. See a-message-outside-the-window.ts.
+   */
+  private async mayInitiate(organizationId: string | null, to: string, context: SendContext): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string }> {
+    if (!isBusinessInitiated(context.kind)) return { free: true };
+    const person = await this.prisma.person
+      .findFirst({
+        where: { phone: to, ...(organizationId ? { organizationId } : {}) },
+        orderBy: { whatsappLastInboundAt: { sort: 'desc', nulls: 'last' } },
+        select: { whatsappStoppedAt: true, whatsappLastInboundAt: true },
+      })
+      .catch(() => null);
+    if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
+    if (insideTheServiceWindow(person?.whatsappLastInboundAt)) return { free: true };
+    const template = templateFor(context.kind, this.config.get<string[]>('whatsapp.approvedTemplates') ?? []);
+    return { free: false, template, because: OUTSIDE_THE_WINDOW };
+  }
+
+  /** Meta's template message. The plain text the caller composed rides as the body parameter. */
+  private async sendTemplate(phoneNumberId: string, accessToken: string, organizationId: string | null, to: string, text: string, template: ATemplate, context: SendContext): Promise<SendResult> {
+    let result: SendResult;
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'template',
+          template: { name: template.name, language: { code: template.language }, components: template.components(text) },
+        }),
+      });
+      result = res.ok ? { sent: true, status: res.status } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
+    } catch (err: any) {
+      result = { sent: false, error: err?.message ?? 'template send failed' };
+    }
+    this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+    return result;
+  }
+
+  /**
+   * WHO IS WRITING, INSIDE ONE ORGANISATION. The roster's phone first, then the number a person typed
+   * into Settings. Scoped to the organisation whose webhook received it, so a number never crosses
+   * organisations.
+   */
+  async whoIsWritingTo(organizationId: string, rawNumber: string): Promise<{ personId: string | null; userId: string | null; externalId: string | null }> {
     const normalized = WhatsAppService.normalize(rawNumber);
-    return this.prisma.user.findUnique({ where: { phoneNumber: normalized } });
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, phone: normalized, active: true },
+      select: { id: true, externalId: true, linkedUserId: true, email: true },
+    });
+    if (person) {
+      const userId = person.linkedUserId
+        ?? (person.email ? (await this.prisma.user.findFirst({ where: { organizationId, email: person.email, deletedAt: null }, select: { id: true } }))?.id ?? null : null);
+      return { personId: person.id, userId, externalId: person.externalId };
+    }
+    const user = await this.prisma.user.findFirst({ where: { organizationId, phoneNumber: normalized, deletedAt: null }, select: { id: true, email: true } });
+    if (!user) return { personId: null, userId: null, externalId: null };
+    const byEmail = user.email ? await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } }) : null;
+    return { personId: byEmail?.id ?? null, userId: user.id, externalId: byEmail?.externalId ?? null };
+  }
+
+  /** The organisation's connection, with the secrets left out, for its admin to read. */
+  async connectionFor(organizationId: string) {
+    const c = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
+    if (!c) return null;
+    return {
+      phoneNumberId: c.phoneNumberId,
+      businessAccountId: c.businessAccountId,
+      displayNumber: c.displayNumber,
+      verifyToken: c.verifyToken,
+      enabled: c.enabled,
+      connectedAt: c.connectedAt,
+      lastInboundAt: c.lastInboundAt,
+      lastOutboundAt: c.lastOutboundAt,
+      tokenEndsWith: c.accessToken.slice(-4),
+    };
+  }
+
+  async connect(organizationId: string, dto: { phoneNumberId?: string; businessAccountId?: string; displayNumber?: string; accessToken?: string; appSecret?: string }) {
+    const phoneNumberId = dto.phoneNumberId?.trim();
+    const accessToken = dto.accessToken?.trim();
+    const appSecret = dto.appSecret?.trim();
+    if (!phoneNumberId) throw new BadRequestException('phoneNumberId is required: the id Meta gives the number, not the number itself.');
+    if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('phoneNumberId is digits only. It is on the WhatsApp > API Setup page in Meta Business.');
+    const existing = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
+    if (!accessToken && !existing) throw new BadRequestException('accessToken is required the first time: the permanent system-user token from Meta.');
+    if (!appSecret && !existing) throw new BadRequestException("appSecret is required the first time: the App Secret from your Meta app, used to check that inbound messages are Meta's.");
+    const verifyToken = existing?.verifyToken ?? `gwv_${crypto.randomBytes(16).toString('hex')}`;
+    const row = await this.prisma.whatsAppConnection.upsert({
+      where: { organizationId },
+      create: {
+        organizationId, phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
+        accessToken: accessToken!, appSecret: appSecret!, verifyToken, enabled: true,
+      },
+      update: {
+        phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
+        ...(accessToken ? { accessToken } : {}), ...(appSecret ? { appSecret } : {}),
+      },
+    });
+    this.logger.log(`WhatsApp connected for org ${organizationId} on number id ${row.phoneNumberId}`);
+    return this.connectionFor(organizationId);
+  }
+
+  async setConnectionEnabled(organizationId: string, enabled: boolean) {
+    await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { enabled } });
+    return this.connectionFor(organizationId);
+  }
+
+  async disconnect(organizationId: string) {
+    await this.prisma.whatsAppConnection.delete({ where: { organizationId } }).catch(() => undefined);
+    return { disconnected: true };
+  }
+
+  /** A test message to the admin's own number, on the organisation's connection. Proves the token and the number id. */
+  async sendTest(organizationId: string, toNumber: string) {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
+    if (!own) throw new BadRequestException('Connect a number first.');
+    if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
+    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into your record.')).sent;
+    if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
+    await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
+    return { sent: true };
+  }
+
+  /** Verify an inbound POST against the organisation's own app secret. Same rule as the platform route. */
+  verifySignatureWith(appSecret: string, headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
+    const header = headers['x-hub-signature-256'];
+    const provided = Array.isArray(header) ? header[0] : header;
+    if (!provided || !provided.startsWith('sha256=')) throw new UnauthorizedException('Missing or malformed WhatsApp signature');
+    const expected = crypto.createHmac('sha256', appSecret).update(raw).digest('hex');
+    const got = provided.slice('sha256='.length);
+    if (got.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(got, 'utf8'), Buffer.from(expected, 'utf8'))) {
+      throw new UnauthorizedException('WhatsApp signature did not match');
+    }
+  }
+
+  /**
+   * WHICH ORGANISATIONS A NUMBER IS ON. The platform webhook carries no organisation, so the old
+   * lookup was a bare global `user.findUnique` on the phone - one person, whichever tenant. This lists
+   * every organisation whose roster or Settings carries the number, and the inbound handler asks the
+   * person which they mean when there is more than one, rather than guessing.
+   */
+  async whichOrganisations(rawNumber: string): Promise<{ id: string; name: string }[]> {
+    const normalized = WhatsAppService.normalize(rawNumber);
+    const [people, users] = await Promise.all([
+      this.prisma.person.findMany({ where: { phone: normalized, active: true }, select: { organization: { select: { id: true, name: true } } } }),
+      this.prisma.user.findMany({ where: { phoneNumber: normalized, deletedAt: null }, select: { organization: { select: { id: true, name: true } } } }),
+    ]);
+    const seen = new Map<string, { id: string; name: string }>();
+    for (const row of [...people, ...users]) if (row.organization) seen.set(row.organization.id, row.organization);
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** Set (or clear) a user's WhatsApp number. Called from Settings (self) or org roster (admin/HR on someone's behalf). */

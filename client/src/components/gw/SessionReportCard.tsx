@@ -231,7 +231,7 @@ function AdminCrossRef({ report, closed, picture }: { report: Report; closed: bo
 
       {/* Doc line */}
       {engagement?.documentBacked && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents on record from this check-in.</div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents added during this check-in.</div>
       )}
 
       {closed && (
@@ -349,7 +349,7 @@ function ParticipantCrossRef({ report, closed, picture }: { report: Report; clos
               promise too, and the next promise is the one about their wording.
             */}
             {report.releasedAt
-              ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
+              ? 'The full comparison is now open, and everyone reads the same report.'
               : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released.'}
           </div>
         </>
@@ -474,7 +474,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
         {/* STATE: solo artifact */}
         {state === 'solo' && soloArtifact && (
           <div>
-            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 9 }}>Your private record</div>
+            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 9 }}>Just for you</div>
             <p style={{ fontSize: 14, lineHeight: 1.65, marginBottom: soloArtifact.whatToCarry ? 12 : 0 }}>{soloArtifact.summary}</p>
             {soloArtifact.whatToCarry && (
               <div style={{ background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
@@ -483,7 +483,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
               </div>
             )}
             <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-muted)', fontStyle: 'italic' }}>
-              Waiting for the other party to complete their session. Your cross-reference will appear here.
+              Waiting for everybody else to finish their check-in. Your cross-reference will appear here.
             </div>
           </div>
         )}
@@ -491,7 +491,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
         {/* STATE: waiting (no artifact yet) */}
         {state === 'waiting' && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            Your session is recorded. The cross-reference appears once the other party has completed their check-in.
+            Your session is saved. The cross-reference appears once everybody else has checked in.
           </div>
         )}
 

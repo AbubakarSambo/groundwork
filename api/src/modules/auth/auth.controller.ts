@@ -90,6 +90,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email with token' })
@@ -231,7 +232,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Switch the active organisation. Returns a new token scoped to it.' })
   async switchOrganization(@CurrentUser() user: CurrentUserData, @Body() dto: SwitchOrganizationDto) {
-    return this.authService.switchOrganization(user.id, dto.organizationId);
+    return this.authService.switchOrganization(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
   }
 
   @Get('me')

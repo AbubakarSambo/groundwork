@@ -68,7 +68,7 @@ export interface SessionShapedReport {
     items: { text: string; who: string | null; documented: boolean }[]
     saying?: string
   }[]
-  howClearThisWas: { level: string | null; recall: string | null; saying: string }
+  howClearThisWas: { level: string | null; saying: string }
   theConversationWorthHaving: string | null
   /** The four reads the front page shows when it shows a report. Named the same as the board's. */
   atAGlance: { label: string; value: string; sub: string; tone: 'good' | 'warn' | 'bad' | 'flat' }[]

@@ -18,7 +18,9 @@
 export interface RoundCompletedPayload {
   groundExternalId: string | null;
   groundId: string;
+  /** DEPRECATED: the same number as `sessionNumber`. Kept for one release so a parser built against it keeps reading (B13). */
   roundNumber: number;
+  sessionNumber: number;
   participantCount: number;
   completedAt: string;
   permalink: string;
@@ -26,7 +28,7 @@ export interface RoundCompletedPayload {
 
 export function roundCompletedPayload(args: {
   groundId: string;
-  roundNumber: number;
+  sessionNumber: number;
   participantCount: number;
   completedAt: Date;
   appUrl: string;
@@ -36,7 +38,8 @@ export function roundCompletedPayload(args: {
        not a breaking change to something their parser already reads. */
     groundExternalId: null,
     groundId: args.groundId,
-    roundNumber: args.roundNumber,
+    roundNumber: args.sessionNumber,
+    sessionNumber: args.sessionNumber,
     /*
      * A COUNT, NOT A ROSTER. Who was in the round is a list of names leaving the boundary for no
      * reason - the receiver already knows who they invited, and if they do not, the permalink is
@@ -51,7 +54,9 @@ export function roundCompletedPayload(args: {
 export interface CheckInOpenedPayload {
   groundId: string;
   checkInId: string;
+  /** DEPRECATED: the same number as `sessionNumber`. Kept for one release (B13). */
   roundNumber: number;
+  sessionNumber: number;
   /** The customer's own id for the person this is open to. Null when the roster does not know them. */
   personExternalId: string | null;
   openedAt: string;
@@ -68,7 +73,7 @@ export interface CheckInOpenedPayload {
 export function checkInOpenedPayload(args: {
   groundId: string;
   checkInId: string;
-  roundNumber: number;
+  sessionNumber: number;
   personExternalId: string | null;
   openedAt: Date;
   appUrl: string;
@@ -76,7 +81,8 @@ export function checkInOpenedPayload(args: {
   return {
     groundId: args.groundId,
     checkInId: args.checkInId,
-    roundNumber: args.roundNumber,
+    roundNumber: args.sessionNumber,
+    sessionNumber: args.sessionNumber,
     personExternalId: args.personExternalId,
     openedAt: args.openedAt.toISOString(),
     permalink: `${args.appUrl.replace(/\/$/, '')}/check-in/${args.checkInId}`,
@@ -85,20 +91,23 @@ export function checkInOpenedPayload(args: {
 
 export interface CheckInCompletedPayload {
   groundId: string;
+  /** DEPRECATED: the same number as `sessionNumber`. Kept for one release (B13). */
   roundNumber: number;
+  sessionNumber: number;
   completedAt: string;
   permalink: string;
 }
 
 export function checkInCompletedPayload(args: {
   groundId: string;
-  roundNumber: number;
+  sessionNumber: number;
   completedAt: Date;
   appUrl: string;
 }): CheckInCompletedPayload {
   return {
     groundId: args.groundId,
-    roundNumber: args.roundNumber,
+    roundNumber: args.sessionNumber,
+    sessionNumber: args.sessionNumber,
     /*
      * NO PARTICIPANT ID AND NO NAME. "Naomi finished her check-in at 14:12 and Tom has not" is a
      * surveillance feed assembled from timestamps, and it would be assembled by whoever reads their

@@ -1,3 +1,5 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { sessionClaims } from '../auth/a-session-token';
 import {
   A_JOIN_LINK_LASTS_HOURS,
   WhatWeSay,
@@ -6,11 +8,17 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
+import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
+import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
+import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
+import { needsApproval, WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
+import { isSubscribed } from '../../common/subscription';
+import { freeSeatLimitMessage } from '../billing/billing.service';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
@@ -29,12 +37,17 @@ import {
   buildRuntimeContext,
 } from '../conversation/prompt-library';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
-import { forHumans, hadCloseMarker } from '../presentation/outbound';
+import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
-import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
+import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
+import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
+import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
+import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -121,15 +134,15 @@ const DEFAULT_SCENARIO = GroundScenario.NEW_PROJECT;
 // auth closesInOtherWords (marker, or asked-to-finish plus no question), this list, entry.controller '[session complete]', client
 // SESSION_END_PATTERNS). They do NOT match - the behavior-entry-report-end tripwire surfaces it.
 export const ENTRY_COMPLETION_PHRASES = [
-  '[session complete]', 'your account is now on record', 'your record is here',
-  'your record is saved as is', 'cannot be verified from this account', 'your contribution is saved',
+  '[session complete]', 'here is what you shared', 'here is what you shared',
+  'what you shared is saved as it is', 'cannot be verified from this account', 'your contribution is saved',
 ];
 
 export const ENTRY_SESSION_ADDENDUM = `
 # Entry session context
 This is the person's first session. They have not yet created an account.
 There is no prior check-in data, no longitudinal patterns, no other-party record yet.
-Do not reference prior sessions or the other party's account.
+Do not reference prior sessions or what anybody else said.
 Do not mention saving or payment unless the person asks.
 The first session is free.
 
@@ -137,17 +150,17 @@ The first session is free.
 If the person indicates urgency, says they have limited time, or signals a meeting is imminent ("10 minutes", "quick", "before the meeting", "between patients"), acknowledge it immediately: "Got it. I will keep this tight." Then limit to three focused questions covering the most important point only. Do not extend the session past what the time allows.
 
 # Evidence gate for preparation claims
-When someone states they have reviewed materials, a briefing, notes, or any document, do not accept the claim. Ask for one specific piece of evidence: what was the one thing in it that stood out, what question did it raise, or what specifically do they want to make sure gets addressed. Generic affirmations such as "it was clear", "I went through it", "I feel ready", or "the team is aligned" are not evidence. One concrete thing is enough. It can be small. But something specific must be on record before the session moves forward. If after two direct asks the person still cannot name anything specific, say this explicitly before moving on: "You have been asked twice what was in the materials and have not named anything specific. Your record will show that preparation cannot be verified from this account." Then close the check-in. Do not open a new topic after flagging a non-verifiable record. Say: "Your record is saved as is. Is there anything else you want to add before we close?" then end.
+When someone states they have reviewed materials, a briefing, notes, or any document, do not accept the claim. Ask for one specific piece of evidence: what was the one thing in it that stood out, what question did it raise, or what specifically do they want to make sure gets addressed. Generic affirmations such as "it was clear", "I went through it", "I feel ready", or "the team is aligned" are not evidence. One concrete thing is enough. It can be small. But something specific must be there before the session moves forward. If after two direct asks the person still cannot name anything specific, say this explicitly before moving on: "You have been asked twice what was in the materials and have not named anything specific. What you shared will show that preparation cannot be verified from this account." Then close the check-in. Do not open a new topic after flagging a non-verifiable record. Say: "What you shared is saved as it is. Is there anything else you want to add before we close?" then end.
 
 # Evidence gate for delivery claims
-When someone states they have built a system, put a process in place, deployed a tool, or that something is running, do not accept the claim. Ask for one person outside this conversation who is using it right now without the person's involvement. Generic delivery language such as "we have SOPs", "the system is in place", "the framework is being adopted", "we are in embedment", or "the team has been trained" is not evidence of delivery. A promise, a plan, or a meeting scheduled for the future is not delivery. One person using one thing independently is enough. If after two direct asks the person cannot name someone using it without them, say this explicitly before moving on: "You have been asked twice who is using this and have not named anyone. Your record will show that delivery cannot be verified from this account." Then close on that topic. Do not record future plans or scheduled meetings as alignment reached. Only record something as delivered when there is a named person using it independently right now.
+When someone states they have built a system, put a process in place, deployed a tool, or that something is running, do not accept the claim. Ask for one person outside this conversation who is using it right now without the person's involvement. Generic delivery language such as "we have SOPs", "the system is in place", "the framework is being adopted", "we are in embedment", or "the team has been trained" is not evidence of delivery. A promise, a plan, or a meeting scheduled for the future is not delivery. One person using one thing independently is enough. If after two direct asks the person cannot name someone using it without them, say this explicitly before moving on: "You have been asked twice who is using this and have not named anyone. What you shared will show that delivery cannot be verified from this account." Then close on that topic. Do not record future plans or scheduled meetings as alignment reached. Only record something as delivered when there is a named person using it independently right now.
 
 # Influence method detection
-When someone describes a plan to create urgency, manufacture discomfort, flood conversations with aligned voices, or make people feel that not moving is not an option, do not challenge the intent. Instead, name what you are seeing as a method and put it on the record plainly. Use language like: "What you are describing is a way of building momentum by making the status quo feel costly. That is a recognised approach. Your record will note that alignment is being built through pressure rather than shared agreement." Do not judge it. Do not call it wrong. Name it as a method so the report reflects how alignment is being sought, not just whether alignment exists. If the other party later checks in and their account reflects pressure rather than genuine agreement, the cross-reference will surface the gap. That is what the record is for.
+When someone describes a plan to create urgency, manufacture discomfort, flood conversations with aligned voices, or make people feel that not moving is not an option, do not challenge the intent. Instead, name what you are seeing as a method and say it plainly. Use language like: "What you are describing is a way of building momentum by making the status quo feel costly. That is a recognised approach. What you shared will note that alignment is being built through pressure rather than shared agreement." Do not judge it. Do not call it wrong. Name it as a method so the report reflects how alignment is being sought, not just whether alignment exists. If somebody else later checks in and what they say reflects pressure rather than genuine agreement, the cross-reference will surface the gap. That is what this is for.
 
 # Contribution and authorship
-When someone describes guiding, directing, coaching, or shaping the work of a more junior person, ask whose name is on the output. One simple question: "Who would you say is the author of that work?" If the answer is unclear, or if the senior person positions the output as a joint or shared contribution without naming the junior person as the primary author, note it plainly: "Your record shows your involvement in this work. To make sure the contribution is attributed accurately, it would help to note who produced it and what your role was in shaping it." Do not suggest anything improper. The purpose is to give the person a chance to be precise, and to make sure the record reflects where contribution begins and ends. A senior person who is genuinely developing someone will always be able to name what the other person did on their own.
-When someone is rolling something out - a system, a process, a change - weave in questions about friction and obstacles. Do not ask them as a block. Spread them naturally across the conversation: one here, one later. The questions to work in are: what is slowing adoption down, who is not using it and why, what is the hardest part of getting people to change, and whether anyone has pushed back. These are not gotchas. They are the parts of a rollout that the person in the room knows and that never make it into a status report. A person who cannot name any friction is either not close enough to the rollout to own it or is not being straight. Note both in the record.
+When someone describes guiding, directing, coaching, or shaping the work of a more junior person, ask whose name is on the output. One simple question: "Who would you say is the author of that work?" If the answer is unclear, or if the senior person positions the output as a joint or shared contribution without naming the junior person as the primary author, note it plainly: "What you shared shows your involvement in this work. To make sure the contribution is attributed accurately, it would help to note who produced it and what your role was in shaping it." Do not suggest anything improper. The purpose is to give the person a chance to be precise, and to make sure what you shared reflects where contribution begins and ends. A senior person who is genuinely developing someone will always be able to name what the other person did on their own.
+When someone is rolling something out - a system, a process, a change - weave in questions about friction and obstacles. Do not ask them as a block. Spread them naturally across the conversation: one here, one later. The questions to work in are: what is slowing adoption down, who is not using it and why, what is the hardest part of getting people to change, and whether anyone has pushed back. These are not gotchas. They are the parts of a rollout that the person in the room knows and that never make it into a status report. A person who cannot name any friction is either not close enough to the rollout to own it or is not being straight. Note both.
 
 # Corroboration and divergence
 When something is claimed, hold it against what else has been said. If a person says the system is running and also says the team is still in training, those two things do not fit. If they say adoption is going well and also say they are still in the embedment phase, surface the gap. Do not let the conversation treat these as separate topics. Name the tension plainly: "You said the system is running and you also said the team is still being trained. Which is it?" One sentence. Then wait. The goal is to find out whether the picture is coherent or whether different parts of the account would not hold up next to each other. Incoherence is not failure. It is information. Record it as such.
@@ -156,22 +169,22 @@ When something is claimed, hold it against what else has been said. If a person 
 When someone uses "we", "our team", "we decided", "we built", "I managed", "I worked with", or any language that implies other people were involved, ask who specifically. If that person has already been named or identified earlier in the conversation, do not ask again. Instead, confirm you are following correctly: "So when you say we, you are referring to X?" and then use that understanding for the rest of the session. If the person has not been named, ask once: "Who else is involved in that?" Record the name and role when given. Do not ask about the same person twice. Over the course of the conversation, build a picture of who is in the room and who is in the story.
 
 # Session completion
-When all of the following are on record, end the session: (1) the situation has been described clearly, (2) the key people involved have been named, (3) at least one specific thing the person wants verified or on record has been captured with some evidence, (4) any preparation or delivery claims have been probed. When these criteria are met, say exactly: "Your record is here." followed by a 2-sentence plain summary of what is now on record. This exact phrase is required. Do not continue asking questions after these criteria are met. Do not wait for the person to ask you to stop.
+When all of the following have been said, end the session: (1) the situation has been described clearly, (2) the key people involved have been named, (3) at least one specific thing the person wants verified has been captured with some evidence, (4) any preparation or delivery claims have been probed. When these criteria are met, say exactly: "Here is what you shared." followed by a 2-sentence plain summary of what they shared. This exact phrase is required. Do not continue asking questions after these criteria are met. Do not wait for the person to ask you to stop.
 
 # Network and influence claims
 When someone in an advisory, board, investor, or connector role describes their contribution as introductions, warm intros, unlocking relationships, or opening doors, do not accept general language. Ask specifically: how many named introductions have been made, which company or person was introduced to which, and has the receiving party confirmed the introduction mattered. A claim like "I have been making introductions" or "I have been opening doors" is not a contribution without at least one named pair and a confirmed outcome. If after two direct asks no named introduction can be given, record it plainly: "Network contributions in this session are unverified. No named introductions with confirmed outcomes were provided." Then move on. Do not ask a third time.
 
 # Motion vs progress
-When someone describes activity as progress, distinguish between motion and outcome. Scheduling a meeting is not alignment. Agreeing to meet is not agreement. "We are going to discuss it" means the discussion has not happened. "The team is working on it" means the work is not done. When these phrases appear, name what is still open: "That sounds like the next step, not a completed one. What is actually done right now?" Record what is complete separately from what is planned. If in the same conversation someone earlier described something as done and now describes it as still in progress, surface that directly: "Earlier you said this was complete. Now it sounds like it is still in progress. Which is it?" One sentence. Then wait. Do not smooth over the contradiction in the record. Note it as an open question.
+When someone describes activity as progress, distinguish between motion and outcome. Scheduling a meeting is not alignment. Agreeing to meet is not agreement. "We are going to discuss it" means the discussion has not happened. "The team is working on it" means the work is not done. When these phrases appear, name what is still open: "That sounds like the next step, not a completed one. What is actually done right now?" Record what is complete separately from what is planned. If in the same conversation someone earlier described something as done and now describes it as still in progress, surface that directly: "Earlier you said this was complete. Now it sounds like it is still in progress. Which is it?" One sentence. Then wait. Do not smooth over the contradiction. Note it as an open question.
 
 # Tone adaptation
 If the situation described is personal, familial, or involves people outside a corporate context (a sibling, a family business, a student, a young person), adjust your register. Use warmer, plainer language. Drop operational framing. Do not use phrases like "the conversations that save the most time happen before work starts" in any context.
 
 # Vulnerability signals
-If the person expresses distress, says they are overwhelmed, mentions they do not feel safe, describes conflict that sounds personal rather than professional, or shows signs of anxiety (short replies, apologies, withdrawal), stop the check-in and respond warmly. Say: "This sounds like a difficult situation to be in. Before we go further, I want to make sure you have what you need. Is there anything you want to flag before we continue?" Do not continue the structured probe until they confirm they want to. If they want to stop, say: "Your record is saved. You can come back when you are ready." Do not record distress signals as record entries.
+If the person expresses distress, says they are overwhelmed, mentions they do not feel safe, describes conflict that sounds personal rather than professional, or shows signs of anxiety (short replies, apologies, withdrawal), stop the check-in and respond warmly. Say: "This sounds like a difficult situation to be in. Before we go further, I want to make sure you have what you need. Is there anything you want to flag before we continue?" Do not continue the structured probe until they confirm they want to. If they want to stop, say: "What you shared is saved. You can come back when you are ready." Do not record distress signals as record entries.
 
 # No premature record entries
-Do not echo back what the person just said as a settled record entry before probing it. When someone states a fact, an agreement, or a claim, your first response is a probe, not a confirmation. "So that is now on record" or "I have noted that" before asking any clarifying question is not allowed. The record is built from verified claims, not from what the person says unverified.
+Do not echo back what the person just said as a settled record entry before probing it. When someone states a fact, an agreement, or a claim, your first response is a probe, not a confirmation. "So that is settled" or "I have noted that" before asking any clarifying question is not allowed. What they share is built from verified claims, not from what the person says unverified.
 
 # Third-party assessment gate
 When someone describes a third-party evaluation, assessment, audit, or review as evidence (for example: "they assessed us", "an external review confirmed", "the auditor said we were compliant"), do not accept the claim. Ask specifically: who conducted it, when, and whether there is a written output. If no written output or dated third-party record is available, note plainly: "This assessment has not been independently verified in this session. It will be noted as a described outcome, not a confirmed record." Then move on.
@@ -180,10 +193,10 @@ When someone describes a third-party evaluation, assessment, audit, or review as
 When you ask a specific question and the person's next response does not address it - they change subject or give a general answer - return to the unanswered question ONCE before following the new thread. Format: "Before we move to that - [restate your question in one sentence]." If they still do not answer after this one return, note the question as unresolved and follow the new thread. Never ask the same question a third time.
 
 # Pre-close check (unanswered question rule)
-If the person uses a closing phrase ("that's everything", "that covers it", "I think that's all", "nothing else") without answering your most recent question, do NOT silently close. First say: "Before I close your record - [restate the specific question you just asked]. That answer will carry into the next session if you have one." If they still close without answering, close and note it explicitly in your summary: "One question carried forward: [the unanswered question]."
+If the person uses a closing phrase ("that's everything", "that covers it", "I think that's all", "nothing else") without answering your most recent question, do NOT silently close. First say: "Before I close this - [restate the specific question you just asked]. That answer will carry into the next session if you have one." If they still close without answering, close and note it explicitly in your summary: "One question carried forward: [the unanswered question]."
 
 # No coaching
-You are a record-builder, not a coach. If the person asks you for advice, a framework, or how to handle a situation, redirect in one sentence: "I want to keep this session as your record - what would you say if you were putting your position directly on the table right now?" Do not provide frameworks, step-by-step guides, or advice. If they continue to ask, say: "That is a conversation, not a record session. Let us focus on what you want on the record." Then return to record-building.
+You are a record-builder, not a coach. If the person asks you for advice, a framework, or how to handle a situation, redirect in one sentence: "I want to keep this session as what you shared - what would you say if you were putting your position directly on the table right now?" Do not provide frameworks, step-by-step guides, or advice. If they continue to ask, say: "That is a conversation, not a record session. Let us focus on what you want to say." Then return to record-building.
 
 # Formatting
 Do not use dashes of any kind - no em dashes, no en dashes, no hyphens in prose.
@@ -191,28 +204,28 @@ Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
 export const FAQ_PROMPT = `${VOCABULARY_RULE}
 
-FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Your contribution to this ground stays on your side until everyone has checked in. The other party submits their own independent account. The report shows where accounts agree, where they differ, and what the gap means. Both parties receive it at the same moment. Most first sessions take 8 to 15 minutes. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
+FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: What you write stays private until everyone has checked in. Everybody else answers separately, without seeing yours. The report shows where people agree, where they differ, and what the gap means. Everybody in it is told the moment it is ready. Most first sessions take 8 to 15 minutes. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
 
 export const ENTRY_REPORT_PROMPT = `${VOCABULARY_RULE}
 
 You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
 
 Rules:
-- Begin the report with a single framing line, exactly: "This is your contribution to this record from session 1. It reflects what you put on record. Nobody else has weighed in yet."
+- Begin the report with a single framing line, exactly: "This is what you said in session 1. Nobody else has checked in yet."
 - No verdicts. No judgements of any person.
-- Never name the other party personally. Use "the other party" or their role.
+- Never name anybody else personally. Use their role, or "the others". Avoid the vocabulary of a legal dispute: this is usually a team getting a read on something, not two camps in an argument.
 - Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
-- Address the person directly as "you" and call their record "your record". NEVER refer to them as "this account" or "the user".
-- CRITICAL: only ONE party has checked in (this person). Alignment is a two-sided outcome and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The status ceiling for a one-sided session is "Clear" (your own side is clearly on record). Reserve "Aligned" for when somebody else has checked in separately.
-- alignmentReached items are things you have stated clearly on YOUR side and put on record - they are "clear on your side, waiting on the other person", never agreed by both. Each title is a heading a person reads next to other headings, so it names the settled thing in two to five words. "The quarterly target is on record" works; "quarter" does not.
-- The alignment status reflects THIS session only. No cross-reference yet since the other party has not checked in.
+- Address the person directly as "you" and call it "what you shared". NEVER refer to them as "this account" or "the user".
+- CRITICAL: only this person has checked in. Alignment needs more than one person and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The ceiling when one person has answered is "Clear" (what they said is clear). Reserve "Aligned" for when somebody else has checked in separately.
+- alignmentReached items are things this person has said clearly - they are "clear, waiting on everybody else", never agreed by both. Each title is a heading a person reads next to other headings, so it names the settled thing in two to five words. "The quarterly target is clear" works; "quarter" does not.
+- The alignment status reflects THIS session only. No cross-reference yet, because nobody else has checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
 - Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.
 - In areasRequiringAlignment, always include at least one entry for any significant topic raised in the conversation but not addressed directly - name it explicitly as an unaddressed area with observation "This topic came up but was not fully explored in this session."
 - In mentionedPeople, list any person named or meaningfully referenced in the conversation who is not the person checking in. If someone was already confirmed as a participant in this check-in earlier in the conversation, still include them - the admin needs to see the full cast. Omit only truly anonymous or generic references with no name or identifiable role.
 - In suggestedParties, name any role whose independent account would materially change or strengthen this check-in's picture, but who was not mentioned by the person checking in. Typical triggers: a regulated sector with a clinical or compliance lead whose sign-off affects decisions described; a multi-layer authority structure where a board or chair sits above the mandate-giver; a finance function that controls data the person says they need. Do not suggest roles already confirmed as participants. If nothing is missing, return an empty array.
-- Authorship backstop: scan the conversation for any language where the person describes work produced by others - "I guided", "I helped them", "we built", "I shaped", "I oversaw", "I developed with". If the authorship of any output was not explicitly anchored to a named person during the session, add an entry in areasRequiringAlignment with title "Authorship not anchored" and observation "This session contains claims about work involving others where it was not made clear who produced the output. The record cannot confirm who authored what."
+- Authorship backstop: scan the conversation for any language where the person describes work produced by others - "I guided", "I helped them", "we built", "I shaped", "I oversaw", "I developed with". If the authorship of any output was not explicitly anchored to a named person during the session, add an entry in areasRequiringAlignment with title "Authorship not anchored" and observation "This session contains claims about work involving others where it was not made clear who produced the output. What was shared cannot confirm who authored what."
 - Clinical trigger: if the conversation mentions clinical work, patients, protocols, regulated procedures, medical decisions, or compliance sign-off, add a suggestedParties entry for a clinical lead, compliance officer, or protocol authority if not already named as a participant.`;
 
 const ENTRY_REPORT_SCHEMA = {
@@ -227,25 +240,35 @@ const ENTRY_REPORT_SCHEMA = {
       },
       whatGroundworkSaw: {
         type: 'string',
-        description: '2-3 sentences. The pattern across what this person shared. What is clear, what is still unstated, what the record holds so far. No verdict.',
+        description: '2-3 sentences. The pattern across what this person shared. What is clear, what is still unstated, what has been shared so far. No verdict.',
       },
       alignmentStatus: {
         type: 'string',
         // 'Aligned' is intentionally excluded: only one party has checked in, so a
         // two-sided alignment cannot exist yet. Ceiling is 'Clear' for a solo session.
         enum: ['Unresolved', 'Mixed', 'Emerging', 'Clear'],
-        description: 'Where YOUR side stands after session 1 (one-sided). Never "Aligned" - alignment needs a second party.',
+        description: 'Where this stands after session 1, from one person only. Never "Aligned" - alignment needs somebody else to have checked in.',
       },
       alignmentBasis: {
         type: 'string',
-        description: '1 sentence explaining what determined the status, framed as your side only.',
+        description: '1 sentence explaining what determined the status, from what this one person said.',
       },
       areasRequiringAlignment: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
-            title: { type: 'string' },
+            title: {
+              type: 'string',
+              /*
+               * A LIVE REPORT TITLED A CARD "expect not shared", and another "Feedback channel is
+               * undefined". They are rendered as headings in a column beside each other, so a
+               * fragment lifted out of the middle of a sentence reads as a fault in the page. The
+               * sibling field below already says this; it was the one that had been read back.
+               */
+              description:
+                'A short noun phrase naming what is unresolved, two to five words, sentence case. It is rendered as a card heading beside others like "Ownership of the board update" and "Escalation path not adopted", so it must read as a heading on its own. Never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
+            },
             observation: { type: 'string', description: 'What is unclear or unstated.' },
             whyItMatters: { type: 'string', description: 'Why leaving this unresolved causes problems.' },
             recommendedMove: { type: 'string', description: 'One practical next step.' },
@@ -313,8 +336,8 @@ export interface EntryReport {
   yourRole?: string | null;
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
   alignmentBasis: string;
-  areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
-  alignmentReached: { title: string; note: string }[];
+  areasRequiringAlignment: { title?: string; observation: string; whyItMatters: string; recommendedMove: string }[];
+  alignmentReached: { title?: string; note: string }[];
   honestClose: { aligned: string; open: string; revisit: string; risk: string };
   mentionedPeople: { name: string; context: string }[];
   suggestedParties: { role: string; reason: string }[];
@@ -328,13 +351,13 @@ const SCENARIO_OPENERS: Record<string, string> = {
   'New project':      'You are setting up a new project. Good moment to use Groundwork. Getting everyone on the same page at the start prevents a lot of friction later. It takes about ten minutes.\n\nTell me a little about it. Who is involved, and what do you want to be clear about before you begin?',
   'New board member': 'You are setting up a new board member situation. Good moment to use Groundwork. Getting expectations explicit early makes the relationship work better for everyone. It takes about ten minutes.\n\nTell me a little about it. Who is coming on, and what do you most want to get right?',
   'New partner':      'You are setting up a new partner relationship. Good moment to use Groundwork. Getting both sides of the picture now prevents misalignment later. It takes about ten minutes.\n\nTell me a little about it. Who is the partner, and what matters most to get right from the start?',
-  'Contract renewal': 'You are looking at a contract renewal. Good moment to use Groundwork. Putting both accounts on record before anyone negotiates keeps things grounded in what actually happened. It takes about ten minutes.\n\nTell me a little about it. What is the relationship, and what do you want the record to show?',
+  'Contract renewal': 'You are looking at a contract renewal. Good moment to use Groundwork. Hearing from both people before anyone negotiates keeps things grounded in what actually happened. It takes about ten minutes.\n\nTell me a little about it. What is the relationship, and what do you want this to show?',
   'New direction':                    'You are navigating a new direction. Good moment to use Groundwork. Getting everyone aligned on what the direction means prevents different people walking away with different interpretations. It takes about ten minutes.\n\nTell me a little about it. What is changing, and who needs to be on the same page?',
-  'Align OKRs across teams':          'You are aligning OKRs across teams. Good moment to use Groundwork. Getting each person\'s objectives and key results on record independently surfaces the gaps and overlaps before the planning cycle locks in. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and which teams are involved?',
-  'Build aligned workplan & budgets': 'You are building aligned workplans and budgets. Good moment to use Groundwork. Getting each person\'s plan on record independently shows where the work is coherent and where it is not before anyone starts executing. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and who needs to submit a plan?',
+  'Align OKRs across teams':          'You are aligning OKRs across teams. Good moment to use Groundwork. Getting each person\'s objectives and key results down independently surfaces the gaps and overlaps before the planning cycle locks in. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and which teams are involved?',
+  'Build aligned workplan & budgets': 'You are building aligned workplans and budgets. Good moment to use Groundwork. Getting each person\'s plan down independently shows where the work is coherent and where it is not before anyone starts executing. It takes about ten minutes.\n\nTell me a little about it. What period are you planning for, and who needs to submit a plan?',
   'Alignment pulse check':            'You are running an alignment pulse check. Good moment to use Groundwork. A quick independent read from each person shows where things are moving and where they are stuck, without a meeting. It takes about five minutes.\n\nLet\'s start. What is going well right now?',
   'Realign team':                     'You are realigning a team. Good moment to use Groundwork. Getting each person\'s current read on where things stand, independently and before the group talks, is the fastest way to find out what the real gap is. It takes about ten minutes.\n\nTell me a little about it. What shifted, and what does the team need to agree on?',
-  'PIP':                              'You are opening a performance improvement ground. Good moment to use Groundwork. Getting both accounts on record independently, the concern and the person\'s understanding of it, gives the process a fair foundation. It takes about ten minutes.\n\nTell me a little about it. What is the concern, and what does success look like at the end of this period?',
+  'PIP':                              'You are opening a performance improvement ground. Good moment to use Groundwork. Hearing from both people independently, the concern and the person\'s understanding of it, gives the process a fair foundation. It takes about ten minutes.\n\nTell me a little about it. What is the concern, and what does success look like at the end of this period?',
 };
 
 const DEFAULT_OPENER = "Welcome to Groundwork. This is a space to build a clear, shared record of a working relationship or situation, one that captures each person's account independently and then shows you where you agree, where you differ, and what the gap is. It takes about ten minutes.\n\nThe best way to see how it works is to try it on something real. Tell me what is on your mind. Who is involved, and what are you trying to get right?";
@@ -398,8 +421,10 @@ export function overlayDraftOntoBody(
   // The client payload stores the report as reportSummary; map it into the
   // dto's report shape so the ground brief populates ("visible before
   // participants arrive").
-  if (!merged.report && merged.reportSummary?.whatGroundworkSaw) {
-    merged.report = { whatGroundworkSaw: merged.reportSummary.whatGroundworkSaw };
+  /* Pass-through, now that the DTO carries the whole report. The narrowing that stood here rebuilt a
+     one-key object because the DTO was two fields wide, and seven fields the person had read were lost. */
+  if (!merged.report && merged.reportSummary) {
+    merged.report = merged.reportSummary;
   }
   if (!Array.isArray(merged.contributors)) merged.contributors = [];
   return merged;
@@ -451,6 +476,9 @@ export function onboardingIsReady(extracted: {
   return !!(extracted.mode && extracted.initial && extracted.decision);
 }
 
+/** Enough to fill typed fields from a short chat, not enough to sit on the turn. See AnthropicService.extract. */
+const CONVERSATION_THINKING_BUDGET_FOR_EXTRACT = 256;
+
 @Injectable()
 export class EntryService {
   private readonly logger = new Logger(EntryService.name);
@@ -471,38 +499,31 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
+    this.anonymousModelCall('faq', question.length);
     /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
        other reply. It was the fourth path found without one. */
     return this.guardedReply(FAQ_PROMPT, [{ role: 'user', content: question }]);
   }
 
-  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario }> {
-    const modeHint = mode ? `\nBroad category selected by the user: "${mode}"` : '';
-    const prompt = `You are a classifier. Given a brief description of a workplace situation and optionally a broad category, return the single best matching scenario key.
+  /**
+   * ANONYMOUS MODEL SPEND IS WRITTEN DOWN. Two public routes reach the model for nobody signed in
+   * and recorded nothing, so the only way to know the budget was being spent was the bill (F13).
+   * Best-effort: the write never delays or fails the answer.
+   */
+  private anonymousModelCall(route: 'faq' | 'classify-intent', chars: number): void {
+    void this.prisma.usageEvent
+      .create({ data: { type: UsageEventType.ANONYMOUS_MODEL_CALL, meta: { route, chars } } })
+      .catch((err: any) => this.logger.warn(`Could not record an anonymous model call on ${route}: ${err?.message}`));
+  }
 
-Available scenarios:
-NEW_HIRE - onboarding a new hire or someone joining a team
-NEW_PROJECT - starting a new project, workstream, or initiative
-PULSE_CHECK - checking in on how something is going mid-flight
-DRIFT - a project, plan, or initiative has gone off track or diverged from what was agreed
-REALIGN_TEAM - two specific people (or a small team) see the current situation differently and need to close an interpersonal gap, after conflict, change, or confusion
-NEW_COFOUNDER - new co-founder, co-lead, or equal partner relationship
-NEW_ADVISOR - new board member, advisor, investor, or mentor relationship
-NEW_MANAGER - new manager coming into an existing team or role handover
-CONTRACT_RENEWAL - renewing, renegotiating, or extending a contract or agreement
-OKR_ALIGNMENT - aligning on objectives, goals, or key results across parties
-WORKPLAN_BUDGET - aligning on workplan, resourcing, or budget
-PIP - performance improvement, formal feedback, or capability concern
-BOARD_STRATEGY - board or leadership team aligning on strategy, priorities, or big bets
-COHORT_CHECK - many people in the same role or programme checking in against a shared question (e.g. field officers, franchisees, a training cohort)
-ACUTE_SHOCK - a sudden jarring event just happened (an incident, a blow-up, sudden bad news) and everyone needs a shared honest picture of what actually happened before any decision
-RECOGNITION - someone wants a raise, promotion, equity, or recognition, and the evidence behind the ask needs to be on record before the conversation
-${modeHint}
-
-Description: "${description.slice(0, 400)}"
-
-Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
-
+  /**
+   * Which situation this is. The prompt, its precedence rule and the reading of the answer live in
+   * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
+   * card the person chose rather than a guess.
+   */
+  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    this.anonymousModelCall('classify-intent', description.length);
+    const prompt = theClassifierPrompt(description, mode);
     try {
       /*
        * The marker is the VARIABLE NAME, not a comment. It used to be a comment, and the repo-wide
@@ -513,13 +534,11 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
        * still has to say in the open which kind theirs is.
        */
       const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
-      const raw = notAReplyToAnybody;
-      const match = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/);
-      if (match && Object.values(GroundScenario).includes(match[1] as GroundScenario)) {
-        return { scenario: match[1] as GroundScenario };
-      }
+      const read = readTheClassification(notAReplyToAnybody);
+      if (read) return read;
     } catch { /* fall through */ }
-    return { scenario: resolveScenario(mode) };
+    /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
+    return { scenario: resolveScenario(mode), confidence: 'low' };
   }
 
   async onboard(
@@ -530,6 +549,7 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
      */
     scenarioInput?: string,
     momentInput?: string,
+    onDelta?: (text: string) => void,
   ): Promise<{
     reply: string;
     extracted: {
@@ -587,9 +607,18 @@ Your job is to gather these things through natural conversation:
    are only to work out what kind of situation this is, and then they go into their own check-in,
    where they set the context and say how things actually are. Say it close to this, once:
    "These few questions just work out what kind of situation this is. Then you go into your own
-   check-in, where you set the context and give your side of it."
+   check-in, where you set the context and say how it is going."
    Never call what they type here an account, official or otherwise, and never tell them what this
    does NOT count as.
+
+   AND NEVER FRAME IT AS TAKING A SIDE. Somebody setting this up read that phrasing back as a
+   courtroom: she was setting the context for a team, not filing a case. Side language belongs to
+   a two-person argument, and most of what this is used for is a team getting an honest read on
+   something - a new hire settling in, a handover, a plan nobody has checked against reality. The
+   person is describing what they are tracking, not defending a position, and telling them they
+   have a side invents an opponent they did not arrive with. So: what you are seeing, how it is
+   going, your own update. Never sides, never rival camps, and do not talk about putting things
+   on record at this stage.
 
    WHO WRITES THE OBJECTIVE AND WHO CHECKS IN AGAINST IT IS NOT YOUR QUESTION. DO NOT ASK IT.
    It used to be the first thing you asked, and it is now asked at the very end, by the screen, with
@@ -645,15 +674,24 @@ Your job is to gather these things through natural conversation:
    responsible is inside them - by name if they know it, by role if they do not. A record is
    built from accounts that individual people give; an organisation cannot check in. If they say
    they do not know yet, accept it and move on: never press twice, and never invent a name.
-5. decision: what is making this worth getting on record right now.
+5. decision: what is making this worth doing right now.
    ASK THIS ONE WITH EXAMPLES, ALWAYS. Bare, it is the question people stall on: "what makes you
-   want to get this on record right now?" sounds like it is asking them to justify themselves, and
+   want to do this right now?" sounds like it is asking them to justify themselves, and
    the honest answer ("it just seemed sensible") feels wrong to type. Two or three concrete
-   examples turn it into a menu they can point at. Phrase it close to this:
-   "What do you want out of having this written down? For example: to know the onboarding went
-   well, to have something real to look at when probation is decided, or to be able to show the
-   project started off right."
-   Use examples that fit what they have already told you, not these exact three every time.
+   examples turn it into a menu they can point at.
+
+   THE EXAMPLES ARE BUILT FROM WHAT THEY JUST TOLD YOU. NEVER FROM THIS FILE.
+   This used to print three: onboarding going well, probation being decided, the project starting
+   off right - followed by "use examples that fit what they have already told you". Three vivid
+   sentences and one weak negative, so the model said the three. Watched live: somebody setting
+   quarterly OKRs for a sales team was offered probation and onboarding, and had to type "this is
+   not about probation or onboarding" to get out of it. Being handed somebody else's situation at
+   the moment you are explaining your own reads as not being listened to.
+
+   So: two or three reasons SOMEBODY IN THEIR SITUATION would have, using their own nouns - their
+   team, their quarter, their handover, whatever they said. If they told you about targets, the
+   reasons are about targets. If they have not said enough to build one, ask the question bare
+   rather than borrowing an example from a different situation.
    NEVER OFFER AN HR REASON. A live run produced "to have a clear reference for performance
    reviews", which is the one thing the product says it is not for: the public page reads "not an
    HR system, employee monitoring tool, or permanent performance-management layer. In fact, we do
@@ -663,6 +701,19 @@ Your job is to gather these things through natural conversation:
    actually happening, catching a gap early, agreeing what good looks like - never about
    assessing a person.
 6. goals: what they need from this process (can be more than one)
+   A TARGET NOBODY OWNS CANNOT BE CHECKED IN AGAINST, AND THIS IS THE ONE THAT MAKES THE REST WORK.
+   When what they are setting up is targets, objectives, OKRs, quotas or a plan for MORE THAN ONE
+   person, the team-level number is only half of it. "Ship a good product, get 500 users, get
+   revenue flowing" is four company outcomes and no answerable question: at the next check-in every
+   person is asked how it is going and every person can only describe the same weather.
+   So ask, once, who carries which: "Which of those is Sam's, and which is Samson's?" Or, if they
+   have not named people yet, "Does each of them have their own number, or is it one shared target?"
+   Take a shared target as an answer if that is the truth - some things genuinely are shared, and
+   saying so is a real answer that shapes the check-ins. What is not acceptable is not asking.
+   Watched live: somebody setting quarterly OKRs for two sales managers was asked for the team's
+   objectives and never for either person's, and said the questions were unproductive. They were:
+   the same lump sum, asked twice, is one fact - and the whole point is the gap between two
+   accounts of the same work.
 7. brief: anything specific they want the questions to focus on (optional)
 
 Rules:
@@ -686,19 +737,23 @@ Rules:
   opens and "check-in" IS the product's own word for it, so use it plainly. This rule used to ban
   "check-in" as well, which is why the copy came out contorted: the model had to describe the thing
   a person was doing without being allowed to name it. Say "session" for one round inside it. Avoid
-  "on record" and "your account" as nouns aimed at a person - say "saved", "what you said", "your
-  side of it".
+  "on record" and "your account" as nouns aimed at a person - say "saved", "what you said", or
+  "${WHAT_ONE_PERSON_BUILDS}". Never frame it as taking a position.
 - Do not use dashes of any kind. Straight quotes only.
 - Acknowledge what the person says before asking the next question.
 - NEVER APOLOGISE. "My apologies for the confusion" was said live, to somebody who was confused by
   a question this prompt told you to ask badly. An apology puts the person in the position of
   reassuring the software. Answer the question they actually asked, in one sentence, and carry on.
 - NEVER invent facts the person did not say. Do not assume a timeframe (like "90 days"), a date, a number, or a standard. If a timeframe matters, ask for it - do not fill it in yourself.
-- If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with your record." Do not just acknowledge it and move on.
+- If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with what you shared." Do not just acknowledge it and move on.
 - Describe what WILL happen next, not only what the person should do. Before wrapping up, let them know: after this, they will add the people involved, then end this session to generate their report.
-- If someone asks who will see this: say their answers stay private until both people have finished, then both people see each other's responses at the same time.
-- If someone asks what they will get at the end: say they will get a private summary for themselves and a shared report that shows where both sides agree and where the conversation still needs to happen.
-- If someone seems confused about what this is: say it is a way for both people to give their account of a situation independently, so the report can show where they agree and where they see things differently.
+- If someone asks who will see this: say what is actually true, which is narrower than it used to
+  say here and is the version both invite pages already give. Nobody on their team sees the words
+  they write. Once everybody has checked in, the shared picture shows where what people said lines
+  up and where it does not, and it never quotes anybody. It used to promise that both people see
+  each other's responses at the same time. They do not, and never did.
+- If someone asks what they will get at the end: say they get a private summary for themselves, and a shared picture showing where people agree and where the conversation still needs to happen.
+- If someone seems confused about what this is: say it is a way for everybody involved to say what they are seeing, separately, so the shared picture can show where they agree and where they see it differently.
 - HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
 - THE WRAP-UP TURN (read carefully). WHEN YOU ARE DONE GATHERING DEPENDS ON WHO YOU ARE TALKING TO,
   and it is the same rule the product uses to decide it:
@@ -751,10 +806,27 @@ Rules:
      * standing warning about a thing that is usually not occurring.
      */
     const repeating = aDirectiveAboutRepeatingYourself(messages as { role: string; content: string }[]);
-    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput);
-    const reply = await this.guardedReply(
+    /*
+     * LOOKING BACK OR SETTING UP. Read from what the person has actually typed, not from the card
+     * they clicked - somebody who picks "describe your own situation" and then tells you about a
+     * handover that already went wrong is not setting anything up. See this-already-happened.ts.
+     */
+    const theirWords = (messages as { role: string; content: string }[])
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content ?? '')
+      .join(' ');
+    const lookingBack = thisAlreadyHappened(theirWords);
+    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput)
+      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '');
+    /*
+     * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
+     * they have already said it; the reply being composed at the same time is a question, and a
+     * question adds no fact about their situation. In sequence the two doubled the turn.
+     */
+    const replyInFlight = this.guardedReply(
       repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
       messages,
+      onDelta,
     );
 
     // Second lightweight call to extract structured fields
@@ -853,10 +925,15 @@ from finishing at all.`;
       },
     };
 
-    const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
     let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; yourRole?: string } = {};
+    /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
+    const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
+      this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
+      .catch((err: Error) => err);
+    const reply = await replyInFlight;
     try {
-      const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL);
+      const result = await extractionInFlight;
+      if (result instanceof Error) throw result;
       if (result) extracted = result;
     } catch { /* extraction is best-effort */ }
 
@@ -908,48 +985,30 @@ from finishing at all.`;
     return { reply, extracted, ready, needsPeople };
   }
 
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, joinToken?: string): Promise<string> {
+  /**
+   * THE BRIEF IS NOT SERVED TO A STRANGER. This took a `joinToken` from the body of a public route,
+   * looked the ground up by it and put the organiser's own brief into the system prompt for whoever
+   * supplied it. No client passed it any more - the join flow goes through join-confirm - so the
+   * branch was reachable only by somebody who was not meant to reach it. Deleted; a broadcast-join
+   * chat, if wanted again, belongs behind the join-confirm session like every other check-in.
+   *
+   * ONE VISITOR'S CLOSE IS NOT ANOTHER'S. Whether the reply closed the session used to be stashed on
+   * this singleton and read by the controller after an await, so two visitors finishing in the same
+   * tick could decide each other's close. It travels with the reply now.
+   */
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
-
-    // Join participant path: the person scanned a QR code and is responding to a specific ground question.
-    // Use a participant-aware prompt that includes the ground context and explains what they're doing.
-    if (joinToken) {
-      const ground = await this.prisma.ground.findUnique({
-        where: { joinToken },
-        select: { label: true, scenario: true, brief: true },
-      });
-      if (ground) {
-        const joinScenario = resolveScenario(ground.scenario);
-        const briefLine = ground.brief ? `Ground context from the organiser:\n${ground.brief}\n\n` : '';
-        const joinPrompt = `# BROADCAST CHECK-IN - PARTICIPANT MODE
-You are receiving a check-in from someone who joined via a shared link. They are a participant, not the person who created this check-in.
-
-Check-in: ${ground.label}
-${briefLine}YOUR ROLE: capture this participant's own perspective and put it on record.
-
-STRICT RULES:
-- NEVER ask "What is this check-in about for you?" - that is already set.
-- NEVER ask who opened it or why the check-in was created.
-- Your first message MUST reflect back what they just said before asking anything.
-- Ask only about their own view: what they think, what they have seen, what they would want on record.
-- When you have a clear account of their perspective, say exactly: "Your record is here." followed by a 2-sentence plain summary of what is now on their record.
-- Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
-
-` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
-        return this.guardedReply(joinPrompt, messages);
-      }
-    }
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
     // Only route to FAQ on the very first user message (conversationStarted guard)
     // and only for short messages - long context blocks from startCheckin are never FAQ questions.
     const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
     if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
-      return this.guardedReply(FAQ_PROMPT, messages);
+      return this.guardedReplyWithClose(FAQ_PROMPT, messages, onDelta);
     }
 
     const mapped = resolveScenario(scenario);
-    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+    return this.guardedReplyWithClose(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages, onDelta);
   }
 
 
@@ -967,9 +1026,28 @@ STRICT RULES:
    * somebody adds would not have the restore on it. Going through here means a new
    * exit is guarded by default and forgetting is the unusual act.
    */
-  private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
-    const reply = await this.anthropic.respond(system, messages);
+  /**
+   * STREAMED WHEN ASKED, GUARDED THE SAME EITHER WAY. Setup replies used to arrive whole after five to
+   * ten seconds of "Thinking". With `onDelta` the sentences go out live through the same gate the
+   * check-in stream uses, cleaned with a diff and never a slice (see whatIsNewSince), and the reply
+   * that is kept is still the whole one, screened whole. What streams is a preview; what stands is
+   * what always stood.
+   */
+  /** The reply alone, for the paths that never close anything (FAQ, onboarding). */
+  private async guardedReply(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<string> {
+    return (await this.guardedReplyWithClose(system, messages, onDelta)).reply;
+  }
+
+  /**
+   * The reply and whether it closed the session, together. The close marker is stripped before the
+   * text reaches a person, so the fact has to travel beside the reply - never on the service, which is
+   * one instance serving every concurrent visitor to a public route.
+   */
+  private async guardedReplyWithClose(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
     const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const reply = onDelta
+      ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
+      : await this.anthropic.respond(system, messages);
     /*
      * NOTHING INVENTED REACHES A PERSON, on this path as on the check-in. A sentence naming somebody
      * who does not exist is dropped rather than repaired, because there is nothing of theirs to put
@@ -1007,31 +1085,39 @@ STRICT RULES:
      * what the model actually said. Cleaning the text first would have them inspect a string the
      * model did not produce.
      */
-    /**
-     * The marker is stripped here, so whether it was there has to travel separately.
-     * `lastReplyHadCloseMarker` is read by the controller immediately after this call.
-     */
-    this.lastReplyHadCloseMarker = hadCloseMarker(restored);
-    return forHumans(restored);
+    return { reply: forHumans(restored), closed: hadCloseMarker(restored) };
   }
 
   /**
-   * DID THE LAST REPLY CARRY THE CLOSE MARKER.
-   *
-   * The entry controller decided "is this session over" by string-matching phrases in the reply
-   * ("your record is here", "your contribution is saved"). It never matched the marker the model is
-   * actually instructed to emit - it looks for "[session complete]" with a space, and the marker is
-   * "[[SESSION_COMPLETE]]" with an underscore - so the authoritative signal was unused and a
-   * rephrased closer silently failed to close anything.
-   *
-   * Stripping the marker at the boundary made that worse rather than better: the one reliable
-   * signal was being removed before the only code that could have used it. So it is captured on the
-   * way through. The phrase list stays as a backstop for older replies.
+   * Sentences go out as the model says them, through the same gate the check-in stream uses, cleaned
+   * with a diff and never a slice (whatIsNewSince). What is returned is the whole raw reply, and the
+   * guard screens it whole exactly as it screens an unstreamed one: what streamed was a preview.
    */
-  private lastReplyHadCloseMarker = false;
-  didLastReplyClose(): boolean {
-    return this.lastReplyHadCloseMarker;
+  private async spokenAsItComes(
+    deltas: AsyncIterable<string>,
+    personSaid: string[],
+    onDelta: (text: string) => void,
+  ): Promise<string> {
+    const gate = new SentenceGate(personSaid, null);
+    let raw = '';
+    let cleanShown = '';
+    let emitted = 0;
+    for await (const delta of deltas) {
+      raw += delta;
+      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+      if (safeUpTo <= emitted) continue;
+      const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+      const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+      if (fresh) cleanShown = cleanedSoFar;
+      emitted = safeUpTo;
+      const clean = fresh ? gate.push(fresh) : '';
+      if (clean) onDelta(clean);
+    }
+    const tail = gate.push(whatIsNewSince(cleanShown, forHumans(raw))) + gate.flush();
+    if (tail) onDelta(tail);
+    return raw;
   }
+
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
@@ -1066,6 +1152,13 @@ STRICT RULES:
      */
     const split = splitMentions(report.mentionedPeople ?? []);
 
+    /*
+     * AND A CARD HEADED "expect not yet shared" LOSES ITS HEADING, NOT ITS CONTENT.
+     * See a-heading-is-a-noun-phrase.ts. The schema asks for a noun phrase; asking is not enough.
+     */
+    report.areasRequiringAlignment = withHeadingsThatReadAsHeadings(report.areasRequiringAlignment ?? []) as any;
+    report.alignmentReached = withHeadingsThatReadAsHeadings(report.alignmentReached ?? []) as any;
+
     /**
      * W2 REACHES THE REPORT TOO, and this is where she actually read it: her
      * private report said "Microchip Solutions" in the summary, in the two
@@ -1088,12 +1181,29 @@ STRICT RULES:
       return v;
     };
 
-    return restore({
+    /*
+     * THE POSSESSIVE COMES OFF AFTER THE RESTORE, NOT BEFORE IT.
+     *
+     * It was stripped before, and `restoreTheirWords` put it straight back: the lead typed
+     * "Segun's", so a name reading "Segun" looks to that pass like one of their own words that has
+     * been shortened, and its whole job is to undo that. The two were fighting and the restore won,
+     * live, on two separate runs - the log says it plainly: `Shortened one of their own words on
+     * the entry path: adaeze (they typed "adaeze's")`.
+     *
+     * The restore is right about sentences and wrong about this one field. A name is not a quotation
+     * of what somebody typed; it is who to send an invitation to, and "Segun's" is not a person.
+     */
+    const restored = restore({
       ...report,
       mentionedPeople: split.couldBeAdded,
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
     });
+    return {
+      ...restored,
+      mentionedPeople: namesWithoutPossessives(restored.mentionedPeople ?? []),
+      alsoCameUp: namesWithoutPossessives(restored.alsoCameUp ?? []),
+    };
   }
 
   /**
@@ -1122,6 +1232,7 @@ STRICT RULES:
       orgName?: string;
       scenario?: string;
       cadence?: string;
+      cadenceChosen?: boolean;
       cadenceAnchorDay?: number;
       checkInBy?: string;
       lastCheckInBy?: string;
@@ -1310,6 +1421,10 @@ STRICT RULES:
       SEQUENTIAL: Cadence.SEQUENTIAL,
       ONE_TIME: Cadence.ONE_TIME,
     };
+    /* Fix plan B15: the client's cadence state starts at FORTNIGHTLY and is sent whether or not
+       anybody picked it, so every ground set up here recorded a choice nobody made. */
+    const chosenCadence: Cadence | undefined =
+      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence] : undefined;
 
     // --- Coordinator/lead path ---------------------------------------------
     // The committer is setting this ground up for someone ELSE to run: route
@@ -1339,7 +1454,9 @@ STRICT RULES:
          * available answer, and it is a recommendation the lead can change afterwards.
          */
         moment: RECOMMENDED_MOMENT[scenario],
-        cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+        /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
+           service records an absent cadence as unstated and takes the scenario's recommendation. */
+        cadence: chosenCadence,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
@@ -1419,7 +1536,7 @@ STRICT RULES:
          * available answer, and it is a recommendation the lead can change afterwards.
          */
         moment: RECOMMENDED_MOMENT[scenario],
-      cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+      cadence: chosenCadence,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: dto.lastCheckInBy || undefined,
@@ -1705,6 +1822,9 @@ STRICT RULES:
      */
     const pending = await this.prisma.pendingSignup.findUnique({ where: { draftToken } });
     if (pending) {
+      /* The same test the EntryDraft branch below and the pendingJoin path run. A leaked or logged
+         draft token was valid for ever on this branch alone (fix plan A10). */
+      if (pending.expiresAt < new Date()) throw new NotFoundException('Draft not found');
       const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
       const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
       await this.prisma.pendingSignup.update({
@@ -1763,15 +1883,24 @@ STRICT RULES:
     firstName?: string;
     lastName?: string;
     roleAsDescribed?: string;
+    department?: string;
+    trapFilled?: boolean;
   }): Promise<WhatWeSay> {
     if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
     if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
+    /* The most publicly exposed form in the product, and every submission mails a typed address. A filled
+       honeypot is answered exactly like success - telling a bot it was caught is telling it what to change -
+       and nothing is written or sent. */
+    if (dto.trapFilled) return whatToSayAfterAsking(dto.email.trim().toLowerCase());
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true },
+      select: { id: true, status: true, endState: true },
     });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
+    /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
+    const refused = whyItRefuses(ground.status, ground.endState);
+    if (refused) throw new BadRequestException(refused);
 
     const email = dto.email.trim().toLowerCase();
     const token = crypto.randomBytes(32).toString('hex');
@@ -1791,6 +1920,7 @@ STRICT RULES:
         firstName: dto.firstName?.trim() || null,
         lastName: dto.lastName?.trim() || null,
         roleAsDescribed: dto.roleAsDescribed?.trim() || null,
+        department: dto.department?.trim().slice(0, 120) || null,
         token,
         expiresAt: new Date(Date.now() + A_JOIN_LINK_LASTS_HOURS * 60 * 60 * 1000),
       },
@@ -1816,7 +1946,11 @@ STRICT RULES:
    * opening this link IS the proof. A row that says unverified after somebody has
    * proved it is a lie that some later check will believe.
    */
-  async joinConfirm(token: string): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
+  async joinConfirm(token: string): Promise<{
+    groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean;
+    /** True when an admin of the organisation has to approve them before the check-in will open; `saying` is what to tell them. */
+    queuedForApproval: boolean; saying?: string;
+  }> {
     if (!token?.trim()) throw new BadRequestException(whyThisDidNotWork('that link is not one we know'));
 
     const pending = await this.prisma.pendingJoin.findUnique({ where: { token } });
@@ -1826,75 +1960,161 @@ STRICT RULES:
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: pending.joinToken },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, status: true, endState: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
     });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
+    /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
+    const refusedNow = whyItRefuses(ground.status, ground.endState);
+    if (refusedNow) throw new BadRequestException(refusedNow);
 
     const email = pending.email;
     const firstName = pending.firstName ?? '';
     const lastName = pending.lastName ?? '';
 
-    let user = await this.prisma.user.findUnique({ where: { email } });
-    const existingAccount = !!user;
-    if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
-      /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
-         never appears in their switcher and every org-scoped read returns nothing, because their
-         token still carries their home organisation — the third of the three paths that skipped it.
-         GUEST, never the role they hold at home. */
-      await this.prisma.organizationMembership.upsert({
-        where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
-        create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
-        /* Nothing on a second one: a role somebody was given here is theirs to keep. */
-        update: {},
+    /**
+     * A JOIN LINK IS A WAY INTO A CHECK-IN, NOT A WAY INTO THE COMPANY.
+     *
+     * The invitation path (participants.service.ts accept) asks four things before anybody is let
+     * in: does this person need an admin's approval, is their account marked as waiting, is the
+     * request queued for the admins, and is there a seat. This path asked none of them. It made a
+     * MEMBER with a live check-in for whoever opened the link - and a join link is designed to be
+     * forwarded to a cohort, so whoever received a forward was in. The same four steps now, in the
+     * same order, in one transaction, with the same rule (`needsApproval`) deciding. A join link is
+     * not an admin adding somebody, so nobody is treated as pre-approved by it.
+     *
+     * Kept beside the invitation path rather than extracted from it, because four source-text
+     * specs pin that path's wording line by line and each is a recorded argument; the shared parts
+     * - the rule, the role, the notice - are already shared.
+     */
+    let existingAccount = false;
+    let queuedForApproval = false;
+    const { user, checkIn } = await this.prisma.$transaction(async (tx) => {
+      let user = await tx.user.findUnique({ where: { email } });
+      existingAccount = !!user;
+      const brandNew = !user;
+
+      /* Worked out BEFORE the account is created: once it exists its own organisationId answers
+         "is this their org?" with yes and the question can no longer be asked. */
+      const alreadyAMemberHere = user
+        ? user.organizationId === ground.organizationId ||
+          (await tx.organizationMembership.findUnique({
+            where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+            select: { id: true },
+          })) !== null
+        : false;
+      const wait = needsApproval({
+        groundOrganizationId: ground.organizationId,
+        theirHomeOrganizationId: user?.organizationId ?? null,
+        alreadyAMemberHere,
+        /* Whoever made the link may well be an admin here. Broadcasting a link is not the same act as
+           adding a named person, and the approval it would stand in for was never given for THIS one. */
+        addedByAnAdminOfThisOrg: false,
       });
-    }
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          organizationId: ground.organizationId,
-          email,
-          firstName,
-          lastName,
-          role: 'MEMBER',
-          /* Proved by construction: this only runs because the link opened. */
-          isEmailVerified: true,
-          passwordHash: null,
-        },
+
+      if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
+        /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
+           never appears in their switcher and every org-scoped read returns nothing, because their
+           token still carries their home organisation - the third of the three paths that skipped it.
+           GUEST, never the role they hold at home. */
+        await tx.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+          create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
+          /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+          update: {},
+        });
+      }
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            organizationId: ground.organizationId,
+            email,
+            firstName,
+            lastName,
+            role: 'MEMBER',
+            /* Proved by construction: this only runs because the link opened. */
+            isEmailVerified: true,
+            passwordHash: null,
+            /* Holds no seat and cannot check in until somebody says yes. */
+            awaitingOrgApproval: wait,
+          },
+        });
+      }
+
+      /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
+      if (wait) {
+        queuedForApproval = true;
+        /* Nobody with an existing account waits any more (see needsApproval), so the flag is only ever
+           set on the row created above - never on an account that has check-ins elsewhere to be locked
+           out of. `brandNew` is kept as the assertion of that. */
+        if (!brandNew) {
+          this.logger.error(`needsApproval said existing account ${user.id} should wait; refusing to flag it, because the flag is account-wide and would lock them out of their own organisation.`);
+        }
+        await tx.membershipRequest.upsert({
+          where: { organizationId_userId: { organizationId: ground.organizationId, userId: user.id } },
+          create: {
+            organizationId: ground.organizationId,
+            userId: user.id,
+            email,
+            requestedByUserId: ground.initiatorId,
+            groundId: ground.id,
+          },
+          /* A request already decided is not reopened; a pending one is left as the admin sees it. */
+          update: {},
+        });
+      }
+
+      let participant = await tx.groundParticipant.findUnique({
+        where: { groundId_email: { groundId: ground.id, email } },
       });
+      if (!participant) {
+        /* The same seat rule addParticipant applies before it writes a row: a free ground has a cap,
+           a paying organisation's grounds do not. This path wrote the row without asking. */
+        const org = await tx.organization.findUnique({
+          where: { id: ground.organizationId },
+          select: { subscriptionPlan: true, subscriptionStatus: true },
+        });
+        if (ground.isFreeGround && !(org && isSubscribed(org))) {
+          const taken = await tx.groundParticipant.count({ where: { groundId: ground.id } });
+          if (taken >= ground.freeParticipantCap) throw new BadRequestException(freeSeatLimitMessage(ground.freeParticipantCap));
+        }
+        participant = await tx.groundParticipant.create({
+          data: {
+            groundId: ground.id,
+            email,
+            userId: user.id,
+            partyType: PartyType.PARTICIPANT,
+            roleAsDescribed: pending.roleAsDescribed ?? null,
+            department: pending.department ?? null,
+            invitedAt: new Date(),
+            notifiedAt: new Date(),
+          },
+        });
+      } else if (!participant.userId) {
+        participant = await tx.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
+      }
+
+      let checkIn = await tx.checkIn.findFirst({
+        where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
+        orderBy: { sessionNumber: 'asc' },
+      });
+      if (!checkIn) {
+        checkIn = await tx.checkIn.create({
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        });
+      }
+      return { user, checkIn };
+    });
+
+    if (!existingAccount) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+        data: { userId: user.id, token: hashed(setupToken), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
       });
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
-
-    let participant = await this.prisma.groundParticipant.findUnique({
-      where: { groundId_email: { groundId: ground.id, email } },
-    });
-    if (!participant) {
-      participant = await this.prisma.groundParticipant.create({
-        data: {
-          groundId: ground.id,
-          email,
-          userId: user.id,
-          partyType: PartyType.PARTICIPANT,
-          roleAsDescribed: pending.roleAsDescribed ?? null,
-          invitedAt: new Date(),
-          notifiedAt: new Date(),
-        },
-      });
-    } else if (!participant.userId) {
-      participant = await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
-    }
-
-    let checkIn = await this.prisma.checkIn.findFirst({
-      where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
-      orderBy: { sessionNumber: 'asc' },
-    });
-    if (!checkIn) {
-      checkIn = await this.prisma.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-      });
+    if (queuedForApproval) {
+      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email)
+        .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 
     /* Marked used only now. A failure anywhere above leaves the link usable, which
@@ -1902,8 +2122,17 @@ STRICT RULES:
        person who cannot get in and cannot ask again. */
     await this.prisma.pendingJoin.update({ where: { id: pending.id }, data: { usedAt: new Date() } });
 
-    const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
-    this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount})`);
-    return { groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount };
+    /* Their HOME organisation and role, as the invitation path signs it and for the reason it gives
+       there: that is what keeps their own grounds reachable. The check-in they just joined is owned
+       by their participant row, not by the token's organisation, and jwt.strategy re-reads the
+       organisation from the user row on every request in any case. */
+    /* The same claims every session token carries - see a-session-token.ts for why not a hand-copied payload. */
+    const accessToken = this.jwt.sign(sessionClaims(user, 'link'));
+    this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount}, queued: ${queuedForApproval})`);
+    return {
+      groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount,
+      queuedForApproval,
+      ...(queuedForApproval ? { saying: WAITING_TO_BE_LET_IN } : {}),
+    };
   }
 }

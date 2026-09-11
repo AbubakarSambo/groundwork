@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { patternAccuracyApi } from '@/api/prompts'
 import { apiClient } from '@/api/client'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
@@ -91,6 +92,8 @@ interface OpsDoorState {
     functionalRole: string
     active: boolean
     linkedAccount: string | null
+    /** Further addresses that open the back office as the same person. */
+    otherAccounts: string[]
   }>
 }
 
@@ -122,7 +125,7 @@ interface AdminDashboardData {
 const adminApi = {
   /** Zero-row detection: which writers have never written. */
   writers: () =>
-    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; error?: string }[] }>('/admin/writers').then(r => r.data),
+    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; needs?: string; error?: string }[] }>('/admin/writers').then(r => r.data),
   dashboard: (): Promise<AdminDashboardData> =>
     apiClient.get<AdminDashboardData>('/admin/dashboard').then(r => r.data),
   requestOtp: (): Promise<void> => apiClient.post('/admin/otp/request').then(() => undefined),
@@ -146,8 +149,8 @@ const adminApi = {
   setUpOps: (): Promise<OpsDoorState> => apiClient.post<OpsDoorState>('/admin/ops/setup').then(r => r.data),
   linkOpsAccount: (personKey: string, email: string): Promise<OpsDoorState> =>
     apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account`, { email }).then(r => r.data),
-  unlinkOpsAccount: (personKey: string): Promise<OpsDoorState> =>
-    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`).then(r => r.data),
+  unlinkOpsAccount: (personKey: string, email?: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`, email ? { email } : undefined).then(r => r.data),
 }
 
 // ── OTP Challenge Modal ───────────────────────────────────────────────────────
@@ -157,13 +160,24 @@ interface OtpModalProps {
   description: string
   onConfirm: (otp: string) => Promise<void>
   onClose: () => void
+  /** Only when onConfirm resolved. onClose fires on Cancel too, and callers were clearing their form in it. */
+  onSuccess?: () => void
 }
 
-function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
+function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModalProps) {
   const [step, setStep] = useState<'request' | 'enter'>('request')
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  /* A dialog is a room you can leave: focus moves in on open, Escape closes, and focus goes back to the
+     button that opened it - it used to drop to the top of the document after a code disable. */
+  const opener = useRef<HTMLElement | null>(null)
+  const first = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    opener.current = document.activeElement as HTMLElement | null
+    first.current?.focus()
+    return () => { opener.current?.focus?.() }
+  }, [])
 
   async function handleRequestOtp() {
     setLoading(true)
@@ -184,6 +198,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
     setError('')
     try {
       await onConfirm(otp.trim())
+      onSuccess?.()
       onClose()
     } catch (e: any) {
       setError(e.message ?? 'Action failed')
@@ -194,8 +209,10 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
 
   return (
     <div
+      role="dialog" aria-modal="true" aria-label={title}
       style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onKeyDown={e => { if (e.key === 'Escape' && !loading) onClose() }}
     >
       <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
@@ -208,6 +225,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
+                ref={first}
                 onClick={handleRequestOtp}
                 disabled={loading}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}
@@ -302,7 +320,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
 
   return (
     <section>
-      <div style={SL}>Code Management</div>
+      <div style={SL}>Access codes</div>
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -313,7 +331,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--gw-border)' }}>
-              {['Code', 'Creator', 'Created', 'Expires', 'Days Left', 'Status', 'Allow Create', 'Redemptions', 'Actions'].map(h => (
+              {['Code', 'Creator', 'Created', 'Expires', 'Days left', 'Status', 'Can create codes', 'Redemptions', 'Actions'].map(h => (
                 <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', padding: '6px 10px', textTransform: 'uppercase', letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -326,8 +344,8 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
                   <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', fontFamily: 'monospace', fontSize: 13 }}>{c.code}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
+                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{whenItWas(c.createdAt, 'day')}</td>
+                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? whenItWas(c.expiresAt, 'day') : '-'}</td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
@@ -378,14 +396,15 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
 
   return (
     <section>
-      <div style={SL}>Usage Breakdown</div>
+      <div style={SL}>Where check-ins came from</div>
       <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {entries.map(({ label, key, color }) => {
           const count = breakdown[key]
           const pct = total > 0 ? (count / total) * 100 : 0
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{label}</div>
+              {/* Not minWidth 160 on a plain flex row outside any scroll container: it produced horizontal page scroll. */}
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', flex: '0 1 160px', minWidth: 0 }}>{label}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
               <Bar pct={pct} color={color} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</div>
@@ -393,7 +412,8 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
           )
         })}
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Total sessions</span>
+          {/* These are ground-creation reasons, so the sum is check-ins created - not sessions. */}
+          <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Check-ins created</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{total}</span>
         </div>
       </div>
@@ -618,7 +638,9 @@ function AdminManagementSection({
           title="Add platform admin"
           description={`${email} will see every organisation, every usage figure and the pricing. You can take them off again here.`}
           onConfirm={otp => onAdd(email, otp)}
-          onClose={() => { setShowOtp(false); setEmail(''); admins.refetch() }}
+          /* The address is cleared when the promotion happened, not when the modal closed for any reason. */
+          onSuccess={() => setEmail('')}
+          onClose={() => { setShowOtp(false); admins.refetch() }}
         />
       )}
 
@@ -652,20 +674,24 @@ function AdminManagementSection({
  * is flagged and sorted to the top.
  */
 function WritersSection() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-writers'], queryFn: adminApi.writers, staleTime: 60 * 1000 })
-  if (isLoading || !data) return null
+  const { data, isLoading, error } = useQuery({ queryKey: ['admin-writers'], queryFn: adminApi.writers, staleTime: 60 * 1000 })
+  /* A health check that renders nothing on failure reads as a clean bill of health. Say which it is. */
+  if (isLoading) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>Reading the writers...</div>
+  if (error || !data) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>The writers check could not run. Reload to try it again.</div>
   const rows = [...data.rows].sort((a, b) => Number(b.flagged) - Number(a.flagged) || a.table.localeCompare(b.table))
   return (
     <div style={{ ...C, marginTop: 16 }}>
       <div style={SL}>Writers · {data.flaggedCount} at zero</div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
-        Every table a writer should fill in normal operation. Zero rows since the table shipped means the writer has never fired.
+        Every table a writer should fill in normal operation. A zero means nothing has reached it
+        yet - which is a fault where the writer runs on our own machinery, and simply news where it
+        waits on a customer or on a check-in ending. What each one waits for is in the last column.
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--gw-muted)' }}>
-              <th style={{ padding: '4px 6px' }}>Table</th><th style={{ padding: '4px 6px' }}>Written by</th><th style={{ padding: '4px 6px', textAlign: 'right' }}>Rows</th><th style={{ padding: '4px 6px' }}>Last write</th><th style={{ padding: '4px 6px' }}>Shipped</th>
+              <th style={{ padding: '4px 6px' }}>Table</th><th style={{ padding: '4px 6px' }}>Written by</th><th style={{ padding: '4px 6px', textAlign: 'right' }}>Rows</th><th style={{ padding: '4px 6px' }}>Last write</th><th style={{ padding: '4px 6px' }}>Shipped</th><th style={{ padding: '4px 6px' }}>Waits for</th>
             </tr>
           </thead>
           <tbody>
@@ -674,8 +700,9 @@ function WritersSection() {
                 <td style={{ padding: '5px 6px', fontFamily: 'ui-monospace, Menlo, monospace', color: r.flagged ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>{r.table}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.writer}{r.error ? ` · ${r.error}` : ''}</td>
                 <td style={{ padding: '5px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: r.flagged ? 700 : 400 }}>{r.count ?? '?'}</td>
-                <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.lastWrite ? new Date(r.lastWrite).toLocaleDateString() : r.flagged ? 'never' : ''}</td>
+                <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.lastWrite ? whenItWas(r.lastWrite, 'day') : r.flagged ? 'never' : ''}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-muted)' }}>{r.shippedAt ?? ''}</td>
+                <td style={{ padding: '5px 6px', color: 'var(--gw-muted)', maxWidth: 280 }}>{r.needs ?? (r.flagged ? 'nothing named - worth a look' : '')}</td>
               </tr>
             ))}
           </tbody>
@@ -752,7 +779,7 @@ function OpsAccessSection() {
              because a team where nobody but the admins can get in is worth
              seeing. */
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            None of the seeded team has an account connected yet. Yours opens it regardless.
+            Nobody on the team has an account connected yet. Yours opens it regardless.
           </div>
         )}
 
@@ -765,18 +792,29 @@ function OpsAccessSection() {
                   {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()} ·{' '}
-                  {p.linkedAccount ?? 'no account connected'}
+                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()}
+                  {!p.linkedAccount && ' · no account connected'}
                 </div>
+                {/* ONE PERSON, SEVERAL ADDRESSES. Each one is its own way in and comes off on its own. */}
+                {[p.linkedAccount, ...(p.otherAccounts ?? [])].filter((a): a is string => !!a).map(a => (
+                  <div key={a} style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                    <span>{a}</span>
+                    <button
+                      onClick={() => run(() => adminApi.unlinkOpsAccount(p.key, a))}
+                      disabled={busy}
+                      style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                    >
+                      disconnect
+                    </button>
+                  </div>
+                ))}
               </div>
               <button
-                onClick={() =>
-                  p.linkedAccount ? run(() => adminApi.unlinkOpsAccount(p.key)) : setLinking(p.key)
-                }
+                onClick={() => setLinking(p.key)}
                 disabled={busy}
                 style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {p.linkedAccount ? 'Disconnect' : 'Connect an account'}
+                {p.linkedAccount ? 'Connect another' : 'Connect an account'}
               </button>
             </div>
 
@@ -836,7 +874,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
 
   return (
     <section>
-      <div style={SL}>Per-user Usage Patterns</div>
+      <div style={SL}>What each person has done</div>
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -927,7 +965,7 @@ export function AdminDashboardPage() {
               onClick={() => navigate('/admin')}
               style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              Ops →
+              Platform console →
             </button>
             <button
               onClick={() => navigate('/ops')}

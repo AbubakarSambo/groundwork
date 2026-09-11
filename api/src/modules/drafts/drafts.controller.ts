@@ -30,7 +30,7 @@ export class DraftsController {
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'The draft as it stands, and why it cannot be finished when it cannot' })
   status(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
-    return this.drafts.status(req.panel.organizationId, id);
+    return this.drafts.status(req.panel.organizationId, id, req.panel.externalId);
   }
 
   @Post(':id/participants')
@@ -54,7 +54,7 @@ export class DraftsController {
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'Settle a disagreement by saying which it is' })
   resolve(@Req() req: { panel: PanelCaller }, @Param('id') id: string, @Param('cid') cid: string, @Body() dto: { resolution: string }) {
-    return this.drafts.resolveContention(req.panel.organizationId, id, cid, dto?.resolution);
+    return this.drafts.resolveContention(req.panel.organizationId, id, cid, dto?.resolution, req.panel.externalId);
   }
 
   @Post(':id/seed')
@@ -62,6 +62,6 @@ export class DraftsController {
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'Turn it into an objective. Refused while a required field is contested.' })
   seed(@Req() req: { panel: PanelCaller }, @Param('id') id: string, @Body() dto: { externalId: string; sourceSystem: string }) {
-    return this.drafts.seed(req.panel.organizationId, id, dto?.externalId, dto?.sourceSystem);
+    return this.drafts.seed(req.panel.organizationId, id, dto?.externalId, dto?.sourceSystem, req.panel.externalId);
   }
 }

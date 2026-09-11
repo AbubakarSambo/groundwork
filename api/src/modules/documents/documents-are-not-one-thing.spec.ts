@@ -24,7 +24,7 @@ describe('documents are not one thing', () => {
 describe('a line backed by generated notes does not raise the documented share', () => {
   const base: any = {
     sessionNumber: 1, closed: true, agreements: [], divergences: [], previousEntries: [], previousSharedPicture: null,
-    baselineSuccess: null, startingPoint: null, evidence: [], specificityLevel: null, recallConfidence: null,
+    baselineSuccess: null, startingPoint: null, evidence: [], specificityLevel: null,
     answeredThisSession: [{ who: 'A', isYou: true }], everyone: [{ who: 'A', isYou: true }], lastSessionCommitments: [], canFollowThreads: false,
     targets: [], movedOnTargets: null, blocked: 0, waiting: 0, dependencies: [],
   };

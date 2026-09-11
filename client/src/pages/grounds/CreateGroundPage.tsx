@@ -11,6 +11,8 @@ import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -454,7 +456,7 @@ export /**
 function runDates(startsOn: string, timelineDays: number): string {
   const start = startsOn ? new Date(`${startsOn}T09:00:00`) : new Date()
   const end = new Date(start.getTime() + timelineDays * 86_400_000)
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) => whenItWas(d, 'day')
   /* "starting today to 27 Nov" was the first wording and reads as a mistake out loud. */
   return startsOn ? `from ${fmt(start)} to ${fmt(end)}` : `starting today, ending ${fmt(end)}`
 }
@@ -1303,7 +1305,7 @@ export function CreateGroundPage() {
                         type="button"
                         className="gw-btn"
                         style={{ margin: 0 }}
-                        disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !coach.email.includes('@') || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
+                        disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !looksLikeAnAddress(coach.email) || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
                         onClick={async () => {
                           setCoachBusy(true); setCoachErr(null)
                           try {
@@ -1509,7 +1511,7 @@ export function CreateGroundPage() {
             {billingLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
                 <div style={{ width: 18, height: 18, border: '2px solid var(--gw-border)', borderTopColor: 'var(--gw-navy)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                Checking your account…
+                Checking…
               </div>
             )}
 

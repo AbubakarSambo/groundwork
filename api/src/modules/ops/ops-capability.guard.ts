@@ -29,7 +29,8 @@ export class OpsCapabilityGuard implements CanActivate {
     /* The whole account, not just the id: membership now depends on whether the
        caller is a platform admin, and the ops system must not have to read the
        product's user table to find that out. */
-    const identity = await this.people.identify(request.user);
+    /* A read is answered from memory; the first write puts them on the roster. See identify(). */
+    const identity = await this.people.identify(request.user, { admit: request.method !== 'GET' });
 
     // Attached whether or not a capability is required, so a route that only
     // needs to know WHO is asking does not have to look it up a second time.

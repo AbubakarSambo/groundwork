@@ -81,7 +81,8 @@ describe('the confidence read is about the picture', () => {
   });
 
   it('and says plainly when it is well covered', () => {
-    expect(confidenceInThePicture(5, 2.4).band).toBe('well covered');
+    /* The cut moved with the order (planaudit_b.md A6): 2.5 on a 0-3 scale where 2 is directional. */
+    expect(confidenceInThePicture(5, 2.6).band).toBe('well covered');
   });
 });
 

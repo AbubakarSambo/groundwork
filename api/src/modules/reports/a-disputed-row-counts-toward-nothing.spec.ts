@@ -25,6 +25,19 @@ describe('every read that counts rows leaves disputed ones out', () => {
         /* The one read that SHOWS a person their own rows has to include the disputed ones, so the
            dispute is visible. It is the exception the next test pins. */
         if (src.slice(Math.max(0, m.index - 400), m.index).includes('myRows:')) continue;
+        /*
+         * AND THE SYNTHESIS READ, WHICH SHOWS RATHER THAN COUNTS.
+         *
+         * A dispute stops a line counting; it does not delete it. Every read above this one is
+         * arithmetic - shares, percentages, keyword sweeps - and a number built on a contested
+         * claim asserts what nobody agreed, so those keep the filter. This one is the read the
+         * report is WRITTEN from, and filtering it deleted the claim and the person's objection to
+         * it together, leaving the reader a picture with an invisible hole in it. The rows come
+         * through with the dispute attached in the same string. See
+         * a-disputed-line-is-shown-as-disputed.ts.
+         */
+        if (src.slice(Math.max(0, m.index - 500), m.index).includes('withTheDisputeAttached')
+          || src.slice(m.index, m.index + 500).includes('withTheDisputeAttached')) continue;
         counted += 1;
         expect(m[0]).toContain('disputedAt: null');
       }

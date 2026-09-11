@@ -16,15 +16,17 @@ const APP = 'https://app.example.test';
 
 describe('a webhook carries a fact and a pointer', () => {
   const round = roundCompletedPayload({
-    groundId: 'g-1', roundNumber: 2, participantCount: 4,
+    groundId: 'g-1', sessionNumber: 2, participantCount: 4,
     completedAt: new Date('2026-08-27T10:00:00Z'), appUrl: APP,
   });
   const checkin = checkInCompletedPayload({
-    groundId: 'g-1', roundNumber: 2, completedAt: new Date('2026-08-27T10:00:00Z'), appUrl: APP,
+    groundId: 'g-1', sessionNumber: 2, completedAt: new Date('2026-08-27T10:00:00Z'), appUrl: APP,
   });
 
   it('says what happened and where to look', () => {
     expect(round.roundNumber).toBe(2);
+    /* The published key stays for one release; the new one carries the same number (B13). */
+    expect(round.sessionNumber).toBe(2);
     expect(round.permalink).toBe('https://app.example.test/grounds/g-1');
     expect(round.completedAt).toBe('2026-08-27T10:00:00.000Z');
   });
@@ -76,7 +78,7 @@ describe('a webhook carries a fact and a pointer', () => {
 
   it('does not double the slash when the app url has a trailing one', () => {
     expect(roundCompletedPayload({
-      groundId: 'g-1', roundNumber: 1, participantCount: 1,
+      groundId: 'g-1', sessionNumber: 1, participantCount: 1,
       completedAt: new Date(), appUrl: 'https://app.example.test/',
     }).permalink).toBe('https://app.example.test/grounds/g-1');
   });

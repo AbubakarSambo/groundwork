@@ -1,4 +1,5 @@
 import { CARD, LABEL } from './OpsLayout'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * One table for every list in the back office.
@@ -22,7 +23,7 @@ export function readEnum(value: string | null | undefined): string {
 
 export function readDate(value: string | Date | null | undefined): string {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString()
+  return whenItWas(value, 'day')
 }
 
 /** Overdue is worth seeing at a glance, and only where something is actually due. */
@@ -32,7 +33,7 @@ export function DueDate({ value }: { value: string | null | undefined }) {
   const late = due < new Date()
   return (
     <span style={late ? { color: 'var(--gw-red-t)', fontWeight: 600 } : undefined}>
-      {due.toLocaleDateString()}
+      {whenItWas(due, 'day')}
       {late ? ' · overdue' : ''}
     </span>
   )

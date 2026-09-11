@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
-import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 type Phase = 'loading' | 'start' | 'sent' | 'error'
 
@@ -27,6 +28,11 @@ export function JoinPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
+  /* Optional, beside their part. Never inferred; blank means blank. */
+  const [department, setDepartment] = useState('')
+  const [failure, setFailure] = useState('')
+  /* Reached from a link shared with a whole cohort, and every submission mails a typed address: the same trap the account-creating forms carry. */
+  const trap = useTheTrap()
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
@@ -49,8 +55,10 @@ export function JoinPage() {
    * the work.
    */
   async function join() {
-    if (!email.trim().includes('@') || !role.trim() || joining) return
+    /* The button waits for both fields, by a written decision (see the field's comment below). */
+    if (!looksLikeAnAddress(email) || !role.trim() || joining) return
     setJoining(true)
+    setFailure('')
     try {
       const res = await joinApi.accept({
         joinToken,
@@ -58,12 +66,15 @@ export function JoinPage() {
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
         roleAsDescribed: role.trim(),
+        department: department.trim() || undefined,
+        trapFilled: !!trap.filled,
       })
       setSentTo(res.to)
       setSentSays(res.says)
       setPhase('sent')
     } catch {
-      toast.error('Could not send your link — nobody has been emailed and nothing was added. Try again.')
+      /* The toast's words were right; a toast leaves the page looking unchanged. Inline, and kept. */
+      setFailure('Could not send your link — nobody has been emailed and nothing was added. Try again.')
     } finally {
       setJoining(false)
     }
@@ -100,7 +111,7 @@ export function JoinPage() {
   return (
     <Shell>
       {/* "invited your check-in" is not a sentence. It is an invitation to a person, so say that. */}
-      <h1 className="gw-ttl">{ground.initiatorName} has asked for your side of this</h1>
+      <h1 className="gw-ttl">{ground.initiatorName} has asked how this is going from where you sit</h1>
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
       {/* The same false promise as InvitePage carried, kept in step with it deliberately: these are
@@ -112,12 +123,13 @@ export function JoinPage() {
         who said what about whom.
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); join() }}>
+      <form noValidate onSubmit={e => { e.preventDefault(); join() }}>
+        {trap.field}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-first">First name</label><input id="join-first" className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
         </div>
-        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>
         {/*
           ONE LINE ON THEIR PART IN THIS, AND IT IS NOT OPTIONAL ANY MORE.
           205 of 223 people skipped it while it said "(optional)", and that one line is what the
@@ -129,13 +141,15 @@ export function JoinPage() {
           <input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. I run the clinic that St Mary's refers into" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
         </div>
-        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@') || !role.trim()} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@') || !role.trim()) ? 0.6 : 1 }}>
-          {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-department">Department</label><input id="join-department" className="gw-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" /></div>
+        {failure && <div className="gw-er" role="alert">{failure}</div>}
+        <button className="gw-btn" type="submit" disabled={joining || !looksLikeAnAddress(email) || !role.trim()} style={{ marginTop: 8, opacity: (joining || !looksLikeAnAddress(email) || !role.trim()) ? 0.6 : 1 }}>
+          {joining ? 'Sending…' : 'Email me my link →'}
         </button>
       </form>
 
       <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-        This sets up your account so you can come back any time and see the shared report once everyone has checked in. We'll email you a link to set a password for returning later.
+        This saves your place so you can come back any time and see the shared report once everyone has checked in. We'll email you a link for returning later.
       </div>
     </Shell>
   )

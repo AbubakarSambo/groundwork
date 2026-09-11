@@ -24,7 +24,7 @@ function svc(existing: any = null) {
     },
   };
   const email: any = { sendCoachRequestReceived: jest.fn(async () => undefined) };
-  const service = new CoachService(prisma, email);
+  const service = new CoachService(prisma, email, { emit: jest.fn() } as any);
   return { service, created, updated };
 }
 

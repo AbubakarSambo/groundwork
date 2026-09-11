@@ -11,15 +11,27 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
-import { forHumans, hadCloseMarker as textHadCloseMarker } from '../presentation/outbound';
+import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
+import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
 import { endStatesFor } from '../resolution/end-states';
 import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
+import { theFloorFor } from './how-short-a-check-in-may-be';
+import { aNameOrNothing } from '../board/a-name-is-short';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
+import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
+import { Prisma } from '@prisma/client';
+import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
+import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
+
+/** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
+export const CLOSED_BY_THE_CLOCK = 'auto_closed';
+/** `CheckIn.closedReason` when the person declined to take part. */
+export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -28,13 +40,14 @@ import { UsageService } from '../usage/usage.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
-import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
+import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
 import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
-import { detectFunction } from '../board/function-detection';
+import { detectFunction, detectUniversalModes } from '../board/function-detection';
+import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
@@ -43,6 +56,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
+import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
@@ -71,6 +85,8 @@ import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -145,18 +161,6 @@ export function countCheckableSpecifics(text: string): number {
   return total;
 }
 
-function mapSpecificityLevel(avgScore: number): string {
-  if (avgScore >= 0.6) return 'specific';
-  if (avgScore >= 0.35) return 'directional';
-  if (avgScore >= 0.15) return 'vague';
-  return 'managed';
-}
-
-function mapRecallConfidence(avgScore: number): string {
-  if (avgScore >= 0.5) return 'certain';
-  if (avgScore >= 0.25) return 'mostly_certain';
-  return 'uncertain';
-}
 
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
@@ -502,10 +506,7 @@ export class ConversationService {
   }
 
   async open(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     /**
      * THE BRIEF, FETCHED HERE BECAUSE THIS QUERY WAS ALREADY RUNNING.
@@ -530,11 +531,6 @@ export class ConversationService {
         objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
-    const OPEN_STATUSES: GroundStatus[] = [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY];
-    if (ground && !OPEN_STATUSES.includes(ground.status)) {
-      throw new BadRequestException('This check-in is closed and nothing further can be added');
-    }
-
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
     // This collapses the count + separate findFirst into one query and closes the
     // TOCTOU window: if any AI turn exists (written by a concurrent open()), return
@@ -783,7 +779,14 @@ export class ConversationService {
      *
      * Fail-closed still holds where it matters: any status this guard actually reads and does not
      * recognise as open is refused below.
+     *
+     * But a row that EXISTS with no status is not a test double, it is a fact about production this
+     * guard would otherwise wave through in silence. So it is logged at error level, by ground. If
+     * the line never fires, the reasoning above is confirmed; if it does, somebody has to look.
      */
+    if (ground && !ground.status) {
+      this.logger.error(`Ground ${groundId} exists but has no readable status; input accepted on the test-double rule above.`);
+    }
     if (!ground?.status) return;
     const OPEN_STATUSES: GroundStatus[] = [
       GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY,
@@ -793,6 +796,48 @@ export class ConversationService {
       throw new BadRequestException('This check-in is on hold. Nothing can be added to it until it is resumed.');
     }
     throw new BadRequestException('This check-in is closed. Nothing further can be added to it.');
+  }
+
+  /**
+   * EVERY DOOR INTO A SESSION ASKS THE SAME QUESTIONS, IN THE SAME ORDER.
+   *
+   * There were four ways into one conversation and the guards were added to one of them. `open()`
+   * checked the ground's status with its own list and a generic message; `sendMessage()` gained
+   * `assertGroundAcceptsInput` when a paused ground kept accepting answers; `sendMessageStream()` -
+   * the route the client actually posts to - got neither for as long as the guard lived only on its
+   * sibling, so the protected route was the one nobody called. `complete()` had its own copy.
+   *
+   * Now there is one door. Ownership first, so a stranger is refused for not owning the check-in
+   * rather than told the ground's state; then whether this session may still be written to (the
+   * loader refuses COMPLETED and DECLINED); then whether the ground accepts input at all. A route
+   * that wants in calls this and nothing else. Metering is NOT here: it stays in `open()`, once per
+   * round per ground, after the idempotency guard that makes a second open() free. Putting it in
+   * the door would charge every message.
+   */
+  private async openTheDoor(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
+    await this.assertGroundAcceptsInput(checkIn.groundId);
+    return checkIn;
+  }
+
+  /**
+   * AND A MESSAGE NEEDS A SESSION THAT HAS BEEN OPENED.
+   *
+   * `open()` is the only door that meters. Both message routes used to accept a NOT_STARTED check-in
+   * and flip it to IN_PROGRESS themselves, with no billing call - so a client that posted an answer
+   * without ever calling open() ran a whole session free, and the only thing standing between a
+   * customer and that was remembering to knock first. Every caller that exists knocks: the web
+   * client, both WhatsApp paths and the public API all open before they send. Nothing legitimate
+   * reaches this with NOT_STARTED, so it is refused rather than metered here - moving the meter into
+   * the message path would mean a second copy of the billing rule, and the audit of this plan found
+   * that the obvious way to do that charges per message.
+   */
+  private async aSessionUnderway(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.NOT_STARTED) {
+      throw new BadRequestException('This session has not been opened yet. Open it first, then answer.');
+    }
+    return checkIn;
   }
 
   /**
@@ -818,11 +863,7 @@ export class ConversationService {
   }
 
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.assertGroundAcceptsInput(checkIn.groundId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
     if (again.kind === 'the same answer, already answered') {
@@ -940,6 +981,28 @@ export class ConversationService {
       if (!screened.text) {
         for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
       }
+
+      /*
+       * A SENTENCE WITH A WORD MISSING IS ASKED FOR AGAIN. "every we discuss is to help you build a
+       * clear, honest record" reached a real transcript and was saved. One retry, the same shape as
+       * the invention gate's; if the second try is broken too the first stands, because a reply
+       * that reads oddly is better than no reply at all. See a-sentence-with-a-word-missing.ts.
+       */
+      if (screened.text && readsAsBroken(screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken; asking again.`);
+        const plainly = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASK_FOR_IT_AGAIN_PLAINLY}`, history)
+          .catch(() => '');
+        const second = plainly.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(plainly), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !readsAsBroken(second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try was whole.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
+        }
+      }
       reply = screened.text || ASK_AGAIN;
 
       /*
@@ -1000,10 +1063,6 @@ export class ConversationService {
       throw err;
     }
 
-    if (checkIn.status === CheckInStatus.NOT_STARTED) {
-      await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    }
-
     // Two detectors, union. The model states plainly that it is closing (the
     // [[SESSION_COMPLETE]] marker in ENGINE_RULES), and the old phrase matching
     // stays as a backstop for a turn where the model forgets the marker.
@@ -1018,7 +1077,14 @@ export class ConversationService {
     if (close.ask) {
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${aiTurn.content}\n\n${close.ask}` } });
     }
-    const sessionComplete = close.ready;
+    /*
+     * NOT WHILE IT IS STILL ASKING. A reply can carry the close marker and end in a question - the
+     * model closing and asking one more thing in the same breath. Marking that turn complete put a
+     * "Complete session" button under a question the person had not answered: "the session closing
+     * without an option to chat more, but the agent asks more questions". The signal comes again on
+     * the next turn, after they have answered. Decided here, in code, and not by asking the model.
+     */
+    const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');
 
     /*
      * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
@@ -1093,7 +1159,7 @@ export class ConversationService {
       }),
     ]);
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    const minTurns = isSelfCorrection ? 1 : 3;
+    const minTurns = theFloorFor(isSelfCorrection);
     if (personSaid.length < minTurns) {
       this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
       return { ready: false };
@@ -1142,10 +1208,8 @@ export class ConversationService {
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
     AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    /* The door people actually use. It had no lock for as long as the guard lived only on sendMessage(). See openTheDoor. */
+    const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
     if (againStreaming.kind !== 'a new answer') {
       const say =
@@ -1226,50 +1290,39 @@ export class ConversationService {
 
       let emitted = 0;
       /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
-      let cleanEmitted = 0;
-
+      /*
+       * CLEANING IS NOT PREFIX-STABLE, SO THE LIVE TEXT IS DIFFED, NOT SLICED. See whatIsNewSince:
+       * slicing the newly cleaned prefix at the length of the last one skipped words and cut one in
+       * half ("That's a clea writing the text"). `cleanShown` is the cleaned text handed to the gate.
+       */
+      let cleanShown = '';
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
         const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
-          /*
-           * CLEAN THE WHOLE, THEN TAKE WHAT IS NEW - never clean a chunk on its own.
-           *
-           * `forHumans` ends with `.trim()`, which is right for a finished reply and wrong for a
-           * fragment: a chunk ending "you're " lost its trailing space, the next began "focused",
-           * and the person read "you'refocused". Two of those reached a real check-in before anybody
-           * looked at a stored turn rather than at a terminal.
-           *
-           * Cleaning the accumulated text and slicing off the new suffix keeps the spaces, because
-           * they are interior to the string being trimmed rather than at its edge.
-           */
           const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
-          const fresh = cleanedSoFar.slice(cleanEmitted);
-          cleanEmitted = cleanedSoFar.length;
+          const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+          if (fresh) cleanShown = cleanedSoFar;
           emitted = safeUpTo;
-          const clean = gate.push(fresh);
+          const clean = fresh ? gate.push(fresh) : '';
           if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
         }
       }
-      /*
-       * THE HELD-BACK TAIL, WHICH THE GATE NEVER SAW.
-       *
-       * The loop only ever pushes up to `raw.length - SESSION_CLOSE_MARKER.length`, so the last few
-       * characters of every reply are deliberately withheld until the end in case they turn out to
-       * be the close marker. The old code flushed those separately; replacing that with the gate
-       * dropped them entirely, and every reply ended mid-word - "What is it," and then nothing.
-       *
-       * Found by reading the deltas of one real check-in. It would never have shown up in a test of
-       * the gate, because the gate was right: it was never given the last piece.
-       */
-      const withheld = forHumans(raw).slice(cleanEmitted);
+      const cleanedWhole = forHumans(raw);
+      const withheld = whatIsNewSince(cleanShown, cleanedWhole);
       const fromWithheld = withheld ? gate.push(withheld) : '';
       if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
-
       const tailFromGate = gate.flush();
       if (tailFromGate) { shown += tailFromGate; yield { type: 'delta', text: tailFromGate }; }
-      const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
+      const strippedStream = { text: cleanedWhole, hadMarker: textHadCloseMarker(raw) };
       if (!strippedStream.text) throw new Error('AI returned an empty response');
+      /*
+       * THE RECORD IS THE WHOLE REPLY, CLEANED WHOLE AND SCREENED WHOLE. What streamed is a preview
+       * and can be short where cleaning moved earlier text. The stored turn and the `done` event
+       * carry this, and the client replaces the preview with it.
+       */
+      const whole = screen(cleanedWhole, streamKnown, streamReaderName, turns.map((t) => t.content ?? ''));
+      shown = whole.text;
 
       /*
        * WHAT THEY SAW IS WHAT IS KEPT. `shown` is the concatenation of the deltas that actually
@@ -1284,9 +1337,9 @@ export class ConversationService {
          dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
       let reply = shown.trim();
       if (reply) {
-        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
+        for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
       } else {
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
+        const again = await this.askAgainWithoutTheInvention(fullSystem, history, whole.hits.length ? whole.hits : gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
         if (again) {
           reply = again.screened.text;
           strippedStream.hadMarker = again.hadMarker;
@@ -1321,9 +1374,6 @@ export class ConversationService {
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
-      if (checkIn.status === CheckInStatus.NOT_STARTED) {
-        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-      }
       const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
       const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
       if (close.ask) {
@@ -1638,7 +1688,8 @@ export class ConversationService {
         select: { id: true, user: { select: { firstName: true } }, roleAsDescribed: true },
       }).catch(() => [] as any[]);
       for (const p of owed) {
-        const name = p.user?.firstName?.trim() || p.roleAsDescribed?.trim();
+        /* A sentence is not a name - see a-name-is-short.ts. */
+        const name = p.user?.firstName?.trim() || aNameOrNothing(p.roleAsDescribed);
         if (name) nameByParticipantId.set(p.id, name);
       }
     }
@@ -1794,6 +1845,17 @@ export class ConversationService {
        */
       totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
       roleAsDescribed: checkIn.participant.roleAsDescribed,
+      /*
+       * WHO OPENED THIS, so the safety rule in ENGINE_RULES can finally fire. It fell back to the
+       * party type of whoever was ANSWERING, which made "the opener is senior and this person is
+       * not" impossible to express - and told every participant they had equal standing with
+       * whoever opened the check-in. See who-opened-this.ts.
+       */
+      openerRole: whoOpenedThis(
+        (ground.participants ?? []).find((p) => p.partyType === PartyType.INITIATOR)?.roleAsDescribed
+          ?? null,
+        checkIn.participant.partyType === PartyType.INITIATOR,
+      ),
       otherPartyCheckedIn,
       groundLabel: ground.label,
       /**
@@ -1806,7 +1868,7 @@ export class ConversationService {
         .map((p) => ({
           label:
             displayName(p as any) ??
-            p.roleAsDescribed?.trim() ??
+            aNameOrNothing(p.roleAsDescribed) ??
             'a teammate',
         })),
       /**
@@ -1836,7 +1898,7 @@ export class ConversationService {
                 const row = expectationByParticipant.get(p.id);
                 if (!row?.text?.trim()) return null;
                 return {
-                  label: displayName(p as any) ?? p.roleAsDescribed?.trim() ?? 'a teammate',
+                  label: displayName(p as any) ?? aNameOrNothing(p.roleAsDescribed) ?? 'a teammate',
                   text: row.text.trim(),
                 };
               })
@@ -2294,7 +2356,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // Adds nothing at all when the function is unknown or confidence is low, so an
     // uncertain profile never produces coaching from a guess.
     const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
-    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence);
+    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence, roleRead.modes);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
@@ -2379,8 +2441,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Which blocks were actually there, one log line per turn. Two blocks that looked wired and were
        not were found by reading; this is so the next one is found by looking. */
+    /* Their language, when it is not English. See a-whatsapp-message-is-routed.ts: the conversation happens in it, the record stays in English. */
+    const theirLanguage = languageBlock((checkIn as any).participant?.language ?? null);
     const named: [string, string][] = [
-      ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
+      ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
@@ -2388,7 +2452,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2985,11 +3049,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async complete(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.assertGroundAcceptsInput(checkIn.groundId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
     // actually built a record. Hollow completions produce thin, over-confident
@@ -3027,7 +3087,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * The record is still protected: the substance gate below is unconditional,
      * so somebody can leave early but cannot leave nothing behind.
      */
-    const minTurns = checkIn.isSelfCorrection ? 1 : 3;
+    const minTurns = theFloorFor(!!checkIn.isSelfCorrection);
     if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException({
         message:
@@ -3088,8 +3148,64 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
     }
 
+    return this.finishTheSession(checkIn, 'the person');
+  }
+
+  /**
+   * THE CLOCK CLOSING A SESSION DOES WHAT A PERSON CLOSING IT DOES.
+   *
+   * The auto-close sweep used to be a second, thinner definition of "completed": it wrote the
+   * status, emitted the event and closed the round, and did none of the rest - no specificity
+   * score, no record extraction, no anchoring, no solo artifact, no usage event, and no next
+   * session. The person who walked away was stamped complete with an empty record, counted present
+   * in a report built without their words, and left with nowhere to return to, so the next round
+   * could never complete either. Now the sweep decides only WHICH sessions are stale; this is the
+   * one place a session finishes. Public because the sweep lives in the grounds module.
+   *
+   * No readiness gates on this path, on purpose: the clock closes whatever is there. The gates in
+   * complete() protect against a person leaving nothing behind; a person who left is the case they
+   * cannot help.
+   */
+  async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
+    });
+    if (!checkIn) throw new NotFoundException('Check-in not found');
+    return this.finishTheSession(checkIn, 'the clock');
+  }
+
+  /**
+   * ONE SESSION FINISHES ONCE.
+   *
+   * Everything that happens when a session ends, after the gates: scoring, extraction, the status
+   * write, the usage event, the next session, the completion event and the round. Two callers -
+   * complete() for a person, closeByTheClock() for the sweep - and `by` changes exactly one thing:
+   * the record carries that the clock closed it, so a report can say so rather than present
+   * silence as an account.
+   *
+   * THE WRITE IS THE CLAIM. Two presses of Complete used to run all twelve extractors twice and emit
+   * CHECK_IN_COMPLETED twice, double-firing the report builder and the webhook queue, because the
+   * only "is it already complete" check was an in-memory read at the top of the method. The status
+   * write is now guarded in its `where`: whoever flips IN_PROGRESS to COMPLETED wins, and only the
+   * winner emits, schedules the next session and closes the round. The loser returns the same
+   * completed response, because from the person's side it did complete.
+   *
+   * ISSUE 6 STANDS: the extractors still run BEFORE the write, so the record is populated before
+   * the status change races past it - the other party's completion can trigger a round check that
+   * reads this check-in as COMPLETED, and it must find the entries there. The cost of keeping that
+   * order is that a true same-instant double press can still run the awaited extractors twice; the
+   * event and the round are protected, the record may gain duplicate lines, and that is the cheaper
+   * of the two failures. Closing it fully needs a claim column, which is its own change.
+   */
+  private async finishTheSession(checkIn: any, by: 'the person' | 'the clock'): Promise<{ status: 'completed'; groundId: string }> {
     // Score session specificity from person's turns before marking complete
-    const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch(() => null);
+    /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
+       with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
+    const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch((err) => {
+      this.logger.error(`Specificity scoring failed for check-in ${checkIn.id}: ${err?.message ?? err}`);
+      return null;
+    });
 
     // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
     // the record is populated before the status change races past it. buildSoloArtifact
@@ -3169,16 +3285,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
-    await this.prisma.checkIn.update({
-      where: { id: checkIn.id },
+    const won = await this.prisma.checkIn.updateMany({
+      where: { id: checkIn.id, status: { not: CheckInStatus.COMPLETED } },
       data: {
         status: CheckInStatus.COMPLETED,
         completedAt: new Date(),
         specificityLevel: specificityData?.level ?? null,
-        recallConfidence: specificityData?.recallConfidence ?? null,
+        specificityScoredAt: new Date(),
         specificityDimensions: specificityData?.dimensions ?? undefined,
+        /* The one thing `by` decides. A person's completion leaves whatever reason was already there. */
+        ...(by === 'the clock' ? { closedReason: CLOSED_BY_THE_CLOCK } : {}),
       },
     });
+    if (won.count === 0) {
+      this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
+      return { status: 'completed', groundId: checkIn.groundId };
+    }
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -3229,6 +3351,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       groundId: checkIn.groundId,
       participantId: checkIn.participantId,
       sessionNumber: checkIn.sessionNumber,
+      ...(by === 'the clock' ? { source: 'auto-close' as const } : {}),
     } satisfies CheckInCompletedEvent);
 
     /*
@@ -3268,8 +3391,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true },
     });
+
+    /*
+     * NOTHING FOLLOWS THE END. A ground that has been resolved, closed or stalled gets no next
+     * session, and neither does the closing session itself - it is called the closing session
+     * because there is nothing after it. Watched live: a resolved ground grew a "Session 5 of 6"
+     * for both people minutes after the decision was taken. See a-ground-that-has-ended.ts.
+     */
+    if (hasEnded(ground?.status)) {
+      this.logger.log(`No next session for ${participantId}: ground ${groundId} is ${ground?.status}.`);
+      return;
+    }
     const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
 
     // ONE_TIME: a single check-in, full stop. No next session for this party,
@@ -3278,6 +3412,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // cadenceDays below: a 0-day step still CREATES a session (immediately
     // available), which is the opposite of "no follow-up round."
     if (cadence === Cadence.ONE_TIME) return;
+
+    const justClosed = await this.prisma.checkIn.findUnique({
+      where: { participantId_sessionNumber: { participantId, sessionNumber } },
+      select: { isFinal: true },
+    });
+    if (justClosed?.isFinal) {
+      this.logger.log(`No next session for ${participantId}: session ${sessionNumber} was the closing one.`);
+      return;
+    }
 
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
@@ -3370,8 +3513,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (planned != null && sessionNumber > planned) return;
 
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal } });
+    await this.createSessionOnce({ groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal });
   }
+
+  /**
+   * A SESSION IS CREATED ONCE, HOWEVER MANY TIMES THE REQUEST ARRIVES.
+   *
+   * Every place that makes a session computed `last + 1` and then created, against
+   * `@@unique([participantId, sessionNumber])`, with nothing catching the collision. Two requests
+   * in the same instant - a double click, a retry, the entry flow and the completion racing - both
+   * read the same `last`, and the second create threw P2002 as a 500. On ensureNextSession that 500
+   * came out of complete(), at the exact moment the person's work was being saved.
+   *
+   * The unique index was always the right arbiter. This lets it decide, and on a collision hands
+   * back the row that won.
+   */
+  private async createSessionOnce(data: Prisma.CheckInUncheckedCreateInput) {
+    try {
+      return await this.prisma.checkIn.create({ data });
+    } catch (err: any) {
+      if (err?.code !== 'P2002') throw err;
+      const existing = await this.prisma.checkIn.findUnique({
+        where: { participantId_sessionNumber: { participantId: data.participantId, sessionNumber: data.sessionNumber } },
+      });
+      if (!existing) throw err;
+      this.logger.log(`Session ${data.sessionNumber} for participant ${data.participantId} already existed; using it.`);
+      return existing;
+    }
+  }
+
 
   /**
    * Convert a cadence enum to the next available date from now.
@@ -3406,10 +3576,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Score the specificity level for the session from person's turns.
    * Returns mapped level (specific/directional/vague/managed) and recall confidence.
    */
+  /**
+   * The mapper and the order live in how-checkable-a-session-was.ts, because four functions used
+   * to disagree about them. `recallConfidence` is no longer produced: it was this same specificity
+   * number under a second name, and the report presented the two as independent corroboration.
+   * Measuring recall honestly (RecordEntry.recallBased) is structurally zero for any ground with no
+   * documents (planaudit_b.md C7), so the column is written null and its sentence is gone.
+   */
   private async scoreSessionSpecificity(checkInId: string): Promise<{
-    level: string;
-    recallConfidence: string;
-    dimensions: Record<string, string>;
+    level: SpecificityLevel;
+    dimensions: Record<string, SpecificityLevel>;
   }> {
     const personTurns = await this.prisma.conversationTurn.findMany({
       where: { checkInId, role: TurnRole.PERSON },
@@ -3417,8 +3593,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       select: { content: true },
     });
     if (personTurns.length === 0) {
-      const dims = { delivery: 'managed', evidence: 'managed', enablement: 'managed', coverage: 'managed', commitment: 'managed' };
-      return { level: 'vague', recallConfidence: 'uncertain', dimensions: dims };
+      /* One verdict about nothing, not two: the level and every dimension are the bottom. */
+      const dims = { delivery: NOTHING_SAID, evidence: NOTHING_SAID, enablement: NOTHING_SAID, coverage: NOTHING_SAID, commitment: NOTHING_SAID };
+      return { level: NOTHING_SAID, dimensions: dims };
     }
 
     const intakes = personTurns.map(t => runIntake(t.content));
@@ -3431,7 +3608,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
     const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
 
-    const dimensions: Record<string, string> = {
+    const dimensions: Record<string, SpecificityLevel> = {
       delivery:   mapSpecificityLevel(avgDelivery),
       evidence:   mapSpecificityLevel(avgSpecificity),
       enablement: mapSpecificityLevel(avgEnablement),
@@ -3441,7 +3618,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     return {
       level: mapSpecificityLevel(avgSpecificity),
-      recallConfidence: mapRecallConfidence(avgSpecificity),
       dimensions,
     };
   }
@@ -3605,22 +3781,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * detectFunction's own rule applies (the words win, held more tentatively, minus 0.1) and it is
    * logged. The person sees none of this; the map only changes which question is asked next.
    */
+  /**
+   * ALSO READS THE SHAPE OF THE ACCOUNT, WHICH IS THE FLOOR UNDER THE FUNCTION READ.
+   *
+   * It used to return early when the stored function was already confident, which saved one query
+   * and skipped the thing everybody gets regardless of their job - vagueness, non-commitment, work
+   * that cannot be seen from outside. The texts are read once now and used for both.
+   */
   private async roleReadForThisTurn(
     checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
     latestMessage?: string,
-  ): Promise<{ fn: string | null; confidence: number | null }> {
+  ): Promise<{ fn: string | null; confidence: number | null; modes: UniversalMode[] }> {
     const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
-    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return stored;
     const turns = await this.prisma.conversationTurn
       .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true }, orderBy: { createdAt: 'asc' } })
       .catch(() => [] as { content: string }[]);
     const texts = turns.map((t) => t.content ?? '').concat(latestMessage ?? '').filter(Boolean);
-    if (!texts.length) return stored;
+    if (!texts.length) return { ...stored, modes: [] };
+    const modes = detectUniversalModes(texts);
+    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return { ...stored, modes };
     const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
     if (read.fn && read.fn !== stored.fn) {
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
-    return read.fn ? { fn: read.fn, confidence: read.confidence } : stored;
+    return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
   }
 
   /**
@@ -3700,22 +3884,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         take: 120,
       }),
     ]);
-    if (!docs.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
-    const documents = docs.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
+    /*
+     * A DOCUMENT WE COULD NOT READ BACKS NOTHING. Its content is our own sentence saying we could
+     * not open it, and handing that to the model invites it to anchor somebody's record line to an
+     * apology - which then counts as document-backed, which is what makes a report say the evidence
+     * is strong. Three other readers already stepped around these; this one did not exist yet.
+     */
+    const readable = onlyWhatWeCouldRead(docs);
+    if (!readable.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
+    const documents = readable.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
     const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
     const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
       ANCHOR_TO_DOCUMENTS_PROMPT,
       [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
       ANCHOR_TO_DOCUMENTS_SCHEMA,
     ).catch(() => null);
-    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
+    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && readable[b.document]);
     let backed = 0;
     for (const b of rows) {
-      /* Every decision, greppable, with the line, the passage and the document: a false match is
-         something to see, not something to watch for. */
-      this.logger.log(`anchoring-decision participant=${participantId} line=${JSON.stringify(entries[b.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[b.document].fileName)} passage=${JSON.stringify((b.where ?? '').slice(0, 200))}`);
+      /*
+       * EVERY DECISION, GREPPABLE - BY ITS IDENTIFIERS, NOT ITS CONTENT (G4).
+       *
+       * This printed the record entry in full and two hundred characters of the document passage.
+       * That is the private record, in a log that more people can read than the database and that
+       * no retention policy sweeps. The ids are what a false match is chased with anyway: the row
+       * is one query away for anybody who is allowed to see it, and this line is readable by
+       * people who are not.
+       */
+      this.logger.log(`anchoring-decision participant=${participantId} entry=${entries[b.line].id} document=${readable[b.document].id} passageChars=${(b.where ?? '').length}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (docs[b.document] as any).origin ?? null } })
+        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: readable[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (readable[b.document] as any).origin ?? null } })
         .then(() => { backed++; })
         .catch(() => undefined);
     }
@@ -3725,11 +3923,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * their own report, and is put to them as a question in their next session. "Not what I said"
      * still works on it. The document may be the stale one.
      */
-    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
+    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && readable[d.document] && d.says?.trim());
     for (const d of differs) {
-      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} line=${JSON.stringify(entries[d.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[d.document].fileName)} says=${JSON.stringify(d.says.trim().slice(0, 200))}`);
+      /* Ids, not content. See the anchoring-decision line above. */
+      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} entry=${entries[d.line].id} document=${readable[d.document].id} saysChars=${d.says.trim().length}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
+        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: readable[d.document].id } })
         .catch(() => undefined);
     }
     if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);
@@ -4965,8 +5164,69 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async decline(checkInId: string, requestingUserId: string) {
     /** The already-complete and already-declined refusals both live in the loader now. */
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.DECLINED } });
+    /*
+     * WHAT THEY ALREADY SAID IS THEIRS. The loader permits IN_PROGRESS, so somebody can decline
+     * partway through - and this wrote DECLINED and nothing else, losing every turn they had given
+     * from their private record. The extraction complete() runs is run here first, best-effort, so
+     * their own words reach their own record before the session closes. And the reason is written,
+     * so a reader can tell a decline from a close.
+     */
+    if (checkIn.status === CheckInStatus.IN_PROGRESS) {
+      await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
+        this.logger.warn(`Record extraction before a decline failed for check-in ${checkIn.id}: ${err.message}`),
+      );
+    }
+    await this.prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART },
+    });
+    await this.closeTheRoundIfThisWasTheLastAnswer(checkIn.groundId, checkIn.sessionNumber);
     return { status: 'declined' };
+  }
+
+  /**
+   * A DECLINE IS AN ANSWER, SO IT CAN BE THE ONE THE ROUND WAS WAITING ON.
+   *
+   * Every reader was taught that a decline counts as an answer. The decline itself was not: it
+   * wrote DECLINED and returned, recording no round and emitting nothing. So when the last
+   * outstanding person declined, the round was closed in fact and open in the record, and the
+   * report - already written, already waiting - sat there until the 3am backstop found it. Up to a
+   * day late, for the one person who acted.
+   *
+   * This is the backstop's own logic, run at the moment it becomes true instead of overnight, and
+   * guarded the same way: the round row first, then release only if no report has been taken for
+   * this round. `recordRoundCompletion` returns false when the round is not closed, when it was
+   * already recorded, or when nobody completed - so a round of nothing but declines correctly
+   * produces no report, because there is no account to build one from.
+   *
+   * It rides the same event as the backstop, with the same `source: 'repair'`, which already means
+   * "a round closed without its report" everywhere that listens. That keeps the admin's "X has
+   * checked in" notice suppressed, which is right: nobody checked in.
+   */
+  private async closeTheRoundIfThisWasTheLastAnswer(groundId: string, sessionNumber: number): Promise<void> {
+    const roundJustClosed = await recordRoundCompletion(this.prisma, this.events, groundId, sessionNumber);
+    if (!roundJustClosed) return;
+
+    const taken = await this.prisma.reportRound.findUnique({
+      where: { groundId_sessionNumber: { groundId, sessionNumber } },
+      select: { id: true },
+    });
+    if (taken) return;
+
+    /* Somebody has to have given an account for there to be a report. */
+    const anAccount = await this.prisma.checkIn.findFirst({
+      where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED },
+      select: { id: true, participantId: true },
+    });
+    if (!anAccount) return;
+
+    this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+      checkInId: anAccount.id,
+      groundId,
+      participantId: anAccount.participantId,
+      sessionNumber,
+      source: 'repair',
+    } satisfies CheckInCompletedEvent);
   }
 
   // --- helpers ---
@@ -5022,15 +5282,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
 
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        groundId,
-        participantId: participant.id,
-        sessionNumber: nextSession,
-        status: CheckInStatus.NOT_STARTED,
-        isClarification: true,
-        clarificationTarget: inferenceId,
-      },
+    const checkIn = await this.createSessionOnce({
+      groundId,
+      participantId: participant.id,
+      sessionNumber: nextSession,
+      status: CheckInStatus.NOT_STARTED,
+      isClarification: true,
+      clarificationTarget: inferenceId,
     });
 
     return { checkInId: checkIn.id };
@@ -5120,16 +5378,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // something - but the shared report needs to know this correction landed
     // after they already confirmed their account was accurate, so it can be
     // surfaced as a flagged update rather than silently blended in.
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        groundId,
-        participantId: participant.id,
-        sessionNumber: nextSession,
-        status: CheckInStatus.NOT_STARTED,
-        isSelfCorrection: true,
-        selfCorrectionTargetSession: targetSessionNumber,
-        isPostSignOff: !!participant.signedOffAt,
-      },
+    const checkIn = await this.createSessionOnce({
+      groundId,
+      participantId: participant.id,
+      sessionNumber: nextSession,
+      status: CheckInStatus.NOT_STARTED,
+      isSelfCorrection: true,
+      selfCorrectionTargetSession: targetSessionNumber,
+      isPostSignOff: !!participant.signedOffAt,
     });
 
     return { checkInId: checkIn.id };
@@ -5152,6 +5408,82 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * is exactly where a person would expect to see other people talking, and here
    * they never will.
    */
+  /**
+   * WHAT EACH ACCOUNT SHOWS, FOR THE LEAD. See what-an-account-shows.ts for the decision and the
+   * three rules. Lead only, as the raw route it replaces was. Completed sessions only: an account
+   * still being given is not one to read yet, and reading half of it would mislead.
+   */
+  async whatTheAccountsShow(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, initiatorId: requestingUserId },
+      select: {
+        id: true, label: true, scenario: true, brief: true,
+        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        participants: {
+          select: {
+            id: true, email: true, partyType: true, roleAsDescribed: true,
+            checkIns: {
+              where: { status: CheckInStatus.COMPLETED },
+              orderBy: { sessionNumber: 'asc' },
+              select: { id: true, sessionNumber: true, completedAt: true },
+            },
+          },
+        },
+      },
+    });
+    if (!ground) throw new ForbiddenException('Only the lead of this check-in can read what the accounts show');
+
+    const asks: WhatItAsks = { label: ground.label, scenario: ground.scenario as any, brief: ground.brief, objectives: ground.objectives };
+
+    const participants = await Promise.all(
+      ground.participants.map(async (p) => {
+        const sessions = await Promise.all(
+          p.checkIns.map(async (ci) => {
+            const read = await this.readOfOneAccount(ci.id, ground.id, p.id, asks, p.partyType, p.roleAsDescribed);
+            return { checkInId: ci.id, sessionNumber: ci.sessionNumber, completedAt: ci.completedAt, ...read, derived: true as const };
+          }),
+        );
+        return { participantId: p.id, email: p.email, partyType: p.partyType, sessions };
+      }),
+    );
+
+    return { groundId: ground.id, groundLabel: ground.label, whatItAsks: asks, meaning: A_READ_IS_DERIVED, participants };
+  }
+
+  /** Made once per account and kept; screened at the read every time, cached or not. */
+  private async readOfOneAccount(
+    checkInId: string, groundId: string, participantId: string, asks: WhatItAsks, partyType: string, roleAsDescribed: string | null,
+  ): Promise<{ shows: string | null; withheld: number }> {
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const theirs = turns.map((t) => t.content ?? '').filter((t) => t.trim());
+    if (theirs.length === 0) return { shows: null, withheld: 0 };
+    const sourceHash = sourceHashOf(theirs);
+
+    const kept = await this.prisma.whatAnAccountShows
+      .findUnique({ where: { checkInId_sourceHash: { checkInId, sourceHash } }, select: { text: true } })
+      .catch(() => null);
+    const raw = kept?.text ?? (await this.anthropic.respond(theInstruction(asks, partyType, roleAsDescribed), [
+      { role: 'user', content: theirs.join('\n\n') },
+    ]));
+
+    /* The screen runs on what is returned, kept or fresh: a line that would be withheld is withheld the same way. */
+    const screened = withoutTheirWords(forHumans(raw), theirs);
+    if (!kept && raw?.trim()) {
+      await this.prisma.whatAnAccountShows
+        .upsert({
+          where: { checkInId_sourceHash: { checkInId, sourceHash } },
+          create: { checkInId, groundId, participantId, sourceHash, text: raw, withheld: screened.withheld },
+          update: {},
+        })
+        .catch(() => undefined);
+    }
+    return { shows: screened.text || null, withheld: screened.withheld };
+  }
+
   async getMyGroundTranscript(groundId: string, requestingUserId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },

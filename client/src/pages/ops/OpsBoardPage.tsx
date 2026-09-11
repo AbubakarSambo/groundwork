@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsNumber } from '@/api/ops'
 import { Adder } from './OpsForm'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * The back office board.
@@ -39,7 +40,7 @@ function Rows({ rows }: { rows: Array<Record<string, unknown>> }) {
   const show = (value: unknown) => {
     if (value === null || value === undefined) return '—'
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-      return new Date(value).toLocaleDateString()
+      return whenItWas(value, 'day')
     }
     /*
      * A stage arrives as the enum the database stores. Showing LINED_UP and
@@ -171,7 +172,7 @@ function YourStanding({ personKey }: { personKey: string }) {
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
             {t.isTargetListExpectation ? 'this list' : t.period} · by{' '}
-            {new Date(t.dueDate).toLocaleDateString()}
+            {whenItWas(t.dueDate, 'day')}
           </div>
         </div>
       ))}
@@ -264,7 +265,7 @@ function YourTodos({ personKey }: { personKey: string }) {
             <span style={{ fontSize: 13 }}>{t.title}</span>
             {t.dueDate && (
               <span style={{ fontSize: 12, color: 'var(--gw-sub)', marginLeft: 'auto' }}>
-                {new Date(t.dueDate).toLocaleDateString()}
+                {whenItWas(t.dueDate, 'day')}
               </span>
             )}
           </li>

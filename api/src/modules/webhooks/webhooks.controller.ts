@@ -5,7 +5,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { WebhooksService } from './webhooks.service';
-import { SENDABLE_EVENTS, NOT_YET_EMITTED } from './events-we-can-actually-send';
+import { SENDABLE_EVENTS, NOT_YET_EMITTED, DEPRECATED_EVENTS } from './events-we-can-actually-send';
 
 /**
  * Registering endpoints is a human's job in the console, so this is session-authenticated and
@@ -22,7 +22,7 @@ export class WebhooksController {
   @Get('events')
   @ApiOperation({ summary: 'Which events can be subscribed to, and which exist but cannot fire yet' })
   events() {
-    return { available: SENDABLE_EVENTS, notYetEmitted: NOT_YET_EMITTED };
+    return { available: SENDABLE_EVENTS, notYetEmitted: NOT_YET_EMITTED, deprecated: DEPRECATED_EVENTS };
   }
 
   @Post('endpoints')
@@ -50,6 +50,12 @@ export class WebhooksController {
   @ApiOperation({ summary: 'Rotate the signing secret. The old one keeps working until the next rotation.' })
   rotate(@CurrentUser('organizationId') organizationId: string, @Param('id') id: string) {
     return this.webhooks.rotateSecret(organizationId, id);
+  }
+
+  @Post('endpoints/:id/reactivate')
+  @ApiOperation({ summary: 'Switch an endpoint back on after it was switched off for being unreachable' })
+  reactivate(@CurrentUser('organizationId') organizationId: string, @Param('id') id: string) {
+    return this.webhooks.reactivate(organizationId, id);
   }
 
   @Get('deliveries')

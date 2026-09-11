@@ -136,11 +136,20 @@ describe('GW-MGR-ALIGN-03: the board shapes, it does not detect', () => {
     expect(boardOnly().buildManagerAlignment({ leadershipGaps: [gap({ periods: undefined })] })).toEqual([]);
   });
 
-  it('drops a pattern name it does not recognise rather than rendering a bare string', () => {
+  it('shows a pattern name it does not recognise under a generic heading rather than dropping it', () => {
+    /*
+     * REVERSED, DELIBERATELY. This used to drop it, on the argument that a read without its pole
+     * and label is not actionable. But the words were there - a real read the model had found
+     * outside the library - and dropping it meant the board lost it with nothing said. The report
+     * deletes nothing; it is about how it shows things. So it is shown, named plainly, and the
+     * quote, name and one-period rules below still drop what would leak or mislead.
+     */
     const reads = boardOnly().buildManagerAlignment({
       leadershipGaps: [gap({ pattern: 'MADE_UP_PATTERN' }), gap()],
     });
-    expect(reads).toHaveLength(1);
+    expect(reads).toHaveLength(2);
+    expect(reads[0].label).toBe('Also worth your attention');
+    expect(reads[0].pole).toBeNull();
   });
 
   it('produces nothing when synthesis found no pattern', () => {

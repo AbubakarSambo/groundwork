@@ -112,4 +112,13 @@ export const CronLock = {
   SESSION_CLOSING_WARNINGS: 920_007,
   /** Invites held back until the person's start date. See grounds.cron.ts inviteJoinersWhoStartToday. */
   DEFERRED_INVITES: 920_008,
+  /** Mail held for quiet hours, sent when due. See email/held-mail.cron.ts. */
+  HELD_MAIL: 920_009,
+  /** Its own lock: it shared SEND_REMINDERS with the daily reminder job, and a long pass overlapping
+      09:00 skipped the day's reminders with no retry. */
+  SESSION_READY: 920_010,
+  /** The invite-expiry sweep. See grounds.cron.ts tellThemBeforeAnInviteLapses. */
+  INVITE_EXPIRY: 920_011,
+  /** The daily sweep of unredeemed Google sign-in codes. See auth/auth.cron.ts. */
+  OAUTH_CODES: 920_012,
 } as const;

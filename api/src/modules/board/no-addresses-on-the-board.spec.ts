@@ -21,7 +21,14 @@ const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
 
 describe('GW-BOARD-NAMES: no address is ever a label', () => {
   it('the one place labels are built falls back to the role', () => {
-    expect(SRC).toContain("return n || p.roleAsDescribed?.trim() || null;");
+    /*
+     * Still the role, and still never the address - which is what this test is for. It goes through
+     * `aNameOrNothing` now, because the raw field was printing a whole sentence where a name goes:
+     * "Chidinma Obi - She is handing over key financial processes after running them for five
+     * years.: 0 check-ins on record". A short description is kept as-is; a long one gives up its
+     * leading name; anything else returns null and the caller says it cannot name them.
+     */
+    expect(SRC).toContain('return n || aNameOrNothing(p.roleAsDescribed) || null;');
   });
 
   it('and not to the email', () => {

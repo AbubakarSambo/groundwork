@@ -19,7 +19,7 @@ import { conversationApi } from '@/api/conversation'
  *
  * The engine can close a check-in itself, on the person's last answer. When it
  * does, the record is extracted and the check-in is COMPLETED before the person
- * presses anything. Pressing "Finish check-in" then asks the server to complete
+ * presses anything. Pressing "Finish session" then asks the server to complete
  * it a second time, and the server correctly refuses:
  *
  *     400  "This check-in is already complete"
@@ -84,12 +84,12 @@ describe('finishing a check-in the engine already closed', () => {
     renderChat()
 
     fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish check-in/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
 
     // THE REGRESSION. The button lived on forever, and pressing it again only
     // produced the same refusal.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish check-in/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
     })
   }, 15_000)
 
@@ -100,13 +100,13 @@ describe('finishing a check-in the engine already closed', () => {
     renderChat()
 
     fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    const finish = await screen.findByRole('button', { name: /Finish check-in/i })
+    const finish = await screen.findByRole('button', { name: /Finish session/i })
     fireEvent.click(finish)
 
     // A real refusal must keep the way forward open - the person has something
     // left to do, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
-    expect(await screen.findByRole('button', { name: /Finish check-in/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Finish session/i })).toBeTruthy()
   }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
@@ -114,10 +114,10 @@ describe('finishing a check-in the engine already closed', () => {
     renderChat()
 
     fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish check-in/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish check-in/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
     })
   }, 15_000)
 })

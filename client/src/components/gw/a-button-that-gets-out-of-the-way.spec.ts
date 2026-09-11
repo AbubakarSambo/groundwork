@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
-  A_MARGIN, THE_NAV_STRIP_IS, WHERE_IT_STARTS, asStyle, keepItOnScreen, rememberIt,
+  A_MARGIN, THE_NAV_STRIP_IS,
+  A_COMPOSER_ROW_IS, WHERE_IT_STARTS, asStyle, keepItOnScreen, rememberIt,
   theyMeantToMoveIt, whereItLands, whereTheyLeftIt, whichCorner,
 } from './a-button-that-gets-out-of-the-way'
 
@@ -20,10 +21,17 @@ describe('which corner a drop belongs to', () => {
 
 describe('where a drop lands', () => {
   it('measures from the corner it chose, not from the origin', () => {
-    const landed = whereItLands({ x: 1300, y: 800 }, wide, 44)
+    /* Dropped clear of the reserved strip at the foot, so this is the arithmetic on its own. */
+    const landed = whereItLands({ x: 1300, y: 600 }, wide, 44)
     expect(landed.corner).toBe('bottom-right')
     expect(landed.x).toBe(1440 - 1300 - 44)
-    expect(landed.y).toBe(900 - 800 - 44)
+    expect(landed.y).toBe(900 - 600 - 44)
+  })
+
+  it('and a drop onto the composer is lifted off it', () => {
+    /* The whole complaint: dropped at the very foot of the screen, which is the send button. */
+    const landed = whereItLands({ x: 1300, y: 890 }, wide, 44)
+    expect(landed.y).toBeGreaterThanOrEqual(A_COMPOSER_ROW_IS)
   })
 })
 
@@ -46,11 +54,17 @@ describe('it is never off-screen, whatever it was told', () => {
     expect(held.y).toBeGreaterThanOrEqual(THE_NAV_STRIP_IS)
   })
 
-  it('leaves the nav strip out of it where there is no nav strip', () => {
-    /* Wide screen: the bar is not there, so the floor is the ordinary margin and a person can put
-       the button right down in the corner. */
-    expect(keepItOnScreen({ corner: 'bottom-right', x: 12, y: 0 }, wide).y).toBe(A_MARGIN)
-    /* Top corners never have one at any width. */
+  it('leaves the nav strip out of it where there is no nav strip, but never the composer', () => {
+    /*
+     * Two different reservations with two different reasons. The nav strip is a phone-only bar, so
+     * a wide screen does not owe it anything. The composer is at the foot of every chat surface at
+     * every width, and it is the thing this button kept landing on - so it is reserved always,
+     * including for somebody whose position was remembered before the reservation existed.
+     */
+    expect(keepItOnScreen({ corner: 'bottom-right', x: 12, y: 0 }, wide).y).toBe(A_COMPOSER_ROW_IS + A_MARGIN)
+    expect(keepItOnScreen({ corner: 'bottom-right', x: 12, y: 0 }, phone).y)
+      .toBe(THE_NAV_STRIP_IS + A_COMPOSER_ROW_IS + A_MARGIN)
+    /* Top corners have neither, at any width. */
     expect(keepItOnScreen({ corner: 'top-right', x: 12, y: 0 }, phone).y).toBe(A_MARGIN)
   })
 })

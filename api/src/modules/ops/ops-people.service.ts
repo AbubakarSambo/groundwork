@@ -34,6 +34,9 @@ export interface SignedInAccount {
   isPlatformAdmin?: boolean | null;
 }
 
+/** The person id of an identity held in memory for a read. Nothing is written under it. */
+export const NOT_YET_ON_THE_ROSTER = 'not-yet-on-the-roster';
+
 export interface OpsIdentity {
   personId: string;
   key: string;
@@ -90,18 +93,33 @@ export class OpsPeopleService implements OnModuleInit {
    * membership. `OpsPerson.userId` remains the single link, and it is still a
    * plain column with no foreign key.
    */
-  async identify(account: SignedInAccount | undefined): Promise<OpsIdentity | null> {
+  async identify(account: SignedInAccount | undefined, opts: { admit?: boolean } = {}): Promise<OpsIdentity | null> {
     if (!account?.id) return null;
+    const admit = opts.admit !== false;
 
-    const person = await this.prisma.opsPerson.findUnique({
-      where: { userId: account.id },
-      include: { grants: true },
-    });
+    const person =
+      (await this.prisma.opsPerson.findUnique({
+        where: { userId: account.id },
+        include: { grants: true },
+      })) ??
+      /* A second address of the same human. See OpsPersonAccount. */
+      (await this.prisma.opsPersonAccount.findUnique({
+        where: { userId: account.id },
+        include: { person: { include: { grants: true } } },
+      }))?.person ?? null;
 
     if (!person) {
       /* A platform admin is on this team by definition. See the note in
          `a-platform-admin-is-on-the-team.ts` for why that is not an escalation. */
       if (!account.isPlatformAdmin) return null;
+      /*
+       * A READ DOES NOT WRITE THE ROSTER (fix plan A15, as corrected by the audit). The 2026-09-05
+       * decision stands: a platform admin is on the team, and is admitted with the CEO grants. What
+       * changes is WHEN the row is written. A GET answers with the same identity held in memory; the
+       * first request that changes anything, and the door's own setup, write the row. So opening
+       * the back office to look does not put somebody on the roster who never did anything in it.
+       */
+      if (!admit) return this.whoTheyWouldBe(account);
       return this.admitThePlatformAdmin(account);
     }
 
@@ -129,6 +147,26 @@ export class OpsPeopleService implements OnModuleInit {
    * why the key is checked as well. Somebody taken off the team on purpose stays
    * off, and gets the ordinary refusal.
    */
+  /** The identity a platform admin with no row would be given, without giving it. */
+  private async whoTheyWouldBe(account: SignedInAccount): Promise<OpsIdentity | null> {
+    const key = keyForAccount(account.email ?? '');
+    const already =
+      (account.email
+        ? await this.prisma.opsPerson.findUnique({ where: { email: account.email.toLowerCase() }, include: { grants: true } })
+        : null) ?? (await this.prisma.opsPerson.findUnique({ where: { key }, include: { grants: true } }));
+    if (already) {
+      if (!already.active) return null;
+      return { personId: already.id, key: already.key, displayName: already.displayName, functionalRole: already.functionalRole, capabilities: already.grants.map((g) => g.capability) };
+    }
+    return {
+      personId: NOT_YET_ON_THE_ROSTER,
+      key,
+      displayName: [account.firstName, account.lastName].filter(Boolean).join(' ') || account.email || key,
+      functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
+      capabilities: [...GRANTS_FOR_A_PLATFORM_ADMIN],
+    };
+  }
+
   private async admitThePlatformAdmin(account: SignedInAccount): Promise<OpsIdentity | null> {
     const key = keyForAccount(account.email ?? '');
 
@@ -325,6 +363,7 @@ export class OpsPeopleService implements OnModuleInit {
 
     if (!active) {
       await this.prisma.opsGrant.deleteMany({ where: { personId: person.id } });
+      await this.handWhatTheyOwnedToWhoeverHoldsTheRole(person.id, person.functionalRole);
     }
 
     return this.prisma.opsPerson.update({
@@ -334,6 +373,28 @@ export class OpsPeopleService implements OnModuleInit {
   }
 
   /** The roles somebody can be given, and what each comes with. */
+  /**
+   * NOTHING STAYS OWNED BY SOMEBODY WHO HAS LEFT. Roadmap items, workstreams, objectives, key results
+   * and open requests pass to whoever holds the same role, else to the CEO, else to anybody active.
+   * A board pointing at a person no longer on the team is a board nobody acts on.
+   */
+  private async handWhatTheyOwnedToWhoeverHoldsTheRole(personId: string, role: OpsFunctionalRole) {
+    const active = await this.prisma.opsPerson.findMany({ where: { active: true, id: { not: personId } }, orderBy: { createdAt: 'asc' } });
+    const heir = active.find((p) => p.functionalRole === role) ?? active.find((p) => p.functionalRole === 'CEO') ?? active[0];
+    if (!heir) return;
+    await this.prisma.$transaction([
+      this.prisma.opsRoadmapItem.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsRoadmapItem.updateMany({ where: { proposedById: personId }, data: { proposedById: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { ownerPersonId: personId }, data: { ownerPersonId: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { oversightPersonId: personId }, data: { oversightPersonId: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { technicalPartnerPersonId: personId }, data: { technicalPartnerPersonId: heir.id } }),
+      this.prisma.opsObjective.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsKeyResult.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsResourceRequest.updateMany({ where: { requesterId: personId, status: 'open' as any }, data: { requesterId: heir.id } }),
+    ]);
+    this.logger.warn(`What ${personId} owned now belongs to ${heir.displayName} (${heir.key}).`);
+  }
+
   roles() {
     return everyRole();
   }

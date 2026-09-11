@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
 import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 export function OrgSetupPage() {
   const navigate = useNavigate()
@@ -25,7 +26,8 @@ export function OrgSetupPage() {
   })
 
   function handleSave() {
-    if (!orgName.trim() || !orgEmail.includes('@')) return
+    /* The organisation's contact address is optional (F6): nothing mails it, and Stripe asks for one at checkout if it is empty. */
+    if (!orgName.trim() || (orgEmail.trim() && !looksLikeAnAddress(orgEmail))) return
     saveMut.mutate()
   }
 
@@ -33,11 +35,6 @@ export function OrgSetupPage() {
    * NAVIGATING DURING RENDER IS A BUG, and this one was logging "Cannot update a component while
    * rendering a different component" on every visit. An effect is where a redirect belongs.
    */
-  useEffect(() => {
-    if (org?.email) navigate('/grounds', { replace: true })
-  }, [org?.email, navigate])
-
-  if (org?.email) return null
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -104,11 +101,11 @@ export function OrgSetupPage() {
 
           <button
             onClick={handleSave}
-            disabled={saveMut.isPending || !orgName.trim() || !orgEmail.includes('@')}
+            disabled={saveMut.isPending || !orgName.trim() || !looksLikeAnAddress(orgEmail)}
             style={{
               width: '100%', padding: '11px 20px', background: 'var(--gw-navy)', color: 'white', border: 'none',
               borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: saveMut.isPending || !orgName.trim() || !orgEmail.includes('@') ? 0.5 : 1,
+              opacity: saveMut.isPending || !orgName.trim() || !looksLikeAnAddress(orgEmail) ? 0.5 : 1,
             }}
           >
             {saveMut.isPending ? 'Saving…' : 'Continue'}

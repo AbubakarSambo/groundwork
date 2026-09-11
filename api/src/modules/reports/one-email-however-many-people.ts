@@ -1,3 +1,4 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 /**
  * WHEN A REVIEW FALLS DUE, THE MANAGER GETS THE REPORT.
  *
@@ -130,6 +131,6 @@ export function saidAsAList(names: string[]): string {
 }
 
 const asADate = (d: Date) =>
-  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  whenItWas(d, 'full', 'UTC');
 
 const startOfDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));

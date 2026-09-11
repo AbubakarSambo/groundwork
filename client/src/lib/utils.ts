@@ -59,10 +59,12 @@ export function personLabel(p: {
 } | null | undefined): string {
   const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
   if (name) return name
-  const role = p?.roleAsDescribed?.trim()
-  if (role) return role
+  /* The address before the role: "runs the connect page · waiting" in a list of people reads as a
+     job title, and an address is at least somebody. */
   const email = p?.email?.trim()
   if (email) return email
+  const role = p?.roleAsDescribed?.trim()
+  if (role) return role
   return 'a teammate'
 }
 

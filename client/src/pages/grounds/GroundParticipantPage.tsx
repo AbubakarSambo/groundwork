@@ -1,3 +1,4 @@
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
@@ -22,6 +23,7 @@ import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsT
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 
 
@@ -67,6 +69,12 @@ export function GroundParticipantPage() {
     setSearchParams(next, { replace: true })
   }
   const [showPaywall, setShowPaywall] = useState(false)
+  /* Focus goes back to whatever opened it when it closes. */
+  const paywallOpener = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (showPaywall) paywallOpener.current = document.activeElement as HTMLElement | null
+    else paywallOpener.current?.focus?.()
+  }, [showPaywall])
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -152,7 +160,8 @@ export function GroundParticipantPage() {
         })
       }
     },
-    onError: () => toast.error('Could not start session. Try again.'),
+    /* mutationFn extracts the server's sentence into the Error; this used to throw it away for four fixed words. */
+    onError: (e: any) => toast.error(e?.message ?? 'Could not start session. Try again.'),
   })
 
   const redeemPaywallCode = useMutation({
@@ -178,12 +187,15 @@ export function GroundParticipantPage() {
       setPaywallFreeExtensionAvailable(false)
       toast.success('Free session added. You can now start your session.')
     },
-    onError: () => toast.error('Could not claim free session. Try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free session. Try again.'),
   })
 
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
-    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
+    onSuccess: r => {
+      if (r.checkoutUrl) window.location.href = r.checkoutUrl
+      else toast.error('Checkout did not open. Try again, or email hello@myground.work.')
+    },
     onError: () => toast.error('Could not start checkout. Try again.'),
   })
 
@@ -321,17 +333,26 @@ export function GroundParticipantPage() {
    * The same question the other page asks to decide whether somebody may run this.
    */
   const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'
+  /*
+   * WHO CAN PRESS THE BUTTONS ON THE PAYWALL. Both routes behind them - the free extension and the
+   * subscription - are admin-only on the server. The overlay offered them to any initiator, and an
+   * organisation where anyone may open a check-in makes non-admins initiators routinely, so a blocked
+   * person was shown two buttons that could only 403. Same rule as the server, one const, used twice.
+   */
+  const canPayHere = isInitiator && user?.role === 'ADMIN'
 
   if (!myParticipant) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>Account not linked</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>You are not in this check-in</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
-            Your account is not linked to this check-in. Please contact the check-in admin.
+            {user?.role === 'ADMIN'
+              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+              : 'Whoever runs it can add you.'}
           </div>
-          <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-            Back to check-ins
+          <button onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+            {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
           </button>
         </div>
       </div>
@@ -356,14 +377,15 @@ export function GroundParticipantPage() {
 
   // Derive the session total the same way the create wizard does
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
-  // the ground carries. Previously this fell back to a hardcoded 6, so a
-  // 90-day monthly ground (really 3 sessions) displayed "of 6".
-  // Same rule as everywhere else now - see lib/sessionCount, which the server's
-  // totalSessionsFor is the authority for. This page already rounded down; the
-  // admin page and sidebar rounded up, and a ground could never call itself
-  // finished as a result.
-  const totalSessions =
-    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
+  // the ground carries - see lib/sessionCount, which the server's
+  // totalSessionsFor is the authority for. This fell back to a hardcoded 6 for
+  // years, directly under the comment naming the hardcoded 6 as the bug, so a
+  // ground with no timeline displayed "of 6" AND was offered the way to end the
+  // engagement at session 5 (MyRecord gates the resolution panel on this
+  // number). Unknown is null: the header prints the session with no total, and
+  // the gate stays closed rather than guessed open.
+  const totalSessions: number | null =
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? null
 
 
   /**
@@ -397,7 +419,7 @@ export function GroundParticipantPage() {
       {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</span>
+          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
             {/*
@@ -434,7 +456,7 @@ export function GroundParticipantPage() {
               <span>
                 {canRunThisCheckIn
                   ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
-                  : 'Just yours - only you see this until the report releases.'}
+                  : 'Your own check-in. The report shows where you and the others agree, differ, and what to do next.'}
               </span>
               {/*
                 WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
@@ -451,11 +473,25 @@ export function GroundParticipantPage() {
                   · A guest check-in at {(ground as any).guestIn}
                 </span>
               )}
-              {totalSessions != null && (
-                <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
-              )}
-              {(ground as any).daysLeft != null && (
-                <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+              {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
+              {howItEnded(ground as any) ? (
+                <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
+              ) : (
+                <>
+                  {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
+                      apart, and this line numbered the not-yet-due session as current anyway. When it
+                      opens later, the date is the news; the total is printed only when it is known. */}
+                  {opensLater ? (
+                    <span>· Next session opens {whenItWas(openAvailableFrom, 'dayAndMonthLong')}</span>
+                  ) : totalSessions != null ? (
+                    <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+                  ) : (
+                    <span>· Session {completedCheckIns.length + 1}</span>
+                  )}
+                  {(ground as any).daysLeft != null && (
+                    <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -702,6 +738,16 @@ export function GroundParticipantPage() {
         {/* REPORT TAB */}
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/*
+              A SHARED REPORT NEEDS TWO PEOPLE, AND THE PAGE SAYS SO. A check-in with one person on it
+              can never release one - the rule refuses outright below two - and the page said
+              "forming" for ever. The truth, and who can change it (fix plan B17).
+            */}
+            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+              <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+                The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
+              </div>
+            )}
 
             <SharedReportForAParty
               groundId={id!}
@@ -758,17 +804,23 @@ export function GroundParticipantPage() {
 
       {/* Paywall overlay */}
       {showPaywall && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div
+          role="dialog" aria-modal="true" aria-label="Your session is complete"
+          onKeyDown={e => { if (e.key === 'Escape') setShowPaywall(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}
+        >
+          {/* Opened programmatically, so focus was left behind the scrim: a keyboard or screen-reader user was
+              dropped into a modal they were never told about and could tab out of into an inert page. */}
+          <div tabIndex={-1} ref={el => el?.focus()} style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto', outline: 'none' }}>
 
-            {myParticipant?.partyType === 'INITIATOR' ? (
+            {canPayHere ? (
               <>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Your session is complete.</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>
                   Did Groundwork help your team move forward? Choose what works best for you.
                 </div>
 
-                {/* Tier 1: Free extension */}
+                {/* Tier 1: Free extension. */}
                 {paywallFreeExtensionAvailable && (
                   <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
@@ -812,9 +864,13 @@ export function GroundParticipantPage() {
               </>
             ) : (
               <>
+                {/* THE TRUE FACT AND NOTHING MORE. This said "Your initiator has been notified" - and nothing
+                    notified the initiator; the sentence was the only occurrence of the idea in the repository.
+                    The server does tell the organisation's admins when the gate refuses (tellAnAdminToAddACard),
+                    and they are the people who can act, so that is what is said. */}
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Session needed to continue</div>
                 <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>
-                  Your initiator has been notified. Once they add a session, you will be able to check in.
+                  Only an organisation admin can add sessions. We have told them you are waiting.
                 </div>
               </>
             )}
@@ -822,7 +878,7 @@ export function GroundParticipantPage() {
             {/* Access code: an admin/lead instrument for bypassing a
                 payment block. It used to render for everyone, sending plain
                 participants hunting for a code they were never issued. */}
-            {myParticipant?.partyType === 'INITIATOR' && (
+            {canPayHere && (
             <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have an access code?</div>
               <div style={{ display: 'flex', gap: 8 }}>

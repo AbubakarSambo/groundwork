@@ -1,11 +1,11 @@
-import { looksLikeAConversation, WHAT_THEY_ARE_CONFIRMING, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
+import { looksLikeAConversation, WHAT_THEY_ARE_CONFIRMING, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 
 /**
  * UPLOADING A RECORD OF A CONVERSATION SOMEBODY ELSE WAS IN.
  *
- * The person uploading is the only one who can have told the people in it. So the confirmation
- * happens at the moment of uploading and refuses rather than warns - a transcript sitting in a
- * database waiting for permission is the thing this exists to prevent.
+ * The person uploading is the only one who can have told the people in it. So the assumption is
+ * stated at the moment of uploading - and, since 11 September 2026, stated rather than enforced:
+ * nothing is refused, the sentence is what lands. See the module's own docstring.
  */
 describe('what it recognises', () => {
   it('a file that says what it is', () => {
@@ -39,7 +39,7 @@ describe('what it recognises', () => {
 });
 
 describe('what the person is asked', () => {
-  it('to confirm the people in it were told, by them', () => {
+  it('that uploading means the people in it know, and that they told them', () => {
     expect(WHAT_THEY_ARE_CONFIRMING).toContain('they know');
     expect(WHAT_THEY_ARE_CONFIRMING).toContain('you told them, rather than us');
   });
@@ -48,15 +48,17 @@ describe('what the person is asked', () => {
     expect(WHAT_THEY_ARE_CONFIRMING).toContain('help your team work better');
   });
 
-  it('and the refusal says why it cannot be anybody else', () => {
-    expect(NOT_CONFIRMED).toContain('We cannot ask them');
-    expect(NOT_CONFIRMED).toContain('you are the one who was in the room');
+  it('and the sentence said back says why it cannot be anybody else', () => {
+    expect(THE_ASSUMPTION_WHEN_UPLOADING).toContain('We cannot ask them');
+    expect(THE_ASSUMPTION_WHEN_UPLOADING).toContain('you are the one who was in the room');
+    /* Kept, not refused. */
+    expect(THE_ASSUMPTION_WHEN_UPLOADING).toMatch(/has been kept/);
   });
 
   it('and never claims to hold the customer\'s consent', () => {
     /* We never met them. It records that the person in the room says they told them, which is a
        smaller and honest claim. */
-    for (const text of [WHAT_THEY_ARE_CONFIRMING, NOT_CONFIRMED]) {
+    for (const text of [WHAT_THEY_ARE_CONFIRMING, THE_ASSUMPTION_WHEN_UPLOADING]) {
       expect(text).not.toMatch(/\b(we have their consent|they have agreed|consent obtained)\b/i);
     }
   });

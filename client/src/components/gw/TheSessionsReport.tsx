@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Folded } from './two-accounts-side-by-side'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowMuchThereIsToGoOn } from './HowMuchThereIsToGoOn'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * ONE SESSION'S SHARED REPORT.
@@ -85,7 +87,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
     enabled: !!groundId && !!sessionNumber,
   })
-  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading this session…</div>
+  /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
+  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody's side of this session. It takes a moment.</div>
   if (isError || !data) return null
   const d = data as any
   const final = d.state === 'final'
@@ -118,7 +121,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         {/* The header line: what this is, and how many are in it. */}
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : 'still forming'}</b>
+          {/* "Still forming" after everybody had answered and the report was out. Three states, not two. */}
+          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : ofPeople > 0 && answered >= ofPeople ? 'everyone answered' : 'still forming'}</b>
           <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
             {ofPeople ? `${answered} of ${ofPeople} answered` : ''}
           </em>
@@ -211,9 +215,30 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
                     <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
-                    {p.lines?.length
-                      ? <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
-                      : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{p.saying}</div>}
+                    {/*
+                      THE WRITTEN SENTENCE FIRST, THE WORDS UNDER IT.
+
+                      This block was eight stacks of disconnected clauses in italics, one cite each,
+                      and a reader could not tell from them what any one person had said. The server
+                      writes a sentence now.
+
+                      The fragments are not replaced by it. A written summary is a read of somebody's
+                      words; the words are the record, and a reader who wants to check the one
+                      against the other has to be able to. So they are folded, not dropped - a real
+                      `<details>`, which prints open and is announced as expandable.
+                    */}
+                    {p.saying && (
+                      <div style={{ fontSize: 12.5, color: p.lines?.length ? 'var(--gw-text)' : 'var(--gw-muted)', marginBottom: p.lines?.length ? 8 : 0, ...PROSE }}>{p.saying}</div>
+                    )}
+                    {p.lines?.length ? (
+                      p.saying ? (
+                        <Folded summary={`In their own words (${p.lines.length})`}>
+                          <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
+                        </Folded>
+                      ) : (
+                        <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
+                      )
+                    ) : null}
                   </div>
                 ))
                 : themed.map((s: any) => (
@@ -317,10 +342,10 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           {!final
             ? 'People are still answering, so this moves. '
             : amended
-              ? `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''} and updated since, when somebody corrected their own check-in. `
-              : `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''}. This does not change. `}
+              ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in. `
+              : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}. This does not change. `}
           {d.showsEverybody
-            ? 'Everybody in this check-in sees this same report, at the same moment. Nothing here decides who is right.'
+            ? 'Everybody in this check-in reads this same report. Nothing here decides who is right.'
             : 'Until the shared report is out, the words above are your own. The counts are from everybody\'s answers. Nobody else\'s wording reaches you and yours does not reach them.'}
         </div>
       </div>

@@ -48,6 +48,8 @@ function serviceFor(ground: any = GROUND) {
     groundDependency: none,
     patternDetection: none,
     groundObjective: { ...none, create: jest.fn(async () => ({ id: 'o1' })) },
+    groundObjectiveSnapshot: none,
+    groundParticipant: none,
   };
   return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any);
 }

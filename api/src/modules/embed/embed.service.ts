@@ -123,7 +123,10 @@ export class EmbedService {
      * that appears and refuses tells somebody they are being kept out of something, which is a
      * conversation the customer did not ask us to start on their behalf.
      */
-    if (!person || !person.active || config.outOfScopeDepartments.includes(person.department ?? '')) {
+    /* Blank means blank: a person with no department is in no department, so an empty string in the
+       customer's excluded list must not match them (it did, through `?? ''`). */
+    const inAnExcludedDepartment = !!person?.department && config.outOfScopeDepartments.includes(person.department);
+    if (!person || !person.active || inAnExcludedDepartment) {
       return { visible: false as const };
     }
 

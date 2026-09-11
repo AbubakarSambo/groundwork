@@ -40,6 +40,18 @@ export function isAQuestion(sentence: string): boolean {
 }
 
 /**
+ * WHETHER A REPLY IS STILL ASKING SOMETHING: its last sentence ends in a question mark. Used to hold
+ * the completion signal back on a turn that closes and asks in the same breath - the person has a
+ * question in front of them, and a "Complete session" button under it loses the answer.
+ */
+export function stillAsking(reply: string): boolean {
+  const said = (reply ?? '').trim();
+  if (!said) return false;
+  const last = said.split(/(?<=[.!?])\s+/).filter(Boolean).pop() ?? said;
+  return last.trim().endsWith('?');
+}
+
+/**
  * Tracks, across one reply, whether a question has gone out yet.
  *
  * Stateful because the streamed path emits a sentence at a time and has no view of the whole reply

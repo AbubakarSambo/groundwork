@@ -27,7 +27,7 @@ function guardFor(role: OpsFunctionalRole | null, wanted: string | undefined) {
           grants: DEFAULT_GRANTS[role].map((capability) => ({ capability })),
         };
 
-  const prisma = { opsPerson: { findUnique: async () => person } } as never;
+  const prisma = { opsPerson: { findUnique: async () => person }, opsPersonAccount: { findUnique: async () => null } } as never;
   const people = new OpsPeopleService(prisma);
   const reflector = { getAllAndOverride: () => wanted } as unknown as Reflector;
   const request: Record<string, unknown> = { user: { id: 'u1' } };

@@ -29,7 +29,8 @@ describe('stating it', () => {
      * thing the report exists to compare against something else.
      */
     expect(STATE).toMatch(/ground\.initiatorId !== requestingUserId && !isOrgAdmin/);
-    expect(STATE).toMatch(/asker\?\.role === 'ADMIN' && asker\.organizationId === ground\.organizationId/);
+    /* Through the one rule, which asks the role in THIS organisation. */
+    expect(STATE).toMatch(/isOrgAdmin = adminsThisOrg\(asker, ground\)/);
   });
 
   it('writes a new version rather than editing the old one', () => {

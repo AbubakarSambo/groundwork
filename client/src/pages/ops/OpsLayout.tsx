@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
+import { setDisplayTimezone } from '@/lib/a-date-reads-the-same-everywhere'
 import { pagesFor, whyThisIsNotYours, GROUPS } from './what-you-can-open'
 import { useAuthStore } from '@/stores/auth'
 import { TheAssistantAsACustomerSeesIt } from './TheAssistantAsACustomerSeesIt'
@@ -51,7 +52,15 @@ function useWhatDidNotLoad(): { failed: number; retry: () => void } {
         .getQueryCache()
         .findAll({ predicate: (q) => q.state.status === 'error' && q.queryKey[0] === 'ops' }).length
     setFailed(count())
-    return client.getQueryCache().subscribe(() => setFailed(count()))
+    /* The cache notifies synchronously, sometimes from inside a child's render; setting state on
+       the layout right then is the "cannot update a component while rendering a different
+       component" warning on every ops page. A tick later is the same number, quietly. */
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const unsubscribe = client.getQueryCache().subscribe(() => {
+      if (pending) return
+      pending = setTimeout(() => { pending = null; setFailed(count()) }, 0)
+    })
+    return () => { if (pending) clearTimeout(pending); unsubscribe() }
   }, [client])
 
   return {
@@ -69,6 +78,10 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const signedInAs = useAuthStore(state => state.user?.email)
   const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  /* Once per visit, after the read has said who this is: take the seat. A GET does not write the roster (A15). */
+  useEffect(() => { if (me.isSuccess) Promise.resolve().then(() => opsApi.enter()).catch(() => undefined) }, [me.isSuccess])
+  /* Every date in the back office reads in the company's zone, whoever is looking (B10). */
+  useEffect(() => { if (me.data?.displayTimezone) setDisplayTimezone(me.data.displayTimezone) }, [me.data?.displayTimezone])
   /* ABOVE EVERY EARLY RETURN. Called after them it is a conditional hook: the refusal path renders
      fewer hooks than the ordinary one and React throws, which is how a guard for one silent
      failure produced a louder one. */
@@ -226,6 +239,14 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
         }
       `}</style>
       <nav aria-label="Back office" className="gw-ops-rail">
+        {/* THE WAY OUT, AT THE TOP. It was at the foot of the rail, under twenty links, which on any
+            normal screen is below the fold: "i need to get out of this place too". */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Groundwork</Link>
+          {isPlatformAdmin && (
+            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Platform console</Link>
+          )}
+        </div>
         <p style={{ ...LABEL, fontSize: 10, marginBottom: 14 }}>{me.data?.displayName ?? '—'}</p>
 
         {GROUPS.map((group) => {
@@ -260,16 +281,6 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             </div>
           )
         })}
-        <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {isPlatformAdmin && (
-            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
-              ← Platform console
-            </Link>
-          )}
-          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
-            ← Groundwork
-          </Link>
-        </div>
       </nav>
 
       {/* THE WAY BACK, WHICH THERE WAS NOT.

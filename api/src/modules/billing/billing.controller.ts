@@ -1,4 +1,5 @@
-import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -83,9 +84,17 @@ export class BillingController {
   @Delete('subscription')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Cancel the org subscription immediately' })
+  @ApiOperation({ summary: 'Cancel the org subscription at the end of the paid period. Access continues until then.' })
   async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelSubscription(organizationId);
+  }
+
+  @Post('subscription/keep')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Undo a scheduled cancellation before the date it would have ended' })
+  async keepSubscription(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.keepSubscription(organizationId);
   }
 
   @Patch('subscription/plan')
@@ -123,15 +132,20 @@ export class BillingController {
     return this.billing.applyContributorCode(organizationId, body.code);
   }
 
+  /**
+   * A TIER WE DO NOT SELL CANNOT BE CHARGED FOR. This created a real $5 Checkout under a summary that
+   * called it legacy and unreachable. The client had stopped offering it; the route had not stopped
+   * taking money. Gone, by the product owner's word (11 September 2026): the route stays registered so
+   * an old caller gets a clear 410 rather than a 404, and the webhook branch that reads a historical
+   * session_fee event stays where it is (billing.service.ts, handleStripeEvent), because Stripe can
+   * redeliver an old event long after its writer is gone.
+   */
   @Post('purchase-session')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'LEGACY - per-session purchase. Sessions are not sold; no user-facing surface calls this. Retained only because live Stripe records may reference it.' })
-  async purchaseSession(
-    @CurrentUser('organizationId') organizationId: string,
-    @Body() body: { groundId: string; quantity?: number },
-  ) {
-    return this.billing.purchaseSession(organizationId, body.groundId, body.quantity);
+  @ApiOperation({ summary: 'Gone. Sessions are not sold one at a time; a check-in has unlimited sessions on a free ground or a subscription.' })
+  purchaseSession() {
+    throw new GoneException('Sessions are not sold one at a time. A check-in has unlimited sessions on the free plan and on every subscription.');
   }
 
   @Get('can-create-ground')
@@ -273,13 +287,43 @@ export class BillingController {
   }
 
   @Public()
+  /* Stripe retries on failure and sends bursts on a busy day; the limit is a ceiling against a flood, not a pace (A9). */
+  @Throttle({ global: { limit: 240, ttl: 60_000 } })
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stripe webhook (raw body - verified by signature)' })
   async webhook(@Req() req: any, @Headers('stripe-signature') signature: string) {
-    // main.ts enables rawBody so signature verification works.
+    // main.ts enables rawBody so signature verification works. A bad signature still throws: an
+    // event we cannot trust is not an event we keep.
     const event = this.stripe.constructEvent(req.rawBody, signature);
-    await this.billing.handleStripeEvent(event);
-    return { received: true, type: event.type };
+    try {
+      await this.billing.handleStripeEvent(event);
+      return { received: true, type: event.type };
+    } catch (err) {
+      /*
+       * A THROW HERE USED TO BE A NON-2XX, and a deterministic failure then stuck for ever: Stripe
+       * retried on its schedule, every retry failed the same way, and no operator was told. The
+       * event is kept with what went wrong, Stripe is answered 200 so it stops, and the retry runs
+       * from our record - where a person can also see it (GET /billing/stripe-failures).
+       */
+      await this.billing.recordStripeEventFailure(event, err);
+      return { received: true, type: event.type, held: true };
+    }
+  }
+
+  @Post('credit-session')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Credit one session to a check-in, with a reason on the ledger (platform admin only)' })
+  async creditSession(@CurrentUser('id') userId: string, @Body() body: { groundId: string; reason: string }) {
+    return this.billing.creditSession(body?.groundId, body?.reason, userId);
+  }
+
+  @Get('stripe-failures')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Stripe events we could not handle and have not yet handled on retry (platform admin only)' })
+  async stripeFailures() {
+    return this.billing.stripeEventFailures();
   }
 }

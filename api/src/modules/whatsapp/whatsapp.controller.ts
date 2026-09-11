@@ -1,13 +1,13 @@
-import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
-import { ConversationService } from '../conversation';
-import { CheckInStatus } from '@prisma/client';
+import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
+import { pickWasAsked, pickedOrganisation, whichOrganisationAsText } from '../public-api/a-whatsapp-message-is-routed';
 
 /**
  * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then POSTs every inbound
@@ -30,24 +30,27 @@ export class WhatsAppController {
     private config: ConfigService,
     private prisma: PrismaService,
     private whatsapp: WhatsAppService,
-    private conversation: ConversationService,
+    private inbound: WhatsAppForAnOrganisationService,
   ) {}
 
+  /* Bare text, not the { success, data } envelope: Meta compares the body to the challenge byte for byte. Found 10 Sep 2026. */
   @Get()
   verify(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
-  ): string {
+    @Res() res: Response,
+  ): void {
     const expected = this.config.get<string>('whatsapp.verifyToken');
     if (mode === 'subscribe' && expected && token === expected) {
-      return challenge;
+      res.status(200).type('text/plain').send(challenge);
+      return;
     }
     throw new ForbiddenException('Webhook verification failed');
   }
 
   @Post()
-  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Throttle({ global: { limit: 120, ttl: 60_000 } })
   async receive(@Req() req: RawBodyRequest<Request>): Promise<{ received: true }> {
     /**
      * SIGNATURE FIRST, BEFORE A SINGLE FIELD OF THE BODY IS READ.
@@ -68,42 +71,64 @@ export class WhatsAppController {
 
     const body = req.body as any;
     try {
+      /*
+       * ONE INBOUND HANDLER, NOT TWO. This route had its own routing body: an organisation-unscoped
+       * identity lookup, the oldest open check-in picked in silence, every non-text message dropped,
+       * no report on finish. The organisation handler is a superset on every axis that matters and the
+       * only one whose identity lookup is tenant-scoped, so this route now does exactly two things of
+       * its own - the shared-secret signature above, and working out WHICH organisation the sender
+       * means - and hands the message to it. Fixes written once, not twice.
+       */
       const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-      if (!message || message.type !== 'text') return { received: true };
-
+      if (!message?.from) return { received: true };
       const fromNumber: string = message.from;
-      const text: string = message.text?.body ?? '';
-
-      // Auto-detect: match the sender's phone number to a known account.
-      const user = await this.whatsapp.findUserByPhoneNumber(fromNumber);
-      if (!user) {
-        await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.");
-        return { received: true };
-      }
-
-      // Route to their next open check-in (started or waiting), across any ground.
-      const openCheckIn = await this.prisma.checkIn.findFirst({
-        where: {
-          participant: { userId: user.id },
-          status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
-          OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (!openCheckIn) {
-        await this.whatsapp.sendMessage(fromNumber, "You don't have an open check-in right now. We'll message you here as soon as your next one is ready.");
-        return { received: true };
-      }
-
-      const result =
-        openCheckIn.status === CheckInStatus.NOT_STARTED
-          ? await this.conversation.open(openCheckIn.id, user.id)
-          : await this.conversation.sendMessage(openCheckIn.id, user.id, text);
-
-      await this.whatsapp.sendMessage(fromNumber, result.reply);
+      const organizationId = await this.whichOrganisation(fromNumber, message);
+      if (organizationId) await this.inbound.handle(organizationId, body);
     } catch (err: any) {
-      this.logger.error(`WhatsApp inbound handling failed: ${err.message}`);
+      /*
+       * SILENCE IS THE ONE OUTCOME THIS CHANNEL CANNOT PRODUCE. A spent balance, a paused ground, an
+       * already-complete check-in and a failed model call all throw with a sentence written for the
+       * person - and this caught every one of them, logged it, and told the person nothing. The
+       * sentence goes back to them; only if THAT send fails is it a log line.
+       */
+      const said = err?.response?.message ?? err?.message ?? 'Something went wrong on our side. Try again in a moment.';
+      const to = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
+      const told = to ? await this.whatsapp.sendMessage(to, Array.isArray(said) ? said.join(' ') : String(said), { kind: 'refusal' }).catch(() => ({ sent: false })) : { sent: false };
+      if (!told.sent) this.logger.error(`WhatsApp inbound handling failed and the person could not be told: ${err?.message}`);
     }
     return { received: true };
+  }
+
+  /**
+   * WHICH ORGANISATION THE SENDER MEANS. On one roster: that one. On none: told how to be added. On
+   * more than one: asked, as a numbered list, and the answer kept - a bare number is read as the
+   * answer only while the question is fresh, the same rule the check-in list uses.
+   */
+  private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
+    const orgs = await this.whatsapp.whichOrganisations(fromNumber);
+    if (orgs.length === 0) {
+      await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", { kind: 'refusal' });
+      return null;
+    }
+    if (orgs.length === 1) return orgs[0].id;
+    const phone = WhatsAppService.normalize(fromNumber);
+    const kept = await this.prisma.whatsAppOrganisationPick.findUnique({ where: { phone } }).catch(() => null);
+    const text: string = message?.type === 'text' ? (message.text?.body ?? '') : '';
+    if (kept && pickWasAsked(kept.pickPendingAt)) {
+      const picked = pickedOrganisation(text, orgs);
+      if (picked) {
+        await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { organizationId: picked.id, pickPendingAt: null } });
+        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on - what you write here goes to your check-in there.`);
+        return null;
+      }
+    }
+    if (kept?.organizationId && orgs.some((o) => o.id === kept.organizationId)) return kept.organizationId;
+    await this.prisma.whatsAppOrganisationPick.upsert({
+      where: { phone },
+      create: { phone, pickPendingAt: new Date() },
+      update: { pickPendingAt: new Date() },
+    });
+    await this.whatsapp.sendMessage(fromNumber, whichOrganisationAsText(orgs), { kind: 'which-one' });
+    return null;
   }
 }

@@ -5,10 +5,13 @@ import {
   UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint, ApiConsumes } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
+import { AMessageIntoACheckInDto } from '../../common/dto';
 import { CredentialsService } from './credentials.service';
 import { SubjectsService, SubjectPush } from '../subjects/subjects.service';
+import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from './machine-token.guard';
 import { IdempotencyService } from './idempotency.service';
+import { IdempotencyInterceptor } from './idempotency.interceptor';
 import { resolveGrantedScopes } from './scopes';
 import { SubjectType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
@@ -33,11 +36,12 @@ import { CommitmentsByApiService } from './commitments-by-api.service';
 import { TodosByApiService } from './todos-by-api.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
-import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL } from './what-you-need-to-know-before-you-start';
+import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL, THE_ERROR_SHAPE } from './what-you-need-to-know-before-you-start';
 import { SENDABLE_EVENTS } from '../webhooks/events-we-can-actually-send';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
-const TOKEN_TTL_SECONDS = 900;
+/* Five minutes, from fifteen: the guard now refuses a revoked credential at once, and a short life is the second line (A10). */
+const TOKEN_TTL_SECONDS = 300;
 
 /**
  * THE INTEGRATION SURFACE, DELIBERATELY SEPARATE FROM EVERYTHING INTERNAL.
@@ -65,6 +69,7 @@ const TOKEN_TTL_SECONDS = 900;
  */
 @Public()
 @Controller('api/org/v1')
+@UseInterceptors(IdempotencyInterceptor)
 export class PublicApiController {
   constructor(
     private readonly jwt: JwtService,
@@ -153,6 +158,7 @@ export class PublicApiController {
    */
   @Get('how-to-connect')
   @Public()
+  @UseGuards(ApprovedOrMachineGuard)
   @ApiOperation({ summary: 'The six calls, the closed sets, and what usually goes wrong' })
   howToConnect() {
     return {
@@ -161,6 +167,7 @@ export class PublicApiController {
       wordsThatDiffer: WORDS_THAT_DIFFER,
       webhookEvents: SENDABLE_EVENTS,
       thePanel: THE_PANEL,
+      errors: THE_ERROR_SHAPE,
       says: 'Six calls. One of them is a person signing in, which nothing else will tell you.',
     };
   }
@@ -193,6 +200,10 @@ export class PublicApiController {
           await this.subjects.find(req.machine.organizationId, dto.sourceSystem.trim(), dto.externalId.trim()),
         );
       },
+      /* An upsert on the caller's own key: a retry without a header is still a retry - including one
+         sent after the credential was rotated, so the key follows the source system, never the
+         client id. See IdempotencyService.run and a-rotated-credential-is-the-same-roster.spec.ts. */
+      { deriveKeyFrom: req.machine.sourceSystem },
     );
   }
 
@@ -297,8 +308,8 @@ export class PublicApiController {
   @HttpCode(200)
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'Ask the assistant. Returns typed blocks, not a string.' })
-  async chat(@Req() req: { panel: PanelCaller }, @Body() dto: { message?: string }) {
-    return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto?.message ?? '');
+  async chat(@Req() req: { panel: PanelCaller }, @Body() dto: AMessageIntoACheckInDto) {
+    return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto.message);
   }
 
   /**
@@ -658,10 +669,9 @@ export class PublicApiController {
   async sayInCheckIn(
     @Req() req: { panel: PanelCaller },
     @Param('id') id: string,
-    @Body() dto: { content?: string },
+    @Body() dto: AMessageIntoACheckInDto,
   ) {
-    if (!dto?.content?.trim()) throw new BadRequestException('content is required.');
-    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.content);
+    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.message);
   }
 
   /**
@@ -698,10 +708,10 @@ export class PublicApiController {
   @Post('people')
   @HttpCode(201)
   @UseGuards(EmbedSessionGuard)
-  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything.' })
+  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything. `department` is optional and never inferred.' })
   async addPersonFromPanel(
     @Req() req: { panel: PanelCaller },
-    @Body() dto: { email?: string; displayName?: string; externalId?: string },
+    @Body() dto: { email?: string; displayName?: string; externalId?: string; phone?: string; department?: string },
   ) {
     return this.checkIns.addAPerson(req.panel.organizationId, req.panel.personId, dto);
   }
@@ -1155,7 +1165,7 @@ export class PublicApiController {
     @Req() req: { machine: MachineCaller },
     @Param('personExternalId') personExternalId: string,
   ) {
-    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId);
+    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId, req.machine);
   }
 
   @Get('people/:personExternalId/before-a-conversation')
@@ -1166,7 +1176,7 @@ export class PublicApiController {
     @Req() req: { machine: MachineCaller },
     @Param('personExternalId') personExternalId: string,
   ) {
-    return this.groundsByApi.beforeAConversation(req.machine.organizationId, personExternalId);
+    return this.groundsByApi.beforeAConversation(req.machine.organizationId, personExternalId, req.machine);
   }
 
   @Get('findings/structured')

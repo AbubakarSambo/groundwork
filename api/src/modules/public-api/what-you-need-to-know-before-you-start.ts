@@ -96,7 +96,7 @@ export const THE_PANEL = {
     'POST /grounds/:id/confirm-lead',
     'POST /check-ins  { label, scenario, moment, timelineDays, cadence, startsAt, brief, participants[] }',
     'POST /check-ins/:id/open',
-    'POST /check-ins/:id/messages  { content }',
+    'POST /check-ins/:id/messages  { message }',
     'POST /check-ins/:id/complete',
     'GET /check-ins/:id/report',
     'GET /check-ins/:id/transcript',
@@ -112,6 +112,7 @@ export const THE_PANEL = {
     'GET /reports/my-people',
     'POST /chat  { message }',
   ],
+  whatsapp: 'PUT /integrations/whatsapp from Connect with your Meta number id, token and app secret; point Meta\'s webhook at /api/v1/webhooks/whatsapp/{organizationId} with the verify token shown; send phoneNumbers[] on SCIM users or phone on POST /people. A person then does their check-in by replying on WhatsApp, and asks the assistant the same way.',
   says: "The panel runs the check-in in place. A check-in that becomes open fires checkin.opened to your webhooks, with the person's own id, so you can tell them in your channel.",
 } as const;
 
@@ -141,3 +142,16 @@ export const WORDS_THAT_DIFFER = [
     note: 'SCIM shape. A userName that is an address is accepted as a fallback.',
   },
 ];
+
+/**
+ * WHAT A FAILURE LOOKS LIKE, so a parser learns it once. Every route under /api/org/v1 returns a
+ * raw body on success and this shape on failure; `message` is always one sentence, and `details`
+ * carries the pipe's sentences when a body did not validate (fix plan F14).
+ */
+export const THE_ERROR_SHAPE = {
+  shape: '{ error: { code, message, details } }',
+  code: 'A stable word: bad_request, unauthorized, forbidden, not_found, conflict, gone, too_many_requests, server_error - or a route\'s own.',
+  message: 'One sentence, always a string, written to be read.',
+  details: 'The individual validation sentences when a body did not validate; otherwise null.',
+  retries: 'Send Idempotency-Key on any POST. A retry with the same key and body is answered with the first call\'s response; the same key with a different body is refused.',
+};

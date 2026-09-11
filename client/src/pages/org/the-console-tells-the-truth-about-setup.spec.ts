@@ -63,17 +63,13 @@ describe('the plain-language half comes first', () => {
     expect(credentials === -1 || credentials > plain).toBe(true)
   })
 
-  it('names the four exclusions in the product, not only in a document', () => {
-    /* This page is what an admin sends to their own security reviewer. A policy PDF is a claim; a
-       live page showing the enforcement is evidence. */
-    for (const phrase of [
-      'how clearly a person writes',
-      'said about a colleague',
-      'measure of their contribution',
-      'recommended verdict about a person',
-    ]) {
-      expect(SRC).toContain(phrase)
-    }
+  it('shows what it looks like rather than listing what it never returns', () => {
+    /* 10 Sep 2026: the "What this API never returns" section was removed on Hafsah's decision and
+       replaced with three screenshots (the panel, an organisation's own panel, a WhatsApp check-in).
+       The exclusions live in the API's own terms and in the engine; the page shows the product. */
+    expect(SRC).toContain('What it looks like')
+    expect(SRC).toContain('/connect/panel.png')
+    expect(SRC).not.toContain('What this API never returns')
   })
 
   it('says why an event in the contract is missing from the picker', () => {

@@ -1,7 +1,9 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { whyThisModelIsNotAllowed } from './a-preview-model-has-no-data-terms';
+import { withoutTheEmptyOnes } from './an-item-the-model-left-empty-is-not-an-item';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -142,11 +144,39 @@ const THINKING_BUDGET = 2048;
 // deeper budget - a one-time spinner there is fine.
 const CONVERSATION_THINKING_BUDGET = 256;
 
+/** How long the chat waits for a stream to open before saying it could not. */
+export const OPENING_A_STREAM_WAITS = 45_000;
+/** And how long it waits between chunks once one has opened. */
+export const A_CHUNK_WAITS = 30_000;
+
+/**
+ * A promise with a clock on it, and the clock is always cleared.
+ *
+ * Written out rather than inlined because the version that leaks is the one that looks right: a
+ * `Promise.race` against a bare `setTimeout` keeps the timer alive after the race is won, and in a
+ * chat that is one dangling timer per answer.
+ */
+export async function withADeadline<T>(work: Promise<T>, ms: number, whatFailed: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${whatFailed} after ${Math.round(ms / 1000)}s`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 @Injectable()
-export class AnthropicService {
+export class AnthropicService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AnthropicService.name);
   private client: GoogleGenAI;
   private model: string;
+  /** What a person in a conversation talks to. See geminiConfig.conversationModel. */
+  private conversationModel: string;
   private maxTokens: number;
 
   constructor(private config: ConfigService) {
@@ -161,6 +191,7 @@ export class AnthropicService {
 
     this.client = this.buildClient();
     this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
+    this.conversationModel = this.config.get<string>('gemini.conversationModel') || 'gemini-2.5-flash';
     /*
      * A PREVIEW MODEL SITS OUTSIDE THE DATA PROCESSING TERMS. See
      * a-preview-model-has-no-data-terms.ts — Google's Service Specific Terms exclude Pre-GA
@@ -168,7 +199,7 @@ export class AnthropicService {
      * Refused loudly at boot rather than logged: a deployment processing check-ins outside the DPA
      * should not start, and a warning in a log is a thing nobody reads until afterwards.
      */
-    const notAllowed = whyThisModelIsNotAllowed(this.model);
+    const notAllowed = whyThisModelIsNotAllowed(this.model) || whyThisModelIsNotAllowed(this.conversationModel);
     if (notAllowed) throw new Error(`Refusing to start: ${notAllowed}`);
     // Floor at 8192 (configuration.ts's own default). A low cap (e.g. a stale
     // GEMINI_MAX_TOKENS=2048) leaves too little room once thinking tokens are
@@ -226,13 +257,56 @@ export class AnthropicService {
   }
 
   /**
+   * THE PROBE RUNS FROM INSIDE, ON A CLOCK, AND WRITES DOWN WHAT IT SAW.
+   *
+   * /health/ai used to make the real call on every request. That kept the lesson below and opened
+   * the model budget to anyone on the internet, because the route sits outside every guard. Now the
+   * same call happens here every five minutes - and once at boot, so a monitor is not told "no
+   * probe yet" for the first five minutes of every deploy - and the route reads the record.
+   */
+  private lastProbe: { ok: boolean; at: Date; latencyMs: number; error?: string } | null = null;
+  private static readonly PROBE_EVERY_MS = 5 * 60_000;
+
+  onApplicationBootstrap() {
+    this.probeTheEngine().catch((err) => this.logger.warn(`First engine probe failed to run: ${err?.message}`));
+  }
+
+  @Cron('*/5 * * * *', { timeZone: 'UTC' })
+  async probeTheEngine(): Promise<void> {
+    const result = await this.healthCheck();
+    this.lastProbe = { ok: result.ok, at: new Date(), latencyMs: result.latencyMs, ...(result.error ? { error: result.error } : {}) };
+    if (!result.ok) this.logger.error(`Engine probe failed: ${result.error ?? 'empty response'}`);
+  }
+
+  /**
+   * What the last probe saw, for /health/ai. Not ok when the probe failed, has not run, or is more
+   * than two intervals old - a stale "ok" is the exact thing the original incident taught us not to
+   * trust.
+   */
+  lastProbeOutcome(): { ok: boolean; probedAt: Date | null; ageMs: number | null; latencyMs: number | null; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string } {
+    const common = { model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt };
+    if (!this.lastProbe) return { ok: false, probedAt: null, ageMs: null, latencyMs: null, ...common, error: 'no probe has completed yet' };
+    const ageMs = Date.now() - this.lastProbe.at.getTime();
+    const stale = ageMs > 2 * AnthropicService.PROBE_EVERY_MS;
+    return {
+      ok: this.lastProbe.ok && !stale,
+      probedAt: this.lastProbe.at,
+      ageMs,
+      latencyMs: this.lastProbe.latencyMs,
+      ...common,
+      ...(stale ? { error: `last probe is ${Math.round(ageMs / 60_000)} minutes old` } : this.lastProbe.error ? { error: this.lastProbe.error } : {}),
+    };
+  }
+
+  /**
    * Is the engine actually reachable RIGHT NOW, from THIS process?
    *
    * Deliberately makes a real call. A health check that does not touch the model
    * cannot tell you the model is unreachable, which is exactly how this went
-   * unnoticed.
+   * unnoticed. Called by the probe above and nothing else: an inbound request
+   * must never be what triggers a model call on an unguarded route.
    */
-  async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; lastRebuildAt: Date | null; error?: string }> {
+  private async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
     const started = Date.now();
     try {
       const res = await this.client.models.generateContent({
@@ -247,13 +321,14 @@ export class AnthropicService {
       const ok = !!res?.text;
       if (ok) this.noteSuccess();
       else this.noteFailure('healthCheck', new Error('empty response'));
-      return { ok, latencyMs: Date.now() - started, model: this.model, lastRebuildAt: this.lastRebuildAt };
+      return { ok, latencyMs: Date.now() - started, model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt };
     } catch (err: any) {
       this.noteFailure('healthCheck', err);
       return {
         ok: false,
         latencyMs: Date.now() - started,
         model: this.model,
+        models: this.modelsInUse(),
         lastRebuildAt: this.lastRebuildAt,
         error: String(err?.message ?? err).slice(0, 300),
       };
@@ -274,11 +349,28 @@ export class AnthropicService {
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
-    const stream = await this.client.models.generateContentStream({
-      model: this.model,
-      contents,
-      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
-    });
+    /*
+     * A STREAM THAT NEVER ARRIVES USED TO WAIT FOR EVER.
+     *
+     * `respond()` has had a ninety-second ceiling since the hour every model call failed while
+     * /health said ok. This one, the path the chat actually uses, had none - not on opening the
+     * stream and not between chunks. Watched live: an answer typed into a check-in sat for over ten
+     * minutes with the dots still going, because nothing was ever going to give up.
+     *
+     * Two clocks, because there are two ways to hang. One on opening the stream, and one between
+     * chunks - a stream that opens and then stalls halfway through a sentence never trips a total
+     * budget that a long healthy answer would also trip. Both throw, and a throw is something the
+     * caller can say out loud. Waiting is not.
+     */
+    const stream = await withADeadline(
+      this.client.models.generateContentStream({
+        model: this.conversationModel,
+        contents,
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+      }),
+      OPENING_A_STREAM_WAITS,
+      'Gemini respondStream() did not open',
+    );
     /*
      * A CHUNK OF THE ANSWER WENT MISSING, MID-SENTENCE, AND WAS SAVED THAT WAY.
      *
@@ -293,8 +385,11 @@ export class AnthropicService {
      * part with text is answer.
      */
     let answerHasBegun = false;
-    for await (const chunk of stream) {
-      const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
+    const chunks = (stream as AsyncIterable<unknown>)[Symbol.asyncIterator]();
+    for (;;) {
+      const next = await withADeadline(chunks.next(), A_CHUNK_WAITS, 'Gemini respondStream() stalled mid-answer');
+      if (next.done) break;
+      const parts = (next.value as any)?.candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
         if (part?.thought && !answerHasBegun) continue;
         if (part?.text) {
@@ -303,6 +398,21 @@ export class AnthropicService {
         }
       }
     }
+  }
+
+  /**
+   * Flash answers fastest with no thinking at all (0.65s to the first word against 2.3s with a
+   * 256 budget); pro cannot go below 128 and is slow to start regardless. The budget follows the
+   * model so that swapping GEMINI_CONVERSATION_MODEL back to pro does not also swap in a budget
+   * that model rejects.
+   */
+  private conversationThinkingBudget(): number {
+    return /flash/.test(this.conversationModel) ? 0 : CONVERSATION_THINKING_BUDGET;
+  }
+
+  /** For logs and the health page. */
+  modelsInUse() {
+    return { conversation: this.conversationModel, reports: this.model };
   }
 
   async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
@@ -318,9 +428,9 @@ export class AnthropicService {
       res = await tryAgainIfItIsJustBusy(
         () => {
           const call = this.client.models.generateContent({
-            model: this.model,
+            model: this.conversationModel,
             contents,
-            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
+            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
           });
           const timeout = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
@@ -377,7 +487,18 @@ export class AnthropicService {
     return houseStyle(text);
   }
 
-  async extract<T = any>(systemPrompt: string, history: ChatTurn[], tool: { name: string; description: string; input_schema: any }): Promise<T | null> {
+  /**
+   * `thinkingBudget` is for the small, live extractions: the Setup turn pulls a handful of typed
+   * fields out of a short conversation while a person waits, and with the model's default budget
+   * that pull took longer than the reply it followed (28s observed, against 2s for the reply).
+   * Report synthesis leaves it unset and keeps the deeper default.
+   */
+  async extract<T = any>(
+    systemPrompt: string,
+    history: ChatTurn[],
+    tool: { name: string; description: string; input_schema: any },
+    options: { thinkingBudget?: number; fast?: boolean } = {},
+  ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -387,11 +508,12 @@ export class AnthropicService {
     /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
       res = await tryAgainIfItIsJustBusy(() => this.client.models.generateContent({
-        model: this.model,
+        model: options.fast ? this.conversationModel : this.model,
         contents,
         config: {
           systemInstruction: systemPrompt,
           maxOutputTokens: 8192,
+          ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
             functionCallingConfig: {
@@ -464,7 +586,52 @@ export class AnthropicService {
       this.logger.warn(`extract(): tool ${tool.name} returned null/undefined args`);
       return null;
     }
-    return args as T;
+
+    /*
+     * AND ITEMS WITH NOTHING IN THEM ARE NOT ITEMS. See
+     * an-item-the-model-left-empty-is-not-an-item.ts for the live report this was found on: three
+     * headed cards on somebody's own report with no words under any of them.
+     *
+     * Asked again once when it happens, because the same request answered correctly on every
+     * reproduction - so a second attempt is likely to have the content, and the count is the only
+     * signal there is that the first one did not. Then whichever answer we keep is cleaned, so a
+     * page can never be handed an item it has to draw and has nothing to draw.
+     */
+    const first = withoutTheEmptyOnes(args as T);
+    if (first.dropped === 0) return first.value;
+    /*
+     * Only when cleaning took a whole array with it. A stray empty item among real ones costs the
+     * reader nothing once it is gone, and this retry is a second call to the slowest step there is.
+     */
+    if (!first.emptiedAnArray) {
+      this.logger.warn(`extract(): dropped ${first.dropped} empty item(s) from ${tool.name}; the rest stand.`);
+      return first.value;
+    }
+
+    this.logger.warn(
+      `extract(): tool ${tool.name} returned ${first.dropped} item(s) with nothing in them. Asking once more.`,
+    );
+    try {
+      const cleaner = await this.client.models.generateContent({
+        model: this.model,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 8192,
+          tools: [{ functionDeclarations: [this.convertTool(tool)] }],
+          toolConfig: { functionCallingConfig: { mode: 'ANY' as any, allowedFunctionNames: [tool.name] } },
+        },
+      });
+      const retryArgs = cleaner.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall)?.functionCall?.args;
+      if (retryArgs) {
+        const second = withoutTheEmptyOnes(retryArgs as T);
+        /* The better of the two, not simply the newer: a retry that is emptier is not an improvement. */
+        if (second.dropped < first.dropped) return second.value;
+      }
+    } catch (err: any) {
+      this.logger.warn(`extract(): the retry for empty items failed: ${err?.message ?? err}`);
+    }
+    return first.value;
   }
 
   private convertTool(tool: { name: string; description: string; input_schema: any }) {

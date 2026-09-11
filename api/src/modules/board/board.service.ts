@@ -1,4 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
+import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
@@ -27,10 +29,12 @@ import {
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { theSessionReport } from '../reports/the-session-report';
+import { aNameOrNothing } from './a-name-is-short';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
+import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
   OrgDependency,
@@ -39,6 +43,9 @@ import {
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
+import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
+import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -82,6 +89,24 @@ export class BoardService {
     private prisma: PrismaService,
     private readonly anthropic: AnthropicService,
   ) {}
+
+  /*
+   * THE BOARD IS BUILT WHEN THE SESSION ENDS, NOT WHEN THE LEAD OPENS IT. Every worded line the
+   * board shows is kept by its hash (see a-line-worded-once-is-kept), so reading it once here, a
+   * few seconds after the check-in that changed it, means the lead's first open pays nothing.
+   * Best-effort: a failure here is logged and the open still works, it is just slower.
+   */
+  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
+  async warmOnCheckInCompleted(event: CheckInCompletedEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
+      if (!ground?.initiatorId) return;
+      await this.get(event.groundId, ground.initiatorId);
+      this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+    } catch (err: any) {
+      this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
+    }
+  }
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({
@@ -175,9 +200,8 @@ export class BoardService {
         select: { role: true, organizationId: true },
       })
       : null;
-    const adminsThisOrg =
-      viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId;
-    if (!me && !isInitiator && !isSetupAdmin && !adminsThisOrg) {
+    const adminHere = adminsThisOrg(viewer, ground as any);
+    if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
@@ -203,8 +227,8 @@ export class BoardService {
      */
     const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(family);
     const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
-    /* `viewer` and `adminsThisOrg` are read once at the door above - see the note there. */
-    const runsThisGround = isInitiator || isSetupAdmin || !!adminsThisOrg;
+    /* `viewer` and `adminHere` are read once at the door above - see the note there. */
+    const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
 
     // WHOSE ANSWER THIS IS.
@@ -264,7 +288,8 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
-      return n || p.roleAsDescribed?.trim() || null;
+      /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
+      return n || aNameOrNothing(p.roleAsDescribed) || null;
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
@@ -289,7 +314,14 @@ export class BoardService {
      */
     const visibleNames = namesVisibleTo(
       readsWithNamesOf({
-        viewerIsLead: isInitiator || isSetupAdmin,
+        /*
+         * AN ORGANISATION'S ADMIN READS WITH NAMES, because this page already tells them they can
+         * see everything here and being an admin is the point. Left out, the board named one person
+         * and left the other as "Partnerships Associate, started 1 September" three inches apart,
+         * which reads as two people disagreeing with a third. Their exact words stay walled off, as
+         * they are for everybody; a name is not the wall. Same test `runsThisGround` already uses.
+         */
+        viewerIsLead: runsThisGround,
         viewerParticipantId: me?.id ?? null,
         parties: ground.participants as any[],
       }),
@@ -319,6 +351,9 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
+      groundStatus: ground.status,
+      endState: (ground as any).endState ?? null,
       coverageVariant: variant,
       /**
        * What everyone agreed this ground was FOR, set at creation, before a
@@ -440,7 +475,25 @@ export class BoardService {
        * simply not rendering the fields it already had.
        */
       out.divergence = {
-        items: Array.isArray(reportSafe.divergences) ? reportSafe.divergences : [],
+        /*
+         * ONE NAME PER PERSON ON ONE BOARD. A `participantLabel` is a role - "Partnerships
+         * Associate, started 1 September" - and every other section of this page says "Ada Obi".
+         * Read live: the same person appeared under two names three inches apart, which reads as
+         * two people disagreeing with a third. Where the reader may see the name, the name wins.
+         */
+        items: Array.isArray(reportSafe.divergences)
+          ? (reportSafe.divergences as any[]).map((d) => {
+              const named = (side: any) => ({
+                ...side,
+                participantLabel: visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel,
+              });
+              return {
+                ...d,
+                ...(Array.isArray(d?.positions) ? { positions: d.positions.map(named) } : {}),
+                ...(Array.isArray(d?.perspectives) ? { perspectives: d.perspectives.map(named) } : {}),
+              };
+            })
+          : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
@@ -530,60 +583,26 @@ export class BoardService {
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
     }
 
-    if (has('quickRead') && sessionShape?.atAGlance?.length) {
-      /* The same four tiles as the report, over every session. */
-      out.quickRead = sessionShape.atAGlance;
-    } else if (has('quickRead')) {
-      const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
-      const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
-      const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
-      const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
-      out.quickRead = [
-        /*
-         * THE LABELS WERE QUESTIONS AND THE VALUES DID NOT ANSWER THEM.
-         *
-         * Read off a live board: "ALIGNED? 1 open". "MOVING? no change". "STUCK? clear". "SOLID?
-         * moderate". Reported as "board and report have aligned, moving etc, but it is not clear
-         * what it means, 1 misalignment etc" - and it is not clear, because none of the four is an
-         * answer to the question above it. "1 open" does not say whether anybody is aligned. "clear"
-         * against "Stuck?" reads as confirming that they are. "moderate" answers nothing at all.
-         *
-         * A question-mark label also forces the value to be a verdict, and this board is explicitly
-         * not a verdict - its own panel says so three lines above. So the label is a plain noun for
-         * the thing being counted, the value is the count, and the sub-line is a whole clause saying
-         * what the count is of. Nothing has to be decoded and nothing is judged.
-         */
-        {
-          label: 'Differences',
-          value: divCount ? `${divCount}` : 'None',
-          sub: divCount
-            ? 'still open between people'
-            : 'nobody disagrees anywhere yet',
-          tone: divCount ? 'warn' : 'good',
-        },
-        {
-          label: 'Movement',
-          value: movedTotal > 0 ? `+${movedTotal}` : 'None',
-          sub: movedTotal > 0 ? 'targets moved this session' : 'no target moved this session',
-          tone: movedTotal > 0 ? 'good' : 'flat',
-        },
-        {
-          label: 'Blockers',
-          value: blockers ? `${blockers}` : 'None',
-          sub: blockers ? 'named as holding work up' : 'nobody named anything holding work up',
-          tone: blockers ? 'bad' : 'good',
-        },
-        {
-          /* Two different things used to share this tile: a word for how much was said, and a
-             percentage for how much of it had a document behind it. The label named neither. */
-          label: 'How much was said',
-          value: eng.coverage ?? 'unknown',
-          sub: eng.documentBackedPct != null
-            ? `${eng.documentBackedPct}% of it is backed by a document`
-            : 'nothing yet says how much is backed by a document',
-          tone: eng.coverage === 'thin' ? 'warn' : 'good',
-        },
-      ];
+    if (has('quickRead')) {
+      /*
+       * THE SAME FOUR TILES AS THE REPORT, FROM THE SAME BUILDER. This recomputed them a second way
+       * when the engine returned nothing, and three of the four differed from the report's - the
+       * engine's own header says the two surfaces must agree. The counts come from the one owner
+       * (what-this-session-holds.ts) and the tiles from the one builder; there is no second copy to
+       * drift. The comment that used to sit here about question-mark labels moved with the builder.
+       */
+      if (sessionShape?.atAGlance?.length) {
+        out.quickRead = sessionShape.atAGlance;
+      } else {
+        const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+        const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
+        const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
+        const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
+        out.quickRead = atAGlanceTiles({
+          agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
+          backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
+        });
+      }
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -604,7 +623,7 @@ export class BoardService {
         if (drafts.length) {
           const said = Object.fromEntries((await wordedByTheModel(
             drafts,
-            (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
+            rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
           )).map((d) => [d.key, d.text]));
           out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
           if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };
@@ -831,10 +850,17 @@ export class BoardService {
     return raw
       .map((g: any) => {
         const spec = LEADERSHIP_PATTERN_BY_KEY[g?.pattern];
-        // An unrecognised pattern is dropped rather than rendered as a bare
-        // string: without its pole and its label it is not actionable, and a
-        // half-rendered read about someone's management is worse than none.
-        if (!spec || !g?.gap) return null;
+        // A read with nothing in it is nothing to show. But a read we have the
+        // words for and no NAME for is still a read, and dropping it meant the
+        // board quietly lost whatever the model had found outside the library.
+        // It is shown under a generic heading instead.
+        if (!g?.gap) return null;
+        const named = spec ?? {
+          pattern: 'unrecognised',
+          pole: null,
+          label: 'Also worth your attention',
+          why: 'This came back outside the patterns we name, so it is shown as it was read.',
+        };
 
         // ENFORCED, not merely requested. The prompt forbids quoting and
         // labelling, but a prompt is a request and this is the one property
@@ -878,7 +904,7 @@ export class BoardService {
          * supplied one.
          */
         const modelNote = g.note == null ? null : String(g.note);
-        const noteText = modelNote ?? String(spec.why);
+        const noteText = modelNote ?? String(named.why);
 
         const toCheck: [string, string][] = [['gap', gapText]];
         if (modelNote !== null) toCheck.push(['note', modelNote]);
@@ -910,9 +936,9 @@ export class BoardService {
           // naming whose it is would undo the point.
           managerParticipantId: '',
           managerName: null,
-          pattern: spec.pattern,
-          pole: spec.pole,
-          label: spec.label,
+          pattern: named.pattern as any,
+          pole: named.pole as any,
+          label: named.label,
           gap: String(g.gap),
           note: noteText,
           periods,
@@ -1228,7 +1254,11 @@ export class BoardService {
     const labels = labelsForParties(ground.participants as any);
     const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
     const report = ground.report ?? {};
-    const answered = ground.participants.filter((p: any) => !p.managingOnly && completed.some((c) => c.participantId === p.id));
+    /* Who answered THIS round, against the one definition of who is expected (how-many-have-answered.ts). */
+    const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
+    const waiting = new Set(whoAnswered.waitingOn);
+    const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
+    const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,
@@ -1241,21 +1271,21 @@ export class BoardService {
       previousSharedPicture: null,
       evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
       specificityLevel: null,
-      recallConfidence: null,
       centralQuestion: report.centralQuestion ?? null,
-      movedOnTargets: ground.objectives?.some((o: any) => o.target != null) ? ground.objectives.filter((o: any) => o.target != null).reduce((s: number, o: any) => s + (o.count - o.prevCount), 0) : null,
-      blocked: deps.filter((d) => d.status === 'BLOCKING').length,
-      waiting: deps.filter((d) => d.status === 'WAITING').length,
+      /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
+      movedOnTargets: held.movedOnTargets,
+      blocked: held.blocked,
+      waiting: held.waiting,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
-      peopleInAll: ground.participants.filter((p: any) => !p.managingOnly).length,
+      peopleInAll: whoAnswered.expected,
     });
     const question = draftTheQuestion({
       functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
       blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
     });
-    /* The tile grammar says "this session"; on the board it is every session. */
-    const atAGlance = (shape.atAGlance ?? []).map((t: any) => ({ ...t, sub: String(t.sub ?? '').replace(/this session/g, 'across every session').replace(/moved this session/g, 'moved so far') }));
-    return { ...shape, atAGlance, theConversationWorthHaving: question?.text ?? null };
+    /* The tiles are counted over the round in play, so "this session" is now true on the board too;
+       the rewrite to "across every session" that used to sit here was papering over lifetime counts. */
+    return { ...shape, theConversationWorthHaving: question?.text ?? null };
   }
 
 }

@@ -21,49 +21,48 @@ import { MOAT_COMPONENTS, WHAT_GROUNDWORK_IS_BUILDING } from './what-the-moat-is
  * they do, mark that they have left. Nothing here is re-asserted, so a role
  * somebody chose is never put back by a deploy.
  */
-const TEAM: Array<{
-  key: string;
-  displayName: string;
-  email: string | null;
-  functionalRole: OpsFunctionalRole;
-}> = [
-  { key: 'hafsah', displayName: 'Hafsah Jumare', email: 'hafsah.jumare@coamana.com', functionalRole: 'CEO' },
-  { key: 'sahar', displayName: 'Sahar', email: null, functionalRole: 'SALES_MARKETING' },
-  { key: 'james', displayName: 'James', email: null, functionalRole: 'PRODUCT_TECH_LEAD' },
-  { key: 'abubakar', displayName: 'Abubakar Sambo', email: null, functionalRole: 'TECH' },
-  { key: 'adam', displayName: 'Adam', email: null, functionalRole: 'CONTRIBUTOR' },
-  { key: 'nate', displayName: 'Nate', email: null, functionalRole: 'CONTRIBUTOR' },
-];
+/**
+ * NOBODY IS NAMED HERE. The team is data: people are added on the team page and their accounts are
+ * connected on the admin dashboard. What the seed needs is not a person but a ROLE - who owns
+ * sales, who does the building, who oversees - and it asks the table who holds that role today.
+ * Where nobody does yet, the thing that needs an owner is skipped and said so, and the next run
+ * picks it up once somebody is there. 10 Sep 2026: "no hard coding".
+ */
+type Holder = OpsFunctionalRole;
+const SALES: Holder[] = ['SALES_MARKETING'];
+const BUILDING: Holder[] = ['TECH', 'PRODUCT_TECH_LEAD'];
+const CEO: Holder[] = ['CEO'];
 
-const WORKSTREAMS = [
+
+const WORKSTREAMS: Array<{ key: string; name: string; owner: Holder[]; oversight: Holder[] | null; partner: Holder[] | null; areas: string[] }> = [
   {
     key: 'sales',
     name: 'Sales',
-    owner: 'sahar',
-    oversight: 'hafsah',
+    owner: SALES,
+    oversight: CEO,
     partner: null,
     areas: ['Pipeline', 'Outreach', 'Marketing', 'Conversion'],
   },
   {
     key: 'product-and-tech',
     name: 'Product & Tech',
-    owner: 'james',
-    oversight: 'hafsah',
-    partner: 'abubakar',
+    owner: BUILDING,
+    oversight: CEO,
+    partner: BUILDING,
     areas: ['Roadmap', 'Use-case readiness', 'UX', 'Infrastructure'],
   },
   {
     key: 'deployment',
     name: 'Deployment',
-    owner: 'sahar',
-    oversight: 'hafsah',
-    partner: 'abubakar',
+    owner: SALES,
+    oversight: CEO,
+    partner: BUILDING,
     areas: ['Onboarding', 'First use', 'Blockers', 'Going live'],
   },
   {
     key: 'fundraise',
     name: 'Fundraise',
-    owner: 'hafsah',
+    owner: CEO,
     oversight: null,
     partner: null,
     areas: ['Grants', 'Investors', 'Applications', 'Diligence'],
@@ -71,7 +70,7 @@ const WORKSTREAMS = [
   {
     key: 'strategy-and-outreach',
     name: 'Strategy & Outreach',
-    owner: 'hafsah',
+    owner: CEO,
     oversight: null,
     partner: null,
     areas: ['Network', 'Partners', 'Contributors', 'Introductions'],
@@ -177,14 +176,14 @@ const ROADMAP: Array<{
 const SEPTEMBER_OBJECTIVES: Array<{
   key: string;
   workstream: string;
-  owner: string;
+  owner: Holder[];
   title: string;
   keyResult: { title: string; target: number; unit: string; source: string };
 }> = [
   {
     key: 'sept-ten-lined-up',
     workstream: 'sales',
-    owner: 'hafsah',
+    owner: CEO,
     title: 'Ten companies lined up for the target list',
     keyResult: {
       title: 'Companies attached to the September target list',
@@ -196,7 +195,7 @@ const SEPTEMBER_OBJECTIVES: Array<{
   {
     key: 'sept-onboard-the-ten',
     workstream: 'deployment',
-    owner: 'sahar',
+    owner: SALES,
     title: 'Get the ten onboarded and using it',
     keyResult: {
       title: 'Companies that have reached first use or gone live',
@@ -208,7 +207,7 @@ const SEPTEMBER_OBJECTIVES: Array<{
   {
     key: 'sept-use-cases-supported',
     workstream: 'product-and-tech',
-    owner: 'james',
+    owner: BUILDING,
     title: 'The product supports what these ten actually want to do',
     keyResult: {
       title: 'Use cases at product ready, with no gap recorded',
@@ -220,7 +219,7 @@ const SEPTEMBER_OBJECTIVES: Array<{
   {
     key: 'sept-nothing-technical-in-the-way',
     workstream: 'product-and-tech',
-    owner: 'abubakar',
+    owner: BUILDING,
     title: 'Nothing technical is standing between a company and using it',
     keyResult: {
       title: 'Unresolved technical items naming a company',
@@ -232,40 +231,26 @@ const SEPTEMBER_OBJECTIVES: Array<{
 ];
 
 export async function seedTheFoundations(prisma: PrismaClient) {
-  // --- People, and the grants their role comes with -----------------------
-  for (const member of TEAM) {
-    /*
-     * WHO IS ON THE TEAM IS NOT THIS FILE'S DECISION AFTER THE FIRST RUN.
-     *
-     * This used to re-assert `displayName` and `functionalRole` on every run,
-     * so a role changed on the team page — Sahar taking over product, somebody
-     * stepping back to contributor — was silently put back the next time the
-     * seed ran. The names below are a STARTING POINT for an empty database and
-     * nothing else; the team page owns them afterwards. Same lesson as the
-     * target list that stopped being re-dated.
-     */
-    const person = await prisma.opsPerson.upsert({
-      where: { key: member.key },
-      update: {},
-      create: {
-        key: member.key,
-        displayName: member.displayName,
-        email: member.email,
-        functionalRole: member.functionalRole,
-      },
-    });
+  // --- Who holds which role today. Nobody is created here. ------------------
+  const people = await prisma.opsPerson.findMany({ where: { active: true }, orderBy: { createdAt: 'asc' } });
+  const skipped: string[] = [];
+  const holderOf = (roles: Holder[] | null, forWhat: string): string | null => {
+    if (!roles) return null;
+    for (const role of roles) {
+      const holder = people.find((p) => p.functionalRole === role);
+      if (holder) return holder.id;
+    }
+    skipped.push(`${forWhat}: nobody holds ${roles.join(' or ')} yet`);
+    return null;
+  };
 
+  // Every active person carries the grants their role comes with; a grant already chosen is kept.
+  for (const person of people) {
     await prisma.opsGrant.createMany({
-      data: DEFAULT_GRANTS[member.functionalRole].map((capability) => ({
-        personId: person.id,
-        capability,
-      })),
+      data: DEFAULT_GRANTS[person.functionalRole].map((capability) => ({ personId: person.id, capability })),
       skipDuplicates: true,
     });
   }
-
-  const people = await prisma.opsPerson.findMany();
-  const byKey = new Map(people.map((p) => [p.key, p.id]));
 
   // --- The time we work in ------------------------------------------------
   const periods: Array<{
@@ -370,25 +355,27 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   }
 
   // --- The areas we work on ----------------------------------------------
+  let workstreams = 0;
   for (const stream of WORKSTREAMS) {
-    const ownerPersonId = byKey.get(stream.owner);
-    if (!ownerPersonId) throw new Error(`${stream.key} names an owner who is not on the team`);
+    const ownerPersonId = holderOf(stream.owner, `${stream.name} workstream`);
+    if (!ownerPersonId) continue;
+    workstreams++;
 
     await prisma.opsWorkstream.upsert({
       where: { key: stream.key },
       update: {
         name: stream.name,
         ownerPersonId,
-        oversightPersonId: stream.oversight ? byKey.get(stream.oversight) ?? null : null,
-        technicalPartnerPersonId: stream.partner ? byKey.get(stream.partner) ?? null : null,
+        oversightPersonId: holderOf(stream.oversight, `${stream.name} oversight`),
+        technicalPartnerPersonId: holderOf(stream.partner, `${stream.name} technical partner`),
         areas: stream.areas,
       },
       create: {
         key: stream.key,
         name: stream.name,
         ownerPersonId,
-        oversightPersonId: stream.oversight ? byKey.get(stream.oversight) ?? null : null,
-        technicalPartnerPersonId: stream.partner ? byKey.get(stream.partner) ?? null : null,
+        oversightPersonId: holderOf(stream.oversight, `${stream.name} oversight`),
+        technicalPartnerPersonId: holderOf(stream.partner, `${stream.name} technical partner`),
         areas: stream.areas,
       },
     });
@@ -410,9 +397,9 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   const targetCompanies = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-target-list' } });
   let targets = 0;
 
-  for (const member of TEAM) {
-    const personId = byKey.get(member.key);
-    if (!personId || !quarter || !targetCompanies) continue;
+  for (const person of people) {
+    const personId = person.id;
+    if (!quarter || !targetCompanies) continue;
 
     /**
      * Two rows per person, and they mean different things. The standing target
@@ -446,9 +433,9 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   }
 
   // --- What we intend to build --------------------------------------------
-  const james = byKey.get('james');
+  const builder = holderOf(BUILDING, 'the roadmap');
   for (const item of ROADMAP) {
-    if (!james) break;
+    if (!builder) break;
     await prisma.opsRoadmapItem.upsert({
       where: { key: item.key },
       update: { title: item.title, description: item.description, priority: item.priority, standing: item.standing ?? false },
@@ -458,8 +445,8 @@ export async function seedTheFoundations(prisma: PrismaClient) {
         description: item.description,
         itemType: item.itemType,
         priority: item.priority,
-        proposedById: james,
-        ownerId: james,
+        proposedById: builder,
+        ownerId: builder,
         standing: item.standing ?? false,
         /*
          * Every PROPOSAL is a material commitment of the team's time, so every
@@ -482,7 +469,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   let objectives = 0;
 
   for (const objective of SEPTEMBER_OBJECTIVES) {
-    const ownerId = byKey.get(objective.owner);
+    const ownerId = holderOf(objective.owner, `objective '${objective.title}'`);
     const workstream = await prisma.opsWorkstream.findUnique({ where: { key: objective.workstream } });
     if (!ownerId || !workstream || !septemberPeriod) continue;
 
@@ -562,10 +549,12 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   }
 
   return {
-    people: TEAM.length,
+    people: people.length,
     phases: THE_PHASES.length,
     periods: periods.length,
-    workstreams: WORKSTREAMS.length,
+    workstreams,
+    /* What could not be placed because nobody holds the role yet. Add the person, run again. */
+    skipped,
     settings: Object.keys(SETTING_DEFAULTS).length,
     targets,
     roadmap: ROADMAP.length,

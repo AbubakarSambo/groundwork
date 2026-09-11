@@ -1,3 +1,4 @@
+import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -12,6 +13,9 @@ import { toast } from 'sonner'
 import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/components/gw/kit'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * The delivery board.
@@ -37,7 +41,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
 
 const dshort = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'
+  iso ? whenItWas(iso, 'dayAndMonth') : '—'
 
 // ---------------------------------------------------------------- page
 
@@ -53,7 +57,8 @@ export function BoardPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
-  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) !== 'closed')
+  /* Closed unless opened: five paragraphs of instructions were the first screen on a phone. */
+  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) === 'open')
 
   /*
    * THE CHECK-IN ITSELF, for one fact the board does not carry: whether the person reading is the
@@ -69,7 +74,7 @@ export function BoardPage() {
   const user = useAuthStore((st) => st.user)
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['board', id, variant],
     queryFn: () => boardApi.get(id!, variant),
     enabled: !!id,
@@ -81,6 +86,7 @@ export function BoardPage() {
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
+  const [pollCancelArmed, setPollCancelArmed] = useState(false)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
 
@@ -100,6 +106,8 @@ export function BoardPage() {
     onError: () => toast.error('That count did not change — try again.'),
   })
 
+  /* A second press before a target is gone. See a-second-press-before-it-is-gone.tsx. */
+  const sureAboutTarget = useAreYouSure<string>()
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
@@ -122,16 +130,24 @@ export function BoardPage() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
+    return <div role="status" style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
   }
   if (error || !data) {
+    /*
+     * WHICH OF THE THINGS HAPPENED. One branch rendered a permission-flavoured accusation for every
+     * failure, with retry off, so a single transient 500 permanently evicted a reader from their own
+     * board. The report page already knows how to say which (why-you-cannot-see-this.ts): the same
+     * words here, and Try again where trying again can work.
+     */
+    const why = whyYouCannotSeeThis(whatWentWrong(error))
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>This board could not be loaded.</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>
-          You may not be a party to this check-in, or it may no longer exist.
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>{why.say}</div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {why.canRetry && <button onClick={() => refetch()} style={btn}>Try again</button>}
+          <button onClick={() => navigate('/grounds')} style={why.canRetry ? { ...btn, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' } : btn}>Back to check-ins</button>
         </div>
-        <button onClick={() => navigate('/grounds')} style={btn}>Back to check-ins</button>
       </div>
     )
   }
@@ -156,6 +172,9 @@ export function BoardPage() {
   }
 
   const b = data as BoardPresent
+  /* Whether the check-in is over, so the board stops drawing a clock. See lib/a-ground-that-has-ended. */
+  const groundEnded = hasEnded((b as any)?.groundStatus)
+  const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
 
   /**
@@ -242,17 +261,26 @@ export function BoardPage() {
                   house style anyway. Say the session, and only mention dates when
                   there are dates.
                 */}
-                {b.phaseSpine && (
+                {/* Once it is over, what ended it is the header, not which session is open. */}
+                {endedSaying ? (
+                  <span style={{ color: '#8BE0AE', fontWeight: 700 }}>{endedSaying}</span>
+                ) : b.phaseSpine ? (
                   <span>
                     {b.phaseSpine.startsAt || b.phaseSpine.endsAt
                       ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
                       : ''}
-                    session {b.phaseSpine.currentSession}
+                    {/* Counted the way the exit gate below counts it: sessions everybody has finished.
+                        `currentSession` is the highest number any row carries, and the next row is
+                        created the moment one completes, so it ran ahead of the run. */}
+                    {(() => {
+                      const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
+                      return `${done} ${done === 1 ? 'session' : 'sessions'} done`
+                    })()}
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
-            <div style={{ fontSize: 10.5, color: '#8891BC', textAlign: 'right', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10.5, color: '#A8AFD6', textAlign: 'right', lineHeight: 1.5 }}>
               {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
             </div>
           </div>
@@ -264,10 +292,11 @@ export function BoardPage() {
                   <div key={s.n} style={{
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? '#8BE0AE' : '#8891BC',
+                    color: s.state === 'current' ? '#8BE0AE' : '#A8AFD6',
                     fontWeight: s.state === 'current' ? 700 : 500,
                   }}>
-                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' ? ' · now' : ''}
+                    {/* "now" on a check-in that has ended is a clock nobody is watching. */}
+                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
                   </div>
                 ))}
               </div>
@@ -291,7 +320,7 @@ export function BoardPage() {
           within one click.
         */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8891BC', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#A8AFD6', fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
@@ -343,6 +372,94 @@ export function BoardPage() {
             {howToRead ? 'Show less' : 'How to use it →'}
           </button>
         </div>
+
+        {/*
+          WHERE PEOPLE DIFFER, FIRST.
+
+          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
+          and the check-in grid. A lead opens this board to find out where they need to step in, and
+          the one section that tells them that was the last thing they reached; everything above it
+          they could already guess.
+
+          Moved, not changed. Same section, same rows, same order inside it. What follows it is
+          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
+          lead "Against the plan" where the difference used to be.
+        */}
+        {shown.divergence && b.divergence && (
+          <>
+            <Sec title="Where people differ" src="cross-referenced" />
+            <Card>
+              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
+              ) : (
+                <>
+                  {b.divergence.items.map((d: any, i: number) => (
+                    <Row key={i} first={i === 0}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
+                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
+                      </div>
+                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
+                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
+                          {d.atStake}
+                        </div>
+                      )}
+                    </Row>
+                  ))}
+                  {b.divergence.agreements.map((a: any, i: number) => (
+                    <Row key={`a${i}`}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
+                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
+                      </div>
+                    </Row>
+                  ))}
+                  {b.divergence.centralQuestion && (
+                    <Row>
+                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
+                    </Row>
+                  )}
+                </>
+              )}
+              {/*
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
+              */}
+            </Card>
+          </>
+        )}
 
         {/* ---------------------------------------------- at a glance */}
         {(shown.quickRead || shown.startingState || shown.decisions) && <Zone label="At a glance" />}
@@ -439,37 +556,59 @@ export function BoardPage() {
                         {o.name}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
                       </div>
-                      <div style={{ width: 140, height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
-                        <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{o.target != null ? ` of ${o.target}` : ''}
-                      </div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                        {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
-                      </div>
+                      {/*
+                        NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
+                        bar, a "0" and "no change" beside it - read live as "Confirm her in the role ·
+                        0 · no change", which says the decision did not happen. Without a target the
+                        row is the aim and nothing else.
+                      */}
+                      {o.target != null ? (
+                        <>
+                          <div style={{ width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
+                            <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}
+                          </div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                            {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
+                      )}
                     </div>
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
-                            disabled={bumpObjective.isPending || o.count === 0}
+                            disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
                             title="Move this count down"
+                            aria-label={`One fewer: ${o.name}`}
                             style={miniBtn}
                           >-</button>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
-                            disabled={bumpObjective.isPending}
+                            disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                             title="Move this count up"
+                            aria-label={`One more: ${o.name}`}
                             style={miniBtn}
                           >+</button>
                           <button
-                            onClick={() => removeObjective.mutate(o.id)}
+                            onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             title="Remove this target"
+                            aria-label={`Remove target: ${o.name}`}
                             style={{ ...miniBtn, color: 'var(--gw-clay)' }}
                           >x</button>
                         </span>
+                      )}
+                      {sureAboutTarget.isArmed(o.id) && (
+                        <Confirm
+                          saying={`Remove the target "${o.name}"? Its count and history go with it.`}
+                          confirmLabel="Remove it" keepLabel="Keep it" pending={removeObjective.isPending} pendingLabel="Removing…"
+                          onConfirm={() => removeObjective.mutate(o.id)} onKeep={sureAboutTarget.disarm}
+                        />
                       )}
                     {/* The record suggests, the lead decides. Never auto-applied:
                         a number a person set is theirs until they change it. */}
@@ -480,7 +619,7 @@ export function BoardPage() {
                         </span>
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
-                          disabled={bumpObjective.isPending}
+                          disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                           style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 11, border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           Use {o.suggestedCount}
@@ -528,81 +667,6 @@ export function BoardPage() {
           </>
         )}
 
-        {shown.divergence && b.divergence && (
-          <>
-            <Sec title="Where people differ" src="cross-referenced" />
-            <Card>
-              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
-              ) : (
-                <>
-                  {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} first={i === 0}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
-                      </div>
-                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
-                      {/*
-                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
-
-                        This section carried a headline and then a line of italics: "This is the
-                        summary. Your own report holds the detail of what each account said." So the
-                        one question the board exists to answer - what do the two of you each think
-                        is going on - was the one thing you had to leave it to find out.
-
-                        The data was already here. `divergence.items` is the report's own divergence
-                        objects, sent whole, and every string in them has been through `named()` on
-                        the way out - the same masking the rest of the board gets, so a reader who
-                        may not see who somebody is does not learn it here. Rendering it is a read
-                        of what was already on the wire, not a new disclosure.
-                      */}
-                      {Array.isArray(d.positions) && d.positions.length > 0 && (
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-                          {d.positions.map((pos: any, j: number) => (
-                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
-                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {d.atStake && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)' }}>Why it matters </span>
-                          {d.atStake}
-                        </div>
-                      )}
-                    </Row>
-                  ))}
-                  {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
-                      </div>
-                    </Row>
-                  ))}
-                  {b.divergence.centralQuestion && (
-                    <Row>
-                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
-                    </Row>
-                  )}
-                </>
-              )}
-              {/*
-                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
-
-                It read "This is the summary. Your own report holds the detail of what each account
-                said." That sentence was the only reason a fourth report surface had to exist: the
-                board named the disagreement and then sent you to another page to find out what it
-                was. Each account is now printed above, so the sentence would be sending people away
-                from the thing they are already looking at.
-              */}
-            </Card>
-          </>
-        )}
 
         {/* ---------------------------------------------- the work */}
         {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
@@ -624,7 +688,7 @@ export function BoardPage() {
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nothing on record yet.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said anything about this yet.</div>
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
@@ -653,7 +717,7 @@ export function BoardPage() {
             <Card>
               {b.dependencies.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
-              ) : b.dependencies.map((d, i) => (
+              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => (
                 <Row key={d.id} first={i === 0}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.from}</span>
@@ -679,7 +743,7 @@ export function BoardPage() {
           const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
           return (
           <>
-            <Sec title="Check-ins this phase" src="from sessions" />
+            <Sec title="Sessions this phase" src="from sessions" />
             <Card>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
@@ -870,18 +934,18 @@ export function BoardPage() {
                   </div>
 
                   {b.coverageVariant === 'bar' && r.remitDefined && (
-                    <div style={{ height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden', marginTop: 9 }}>
+                    <div style={{ height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden', marginTop: 9 }}>
                       <div style={{ height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)' }} />
                     </div>
                   )}
 
                   <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <b style={{ color: 'var(--gw-dark)' }}>What the record shows:</b> {r.what}
+                    <b style={{ color: 'var(--gw-dark)' }}>What people said:</b> {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
                       Which of the four this is
                     </span>
                     {r.reasonText}
@@ -1007,7 +1071,7 @@ export function BoardPage() {
                       {b.poll ? 'Change the times' : 'Set up an availability poll'}
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
                         style={{ padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }} />
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
@@ -1018,13 +1082,17 @@ export function BoardPage() {
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => savePoll.mutate()} disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
+                        <button type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
                           style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !pollQ.trim() || !pollOpts.trim() || savePoll.isPending ? 0.5 : 1 }}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
                         </button>
-                        <button onClick={() => setShowPollForm(false)} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
+                        <button type="button" onClick={() => { if (pollQ.trim() || pollOpts.trim()) setPollCancelArmed(true); else setShowPollForm(false) }} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
                       </div>
-                    </div>
+                      {pollCancelArmed && (
+                        <Confirm saying="Discard the question and times you typed?" confirmLabel="Discard" keepLabel="Keep typing"
+                          onConfirm={() => { setPollCancelArmed(false); setShowPollForm(false) }} onKeep={() => setPollCancelArmed(false)} />
+                      )}
+                    </form>
                   )}
                 </div>
               )}

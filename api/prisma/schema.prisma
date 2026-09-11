@@ -18,7 +18,9 @@ datasource db {
 enum UserRole {
   ADMIN // manages grounds, billing activation, sees the alignment feed
   /// Sets up check-ins for their own team. No admin powers of any kind: every privilege check in
-  /// this codebase asks for ADMIN specifically, so a LEAD inherits nothing by not being a MEMBER.
+  /// this codebase asks for ADMIN specifically. One READ is granted by role (fix plan E5, amending
+  /// what this note used to say): a LEAD reads at the shared level on check-ins run by the leads of
+  /// their own department - grounds/who-may-read-this-check-in.ts. Nothing else follows from LEAD.
   ///
   /// This was a boolean on User for about an hour. A role is what an admin already means when they
   /// say "my leads", and one field that says what somebody is beats two that have to agree.
@@ -159,7 +161,7 @@ enum CheckInStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
-  DECLINED // willingness gate answered no — itself a useful record
+  DECLINED // the person declined to take part - itself a useful record
 }
 
 enum TurnRole {
@@ -210,6 +212,7 @@ enum BillingEventType {
   SESSION_FEE // $5 per additional session
   SUBSCRIPTION_FEE // org subscription (Starter/SmallTeam/Growth/Business/Enterprise)
   FREE_EXTENSION // one-time free session extension per org
+  CREDIT // a session given back by a platform admin, with the reason logged
 }
 
 enum SubscriptionPlan {
@@ -219,14 +222,6 @@ enum SubscriptionPlan {
   BUSINESS // up to 250 people, $200/mo
   SCALE // up to 1,000 people, $400/mo
   ENTERPRISE // unlimited, contact sales
-}
-
-enum EvidenceType {
-  DOCUMENT_AT_AGREEMENT
-  DOCUMENT_AFTER
-  CHECK_IN
-  ANCHORED_RECALL
-  UNANCHORED_RECALL
 }
 
 enum BillingEventStatus {
@@ -307,10 +302,47 @@ model ApiAccessRequest {
   decidedAt       DateTime? @map("decided_at")
   note            String?   @db.Text
 
+  /// THE TERMS WERE ACCEPTED AT THE POINT OF ASKING. The API terms forbid using what comes out of
+  /// it to build or train a competing service; a request recorded without acceptance is refused,
+  /// so every approved organisation has agreed to them and we can say when and to which version.
+  acceptedTermsAt DateTime? @map("accepted_terms_at")
+  termsVersion    String?   @map("terms_version")
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status, requestedAt])
   @@map("api_access_requests")
+}
+
+/// ONE ROW PER AUTHENTICATED MACHINE CALL. Written by the machine-token guard, read by the watch
+/// that looks for an integration behaving like a scraper (reads far outnumbering writes, report
+/// reads by the hundred, bursts) and by the per-credential rate limit. Pruned after 30 days.
+model ApiCall {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  clientId       String   @map("client_id")
+  method         String
+  path           String
+  at             DateTime @default(now())
+
+  @@index([organizationId, at])
+  @@index([clientId, at])
+  @@map("api_calls")
+}
+
+/// WHAT THE WATCH NOTICED ABOUT AN ORGANISATION'S USE OF THE API. Shown beside the access request
+/// on the admin page, where the person who can throttle or withdraw is already looking.
+model ApiUsageFlag {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  kind           String
+  detail         String    @db.Text
+  raisedAt       DateTime  @default(now()) @map("raised_at")
+  clearedAt      DateTime? @map("cleared_at")
+
+  @@index([organizationId, raisedAt])
+  @@index([clearedAt, raisedAt])
+  @@map("api_usage_flags")
 }
 
 enum ApiAccessStatus {
@@ -385,16 +417,16 @@ model Organization {
   firstGroundUsed        Boolean       @default(false) @map("first_ground_used")
   freeExtensionUsed      Boolean       @default(false) @map("free_extension_used")
   allowCodeCreation      Boolean       @default(false) @map("allow_code_creation")
-  // Exists in the database, referenced nowhere in the codebase. Declared here
-  // so the schema matches reality; removing it should be a deliberate decision
-  // with a migration of its own, not a side effect of a drift fix.
-  contributorBypass      Boolean       @default(false) @map("contributor_bypass")
 
   // Org subscription
   subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
   subscriptionStatus    String?           @map("subscription_status") // active | paused | cancelled
   subscriptionStripeId  String?           @map("subscription_stripe_id")
   subscriptionPeriodEnd DateTime?         @map("subscription_period_end")
+  /// Set when a cancellation is scheduled: access runs to this date and then stops. The status stays
+  /// `active` until Stripe deletes the subscription, because isSubscribed() reads `active` alone and
+  /// a fifth status would have unsubscribed the customer the moment they asked to leave later.
+  subscriptionEndsAt    DateTime?         @map("subscription_ends_at")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -404,7 +436,6 @@ model Organization {
   users               User[]
   grounds             Ground[]
   billingEvents       BillingEvent[]
-  orgIntelligence     OrgIntelligence[]
   contributorCodes    ContributorCode[]
   styleProfiles       PersonStyleProfile[]
   memberships         OrganizationMembership[]
@@ -415,6 +446,7 @@ model Organization {
   quietPeriods        DetectionQuietPeriod[]
   webhookEndpoints    WebhookEndpoint[]
   embedConfig         EmbedConfig?
+  whatsappConnection  WhatsAppConnection?
   commitments         Commitment[]
   todos       Todo[]
   assistantTurns      AssistantTurn[]
@@ -470,6 +502,10 @@ model Organization {
 
   workspaceNotifiers WorkspaceNotifier[]
 
+  /// OUR OWN ORGANISATIONS ARE NOT CUSTOMERS. Set by hand on Groundwork's own organisations; the
+  /// platform panel counts nothing under one (prompts/what-the-platform-has-actually-done.ts).
+  isInternal Boolean @default(false) @map("is_internal")
+
   @@map("organizations")
 }
 
@@ -494,6 +530,11 @@ model User {
   awaitingOrgApproval Boolean  @default(false) @map("awaiting_org_approval")
   isEmailVerified     Boolean  @default(false) @map("is_email_verified")
   isPlatformAdmin     Boolean  @default(false) @map("is_platform_admin")
+  /// Minted into every session token and compared on every request. Bumped by a password reset, so
+  /// the sessions that prompted the reset end with it (fix plan A10 / B16). Tokens from before the
+  /// column carry no epoch and read as 0, which is every existing row's value: nobody is signed out
+  /// by the deploy.
+  tokenEpoch          Int      @default(0) @map("token_epoch")
   googleId            String?  @unique @map("google_id")
   emailNotifications  Boolean  @default(true) @map("email_notifications")
   // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
@@ -573,6 +614,7 @@ model PendingJoin {
   firstName       String? @map("first_name")
   lastName        String? @map("last_name")
   roleAsDescribed String? @map("role_as_described")
+  department      String? @db.VarChar(120)
 
   /// The secret in the emailed link. Single use.
   token     String    @unique
@@ -706,6 +748,20 @@ model AdminProfile {
   @@map("admin_profiles")
 }
 
+/// A one-time code the Google callback hands the browser in place of the JWT, redeemed within a
+/// minute. It lived in a process-local Map, so a restart or a second instance broke Google sign-in
+/// with "Invalid or expired exchange code" (fix plan B15). Deleted on use; the rest pruned daily.
+model OAuthExchangeCode {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  token     String    @db.Text
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("oauth_exchange_codes")
+}
+
 model EmailVerificationToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
@@ -768,6 +824,10 @@ model Ground {
   resolvedAt         DateTime? @map("resolved_at")
   closedAt           DateTime? @map("closed_at")
   pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
+  /// The status a hold was placed on, so lifting it can put the ground back where it was rather
+  /// than guessing ACTIVE. Written by pauseGround, cleared by resumeGround. Null on any ground
+  /// paused before this column existed; resume falls back to ACTIVE for those and says so.
+  pausedFromStatus   GroundStatus? @map("paused_from_status")
 
   /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
   ///
@@ -985,6 +1045,10 @@ model GroundParticipant {
   whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
+  /// The SHA-256 of the lower-cased address this link had before the account was erased. Erasure
+  /// rewrites `email` to a deleted-... placeholder, which was the only key the retention sweep had,
+  /// so an erased person's raw turns outlived the window (fix plan A16). The sweep matches this too.
+  erasedFrom                 String?        @map("erased_from")
   userId                     String?        @map("user_id") // null until they accept the invite
   email                      String
   partyType                  PartyType
@@ -995,8 +1059,13 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean        @default(false) @map("managing_only")
   roleAsDescribed            String?        @map("role_as_described") // role as the initiator described it
-  willingnessEvidence        Boolean?       @map("willingness_evidence") // willingness gate Q1
-  willingnessCadence         Boolean?       @map("willingness_cadence") // willingness gate Q2
+  /// Optional, never inferred, never guessed from an address; blank means blank. Captured beside the
+  /// role at every door that adds a person (fix plan E2). A person with no department is in no
+  /// department, which is "no scope", never "everyone's".
+  department                 String?        @db.VarChar(120)
+  /// The language this person writes in, ISO 639-1 (ha, sw, en). Read from their first message when
+  /// nothing on the roster said. The conversation happens in it; the record stays in English.
+  language                   String?        @db.VarChar(8)
   invitedAt                  DateTime?      @map("invited_at")
   notifiedAt                 DateTime?      @map("notified_at") // never added silently
   // Mirror of the LATEST invite-kind EmailDelivery status for this participant
@@ -1005,6 +1074,9 @@ model GroundParticipant {
   // Magic-link invite (cleared once accepted; userId is set on accept).
   inviteToken                String?        @unique @map("invite_token")
   inviteTokenExpiresAt       DateTime?      @map("invite_token_expires_at")
+  /// The two stamps of the invite-expiry sweep (grounds.cron.ts), so each mail goes once.
+  inviteExpiryWarnedAt       DateTime?      @map("invite_expiry_warned_at")
+  inviteLapsedToldAt         DateTime?      @map("invite_lapsed_told_at")
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]        @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)
@@ -1133,6 +1205,10 @@ model GroundParticipant {
 // Conversation — each party checks in INDEPENDENTLY. Never cross-readable.
 // ---------------------------------------------------------------------------
 
+/// ONE SESSION OF A GROUND. What a user calls a check-in is `Ground`; a `CheckIn` row is one
+/// person's one session of it, numbered by `sessionNumber`. The naming guards exempt the data model
+/// on purpose - renaming this model is a much larger change than the one-word rule is worth - so
+/// the fact is stated here, where the next reader meets it (fix plan B13).
 model CheckIn {
   id            String @id @default(uuid())
   groundId      String @map("ground_id")
@@ -1163,11 +1239,15 @@ model CheckIn {
   openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment              String?       @map("next_commitment")
-  closedReason                String?       @map("closed_reason") // e.g. "willingness_declined"
-  willingnessConfirmed        Boolean       @default(true) @map("willingness_confirmed") // willingness gate result
+  closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
+  /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
+  /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
+  /// ranked "managed" above "directional" is gone.
   specificityLevel            String?       @map("specificity_level")
+  /// When scoring was TRIED. Set with a null level means the scorer failed; null means not scored yet.
+  /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
+  specificityScoredAt         DateTime?     @map("specificity_scored_at")
   specificityDimensions       Json?         @map("specificity_dimensions")
-  recallConfidence            String?       @map("recall_confidence")
   /// THE REPORT AS THE PERSON SAW IT WHEN THEY FINISHED.
   ///
   /// "I want the exact same forming report to be openable. I have not seen it anywhere, when I
@@ -1268,7 +1348,6 @@ model RecordEntry {
   participantId        String          @map("participant_id")
   checkInId            String?         @map("check_in_id")
   type                 RecordEntryType
-  evidenceType         EvidenceType    @default(CHECK_IN)
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
@@ -1364,10 +1443,29 @@ model GroundObjective {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  ground    Ground                    @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  snapshots GroundObjectiveSnapshot[]
 
   @@index([groundId])
   @@map("ground_objectives")
+}
+
+/// AN OBJECTIVE'S COUNT AS IT STOOD WHEN A ROUND CLOSED. Written by recordRoundCompletion, one row per
+/// objective per round. "Moved this session" is the difference between two of these; with only one it
+/// is not known, and says so, rather than reporting the lifetime total as this session's movement.
+model GroundObjectiveSnapshot {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  objectiveId   String   @map("objective_id")
+  sessionNumber Int      @map("session_number")
+  count         Int
+  takenAt       DateTime @default(now()) @map("taken_at")
+
+  objective GroundObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([objectiveId, sessionNumber])
+  @@index([groundId, sessionNumber])
+  @@map("ground_objective_snapshots")
 }
 
 enum DependencyStatus {
@@ -1775,15 +1873,16 @@ model OutcomeFeedback {
 model RoundCompletion {
   id               String   @id @default(uuid())
   groundId         String   @map("ground_id")
-  roundNumber      Int      @map("round_number")
-  /// How many people the round was waiting on when it closed. Kept because the participant list
-  /// changes: somebody added later must not make a closed round look as though it reopened.
+  /// One integer, one name: the same number CheckIn.sessionNumber carries (fix plan B13).
+  sessionNumber    Int      @map("session_number")
+  /// How many people the session was waiting on when it closed. Kept because the participant list
+  /// changes: somebody added later must not make a closed session look as though it reopened.
   participantCount Int      @map("participant_count")
   completedAt      DateTime @default(now()) @map("completed_at")
 
   ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
 
-  @@unique([groundId, roundNumber])
+  @@unique([groundId, sessionNumber])
   @@index([groundId])
   @@map("round_completions")
 }
@@ -1824,6 +1923,139 @@ model EmbedConfig {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("embed_configs")
+}
+
+/// AN ORGANISATION'S OWN WHATSAPP NUMBER.
+///
+/// WhatsApp used to be one number for the whole platform, set in our environment and switched on by
+/// us. A customer wants their sales team to check in on the organisation's own number, set up by
+/// their admin at Connect. This is that connection: Meta's Cloud API ids and tokens for one org, the
+/// secret their inbound webhooks are signed with, and the verify token Meta's subscribe handshake
+/// answers. One per organisation; the platform number stays as the fallback for organisations
+/// without one.
+model WhatsAppConnection {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Meta's id for the phone number messages are sent from.
+  phoneNumberId     String  @map("phone_number_id")
+  /// The WhatsApp Business Account the number belongs to. Kept for the admin's reference.
+  businessAccountId String? @map("business_account_id")
+  /// The number itself, as the admin reads it. Display only.
+  displayNumber     String? @map("display_number")
+  /// The permanent system-user token Meta issued. Sends messages; never shown back after saving.
+  accessToken       String  @map("access_token")
+  /// The app secret inbound webhooks are signed with. Verified on every POST.
+  appSecret         String  @map("app_secret")
+  /// What Meta's subscribe handshake must echo. Ours to generate, theirs to paste into Meta.
+  verifyToken       String  @map("verify_token")
+
+  enabled        Boolean   @default(true)
+  connectedAt    DateTime  @default(now()) @map("connected_at")
+  lastInboundAt  DateTime? @map("last_inbound_at")
+  lastOutboundAt DateTime? @map("last_outbound_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_connections")
+}
+
+/// WHICH CHECK-IN A WHATSAPP NUMBER IS TALKING TO. A person with two sessions open picks one from a
+/// list; the pick is remembered here so every following message lands in the same one until it
+/// closes. One row per number per organisation.
+/// A LINE THE MODEL HAS ALREADY WORDED. The report, the session report and the board hand the
+/// engine's drafts to the model for wording on every read, and the same drafts came back the same
+/// way ten seconds later. Keyed by a hash of the style, the instruction and the draft, so an
+/// unchanged record costs one lookup and a changed one costs one model call.
+/// WHAT AN ACCOUNT SHOWS, MADE ONCE AND KEPT. One row per completed check-in per source hash: the
+/// lead's read of that account against the check-in's purpose. Derived, never their words, never
+/// evidence - see conversation/what-an-account-shows.ts. A changed transcript is a new hash and a
+/// new read; an unchanged one is this row.
+model WhatAnAccountShows {
+  id            String   @id @default(uuid())
+  checkInId     String   @map("check_in_id")
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  sourceHash    String   @map("source_hash")
+  text          String   @db.Text
+  withheld      Int      @default(0)
+  derived       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([checkInId, sourceHash])
+  @@index([groundId])
+  @@map("what_an_account_shows")
+}
+
+model WordedLine {
+  key       String   @id
+  text      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("worded_lines")
+}
+
+/// EVERY OUTBOUND WHATSAPP MESSAGE, AND WHETHER IT WENT. A reply is composed AFTER the model call and
+/// the session decrement, and a report after a synthesis and up to four polls - so a send that failed
+/// silently was money spent on a message nobody received, and nothing anywhere recorded it. This row
+/// is what makes a paid-for-and-undelivered message findable at all. Organisation null is the
+/// platform number.
+model WhatsAppSend {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  phone          String
+  checkInId      String?   @map("check_in_id")
+  kind           String?
+  sentAt         DateTime? @map("sent_at")
+  failedAt       DateTime? @map("failed_at")
+  status         Int?
+  error          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([failedAt])
+  @@map("whatsapp_sends")
+}
+
+model WhatsAppThread {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  phone          String
+  /// Null while the person has been asked which check-in and has not yet said.
+  checkInId      String?  @map("check_in_id")
+  /// When the "which one?" list was sent. A typed number is a pick only while this is fresh (a-whatsapp-message-is-routed.ts).
+  pickPendingAt  DateTime? @map("pick_pending_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, phone])
+  @@map("whatsapp_threads")
+}
+
+/// A REDELIVERED WHATSAPP MESSAGE IS NOT A SECOND ANSWER. Meta redelivers when it does not get a 200
+/// in time; each redelivery was another model turn, another slot against the answer ceiling and, on
+/// a session not yet opened, another session spent. The handler claims the message id here first.
+model WhatsAppInboundMessage {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  messageId      String   @map("message_id")
+  handledAt      DateTime @default(now()) @map("handled_at")
+
+  @@unique([organizationId, messageId])
+  @@map("whatsapp_inbound_messages")
+}
+
+/// WHICH ORGANISATION A NUMBER WRITING TO THE PLATFORM NUMBER MEANS. The platform webhook has no
+/// organisation in its URL; the sender's number is looked up on every roster and, when it is on more
+/// than one, the person is asked and the answer is kept here. One row per phone.
+model WhatsAppOrganisationPick {
+  phone          String    @id
+  organizationId String?   @map("organization_id")
+  pickPendingAt  DateTime? @map("pick_pending_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("whatsapp_organisation_picks")
 }
 
 /// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.
@@ -1895,6 +2127,25 @@ model ApiCredential {
 /// a well-behaved integration retries a push it cannot confirm - and without this, a retried bulk
 /// import is a second import. The key is theirs, the window is 24 hours, and the stored response is
 /// replayed verbatim so a retry is indistinguishable from the original call.
+/// A STRIPE EVENT WE COULD NOT HANDLE, KEPT SO IT IS NOT LOST. The webhook used to let a throw become
+/// a non-2xx, so a deterministic failure stuck for ever with Stripe retrying and nobody told. Now the
+/// event is written here with what went wrong, Stripe is answered 200, and the hourly retry works
+/// from this record. `resolvedAt` is set when a retry succeeds; a platform admin can list the rest.
+model StripeEventFailure {
+  id          String    @id @default(uuid())
+  eventId     String    @unique @map("event_id")
+  eventType   String    @map("event_type")
+  error       String    @db.Text
+  payload     Json
+  attempts    Int       @default(1)
+  lastTriedAt DateTime  @default(now()) @map("last_tried_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([resolvedAt, lastTriedAt])
+  @@map("stripe_event_failures")
+}
+
 model IdempotencyRecord {
   id                 String   @id @default(uuid())
   organizationId     String   @map("organization_id")
@@ -2413,6 +2664,22 @@ enum KnowledgeKind {
 /// `key` is the customer's own name for the thing and is stable across versions. `(org, key)` is
 /// therefore NOT unique - the whole history lives under one key, and exactly one row of it has a
 /// null `effectiveTo`.
+model KnowledgeRetrieval {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  /// What was asked, so a bad retrieval can be reproduced.
+  query            String   @db.Text
+  /// The cards, in the order they were ranked, with their scores.
+  cards            Json
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("knowledge_retrievals")
+}
+
 model KnowledgeCard {
   id             String        @id @default(uuid())
   organizationId String        @map("organization_id")
@@ -2608,22 +2875,6 @@ model KnowledgeProposal {
   @@unique([documentId, status])
   @@index([organizationId, status])
   @@map("knowledge_proposals")
-}
-
-model KnowledgeRetrieval {
-  id               String   @id @default(uuid())
-  organizationId   String   @map("organization_id")
-  personExternalId String   @map("person_external_id")
-  /// What was asked, so a bad retrieval can be reproduced.
-  query            String   @db.Text
-  /// The cards, in the order they were ranked, with their scores.
-  cards            Json
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId, createdAt])
-  @@map("knowledge_retrievals")
 }
 
 /// EVERY TURN OF A PANEL CONVERSATION, KEPT.
@@ -2894,11 +3145,25 @@ model Person {
   /// sent. Resolved at read; unresolved is reported rather than hidden.
   managerExternalId String? @map("manager_external_id")
 
+  /// The number they message from, E.164, from SCIM phoneNumbers[] or the people route. Matched
+  /// before any number a person typed into Settings, because the roster is the customer's truth.
+  phone String?
+  /// STOP means stop, by the means the channel offers (whatsapp/a-message-outside-the-window.ts).
+  whatsappStoppedAt      DateTime? @map("whatsapp_stopped_at")
+  whatsappConsentAt      DateTime? @map("whatsapp_consent_at")
+  /// The last time THIS person wrote to us on WhatsApp: Meta's 24-hour service window is measured from it.
+  whatsappLastInboundAt  DateTime? @map("whatsapp_last_inbound_at")
+
   /// SCIM's own signal, kept as it arrives. `deactivatedAt` is the moment it first became false.
   active        Boolean   @default(true)
   deactivatedAt DateTime? @map("deactivated_at")
 
   /// Set if this person ever signs in to Groundwork. Null for most of a roster, and that is normal.
+  ///
+  /// SIX MODELS REPRESENT A HUMAN BEING - User, Person, GroundParticipant, OpsPerson, PendingSignup,
+  /// PendingJoin - each for a stated reason, and this is the documented seam between the two that
+  /// matter most. A constraint enforced on one of them is not enforced on the others; anybody adding
+  /// a seventh should say here why the six will not do (fix plan B13, P7-002).
   linkedUserId String? @map("linked_user_id")
 
   /// THE DAY THEY WERE LAST PROMPTED, and the whole of the once-a-day rule.
@@ -2917,6 +3182,7 @@ model Person {
   @@unique([organizationId, sourceSystem, externalId])
   @@index([organizationId, active])
   @@index([organizationId, managerExternalId])
+  @@index([organizationId, phone])
   @@map("people")
 }
 
@@ -2953,7 +3219,7 @@ enum SubjectType {
 /// end: two places that must agree, each defensible alone, nothing reconciling them.
 ///
 /// ORG-SCOPED AND ADDITIVE. Grounds are untouched and keep working exactly as they do. This
-/// accumulates alongside them and nothing in the live product reads it yet.
+/// accumulates alongside them; the machine API, the handover brief and the board read it.
 model Subject {
   id             String      @id @default(uuid())
   organizationId String      @map("organization_id")
@@ -3014,18 +3280,6 @@ model Subject {
   @@index([organizationId, type])
   @@index([organizationId, syncedAt])
   @@map("subjects")
-}
-
-model OrgIntelligence {
-  id             String   @id @default(uuid())
-  organizationId String?  @map("organization_id")
-  patternSummary Json     @map("pattern_summary") // anonymised — no PII, no names
-  anonymised     Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-
-  @@map("org_intelligence")
 }
 
 model BillingEvent {
@@ -3891,8 +4145,8 @@ enum ReportActivationStatus {
 model ReportRound {
   id       String @id @default(uuid())
   groundId String @map("ground_id")
-  /// The session number every party had completed when this was taken.
-  round    Int
+  /// The session number every party had completed when this was taken. Named for what it is (B13).
+  sessionNumber Int @map("session_number")
 
   /// The report as it stood, in the same shape the live one holds.
   sharedPicture   String @map("shared_picture") @db.Text
@@ -3914,8 +4168,8 @@ model ReportRound {
   ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
 
   /// One row per round. A second synthesis of the same round amends this one.
-  @@unique([groundId, round])
-  @@index([groundId, round])
+  @@unique([groundId, sessionNumber])
+  @@index([groundId, sessionNumber])
   @@map("report_rounds")
 }
 
@@ -3952,6 +4206,8 @@ enum UsageEventType {
   ORG_CREATED
   SUBSCRIPTION_STARTED
   SUBSCRIPTION_CANCELLED
+  /// A model call made for nobody signed in: the /start page's FAQ and classifier (fix plan F13).
+  ANONYMOUS_MODEL_CALL
 }
 
 model UsageEvent {
@@ -4111,25 +4367,6 @@ model FeedbackSubmission {
 
   @@index([tab, createdAt])
   @@map("feedback_submissions")
-}
-
-model PatternConfig {
-  id                  String   @id @default(uuid())
-  code                String   @unique // e.g. "D4", "B2", "F1"
-  consecutivePeriods  Int      @default(3) @map("consecutive_periods") // three-period gate
-  outputScoreMax      Float?   @map("output_score_max") // detector fires when outputScore < this
-  outputScoreMin      Float?   @map("output_score_min") // detector fires when outputScore > this
-  thinkingScoreMax    Float?   @map("thinking_score_max")
-  thinkingScoreMin    Float?   @map("thinking_score_min") // detector fires when thinkingScore > this
-  meetingScoreMax     Float?   @map("meeting_score_max")
-  meetingScoreMin     Float?   @map("meeting_score_min")
-  specificityScoreMax Float?   @map("specificity_score_max")
-  keywordCountMin     Int?     @map("keyword_count_min") // for keyword-based detectors
-  enabled             Boolean  @default(true)
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  updatedBy           String?  @map("updated_by") // userId of last editor
-
-  @@map("pattern_configs")
 }
 
 /// SOMETHING YOU WROTE DOWN BETWEEN SESSIONS.
@@ -4435,6 +4672,44 @@ model ScenarioCandidate {
 /// is why this is a record keyed to the person rather than a setting on the organisation - a
 /// preference an admin can flip is not a preference, and the whole reason people answer honestly
 /// here is that the product does what it said it would.
+/// A MAIL HELD FOR THE MORNING, NOT DROPPED. When quiet hours apply, sendEmail writes the rendered
+/// mail here instead of sending it, and held-mail.cron.ts sends what is due. Before this, the digest
+/// loop logged "quiet_hours" and moved on: a round that completed at 21:00 local was never announced.
+model ScheduledEmail {
+  id        String    @id @default(uuid())
+  toAddress String    @map("to_address")
+  subject   String
+  html      String    @db.Text
+  sender    String?
+  context   Json?
+  notBefore DateTime  @map("not_before")
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([sentAt, notBefore])
+  @@map("scheduled_emails")
+}
+
+/// A FAILURE THE PRODUCT KNOWS ABOUT IS WRITTEN WHERE A PERSON CAN FIND IT. A suppressed mail, a
+/// bounce, a quiet-hours hold, a failed WhatsApp send: each was a log line or nothing. One row per
+/// outcome, from the one door mail goes through and the one WhatsApp sends go through. The screen
+/// that reads it is a client job; the point of writing it now is that every fact has somewhere to go.
+model Notification {
+  id             String   @id @default(uuid())
+  organizationId String?  @map("organization_id")
+  channel        String
+  toAddress      String   @map("to_address")
+  sender         String?
+  subject        String?
+  outcome        String
+  because        String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([toAddress, createdAt])
+  @@index([outcome, createdAt])
+  @@map("notifications")
+}
+
 model EmailPreference {
   id               String @id @default(uuid())
   organizationId   String @map("organization_id")
@@ -4738,6 +5013,10 @@ model OpsPerson {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  /// FURTHER ACCOUNTS THAT OPEN THE BACK OFFICE AS THIS PERSON. `userId` is the first; one human
+  /// with a work address and a personal one is still one person here, not two.
+  accounts OpsPersonAccount[]
+
   grants             OpsGrant[]               @relation("OpsGrantHolder")
   attributions       OpsAttribution[]         @relation("OpsAttributionContributor")
   positioning        OpsPositioningRecord[]   @relation("OpsPositioningContributor")
@@ -4746,6 +5025,36 @@ model OpsPerson {
 
   @@index([active])
   @@map("ops_people")
+}
+
+model OpsPersonAccount {
+  id       String    @id @default(uuid())
+  personId String    @map("person_id")
+  userId   String    @unique @map("user_id")
+  addedAt  DateTime  @default(now()) @map("added_at")
+  person   OpsPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@map("ops_person_accounts")
+}
+
+/// THE BACK OFFICE HAS A DOOR. Signing in opens the product; opening /ops or /admin also needs a
+/// code sent to the signed-in email, good for a week, unless the session came from Google, which
+/// already did the second check. One row per user, replaced on each verification.
+model BackOfficePass {
+  userId     String   @id @map("user_id")
+  via        String
+  verifiedAt DateTime @default(now()) @map("verified_at")
+  expiresAt  DateTime @map("expires_at")
+  /// The code in flight, hashed, and when it stops being accepted. Cleared on verification.
+  codeHash      String?   @map("code_hash")
+  codeExpiresAt DateTime? @map("code_expires_at")
+  /// Wrong guesses against the code in flight. A six-digit code is a million guesses; without a
+  /// counter, an attacker with a session on a staff account could simply try them. Reset whenever a
+  /// new code is sent, and the code is destroyed when this passes the ceiling.
+  wrongGuesses  Int       @default(0) @map("wrong_guesses")
+
+  @@map("back_office_passes")
 }
 
 /// One capability held by one person. A role suggests a set; this table decides.

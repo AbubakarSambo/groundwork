@@ -29,7 +29,7 @@ export class StopRemindersController {
   @HttpCode(200)
   /* The token is long and random, so guessing is not worth attempting - but nothing should be
      able to sit and try. */
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
   async stop(@Param('token') token: string) {
     const party = await this.prisma.groundParticipant.findUnique({
       where: { stopRemindersToken: token },

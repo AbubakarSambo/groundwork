@@ -41,8 +41,8 @@ describe('covering for a lead means being able to steer it', () => {
     describe(fn, () => {
       it('lets an admin in the same organisation act', () => {
         const b = body(fn);
-        expect(b).toContain("viewer?.role === 'ADMIN'");
-        expect(b).toContain('viewer.organizationId === ground.organizationId');
+        /* The one rule, which asks the role in THIS organisation: grounds/who-may-read-this-check-in.ts. */
+        expect(b).toContain('adminsThisOrg(viewer, ground)');
       });
 
       /**
@@ -50,7 +50,7 @@ describe('covering for a lead means being able to steer it', () => {
        * company write context into another company's check-in.
        */
       it('and only in the same organisation', () => {
-        expect(body(fn)).toMatch(/isOrgAdmin = viewer\?\.role === 'ADMIN' && viewer\.organizationId === ground\.organizationId/);
+        expect(body(fn)).toMatch(/isOrgAdmin = adminsThisOrg\(viewer, ground\)/);
       });
 
       it('still refuses everybody else, and says who may', () => {

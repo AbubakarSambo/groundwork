@@ -622,7 +622,7 @@ function GroundStatusBadge({ status }: { status: string }) {
   if (SILENT_STATUSES.includes(status)) return null
   const isReady = status === 'REPORT_READY'
   /** Amber for "somebody has to act before this can move", grey for a finished record. */
-  const isWaiting = status === 'AWAITING_LEAD' || status === 'AWAITING_APPROVAL' || status === 'PAUSED'
+  const isWaiting = status === 'AWAITING_APPROVAL' || status === 'PAUSED'
   const color = isReady ? '#065f46' : isWaiting ? 'var(--gw-amber-t)' : '#6B7280'
   const bg = isReady ? 'rgba(6,95,70,.1)' : isWaiting ? 'var(--gw-amber-bg)' : 'rgba(107,114,128,.08)'
   const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
@@ -682,7 +682,7 @@ export function AppSidebar() {
 
   const location = useLocation()
   const isEntryPage = !isAuthenticated && location.pathname === '/start'
-  const { groundName, setGroundName, sessions } = useEntryStore()
+  const { groundName, setGroundName } = useEntryStore()
   const [renamingEntry, setRenamingEntry] = useState(false)
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
@@ -791,7 +791,7 @@ export function AppSidebar() {
             * to one, and everything they are in is on the list below.
             */}
           {user?.mayOpenCheckIns !== false && <button
-            onClick={() => navigate('/start')}
+            onClick={() => navigate('/start?new=1')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 7,
               padding: collapsed ? '8px' : '8px 12px', borderRadius: 8,
@@ -836,8 +836,8 @@ export function AppSidebar() {
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>1/{sessions} sessions</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--gw-green-live)', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Not saved yet</span>
+                  
                 </div>
               </div>
             )}
@@ -1361,7 +1361,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <FeedbackWidget />
 
       <style>{`
+        /*
+         * HOW MUCH ROOM A FULL-HEIGHT PAGE ACTUALLY HAS.
+         *
+         * A chat page fills the viewport and scrolls its own message list, so the composer stays
+         * on screen however long the conversation gets. It asked for 100vh. But on a narrow screen
+         * the main element also reserves 60px at the bottom for the fixed nav strip - so the page came to a
+         * viewport plus sixty, every chat scrolled by exactly the height of the nav bar, and the
+         * one thing you always need, the box you type in, was the thing pushed off the bottom.
+         *
+         * The room available is the viewport less whatever is pinned over it. Declared here, next
+         * to the padding that reserves it, because the two numbers have to agree and they were in
+         * different files.
+         */
+        :root { --gw-bottom-nav: 0px; }
         @media (max-width: 640px) {
+          :root { --gw-bottom-nav: calc(60px + env(safe-area-inset-bottom)); }
           .gw-sidebar-desktop { display: none !important; }
           .gw-sidebar-mobile  { display: flex !important; }
           .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }

@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, CallAskedEvent } from '../../common/events';
 
 /**
  * FREE-MAIL DOMAINS ARE MARKED, NOT REFUSED.
@@ -32,13 +34,15 @@ export class CoachService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async request(input: {
     name: string;
     orgName: string;
     email: string;
-    teamSize: string;
+    /** Not asked on the public form; empty rather than null, because the column is non-null. */
+    teamSize?: string;
     intention: string;
     triedAlready?: boolean;
     /** When they would like the first conversation. Optional - asking without a time is fine. */
@@ -90,7 +94,9 @@ export class CoachService {
             intention,
             name: input.name.trim(),
             orgName: input.orgName.trim(),
-            teamSize: input.teamSize.trim(),
+            /* Only when they gave one. A second ask from the form that does not collect it must not
+               wipe the number they gave the first time. */
+            ...(input.teamSize?.trim() ? { teamSize: input.teamSize.trim() } : {}),
             /* The newer time, like the newer words - somebody asking again has moved on. */
             ...(preferredAt ? { preferredAt } : {}),
             ...(input.triedAlready !== undefined && { triedAlready: input.triedAlready }),
@@ -101,13 +107,28 @@ export class CoachService {
             name: input.name.trim(),
             orgName: input.orgName.trim(),
             email,
-            teamSize: input.teamSize.trim(),
+            teamSize: input.teamSize?.trim() ?? '',
             intention,
             isFreeMail,
             ...(preferredAt ? { preferredAt } : {}),
             ...(input.triedAlready !== undefined && { triedAlready: input.triedAlready }),
           },
         });
+
+    /**
+     * THE TEAM IS TOLD, THE SAME WAY IT IS TOLD OF EVERY OTHER ASK. A call asked for from inside the
+     * product emits CALL_ASKED and the whole back-office roster gets a mail; a coaching request from
+     * the public page wrote its row and stopped, so the one request that arrives at $700 an hour
+     * landed in a tab somebody had to remember to open. Same event, same listener, same mail.
+     * (The two tables, CallRequest and CoachRequest, should be one; not in this change.)
+     */
+    this.events.emit(GroundworkEvents.CALL_ASKED, {
+      organizationId: null,
+      askedByUserId: null,
+      requester: { name: input.name.trim(), email, orgName: input.orgName.trim() },
+      subject: 'COACHING',
+      note: intention,
+    } satisfies CallAskedEvent);
 
     /**
      * THE ONLY THING THIS PERSON WAS PROMISED IS AN EMAIL, so a failure to send it must not be

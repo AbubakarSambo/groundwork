@@ -29,15 +29,19 @@ const stripped = (file: string) =>
 describe('the seed', () => {
   const SEED = stripped('seed-the-foundations.ts');
 
-  it('creates the starting team and never re-asserts it', () => {
-    const block = SEED.slice(SEED.indexOf('for (const member of TEAM)'));
-    expect(block.slice(0, 300)).toMatch(/update: \{\},/);
+  it('names no human and creates nobody: the team is data', () => {
+    /* 10 Sep 2026, "no hard coding": the seed used to carry six people by name. Now it asks the
+       table who holds a role and skips what has no holder yet. */
+    for (const name of ['Hafsah', 'Sahar', 'James', 'Adam', 'Nate', 'Abubakar']) {
+      expect(SEED).not.toContain(name);
+    }
+    expect(SEED).not.toMatch(/opsPerson\.(create|upsert)\(/);
+    expect(SEED).toMatch(/holderOf\(/);
   });
 
-  it('does not put a changed role back', () => {
-    const block = SEED.slice(SEED.indexOf('for (const member of TEAM)'), SEED.indexOf('const people = await'));
-    expect(block).not.toMatch(/update: \{[^}]*functionalRole/);
-    expect(block).not.toMatch(/update: \{[^}]*displayName/);
+  it('does not put a changed role or name back', () => {
+    expect(SEED).not.toMatch(/update: \{[^}]*functionalRole/);
+    expect(SEED).not.toMatch(/update: \{[^}]*displayName/);
   });
 });
 

@@ -87,12 +87,22 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 403 && !error.config?.skipForbiddenToast) {
-      toast.error('Access denied', {
-        description: 'You do not have permission to perform this action',
+    /* The back office door: the page draws it, a toast would only be noise on top. */
+    const shutDoor = error.response?.status === 403 && (error.response?.data as { code?: string } | undefined)?.code === 'BACK_OFFICE_CODE_REQUIRED'
+    /*
+     * THE ONLY THREE STRINGS IN THE CLIENT WRITTEN IN HTTP, AND THEY FIRE ON EVERY PAGE.
+     *
+     * "Access denied" is a security system rebuffing an intruder; "Not found" and "Server error"
+     * are status codes read aloud. Everywhere else this product says what happened and what is
+     * safe - "That did not send. Nothing has changed, try again." These three were the fallback
+     * behind all of it, so the worst-written sentences were the ones a person met most often.
+     */
+    if (error.response?.status === 403 && !error.config?.skipForbiddenToast && !shutDoor) {
+      toast.error('That one is not yours to open', {
+        description: 'If you think it should be, whoever runs this check-in can let you in.',
       })
     } else if (error.response?.status === 404 && !error.config?.skipNotFoundToast) {
-      toast.error('Not found', {
+      toast.error('That is not here any more', {
         description: message,
       })
     } else if (error.response?.status === 422 || error.response?.status === 400) {
@@ -100,8 +110,8 @@ apiClient.interceptors.response.use(
     } else if (error.response?.status && error.response.status >= 500 && !error.config?.skipServerErrorToast) {
       /* `skipServerErrorToast`, like the two above: a caller that says something specific about
          what did and did not survive should not be followed by "Something went wrong". */
-      toast.error('Server error', {
-        description: 'Something went wrong. Please try again later.',
+      toast.error('That did not go through', {
+        description: 'Nothing you typed is lost. Try again in a moment.',
       })
     }
 

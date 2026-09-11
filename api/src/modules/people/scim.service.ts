@@ -10,6 +10,8 @@ export interface ScimUser {
   displayName?: string;
   name?: { givenName?: string; familyName?: string };
   emails?: { value?: string; primary?: boolean }[];
+  /** SCIM core. The first one, or the one marked primary, becomes the number they message from. */
+  phoneNumbers?: { value?: string; type?: string; primary?: boolean }[];
   title?: string;
   timezone?: string;
   active?: boolean;
@@ -79,6 +81,11 @@ export class ScimService {
       out.email = primary?.trim().toLowerCase() || null;
     }
     /* The enterprise extension is one object; if it was not sent, neither of its fields was. */
+    if (has('phoneNumbers')) {
+      const raw = dto.phoneNumbers?.find((p) => p.primary)?.value ?? dto.phoneNumbers?.[0]?.value ?? null;
+      const digits = raw ? raw.trim().replace(/[^\d+]/g, '') : '';
+      out.phone = digits ? (digits.startsWith('+') ? digits : `+${digits}`) : null;
+    }
     if (has(ENTERPRISE)) {
       out.department = dto[ENTERPRISE]?.department?.trim() || null;
       out.managerExternalId = dto[ENTERPRISE]?.manager?.value?.trim() || null;

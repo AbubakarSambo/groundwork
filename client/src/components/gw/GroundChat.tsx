@@ -7,6 +7,7 @@ import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * A GROUND, READ AS A CONVERSATION.
@@ -109,9 +110,12 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
+      {/* Gated with the brief it heads: a check-in created without one showed this heading over nothing. */}
+      {brief && (
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         About this check-in
       </div>
+      )}
       {/*
         TWO THINGS ON THIS CARD: THE BRIEF, AND WHO IS IN IT.
         
@@ -187,8 +191,8 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
       )}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
         {viewerIsParty === false
-          ? 'What each person says stays on their own side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'
-          : 'What you say stays on your side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'}
+          ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
+          : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
       </div>
     </div>
   )
@@ -265,7 +269,7 @@ function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   isCorrection: boolean
   correctionOf: number | null
 }) {
-  const when = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const when = whenItWas(date, 'day')
   const label = isCorrection
     ? `Added to session ${correctionOf ?? sessionNumber}`
     : `Session ${sessionNumber}`
@@ -308,7 +312,7 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
         padding: '10px 14px',
         fontSize: 14,
         lineHeight: 1.65,
-        whiteSpace: 'pre-wrap',
+        whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
         boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
@@ -435,7 +439,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
           </div>
           {waiting.map(n => (
             <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
-              <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{n.text}</div>
+              <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
               <button
                 onClick={() => remove.mutate(n.id)}
                 title="Delete this note"
@@ -465,7 +469,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
         */}
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
           {nextOpensAt
-            ? `Your next check-in opens ${new Date(nextOpensAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}. `
+            ? `Your next check-in opens ${whenItWas(nextOpensAt, 'dayAndMonthLong')}. `
             : 'No check-in is open right now. '}
           {/* And for the person who can move it, that it can be moved. A lead who wants the next
               round sooner had no way to find out one was two clicks away. */}
@@ -566,6 +570,7 @@ export function GroundChat({
   /** The ground's peer rule, so an empty roster can say which kind of empty it is. W14-5. */
   peersHidden?: boolean
 }) {
+  const navigate = useNavigate()
   const isParty = viewerIsParty !== false
   const { data, isLoading, isError } = useQuery({
     queryKey: ['my-transcript', groundId],
@@ -603,6 +608,22 @@ export function GroundChat({
           notOpenYet={!openCheckInId && !!nextOpensAt}
           viewerIsParty={isParty}
         />
+
+        {/*
+          THE TAB IS CALLED CHECK-IN, SO THE CHECK-IN IS AT THE TOP. When it is this person's turn
+          and there is already a transcript, the only way in was a button under the whole history -
+          two screens down on a phone. One primary action here; the one at the bottom stays for a
+          first session, when there is nothing above it.
+        */}
+        {isParty && openCheckInId && sessions.length > 0 && (
+          <button
+            onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
+            disabled={openPending}
+            style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 6 }}
+          >
+            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
+          </button>
+        )}
 
         {/*
           WHAT GROUNDWORK HAS NOTICED - the alignment feed, which the card view held

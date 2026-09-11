@@ -28,7 +28,7 @@ const weigh = {
 describe('the lead weighs on the session page too', () => {
   it('renders the weigh section when the server sends one', () => {
     render(<WhatToProbeThemOn reads={[]} weigh={weigh} weighNote="This is material, not a verdict." />)
-    expect(screen.getByText('What you said you were looking for, and what the record holds')).toBeTruthy()
+    expect(screen.getByText('What you said you were looking for, and what people have said about it')).toBeTruthy()
     expect(screen.getByText('The rota is written down and held to')).toBeTruthy()
     expect(screen.getByText('Nights are covered without calling the lead')).toBeTruthy()
     expect(screen.getByText('This is material, not a verdict.')).toBeTruthy()
@@ -36,22 +36,23 @@ describe('the lead weighs on the session page too', () => {
 
   it('and nothing about it when there is none, rather than an empty heading', () => {
     render(<WhatToProbeThemOn reads={[]} weigh={null} />)
-    expect(screen.queryByText('What you said you were looking for, and what the record holds')).toBeNull()
+    expect(screen.queryByText('What you said you were looking for, and what people have said about it')).toBeNull()
   })
 })
 
 describe('the meter shows the engine\'s own read of thinness', () => {
+  /* `directional`, a level the scorer actually emits. The old fixture said "medium", which only drew because the bar mapped anything unknown to the middle. */
   const spots = [{ line: 'Nothing else in this ground touches any part of this account.', wouldRaiseIt: 'One other person mentioning the same work would.' }]
 
   it('replaces the hand-written line when the engine has a read', () => {
-    render(<HowSpecificThisSessionWas level="medium" recall="low" spots={spots} />)
+    render(<HowSpecificThisSessionWas level="directional" spots={spots} />)
     expect(screen.getByText(/Nothing else in this ground touches/)).toBeTruthy()
     expect(screen.getByText(/One other person mentioning/)).toBeTruthy()
     expect(screen.queryByText(/One date, one number or one document/)).toBeNull()
   })
 
   it('and keeps the line when the engine has none', () => {
-    render(<HowSpecificThisSessionWas level="medium" recall="low" spots={[]} />)
+    render(<HowSpecificThisSessionWas level="directional" spots={[]} />)
     expect(screen.getByText(/One date, one number or one document/)).toBeTruthy()
   })
 })

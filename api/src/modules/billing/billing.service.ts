@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
@@ -171,8 +172,15 @@ export class BillingService {
     }
 
     // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
+    /*
+     * AN ALLOWANCE, NOT A LIFETIME TALLY. This counted every check-in the organisation had ever made,
+     * so an organisation that opened forty while subscribed and then cancelled had used "all ten of
+     * its free check-ins" without ever having had one. The pricing page - frozen - says "up to 10
+     * check-ins for free", and a check-in opened on a subscription was not a free one: it is stamped
+     * isFreeGround=false at creation for exactly this reason. So the count is of free check-ins.
+     */
     const freeGroundLimit = await this.pricing.getFreeGroundLimit();
-    const groundCount = await this.prisma.ground.count({ where: { organizationId } });
+    const groundCount = await this.prisma.ground.count({ where: { organizationId, isFreeGround: true } });
     if (groundCount < freeGroundLimit) {
       return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
@@ -196,54 +204,6 @@ export class BillingService {
     };
   }
 
-  /**
-   * Create a Stripe Checkout session to purchase one or more additional check-in
-   * sessions ($5 each, one-time). On webhook confirmation the ground sessionsBalance
-   * is incremented by quantity and a SESSION_FEE BillingEvent is recorded.
-   */
-  async purchaseSession(organizationId: string, groundId: string, quantity = 1): Promise<{ checkoutUrl: string }> {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
-
-    // Free-tier grounds have UNLIMITED sessions (the advertised model - see
-    // canStartSession's isFreeGround branch above) and must never be charged,
-    // regardless of caller: this is the mechanism itself, not a UI surface -
-    // it closes the gap left when the paywall TRIGGERS were hidden client-side
-    // (fix/free-tier-unlimited-sessions) but this endpoint was never guarded,
-    // leaving a live path via a stale link or a direct call to /billing/purchase-session.
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.isFreeGround) {
-      throw new ForbiddenException('This check-in has unlimited free sessions - nothing to purchase.');
-    }
-
-    const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
-    if (customerId !== org.stripeCustomerId) {
-      await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
-    }
-
-    const qty = Math.max(1, Math.min(20, quantity));
-    const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
-    const session = await this.stripe.stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'payment',
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: 500,
-            product_data: { name: qty === 1 ? 'Check-in session' : `Check-in sessions (×${qty})` },
-          },
-          quantity: qty,
-        },
-      ],
-      metadata: { organizationId, groundId, type: 'session_fee', quantity: String(qty) },
-      success_url: `${base}?status=success&groundId=${groundId}&type=session_fee`,
-      cancel_url: `${base}?status=cancelled`,
-    });
-
-    return { checkoutUrl: session.url! };
-  }
 
   /**
    * The seat caps used to be a hardcoded map here, with a second copy on the client and a third
@@ -393,12 +353,21 @@ export class BillingService {
 
   /** Grants one free session extension to a ground if the org has not used it yet. Idempotent. */
   async claimFreeExtension(organizationId: string, groundId: string): Promise<void> {
+    /* The ground id came straight off the body and went straight into the update, so an organisation's
+       one free extension could be spent onto any ground in the database. Resolved inside the caller's
+       organisation first, exactly as purchaseSession does two methods up. */
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, isFreeGround: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    /* A free check-in has unlimited sessions - the same guard purchaseSession carries. Without it the
+       organisation's one extension was spent on a check-in that never needed it, the person was told
+       "Free session added", and the flag never resets. */
+    if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { freeExtensionUsed: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
-    if (org.freeExtensionUsed) throw new ForbiddenException('Free session extension has already been used for this organization.');
+    if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
 
     const now = new Date();
     await this.prisma.$transaction([
@@ -443,6 +412,39 @@ export class BillingService {
       // A notification must never undo a granted extension.
       this.logger.warn(`Free extension granted but the email did not send: ${(err as Error)?.message}`);
     }
+  }
+
+  /**
+   * ONE WAY TO GIVE A SESSION BACK. There was no refund, reversal or credit anywhere in this file,
+   * which made every consumption defect permanent from the customer's side: "I was charged and got
+   * nothing" had no answer a support person could give. This is that answer. Platform admin only -
+   * an organisation's own admin crediting their own check-in would be the free-extension hole with
+   * no cap - and every credit is a ledger row with the reason in it.
+   */
+  async creditSession(groundId: string, reason: string, byUserId: string): Promise<{ groundId: string; sessionsBalance: number }> {
+    if (!reason?.trim()) throw new BadRequestException('Say why the session is being credited; it goes on the ledger.');
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const now = new Date();
+    const [credited] = await this.prisma.$transaction([
+      this.prisma.ground.update({ where: { id: groundId }, data: { sessionsBalance: { increment: 1 } }, select: { sessionsBalance: true } }),
+      this.prisma.billingEvent.create({
+        data: {
+          organizationId: ground.organizationId,
+          groundId,
+          type: BillingEventType.CREDIT,
+          amountCents: 0,
+          currency: 'USD',
+          status: BillingEventStatus.PAID,
+          periodStart: now,
+          periodEnd: now,
+          /* The column is unique; a credit has no Stripe invoice, so the row carries who and when instead. */
+          stripeInvoiceId: `credit_${groundId}_${now.getTime()}_${byUserId.slice(0, 8)}`,
+        },
+      }),
+    ]);
+    this.logger.warn(`Session credited to ground ${groundId} by ${byUserId}: ${reason.trim()}`);
+    return { groundId, sessionsBalance: credited.sessionsBalance };
   }
 
   /**
@@ -502,9 +504,18 @@ export class BillingService {
     // rather than building one ad hoc on every checkout.
     const priceId = await this.pricing.getOrCreateStripePrice(plan);
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
-    const session = await this.stripe.stripe.checkout.sessions.create({
+    const session = await this.stripe.stripe.checkout.sessions.create(
+      {
       customer: customerId,
       mode: 'subscription',
+      /*
+       * QUANTITY 1, ON PURPOSE. Plans are flat-rate per tier; the member cap on the billing page is
+       * an in-app limit on how many people an organisation may add, not a seat count Stripe is
+       * charged for, and it is deliberately not transmitted. Platform admins occupy a seat like
+       * anybody else (SEAT_WHERE has no isPlatformAdmin exclusion). Recorded here because the
+       * billing page's number reads as "what we are charged" to anyone who does not know this;
+       * confirmed as the intended model in the fix plan (B12, P3-022) pending the owner's word.
+       */
       line_items: [{ price: priceId, quantity: 1 }],
       // subscription_data.metadata (not just the session-level metadata below)
       // so the resulting Subscription object itself carries organizationId/plan -
@@ -514,7 +525,11 @@ export class BillingService {
       metadata: { organizationId, plan, type: 'subscription' },
       success_url: `${base}?status=success&type=subscription&plan=${plan}`,
       cancel_url: `${base}?status=cancelled`,
-    });
+      },
+      /* Two tabs, one payment. Stripe replays the same session for the same key within a day, so a
+         second press cannot create a second subscription that overwrites the first and orphans it. */
+      { idempotencyKey: `sub_${organizationId}_${plan}` },
+    );
 
     return { checkoutUrl: session.url! };
   }
@@ -560,20 +575,52 @@ export class BillingService {
     return { plan: newPlan, periodEnd };
   }
 
-  /** Cancel the org's active subscription immediately. */
-  async cancelSubscription(organizationId: string): Promise<void> {
+  /**
+   * CANCELLING RUNS TO THE END OF WHAT WAS PAID FOR.
+   *
+   * This called `subscriptions.cancel()`, which ends the subscription at that moment with no
+   * proration, then nulled the plan, the status, the Stripe id and the period end. A customer who
+   * cancelled on the second day of a paid month lost the twenty-eight days they had already paid
+   * for; nothing refunded them and nothing told them. With payment live, that is money taken and not
+   * returned. Decided by the product owner: cancelling means the subscription ends at the end of the
+   * paid period, and somebody who wants to stop paying sooner pauses instead (which is built, below).
+   *
+   * So this schedules the cancellation with Stripe and writes WHEN access stops. Everything else is
+   * left as it is: the plan, the Stripe id, the period end, and the status - which stays `active`,
+   * because `isSubscribed` reads `active` alone and fails toward the free tier on anything else. A
+   * fifth status ("cancelling") would have unsubscribed the customer the moment they asked to leave
+   * later. The webhook that already handles the subscription's deletion writes `cancelled` on the
+   * day, so the local record follows Stripe rather than predicting it.
+   */
+  async cancelSubscription(organizationId: string): Promise<{ endsAt: Date | null }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionStripeId: true },
+      select: { subscriptionStripeId: true, subscriptionPeriodEnd: true },
     });
     if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
 
-    await this.stripe.stripe.subscriptions.cancel(org.subscriptionStripeId);
-    await this.prisma.organization.update({
+    const scheduled = await this.stripe.cancelSubscriptionAtPeriodEnd(org.subscriptionStripeId);
+    const endsAt = scheduled.current_period_end ? new Date(scheduled.current_period_end * 1000) : org.subscriptionPeriodEnd ?? null;
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionEndsAt: endsAt } });
+    this.logger.log(`Subscription for org ${organizationId} ends at ${endsAt?.toISOString() ?? 'the period end'}`);
+    return { endsAt };
+  }
+
+  /**
+   * A scheduled cancellation is undone before the date. Stripe supports it and the subscription is
+   * still there; the screen that says "ending on the 30th" offers this beside it.
+   */
+  async keepSubscription(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
+      select: { subscriptionStripeId: true, subscriptionEndsAt: true },
     });
-    this.logger.log(`Subscription cancelled for org ${organizationId}`);
+    if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
+    if (!org.subscriptionEndsAt) throw new BadRequestException('This subscription is not ending. There is nothing to keep.');
+
+    await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, { cancel_at_period_end: false });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionEndsAt: null } });
+    this.logger.log(`Subscription for org ${organizationId} kept; the scheduled cancellation is undone`);
   }
 
   /** Pause the org's subscription via Stripe pause collection. */
@@ -760,6 +807,7 @@ export class BillingService {
       plan: SubscriptionPlan | null;
       status: string | null;
       periodEnd: Date | null;
+      endsAt: Date | null;
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
@@ -777,6 +825,7 @@ export class BillingService {
         subscriptionPlan: true,
         subscriptionStatus: true,
         subscriptionPeriodEnd: true,
+        subscriptionEndsAt: true,
         freeExtensionUsed: true,
       },
     });
@@ -829,6 +878,8 @@ export class BillingService {
         plan: org.subscriptionPlan ?? null,
         status: org.subscriptionStatus ?? null,
         periodEnd: org.subscriptionPeriodEnd ?? null,
+        /* Non-null means a cancellation is scheduled: access runs to this date and then stops. */
+        endsAt: org.subscriptionEndsAt ?? null,
         freeExtensionUsed: org.freeExtensionUsed,
       },
       // `null` cap means unlimited (Enterprise) or no plan at all - the client renders the
@@ -893,7 +944,10 @@ export class BillingService {
     await this.tellThemBillingChanged(organizationId, 'Your subscription has been cancelled. Your reports and boards stay available; new check-ins are paused.')
       .catch(() => undefined);
 
-    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
+    /* /settings is where "what we hold about you" and its download live. /users/me/export was the API
+       path, which the client has no route for, so the widest broadcast in the product opened the
+       not-found page. */
+    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/settings`;
     const orgUsers = await this.prisma.user.findMany({
       where: { organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true },
@@ -924,43 +978,107 @@ export class BillingService {
   }
 
   /** Handle Stripe webhook events. */
+  /**
+   * AN EVENT WE COULD NOT HANDLE IS KEPT, NOT LOST.
+   *
+   * Called by the webhook when handleStripeEvent throws. The event and the error are written down,
+   * Stripe is answered 200 so it stops retrying a deterministic failure for ever, and the retry below
+   * works from this record. An event already kept just counts another attempt.
+   */
+  async recordStripeEventFailure(event: Stripe.Event, err: unknown): Promise<void> {
+    const error = String((err as any)?.message ?? err).slice(0, 2000);
+    this.logger.error(`Stripe event ${event.id} (${event.type}) could not be handled and is kept for retry: ${error}`);
+    await this.prisma.stripeEventFailure.upsert({
+      where: { eventId: event.id },
+      create: { eventId: event.id, eventType: event.type, error, payload: event as any },
+      update: { error, attempts: { increment: 1 }, lastTriedAt: new Date() },
+    });
+  }
+
+  /** The kept failures a platform admin can see. Unresolved first, newest first. */
+  async stripeEventFailures() {
+    return this.prisma.stripeEventFailure.findMany({
+      where: { resolvedAt: null },
+      orderBy: { lastTriedAt: 'desc' },
+      take: 100,
+      select: { id: true, eventId: true, eventType: true, error: true, attempts: true, lastTriedAt: true, createdAt: true },
+    });
+  }
+
+  /** Six tries over six hours, then it stays on the list for a person. */
+  static readonly STRIPE_RETRY_ATTEMPTS = 6;
+
+  @Cron('15 * * * *', { timeZone: 'UTC' })
+  async retryStripeEventsWeCouldNotHandle(): Promise<void> {
+    const due = await this.prisma.stripeEventFailure.findMany({
+      where: { resolvedAt: null, attempts: { lt: BillingService.STRIPE_RETRY_ATTEMPTS } },
+      orderBy: { lastTriedAt: 'asc' },
+      take: 50,
+    });
+    for (const f of due) {
+      try {
+        await this.handleStripeEvent(f.payload as unknown as Stripe.Event);
+        await this.prisma.stripeEventFailure.update({ where: { id: f.id }, data: { resolvedAt: new Date() } });
+        this.logger.log(`Stripe event ${f.eventId} (${f.eventType}) handled on retry ${f.attempts + 1}`);
+      } catch (err: any) {
+        await this.prisma.stripeEventFailure.update({
+          where: { id: f.id },
+          data: { attempts: { increment: 1 }, lastTriedAt: new Date(), error: String(err?.message ?? err).slice(0, 2000) },
+        });
+      }
+    }
+  }
+
   async handleStripeEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        /*
+         * THE WRITER OF THIS METADATA IS GONE. purchaseSession wrote { type: 'session_fee', organizationId,
+         * groundId, quantity } onto a Checkout session; the route returns 410 now and the method is
+         * deleted. This branch stays because Stripe redelivers old events, and a historical payment that
+         * was processed must still be recognised as processed rather than becoming a 500.
+         */
         if (session.metadata?.type === 'session_fee') {
           const { organizationId, groundId } = session.metadata ?? {};
           const qty = parseInt(session.metadata?.quantity ?? '1', 10) || 1;
           const stripeInvoiceId = (session.payment_intent as string | null) ?? event.id;
           if (organizationId && groundId) {
-            // Idempotency guard: skip if we've already processed this payment intent.
-            const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } });
-            if (existing) {
-              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} - skipping`);
-              break;
-            }
+            /*
+             * THE CONSTRAINT DECIDES, NOT A PRIOR READ. This checked findFirst then wrote, against a
+             * column that is uniquely indexed for exactly this race (see the schema comment on
+             * stripe_invoice_id). Two concurrent deliveries both found nothing, both wrote, and the
+             * loser's P2002 came out of the webhook as a 500 - so Stripe retried a payment that had
+             * been processed, for ever. The same shape recordInvoiceOnce already uses: the credit and
+             * the row are one transaction, and a unique violation on the row IS the duplicate signal.
+             */
             const now = new Date();
-            await this.prisma.$transaction([
-              this.prisma.ground.update({
-                where: { id: groundId },
-                data: { sessionsBalance: { increment: qty } },
-              }),
-              this.prisma.billingEvent.create({
-                data: {
-                  organizationId,
-                  groundId,
-                  type: BillingEventType.SESSION_FEE,
-                  amountCents: 500 * qty,
-                  currency: 'USD',
-                  status: BillingEventStatus.PAID,
-                  periodStart: now,
-                  periodEnd: now,
-                  stripeInvoiceId,
-                },
-              }),
-            ]);
-            this.logger.log(`Session fee paid: ${qty} session(s) added to ground ${groundId} (org ${organizationId})`);
+            try {
+              await this.prisma.$transaction([
+                this.prisma.ground.update({
+                  where: { id: groundId },
+                  data: { sessionsBalance: { increment: qty } },
+                }),
+                this.prisma.billingEvent.create({
+                  data: {
+                    organizationId,
+                    groundId,
+                    type: BillingEventType.SESSION_FEE,
+                    amountCents: 500 * qty,
+                    currency: 'USD',
+                    status: BillingEventStatus.PAID,
+                    periodStart: now,
+                    periodEnd: now,
+                    stripeInvoiceId,
+                  },
+                }),
+              ]);
+              this.logger.log(`Session fee paid: ${qty} session(s) added to ground ${groundId} (org ${organizationId})`);
+            } catch (err: any) {
+              if (err?.code !== 'P2002') throw err;
+              this.logger.log(`Duplicate delivery for ${stripeInvoiceId} - already credited, nothing written`);
+            }
           }
           break;
         }
@@ -970,8 +1088,13 @@ export class BillingService {
           const { organizationId: orgId, plan } = session.metadata ?? {};
           const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
           if (orgId && plan && subId) {
-            const sub = await this.stripe.stripe.subscriptions.retrieve(subId);
-            const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+            /* Activate from what the session carries - the plan in its metadata and the subscription
+               id on the session itself - and only ENRICH from Stripe. A retrieve that threw used to
+               leave the customer paid and inactive, with nothing to try again. */
+            const periodEnd = await this.stripe.stripe.subscriptions
+              .retrieve(subId)
+              .then((sub) => (sub.current_period_end ? new Date(sub.current_period_end * 1000) : null))
+              .catch((err: any) => { this.logger.warn(`Could not read subscription ${subId} after checkout: ${err?.message}`); return null; });
             await this.prisma.organization.update({
               where: { id: orgId },
               data: {
@@ -1023,6 +1146,8 @@ export class BillingService {
             data: {
               subscriptionStatus: sub.status,
               subscriptionPeriodEnd: periodEnd,
+              /* A cancellation scheduled or undone on Stripe's side (the portal) is mirrored here too. */
+              subscriptionEndsAt: sub.cancel_at_period_end && periodEnd ? periodEnd : null,
             },
           });
         } else {
@@ -1042,7 +1167,7 @@ export class BillingService {
           const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
           await this.prisma.organization.update({
             where: { id: orgId },
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
@@ -1062,8 +1187,28 @@ export class BillingService {
         if (!customerId) break;
         const paidOrg = await this.prisma.organization.findFirst({
           where: { stripeCustomerId: customerId },
-          select: { id: true, email: true, subscriptionPlan: true, subscriptionPeriodEnd: true },
+          select: { id: true, email: true, subscriptionPlan: true, subscriptionPeriodEnd: true, subscriptionStripeId: true },
         });
+        /*
+         * A SECOND CHANCE TO ACTIVATE, NOT ONLY AN EMAIL. If the checkout event was lost or failed,
+         * the organisation has a plan on record and money taken and no subscription id - and this
+         * event, which arrives on every payment, was writing a ledger row and mailing a receipt to a
+         * customer the product still treated as unpaid.
+         */
+        const invoiceSubId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+        if (paidOrg && paidOrg.subscriptionPlan && !paidOrg.subscriptionStripeId && invoiceSubId) {
+          await this.prisma.organization.update({
+            where: { id: paidOrg.id },
+            data: {
+              subscriptionStripeId: invoiceSubId,
+              subscriptionStatus: 'active' satisfies SubscriptionStatus,
+              subscriptionPeriodEnd: invoice.period_end ? new Date(invoice.period_end * 1000) : paidOrg.subscriptionPeriodEnd,
+            },
+          });
+          this.logger.warn(`Org ${paidOrg.id} activated from a paid invoice: the checkout event never landed`);
+        } else if (paidOrg && !paidOrg.subscriptionPlan && invoiceSubId) {
+          this.logger.error(`Org ${paidOrg.id} paid invoice ${invoice.id} for subscription ${invoiceSubId} and has no plan on record`);
+        }
         if (paidOrg?.email && paidOrg.subscriptionPlan) {
           const amountCents = invoice.amount_paid ?? 0;
           await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);

@@ -108,8 +108,14 @@ describe('the closer does not contradict the card', () => {
     expect(ONBOARD_READY_CLOSER).not.toMatch(/what I need|everything I need|all I need/i)
   })
 
-  it('and points at what is actually on the record', async () => {
+  it('and points at what the person actually said', async () => {
+    /*
+     * The claim this pins is that the closer points at the card underneath it rather than at some
+     * sufficiency it cannot judge. It used to pin the phrase "on the record", which was the filing
+     * cabinet talking - her brief takes those words out of what the product says to people, so the
+     * assertion moved to the thing it was always about.
+     */
     const { ONBOARD_READY_CLOSER } = await import('./EntryChatPage')
-    expect(ONBOARD_READY_CLOSER).toMatch(/on the record/i)
+    expect(ONBOARD_READY_CLOSER).toMatch(/what you have told us|what you said|so far/i)
   })
 })

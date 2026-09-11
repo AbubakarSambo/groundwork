@@ -47,7 +47,8 @@ export function GroundPage() {
    */
   if (isLoading || !ground) return <GroundAdminPage />
 
-  const isInitiator = (ground as any).initiatorId === user?.id
-  const isOrgAdmin = user?.role === 'ADMIN' && (ground as any).organizationId === user?.organizationId
-  return isInitiator || isOrgAdmin ? <GroundAdminPage /> : <GroundParticipantPage />
+  /* Routed on the server's answer - the same two booleans its routes test - not a third local copy of the rule (A12). */
+  const runsIt = (ground as any).viewerRunsThisGround
+    ?? ((ground as any).initiatorId === user?.id || (user?.role === 'ADMIN' && (ground as any).organizationId === user?.organizationId))
+  return runsIt ? <GroundAdminPage /> : <GroundParticipantPage />
 }

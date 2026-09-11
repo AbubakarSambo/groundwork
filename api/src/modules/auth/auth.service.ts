@@ -1,3 +1,5 @@
+import { hashed } from './a-token-is-stored-as-its-hash';
+import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
   Injectable,
   ConflictException,
@@ -11,6 +13,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, OrgSignedUpEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -75,7 +79,17 @@ export class AuthService {
     private emailService: EmailService,
     private whatsapp: WhatsAppService,
     private billing: BillingService,
+    private events: EventEmitter2,
   ) {}
+
+  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
+  private signedUp(org: { id: string; name: string }, adminEmail: string) {
+    try {
+      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail } satisfies OrgSignedUpEvent);
+    } catch (err: any) {
+      this.logger.warn(`org.signedUp did not emit for ${org.id}: ${err?.message}`);
+    }
+  }
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
     /**
@@ -214,7 +228,7 @@ export class AuthService {
       if (user.googleId) {
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
-          data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+          data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
         });
         this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
@@ -225,7 +239,7 @@ export class AuthService {
       // link so they can get back in without needing to contact anyone.
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
       });
       this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
         this.logger.error(`Failed to send password setup email to ${user.email}: ${err.message}`),
@@ -285,7 +299,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id);
       }
 
       /*
@@ -341,7 +355,7 @@ export class AuthService {
         });
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
-        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg), joined.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -352,6 +366,7 @@ export class AuthService {
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
+        this.signedUp(org, pending.email);
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -387,7 +402,7 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
+      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -404,7 +419,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
+    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -555,17 +570,25 @@ export class AuthService {
 
       await this.emailService.sendMagicLinkEmail(lower, firstName, token);
     } else {
-      // Existing user saving a (new) anonymous session: last save wins. The
-      // token rotates so only the most recent entry page can update the draft,
-      // and a previously consumed draft becomes commit-able again.
-      if (draft) {
-        draftToken = crypto.randomBytes(32).toString('hex');
-        await this.prisma.entryDraft.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id, draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any },
-          update: { draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any, consumedAt: null, groundId: null },
-        });
-      }
+      /**
+       * AN ADDRESS THAT ALREADY HAS AN ACCOUNT GETS EXACTLY ONE EFFECT: THE LINK IS EMAILED.
+       *
+       * This branch used to do "last save wins": it upserted the account's EntryDraft with whatever
+       * payload and history the caller sent, cleared consumedAt and groundId so a consumed draft
+       * became commit-able again, and handed the freshly minted draftToken back to the caller. The
+       * caller is unauthenticated - this route is @Public() - so anyone who knew a customer's email
+       * address could overwrite that customer's unsubmitted session and keep editing it through
+       * PATCH /entry/draft. The same call mailed the customer a magic link; opening it committed the
+       * attacker's payload, which renames the organisation from `orgName` and invites whoever the
+       * payload named, from the customer's organisation. One known address, and a company was
+       * renamed and sending invitations on a stranger's say-so.
+       *
+       * Nothing about an account changes on the word of somebody who has not signed in to it. The
+       * session this browser is holding is attached after the link is opened, from the browser that
+       * holds it (MagicVerifyPage commits what localStorage has), not from this request. A person
+       * returning on a new device with a session in hand signs in first. That is a smaller
+       * convenience lost than a customer's organisation. `draft` is deliberately unread here.
+       */
       // If a fresh unused token was created in the last 60 seconds, reuse it to prevent
       // double-tap from invalidating a link the user has not yet clicked.
       const recentToken = await this.prisma.emailVerificationToken.findFirst({
@@ -578,7 +601,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower, draftToken };
+        return { message, email: lower };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -586,12 +609,13 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
-    return { message, email: lower, draftToken };
+    /* The key is absent, not undefined, when there is no token: a body that names it says the address had no account. */
+    return { message, email: lower, ...(draftToken ? { draftToken } : {}) };
   }
 
   async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {
@@ -622,6 +646,7 @@ export class AuthService {
           const slug = await this.generateUniqueSlug(domainBase);
           /* Their own workspace, so their own address. See the note on register. */
           const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug, email: lower } });
+          this.signedUp(org, lower);
           organizationId = org.id;
         }
         const u = await tx.user.create({
@@ -637,7 +662,7 @@ export class AuthService {
         if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from a team invitation') },
+          data: { userId: u.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from a team invitation') },
         });
         return { firstName, token };
       });
@@ -682,7 +707,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
@@ -708,7 +733,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+      data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
     const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
@@ -727,7 +752,7 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
          stated reason. It is an emailed setup link like the others, so it uses their window. */
-      data: { userId, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+      data: { userId, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
     });
     return { token };
   }
@@ -744,7 +769,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
+      data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
     const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
@@ -759,9 +784,15 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash } });
+      /*
+       * THE OTHER SESSIONS END HERE. Whoever prompted this reset is holding a token that stays valid
+       * for its full seven days unless something invalidates it; the epoch does (A10 / B16). The
+       * session minted below is from the UPDATED row, so it carries the new epoch and is the one
+       * that survives.
+       */
+      const updated = await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash, tokenEpoch: { increment: 1 } } });
       await tx.emailVerificationToken.update({ where: { id: tokenRecord.id }, data: { usedAt: new Date() } });
-      return tokenRecord.user;
+      return { ...tokenRecord.user, ...updated };
     });
 
     return await this.buildAuthResponse(user as unknown as UserWithOrg);
@@ -837,7 +868,7 @@ export class AuthService {
             include: { organization: true },
           });
           if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-          return { token: this.generateToken(user), isNewUser, needsOrgName: false };
+          return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName: false };
         }
 
         // Nobody is expecting them. Make an organisation so they have somewhere
@@ -849,6 +880,7 @@ export class AuthService {
         user = await this.prisma.$transaction(async (tx) => {
           /* The contact email is the admin's until they say otherwise - see the note on register. */
           const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
+          this.signedUp(organization, email);
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
@@ -869,18 +901,22 @@ export class AuthService {
     }
 
     if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-    return { token: this.generateToken(user), isNewUser, needsOrgName };
+    return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName };
   }
 
-  async validateToken(token: string, type: string): Promise<{ valid: boolean; email?: string; firstName?: string }> {
+  /**
+   * VALID, AND NOTHING ELSE. This returned the address and first name behind an unused set-password
+   * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
+   */
+  async validateToken(token: string, type: string): Promise<{ valid: boolean }> {
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 
-    const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token }, include: { user: true } });
+    const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token: hashed(token) }, select: { usedAt: true, expiresAt: true, type: true } });
     if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt < new Date() || tokenRecord.type !== tokenType) {
       return { valid: false };
     }
-    return { valid: true, email: tokenRecord.user.email, firstName: tokenRecord.user.firstName };
+    return { valid: true };
   }
 
   /**
@@ -922,7 +958,7 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       data: {
         userId,
-        token,
+        token: hashed(token),
         type: TokenType.PASSWORD_SETUP,
         /** Short: this is handed straight to the screen in front of them, not emailed. Named in
             how-long-a-link-lasts.ts so the difference from the emailed one is a decision on
@@ -956,7 +992,7 @@ export class AuthService {
     return other > 0;
   }
 
-  private async buildAuthResponse(user: UserWithOrg): Promise<AuthResponseDto> {
+  private async buildAuthResponse(user: UserWithOrg, via: SignedInVia = 'password'): Promise<AuthResponseDto> {
     return {
       /**
        * Computed here rather than at each call site, because there are five doors into the app
@@ -964,7 +1000,8 @@ export class AuthService {
        * set is worse than no signal at all.
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
-      accessToken: this.generateToken(user),
+      /* `via` reaches the back-office door: a session that began with an emailed link says 'link' (B16). */
+      accessToken: this.generateToken(user, via),
       user: this.theUserShape(user, await this.belongsElsewhere(user.id, user.organizationId)),
     };
   }
@@ -1052,7 +1089,7 @@ export class AuthService {
 
   private async consumeToken(token: string, expectedType: TokenType, opts: { allowExpiredMessage: string }) {
     const tokenRecord = await this.prisma.emailVerificationToken.findUnique({
-      where: { token },
+      where: { token: hashed(token) },
       include: { user: { include: { organization: true } } },
     });
     /**
@@ -1127,25 +1164,33 @@ export class AuthService {
     return this.getProfile(userId);
   }
 
-  // In-memory store for short-lived OAuth exchange codes (TTL 60s, single-use).
-  // Acceptable for a single-process deployment; replace with Redis for multi-instance.
-  private readonly oauthCodes = new Map<string, { token: string; expiresAt: number }>();
+  /**
+   * THE EXCHANGE CODE IS A ROW, NOT A MAP ENTRY. It was the only mutable in-memory Map in the API,
+   * and it made Google sign-in a single-process feature: a deploy between the callback and the
+   * redirect, or a second instance taking the redeem, and the person saw "Invalid or expired
+   * exchange code" (fix plan B15). Sixty seconds, single use, deleted on redemption; the ones nobody
+   * redeemed are pruned by AuthCron.
+   */
+  static readonly AN_EXCHANGE_CODE_LASTS_MS = 60_000;
 
   async createOAuthExchangeCode(token: string): Promise<string> {
     const code = crypto.randomBytes(24).toString('hex');
-    this.oauthCodes.set(code, { token, expiresAt: Date.now() + 60_000 });
-    // Prune expired codes opportunistically.
-    for (const [k, v] of this.oauthCodes) {
-      if (v.expiresAt < Date.now()) this.oauthCodes.delete(k);
-    }
+    await this.prisma.oAuthExchangeCode.create({
+      data: { code, token, expiresAt: new Date(Date.now() + AuthService.AN_EXCHANGE_CODE_LASTS_MS) },
+    });
     return code;
   }
 
+  /** Unknown and expired are told apart: one is a wrong link, the other is a slow one. */
   async redeemOAuthExchangeCode(code: string): Promise<{ accessToken: string }> {
-    const entry = this.oauthCodes.get(code);
-    if (!entry || entry.expiresAt < Date.now()) throw new BadRequestException('Invalid or expired exchange code');
-    this.oauthCodes.delete(code);
-    return { accessToken: entry.token };
+    if (!code?.trim()) throw new BadRequestException('That is not a sign-in code we issued.');
+    const row = await this.prisma.oAuthExchangeCode.findUnique({ where: { code } });
+    if (!row) throw new BadRequestException('That is not a sign-in code we issued.');
+    /* Delete first: a second redeem racing this one finds nothing and is told the code is gone. */
+    const gone = await this.prisma.oAuthExchangeCode.deleteMany({ where: { id: row.id } });
+    if (gone.count === 0) throw new BadRequestException('That sign-in code has already been used. Sign in again.');
+    if (row.expiresAt.getTime() < Date.now()) throw new BadRequestException('That sign-in code has expired. Sign in again.');
+    return { accessToken: row.token };
   }
 
   /**
@@ -1202,7 +1247,7 @@ export class AuthService {
    * their own company and be an ordinary member of a client's - keeping the old role
    * across the switch would hand them admin of an organisation that never gave it.
    */
-  async switchOrganization(userId: string, organizationId: string) {
+  async switchOrganization(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const membership = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId, organizationId } },
       select: { role: true, organization: { select: { id: true, name: true, slug: true } } },
@@ -1220,14 +1265,20 @@ export class AuthService {
     });
 
     return {
-      accessToken: this.generateToken(user),
+      /* Carried through: a Google-signed-in staff member switching organisation kept back-office access (B16, P2-024). */
+      accessToken: this.generateToken(user, via),
       user,
       organization: membership.organization,
     };
   }
 
-  private generateToken(user: { id: string; email: string; organizationId: string; role: string }) {
-    return this.jwtService.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+  /**
+   * `via` says how the session was made. The back office reads it: a Google sign-in has already had
+   * its second check and walks through the door; a password or link session is asked for a code.
+   * See ops/the-back-office-has-a-door.ts.
+   */
+  private generateToken(user: ASessionHolder, via: SignedInVia = 'password') {
+    return this.jwtService.sign(sessionClaims(user, via));
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {

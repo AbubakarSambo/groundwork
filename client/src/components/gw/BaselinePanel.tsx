@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { Sec, Card } from '@/components/gw/kit'
 import { toast } from 'sonner'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE TEAM'S STARTING POINT. `GroundBaseline`, which had no reader and no writer.
@@ -98,8 +99,8 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
               */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.55 }}>
               {current.version === 1
-                ? `Stated at the start, ${new Date(current.effectiveFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`
-                : `Version ${current.version}, from ${new Date(current.effectiveFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`}
+                ? `Stated at the start, ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`
+                : `Version ${current.version}, from ${whenItWas(current.effectiveFrom, 'dayAndMonthLong')}.`}
               {current.changeReason && (
                 <> Changed because: {current.changeReason}</>
               )}

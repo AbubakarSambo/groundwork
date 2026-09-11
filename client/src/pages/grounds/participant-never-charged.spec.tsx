@@ -48,20 +48,26 @@ describe('nothing on the participant page asks them for money', () => {
     expect(CODE).toMatch(/insightsLocked/) // the flag is legitimate: "no completed session yet"
   })
 
-  it('keeps the access code inside the initiator branch', () => {
+  it('keeps the access code behind the rule that gates paying here', () => {
     // The code exists and is legitimate - for admins and leads. What must not
-    // happen is a participant being shown the field.
+    // happen is a participant being shown the field. The guard is `canPayHere`
+    // now - an initiator who is also an admin, the server's own rule for the
+    // routes behind the buttons - which is stricter than the initiator check
+    // this used to pin, not looser.
+    expect(CODE).toMatch(/const canPayHere = isInitiator && user\?\.role === 'ADMIN'/)
     const i = CODE.indexOf('Have an access code')
     expect(i).toBeGreaterThan(-1)
     const before = CODE.slice(0, i)
-    const lastGuard = before.lastIndexOf("myParticipant?.partyType === 'INITIATOR'")
+    const lastGuard = before.lastIndexOf('canPayHere &&')
     const lastElse = before.lastIndexOf('            ) : (')
     expect(lastGuard).toBeGreaterThan(lastElse)
   })
 
   it('still tells a blocked participant what is happening, without a price', () => {
-    // The right message for someone who cannot check in: their initiator has
-    // been told. Never "buy a session".
-    expect(SRC).toMatch(/initiator has been notified/i)
+    // The right message for someone who cannot check in: the people who can act
+    // have been told. It said "your initiator has been notified" - and nothing
+    // notified the initiator. The server tells the organisation's admins, so
+    // that is what is said. Never "buy a session".
+    expect(SRC).toMatch(/We have told them you are waiting/)
   })
 })

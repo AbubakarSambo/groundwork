@@ -1,8 +1,13 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { sessionClaims } from '../auth/a-session-token';
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { needsApproval } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
+import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
+import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
@@ -114,7 +119,7 @@ export class ParticipantsService {
         await this.prisma.emailVerificationToken.create({
           data: {
             userId: user.id,
-            token: magicToken,
+            token: hashed(magicToken),
             // Same kind of token the returning-user sign-in link uses, so this
             // lands on the existing magic-link route rather than a new one.
             type: TokenType.EMAIL_VERIFICATION,
@@ -222,8 +227,11 @@ export class ParticipantsService {
        */
       if (wait) {
         queuedForApproval = true;
+        /* Nobody with an existing account waits any more (see needsApproval), so the flag is only ever
+           set on the row created above - never on an account that has check-ins elsewhere to be locked
+           out of. `brandNew` is kept as the assertion of that. */
         if (!brandNew) {
-          await tx.user.update({ where: { id: user.id }, data: { awaitingOrgApproval: true } });
+          this.logger.error(`needsApproval said existing account ${user.id} should wait; refusing to flag it, because the flag is account-wide and would lock them out of their own organisation.`);
         }
         await tx.membershipRequest.upsert({
           where: { organizationId_userId: { organizationId: ground.organizationId, userId: user.id } },
@@ -274,7 +282,7 @@ export class ParticipantsService {
       await this.prisma.emailVerificationToken.create({
         data: {
           userId: user.id,
-          token: setupToken,
+          token: hashed(setupToken),
           type: TokenType.PASSWORD_SETUP,
           expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
         },
@@ -341,7 +349,8 @@ export class ParticipantsService {
       }
     }
 
-    const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+    /* The same claims every session token carries - see a-session-token.ts for why not a hand-copied payload. */
+    const accessToken = this.jwt.sign(sessionClaims(user, 'link'));
 
     return {
       accessToken,
@@ -356,6 +365,10 @@ export class ParticipantsService {
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
       existingAccount,
+      /* Signed in, and not yet let in. The page that receives this renders the sentence rather than
+         sending them to a check-in that will refuse them with a message about something else. */
+      queuedForApproval,
+      ...(queuedForApproval ? { saying: WAITING_TO_BE_LET_IN } : {}),
     };
   }
 
@@ -403,7 +416,7 @@ export class ParticipantsService {
       data: {
         email,
         inviteToken: token,
-        inviteTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        inviteTokenExpiresAt: inviteExpiryFrom(),
         notifiedAt: null,
         // recordSend() resets this to SENT when the fresh invite goes out
         inviteDeliveryStatus: null,
@@ -425,46 +438,10 @@ export class ParticipantsService {
 
   // --- helpers ---
 
+  /** The rule lives in an-invite-link-still-opens.ts, because attaching a document before the account exists presents the same token. */
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
-    if (!participant) {
-      /**
-       * The link is genuinely dead, and that is deliberate - the token is
-       * cleared on first use so an emailed invite cannot serve as a permanent
-       * way in (see invite-single-use.spec.ts). Nothing here should hand a used
-       * link any access.
-       *
-       * What was wrong was only the wording. Someone who has already joined and
-       * comes back to their own link - a bookmark, the email again - was told
-       * their link was "invalid", which reads as something being broken, or as
-       * an accusation. It is neither: they are already in, and they were sent a
-       * password link when they joined.
-       *
-       * We cannot tell "used" from "never existed" here, because the row is
-       * found by the token and the token is gone - so the message has to cover
-       * both without guessing, and point to the way forward in each case.
-       */
-      throw new NotFoundException(
-        'This link has already been used, or it is not a link we recognise. If you have already joined, sign in with the password you set - check your email for the setup link. If you have not, ask the person who added you to send a new invite.',
-      );
-    }
-    // Skip expiry for participants who already accepted - they can always return via their link.
-    const alreadyAccepted = !!participant.userId;
-    /**
-     * Ninety days, and only for an invite nobody ever accepted.
-     *
-     * Fourteen days was short enough to expire on ordinary human timescales -
-     * annual leave, a quarter that slipped, a ground set up ahead of a start
-     * date - and the reward for being late was a dead link and an instruction to
-     * go and ask a colleague to resend it. Nobody should have to chase someone
-     * to get into their own record.
-     */
-    if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
-      throw new BadRequestException(
-        'This invite link is very old and has expired. Use the "send me a new link" option, or ask whoever added you to invite you again.',
-      );
-    }
-    return participant;
+    return assertInviteLinkStillOpens(participant);
   }
 
   // Never fabricate a name from the email address. firstName is a required
@@ -474,28 +451,9 @@ export class ParticipantsService {
   // A capitalized email local-part ("Hjumare") is not a name; it just looks
   // like one, which is worse than showing nothing.
   /** Every admin of the organisation, because one of them has to decide and any of them may. */
-  private async tellTheAdminsSomebodyIsWaiting(
-    organizationId: string,
-    groundId: string,
-    inviterId: string,
-    who: string,
-  ): Promise<void> {
-    const [admins, inviter, ground] = await Promise.all([
-      this.prisma.user.findMany({
-        where: { organizationId, role: 'ADMIN', isActive: true, deletedAt: null },
-        select: { email: true, firstName: true },
-      }),
-      this.prisma.user.findUnique({ where: { id: inviterId }, select: { firstName: true, lastName: true, email: true } }),
-      this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true } }),
-    ]);
-    const addedBy = inviter
-      ? [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email
-      : 'somebody on your team';
-    for (const admin of admins) {
-      await this.email
-        .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null)
-        .catch((err: any) => this.logger.warn(`Waiting-notice to ${admin.email} failed: ${err.message}`));
-    }
+  /** The sentence lives in somebody-is-waiting-at-the-door.ts now, because the join link queues people too. */
+  private tellTheAdminsSomebodyIsWaiting(organizationId: string, groundId: string, inviterId: string, who: string): Promise<void> {
+    return tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, organizationId, groundId, inviterId, who);
   }
 
   private resolveName(email: string, names?: { firstName?: string; lastName?: string }): [string, string] {

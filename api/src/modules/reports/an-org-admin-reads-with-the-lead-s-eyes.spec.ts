@@ -25,6 +25,14 @@ import { join } from 'path';
  *
  * This file exists so that nobody "tightens" the names later without meeting the argument,
  * and so the next person can see it was decided rather than left.
+ *
+ * AND THE CODE HAD BEEN WIDER THAN THE ARGUMENT. Everything above is about an org ADMIN. The
+ * expression this file pinned tested only "same organisation" - `ground.organizationId ===
+ * requestingUserOrgId` - with no role in it, so every MEMBER of the customer's organisation was
+ * given the lead's eyes too. That was never decided; it was the argument's word "admin" not making
+ * it into the predicate. The decision is preserved, not reversed: an admin keeps the lead's eyes,
+ * and a member stops getting them. The regex below pins the corrected expression, which now asks
+ * the role. (Fix plan A2, 11 September 2026.)
  */
 const SRC = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -43,7 +51,12 @@ describe('who reads with the lead\'s eyes', () => {
   it('and it is the same flag that gates the rest of their view', () => {
     // If an org admin can read the report at all, they can read the nouns in it. The
     // coherent alternative is to withhold the whole report, not the names inside it.
-    expect(CODE).toMatch(/const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground\.organizationId === requestingUserOrgId/);
+    expect(CODE).toMatch(/const isOrgAdmin = !isInitiator && !participant && \(await this\.isAnAdminOf\(requestingUserId, requestingUserOrgId, ground\.organizationId\)\)/);
+    /* And the question it asks is the role, in the organisation the check-in belongs to. */
+    const helper = CODE.slice(CODE.indexOf('private async isAnAdminOf('), CODE.indexOf('async whereAgainstSuccess('));
+    /* Through the one rule (grounds/who-may-read-this-check-in.ts), which asks the role in THIS organisation. */
+    expect(helper).toMatch(/adminsThisOrg\(user, \{ organizationId: groundOrganizationId \}\)/);
+    expect(helper).toMatch(/select: \{ role: true, organizationId: true \}/);
   });
 });
 

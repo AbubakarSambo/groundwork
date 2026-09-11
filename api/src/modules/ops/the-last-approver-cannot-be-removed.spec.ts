@@ -101,6 +101,8 @@ describe('somebody leaving', () => {
     const prisma = {
       opsPerson: {
         findUnique: async () => person,
+        /* Nobody else active, so nothing they owned can be handed on. See handWhatTheyOwnedToWhoeverHoldsTheRole. */
+        findMany: async () => [],
         update: async ({ data }: never) => {
           updates.push(data);
           return { ...person, ...(data as object) };

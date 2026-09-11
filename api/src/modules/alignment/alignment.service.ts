@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theGroundIsHere } from './the-ground-is-here';
 import { Figure, howItReads as figureReads } from './a-figure-is-a-value-with-a-source';
 import { whatDoesNotAddUp, worthAsking, howItReads } from './what-does-not-add-up';
 import { whatToAskNext, CandidateKey, whenNothingIsLeft, whatWouldAccountForIt } from './an-explanation-is-a-candidate';
@@ -36,6 +37,7 @@ export class AlignmentService {
     if (!/^[A-Z]{3}$/.test(f.currency)) {
       throw new BadRequestException('A currency is a three-letter code.');
     }
+    await theGroundIsHere(this.prisma, groundId, organizationId);
 
     return this.prisma.reportedFigure.create({
       data: {

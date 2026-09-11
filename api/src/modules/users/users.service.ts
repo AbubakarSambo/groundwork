@@ -1,6 +1,9 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, CallAskedEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -26,6 +29,8 @@ export class UsersService {
     private billing: BillingService,
     /* The one implementation of "invite somebody", reused rather than reproduced. */
     @Inject(forwardRef(() => AuthService)) private auth: AuthService,
+    /* The back office is told when somebody asks for a call. See back-office/the-team-is-told.service.ts. */
+    private events: EventEmitter2,
   ) {}
 
   /**
@@ -102,6 +107,7 @@ export class UsersService {
       select: { createdAt: true },
     });
     this.logger.log(`Call requested by org ${organizationId} about ${subject}.`);
+    this.events.emit(GroundworkEvents.CALL_ASKED, { organizationId, askedByUserId: requestedById, subject, note: note?.trim() || null } satisfies CallAskedEvent);
     return { asked: true, at: row.createdAt, alreadyOpen: false, subject };
   }
 
@@ -257,6 +263,20 @@ export class UsersService {
     return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent) };
   }
 
+  /** See UsersController.colleagues. Active, verified members other than the caller, by name. */
+  async colleaguesOf(organizationId: string, exceptUserId: string) {
+    const rows = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null, isActive: true, isEmailVerified: true, id: { not: exceptUserId } },
+      select: { email: true, firstName: true, lastName: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { email: 'asc' }],
+      take: 500,
+    });
+    return rows.map((r) => ({
+      email: r.email,
+      name: [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || null,
+    }));
+  }
+
   async findAll(organizationId: string, pagination: PaginationDto) {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
@@ -387,7 +407,7 @@ export class UsersService {
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+        data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
       });
 
       return { user, token };
@@ -481,7 +501,7 @@ export class UsersService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+      data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
     });
 
     await this.emailService.sendUserInvite(user.email, user.firstName, token, user.organization.name);
@@ -636,11 +656,12 @@ export class UsersService {
 
     // Anonymise each participant link individually to avoid unique-email conflicts
     // across multiple grounds.
-    const links = await this.prisma.groundParticipant.findMany({ where: { userId }, select: { id: true } });
+    const links = await this.prisma.groundParticipant.findMany({ where: { userId }, select: { id: true, email: true } });
     for (const link of links) {
       await this.prisma.groundParticipant.update({
         where: { id: link.id },
-        data: { email: `deleted-${link.id}@deleted`, roleAsDescribed: null },
+        /* The address goes; its hash stays, so the retention sweep can still find these turns (A16). */
+        data: { email: `deleted-${link.id}@deleted`, erasedFrom: link.email ? hashed(link.email.toLowerCase()) : null, roleAsDescribed: null },
       });
     }
 

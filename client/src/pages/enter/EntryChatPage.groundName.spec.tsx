@@ -54,7 +54,8 @@ describe('GROUND-NAME: setup-screen rename reaches the commit body', () => {
     // send the email -> emailSent + draftToken
     const emailInput = await screen.findByPlaceholderText('your@email.com')
     fireEvent.change(emailInput, { target: { value: 'me@example-test.invalid' } })
-    fireEvent.keyDown(emailInput, { key: 'Enter' })
+    /* The input sits in a form now, so Enter is a submit (fix plan C2). */
+    fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
     // rename on the setup screen
     useEntryStore.setState({ groundName: 'Groundwork project' })

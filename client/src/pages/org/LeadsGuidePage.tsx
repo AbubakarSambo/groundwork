@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { HOW_TO_STEPS } from '@/components/gw/how-a-check-in-is-run'
-import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
+import { TextAction } from '@/components/gw/kit'
+import { copy } from '@/components/gw/copying-can-fail'
 
 /**
  * THE PAGE AN ADMIN SENDS THEIR LEADS BEFORE A ROLLOUT.
@@ -20,6 +23,21 @@ import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-
  */
 export function LeadsGuidePage() {
   const navigate = useNavigate()
+  const [copied, setCopied] = useState(false)
+
+  /**
+   * "SEND THIS LINK TO YOUR TEAM" WAS AN INSTRUCTION WITH NO CONTROL. The page told you to send it and
+   * gave you nothing to send it with, and it was linked from one admin-only screen, so the leads it
+   * was written for could not find it either (fix plan F12). The page does what it says now.
+   */
+  async function copyTheLink() {
+    if (await copy(window.location.href)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error('Copying is not available here. Select the address bar and copy it yourself.')
+    }
+  }
 
   return (
     <div style={{ padding: '40px 32px', maxWidth: 720 }}>
@@ -36,8 +54,8 @@ export function LeadsGuidePage() {
         Running a check-in
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
-        For anybody about to lead one. Four things about how it works, and four about what happens to
-        what people write. Send this link to your team.
+        For anybody about to lead one. Four things about how it works, and what you can see as the person who set it up. Send this link to your team.{' '}
+        <TextAction onClick={copyTheLink} strong>{copied ? 'Copied ✓' : 'Copy the link'}</TextAction>
       </p>
 
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 12 }}>How to run one</div>
@@ -55,20 +73,6 @@ export function LeadsGuidePage() {
                 <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{s.body}</p>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>What happens to what people write</div>
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>
-        The same four things everybody is shown before their first check-in. Worth reading before you
-        ask your team to answer honestly, because it is the part they will want to know.
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 34 }}>
-        {WHAT_HAPPENS_TO_WHAT_YOU_WRITE.map(c => (
-          <div key={c.title} style={{ background: c.plain ? 'var(--gw-bg)' : 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px' }}>
-            <div style={{ fontSize: c.plain ? 12.5 : 14, fontWeight: 700, color: c.plain ? 'var(--gw-sub)' : 'var(--gw-navy)', marginBottom: 4 }}>{c.title}</div>
-            <p style={{ fontSize: c.plain ? 12.5 : 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{c.body}</p>
           </div>
         ))}
       </div>

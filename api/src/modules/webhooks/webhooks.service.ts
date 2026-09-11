@@ -128,6 +128,14 @@ export class WebhooksService {
    * grace period, rotation means a gap where every delivery fails verification - which is why
    * nobody rotates, which is why a leaked secret stays live.
    */
+  /** Back on, after the customer has fixed the receiver. The dead notice is cleared so the next failure is told again. */
+  async reactivate(organizationId: string, id: string) {
+    const existing = await this.prisma.webhookEndpoint.findFirst({ where: { organizationId, id } });
+    if (!existing) throw new NotFoundException('No such endpoint.');
+    await this.prisma.webhookEndpoint.update({ where: { id }, data: { active: true, deadNoticeAt: null } });
+    return { id, active: true };
+  }
+
   async rotateSecret(organizationId: string, id: string) {
     const existing = await this.prisma.webhookEndpoint.findFirst({ where: { organizationId, id } });
     if (!existing) throw new NotFoundException('No such endpoint.');
@@ -349,7 +357,10 @@ export class WebhooksService {
         id: d.endpointId,
         OR: [{ deadNoticeAt: null }, { deadNoticeAt: { lt: A_DAY_AGO } }],
       },
-      data: { deadNoticeAt: new Date() },
+      /* AND SWITCHED OFF (NL-036). The endpoint was marked dead and left active, so every later event
+         queued, retried seven times and died against a receiver known to be unreachable. Off, told,
+         and switchable back on from the integrations page once it is reachable. */
+      data: { deadNoticeAt: new Date(), active: false },
     });
     if (!count) return;
 

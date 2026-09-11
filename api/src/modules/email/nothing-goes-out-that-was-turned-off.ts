@@ -40,35 +40,81 @@ export type WhatKindOfMail =
   /** Nobody asked this morning. The switch is about these. */
   | 'we decided to send it'
   /** Asked for AND unstoppable: without it somebody cannot get into their own account. */
-  | 'the way back in';
+  | 'the way back in'
+  /**
+   * To our own roster, about the running of the product: an API-access request, a roster alert. Not
+   * a customer-facing preference's business - a staff member who unsubscribed from a customer's
+   * digest did not ask to stop hearing that a customer is waiting on them (fix plan D13, NL-032).
+   */
+  | 'operational';
 
 export interface WhatTheyWant {
   /** The account-level switch. Undefined where there is no account — a person invited by address. */
   emailNotifications?: boolean | null;
   /** Set when they used the unsubscribe link. Outranks the switch. */
   unsubscribedAt?: Date | null;
+  /**
+   * THE STOP LINK STOPS EVERYTHING. Set the moment they used the link on a reminder; it used to be
+   * read by one of three nudge engines. Undefined when the mail is not about a participant.
+   */
+  remindersStoppedAt?: Date | string | null;
+  /** The per-kind switches on their preference row, which only the digest used to read. */
+  wantsDigest?: boolean | null;
+  wantsNudges?: boolean | null;
+  /**
+   * Whether they are still here. A leaver whose address has been reassigned inside their old company
+   * must not get the report; the nudges checked this and the broadcasts did not.
+   */
+  stillHere?: boolean | null;
 }
 
 export type WhetherToSend = { send: true } | { send: false; because: string };
 
+/** The senders each per-kind switch governs. */
+export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['sendRoundDigest']);
+export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder']);
+
 /**
  * Whether this goes out. The whole decision, in one function, called from one place.
+ *
+ * THE ORDER IS THE ARGUMENT. Nothing stops a way back in or an operational alert. A leaver gets
+ * nothing else. The unsubscribe link stops what we decided to send - and, decided under fix plan D13
+ * (NL-031), NOT what they asked for: a consultant who unsubscribed from one customer's digest did not
+ * ask to stop hearing about work they took part in for another. Then the stop link, the per-kind
+ * switches, and the account-level switch.
  */
-export function whetherToSend(kind: WhatKindOfMail, they: WhatTheyWant | null): WhetherToSend {
+export function whetherToSend(kind: WhatKindOfMail, they: WhatTheyWant | null, sender?: string): WhetherToSend {
   /* Nobody to ask. A participant invited by address has no account and no preference, and refusing
      to write to them would mean nobody could ever be invited. */
   if (!they) return { send: true };
 
-  if (kind === 'the way back in') return { send: true };
+  if (kind === 'the way back in' || kind === 'operational') return { send: true };
+
+  if (they.stillHere === false) {
+    return { send: false, because: 'they have left, or their sign-in was deactivated' };
+  }
+
+  if (kind !== 'we decided to send it') return { send: true };
 
   if (they.unsubscribedAt) {
     return {
       send: false,
-      because: 'they used the unsubscribe link, which turns off everything except getting back into their account',
+      because: 'they used the unsubscribe link, which turns off everything we decide to send',
     };
   }
 
-  if (kind === 'we decided to send it' && they.emailNotifications === false) {
+  if (they.remindersStoppedAt) {
+    return { send: false, because: 'they asked us to stop reminding them, which the invitation told them they could do' };
+  }
+
+  if (sender && GOVERNED_BY_THE_DIGEST_SWITCH.has(sender) && they.wantsDigest === false) {
+    return { send: false, because: 'they turned the round digest off' };
+  }
+  if (sender && GOVERNED_BY_THE_NUDGE_SWITCH.has(sender) && they.wantsNudges === false) {
+    return { send: false, because: 'they turned nudges off' };
+  }
+
+  if (they.emailNotifications === false) {
     return { send: false, because: 'they turned off check-in reminders' };
   }
 
@@ -99,6 +145,9 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* A one-time code for an operation that cannot be undone. Nothing may stop it, and saying so
      here is the difference between a decision and a cast past the type. */
   sendAdminOtp: 'the way back in',
+  /* To our own roster, about the running of the product. Exempt from the customer-facing preference:
+     an API-access request has to reach somebody. */
+  sendTeamAlert: 'operational',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
@@ -109,7 +158,6 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
-  sendGroundActivated: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
   sendLateCorrectionNotice: 'asked for',
@@ -120,6 +168,13 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendPaymentRequestEmail: 'asked for',
   sendPaymentFailed: 'asked for',
   sendWhoHasNotStarted: 'asked for',
+  /* They sent the invitation; this is what became of it. */
+  sendInviteBounced: 'asked for',
+  sendInviteLapsed: 'asked for',
+  /* They asked for the API; this is the answer, whichever it is. */
+  sendApiAccessApproved: 'asked for',
+  sendApiAccessDeclined: 'asked for',
+  sendApiAccessWithdrawn: 'asked for',
 
   /* MONEY AND THE ACCOUNT'S ABILITY TO KEEP WORKING.
      A warning that the plan is about to stop working is not a nudge, even though nobody asked for
@@ -136,6 +191,7 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
+  sendInviteAboutToLapse: 'we decided to send it',
   /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
      so it is ours to send — but it is about their system rather than about their team. */
   sendWebhookEndpointDying: 'we decided to send it',

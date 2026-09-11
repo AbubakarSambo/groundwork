@@ -148,11 +148,16 @@ describe('the end of the reply is not lost', () => {
      * Found by reading the deltas of one real check-in, which ended "What is it," and stopped. No
      * test of the gate could have caught it: the gate was right, it was never given the last piece.
      */
+    /* The tail is now the DIFF between what was shown and the whole cleaned reply, which is the
+       same guarantee without the character arithmetic: forHumans is not prefix-stable, so a slice
+       by length could cut a word in half. What matters is unchanged - it reaches the gate first. */
     const stream = body('async *sendMessageStream(');
-    const withheld = stream.indexOf('const withheld = forHumans(raw).slice(cleanEmitted)');
+    const withheld = stream.indexOf('const withheld = whatIsNewSince(cleanShown, cleanedWhole)');
+    const pushed = stream.indexOf('gate.push(withheld)');
     const flush = stream.indexOf('gate.flush()');
     expect(withheld).toBeGreaterThan(-1);
-    expect(withheld).toBeLessThan(flush);
+    expect(pushed).toBeGreaterThan(withheld);
+    expect(pushed).toBeLessThan(flush);
   });
 });
 
@@ -201,10 +206,12 @@ describe('words do not fuse across a delta boundary', () => {
     expect(stream).not.toMatch(/gate\.push\(forHumans\(chunk\)\)/);
   });
 
-  it('and the withheld tail is measured in cleaned characters, not raw ones', () => {
+  it('and the withheld tail is a diff of cleaned text, never an offset into it', () => {
     /* Cleaning changes lengths, so a raw offset into cleaned text is off by however much was
-       stripped - which would drop or repeat the end of every reply. */
-    expect(body('async *sendMessageStream(')).toMatch(/forHumans\(raw\)\.slice\(cleanEmitted\)/);
+       stripped - which would drop or repeat the end of every reply. The diff cannot drift. */
+    const stream = body('async *sendMessageStream(');
+    expect(stream).toMatch(/whatIsNewSince\(cleanShown, cleanedWhole\)/);
+    expect(stream).not.toMatch(/\.slice\(cleanEmitted\)/);
   });
 });
 

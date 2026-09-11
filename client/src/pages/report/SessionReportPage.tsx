@@ -13,6 +13,8 @@ import { WhatWasTakenFromWhatYouSaid } from '@/components/gw/WhatWasTakenFromWha
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
+import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -129,12 +131,12 @@ export default function SessionReportPage() {
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString()}. Yours first, then everybody's.`
+          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Yours first, then everybody's.`
           : "Everything about this session. Yours first, then everybody's."}
       </div>
 
       {isLoading && (
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Getting your report...</div>
+        <div role="status" aria-live="polite" style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Getting your report...</div>
       )}
 
       {isError && (
@@ -147,16 +149,24 @@ export default function SessionReportPage() {
             status says which of the three things actually happened, so it can say the true one,
             and the fallback offers the retry rather than a theory.
           */}
+          {/* Three things, three sentences: 404 is "no longer here", only 403 accuses, everything else offers the retry. */}
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>
-            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+            {(error as any)?.response?.status === 403
               ? 'This session is not yours to open'
-              : 'This did not load'}
+              : (error as any)?.response?.status === 404
+                ? 'This session is no longer here'
+                : 'This did not load'}
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+            {(error as any)?.response?.status === 403
               ? 'A session report is only ever readable by the person who wrote it.'
-              : 'Nothing is wrong with the report - the request did not get through. Try again.'}
+              : (error as any)?.response?.status === 404
+                ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
+                : 'Nothing is wrong with the report - the request did not get through. Try again.'}
           </div>
+          {(error as any)?.response?.status === 404 && (
+            <a href="/grounds" style={{ display: 'inline-block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Back to check-ins</a>
+          )}
           {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
             <button
               onClick={() => refetch()}
@@ -198,7 +208,7 @@ export default function SessionReportPage() {
           </div>
 
       {/* Simple and visual, and only on this half. See the component's own note for why. */}
-      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} recall={shape?.howClearThisWas?.recall} />
+      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
 
       {/*
         THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
@@ -214,6 +224,12 @@ export default function SessionReportPage() {
         session produced: the solo record, written for this person alone when their own check-in
         completed. Never the cross reference, which is what the half below is for.
       */}
+      {/* A heading and a promise above an empty tinted box read as the product having lost the answers. Say the true thing. */}
+      {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && (
+        <div role="status" style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          Your report is still being written. Your answers are saved; this fills in as soon as it is ready.
+        </div>
+      )}
       {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
@@ -250,7 +266,7 @@ export default function SessionReportPage() {
                said "Thin" and "Clear" about the same ten minutes. See hideCompleteness. */
             hideCompleteness={!!shape?.howClearThisWas?.level}
             /* "Account" is the login word. Here it meant what this person said, so it says that. */
-            onRecordLine="On record: what you said this session."
+            onRecordLine="Built from what you said today."
             stillNeeded={
               /*
                * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
@@ -323,7 +339,7 @@ export default function SessionReportPage() {
                   disabled={correct.isPending || !data.groundId || !data.sessionNumber}
                   style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
                 >
-                  {correct.isPending ? 'Starting...' : 'Correct it'}
+                  <span role="status">{correct.isPending ? 'Starting...' : 'Correct it'}</span>
                 </button>
               </>
             )}
@@ -429,13 +445,13 @@ export default function SessionReportPage() {
             onClick={() => navigate('/grounds/new')}
             style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Open a follow-up check-in
+            Start a new check-in
           </button>
           <button
-            onClick={() => {
-              navigator.clipboard?.writeText(`${window.location.origin}/checkin/${checkInId}/report`)
-                .then(() => toast.success('Link copied'))
-                .catch(() => toast.error('Could not copy it. Select the address bar instead.'))
+            onClick={async () => {
+              /* The .catch below used to be unreachable: `clipboard?.writeText(...)` is undefined where the API is absent, and `.then` on undefined throws. */
+              if (await copy(`${window.location.origin}/checkin/${checkInId}/report`)) toast.success('Link copied')
+              else toast.error('Could not copy it. Select the address bar instead.')
             }}
             style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
           >

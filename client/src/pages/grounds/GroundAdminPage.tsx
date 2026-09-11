@@ -1,3 +1,4 @@
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
@@ -11,6 +12,8 @@ import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
+import { authApi } from '@/api/auth'
+import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -24,7 +27,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { Sec } from '@/components/gw/kit'
+import { Sec, TextAction } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -36,6 +39,9 @@ import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -54,7 +60,8 @@ import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayA
  * to the enum before the catalog. See scenario-catalog.ts.
  */
 
-const MOMENT_LABELS: Record<string, string> = {
+/** Kept for the party page and the list, which still name the moment. The header here no longer shows it. */
+export const MOMENT_LABELS: Record<string, string> = {
   STARTING: 'Starting',
   RECOGNITION: 'Recognition',
   RESOLUTION: 'Resolution',
@@ -203,6 +210,30 @@ function Fold({
   )
 }
 
+/**
+ * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The server names which (notInvitedBecause); this turns
+ * the counts into sentences, one per fact, so a lead is never told "invited on the start date" about
+ * somebody whose mail failed or who has no seat.
+ */
+function whyNotInvited(rows: ({ invitedAt?: string | null; notInvitedBecause?: string | null } | undefined)[]) {
+  const why = { starts_later: 0, no_seat: 0, mail_failed: 0 }
+  for (const r of rows) {
+    if (!r || r.invitedAt) continue
+    const k = (r.notInvitedBecause ?? 'starts_later') as keyof typeof why
+    if (k in why) why[k]++
+  }
+  return why
+}
+
+function sentencesFor(why: { starts_later: number; no_seat: number; mail_failed: number }): string[] {
+  const people = (n: number) => (n === 1 ? 'One person is' : `${n} people are`)
+  const out: string[] = []
+  if (why.starts_later) out.push(`${people(why.starts_later)} on the check-in and will be invited on the start date.`)
+  if (why.no_seat) out.push(`${people(why.no_seat)} on the check-in and will be invited when an admin makes room on the plan.`)
+  if (why.mail_failed) out.push(`${people(why.mail_failed)} on the check-in but the invitation did not send. Send it again from their row.`)
+  return out
+}
+
 export function GroundAdminPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -254,13 +285,15 @@ export function GroundAdminPage() {
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
-  const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  const { data: colleagues } = useQuery({ queryKey: ['colleagues'], queryFn: () => authApi.colleagues(), staleTime: 5 * 60 * 1000 })
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
   /** The server's own reason when an invitation is held for something other than the start date. */
   const [whyItWaits, setWhyItWaits] = useState<string | null>(null)
   const [newParticipantNote, setNewParticipantNote] = useState('')
+  /* Optional, beside what they cover. Never inferred from the address; blank means blank. */
+  const [newParticipantDepartment, setNewParticipantDepartment] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -458,7 +491,8 @@ export function GroundAdminPage() {
    */
   const startsAtOnRecord = (ground as any)?.startsAt ? String((ground as any).startsAt).slice(0, 10) : ''
 
-  const isInitiator = !!ground && user?.id === ground.initiatorId
+  /* The server's answer, which is what its routes test. The local formula stays only for the moment before the read lands. */
+  const isInitiator = (ground as any)?.viewerIsInitiator ?? (!!ground && user?.id === ground.initiatorId)
 
   /**
    * WHO GETS THE ADMIN VIEW. Her decision: the lead of that ground, and org admins
@@ -476,7 +510,7 @@ export function GroundAdminPage() {
    * rendering for somebody it was not built for.
    */
   const isOrgAdmin = user?.role === 'ADMIN'
-  const canRunThisGround = isInitiator || isOrgAdmin
+  const canRunThisGround = (ground as any)?.viewerRunsThisGround ?? (isInitiator || isOrgAdmin)
   /**
    * AND WHETHER THEY ARE IN IT, WHICH IS A DIFFERENT QUESTION.
    *
@@ -581,13 +615,14 @@ export function GroundAdminPage() {
   const dismissRequest = useMutation({
     mutationFn: (reqId: string) => participantRequestsApi.update(id!, reqId, 'DISMISSED'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
+    onError: () => toast.error('That request was not dismissed - it is still in the list. Try again.'),
   })
 
   const [confirmClosing, setConfirmClosing] = useState(false)
   const closingSession = useMutation({
     mutationFn: () => groundsApi.beginClosingSession(id!),
     onSuccess: (r) => {
-      toast.success(`Closing session begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final check-in.`)
+      toast.success(`Closing session begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final session.`)
       setConfirmClosing(false)
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
@@ -597,6 +632,7 @@ export function GroundAdminPage() {
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
+    onError: () => toast.error('The reminder did not go out - nobody has been emailed. Try again.'),
   })
 
   const fixEmail = useMutation({
@@ -642,7 +678,7 @@ export function GroundAdminPage() {
   const copyInviteLink = useMutation({
     mutationFn: async (participantId: string) => {
       const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id!, participantId)
-      await navigator.clipboard.writeText(inviteUrl)
+      if (!(await copy(inviteUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
       return inviteUrl
     },
     onSuccess: () => toast.success('Invite link copied. It is the same link as their email - send it however you like.'),
@@ -659,7 +695,7 @@ export function GroundAdminPage() {
   const copyCheckInLink = useMutation({
     mutationFn: async (participantId: string) => {
       const { checkInUrl } = await groundsApi.getParticipantCheckInUrl(id!, participantId)
-      await navigator.clipboard.writeText(checkInUrl)
+      if (!(await copy(checkInUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
       return checkInUrl
     },
     onSuccess: () => toast.success('Check-in link copied. Send it however you like.'),
@@ -744,22 +780,18 @@ export function GroundAdminPage() {
           email,
           because: (r.reason as any)?.response?.data?.message ?? 'The invite did not send.',
         }))
-      const waiting = results
-        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
-        .filter((r) => !r.value?.invitedAt).length
-      return { failed, waiting, sent: results.length - failed.length - waiting }
+      const added = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null; notInvitedBecause?: string | null }> => r.status === 'fulfilled')
+        .map((r) => r.value)
+      const why = whyNotInvited(added)
+      return { failed, why, sent: added.filter((a) => !!a?.invitedAt).length }
     },
-    onSuccess: ({ failed, waiting, sent }) => {
-      setQueuedToAdd([])
+    onSuccess: ({ failed, why, sent }) => {
+      /* The ones that failed stay in the queue, so the retry is in place rather than retyped. */
+      setQueuedToAdd(queuedToAdd.filter((q) => failed.some((f) => f.email === q.email)))
       qc.invalidateQueries({ queryKey: ['ground', id] })
       if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
-      if (waiting > 0) {
-        toast.info(
-          waiting === 1
-            ? 'One person is on the check-in and will be invited on the start date.'
-            : `${waiting} people are on the check-in and will be invited on the start date.`,
-        )
-      }
+      for (const line of sentencesFor(why)) toast.info(line)
       for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
       if (failed.length) rememberWhoWasNotInvited(id!, failed)
     },
@@ -786,8 +818,49 @@ export function GroundAdminPage() {
     },
   })
 
+  /* Many at once, one call each, so a refusal for one person (a seat, a guest) is reported for that person and the rest still land. */
+  const [addingMany, setAddingMany] = useState(false)
+  async function addManyParticipants(emails: string[]) {
+    setAddingMany(true)
+    let added = 0
+    const refused: string[] = []
+    const rows: { invitedAt?: string | null; notInvitedBecause?: string | null }[] = []
+    for (const email of emails) {
+      try {
+        const r = (await groundsApi.addParticipant(id!, { email })) as { invitedAt?: string | null; notInvitedBecause?: string | null }
+        added++
+        rows.push(r)
+      } catch (err: any) {
+        refused.push(`${email}: ${err?.response?.data?.message ?? 'could not be added'}`)
+      }
+    }
+    setAddingMany(false)
+    qc.invalidateQueries({ queryKey: ['ground', id] })
+    const invited = rows.filter((r) => !!r.invitedAt).length
+    if (added) toast.success(added === 1 ? (invited ? 'Added and invited.' : 'Added.') : `${added} people added${invited ? `, ${invited} invited` : ''}.`)
+    for (const line of sentencesFor(whyNotInvited(rows))) toast.info(line)
+    for (const line of refused) toast.error(line)
+  }
+
+  /*
+   * THE SETUP WRITES GO THROUGH useMutation LIKE EVERY OTHER WRITER ON THIS PAGE. Five of them called
+   * the API as a raw promise from onClick, disabled only by value equality, so a double click before
+   * the response fired two identical PATCHes - and timeframe and cadence regenerate the session plan,
+   * so a double submit there reshaped the run twice.
+   */
+  const saveSetup = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => groundsApi.update(id!, patch as any),
+    onSuccess: () => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change - what you typed is still here, try again.'),
+  })
+  const setWorkTogether = useMutation({
+    mutationFn: (v: boolean) => groundsApi.setPeopleWorkTogether(id!, v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
+  })
+
   const addParticipantMut = useMutation({
-    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
+    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined, department: newParticipantDepartment.trim() || undefined }),
     onSuccess: (added) => {
       /*
        * "INVITE SENT" WAS SAID WHETHER OR NOT ONE WAS SENT.
@@ -802,6 +875,11 @@ export function GroundAdminPage() {
        * worse than either.
        */
       setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
+      /* Three facts, three sentences. "Invited on the start date" was said for a person with no seat and
+         for a mail that never sent - false in both. The mail that failed gets its own line, and the row's
+         Resend button is the way back. */
+      const because = (added as { notInvitedBecause?: string | null }).notInvitedBecause
+      if (because === 'mail_failed') toast.error(`The invitation to ${newParticipantEmail.trim()} did not send. They are on the check-in; send it again from their row.`)
       /*
        * AND WHY IT WAITS, WHEN THE SERVER KNOWS A BETTER REASON THAN THE DATE.
        *
@@ -827,7 +905,6 @@ export function GroundAdminPage() {
         toast.info(`${newParticipantEmail.trim()} is at ${guestFrom}, not here. They join this check-in as a guest and see nothing else in your workspace.`)
       }
       setLastInvitedEmail(newParticipantEmail.trim())
-      setAddingParticipant(false)
       setNewParticipantEmail('')
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
@@ -891,7 +968,17 @@ export function GroundAdminPage() {
     </Shell>
   )
 
-  if (isLoading || !ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
+  if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
+  /* Not loading and nothing came back: the address is wrong or this is not yours. "Loading…" forever said neither. */
+  if (!ground) return (
+    <Shell>
+      <div style={{ padding: 24, maxWidth: 480 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No check-in at this address</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The link may be out of date, or this check-in is not one you are in.</div>
+        <button onClick={() => navigate('/grounds')} style={{ padding: '9px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Back to your check-ins</button>
+      </div>
+    </Shell>
+  )
 
   /**
    * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
@@ -926,154 +1013,17 @@ export function GroundAdminPage() {
     )
   }
 
-  /**
-   * ONLY THE LEAD SEES THE LEAD'S CONFIRMATION.
-   *
-   * This used to be `status === 'AWAITING_LEAD'` alone, so anyone who opened the
-   * ground got the lead's page - including the admin who had just handed it off.
-   * She was shown "You lead this ground / An admin set this up and named you to
-   * lead it" (she IS the admin), a live "Confirm and begin" button, and the
-   * lead's own choice about whether to give an account. Those are the lead's
-   * decisions about the lead's participation, and the hand-off exists precisely
-   * so the lead makes them.
-   *
-   * The admin still needs to see the ground she set up - she is coordinating it -
-   * so she gets the waiting state below rather than nothing.
-   */
-  if (ground.status === 'AWAITING_LEAD' && isInitiator) {
-    return (
-      <LeadConfirmView
-        ground={ground}
-        groundId={id!}
-        onConfirmed={(checkInId) => {
-          // managing only -> no check-in was created; land the lead on their
-          // own admin view instead of trying to open a check-in that does
-          // not exist. also-checking-in -> unchanged, straight into the
-          // real engine.
-          if (checkInId) navigate(`/checkin/${checkInId}`)
-          else qc.invalidateQueries({ queryKey: ['ground', id] })
-        }}
-      />
-    )
-  }
+  /* Null while the check-in is live. See lib/a-ground-that-has-ended. */
+  const ended = howItEnded(ground as any)
 
-  /**
-   * The coordinating admin's view while the lead has not yet confirmed.
-   *
-   * She set this up and handed it over, so the honest thing to show her is the
-   * state of the hand-off: who it went to, and that nothing starts until they
-   * accept. Previously she was shown the lead's own confirmation screen (see
-   * above); the opposite mistake would be to show her nothing at all, which
-   * makes a ground she just created look like it failed to save.
-   */
-  if (ground.status === 'AWAITING_LEAD') {
-    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-    return (
-      <Shell>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-          <Sec title="Waiting for your lead" />
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-            You set this check-in up and asked {personLabel(lead)} to run it.
-            They have been emailed a link. Nothing starts until they open it and confirm, and
-            they choose their own start time.
-          </p>
-          <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-            You will see who has checked in, and the shared report once it releases. You will
-            not see what anyone wrote - what people write stays private until the report is ready.
-          </div>
-          {/*
-            A real control, not a promise. The first version of this waiting
-            state said "you can add the other people now" and offered no way to
-            do it - which is the same failure as GW-013 in a new coat: telling
-            the admin she may do something the screen does not let her do.
-
-            This is the write that GW-013 unblocked server-side, so it belongs
-            here: she is the one holding the list of people to invite, and the
-            lead may not open their mail for days.
-          */}
-          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', marginBottom: 10 }}>
-            You can add the other people now, or leave it to your lead.
-          </div>
-
-          {/*
-            Say that it worked.
-            
-            A Playwright run added a participant here successfully - the row was
-            created and the invitation email went out - and the screen was
-            unchanged afterwards: still just "+ Add someone", with the person
-            nowhere on it. The admin has no way to tell the difference between
-            "added" and "silently failed", and the obvious response is to add them
-            again. The main ground view already confirms this way; the waiting view
-            did not. GW-018.
-          */}
-          {lastInvitedEmail && (
-            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                {whyItWaits
-                  ? `${lastInvitedEmail} is on the check-in.`
-                  : lastInviteWaits
-                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                    : `Invite sent to ${lastInvitedEmail}`}
-              </div>
-              <div style={{ fontSize: 12, color: whyItWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginTop: 2, lineHeight: 1.55 }}>
-                {whyItWaits ?? 'They check in on their own, and nothing is shown to them until the report is ready.'}
-              </div>
-            </div>
-          )}
-
-          {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').map((p: any) => (
-                <div key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', padding: '6px 0', borderBottom: '1px solid var(--gw-border)' }}>
-                  {personLabel(p)}{p.roleAsDescribed && personLabel(p) !== p.roleAsDescribed ? ` · ${p.roleAsDescribed}` : ''}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {addingParticipant ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input
-                autoFocus
-                type="email"
-                value={newParticipantEmail}
-                onChange={e => setNewParticipantEmail(e.target.value)}
-                placeholder="email@company.com"
-                style={{ padding: '10px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                  onClick={() => addParticipantMut.mutate()}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.5 }}
-                >
-                  {addParticipantMut.isPending ? 'Adding…' : 'Add'}
-                </button>
-                <button
-                  onClick={() => { setAddingParticipant(false); setNewParticipantEmail('') }}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingParticipant(true)}
-              style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              + Add someone
-            </button>
-          )}
-        </div>
-      </Shell>
-    )
-  }
+  /* There is no lead page (10 Sep 2026): a ground is open from the moment it is made, and the person
+     leading it goes straight to their check-in like everybody else. */
 
   // The report's own read, or nothing at all. "{conf}/5 {band}" counted
   // completed check-ins and called the result "Aligned".
   const alignRead = alignmentLabel((ground as any).alignment)
+  /* One source of attention for the header, computed once (fix plan C16): it decides which of three chips may speak. */
+  const attention = railAttention(ground as any, user?.id)
 
   // Every party, every session - not "twelve distinct numbers are complete
   // somewhere". See everySessionDone: the short version closed a ground over a
@@ -1261,7 +1211,7 @@ export function GroundAdminPage() {
         */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>← Check-ins</span>
+            <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>← Check-ins</button>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{ground.label}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -1278,12 +1228,7 @@ export function GroundAdminPage() {
                   ground. The state is the green dot beside it and the line under the
                   title, which were both already right.
                 */}
-                <span
-                  title="What this was opened for. Not its current state."
-                  style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', whiteSpace: 'nowrap' }}
-                >
-                  Opened for: {MOMENT_LABELS[ground.moment] ?? ground.moment}
-                </span>
+                {/* The moment pill ('Opened for: Starting') went: the scenario pill on the next line says what kind of check-in this is, and an enum is not a sentence. */}
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
                 {/*
                   WHICH OF THE TWO VIEWS THIS IS, PERMANENTLY.
@@ -1309,9 +1254,8 @@ export function GroundAdminPage() {
                   Both labels say the same thing about the view - it is everyone's state, not your
                   own account - and differ only on the half that is about the reader.
                 */}
-                <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
-                  {isInitiator ? 'Everyone in it - you are running this' : 'Everyone in it - you are an admin here'}
-                </span>
+                {/* 'Everyone in it - you are running this' went too: the rail, the card and 'Led by' already say it. The admin variant stays, because that one is news. */}
+                {!isInitiator && <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>Everyone in it - you are an admin here</span>}
               </div>
             </div>
           </div>
@@ -1353,9 +1297,14 @@ export function GroundAdminPage() {
           */}
           {tab !== 'report' && (
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              {/* ONE STATUS, NOT THREE. "No report yet" printed beside "report being written" (the same fact from two
+                  computations) and beside "Your turn". The attention line has precedence; the report state speaks next;
+                  this fallback only when neither has anything to say. */}
               {alignRead
                 ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
-                : <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>}
+                : (reportState === 'no report yet' && attention.kind === 'none')
+                  ? <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>
+                  : null}
             </div>
           )}
         </div>
@@ -1375,7 +1324,7 @@ export function GroundAdminPage() {
           * when there is something to say.
           */}
         {(() => {
-          const a = railAttention(ground as any, user?.id)
+          const a = attention
           const say =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn — 1 day late' : `Your turn — ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
             : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
@@ -1400,17 +1349,20 @@ export function GroundAdminPage() {
               and useless, because the work is measured in check-ins. Sessions
               lead; the calendar follows in the quieter line, and only while it
               still has something to say. */}
-          {allSessionsDone ? (
+          {/* WHAT ENDED IT COMES FIRST, and the session clock stops. See lib/a-ground-that-has-ended. */}
+          {ended ? (
+            <span style={{ fontWeight: 700, color: 'var(--gw-green-t)' }}>{ended}</span>
+          ) : allSessionsDone ? (
             <span>every session done</span>
           ) : (
             <>
               {plannedSessions != null && (
                 <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
               )}
+              {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
+              {sessionsDone === 0 && <TextAction onClick={() => navigate('/org/guide')} size={12}>How to run one</TextAction>}
               {ground.daysLeft != null && ground.daysLeft <= 3 ? (
                 <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-              ) : ground.daysLeft != null ? (
-                <span style={{ color: 'var(--gw-sub)' }}>{ground.daysLeft} days remaining</span>
               ) : null}
               {/*
                 THE STATE, IN THE PLACE THAT ALREADY HOLDS THE STATE. Overview's stat row moved here.
@@ -1446,7 +1398,8 @@ export function GroundAdminPage() {
               )}
             </>
           )}
-          <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>
+          {/* Report state only while there is something to say about it; 'report sent to everyone' beside 'Session 3 of 6' was a fourth fact for no reader. */}
+          {reportState !== 'report sent to everyone' && reportState !== 'no report yet' && <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>}
         </div>
 
         {/* Tabs.
@@ -2038,7 +1991,8 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ''}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + whenItWas(ci.completedAt, 'day') : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own session`}`}
+                                aria-label={`Session ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isMine ? ', yours' : `, only ${p.email} can open it`}`}
                                 style={{
                                   fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
                                   padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
@@ -2090,12 +2044,12 @@ export function GroundAdminPage() {
                             type="email"
                             value={fixingEmailValue}
                             onChange={e => setFixingEmailValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && fixingEmailValue.includes('@')) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
+                            onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(fixingEmailValue)) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
                             placeholder="corrected@email.com"
                             style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gw-red-b-soft)', outline: 'none', fontFamily: 'inherit', width: 240 }}
                           />
                           <button
-                            disabled={fixEmail.isPending || !fixingEmailValue.includes('@')}
+                            disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
                             onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
                             style={{ fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
                           >
@@ -2352,6 +2306,13 @@ export function GroundAdminPage() {
         */}
         {tab === 'report' && (
           <div>
+            {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
+            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+              <div role="status" style={{ marginBottom: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+                The shared report compares two accounts. Add somebody and this will build.{' '}
+                <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
+              </div>
+            )}
             <TheReportIsAListOfSessions
               rows={sessionRows}
               boardRenders={!!(ground as any).boardRenders}
@@ -2528,6 +2489,17 @@ export function GroundAdminPage() {
               >
                 See who is in it, and where each of them has got to &rarr;
               </button>
+              {/*
+                * THE PEOPLE ALREADY HERE, FIRST, PICKED LIKE A GROUP CHAT. "Should be able to click team
+                * and see a list and select like how you add people to WhatsApp groups." Search, tick,
+                * one button; each is added the way the box below adds one. The box stays for an outsider.
+                */}
+              <PeoplePicker
+                people={colleagues ?? []}
+                alreadyIn={(((ground as any)?.participants ?? []) as any[]).map((m) => m.email ?? '')}
+                adding={addingMany}
+                onAdd={(picked) => addManyParticipants(picked.map((p) => p.email))}
+              />
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
                 value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
@@ -2536,13 +2508,18 @@ export function GroundAdminPage() {
               <input
                 type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
                 value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+              />
+              <input
+                type="text" placeholder="Their department (optional)" aria-label="Their department"
+                value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
               />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => addParticipantMut.mutate()}
-                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                  disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
                 >
                   {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
                 </button>
@@ -2563,14 +2540,14 @@ export function GroundAdminPage() {
                 <button
                   onClick={() => {
                     const email = newParticipantEmail.trim().toLowerCase()
-                    if (!email.includes('@')) return
+                    if (!looksLikeAnAddress(email)) return
                     if (queuedToAdd.some((q) => q.email === email)) return
                     setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
                     setNewParticipantEmail('')
                     setNewParticipantNote('')
                   }}
-                  disabled={!newParticipantEmail.includes('@')}
-                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                  disabled={!looksLikeAnAddress(newParticipantEmail)}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
                 >
                   + Add another
                 </button>
@@ -2613,9 +2590,11 @@ export function GroundAdminPage() {
               )}
               {lastInvitedEmail && (
                 <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                  {lastInviteWaits
-                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                    : `Invite sent to ${lastInvitedEmail}`}
+                  {whyItWaits
+                    ? `${lastInvitedEmail} is on the check-in. ${whyItWaits}`
+                    : lastInviteWaits
+                      ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                      : `Invite sent to ${lastInvitedEmail}`}
                 </div>
               )}
             </div>
@@ -2709,9 +2688,7 @@ export function GroundAdminPage() {
                         tabIndex={selected || (current == null && o.v) ? 0 : -1}
                         aria-label={`${o.label}. ${o.sub}`}
                         onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
-                        onClick={() => groundsApi.setPeopleWorkTogether(id!, o.v)
-                          .then(() => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                          .catch(() => toast.error('Not saved. What you typed is still here — try again.'))}
+                        onClick={() => { if (!setWorkTogether.isPending) setWorkTogether.mutate(o.v) }}
                         className={`cg-sit-card${selected ? ' selected' : ''}`}
                         style={{ cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2785,7 +2762,7 @@ export function GroundAdminPage() {
                         {c.weeks && `How long this runs: ${c.weeks.from ?? 'not set'} to ${c.weeks.to} weeks. `}
                         {c.cadence && `How often people check in: ${c.cadence.from ?? 'not set'} to ${c.cadence.to}. `}
                       </span>
-                      Changed by the {c.by} on {new Date(c.changedAt).toLocaleDateString()}.
+                      Changed by the {c.by} on {whenItWas(c.changedAt, 'day')}.
                     </div>
                   ))}
                 </div>
@@ -2831,10 +2808,8 @@ export function GroundAdminPage() {
                   it empty to open the check-in as soon as people are added.
                 </div>
                 <button
-                  disabled={startsAtDraft === startsAtOnRecord}
-                  onClick={() => groundsApi.update(id!, { startsAt: startsAtDraft || undefined })
-                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                    .catch((e: any) => toast.error(e?.response?.data?.message ?? 'The start date did not change - try again.'))}
+                  disabled={startsAtDraft === startsAtOnRecord || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ startsAt: startsAtDraft || undefined })}
                   style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: startsAtDraft === startsAtOnRecord ? 0.4 : 1 }}
                 >
                   Save start date
@@ -2850,7 +2825,7 @@ export function GroundAdminPage() {
                       <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 21 ? '3 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
                     ))}
                   </select>
-                  <select className="gw-input" aria-label="Check-in cadence" value={cadenceDraft}
+                  <select className="gw-input" aria-label="Session cadence" value={cadenceDraft}
                     onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
                     {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
                   </select>
@@ -2877,10 +2852,8 @@ export function GroundAdminPage() {
                   answer you agree.
                 </div>
                 <button
-                  disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
-                  onClick={() => groundsApi.update(id!, { timelineDays: timelineDaysDraft, cadence: cadenceDraft })
-                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                    .catch(() => toast.error('The length did not change — try again.'))}
+                  disabled={(timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence) || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft })}
                   style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
                 >
                   Save timeframe
@@ -2894,7 +2867,7 @@ export function GroundAdminPage() {
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
               <button
                 disabled={!groundLabel.trim() || groundLabel === ground.label}
-                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The name did not change — try again.')) }}
+                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label && !saveSetup.isPending) saveSetup.mutate({ label: groundLabel.trim() }) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
               >
                 Save name
@@ -2924,7 +2897,7 @@ export function GroundAdminPage() {
               </select>
               <button
                 disabled={!groundScenario || groundScenario === ground.scenario}
-                onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The situation did not change — try again.')) }}
+                onClick={() => { if (groundScenario && groundScenario !== ground.scenario && !saveSetup.isPending) saveSetup.mutate({ scenario: groundScenario }) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
               >
                 Save scenario
@@ -3028,14 +3001,15 @@ export function GroundAdminPage() {
                 Closing a check-in permanently archives it. All parties keep their records. This action cannot be undone.
                 {isOrgAdmin && !isInitiator && ' You are not the lead here, so closing it ends something somebody else is running.'}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
-                Self-serve close is coming. For now, email{' '}
-                <a href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>
-                {' '}and we will archive it manually.
-              </div>
-              <button disabled style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'not-allowed', fontFamily: 'inherit', opacity: 0.4 }}>
-                Close this check-in
-              </button>
+              {/* The disabled "Close this check-in" button that sat here was scaffolding, not a state; the working
+                  route - mail us - was a footnote under it. The route is the action now. */}
+              <a
+                href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
+                style={{ display: 'inline-block', fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, textDecoration: 'none', fontFamily: 'inherit' }}
+              >
+                Ask us to archive this check-in
+              </a>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>Self-serve close is coming. Until then we archive it by hand, usually the same day.</div>
             </div>
 
             {/*
@@ -3143,149 +3117,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}>{children}</div>
 }
 
-/** Shown when a ground is AWAITING_LEAD - an admin set this up and named this
- * person to lead it. They review the admin's context, can edit it or add more
- * participants, and confirm when ready. Their own session 1 only opens once
- * they confirm - not synchronized with the admin in any way, deliberately
- * worded to avoid the false-simultaneity framing found elsewhere in this app. */
-function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groundId: string; onConfirmed: (checkInId: string | null) => void }) {
-  const [brief, setBrief] = useState(ground.brief ?? '')
-  const [showAddParticipant, setShowAddParticipant] = useState(false)
-  const [newEmail, setNewEmail] = useState('')
-  const [newRole, setNewRole] = useState('')
-  const [participants, setParticipants] = useState<{ email: string; roleAsDescribed?: string | null }[]>(
-    (ground.participants ?? []).filter((p: any) => p.partyType === 'PARTICIPANT'),
-  )
-  const [confirming, setConfirming] = useState(false)
-  const [addingParticipant, setAddingParticipant] = useState(false)
-  // Also-checking-in is the common case and the default; managing-only is a
-  // deliberate opt-out from having your own account in the comparison.
-  const [alsoCheckingIn, setAlsoCheckingIn] = useState(true)
-  // The lead's own remit. If the admin did not state it, this is the last point
-  // at which it can be captured - without it the lead is the only person the
-  // board cannot read.
-  const [myRemit, setMyRemit] = useState('')
-
-  async function addParticipant() {
-    if (!newEmail.includes('@')) return
-    setAddingParticipant(true)
-    try {
-      await groundsApi.addParticipant(groundId, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || undefined })
-      setParticipants(v => [...v, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || null }])
-      setNewEmail(''); setNewRole(''); setShowAddParticipant(false)
-      toast.success('Invited')
-    } catch {
-      toast.error('They were not added. Nobody has been emailed — try again.')
-    } finally {
-      setAddingParticipant(false)
-    }
-  }
-
-  async function confirmAndBegin() {
-    setConfirming(true)
-    try {
-      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined, managingOnly: !alsoCheckingIn, remit: myRemit.trim() || undefined })
-      onConfirmed(res.checkInId)
-    } catch {
-      toast.error('Could not confirm. Try again.')
-      setConfirming(false)
-    }
-  }
-
-  return (
-    <Shell>
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-        <Sec title="You lead this check-in" />
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-          An admin set this up and named you to lead it. You decide when to begin - this is not a synchronized moment with anyone else.
-        </p>
-
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-          Groundwork records what each person says about a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - what people write stays private until the report is ready.
-        </div>
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
-        <textarea value={brief} onChange={e => setBrief(e.target.value)} rows={4}
-          placeholder="What is this about?"
-          style={{ width: '100%', padding: '10px 12px', fontSize: 13.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 20 }} />
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
-          Participants {participants.length > 0 ? `(${participants.length})` : ''}
-        </div>
-        {participants.length > 0 && (
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
-            {participants.map((p, i) => (
-              <div key={i} style={{ padding: '9px 12px', fontSize: 13, borderBottom: i < participants.length - 1 ? '1px solid var(--gw-border)' : 'none', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{personLabel(p)}</span>
-                {p.roleAsDescribed && <span style={{ color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        {!showAddParticipant ? (
-          <button onClick={() => setShowAddParticipant(true)} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 24 }}>
-            + Add someone
-          </button>
-        ) : (
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 24 }}>
-            <input type="email" placeholder="email@company.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
-            <input type="text" placeholder="Role (optional)" value={newRole} onChange={e => setNewRole(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={addParticipant} disabled={addingParticipant || !newEmail.includes('@')} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: addingParticipant || !newEmail.includes('@') ? 0.5 : 1 }}>
-                {addingParticipant ? 'Adding…' : 'Add'}
-              </button>
-              <button onClick={() => setShowAddParticipant(false)} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Your part in this</div>
-        {/* Only asked when the lead is giving their own account - a managing-only
-            lead has no contribution to read, so no remit is needed. */}
-        {alsoCheckingIn && (
-          <div style={{ marginBottom: 8 }}>
-            <input
-              type="text"
-              value={myRemit}
-              onChange={(e) => setMyRemit(e.target.value)}
-              placeholder="What are you responsible for in this check-in?"
-              style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-            />
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.5 }}>
-              Without this you are the one person the board cannot read against a role, and the questions you get will be generic.
-            </div>
-          </div>
-        )}
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', borderBottom: '1px solid var(--gw-border)', cursor: 'pointer', background: alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
-            <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>I'm also checking in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You answer too, same as everyone else. Recommended - most leads are also a party to the situation.</div>
-            </div>
-          </label>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', cursor: 'pointer', background: !alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
-            <input type="radio" checked={!alsoCheckingIn} onChange={() => setAlsoCheckingIn(false)} style={{ marginTop: 3 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Managing only</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but do not answer yourself. You'll still see who has checked in and the shared report once it releases - you're just not one of the people being compared.</div>
-            </div>
-          </label>
-        </div>
-
-        <button onClick={confirmAndBegin} disabled={confirming} className="gw-btn" style={{ width: '100%', opacity: confirming ? 0.6 : 1 }}>
-          {confirming ? 'Confirming…' : 'Confirm and begin →'}
-        </button>
-      </div>
-    </Shell>
-  )
-}
-
 function ShareSection({ joinToken }: { joinToken: string }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -3298,18 +3129,20 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     }).catch(() => {})
   }, [joinUrl])
 
-  function copyLink() {
-    navigator.clipboard?.writeText(joinUrl).then(() => {
+  async function copyLink() {
+    if (await copy(joinUrl)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the link and copy it yourself.')
+    }
   }
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
+        Share this link or QR code - anyone can check in without signing up first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (

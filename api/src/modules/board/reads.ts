@@ -255,8 +255,53 @@ export function blockedParticipantIds(deps: ReadDependency[]): Set<string> {
  * the tier stamped on the stored entry never learned it, so the honest person
  * saying they have nothing scored the same as the person who shipped.
  */
-const ADMITS_ABSENCE =
-  /\b(nothing|not|no|none|never|without|yet to|hasn'?t|haven'?t|didn'?t|cannot|can'?t|couldn'?t|unable|still waiting|nowhere)\b/i;
+/**
+ * A SENTENCE THAT CONTAINS A NEGATION IS NOT A SENTENCE ABOUT AN ABSENCE.
+ *
+ * This was `\b(nothing|not|no|none|never|without|...)\b` anywhere in the text, and it demoted the
+ * entry to LOW. Almost every real sentence contains one of those words. From a live run:
+ *
+ *   "Daniel should be taking escalations to Amara, not to me, from the first week of September."
+ *   "The escalation log shows Amara as the approver on every escalation raised after 1 September,
+ *    and my name on none of them."
+ *
+ * Both name a person, a date and a document. Both were demoted, on "not" and on "none". With every
+ * entry demoted, `checkable` fell to zero for everybody, and the report told each person, about
+ * themselves and about each other, "Nothing named so far could be checked by anyone else - no named
+ * people, organisations, numbers or dates." That is the most damaging false sentence this product
+ * can print, and it printed on the first live run of a session in which four dates and three names
+ * were given.
+ *
+ * WHAT THE RULE WAS FOR, which is still worth having: an entry whose whole content is an absence -
+ * "nothing to report", "we have not started" - carries no evidence no matter what tier the
+ * extraction stamped on it. So the absence has to be what the sentence is ABOUT: it leads the
+ * sentence or it is the whole of it.
+ */
+const ADMITS_ABSENCE = new RegExp(
+  [
+    /* The absence leads the sentence, or is the whole of it. */
+    /(^|[.;:]\s*)(nothing|none|nobody|no one|not much|no update|no progress)\b/.source,
+    /* Or somebody is saying plainly that they did not do a thing - "I have not closed anything
+       since Loop, if I am honest", which is the sentence this rule was written for. The subject is
+       the speaker or the team, so a contrast about somebody else ("to Amara, not to me") is not
+       caught by it. */
+    /\b(i|we|they|nobody|no one)\s+(have|has|had)\s*n[o']?t\b/.source,
+    /\b(there|that)\s+(is|are|was|were)\s+(no|nothing)\b/.source,
+    /\bnothing\s+(has|was|is|to report)\b/.source,
+  ].join('|'),
+  'i',
+);
+
+/**
+ * AND A DATE, A NUMBER OR A NAMED THING OUTRANKS IT EITHER WAY.
+ *
+ * "Nothing has moved on the migration since 4 August" leads with an absence and is still one of the
+ * most checkable things anybody can say: somebody else can go and look at 4 August. The demotion is
+ * for an entry with nothing in it to check, so an entry that carries something to check is never
+ * demoted.
+ */
+const CARRIES_SOMETHING_TO_CHECK =
+  /\b(\d)|\b(january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 
 const rawTier = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
   const m = /^\[VERIFIABILITY:(HIGH|MEDIUM|LOW)\]/.exec(text ?? '');
@@ -269,8 +314,11 @@ const body = (text: string) =>
     .replace(/\[INFERRED:[^\]]*\]/g, '')
     .trim();
 
-const tierOf = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' =>
-  ADMITS_ABSENCE.test(body(text)) ? 'LOW' : rawTier(text);
+const tierOf = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  const t = body(text);
+  if (CARRIES_SOMETHING_TO_CHECK.test(t)) return rawTier(text);
+  return ADMITS_ABSENCE.test(t) ? 'LOW' : rawTier(text);
+};
 
 /**
  * Drop the echoes of an achievement already on the record.

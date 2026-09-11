@@ -32,6 +32,14 @@ class ConfirmLeadDto {
   remit?: string;
 }
 
+class HoldDto {
+  @ApiPropertyOptional({ description: 'Why the check-in is being paused or resumed. Logged, not shown to participants.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
+}
+
 class UpdateTimelineDto {
   @ApiPropertyOptional({ description: 'Rename the ground' })
   @IsOptional()
@@ -311,6 +319,27 @@ export class GroundsController {
     return this.grounds.activate(id, organizationId);
   }
 
+  /**
+   * A HOLD, AND THE WAY OUT OF IT. `pauseGround` was written for a surface that never arrived, so
+   * PAUSED was a status nothing could reach and nothing could leave. Both doors are here now, side
+   * by side, because a resume route without a pause route is a key to a door nobody can lock.
+   */
+  @Post(':id/pause')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Put the check-in on hold: nothing is added, nothing moves, until it is resumed (admin only)' })
+  async pause(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
+    await this.grounds.pauseGround(id, userId, dto.reason);
+    return { groundId: id, status: 'PAUSED' };
+  }
+
+  @Post(':id/resume')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Lift the hold and return the check-in to the status it was paused from (admin only)' })
+  async resume(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
+    await this.grounds.resumeGround(id, userId, dto.reason);
+    return { groundId: id };
+  }
+
   @Get(':id/participants/:participantId/invite-url')
   @ApiOperation({ summary: 'Get the current invite URL for a pending participant (initiator only)' })
   async getParticipantInviteUrl(
@@ -563,10 +592,15 @@ export class GroundsController {
     return this.conversation.getMyGroundTranscript(id, userId);
   }
 
+  /**
+   * NOT THE TRANSCRIPTS. This returned every participant's raw turns to the lead - the one thing the
+   * product is sold on never doing. It returns what each completed account SHOWS against what the
+   * check-in asks: derived, screened at the read, never their words. See what-an-account-shows.ts.
+   */
   @Get(':id/conversation')
-  @ApiOperation({ summary: 'Get participant conversation transcripts grouped by party (initiator only)' })
-  async getConversation(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.grounds.getConversation(id, userId);
+  @ApiOperation({ summary: 'What each completed account shows against what this check-in asks (lead only). Never the words themselves.' })
+  async whatTheAccountsShow(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.whatTheAccountsShow(id, userId);
   }
 
   @Get(':id/my-solo-report')
@@ -579,12 +613,6 @@ export class GroundsController {
   @ApiOperation({ summary: "Set whether the requesting user shares their individual report with other parties" })
   async setMySoloReportShared(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { shared: boolean }) {
     return this.grounds.setMySoloReportShared(id, userId, dto.shared);
-  }
-
-  @Post(':id/sign-off')
-  @ApiOperation({ summary: "Confirm the requesting user's account is accurate - the deadline for corrections, in place of a timer" })
-  async signOff(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.grounds.signOff(id, userId);
   }
 
   @Patch(':id/external-visibility')

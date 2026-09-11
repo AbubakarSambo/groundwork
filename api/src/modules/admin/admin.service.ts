@@ -13,6 +13,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { isSubscribed } from '../../common/subscription';
+import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
+import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
+import {
+  CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
+} from '../conversation/the-window-for-correcting-a-record';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -80,7 +85,7 @@ export class AdminService implements OnApplicationBootstrap {
    */
   async getCoaching() {
     const [live, rows] = await Promise.all([
-      this.prisma.platformSetting.findUnique({ where: { key: 'coaching_live' } }).catch(() => null),
+      this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } }).catch(() => null),
       this.prisma.coachingState.findMany({
         orderBy: { updatedAt: 'desc' },
         take: 200,
@@ -120,6 +125,40 @@ export class AdminService implements OnApplicationBootstrap {
   }
 
   /**
+   * A SETTING NOTHING CAN WRITE IS A CONSTANT IN A CONFIGURATION COSTUME (fix plan B12). Two of the
+   * four platform settings had readers, an admin page that described them, and no writer anywhere
+   * but SQL: the switch that lets the coaching block reach a live prompt, and the number of days
+   * somebody has to correct their own record after a report is released. Written the same way the
+   * WhatsApp switch and the two free limits are written, from the same page.
+   */
+  async setCoachingLive(live: boolean, adminUserId: string): Promise<{ live: boolean }> {
+    await this.prisma.platformSetting.upsert({
+      where: { key: COACHING_LIVE_KEY },
+      create: { key: COACHING_LIVE_KEY, value: live, updatedBy: adminUserId },
+      update: { value: live, updatedBy: adminUserId },
+    });
+    return { live };
+  }
+
+  async getCorrectionWindow(): Promise<{ days: number; default: number; max: number }> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key: CORRECTION_WINDOW_KEY } }).catch(() => null);
+    return { days: isAWindow(row?.value) ? (row!.value as number) : DEFAULT_CORRECTION_WINDOW_DAYS, default: DEFAULT_CORRECTION_WINDOW_DAYS, max: MAX_CORRECTION_WINDOW_DAYS };
+  }
+
+  /** Zero is allowed, on purpose - see the-window-for-correcting-a-record.ts. Above the ceiling is not. */
+  async setCorrectionWindow(days: unknown, adminUserId: string): Promise<{ days: number; default: number; max: number }> {
+    if (!isAWindow(days)) {
+      throw new BadRequestException(`The correction window is a whole number of days from 0 to ${MAX_CORRECTION_WINDOW_DAYS}.`);
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: CORRECTION_WINDOW_KEY },
+      create: { key: CORRECTION_WINDOW_KEY, value: days, updatedBy: adminUserId },
+      update: { value: days, updatedBy: adminUserId },
+    });
+    return { days, default: DEFAULT_CORRECTION_WINDOW_DAYS, max: MAX_CORRECTION_WINDOW_DAYS };
+  }
+
+  /**
    * ZERO-ROW DETECTION.
    *
    * Three subsystems were wired and never fired for the life of the codebase, and all three were
@@ -129,15 +168,22 @@ export class AdminService implements OnApplicationBootstrap {
    * admin dashboard, not in a log.
    */
   async getWriters() {
-    const WRITERS: { table: string; writer: string }[] = [
+    /*
+     * "NEVER FIRED" AND "NOTHING HAS ASKED IT TO" ARE DIFFERENT FACTS. Twelve tables sat at zero and
+     * the panel called all twelve a writer that has never fired, which reads as twelve broken
+     * subsystems. Walked through on 10 September 2026: none of them were broken. Some wait on a
+     * customer's own system to send something, some wait on a check-in to end, and until this month
+     * no check-in ever had. `needs` says what makes each one write, so a zero can be read.
+     */
+    const WRITERS: { table: string; writer: string; needs?: string }[] = [
       { table: 'record_entries', writer: 'record extraction at complete()' },
       { table: 'pattern_detections', writer: 'pattern engine on CHECK_IN_COMPLETED' },
       { table: 'coaching_states', writer: 'coaching observation at complete()' },
       { table: 'work_mentions', writer: 'work-mention extractor' },
       { table: 'ground_dependencies', writer: 'dependency extractor' },
       { table: 'deliveries', writer: 'progress extractor, and the person\'s own board' },
-      { table: 'proposed_changes', writer: 'a change asked for against an objective' },
-      { table: 'interactions', writer: 'what-they-say-happened extractor, and the API' },
+      { table: 'proposed_changes', writer: 'a change asked for against an objective', needs: 'a customer system asking for a change against an objective, through the API' },
+      { table: 'interactions', writer: 'what-they-say-happened extractor, and the API', needs: 'the what-they-say-happened extractor, or the API' },
       { table: 'person_objectives', writer: 'own-promise extractor, and objective setup' },
       { table: 'ground_documents', writer: 'uploads' },
       { table: 'participant_notes', writer: 'between-session notes' },
@@ -145,24 +191,23 @@ export class AdminService implements OnApplicationBootstrap {
       { table: 'person_style_profiles', writer: 'style read at complete()' },
       { table: 'reports', writer: 'report synthesis' },
       { table: 'report_rounds', writer: 'report rounds' },
-      { table: 'org_intelligence', writer: 'org intelligence pass' },
       { table: 'knowledge_cards', writer: 'how-we-do-it cards' },
-      { table: 'knowledge_retrievals', writer: 'howWeDoIt prompt block' },
+      { table: 'knowledge_retrievals', writer: 'howWeDoIt prompt block', needs: 'a question that a how-we-do-it card answers' },
       { table: 'assistant_proposals', writer: 'the assistant' },
       { table: 'objective_drafts', writer: 'objective drafting' },
       { table: 'draft_contributions', writer: 'objective drafting' },
       { table: 'ground_baselines', writer: 'baseline at setup' },
-      { table: 'resolutions', writer: 'resolution flow' },
-      { table: 'outcomes', writer: 'outcome capture' },
-      { table: 'outcome_feedback', writer: 'outcome feedback' },
-      { table: 'evaluations_due', writer: 'review-due detector' },
-      { table: 'assertions', writer: 'assertion engine' },
-      { table: 'reported_figures', writer: 'figures extractor' },
-      { table: 'obligations', writer: 'obligations and signing' },
-      { table: 'agreements', writer: 'agreements' },
-      { table: 'documents_elsewhere', writer: 'documents that live elsewhere' },
-      { table: 'product_metrics', writer: 'product metrics' },
-      { table: 'ground_polls', writer: 'polls' },
+      { table: 'resolutions', writer: 'resolution flow', needs: 'a check-in reaching an agreed end' },
+      { table: 'outcomes', writer: 'outcome capture', needs: 'a check-in reaching an agreed end' },
+      { table: 'outcome_feedback', writer: 'outcome feedback', needs: 'somebody answering whether the outcome felt fair, after a check-in has ended' },
+      { table: 'evaluations_due', writer: 'review-due detector', needs: 'a customer system telling us a review is coming up, through the API' },
+      { table: 'assertions', writer: 'assertion engine', needs: 'the alignment routes, which a customer drives' },
+      { table: 'reported_figures', writer: 'figures extractor', needs: 'the alignment routes, which a customer drives' },
+      { table: 'obligations', writer: 'obligations and signing', needs: 'the alignment routes, which a customer drives' },
+      { table: 'agreements', writer: 'agreements', needs: 'the alignment routes, which a customer drives' },
+      { table: 'documents_elsewhere', writer: 'documents that live elsewhere', needs: 'somebody pasting a link to a document into the assistant' },
+      { table: 'product_metrics', writer: 'product metrics', needs: 'a customer system sending a figure against an objective, through the API' },
+      { table: 'ground_polls', writer: 'polls', needs: 'a lead setting a meeting poll on the board' },
       { table: 'people', writer: 'the API roster' },
       { table: 'subjects', writer: 'the API' },
       { table: 'webhook_deliveries', writer: 'webhooks' },
@@ -201,15 +246,23 @@ export class AdminService implements OnApplicationBootstrap {
     return out;
   }
 
-  async getPlatformStats() {
+  /*
+   * THE SAME NUMBERS AS THE PLATFORM PANEL. This was a second console: it counted every organisation
+   * and every ground with no filter, so its "total check-ins" and the panel's disagreed whenever
+   * one of our own organisations made one. Both read through what-the-platform-has-actually-done.ts
+   * now, and this is a private feed of getDashboard rather than a route of its own - the three
+   * routes that exposed these halves (stats, usage, feedback) had no caller.
+   */
+  private async getPlatformStats() {
     const [orgsCount, groundsCount, codesCount, redemptionsCount, freeReasonBreakdown] =
       await Promise.all([
-        this.prisma.organization.count(),
-        this.prisma.ground.count(),
+        this.prisma.organization.count({ where: A_CUSTOMER }),
+        this.prisma.ground.count({ where: A_REAL_CHECK_IN }),
         this.prisma.contributorCode.count(),
         this.prisma.contributorCodeRedemption.count(),
         this.prisma.ground.groupBy({
           by: ['freeReason'],
+          where: A_REAL_CHECK_IN,
           _count: { id: true },
         }),
       ]);
@@ -247,8 +300,8 @@ export class AdminService implements OnApplicationBootstrap {
       this.getAllCodes(),
       this.getFeedback(),
       this.getUsagePatterns(),
-      this.prisma.organization.count({ where: { subscriptionPlan: { not: null } } }),
-      this.prisma.ground.aggregate({ _sum: { sessionsBalance: true } }),
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null } } }),
+      this.prisma.ground.aggregate({ where: A_REAL_CHECK_IN, _sum: { sessionsBalance: true } }),
     ]);
 
     /* The four buckets the page draws as a bar. `freeReason` is null on a ground
@@ -305,7 +358,7 @@ export class AdminService implements OnApplicationBootstrap {
   // Per-user + per-org usage patterns
   // ---------------------------------------------------------------------------
 
-  async getUsagePatterns() {
+  private async getUsagePatterns() {
     const [perOrg, perUser] = await Promise.all([
       this.prisma.organization.findMany({
         select: {
@@ -620,8 +673,9 @@ export class AdminService implements OnApplicationBootstrap {
     return this.getInbox();
   }
 
-  async getFeedback() {
+  private async getFeedback() {
     return this.prisma.outcomeFeedback.findMany({
+      where: { ground: A_REAL_CHECK_IN },
       include: {
         ground: {
           select: {
@@ -753,7 +807,9 @@ export class AdminService implements OnApplicationBootstrap {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const plainOtp = String(Math.floor(100000 + Math.random() * 900000));
+    /* The platform's CSPRNG, not Math.random - this is the whole of the second factor in front of
+       a platform-admin action. See GUESSES_ALLOWED for the other half. */
+    const plainOtp = String(crypto.randomInt(100000, 1000000));
     const hash = await bcrypt.hash(plainOtp, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 

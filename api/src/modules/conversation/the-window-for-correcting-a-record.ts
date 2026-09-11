@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * A REPORT THAT IS FINAL STOPS BEING CORRECTABLE.
@@ -60,7 +61,7 @@ export function whetherItCanStillBeCorrected({
   const closesAt = new Date(releasedAt.getTime() + windowDays * 24 * 60 * 60 * 1000);
   if (now.getTime() <= closesAt.getTime()) return { allowed: true };
 
-  const day = closesAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const day = whenItWas(closesAt, 'full');
   return {
     allowed: false,
     saying:

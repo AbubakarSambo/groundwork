@@ -59,3 +59,8 @@ api/journey/org-sim/out-verify/
 
 # Journey drivers written to run a whole setup end to end. Scratch, not product.
 api/journey/
+
+# Audit and fix-plan working notes. Written while reading the product, kept on disk, never in a PR:
+# they are how the work was decided, not the work. The product docs (api-terms, edge-protection)
+# stay tracked - those are things the product itself points at.
+docs/audit/

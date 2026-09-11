@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, PLAN_FEATURES, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
+import { toast } from 'sonner'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE']
 
@@ -54,6 +55,8 @@ export function PricingPage() {
     onSuccess: (data) => {
       window.location.href = data.checkoutUrl
     },
+    /* No onError at all: a failed checkout left the row spinning for ever. Clearing the plan is half the fix. */
+    onError: (e: any) => { setSubscribingPlan(null); toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.') },
   })
 
   const handleSubscribe = (plan: SubscriptionPlan) => {
