@@ -10,6 +10,8 @@ import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
+import { copy } from '@/components/gw/copying-can-fail'
+import { toast } from 'sonner'
 const FRONTEND_URL = window.location.origin
 
 // Verifying the token flips the auth state, which swaps the route into the
@@ -343,7 +345,7 @@ export function MagicVerifyPage() {
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
               <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--gw-dark)', background: 'var(--gw-paper-2)', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
               <button
-                onClick={() => { navigator.clipboard.writeText(joinUrl).catch(() => {}) }}
+                onClick={async () => { if (!(await copy(joinUrl))) toast.error('Copying is not available here. Select the link and copy it yourself.') }}
                 style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-dark)', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Copy link

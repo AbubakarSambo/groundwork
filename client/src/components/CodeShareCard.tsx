@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copy } from '@/components/gw/copying-can-fail'
 
 export interface CodeShareCardProps {
   code: string
@@ -22,17 +23,17 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
   const formattedExpiry = new Date(expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   const color = expiryColor(daysRemaining)
 
-  function handleCopyCode() {
-    navigator.clipboard?.writeText(code).then(() => {
-      setCodeCopied(true)
-      setTimeout(() => setCodeCopied(false), 2000)
-      onCopy?.()
-    })
+  async function handleCopyCode() {
+    if (!(await copy(code))) return
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+    onCopy?.()
   }
 
   function handleShare() {
     const msg = `Use code ${code} to create a free Ground on Groundwork - valid until ${formattedExpiry}`
-    navigator.clipboard?.writeText(msg).then(() => {
+    copy(msg).then((ok) => {
+      if (!ok) return
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
     })

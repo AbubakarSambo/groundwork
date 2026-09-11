@@ -68,6 +68,12 @@ export function GroundParticipantPage() {
     setSearchParams(next, { replace: true })
   }
   const [showPaywall, setShowPaywall] = useState(false)
+  /* Focus goes back to whatever opened it when it closes. */
+  const paywallOpener = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (showPaywall) paywallOpener.current = document.activeElement as HTMLElement | null
+    else paywallOpener.current?.focus?.()
+  }, [showPaywall])
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -412,7 +418,7 @@ export function GroundParticipantPage() {
       {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</span>
+          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
             {/*
@@ -787,8 +793,14 @@ export function GroundParticipantPage() {
 
       {/* Paywall overlay */}
       {showPaywall && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div
+          role="dialog" aria-modal="true" aria-label="Your session is complete"
+          onKeyDown={e => { if (e.key === 'Escape') setShowPaywall(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}
+        >
+          {/* Opened programmatically, so focus was left behind the scrim: a keyboard or screen-reader user was
+              dropped into a modal they were never told about and could tab out of into an inert page. */}
+          <div tabIndex={-1} ref={el => el?.focus()} style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto', outline: 'none' }}>
 
             {canPayHere ? (
               <>

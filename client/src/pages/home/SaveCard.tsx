@@ -7,6 +7,7 @@ import type { EntryMode } from '@/api/entry'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { copy } from '@/components/gw/copying-can-fail'
 
 type Variant = 'admin' | 'participant'
 
@@ -114,20 +115,21 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         </div>
         <div style={{ padding: '16px' }}>
           <form onSubmit={save}>
-          {trap.field}
+            {/* Once. Two renders shared an id and a name, which is invalid markup and exactly what makes a password
+                manager fill the trap and lock a real person out. */}
             {trap.field}
             <div className="gw-fld">
               <label className="gw-label">Your email</label>
               <input
                 className="gw-input"
                 type="email"
-                placeholder="you@company.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailError('') }}
                 autoFocus
               />
             </div>
-            {emailError && <div className="gw-er">{emailError}</div>}
+            {emailError && <div className="gw-er" role="alert">{emailError}</div>}
             <button
               type="submit"
               className="gw-btn"
@@ -157,11 +159,15 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     saveSession.mutate(trimmed)
   }
 
-  function copyLink() {
-    navigator.clipboard?.writeText(inviteUrl).then(() => {
+  async function copyLink() {
+    /* The button never flipped to "Copied" where copy is unsupported, while the note below still saved - so the
+       card looked alive and the lead pasted whatever was already on the clipboard into the invite email. */
+    if (await copy(inviteUrl)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    } else {
+      setEmailError('Copying is not available here. Select the link and copy it yourself.')
+    }
     const session = entryStorage.load()
     if (session && note.trim()) {
       entryStorage.save({ ...session, inviteToken, inviteNote: note.trim() })
@@ -201,18 +207,20 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       {/* Section 1: email */}
       <div style={{ padding: '16px', borderBottom: '1px solid var(--gw-border)' }}>
         <form onSubmit={save}>
+          {/* The admin variant called entrySave with trap.filled and never rendered the trap, so its spam defence did nothing. */}
+          {trap.field}
           <div className="gw-fld">
             <label className="gw-label">Your email</label>
             <input
               className="gw-input"
               type="email"
-              placeholder="you@company.com"
+              placeholder="you@example.com"
               value={email}
               onChange={e => { setEmail(e.target.value); setEmailError('') }}
               autoFocus
             />
           </div>
-          {emailError && <div className="gw-er">{emailError}</div>}
+          {emailError && <div className="gw-er" role="alert">{emailError}</div>}
           <button
             type="submit"
             className="gw-btn"
@@ -272,7 +280,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
           Add their email and we will send them an invite once you have saved.
         </div>
-        {participantError && <div className="gw-er" style={{ marginBottom: 6 }}>{participantError}</div>}
+        {participantError && <div className="gw-er" role="alert" style={{ marginBottom: 6 }}>{participantError}</div>}
         {participantAdded ? (
           <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
             Saved. They will receive an invite once you have saved.

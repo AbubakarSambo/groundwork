@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
+import { copy } from '@/components/gw/copying-can-fail'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
 
@@ -267,11 +268,13 @@ export function BillingPage() {
     onError: () => toast.error('Could not resume subscription. Try again.'),
   })
 
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
+  async function copyToClipboard(text: string) {
+    if (await copy(text)) {
       setCopied(text)
       setTimeout(() => setCopied(null), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the text and copy it yourself.')
+    }
   }
 
   /**
@@ -316,9 +319,7 @@ export function BillingPage() {
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)' }}>
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
 
-        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>
-          Back
-        </div>
+        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>Back</button>
 
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
@@ -701,7 +702,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>Contact us</span>
               <a
-                href={`mailto:${user?.email ?? 'support@myground.work'}?subject=Enterprise plan enquiry`}
+                href="mailto:hello@myground.work?subject=Enterprise plan enquiry"
                 style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
               >
                 Contact
