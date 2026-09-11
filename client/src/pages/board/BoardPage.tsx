@@ -373,6 +373,94 @@ export function BoardPage() {
           </button>
         </div>
 
+        {/*
+          WHERE PEOPLE DIFFER, FIRST.
+
+          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
+          and the check-in grid. A lead opens this board to find out where they need to step in, and
+          the one section that tells them that was the last thing they reached; everything above it
+          they could already guess.
+
+          Moved, not changed. Same section, same rows, same order inside it. What follows it is
+          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
+          lead "Against the plan" where the difference used to be.
+        */}
+        {shown.divergence && b.divergence && (
+          <>
+            <Sec title="Where people differ" src="cross-referenced" />
+            <Card>
+              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
+              ) : (
+                <>
+                  {b.divergence.items.map((d: any, i: number) => (
+                    <Row key={i} first={i === 0}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
+                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
+                      </div>
+                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
+                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
+                          {d.atStake}
+                        </div>
+                      )}
+                    </Row>
+                  ))}
+                  {b.divergence.agreements.map((a: any, i: number) => (
+                    <Row key={`a${i}`}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
+                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
+                      </div>
+                    </Row>
+                  ))}
+                  {b.divergence.centralQuestion && (
+                    <Row>
+                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
+                    </Row>
+                  )}
+                </>
+              )}
+              {/*
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
+              */}
+            </Card>
+          </>
+        )}
+
         {/* ---------------------------------------------- at a glance */}
         {(shown.quickRead || shown.startingState || shown.decisions) && <Zone label="At a glance" />}
 
@@ -579,81 +667,6 @@ export function BoardPage() {
           </>
         )}
 
-        {shown.divergence && b.divergence && (
-          <>
-            <Sec title="Where people differ" src="cross-referenced" />
-            <Card>
-              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
-              ) : (
-                <>
-                  {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} first={i === 0}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
-                      </div>
-                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
-                      {/*
-                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
-
-                        This section carried a headline and then a line of italics: "This is the
-                        summary. Your own report holds the detail of what each account said." So the
-                        one question the board exists to answer - what do the two of you each think
-                        is going on - was the one thing you had to leave it to find out.
-
-                        The data was already here. `divergence.items` is the report's own divergence
-                        objects, sent whole, and every string in them has been through `named()` on
-                        the way out - the same masking the rest of the board gets, so a reader who
-                        may not see who somebody is does not learn it here. Rendering it is a read
-                        of what was already on the wire, not a new disclosure.
-                      */}
-                      {Array.isArray(d.positions) && d.positions.length > 0 && (
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-                          {d.positions.map((pos: any, j: number) => (
-                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
-                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {d.atStake && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
-                          {d.atStake}
-                        </div>
-                      )}
-                    </Row>
-                  ))}
-                  {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
-                      </div>
-                    </Row>
-                  ))}
-                  {b.divergence.centralQuestion && (
-                    <Row>
-                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
-                    </Row>
-                  )}
-                </>
-              )}
-              {/*
-                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
-
-                It read "This is the summary. Your own report holds the detail of what each account
-                said." That sentence was the only reason a fourth report surface had to exist: the
-                board named the disagreement and then sent you to another page to find out what it
-                was. Each account is now printed above, so the sentence would be sending people away
-                from the thing they are already looking at.
-              */}
-            </Card>
-          </>
-        )}
 
         {/* ---------------------------------------------- the work */}
         {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}

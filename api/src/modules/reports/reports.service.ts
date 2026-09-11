@@ -632,6 +632,87 @@ export class ReportsService {
     );
   }
 
+  /**
+   * WHAT ONE PERSON SAID, WRITTEN AS A SENTENCE INSTEAD OF QUOTED IN PIECES.
+   *
+   * The per-person block on the session report printed `lines[]` - the raw fragments the extraction
+   * pulled out of that person's own account, each in italics with a cite under it. Eight people
+   * produced eight stacks of disconnected clauses, and a reader could not tell from them what any
+   * one person had actually said. The marketing page's example does the opposite and it is the
+   * reason it reads better: one written sentence per person, no quotation marks.
+   *
+   * NOTHING IS REPLACED. The sentence goes ABOVE the fragments and the fragments stay, folded, with
+   * their cites. A written summary is a read of somebody's words and the words themselves are the
+   * record; a reader who wants to check the sentence against them must be able to.
+   *
+   * WHAT THIS PASS IS AND IS NOT TOLD. One person's own lines, and nothing else - not their name,
+   * not their role, not anybody else's account, not the report. It cannot compare them to a
+   * colleague or characterise them as a worker, because it has never been shown either. Same
+   * guarantee as `fillAtStake` and for the same reason: a rule the model cannot break beats a rule
+   * it is asked not to.
+   */
+  private async fillWhatEachPersonSaid(people: any[]): Promise<void> {
+    if (!Array.isArray(people) || people.length === 0) return;
+
+    const SAYING_PROMPT = [
+      'Below are the lines one person gave in their own check-in, pulled out of what they wrote.',
+      'Write ONE sentence saying what they said they did and where they think things stand.',
+      '',
+      'Write it, do not quote it. No quotation marks and no lifted phrases longer than a few words.',
+      'The sentence is a plain summary of their own account of their own work.',
+      '',
+      'You have not been told who this person is, what their role is, or what anybody else said,',
+      'and you must not guess any of it. Never compare them to anyone. Never say whether they are',
+      'doing well or badly, never praise, never fault. This is not an assessment of a person.',
+      '',
+      'Third person, present tense where the lines allow: "Has the migration running on two of the',
+      'four services and expects the rest by the end of the month, with the data backfill still',
+      'unscheduled."',
+      '',
+      'If the lines are too thin or too scattered to say anything true in one sentence, return an',
+      'empty string. An empty string is a correct answer here and a vague sentence is not - the',
+      'fragments are shown either way, so nothing is lost by declining.',
+    ].join('\n');
+
+    const SAYING_SCHEMA = {
+      name: 'emit_saying',
+      description: 'Emit one written sentence summarising this person\'s own account, or an empty string.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          saying: {
+            type: 'string',
+            description: 'One sentence, written not quoted. Empty string if the lines do not support one.',
+          },
+        },
+        required: ['saying'],
+      },
+    };
+
+    await Promise.all(
+      people.map(async (person) => {
+        if (!person || typeof person !== 'object') return;
+        /* Already carries the line that says they answered and named nothing. Leave it. */
+        if (typeof person.saying === 'string' && person.saying.trim()) return;
+        const lines: string[] = Array.isArray(person.lines) ? person.lines.filter((l: any) => typeof l === 'string' && l.trim()) : [];
+        if (lines.length === 0) return;
+
+        try {
+          const res = await this.anthropic.extract<{ saying: string }>(
+            SAYING_PROMPT,
+            [{ role: 'user', content: `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}` }],
+            SAYING_SCHEMA,
+          );
+          const text = res?.saying?.trim();
+          if (text) person.saying = text;
+        } catch (err: any) {
+          /* One person loses their sentence and keeps every line. The report is unaffected. */
+          this.logger?.warn?.(`The written-sentence pass failed for one person: ${err?.message}`);
+        }
+      }),
+    );
+  }
+
   async synthesize(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2191,6 +2272,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
           isYou: !!me && p.id === me.id,
         })),
     });
+
+    /*
+     * The written sentence per person, above their own fragments. See the pass: it is given one
+     * person's lines and nothing else, the fragments are kept, and a decline costs nothing.
+     */
+    await this.fillWhatEachPersonSaid(shape.whatEachPersonSaid as any[]);
 
     /**
      * WHO THIS REPORT IS COUNTING, AND WHO HAS SHOWN THEIRS.

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Folded } from './two-accounts-side-by-side'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
@@ -214,9 +215,30 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
                     <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
-                    {p.lines?.length
-                      ? <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
-                      : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{p.saying}</div>}
+                    {/*
+                      THE WRITTEN SENTENCE FIRST, THE WORDS UNDER IT.
+
+                      This block was eight stacks of disconnected clauses in italics, one cite each,
+                      and a reader could not tell from them what any one person had said. The server
+                      writes a sentence now.
+
+                      The fragments are not replaced by it. A written summary is a read of somebody's
+                      words; the words are the record, and a reader who wants to check the one
+                      against the other has to be able to. So they are folded, not dropped - a real
+                      `<details>`, which prints open and is announced as expandable.
+                    */}
+                    {p.saying && (
+                      <div style={{ fontSize: 12.5, color: p.lines?.length ? 'var(--gw-text)' : 'var(--gw-muted)', marginBottom: p.lines?.length ? 8 : 0, ...PROSE }}>{p.saying}</div>
+                    )}
+                    {p.lines?.length ? (
+                      p.saying ? (
+                        <Folded summary={`In their own words (${p.lines.length})`}>
+                          <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
+                        </Folded>
+                      ) : (
+                        <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
+                      )
+                    ) : null}
                   </div>
                 ))
                 : themed.map((s: any) => (
