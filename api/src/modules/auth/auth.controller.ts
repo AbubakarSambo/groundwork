@@ -232,7 +232,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Switch the active organisation. Returns a new token scoped to it.' })
   async switchOrganization(@CurrentUser() user: CurrentUserData, @Body() dto: SwitchOrganizationDto) {
-    return this.authService.switchOrganization(user.id, dto.organizationId);
+    return this.authService.switchOrganization(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
   }
 
   @Get('me')

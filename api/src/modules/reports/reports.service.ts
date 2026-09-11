@@ -1969,13 +1969,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     /* The snapshot, when this round closed. Its presence IS what makes the report final. */
     const snapshot = await this.prisma.reportRound.findUnique({
-      where: { groundId_round: { groundId, round: sessionNumber } },
+      where: { groundId_sessionNumber: { groundId, sessionNumber } },
       select: { sharedPicture: true, agreements: true, divergences: true, centralQuestion: true, takenAt: true, amendedAt: true, amendedNote: true },
     });
 
     const previousSnapshot = sessionNumber > 1
       ? await this.prisma.reportRound.findUnique({
-        where: { groundId_round: { groundId, round: sessionNumber - 1 } },
+        where: { groundId_sessionNumber: { groundId, sessionNumber: sessionNumber - 1 } },
         select: { sharedPicture: true },
       })
       : null;
@@ -2525,9 +2525,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const kept = await this.prisma.reportRound.findMany({
       where: { groundId },
-      orderBy: { round: 'asc' },
+      orderBy: { sessionNumber: 'asc' },
       select: {
-        round: true,
+        sessionNumber: true,
         sharedPicture: true,
         agreements: true,
         divergences: true,
@@ -2843,20 +2843,20 @@ happened, and what is in the way.`;
     if (round === null) return;
 
     const kept = await this.prisma.reportRound.findUnique({
-      where: { groundId_round: { groundId, round } },
+      where: { groundId_sessionNumber: { groundId, sessionNumber: round } },
     });
     const answer = decide(now, kept as any);
     if (!answer.keep) return;
 
     if (answer.as === 'new') {
       await this.prisma.reportRound.create({
-        data: { groundId, round, ...(now as any), takenAt: new Date() },
+        data: { groundId, sessionNumber: round, ...(now as any), takenAt: new Date() },
       });
       return;
     }
 
     await this.prisma.reportRound.update({
-      where: { groundId_round: { groundId, round } },
+      where: { groundId_sessionNumber: { groundId, sessionNumber: round } },
       data: { ...(now as any), amendedAt: new Date(), amendedNote: answer.note },
     });
   }

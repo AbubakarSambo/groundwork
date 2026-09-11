@@ -172,6 +172,8 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Visible without opening it: a check-in with one person on it will never produce a shared report (B17). */}
+          {g.status === 'ACTIVE' && (g.participants as any[]).filter((p: any) => !p.managingOnly).length < 2 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Needs a second person for a shared report</span>}
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
           {/* A report was released to this person and they have not opened it.
               Across ten grounds and thirty-three people, not one report was
@@ -357,8 +359,9 @@ export function GroundsListPage() {
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{a.label}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
                   Set up by {a.createdBy}
-                  {a.timelineDays ? ` · ${a.timelineDays} days` : ''}
-                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}` : ''}
+                  {/* A number the product chose is said to be one, so the admin approving it knows what was decided and what was assumed (B13, P6-002). */}
+                  {a.timelineDays ? ` · ${a.timelineDays} days${a.timelineStated === false ? ' (suggested)' : ''}` : ''}
+                  {a.cadence ? ` · ${a.cadence.replace(/_/g, ' ').toLowerCase()}${a.cadenceStated === false ? ' (suggested)' : ''}` : ''}
                 </div>
                 {declining === a.id ? (
                   <div style={{ marginTop: 9 }}>

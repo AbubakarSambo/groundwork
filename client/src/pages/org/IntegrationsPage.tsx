@@ -95,7 +95,7 @@ export function IntegrationsPage() {
   const [freshSecret, setFreshSecret] = useState<{ clientId: string; clientSecret: string } | null>(null)
 
   const [hookUrl, setHookUrl] = useState('')
-  const [hookEvents, setHookEvents] = useState<string[]>(['round.completed'])
+  const [hookEvents, setHookEvents] = useState<string[]>(['session.completed'])
   const [freshHookSecret, setFreshHookSecret] = useState<string | null>(null)
 
   const creds = useQuery({ queryKey: ['integrations', 'credentials'], queryFn: integrationsApi.listCredentials, enabled: isAdmin })
@@ -747,6 +747,7 @@ export function IntegrationsPage() {
             <label key={ev} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 6, alignItems: 'center' }}>
               <input type="checkbox" checked={hookEvents.includes(ev)} onChange={e => setHookEvents(v => (e.target.checked ? [...v, ev] : v.filter(x => x !== ev)))} />
               <span style={S.mono}>{ev}</span>
+              {events.data?.deprecated?.[ev] && <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>going next release - subscribe to {events.data.deprecated[ev]}</span>}
             </label>
           ))}
         </div>

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { theJwtSecret } from '../the-jwt-secret';
 
 export interface JwtPayload {
   sub: string;
@@ -24,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('jwt.secret') || 'fallback-secret',
+      secretOrKey: theJwtSecret(configService),
     });
   }
 
@@ -43,6 +44,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
      */
     if ((payload.epoch ?? 0) !== user.tokenEpoch) {
       throw new UnauthorizedException('You were signed out when the password changed. Sign in again.');
+    }
+    /*
+     * MEMBERSHIP, NOT JUST THE COLUMN. switchOrganization checks the membership row on the way in;
+     * this read the user's organizationId and nothing else, so deleting somebody's membership left
+     * their access exactly as it was (B16, P2-025). The organisation the token names has to be one
+     * they still belong to.
+     */
+    const member = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId: user.id, organizationId: user.organizationId } },
+      select: { id: true },
+    });
+    if (!member) {
+      throw new UnauthorizedException('You are no longer a member of that organisation. Sign in again.');
     }
 
     return {

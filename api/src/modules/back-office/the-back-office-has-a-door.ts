@@ -27,8 +27,21 @@ export type DoorDecision = { open: true; because: 'not-the-back-office' | 'nobod
 const THE_DOOR_ITSELF = /^\/api\/v1\/back-office\/door(\/|$|\?)/;
 const THE_BACK_OFFICE = /^\/api\/v1\/(ops|admin)(\/|$|\?)/;
 
+/**
+ * THE PATH AS EXPRESS SEES IT. The match was case-sensitive and undecoded while Express matched
+ * case-insensitively on the decoded path, so /ADMIN and /%61dmin routed to the back office and
+ * walked past the door (B16, P2-007). Lower-cased and decoded before matching; and main.ts sets
+ * case-sensitive routing so the two agree on the spelling as well.
+ */
+export function normalisePath(path: string): string {
+  let decoded = path;
+  try { decoded = decodeURIComponent(path); } catch { /* a malformed escape is left as it is */ }
+  return decoded.toLowerCase();
+}
+
 export function isTheBackOffice(path: string): boolean {
-  return THE_BACK_OFFICE.test(path) && !THE_DOOR_ITSELF.test(path);
+  const p = normalisePath(path);
+  return THE_BACK_OFFICE.test(p) && !THE_DOOR_ITSELF.test(p);
 }
 
 export function mayOpen(f: DoorFacts): DoorDecision {

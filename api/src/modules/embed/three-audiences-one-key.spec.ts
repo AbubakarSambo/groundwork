@@ -18,7 +18,8 @@ function guard(claims: any) {
   const jwt: any = { verifyAsync: jest.fn(async () => { if (claims === 'bad') throw new Error('nope'); return claims; }) };
   const req: any = { headers: { authorization: 'Bearer t' } };
   const ctx: any = { switchToHttp: () => ({ getRequest: () => req }) };
-  return { g: new EmbedSessionGuard(jwt), ctx, req };
+  const prisma: any = { person: { findUnique: jest.fn(async () => ({ deactivatedAt: null })) } };
+  return { g: new EmbedSessionGuard(jwt, prisma), ctx, req };
 }
 
 describe('three audiences, one key', () => {

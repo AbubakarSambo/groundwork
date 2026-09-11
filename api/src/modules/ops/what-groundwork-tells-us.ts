@@ -72,6 +72,7 @@ export function isReallyFromGroundwork(
  */
 export function whatItMeansForUs(kind: string, payload: Record<string, unknown>): string | null {
   switch (kind) {
+    case 'session.completed':
     case 'round.completed':
       /* The one that matters most: a report exists and nobody here would
          otherwise know until they went looking. */

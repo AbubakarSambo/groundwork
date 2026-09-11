@@ -28,14 +28,14 @@ function svc(o: { prefs?: any; person?: any; participants?: any[]; hour?: number
   return { service: new RoundDigestService(prisma, email, config), sent, updated };
 }
 
-const round = { groundId: 'g1', roundNumber: 3, participantCount: 4 };
+const round = { groundId: 'g1', sessionNumber: 3, participantCount: 4 };
 
 describe('one mail per round', () => {
   it('carries the headline and a link, and nothing that was said', async () => {
     const { service, sent } = svc();
     await service.onRoundCompleted(round as any);
     expect(sent).toHaveLength(1);
-    expect(sent[0].subject).toBe('Renewal push - round 3 is complete');
+    expect(sent[0].subject).toBe('Renewal push - session 3 is complete');
     expect(sent[0].body).toMatch(/4 people took part/);
     expect(sent[0].body).toMatch(/https:\/\/app\/grounds\/g1/);
     expect(sent[0].body).toMatch(/https:\/\/app\/unsubscribe\/tok/);

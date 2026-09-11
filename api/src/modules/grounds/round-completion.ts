@@ -63,7 +63,7 @@ export async function recordRoundCompletion(
 
   try {
     await prisma.roundCompletion.create({
-      data: { groundId, roundNumber, participantCount: participants.length },
+      data: { groundId, sessionNumber: roundNumber, participantCount: participants.length },
     });
   } catch {
     /*
@@ -95,7 +95,7 @@ export async function recordRoundCompletion(
 
   events.emit(GroundworkEvents.ROUND_COMPLETED, {
     groundId,
-    roundNumber,
+    sessionNumber: roundNumber,
     participantCount: participants.length,
   } satisfies RoundCompletedEvent);
   return true;

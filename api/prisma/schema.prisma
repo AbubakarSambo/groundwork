@@ -1205,6 +1205,10 @@ model GroundParticipant {
 // Conversation — each party checks in INDEPENDENTLY. Never cross-readable.
 // ---------------------------------------------------------------------------
 
+/// ONE SESSION OF A GROUND. What a user calls a check-in is `Ground`; a `CheckIn` row is one
+/// person's one session of it, numbered by `sessionNumber`. The naming guards exempt the data model
+/// on purpose - renaming this model is a much larger change than the one-word rule is worth - so
+/// the fact is stated here, where the next reader meets it (fix plan B13).
 model CheckIn {
   id            String @id @default(uuid())
   groundId      String @map("ground_id")
@@ -1869,15 +1873,16 @@ model OutcomeFeedback {
 model RoundCompletion {
   id               String   @id @default(uuid())
   groundId         String   @map("ground_id")
-  roundNumber      Int      @map("round_number")
-  /// How many people the round was waiting on when it closed. Kept because the participant list
-  /// changes: somebody added later must not make a closed round look as though it reopened.
+  /// One integer, one name: the same number CheckIn.sessionNumber carries (fix plan B13).
+  sessionNumber    Int      @map("session_number")
+  /// How many people the session was waiting on when it closed. Kept because the participant list
+  /// changes: somebody added later must not make a closed session look as though it reopened.
   participantCount Int      @map("participant_count")
   completedAt      DateTime @default(now()) @map("completed_at")
 
   ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
 
-  @@unique([groundId, roundNumber])
+  @@unique([groundId, sessionNumber])
   @@index([groundId])
   @@map("round_completions")
 }
@@ -3154,6 +3159,11 @@ model Person {
   deactivatedAt DateTime? @map("deactivated_at")
 
   /// Set if this person ever signs in to Groundwork. Null for most of a roster, and that is normal.
+  ///
+  /// SIX MODELS REPRESENT A HUMAN BEING - User, Person, GroundParticipant, OpsPerson, PendingSignup,
+  /// PendingJoin - each for a stated reason, and this is the documented seam between the two that
+  /// matter most. A constraint enforced on one of them is not enforced on the others; anybody adding
+  /// a seventh should say here why the six will not do (fix plan B13, P7-002).
   linkedUserId String? @map("linked_user_id")
 
   /// THE DAY THEY WERE LAST PROMPTED, and the whole of the once-a-day rule.
@@ -4135,8 +4145,8 @@ enum ReportActivationStatus {
 model ReportRound {
   id       String @id @default(uuid())
   groundId String @map("ground_id")
-  /// The session number every party had completed when this was taken.
-  round    Int
+  /// The session number every party had completed when this was taken. Named for what it is (B13).
+  sessionNumber Int @map("session_number")
 
   /// The report as it stood, in the same shape the live one holds.
   sharedPicture   String @map("shared_picture") @db.Text
@@ -4158,8 +4168,8 @@ model ReportRound {
   ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
 
   /// One row per round. A second synthesis of the same round amends this one.
-  @@unique([groundId, round])
-  @@index([groundId, round])
+  @@unique([groundId, sessionNumber])
+  @@index([groundId, sessionNumber])
   @@map("report_rounds")
 }
 

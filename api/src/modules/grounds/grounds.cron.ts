@@ -730,12 +730,12 @@ export class GroundsCron {
           closed.push({ sessionNumber, anAccount });
         }
         for (const { sessionNumber } of closed) {
-          const recorded = await this.prisma.roundCompletion.findUnique({ where: { groundId_roundNumber: { groundId: g.id, roundNumber: sessionNumber } }, select: { id: true } });
+          const recorded = await this.prisma.roundCompletion.findUnique({ where: { groundId_sessionNumber: { groundId: g.id, sessionNumber } }, select: { id: true } });
           if (!recorded) await recordRoundCompletion(this.prisma, this.events, g.id, sessionNumber);
         }
         const latest = closed[closed.length - 1];
         if (!latest) continue;
-        const taken = await this.prisma.reportRound.findUnique({ where: { groundId_round: { groundId: g.id, round: latest.sessionNumber } }, select: { id: true } });
+        const taken = await this.prisma.reportRound.findUnique({ where: { groundId_sessionNumber: { groundId: g.id, sessionNumber: latest.sessionNumber } }, select: { id: true } });
         if (taken) continue;
 
         this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {

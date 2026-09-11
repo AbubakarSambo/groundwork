@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface PanelCaller {
   organizationId: string;
@@ -22,7 +23,7 @@ export interface PanelCaller {
  */
 @Injectable()
 export class EmbedSessionGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(private readonly jwt: JwtService, private readonly prisma: PrismaService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
@@ -37,6 +38,9 @@ export class EmbedSessionGuard implements CanActivate {
     }
     if (claims.typ !== 'embed') throw new UnauthorizedException('That token is not a panel session.');
     if (!claims.pid || !claims.org) throw new UnauthorizedException('That session is missing who it is for.');
+    /* A person deactivated on the roster stops now, not when the panel session expires (B16, P2-026). */
+    const person = await this.prisma.person.findUnique({ where: { id: claims.pid }, select: { deactivatedAt: true } });
+    if (!person || person.deactivatedAt) throw new UnauthorizedException('That person is no longer on the roster.');
 
     req.panel = { organizationId: claims.org, personId: claims.pid, externalId: claims.sub } satisfies PanelCaller;
     return true;

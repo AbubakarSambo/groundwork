@@ -26,7 +26,12 @@ export class ApprovedOrMachineGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Token is invalid or has expired.');
     }
-    if (claims.typ === 'machine') return true;
+    if (claims.typ === 'machine') {
+      /* Same as MachineTokenGuard: revoked means now, not at the token's expiry (B16, P2-026). */
+      const credential = await this.prisma.apiCredential.findUnique({ where: { clientId: claims.sub }, select: { revokedAt: true } });
+      if (!credential || credential.revokedAt) throw new UnauthorizedException('This credential has been revoked.');
+      return true;
+    }
 
     const organizationId: string | undefined = claims.organizationId;
     if (!organizationId) throw new UnauthorizedException('Sign in, or use a machine token.');

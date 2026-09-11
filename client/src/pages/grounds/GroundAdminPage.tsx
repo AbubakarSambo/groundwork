@@ -2306,6 +2306,13 @@ export function GroundAdminPage() {
         */}
         {tab === 'report' && (
           <div>
+            {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
+            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+              <div role="status" style={{ marginBottom: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+                The shared report compares two accounts. Add somebody and this will build.{' '}
+                <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
+              </div>
+            )}
             <TheReportIsAListOfSessions
               rows={sessionRows}
               boardRenders={!!(ground as any).boardRenders}

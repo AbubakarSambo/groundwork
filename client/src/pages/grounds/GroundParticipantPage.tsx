@@ -738,6 +738,16 @@ export function GroundParticipantPage() {
         {/* REPORT TAB */}
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/*
+              A SHARED REPORT NEEDS TWO PEOPLE, AND THE PAGE SAYS SO. A check-in with one person on it
+              can never release one - the rule refuses outright below two - and the page said
+              "forming" for ever. The truth, and who can change it (fix plan B17).
+            */}
+            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+              <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+                The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
+              </div>
+            )}
 
             <SharedReportForAParty
               groundId={id!}

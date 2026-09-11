@@ -50,17 +50,20 @@ export class WebhooksListener {
       });
       if (!ground) return;
 
-      await this.webhooks.emit(
-        ground.organizationId,
-        'round.completed',
-        roundCompletedPayload({
-          groundId: e.groundId,
-          roundNumber: e.roundNumber,
-          participantCount: e.participantCount,
-          completedAt: new Date(),
-          appUrl: this.appUrl(),
-        }) as any,
-      );
+      /*
+       * TWO NAMES FOR ONE EVENT, FOR ONE RELEASE. "Round" was retired from every human surface and
+       * survived as the published name of the first webhook event. `session.completed` is the name
+       * now; `round.completed` still fires so no integrator breaks, and goes next release (B13).
+       */
+      const payload = roundCompletedPayload({
+        groundId: e.groundId,
+        sessionNumber: e.sessionNumber,
+        participantCount: e.participantCount,
+        completedAt: new Date(),
+        appUrl: this.appUrl(),
+      }) as any;
+      await this.webhooks.emit(ground.organizationId, 'session.completed', payload);
+      await this.webhooks.emit(ground.organizationId, 'round.completed', payload);
 
       /*
        * AND THE CHANNEL. Distinct from "a report is ready", which fires when an admin RELEASES it:
@@ -109,7 +112,7 @@ export class WebhooksListener {
         checkInOpenedPayload({
           groundId: e.groundId,
           checkInId: e.checkInId,
-          roundNumber: e.sessionNumber,
+          sessionNumber: e.sessionNumber,
           personExternalId: e.personExternalId,
           openedAt: new Date(),
           appUrl: this.appUrl(),
@@ -134,7 +137,7 @@ export class WebhooksListener {
         'checkin.completed',
         checkInCompletedPayload({
           groundId: e.groundId,
-          roundNumber: e.sessionNumber,
+          sessionNumber: e.sessionNumber,
           completedAt: new Date(),
           appUrl: this.appUrl(),
         }) as any,

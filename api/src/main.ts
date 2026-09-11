@@ -37,6 +37,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true, // For Stripe webhook signature verification
   });
+  /* Routing and the back-office door agree on spelling: /ADMIN is not /admin (B16, P2-007). */
+  app.set('case sensitive routing', true);
 
   const configService = app.get(ConfigService);
 

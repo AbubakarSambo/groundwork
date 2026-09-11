@@ -104,7 +104,8 @@ export const databaseConfig = registerAs("database", () => ({
 }));
 
 export const jwtConfig = registerAs("jwt", () => ({
-  secret: process.env.JWT_SECRET || "super-secret-key",
+  /* No default. A missing secret is refused at boot by the-jwt-secret.ts, in every environment (B16). */
+  secret: process.env.JWT_SECRET,
   expiresIn: process.env.JWT_EXPIRES_IN || "7d",
 }));
 

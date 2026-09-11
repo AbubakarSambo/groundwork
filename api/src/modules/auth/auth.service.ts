@@ -299,7 +299,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id);
       }
 
       /*
@@ -355,7 +355,7 @@ export class AuthService {
         });
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
-        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg), joined.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -402,7 +402,7 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
+      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -419,7 +419,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
+    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -992,7 +992,7 @@ export class AuthService {
     return other > 0;
   }
 
-  private async buildAuthResponse(user: UserWithOrg): Promise<AuthResponseDto> {
+  private async buildAuthResponse(user: UserWithOrg, via: SignedInVia = 'password'): Promise<AuthResponseDto> {
     return {
       /**
        * Computed here rather than at each call site, because there are five doors into the app
@@ -1000,7 +1000,8 @@ export class AuthService {
        * set is worse than no signal at all.
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
-      accessToken: this.generateToken(user),
+      /* `via` reaches the back-office door: a session that began with an emailed link says 'link' (B16). */
+      accessToken: this.generateToken(user, via),
       user: this.theUserShape(user, await this.belongsElsewhere(user.id, user.organizationId)),
     };
   }
@@ -1246,7 +1247,7 @@ export class AuthService {
    * their own company and be an ordinary member of a client's - keeping the old role
    * across the switch would hand them admin of an organisation that never gave it.
    */
-  async switchOrganization(userId: string, organizationId: string) {
+  async switchOrganization(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const membership = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId, organizationId } },
       select: { role: true, organization: { select: { id: true, name: true, slug: true } } },
@@ -1264,7 +1265,8 @@ export class AuthService {
     });
 
     return {
-      accessToken: this.generateToken(user),
+      /* Carried through: a Google-signed-in staff member switching organisation kept back-office access (B16, P2-024). */
+      accessToken: this.generateToken(user, via),
       user,
       organization: membership.organization,
     };

@@ -47,10 +47,10 @@ describe('a round closes once', () => {
   it('closes when the last person is in, and says who it was waiting on', async () => {
     const { prisma, events, created } = harness({ participants: 4, done: 4 });
     await expect(recordRoundCompletion(prisma, events, 'g1', 2)).resolves.toBe(true);
-    expect(created).toEqual([{ groundId: 'g1', roundNumber: 2, participantCount: 4 }]);
+    expect(created).toEqual([{ groundId: 'g1', sessionNumber: 2, participantCount: 4 }]);
     expect(events.emit).toHaveBeenCalledWith(GroundworkEvents.ROUND_COMPLETED, {
       groundId: 'g1',
-      roundNumber: 2,
+      sessionNumber: 2,
       participantCount: 4,
     });
   });

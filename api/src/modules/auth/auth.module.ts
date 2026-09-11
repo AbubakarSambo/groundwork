@@ -3,6 +3,7 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { theJwtSecret } from './the-jwt-secret';
 import { AuthController } from './auth.controller';
 import { AuthCron } from './auth.cron';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -16,7 +17,7 @@ import { BillingModule } from '../billing/billing.module';
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('jwt.secret') || 'fallback-secret',
+        secret: theJwtSecret(config),
         signOptions: {
           expiresIn: (config.get<string>('jwt.expiresIn') || '7d') as any,
         },

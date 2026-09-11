@@ -66,7 +66,7 @@ export interface CheckInOpenedEvent {
 
 export interface RoundCompletedEvent {
   groundId: string;
-  roundNumber: number;
+  sessionNumber: number;
   /** Who the round was waiting on, as it stood when it closed. */
   participantCount: number;
 }

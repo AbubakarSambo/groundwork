@@ -19,10 +19,10 @@ describe('GroundsCron.synthesisBackstop - GW-06', () => {
         count: jest.fn(async ({ where }: any) => o.checkIns.filter((c) => c.sessionNumber === where.sessionNumber && (where.status.in ? where.status.in.includes(c.status) : c.status === where.status)).length),
       },
       roundCompletion: {
-        findUnique: jest.fn(async ({ where }: any) => ((o.recorded ?? []).includes(where.groundId_roundNumber.roundNumber) ? { id: 'rc' } : null)),
+        findUnique: jest.fn(async ({ where }: any) => ((o.recorded ?? []).includes(where.groundId_sessionNumber.sessionNumber) ? { id: 'rc' } : null)),
         create: jest.fn(async (a: any) => a.data),
       },
-      reportRound: { findUnique: jest.fn(async ({ where }: any) => ((o.taken ?? []).includes(where.groundId_round.round) ? { id: 'rr' } : null)) },
+      reportRound: { findUnique: jest.fn(async ({ where }: any) => ((o.taken ?? []).includes(where.groundId_sessionNumber.sessionNumber) ? { id: 'rr' } : null)) },
     };
     const events: any = { emit: jest.fn((...args: any[]) => { emitted.push(args); }) };
     const service = new GroundsCron(prisma, {} as any, {} as any, events, {} as any, {} as any, {} as any);

@@ -378,7 +378,7 @@ export const groundsApi = {
     apiClient
       .get<{
         id: string; label: string; scenario: string; createdAt: string
-        timelineDays: number | null; cadence: string | null; createdBy: string
+        timelineDays: number | null; cadence: string | null; cadenceStated?: boolean; timelineStated?: boolean; createdBy: string
       }[]>('/grounds/awaiting-approval', { skipForbiddenToast: true })
       .then(r => r.data),
 

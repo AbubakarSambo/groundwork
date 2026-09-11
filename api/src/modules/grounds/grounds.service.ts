@@ -920,12 +920,12 @@ export class GroundsService {
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, label: true, scenario: true, status: true, cadence: true,
+        id: true, label: true, scenario: true, status: true, cadence: true, cadenceStated: true, timelineStated: true,
         createdByUserId: true, createdAt: true,
         initiator: { select: { id: true, firstName: true, lastName: true, email: true } },
         participants: {
           select: {
-            id: true, email: true, partyType: true, roleAsDescribed: true, userId: true,
+            id: true, email: true, partyType: true, roleAsDescribed: true, userId: true, managingOnly: true,
             inviteDeliveryStatus: true,
             // No take limit here: completing a session always spawns the next
             // session's row, so "most recent row" is never the same as "most
@@ -949,6 +949,8 @@ export class GroundsService {
         scenario: g.scenario,
         status: g.status,
         cadence: g.cadence,
+      cadenceStated: g.cadenceStated,
+      timelineStated: g.timelineStated,
         createdByAdmin: g.createdByUserId != null,
         lead: { id: g.initiator.id, firstName: g.initiator.firstName, lastName: g.initiator.lastName, email: g.initiator.email },
         /**
@@ -1200,7 +1202,7 @@ export class GroundsService {
          * living on a screen - which meant the server did not know a round had closed, and any
          * second screen wanting the same answer would have had to implement it again.
          */
-        roundCompletions: { select: { roundNumber: true, completedAt: true }, orderBy: { roundNumber: 'asc' } },
+        roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
         resolution: true,
         patternDetections: {
           select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -1241,7 +1243,7 @@ export class GroundsService {
             report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
             /* Same include as the primary query above. TypeScript refused the two shapes when this
                was added to only one of them, which is the check the comment above wishes it had. */
-            roundCompletions: { select: { roundNumber: true, completedAt: true }, orderBy: { roundNumber: 'asc' } },
+            roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
             resolution: true,
             patternDetections: {
               select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
@@ -3655,7 +3657,7 @@ export class GroundsService {
       where: { organizationId, status: GroundStatus.AWAITING_APPROVAL },
       orderBy: { createdAt: 'asc' },
       select: {
-        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true,
+        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true, cadenceStated: true, timelineStated: true,
         initiator: { select: { firstName: true, lastName: true, email: true } },
       },
     });
@@ -3666,6 +3668,9 @@ export class GroundsService {
       createdAt: g.createdAt,
       timelineDays: g.timelineDays,
       cadence: g.cadence,
+      /* Whether a person chose these or the product suggested them, so the card can say which (B13, P6-002). */
+      cadenceStated: g.cadenceStated,
+      timelineStated: g.timelineStated,
       createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
     }));
   }

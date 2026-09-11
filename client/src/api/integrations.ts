@@ -169,8 +169,9 @@ export const integrationsApi = {
     apiClient.get<ImportDetail>(`/integrations/imports/${jobId}`).then(r => r.data),
 
   // webhooks
+  /** `deprecated` maps an old event name to the one to subscribe to instead (B13). */
   webhookEvents: () =>
-    apiClient.get<{ available: string[]; notYetEmitted: string[] }>('/integrations/webhooks/events').then(r => r.data),
+    apiClient.get<{ available: string[]; notYetEmitted: string[]; deprecated?: Record<string, string> }>('/integrations/webhooks/events').then(r => r.data),
   listEndpoints: () => apiClient.get<WebhookEndpoint[]>('/integrations/webhooks/endpoints').then(r => r.data),
   registerEndpoint: (url: string, events: string[]) =>
     apiClient.post<WebhookEndpoint & { secret: string }>('/integrations/webhooks/endpoints', { url, events }).then(r => r.data),

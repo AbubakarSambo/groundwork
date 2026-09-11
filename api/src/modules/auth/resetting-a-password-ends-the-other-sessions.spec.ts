@@ -13,7 +13,7 @@ import { sessionClaims } from './a-session-token';
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const aStrategy = (row: any) =>
-  new JwtStrategy({ get: () => 'a-secret' } as any, { user: { findUnique: jest.fn(async () => row) } } as any);
+  new JwtStrategy({ get: () => 'a-secret' } as any, { user: { findUnique: jest.fn(async () => row) }, organizationMembership: { findUnique: jest.fn(async () => ({ id: 'm1' })) } } as any);
 const ROW = { id: 'u1', email: 'a@b.example', organizationId: 'o1', role: 'MEMBER', firstName: 'A', lastName: 'B', isActive: true, deletedAt: null, isPlatformAdmin: false, tokenEpoch: 1, organization: {} };
 
 describe('a session token', () => {
