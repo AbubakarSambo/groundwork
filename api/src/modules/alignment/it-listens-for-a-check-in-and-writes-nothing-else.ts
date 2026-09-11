@@ -54,7 +54,9 @@ export class WhatEachSideUnderstands {
     const version = await this.prisma.agreementVersion.findFirst({
       where: { agreement: { organizationId: ground.organizationId, groundId: event.groundId } },
       orderBy: { number: 'desc' },
-      select: { id: true, terms: { select: { id: true, says: true, reads: true, clause: true } } },
+      /* A term taken off as misread is not put to anybody again, the same as a disputed record
+         line is not counted again. It stays in the table and stops being in the question. */
+      select: { id: true, terms: { where: { disputedAt: null }, select: { id: true, says: true, reads: true, clause: true } } },
     });
     if (!version?.terms.length) return;
 

@@ -3874,7 +3874,23 @@ model AgreementTerm {
   /// Who has said the reading is right, by name. Never a count.
   checkedBy String[] @map("checked_by")
 
-  /// Where the two sides read it differently: [{ by, reads }]. The most useful thing this can find.
+  /// "THAT IS NOT WHAT I SAID", FOR A TERM.
+  ///
+  /// The record has had this press since nine model extractors started writing rows: a line is
+  /// marked, never deleted, and from that moment counts toward nothing. A term read out of a
+  /// document by a model, and an understanding taken off a transcript by one, are the same kind of
+  /// object and had no equivalent - so somebody shown a reading they never gave had nowhere to say
+  /// so, on the one surface where being held to words you did not say costs money.
+  ///
+  /// Marked, not deleted, for the same reason as everywhere else: the row is the evidence that the
+  /// read was made, and a table that quietly loses its mistakes cannot be audited for them.
+  disputedAt DateTime? @map("disputed_at")
+  /// Who said it was wrong, by the name a person reads. Never a user id.
+  disputedBy String?   @map("disputed_by")
+
+  /// Where the two sides read it differently: [{ by, reads, unsaidAt? }]. The most useful thing
+  /// this can find - and `unsaidAt` is how one side takes their own half back without erasing that
+  /// it was recorded, or touching anybody else's.
   readDifferently Json? @map("read_differently")
 
   createdAt DateTime @default(now()) @map("created_at")

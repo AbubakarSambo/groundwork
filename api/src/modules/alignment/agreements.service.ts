@@ -1,5 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  readingsThatStand, takeBackTheirReading, theStateAfterwards, sayItIsTakenBack,
+} from './that-is-not-what-i-said';
 import { theGroundIsHere } from './the-ground-is-here';
 import {
   AgreementVersion,
@@ -116,7 +119,7 @@ export class AgreementsService {
 
     const existing = await this.prisma.agreement.findFirst({
       where: { organizationId, groundId },
-      include: { versions: { orderBy: { number: 'desc' }, take: 1, include: { terms: { select: { id: true }, take: 1 } } } },
+      include: { versions: { orderBy: { number: 'desc' }, take: 1, include: { terms: { where: { disputedAt: null }, select: { id: true }, take: 1 } } } },
     });
 
     if (existing) {
@@ -259,7 +262,9 @@ export class AgreementsService {
   async inForceOn(organizationId: string, groundId: string, agreementId: string, on: Date) {
     const agreement = await this.prisma.agreement.findFirst({
       where: { id: agreementId, organizationId, groundId },
-      include: { versions: { include: { terms: true } } },
+      /* A term somebody has said was misread counts toward nothing, the same as a disputed record
+         line. It stays in the table; it stops being in the answer. */
+      include: { versions: { include: { terms: { where: { disputedAt: null } } } } },
     });
     if (!agreement) throw new NotFoundException('No such agreement.');
 
@@ -371,6 +376,52 @@ export class AgreementsService {
       recorded += 1;
     }
     return { recorded };
+  }
+
+  /**
+   * "THAT IS NOT WHAT I SAID." The press the record has always had, pointed at a term.
+   *
+   * Marked, never deleted. The row is the evidence that the read was made, and a table that
+   * quietly loses its mistakes cannot be audited for them - which on a contract is the question
+   * somebody eventually asks.
+   *
+   * WHO MAY. The same gate as checking a term and as reading one differently: somebody who can
+   * speak for a side. Saying a clause was misread is a statement about the contract, and it
+   * belongs to the same people the other statements do.
+   */
+  async notWhatISaid(
+    organizationId: string,
+    groundId: string,
+    termId: string,
+    who: string,
+    what: 'term' | 'reading',
+    by: { userId: string; role: string },
+  ) {
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
+    const term = await this.prisma.agreementTerm.findFirst({
+      where: { id: termId, version: { agreement: { organizationId, groundId } } },
+    });
+    if (!term) throw new NotFoundException('No such term.');
+
+    if (what === 'term') {
+      if (term.disputedAt) return { id: term.id, disputedAt: term.disputedAt, say: sayItIsTakenBack('term') };
+      const updated = await this.prisma.agreementTerm.update({
+        where: { id: term.id },
+        data: { disputedAt: new Date(), disputedBy: who },
+        select: { id: true, disputedAt: true },
+      });
+      return { ...updated, say: sayItIsTakenBack('term') };
+    }
+
+    const taken = takeBackTheirReading(term.readDifferently, who);
+    if (!taken) throw new BadRequestException('There is no reading of yours on that term to take back.');
+    const standing = readingsThatStand(taken);
+    const updated = await this.prisma.agreementTerm.update({
+      where: { id: term.id },
+      data: { readDifferently: taken as any, state: theStateAfterwards(standing, term.checkedBy) },
+      select: { id: true, state: true, readDifferently: true },
+    });
+    return { ...updated, say: sayItIsTakenBack('reading') };
   }
 
   /** Somebody who would know says the reading is right. Two sides, and it is agreed. */
