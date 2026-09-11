@@ -25,6 +25,8 @@ export const GUESSES_ALLOWED = 5;
 
 export interface DoorFacts {
   path: string;
+  /** Whether this request is for the back office at all. Defaults to the path test when absent. */
+  behindTheDoor?: boolean;
   /** Nobody signed in: a public route, and not this door's business. */
   signedIn: boolean;
   signedInVia?: string | null;
@@ -55,8 +57,43 @@ export function isTheBackOffice(path: string): boolean {
   return THE_BACK_OFFICE.test(p) && !THE_DOOR_ITSELF.test(p);
 }
 
+/**
+ * THE DOOR IS IN FRONT OF A PRIVILEGE, NOT A PATH.
+ *
+ * `/ops` and `/admin` are where the back office mostly lives, and matching on that is how this
+ * started. But the privilege is not confined to those prefixes: the platform-admin guard also sits
+ * on routes under /billing, /prompts, /patterns, /coach and /feedback - platform statistics,
+ * contributor codes, the prompt library, pattern accuracy, every piece of customer feedback. All of
+ * them were reachable with a signed-in staff session and no code, because the door was looking at
+ * the URL and the privilege was somewhere else.
+ *
+ * So the question the door asks is what the handler DEMANDS, not where it lives. Anything a staff
+ * guard protects is behind the door, wherever somebody later decides to mount it. A new staff route
+ * under a new prefix is covered on the day it is written, by the guard its author already had to
+ * put on it.
+ *
+ * The path test stays as well: an /ops route that forgot its guard is still back office.
+ */
+export const A_STAFF_GUARD = ['PlatformAdminGuard', 'OpsCapabilityGuard'];
+
+export function isAStaffGuard(name: string | null | undefined): boolean {
+  return !!name && A_STAFF_GUARD.includes(name);
+}
+
+/** Is this request for the back office - by where it is, or by what it asks to be allowed to do? */
+export function standsBehindTheDoor(path: string, guardNames: (string | null | undefined)[]): boolean {
+  if (isTheBackOffice(path)) return true;
+  /* The door's own routes are never behind it, whatever guards them: asking for a code is how you
+     get through, and a door you need the code to knock on cannot be opened. */
+  if (THE_DOOR_ITSELF.test(normalisePath(path))) return false;
+  return guardNames.some(isAStaffGuard);
+}
+
 export function mayOpen(f: DoorFacts): DoorDecision {
-  if (!isTheBackOffice(f.path)) return { open: true, because: 'not-the-back-office' };
+  /* `behindTheDoor` is supplied when the caller has read the handler's guards; falling back to the
+     path keeps every existing caller and every test honest. */
+  const behind = f.behindTheDoor ?? isTheBackOffice(f.path);
+  if (!behind) return { open: true, because: 'not-the-back-office' };
   if (!f.signedIn) return { open: true, because: 'nobody' };
   if (f.signedInVia === 'google') return { open: true, because: 'google' };
   if (f.passExpiresAt && f.passExpiresAt.getTime() > f.now.getTime()) return { open: true, because: 'pass' };
