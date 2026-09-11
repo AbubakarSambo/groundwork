@@ -1,7 +1,7 @@
 import {
   EVERY_CELL, WHERE_IT_BELONGS, theFieldsOf, whichCell, whatThisSurfaceShows,
   placedNowhere, isYourOwn, readsARun, WHAT_A_SESSION_CELL_MAY_NOT_HOLD, NOT_REPORT_CONTENT,
-  REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS, EVERY_SURFACE, isAnIndex,
+  REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS, EVERY_SURFACE, isAnIndex, isANotification, isACrop,
 } from './the-four-reports';
 import { RUN_ONLY_FIELDS } from './a-read-needs-a-run';
 
@@ -151,20 +151,34 @@ describe('every field belongs to one of the four', () => {
     }
   });
 
-  it('places every surface in a cell, or says it is an index', () => {
+  it('places every surface in a cell, or says which kind of not-a-report it is', () => {
     for (const [name, surface] of Object.entries(EVERY_SURFACE)) {
-      if (isAnIndex(surface)) {
-        expect(surface.because.length).toBeGreaterThan(20);
-        continue;
-      }
-      expect(EVERY_CELL).toContain(surface.cell);
       expect(name.trim()).toBe(name);
+      if (isACrop(surface)) { expect(EVERY_CELL).toContain(surface.cell); continue; }
+      /* An index or a notification. Either way it owes a reason, because an absence with no name
+         is what invites somebody to fill it. */
+      expect((surface as any).because.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('keeps a notification a notification, and out of the crop machinery', () => {
+    /*
+     * Two of the eight surfaces the audit counted carry no read at all: the WhatsApp message is a
+     * check-in question and a link, and the report-ready mail says what a shared picture is and
+     * offers the way in. I had drawn the first as a three-block crop, which is the wrong object -
+     * a difference between two accounts, on a phone, in a message with no way to answer it, is the
+     * worst place that block could land.
+     */
+    for (const name of ['overWhatsApp', 'theReportReadyEmail']) {
+      const s = EVERY_SURFACE[name];
+      expect(isANotification(s)).toBe(true);
+      expect(isACrop(s)).toBe(false);
     }
   });
 
   it('gives every cell at least one surface, so none of the four is a shape nobody draws', () => {
     const drawn = new Set(
-      Object.values(EVERY_SURFACE).filter((s) => !isAnIndex(s)).map((s: any) => s.cell),
+      Object.values(EVERY_SURFACE).filter(isACrop).map((s) => s.cell),
     );
     for (const cell of EVERY_CELL) expect(drawn.has(cell)).toBe(true);
   });
@@ -182,7 +196,7 @@ describe('every field belongs to one of the four', () => {
   it('every crop names what it leaves out with a reason, never a bare list', () => {
     /* A surface that lists what it TAKES silently stops taking anything added later. */
     for (const surface of Object.values(EVERY_SURFACE)) {
-      if (isAnIndex(surface)) continue;
+      if (!isACrop(surface)) continue;
       for (const [field, why] of Object.entries(surface.without ?? {})) {
         expect(why.length).toBeGreaterThan(15);
         expect(THE_ORDER[surface.cell]).toContain(field);

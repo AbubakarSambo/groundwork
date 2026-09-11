@@ -191,7 +191,7 @@ export function whatThisSurfaceShows(crop: Crop, opts: { leadOnly?: boolean } = 
  * A surface names its cell and what it leaves out. Two of the eight name no cell at all, and that
  * is the decision rather than an omission - see below.
  */
-export const EVERY_SURFACE: Record<string, Crop | { index: true; because: string }> = {
+export const EVERY_SURFACE: Record<string, Crop | NotAReport> = {
   endOfTheEntryChat: {
     cell: 'A_SESSION',
     without: {
@@ -204,13 +204,29 @@ export const EVERY_SURFACE: Record<string, Crop | { index: true; because: string
   theSessionReportBottom: { cell: 'B_SESSION' },
   myRecord: { cell: 'A_RUN' },
   theBoard: { cell: 'B_RUN' },
+  /**
+   * TWO OF THE EIGHT "REPORT SURFACES" CARRY NO REPORT, AND THAT IS CORRECT.
+   *
+   * The audit counted eight surfaces that show a report. Reading what they actually send: the
+   * WhatsApp message carries a check-in question and a link, and the report-ready mail carries four
+   * sentences about what a shared picture is, and a button. Neither holds a single read.
+   *
+   * I had drawn the WhatsApp one as a crop - three blocks and then the link - and that is the wrong
+   * object. A notification is not a short report. It is the thing that says a report exists, and
+   * the moment it starts carrying content it inherits every rule the report has and can honour
+   * almost none of them: a difference between two accounts, read on a phone, in a message with no
+   * way to answer it or correct it, is the single worst place that block could land.
+   *
+   * So they name no cell, the same as the index does, and for a related reason: an absence with no
+   * name invites somebody to fill it.
+   */
   overWhatsApp: {
-    cell: 'B_SESSION',
-    without: {
-      whatPeopleSaid: 'no room, and no way to correct it from there',
-      whereThingsStand: 'a difference read on a phone with no way to answer it is the wrong place for it',
-      whatThisRestsOn: 'the link carries it',
-    },
+    notAReport: true,
+    because: 'a check-in question and a link. A notification is not a short report - it says one exists.',
+  },
+  theReportReadyEmail: {
+    notAReport: true,
+    because: 'says what a shared picture is and offers the way in. It carries no read, deliberately.',
   },
 
   /**
@@ -235,9 +251,27 @@ export const EVERY_SURFACE: Record<string, Crop | { index: true; because: string
   },
 };
 
-/** Whether a surface is a way to find reports rather than one of them. */
-export function isAnIndex(s: Crop | { index: true }): s is { index: true; because: string } {
+/**
+ * THE TWO KINDS OF SURFACE THAT ARE NOT REPORTS.
+ *
+ * An INDEX is how somebody finds the reports. A NOTIFICATION is how somebody learns one exists.
+ * Neither is a crop, and calling either one a thin report is how content leaks onto a surface that
+ * cannot carry the rules that content comes with.
+ */
+export type NotAReport =
+  | { index: true; because: string }
+  | { notAReport: true; because: string };
+
+export function isAnIndex(s: Crop | NotAReport): s is { index: true; because: string } {
   return 'index' in s;
+}
+
+export function isANotification(s: Crop | NotAReport): s is { notAReport: true; because: string } {
+  return 'notAReport' in s;
+}
+
+export function isACrop(s: Crop | NotAReport): s is Crop {
+  return !isAnIndex(s) && !isANotification(s);
 }
 
 /**
