@@ -1,7 +1,7 @@
 import {
   EVERY_CELL, WHERE_IT_BELONGS, theFieldsOf, whichCell, whatThisSurfaceShows,
   placedNowhere, isYourOwn, readsARun, WHAT_A_SESSION_CELL_MAY_NOT_HOLD, NOT_REPORT_CONTENT,
-  REACHES_NO_SCREEN,
+  REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS,
 } from './the-four-reports';
 import { RUN_ONLY_FIELDS } from './a-read-needs-a-run';
 
@@ -96,6 +96,58 @@ describe('every field belongs to one of the four', () => {
     for (const field of ['concernFlags', 'hiddenContributors', 'arcSignals']) {
       expect(isYourOwn(whichCell(field)!.cell)).toBe(false);
       expect(whichCell(field)!.leadOnly).toBe(true);
+    }
+  });
+
+  it('gives every cell an order, with no block named twice', () => {
+    for (const cell of EVERY_CELL) {
+      const order = THE_ORDER[cell];
+      expect(order.length).toBeGreaterThan(0);
+      expect(new Set(order).size).toBe(order.length);
+    }
+  });
+
+  it('puts what this is for before anything measured against it', () => {
+    /* Every line underneath means something different depending on what it was in service of. */
+    for (const cell of EVERY_CELL) {
+      const order = THE_ORDER[cell];
+      const objective = order.findIndex((b) => /^whatThisIsFor$|^againstWhatGoodLooksLike$/.test(b));
+      const measured = order.findIndex((b) => /^where(YouAre|ItStands|ThingsStand)/.test(b));
+      if (objective >= 0 && measured >= 0) expect(objective).toBeLessThan(measured);
+    }
+  });
+
+  it('puts what it sits under before the objective it qualifies', () => {
+    for (const cell of ['B_SESSION', 'B_RUN'] as const) {
+      const order = THE_ORDER[cell];
+      expect(order.indexOf('whatThisSitsUnder')).toBeLessThan(order.indexOf('againstWhatGoodLooksLike'));
+    }
+  });
+
+  it('puts the sharp part before the prose', () => {
+    /* Already settled for the other body in the-sharp-part-first, and stated here so the next
+       surface inherits it rather than rediscovering it. */
+    const b = THE_ORDER.B_SESSION;
+    expect(b.indexOf('whereThingsStand')).toBeLessThan(b.indexOf('thePictureFromEverybody'));
+  });
+
+  it('puts the method last, on every cell that has one', () => {
+    /* A caveat above the thing it qualifies reads as a verdict. */
+    for (const cell of EVERY_CELL) {
+      const order = THE_ORDER[cell];
+      const method = order.findIndex((b) => /^(howMuchYouGaveIt|howMuchThereIsToGoOn|whatThisRestsOn)$/.test(b));
+      if (method >= 0) expect(method).toBe(order.length - 1);
+    }
+  });
+
+  it('keeps every run block out of both session cells', () => {
+    for (const block of RUN_BLOCKS) {
+      expect(THE_ORDER.A_SESSION).not.toContain(block);
+      expect(THE_ORDER.B_SESSION).not.toContain(block);
+    }
+    /* And each one is somewhere, or the list is a list of things nobody shows at all. */
+    for (const block of RUN_BLOCKS) {
+      expect(THE_ORDER.A_RUN.concat(THE_ORDER.B_RUN)).toContain(block);
     }
   });
 

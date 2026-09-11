@@ -214,5 +214,75 @@ export function placedNowhere(keys: string[]): string[] {
   return keys.filter((k) => !skip.has(k) && !WHERE_IT_BELONGS[k]);
 }
 
+/**
+ * THE ORDER A CELL IS READ IN, DECLARED ONCE.
+ *
+ * Eight surfaces each held their own order in their own JSX, which is why the objective appears
+ * third on one page and not at all on another. These are block names rather than field names,
+ * because a block can draw two fields and a reader does not care which.
+ *
+ * THE THREE RULES INSIDE THE ORDER, so that changing it is an argument rather than a preference:
+ *
+ *   What this is FOR comes before anything measured against it. Every line underneath means
+ *   something different depending on what it was in service of.
+ *
+ *   THE SHARP PART COMES BEFORE THE PROSE. Established already for the other body in
+ *   `the-sharp-part-first`: what is still open, and what everybody agrees, before the narrative.
+ *
+ *   THE METHOD GOES LAST AND FOLDED. A caveat above the thing it qualifies reads as a verdict.
+ */
+export const THE_ORDER: Record<Cell, string[]> = {
+  A_SESSION: [
+    'whatThisIsFor',      // the objective, your part in it, and why the number is the number
+    'whereYouAre',        // your own rows only, moving / stuck / not spoken to
+    'whatYouSaid',        // the extracted lines, yours to dispute
+    'stillOpenForYou',    // what you are waiting on, and who is waiting on you
+    'whatYouCarry',       // one thing, with a name and a date - and the private note
+    'howMuchYouGaveIt',   // the bar and its five dimensions. Last, because it is the method.
+  ],
+  A_RUN: [
+    'whatThisIsFor',
+    'whereYouAreAcrossSessions',
+    'yourSessions',
+    'howMuchThereIsToGoOn',
+  ],
+  B_SESSION: [
+    'whatThisSitsUnder',  // qualifies the objective, so it comes before it
+    'againstWhatGoodLooksLike',
+    'whereThingsStand',
+    'whatPeopleSaid',
+    'thePictureFromEverybody', // the prose, after the sharp part
+    'notRaisedAgain',
+    'theConversationWorthHaving',
+    'whatThisRestsOn',    // folded, last
+  ],
+  B_RUN: [
+    'whatThisSitsUnder',
+    'againstWhatGoodLooksLike',
+    'whereItStands',
+    'whereAccountsDiffer',
+    'whoOwnsWhatAndWhatIsInTheWay',
+    'theConversationWorthHaving',
+    'whatMovedBetweenSessions',
+    'contributionAndCoverage',
+    'whatKeepsShowingUp',
+    'howThisEnds',
+    'whatThisRestsOn',
+  ],
+};
+
+/**
+ * Blocks that may not appear on a session-scoped surface, by name.
+ *
+ * The field-level rule is `RUN_ONLY_FIELDS`, borrowed above. This is the same rule one level up,
+ * at the block a reader actually sees: "seen across four sessions" and "what moved between
+ * sessions" are run claims however they are assembled, and a session report carrying them is the
+ * duplication the whole map exists to end. One session is a position; the distance between two
+ * descriptions is a movement.
+ */
+export const RUN_BLOCKS: string[] = [
+  'whatKeepsShowingUp', 'whatMovedBetweenSessions', 'contributionAndCoverage', 'howThisEnds',
+];
+
 /** The scope rule, borrowed rather than restated. A session cell may hold none of these. */
 export const WHAT_A_SESSION_CELL_MAY_NOT_HOLD: readonly string[] = RUN_ONLY_FIELDS;
