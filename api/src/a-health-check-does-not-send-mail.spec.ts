@@ -19,8 +19,9 @@ const ANTHROPIC = readFileSync(join(__dirname, 'modules/conversation/anthropic.s
 describe('the routes on the raw adapter', () => {
   const adapterRoutes = [...MAIN.matchAll(/httpAdapter\.(get|post|use)\(\s*'([^']+)'/g)].map((m) => m[2]);
 
-  it('are /health and /health/ai and nothing that sends', () => {
-    expect(adapterRoutes.sort()).toEqual(['/health', '/health/ai']);
+  it('are /health, /health/ai and /health/mail, and nothing that sends', () => {
+    /* /health/mail reports whether delivery and bounce events are being read (fix plan D15). It sends nothing. */
+    expect(adapterRoutes.sort()).toEqual(['/health', '/health/ai', '/health/mail']);
     expect(MAIN).not.toMatch(/\/health\/email/);
   });
 

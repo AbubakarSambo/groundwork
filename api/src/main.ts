@@ -198,6 +198,23 @@ async function bootstrap() {
     }
   });
 
+  /*
+   * A CONFIGURATION FAILURE REACHES A PERSON, NOT A LOG LINE. With RESEND_WEBHOOK_SECRET unset in
+   * production every delivery and bounce event is rejected, all tracking is inert, and nothing else
+   * says so. This reports it where a monitor looks, and 503s so the monitor notices.
+   */
+  httpAdapter.get('/health/mail', async (_req: any, res: any) => {
+    try {
+      const { DeliveryService } = await import('./modules/email/delivery.service');
+      const delivery = app.get(DeliveryService, { strict: false });
+      const resendWebhookSecretSet = delivery.webhookSecretConfigured();
+      const ok = resendWebhookSecretSet || process.env.NODE_ENV !== 'production';
+      res.status(ok ? 200 : 503).json({ ok, resendWebhookSecretSet, says: resendWebhookSecretSet ? 'Delivery and bounce events are being read.' : 'RESEND_WEBHOOK_SECRET is not set: every delivery and bounce event is rejected, and dead addresses are not being suppressed.' });
+    } catch (err: any) {
+      res.status(503).json({ ok: false, error: String(err?.message ?? err).slice(0, 300) });
+    }
+  });
+
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');
   logger.log(`Groundwork API running on port ${port} (docs at /api/docs)`);

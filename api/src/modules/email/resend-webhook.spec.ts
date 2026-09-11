@@ -59,7 +59,7 @@ function makeService(opts: { secret?: string | null; deliveries?: Record<string,
     },
   };
   const config: any = { get: (k: string) => (k === 'RESEND_WEBHOOK_SECRET' ? (opts.secret === undefined ? SECRET : opts.secret) : undefined) };
-  const service = new DeliveryService(prisma, config);
+  const service = new DeliveryService(prisma, config, { emit: jest.fn() } as any);
   return { service, prisma, created, participantUpdates, rows };
 }
 

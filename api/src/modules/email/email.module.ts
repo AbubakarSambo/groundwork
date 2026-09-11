@@ -5,11 +5,12 @@ import { DeliveryService } from './delivery.service';
 import { ResendWebhookController } from './resend-webhook.controller';
 import { UnsubscribeController } from './unsubscribe.controller';
 import { HeldMailCron } from './held-mail.cron';
+import { InviteBouncedListener } from './invite-bounced.listener';
 
 @Global()
 @Module({
   controllers: [ResendWebhookController, UnsubscribeController],
-  providers: [EmailService, DeliveryService, RoundDigestService, HeldMailCron],
+  providers: [EmailService, DeliveryService, RoundDigestService, HeldMailCron, InviteBouncedListener],
   exports: [EmailService, RoundDigestService, DeliveryService],
 })
 export class EmailModule {}

@@ -189,6 +189,10 @@ export class WhatsAppService {
         },
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
+    /* And the same fact in the ledger every channel writes to (Notification), so a failed send is findable beside a suppressed mail. */
+    this.prisma.notification
+      .create({ data: { channel: 'whatsapp', organizationId, toAddress: phone, sender: context.kind ?? null, outcome: result.sent ? 'sent' : 'failed', because: result.sent ? null : (result.error ?? null) } })
+      .catch(() => undefined);
   }
 
   /** Finds the account a check-in link should go to, by phone number - the "auto-detect" step. */

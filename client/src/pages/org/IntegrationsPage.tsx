@@ -215,6 +215,11 @@ export function IntegrationsPage() {
     mutationFn: integrationsApi.rotateSecret,
     onSuccess: r => { setFreshHookSecret(r.secret); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
   })
+  const reactivate = useMutation({
+    mutationFn: integrationsApi.reactivateEndpoint,
+    onSuccess: () => { toast.success('Switched back on. New events flow to it again.'); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not switch it back on.'),
+  })
   const removeEndpoint = useMutation({
     mutationFn: integrationsApi.removeEndpoint,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }),
@@ -692,9 +697,12 @@ export function IntegrationsPage() {
               <div style={{ ...S.mono, fontWeight: 600, wordBreak: 'break-all' }}>{e.url}</div>
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
                 {e.events.join(', ')}{e.rotatedAt ? ` · secret rotated ${new Date(e.rotatedAt).toLocaleDateString()}` : ''}
+                {/* Switched off by us after seven failed attempts, and said so here rather than left looking live. */}
+                {!e.active && <span style={{ color: 'var(--gw-amber-t)', fontWeight: 600 }}> · switched off: we could not reach it</span>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
+              {!e.active && <button style={S.ghost} onClick={() => reactivate.mutate(e.id)} disabled={reactivate.isPending}>Switch back on</button>}
               <button style={S.ghost} onClick={() => rotate.mutate(e.id)}>Rotate secret</button>
               <button style={S.ghost} onClick={() => removeEndpoint.mutate(e.id)}>Remove</button>
             </div>

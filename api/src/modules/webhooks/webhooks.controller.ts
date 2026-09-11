@@ -52,6 +52,12 @@ export class WebhooksController {
     return this.webhooks.rotateSecret(organizationId, id);
   }
 
+  @Post('endpoints/:id/reactivate')
+  @ApiOperation({ summary: 'Switch an endpoint back on after it was switched off for being unreachable' })
+  reactivate(@CurrentUser('organizationId') organizationId: string, @Param('id') id: string) {
+    return this.webhooks.reactivate(organizationId, id);
+  }
+
   @Get('deliveries')
   @ApiOperation({ summary: 'The delivery log, with response codes and bodies. Filter by status.' })
   deliveries(@CurrentUser('organizationId') organizationId: string, @Query('status') status?: string) {

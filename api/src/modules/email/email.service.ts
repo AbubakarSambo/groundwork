@@ -72,6 +72,17 @@ export class EmailService {
     if (kind === 'the way back in' || kind === 'operational') return null;
 
     const address = to.trim().toLowerCase();
+    /*
+     * WE STOP WRITING TO A DEAD ADDRESS. A hard bounce was recorded and mirrored, and then the daily
+     * sweeps kept mailing it, damaging the sending domain for every tenant. The latest delivery to
+     * this address decides: bounced, and nothing delivered since, is dead. The way back in is exempt
+     * (it returned above) - refusing a sign-in link to a mailbox that was once full would be a lockout
+     * with no way out, and a successful delivery of it is exactly what revives the address.
+     */
+    const latest = await this.prisma.emailDelivery
+      .findFirst({ where: { email: { equals: address, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' }, select: { status: true } })
+      .catch(() => null);
+    if (latest?.status === 'BOUNCED') return 'the last mail to this address bounced hard, and nothing since has been delivered';
     /* THE STOP LINK STOPS EVERY ENGINE. `remindersStoppedAt` was read by one nudge engine of three;
        it is read here, once, whenever the mail is about a participant. */
     const stopped = context?.participantId
@@ -242,6 +253,7 @@ export class EmailService {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
+      this.writeItDown(options, sender, 'suppressed', rather);
       return undefined;
     }
 
@@ -279,6 +291,7 @@ export class EmailService {
         data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore },
       });
       this.logger.log(`Holding "${options.subject}" for ${options.to} until ${notBefore.toISOString()} (quiet hours).`);
+      this.writeItDown(options, sender, 'held', `quiet hours; goes at ${notBefore.toISOString()}`);
       return true;
     } catch (err: any) {
       /* A hold that cannot be written must not lose the mail: it goes now, and the log says why. */
@@ -353,11 +366,23 @@ export class EmailService {
     const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
+      this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
       throw new Error(`Failed to send email: ${error.message}`);
     }
     this.logger.log(`Email sent to ${options.to} (id: ${data?.id})`);
+    this.writeItDown(options, sender, 'sent', null);
     if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
     return undefined;
+  }
+
+  /**
+   * THE LEDGER. A failure the product knows about, written where a person can find it. Fire-and-forget:
+   * a ledger that cannot be written must not stop a mail that can be sent.
+   */
+  private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): void {
+    this.prisma.notification
+      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because } })
+      .catch((err: any) => this.logger.warn(`Could not record a notification for ${options.to}: ${err?.message}`));
   }
 
   private layout(body: string): string {
@@ -600,11 +625,25 @@ export class EmailService {
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
         `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one — a <code>${eventType}</code> — was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
-        `<p>Anything sent while the endpoint is unreachable is queued and retried the same way, so this is worth looking at rather than waiting out. Nothing has been lost on our side: every attempt and its response is in your delivery log.</p>` +
+        `<p>We have switched this endpoint off, so nothing more queues against a receiver we know we cannot reach. Nothing has been lost on our side: every attempt and its response is in your delivery log. Once it is reachable again, switch it back on from your integrations page and new events flow to it.</p>` +
         `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
         `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
       ),
     }, undefined, 'sendWebhookEndpointDying');
+  }
+
+  /** The invitation bounced hard; the lead who sent it is the one who can fix the address. */
+  async sendInviteBounced(email: string, firstName: string | null, invitee: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `An invitation to ${groundLabel} could not be delivered`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> bounced: that address did not accept it. Nothing more will be sent to it.</p>` +
+        `<p>If the address is wrong, correct it on the check-in and the invitation goes again to the new one. If it is right, they may need to ask their mail administrator why it was refused.</p>` +
+        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+      ),
+    }, undefined, 'sendInviteBounced');
   }
 
   /** The base the product's own links are built from, for callers that need to make one. */

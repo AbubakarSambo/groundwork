@@ -151,6 +151,9 @@ export const integrationsApi = {
     apiClient.delete<{ removed: boolean }>(`/integrations/webhooks/endpoints/${id}`).then(r => r.data),
   rotateSecret: (id: string) =>
     apiClient.post<{ id: string; secret: string }>(`/integrations/webhooks/endpoints/${id}/rotate-secret`, {}).then(r => r.data),
+  /** Back on, after an endpoint was switched off for being unreachable (the notice mail says so). */
+  reactivateEndpoint: (id: string) =>
+    apiClient.post<{ id: string; active: boolean }>(`/integrations/webhooks/endpoints/${id}/reactivate`, {}).then(r => r.data),
   deliveries: (status?: string) =>
     apiClient.get<WebhookDelivery[]>(`/integrations/webhooks/deliveries${status ? `?status=${status}` : ''}`).then(r => r.data),
   replay: (id: string) =>

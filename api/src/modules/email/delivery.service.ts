@@ -3,6 +3,8 @@ import { isSomethingSentToUs, whatArrived } from './a-message-sent-to-us';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, InviteBouncedEvent } from '../../common/events';
 
 /** Context a send site attaches so the delivery can be traced back to a
  * participant/ground. Optional everywhere - sends without context are still
@@ -23,6 +25,7 @@ export class DeliveryService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private events: EventEmitter2,
   ) {
     if (process.env.NODE_ENV === 'production' && !this.webhookSecret()) {
       this.logger.warn(
@@ -33,6 +36,15 @@ export class DeliveryService {
 
   private webhookSecret(): string {
     return this.config.get<string>('RESEND_WEBHOOK_SECRET') ?? process.env.RESEND_WEBHOOK_SECRET ?? '';
+  }
+
+  /**
+   * FOR THE HEALTH SURFACE, NOT A LOG LINE. Unset in production, every delivery and bounce event is
+   * rejected and all tracking is inert with no other signal - and the dead-address suppression gets
+   * silently worse. /health/mail reports this (main.ts).
+   */
+  webhookSecretConfigured(): boolean {
+    return !!this.webhookSecret();
   }
 
   /** Record one outbound send. resendId is Resend's email id (or dev-<uuid>
@@ -164,6 +176,11 @@ export class DeliveryService {
           where: { id: delivery.participantId },
           data: { inviteDeliveryStatus: status },
         });
+        /* And somebody is told. The lead who invited them is the one who can fix the address. */
+        if (status === 'BOUNCED') {
+          const bounced: InviteBouncedEvent = { participantId: delivery.participantId, email: delivery.email, detail };
+          this.events.emit(GroundworkEvents.INVITE_BOUNCED, bounced);
+        }
       }
     }
     return { ok: true };

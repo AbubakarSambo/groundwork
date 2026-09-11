@@ -168,6 +168,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendPaymentRequestEmail: 'asked for',
   sendPaymentFailed: 'asked for',
   sendWhoHasNotStarted: 'asked for',
+  /* They sent the invitation; this is what became of it. */
+  sendInviteBounced: 'asked for',
 
   /* MONEY AND THE ACCOUNT'S ABILITY TO KEEP WORKING.
      A warning that the plan is about to stop working is not a nudge, even though nobody asked for

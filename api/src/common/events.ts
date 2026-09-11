@@ -32,7 +32,19 @@ export const GroundworkEvents = {
   HANDOVER_READY: 'handover.ready',
   /** The record suggests a conversation. A human still has to say yes. */
   SCENARIO_PROPOSED: 'scenario.proposed',
+  /**
+   * AN INVITATION BOUNCED HARD. Recorded correctly for a long time, and then nothing happened: no mail
+   * to the lead who invited them, and the sweeps kept writing to the dead address. Listened to in
+   * email/invite-bounced.listener.ts.
+   */
+  INVITE_BOUNCED: 'invite.bounced',
 } as const;
+
+export interface InviteBouncedEvent {
+  participantId: string;
+  email: string;
+  detail: string | null;
+}
 
 export interface CheckInCompletedEvent {
   checkInId: string;

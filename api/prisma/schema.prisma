@@ -4689,6 +4689,26 @@ model ScheduledEmail {
   @@map("scheduled_emails")
 }
 
+/// A FAILURE THE PRODUCT KNOWS ABOUT IS WRITTEN WHERE A PERSON CAN FIND IT. A suppressed mail, a
+/// bounce, a quiet-hours hold, a failed WhatsApp send: each was a log line or nothing. One row per
+/// outcome, from the one door mail goes through and the one WhatsApp sends go through. The screen
+/// that reads it is a client job; the point of writing it now is that every fact has somewhere to go.
+model Notification {
+  id             String   @id @default(uuid())
+  organizationId String?  @map("organization_id")
+  channel        String
+  toAddress      String   @map("to_address")
+  sender         String?
+  subject        String?
+  outcome        String
+  because        String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([toAddress, createdAt])
+  @@index([outcome, createdAt])
+  @@map("notifications")
+}
+
 model EmailPreference {
   id               String @id @default(uuid())
   organizationId   String @map("organization_id")
