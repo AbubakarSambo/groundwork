@@ -42,7 +42,7 @@ describe('nothing that describes the mechanism assumes two parties', () => {
 
   it('and the report card says everyone, which is true at any size', () => {
     const code = strip(readFileSync(join(__dirname, '../../components/gw/SessionReportCard.tsx'), 'utf8'))
-    expect(code).toMatch(/everyone reads the same report at the same moment/)
+    expect(code).toMatch(/everyone reads the same report/)
     /*
      * "once everyone has opened the report" went with the sentence around it, which said "You can
      * still only see your own" on a card that was at that moment displaying a cross reference of
@@ -67,6 +67,6 @@ describe('nothing that describes the mechanism assumes two parties', () => {
     /* The ladder that carried this sentence is gone; what remains must not speak of 'the other party'. */
     expect(report).not.toMatch(/the other (party|person|side)/i)
     const page = strip(readFileSync(join(__dirname, '../../pages/enter/EntryChatPage.tsx'), 'utf8'))
-    expect(page).toMatch(/everyone receives the shared report at the same time/)
+    expect(page).toMatch(/everyone gets the shared report/)
   })
 })

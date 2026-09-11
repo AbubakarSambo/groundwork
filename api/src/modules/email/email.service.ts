@@ -944,7 +944,7 @@ export class EmailService implements OnModuleInit {
         `<p><strong>${escapeHtml(participantEmail)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and the picture reaches everybody at the same moment.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and everybody in it is told the moment the picture is ready.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }

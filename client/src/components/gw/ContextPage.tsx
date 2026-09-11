@@ -966,7 +966,7 @@ export function ContextPage({
                 <div className="gw-fld">
                   <textarea className="gw-ta" rows={3} value={sharedNoteText}
                     onChange={e => { setSharedNoteText(e.target.value.slice(0, 4000)); setSharedNoteSaved(false) }}
-                    placeholder="e.g. We are deciding whether to renew. Both accounts go to all three of us at the same time."
+                    placeholder="e.g. We are deciding whether to renew, and all three of us should see what the others said."
                     maxLength={4000} />
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{sharedNoteText.length}/4000</div>
                 </div>

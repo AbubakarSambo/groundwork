@@ -349,7 +349,7 @@ function ParticipantCrossRef({ report, closed, picture }: { report: Report; clos
               promise too, and the next promise is the one about their wording.
             */}
             {report.releasedAt
-              ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
+              ? 'The full comparison is now open, and everyone reads the same report.'
               : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released.'}
           </div>
         </>

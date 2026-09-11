@@ -317,9 +317,8 @@ export function InvitePage() {
                 who has been told they get it at the same moment and then finds a button reads the
                 button as the product going back on the first half.
               */}
-              <b>What you get back.</b> The same report {preview.initiatorName} gets, released to
-              everybody at once. You open your copy with one press when it lands, plus a short
-              private note meant only for you.
+              <b>What you get back.</b> The same report {preview.initiatorName} gets. You open your
+              copy with one press when it lands, plus a short private note meant only for you.
             </div>
           </div>
         </div>

@@ -396,7 +396,7 @@ export function MagicVerifyPage() {
             {[
               { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently.' },
               { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.' },
-              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time.' },
+              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody in it.' },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>

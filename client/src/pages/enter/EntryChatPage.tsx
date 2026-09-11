@@ -3490,12 +3490,12 @@ export function EntryChatPage() {
                   {(user
                     ? [
                       'Save this. Your invites go out straight away.',
-                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
                       'Save your email below to keep access to this report.',
                       'Open the confirmation link we email you - that saves it and sends your invites.',
-                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
