@@ -115,7 +115,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     repeated; the basis line sits small under the finding.
   */
   const picture: { key: string; text: string }[] = d.picture ?? ((d.pictureLines as string[] | undefined) ?? []).map((text, i) => ({ key: `line-${i}`, text }))
-  const finding: { key: string; text: string; basis: string | null } | null = d.finding ?? null
+  const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
   const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
   const settled: string[] = d.whereThingsStand?.settled ?? []
   const open: string[] = d.whereThingsStand?.open ?? []
@@ -157,6 +157,19 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           <div style={{ padding: '20px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
             <p style={{ margin: 0, fontSize: 18, lineHeight: 1.38, fontWeight: 600, letterSpacing: '-.012em', color: 'var(--gw-text)', maxWidth: '60ch' }}>{finding.text}</p>
             {finding.basis && <small style={{ display: 'block', marginTop: 9, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>{finding.basis}</small>}
+            {/*
+              WHEN THIS WOULD HAVE COME UP ON ITS OWN.
+
+              Under the finding and nowhere else: on its own it is a remark about a calendar, and
+              under the thing it is about it is the reason that thing matters now rather than later.
+              The server sends nothing for a one-off read, a last session, or a shock that has
+              already surfaced - so there is no branch here, and there does not need to be one.
+            */}
+            {finding.wouldHaveSurfaced && (
+              <small style={{ display: 'block', marginTop: 7, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, opacity: .85 }}>
+                {finding.wouldHaveSurfaced}
+              </small>
+            )}
           </div>
         )}
 

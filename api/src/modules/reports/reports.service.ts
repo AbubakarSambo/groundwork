@@ -12,6 +12,8 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
+import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
 import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
@@ -2617,8 +2619,49 @@ Close the report by framing - neutrally, without recommending one - the choice n
            the settled-and-open section already carry. */
         const picture = drafts.map((d) => ({ key: d.key, text: worded[d.key] ?? d.text }));
         const findingKey = pickTheFinding(drafts.map((d) => d.key));
+        /**
+         * WHEN THIS WOULD HAVE COME UP ON ITS OWN.
+         *
+         * Under the finding and nowhere else: on its own it is a remark about a calendar, and under
+         * the thing it is about it is the reason that thing matters now rather than later.
+         *
+         * THE THREE SITUATIONS THAT GET NOTHING are not special cases bolted on here - they are one
+         * condition, `thereIsALater`, asked once. A one-off read has no next occasion by design. A
+         * run on its last session has none left. And a shock has already surfaced, which is why the
+         * check-in exists at all, so a sentence about when it would have surfaced is nonsense.
+         *
+         * The earliest stated due date across the measures, because the first one to fall due is
+         * the first time anybody looks. Never a date nobody stated.
+         */
+        const soonestDue = ((ground as any).objectives ?? [])
+          .map((o: any) => o.dueDate ?? null)
+          .filter((d: any): d is Date => !!d)
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
+        const wouldHaveSurfaced = whenThisWouldHaveSurfaced({
+          measure: (ground as any).objectives?.[0]?.name ?? null,
+          dueOn: soonestDue,
+          thisSession: sessionNumber,
+          /* How many this run holds, from the length and the rhythm - the same arithmetic the
+             chat composer does when it says "session 3 of 6". Null where either is unset, which
+             makes the read fall silent rather than guess at a last session. */
+          plannedSessions: (() => {
+            const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
+            const days = (ground as any).timelineDays;
+            return step && days ? Math.max(1, Math.floor(days / step)) : null;
+          })(),
+          thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
+            ? false
+            : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
+              ? false
+              : true,
+        });
         const finding = findingKey
-          ? { key: findingKey, text: picture.find((l) => l.key === findingKey)!.text, basis: picture.find((l) => l.key === 'basis')?.text ?? null }
+          ? {
+            key: findingKey,
+            text: picture.find((l) => l.key === findingKey)!.text,
+            basis: picture.find((l) => l.key === 'basis')?.text ?? null,
+            wouldHaveSurfaced: wouldHaveSurfaced?.say ?? null,
+          }
           : null;
         return {
           /* One claim per line, kept as lines: joined into a paragraph it read as a wall of prose. */

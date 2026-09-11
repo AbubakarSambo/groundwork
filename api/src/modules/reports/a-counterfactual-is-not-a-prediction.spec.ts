@@ -59,3 +59,26 @@ describe('a counterfactual is not a prediction', () => {
     expect(whenThisWouldHaveSurfaced({ ...base, dueOn: new Date('2027-03-01T00:00:00.000Z') })?.howFarOff).toBe('6 months');
   });
 });
+
+describe('and three situations get nothing, asked as one condition', () => {
+  const { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } = require('./there-is-not-always-a-next-time');
+
+  it('a one-off read has no next occasion, by design', () => {
+    /* Its own pack calls it the one situation where a single report is the right shape: no
+       objective, no target, no next session. */
+    expect(ONE_SITTING_ONLY.has('SNAPSHOT')).toBe(true);
+  });
+
+  it('and a shock has already surfaced, which is why the check-in exists', () => {
+    /* Saying when it would have come up on its own would be the product telling somebody their
+       emergency was on a schedule. */
+    expect(ALREADY_IN_THE_OPEN.has('ACUTE_SHOCK')).toBe(true);
+    expect(ALREADY_IN_THE_OPEN.has('CRISIS_ALIGNMENT')).toBe(true);
+  });
+
+  it('and an ordinary run is in neither list, so it gets the sentence', () => {
+    for (const s of ['NEW_PROJECT', 'PULSE_CHECK', 'OKR_ALIGNMENT']) {
+      expect(ONE_SITTING_ONLY.has(s) || ALREADY_IN_THE_OPEN.has(s)).toBe(false);
+    }
+  });
+});
