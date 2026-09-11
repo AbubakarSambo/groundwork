@@ -29,6 +29,17 @@ plan. Read-only: every verdict below comes from the code as it stands, not from 
 | B2 a round that cannot complete · B6 session numbers · B8 failures as facts · B9 the platform panel · B16 a stale token | Partly |
 | B11 closing | **Not started** |
 
+## Part C — the client screens · Part E — who may see what
+
+| Batch | Verdict |
+|---|---|
+| C1 · C3 · C4 · C6 · C9 · C10 · C12 · C13 · C14 · C15 · C16 · C18 · C20, and C2 and C7 built to the correction | **Landed** (15) |
+| C5 the scenario key · C8 the rename · C11 arrival state · C19 narrow viewports | Partly |
+| C17 the money screens | Superseded by the payments correction |
+| E1 the visibility rule · E2 department · E5 leads · E6 machine reads | **Landed** |
+| E3 wire the manager rule | **Not started** |
+| E4 the organisation switch | Withdrawn, correctly not built |
+
 ## What is actually left, in order of harm
 
 1. **A5, the meter.** `open()` still decrements the balance and increments the free-session count
@@ -77,6 +88,28 @@ plan. Read-only: every verdict below comes from the code as it stands, not from 
    the person's current organisation rather than the one named in the token, so a token minted
    before an organisation switch still authenticates as the current one. Small, and it is the exact
    class the batch exists to close.
+
+11. **E3, the manager rule is still not wired.** The rule exists, is tested, and is reachable on
+   one published route only. The app's own reads still do not ask it. This was costed at hours.
+
+12. **C8, the rename is half applied.** The nine strings in the original table are renamed and
+   locked by a sweep. The cluster the plan audit added is untouched: the situation-picker page
+   still carries about twenty cards of session-sense prose, plus a catalogue label and four more
+   across the admin and list pages. So the collision survives on the first screen a new customer
+   reads.
+
+13. **C5**, the server root is fixed but both client leaks of the raw scenario key remain.
+   **C11**, one half cannot be done until the API returns the fields it needs. **C19**, one of two
+   narrow-viewport defects.
+
+## One permission inconsistency worth a decision
+
+Once a report exists, an ordinary member of the organisation is refused it. Before it exists, the
+"why there is no report yet" branch still uses a bare same-organisation test with no role check, and
+tells them who has started and who has finished. The comment argues this says nothing a participant
+list would not. It is defensible, but it means the same ground answers differently either side of
+the report being written, and the scan spec that is supposed to catch roleless tests does not see
+this one.
 
 ## Two things that need a decision, not code
 
