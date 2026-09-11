@@ -32,6 +32,7 @@ import { theSessionReport } from '../reports/the-session-report';
 import { aNameOrNothing } from './a-name-is-short';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
+import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -674,6 +675,27 @@ export class BoardService {
         entries: cascadeEntries.map((e) => ({ participantId: e.participantId, text: cleanText(e.text) })),
       });
       if (read.isCascade || read.basis.includes('DECLARED')) out.cascade = read;
+    }
+
+    /*
+     * SOMEBODY CARRYING WORK WITH NO ACCOUNT HERE.
+     *
+     * The read has existed for a long time and reached one component that nothing imports. On a
+     * board it says the thing nobody had to notice on their own: the team is depending on somebody
+     * who has no voice in this.
+     *
+     * Every row goes through its own guard first - see the module for the three things that go
+     * wrong in the real data and why each is dropped rather than trimmed. What is dropped is
+     * logged by its reason and not by its content, like every other decision on this page.
+     */
+    if (has('hiddenContributors') && reportSafe) {
+      const rows = ((reportSafe as any)?.engagement?.hiddenContributors ?? []) as { label: string; evidence: string }[];
+      const { keep, dropped } = onlyWhoIsActuallyOutside(
+        Array.isArray(rows) ? rows : [],
+        ground.participants.map((p) => nameOf(p.id)).filter(Boolean) as string[],
+      );
+      for (const d of dropped) this.logger.warn(`Dropping a hidden contributor: it ${d.why}.`);
+      if (keep.length) out.hiddenContributors = { rows: keep, why: WHY_THIS_IS_HERE };
     }
 
     if (has('contribution')) {

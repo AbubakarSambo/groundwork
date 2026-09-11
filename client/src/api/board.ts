@@ -3,7 +3,7 @@ import { apiClient } from './client'
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
-  | 'cascade' | 'patterns' | 'decisions' | 'poll'
+  | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
 export type CoverageVariant = 'text' | 'bar'
@@ -37,6 +37,11 @@ export type BoardPresent = {
   /** Whether the caller may set targets and the poll question (initiator only). */
   canEditFrame: boolean
   readOnlyNote: string
+  /**
+   * Somebody named in an account as doing work here who has no account of their own. Guarded on
+   * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
+   */
+  hiddenContributors?: { rows: { label: string; evidence: string }[]; why: string } | null
   /**
    * What this ground's objectives sit under, where anything sits above them. Present only on
    * boards whose family opted in, and only where the record named something above - or where the

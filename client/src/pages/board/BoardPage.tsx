@@ -194,6 +194,7 @@ export function BoardPage() {
     decisions: has('decisions') && !!b.decisions?.length,
     objectives: has('objectives') && !!b.objectives?.length,
     cascade: has('cascade') && !!b.cascade,
+    hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
     divergence: has('divergence') && !!b.divergence,
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && !!b.dependencies,
@@ -1061,6 +1062,33 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- the record over time */}
+        {/*
+          SOMEBODY CARRYING WORK WITH NO ACCOUNT HERE.
+
+          Above the record-over-time zone, because it is about who is in this rather than about
+          what has happened in it - and because a reader who is about to decide something should
+          know first that somebody it touches cannot answer back.
+
+          The server sends nothing unless a row survived the guard, so there is no empty state
+          here and no branch for one.
+        */}
+        {shown.hiddenContributors && b.hiddenContributors && (
+          <>
+            <Sec title="Named here, and not in this check-in" src="from what people said" />
+            <Card>
+              {b.hiddenContributors.rows.map((r, i) => (
+                <Row key={r.label + i} first={i === 0}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>{r.label}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.evidence}</div>
+                </Row>
+              ))}
+              <Row>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{b.hiddenContributors.why}</div>
+              </Row>
+            </Card>
+          </>
+        )}
+
         {shown.patterns && <Zone label="The record over time" />}
 
         {shown.patterns && b.patterns && (
