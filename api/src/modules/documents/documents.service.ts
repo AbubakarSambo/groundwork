@@ -17,6 +17,7 @@ import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMP
 import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
+import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 
 const ALLOWED_MIME = [
@@ -226,7 +227,7 @@ export class DocumentsService {
 
   /** Ask Gemini for a short "what this suggests / what we will do with it" read. */
   private async assessDocument(content: string, fileName: string): Promise<{ suggests: string[]; willDo: string[] } | null> {
-    if (content.startsWith('[Attached:')) return null;
+    if (weCouldNotReadIt(content)) return null;
     try {
       const result = await this.anthropic.extract<{ suggests: string[]; willDo: string[] }>(
         ASSESSMENT_PROMPT,
@@ -388,7 +389,7 @@ export class DocumentsService {
     const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan });
     this.lastPdfWasAScan = false;
     if (fromFile) return fromFile;
-    if (content.startsWith('[Attached:')) return 'typed';
+    if (weCouldNotReadIt(content)) return 'typed';
     const cheap = looksGeneratedByAModel(content);
     /* A 74-character offer letter stub came back "generated" from the model on one of three identical
        copies. Too short to judge is typed unless the text itself carries the tells. */
@@ -413,7 +414,7 @@ export class DocumentsService {
     /* Not a card read: this feeds the check, not a list, so it selects the name under its own key rather than
        as `fileName`, which the-list-carries-what-was-read.spec treats as a card read. */
     const doc = await this.prisma.groundDocument.findUnique({ where: { id: docId }, select: { id: true, content: true, uploaderNote: true, fileName: true, assessment: true } });
-    if (!doc?.uploaderNote?.trim() || doc.content.startsWith('[Attached:')) return null;
+    if (!doc?.uploaderNote?.trim() || weCouldNotReadIt(doc.content)) return null;
     try {
       const read = await this.anthropic.extract<{ matches: boolean; reads: string }>(
         DESCRIPTION_CHECK_PROMPT,

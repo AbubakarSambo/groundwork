@@ -20,6 +20,7 @@ import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
+import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
@@ -3860,15 +3861,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         take: 120,
       }),
     ]);
-    if (!docs.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
-    const documents = docs.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
+    /*
+     * A DOCUMENT WE COULD NOT READ BACKS NOTHING. Its content is our own sentence saying we could
+     * not open it, and handing that to the model invites it to anchor somebody's record line to an
+     * apology - which then counts as document-backed, which is what makes a report say the evidence
+     * is strong. Three other readers already stepped around these; this one did not exist yet.
+     */
+    const readable = onlyWhatWeCouldRead(docs);
+    if (!readable.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
+    const documents = readable.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
     const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
     const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
       ANCHOR_TO_DOCUMENTS_PROMPT,
       [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
       ANCHOR_TO_DOCUMENTS_SCHEMA,
     ).catch(() => null);
-    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
+    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && readable[b.document]);
     let backed = 0;
     for (const b of rows) {
       /*
@@ -3880,9 +3888,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * is one query away for anybody who is allowed to see it, and this line is readable by
        * people who are not.
        */
-      this.logger.log(`anchoring-decision participant=${participantId} entry=${entries[b.line].id} document=${docs[b.document].id} passageChars=${(b.where ?? '').length}`);
+      this.logger.log(`anchoring-decision participant=${participantId} entry=${entries[b.line].id} document=${readable[b.document].id} passageChars=${(b.where ?? '').length}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (docs[b.document] as any).origin ?? null } })
+        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: readable[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (readable[b.document] as any).origin ?? null } })
         .then(() => { backed++; })
         .catch(() => undefined);
     }
@@ -3892,12 +3900,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * their own report, and is put to them as a question in their next session. "Not what I said"
      * still works on it. The document may be the stale one.
      */
-    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
+    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && readable[d.document] && d.says?.trim());
     for (const d of differs) {
       /* Ids, not content. See the anchoring-decision line above. */
-      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} entry=${entries[d.line].id} document=${docs[d.document].id} saysChars=${d.says.trim().length}`);
+      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} entry=${entries[d.line].id} document=${readable[d.document].id} saysChars=${d.says.trim().length}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
+        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: readable[d.document].id } })
         .catch(() => undefined);
     }
     if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);

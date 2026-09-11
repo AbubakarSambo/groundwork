@@ -1062,11 +1062,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (wordCount > 500) {
       const brevityPrefix =
         'The previous report was too long. Regenerate under 500 words total. Preserve all four sections and the central question. Cut explanatory language, not substance.\n\n';
-      const retry = await this.anthropic.extract<SynthesisResult>(
-        systemPrompt,
-        [{ role: 'user', content: brevityPrefix + corpus }],
-        activeSchema,
-      );
+      /*
+       * A LENGTH PASS MAY NOT LOSE A REPORT THAT ALREADY SUCCEEDED.
+       *
+       * This call had no catch. The synthesis above had already worked - the substance was in
+       * hand - and a cosmetic ask for a shorter version, made to the same model that had just
+       * answered, could throw and take the whole report with it. The person's session then
+       * reported a failure for a report that existed.
+       *
+       * Long is a blemish. Nothing is a loss. So the retry is best-effort in both directions: an
+       * exception keeps the long version, and so does a retry that comes back empty.
+       */
+      const retry = await this.anthropic
+        .extract<SynthesisResult>(systemPrompt, [{ role: 'user', content: brevityPrefix + corpus }], activeSchema)
+        .catch((err: any) => {
+          this.logger?.warn?.(`The shorter-version pass failed; keeping the long report. ${err?.message ?? err}`);
+          return null;
+        });
       if (retry) result = retry;
     }
 
