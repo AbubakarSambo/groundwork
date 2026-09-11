@@ -72,8 +72,10 @@ export function JoinConfirmPage() {
   if (problem) {
     return (
       <Arrival>
-        <LinkProblem kind="join" />
-        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gw-muted)', maxWidth: 420 }}>{problem}</div>
+        {/* The server's sentence in place of the generic one, not under it in smaller type. LinkProblem
+            deliberately does not say which token failed; the server's join sentences say what to do, which is a
+            smaller move against that stance and is made knowingly. */}
+        <LinkProblem kind="join" detail={problem} />
       </Arrival>
     )
   }

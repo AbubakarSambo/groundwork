@@ -147,16 +147,24 @@ export default function SessionReportPage() {
             status says which of the three things actually happened, so it can say the true one,
             and the fallback offers the retry rather than a theory.
           */}
+          {/* Three things, three sentences: 404 is "no longer here", only 403 accuses, everything else offers the retry. */}
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>
-            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+            {(error as any)?.response?.status === 403
               ? 'This session is not yours to open'
-              : 'This did not load'}
+              : (error as any)?.response?.status === 404
+                ? 'This session is no longer here'
+                : 'This did not load'}
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+            {(error as any)?.response?.status === 403
               ? 'A session report is only ever readable by the person who wrote it.'
-              : 'Nothing is wrong with the report - the request did not get through. Try again.'}
+              : (error as any)?.response?.status === 404
+                ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
+                : 'Nothing is wrong with the report - the request did not get through. Try again.'}
           </div>
+          {(error as any)?.response?.status === 404 && (
+            <a href="/grounds" style={{ display: 'inline-block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Back to check-ins</a>
+          )}
           {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
             <button
               onClick={() => refetch()}

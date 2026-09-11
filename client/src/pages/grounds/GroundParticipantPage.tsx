@@ -153,7 +153,8 @@ export function GroundParticipantPage() {
         })
       }
     },
-    onError: () => toast.error('Could not start session. Try again.'),
+    /* mutationFn extracts the server's sentence into the Error; this used to throw it away for four fixed words. */
+    onError: (e: any) => toast.error(e?.message ?? 'Could not start session. Try again.'),
   })
 
   const redeemPaywallCode = useMutation({

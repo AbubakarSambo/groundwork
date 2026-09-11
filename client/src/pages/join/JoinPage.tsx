@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
-import { toast } from 'sonner'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 type Phase = 'loading' | 'start' | 'sent' | 'error'
@@ -30,6 +29,7 @@ export function JoinPage() {
   const [role, setRole] = useState('')
   /* Optional, beside their part. Never inferred; blank means blank. */
   const [department, setDepartment] = useState('')
+  const [failure, setFailure] = useState('')
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
@@ -55,6 +55,7 @@ export function JoinPage() {
     /* The button waits for both fields, by a written decision (see the field's comment below). */
     if (!looksLikeAnAddress(email) || !role.trim() || joining) return
     setJoining(true)
+    setFailure('')
     try {
       const res = await joinApi.accept({
         joinToken,
@@ -68,7 +69,8 @@ export function JoinPage() {
       setSentSays(res.says)
       setPhase('sent')
     } catch {
-      toast.error('Could not send your link — nobody has been emailed and nothing was added. Try again.')
+      /* The toast's words were right; a toast leaves the page looking unchanged. Inline, and kept. */
+      setFailure('Could not send your link — nobody has been emailed and nothing was added. Try again.')
     } finally {
       setJoining(false)
     }
@@ -135,6 +137,7 @@ export function JoinPage() {
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
         </div>
         <div className="gw-fld"><label className="gw-label" htmlFor="join-department">Department</label><input id="join-department" className="gw-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" /></div>
+        {failure && <div className="gw-er" role="alert">{failure}</div>}
         <button className="gw-btn" type="submit" disabled={joining || !looksLikeAnAddress(email) || !role.trim()} style={{ marginTop: 8, opacity: (joining || !looksLikeAnAddress(email) || !role.trim()) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>

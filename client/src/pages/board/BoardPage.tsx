@@ -14,6 +14,7 @@ import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/compon
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 
 /**
  * The delivery board.
@@ -72,7 +73,7 @@ export function BoardPage() {
   const user = useAuthStore((st) => st.user)
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['board', id, variant],
     queryFn: () => boardApi.get(id!, variant),
     enabled: !!id,
@@ -130,13 +131,21 @@ export function BoardPage() {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
   }
   if (error || !data) {
+    /*
+     * WHICH OF THE THINGS HAPPENED. One branch rendered a permission-flavoured accusation for every
+     * failure, with retry off, so a single transient 500 permanently evicted a reader from their own
+     * board. The report page already knows how to say which (why-you-cannot-see-this.ts): the same
+     * words here, and Try again where trying again can work.
+     */
+    const why = whyYouCannotSeeThis(whatWentWrong(error))
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>This board could not be loaded.</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>
-          You may not be a party to this check-in, or it may no longer exist.
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>{why.say}</div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {why.canRetry && <button onClick={() => refetch()} style={btn}>Try again</button>}
+          <button onClick={() => navigate('/grounds')} style={why.canRetry ? { ...btn, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' } : btn}>Back to check-ins</button>
         </div>
-        <button onClick={() => navigate('/grounds')} style={btn}>Back to check-ins</button>
       </div>
     )
   }

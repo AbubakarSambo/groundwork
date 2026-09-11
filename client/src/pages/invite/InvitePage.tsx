@@ -34,6 +34,8 @@ export function InvitePage() {
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
   /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
   const [waiting, setWaiting] = useState('')
+  /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
+  const [failed, setFailed] = useState('')
   const setAuth = useAuthStore((s) => s.setAuth)
   const qc = useQueryClient()
 
@@ -139,8 +141,11 @@ export function InvitePage() {
       }
     },
     onError: (err: any) => {
-      /* The server's own sentence when there is one: it says which thing refused and what to do. */
-      toast.error(err?.response?.data?.message ?? 'Could not start your session. Please try again.')
+      /* The server's own sentence when there is one: it says which thing refused and what to do. Kept on
+         the page, because this is the one person with no other route in. */
+      const said = err?.response?.data?.message ?? (err?.response ? 'Could not start your session. Please try again.' : 'We could not reach Groundwork just then. Check your connection and try again.')
+      setFailed(said)
+      toast.error(said)
     },
   })
 
@@ -356,7 +361,8 @@ export function InvitePage() {
           </div>
         </details>
 
-        <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>
+        <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
+          {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
             Your name is optional - the others will see it on the shared report if you add it.
           </div>
