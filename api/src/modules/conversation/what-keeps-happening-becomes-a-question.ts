@@ -34,6 +34,14 @@ export interface Recurring {
   periodsObserved: number;
   /** The engine's own plain-language observation. Used to pick, never to quote at anybody. */
   observationText?: string | null;
+  /**
+   * WHETHER SOMEBODY HAS ALREADY SAID THIS READ WAS WRONG.
+   *
+   * `false` means a person with the standing to know rated it inaccurate. Asking about it anyway is
+   * the product ignoring a correction it asked for - the same fault as a report that keeps counting
+   * a line somebody unsaid. `null` is not yet rated and is the ordinary case.
+   */
+  accuracyRating?: boolean | null;
 }
 
 /** A belt-and-braces floor for a caller that did not filter on SURFACED. The real rule is three
@@ -48,6 +56,7 @@ export const A_PATTERN_IS_NOT_A_PATTERN_IN = 1;
 export function theOneWorthAsking(rows: Recurring[]): { code: string; probe: string } | null {
   const eligible = rows
     .filter((r) => r.periodsObserved > A_PATTERN_IS_NOT_A_PATTERN_IN)
+    .filter((r) => r.accuracyRating !== false)
     .map((r) => ({ ...r, probe: whatToAskAbout(r.code) }))
     .filter((r): r is Recurring & { probe: string } => !!r.probe)
     .sort((a, b) => b.periodsObserved - a.periodsObserved || a.code.localeCompare(b.code));

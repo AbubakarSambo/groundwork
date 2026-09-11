@@ -15,6 +15,17 @@ describe('a pattern is asked about, never named', () => {
     expect(one?.probe).toBeTruthy();
   });
 
+  it('never asks about a read somebody has already said was wrong', () => {
+    /* Rating it inaccurate is a correction the product asked for. Asking about it anyway is the
+       same fault as a report that keeps counting a line somebody unsaid. */
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 9, accuracyRating: false }])).toBeNull();
+  });
+
+  it('still asks about one nobody has rated, which is the ordinary case', () => {
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2, accuracyRating: null }])?.code).toBe(anyProbeCode);
+    expect(theOneWorthAsking([{ code: anyProbeCode, periodsObserved: 2, accuracyRating: true }])?.code).toBe(anyProbeCode);
+  });
+
   it('never asks about a code that exists for the alignment feed only', () => {
     for (const code of ALIGNMENT_FEED_ONLY_CODES) {
       expect(theOneWorthAsking([{ code, periodsObserved: 9 }])).toBeNull();
