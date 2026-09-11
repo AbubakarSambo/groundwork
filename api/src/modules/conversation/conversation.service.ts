@@ -45,6 +45,7 @@ import {
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
+import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
@@ -1841,6 +1842,17 @@ export class ConversationService {
        */
       totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
       roleAsDescribed: checkIn.participant.roleAsDescribed,
+      /*
+       * WHO OPENED THIS, so the safety rule in ENGINE_RULES can finally fire. It fell back to the
+       * party type of whoever was ANSWERING, which made "the opener is senior and this person is
+       * not" impossible to express - and told every participant they had equal standing with
+       * whoever opened the check-in. See who-opened-this.ts.
+       */
+      openerRole: whoOpenedThis(
+        (ground.participants ?? []).find((p) => p.partyType === PartyType.INITIATOR)?.roleAsDescribed
+          ?? null,
+        checkIn.participant.partyType === PartyType.INITIATOR,
+      ),
       otherPartyCheckedIn,
       groundLabel: ground.label,
       /**
