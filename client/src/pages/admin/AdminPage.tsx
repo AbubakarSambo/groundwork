@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate } from '@/api/prompts'
-import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow } from '@/api/admin'
+import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
@@ -96,6 +96,125 @@ function WhatsAppToggle() {
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
       </div>
+    </div>
+  )
+}
+
+/**
+ * THE COACHING BLOCK, AND THE SWITCH THAT LETS IT REACH A PROMPT.
+ *
+ * The setting existed, the read-before-you-decide route existed, and neither had a page: the switch
+ * could only be thrown in SQL, and the batch it says to read first could only be read with curl
+ * (fix plan B12). The rows come first, the switch second, in the order the route's own summary
+ * gives them.
+ */
+function CoachingSwitch() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-coaching'], queryFn: adminApi.getCoaching })
+  const [open, setOpen] = useState(false)
+  const toggle = useMutation({
+    mutationFn: (live: boolean) => adminApi.setCoachingLive(live),
+    onSuccess: (r) => qc.setQueryData(['admin-coaching'], (old: CoachingBatch | undefined) => old ? { ...old, live: r.live } : old),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed.'),
+  })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="Coaching" error={error} retry={() => refetch()} />
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Coaching in the session</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            The coach's read of where each person is, and what it would say next. {data.count === 0
+              ? 'Nothing has been read yet.'
+              : `${data.count} ${data.count === 1 ? 'read' : 'reads'} so far. Read them before turning this on.`}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => toggle.mutate(!data.live)}
+          disabled={toggle.isPending}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: data.live ? 'var(--gw-navy)' : 'var(--gw-border)',
+            position: 'relative', flexShrink: 0, marginLeft: 16,
+          }}
+          aria-label={data.live ? 'Turn off coaching' : 'Turn on coaching'}
+        >
+          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        </button>
+      </div>
+      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+        {data.live ? 'Live: the block reaches the prompt' : 'Off: read, never said'}
+      </div>
+      {data.count > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <button type="button" onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}>
+            {open ? 'Hide the reads' : 'Show the reads'}
+          </button>
+          {open && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {data.rows.map(r => (
+                <div key={r.participantId} style={{ fontSize: 12, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
+                  <div style={{ fontWeight: 700 }}>{r.who}{r.organisation ? ` · ${r.organisation}` : ''}{r.ground ? ` · ${r.ground}` : ''}</div>
+                  <div style={{ color: 'var(--gw-muted)' }}>{r.roleAsDescribed ?? r.detectedFunction ?? 'Role not described'}{r.currentStep ? ` · next: ${r.currentStep}` : ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * HOW LONG SOMEBODY HAS TO CORRECT THEIR OWN RECORD after a report is released. Read by the report
+ * and by the conversation, written by nothing but SQL until now. Zero is allowed on purpose: it means
+ * a released report is final the moment it is released.
+ */
+function CorrectionWindowRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-correction-window'], queryFn: adminApi.getCorrectionWindow })
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => {
+      const n = Number(value)
+      if (!value.trim() || !Number.isInteger(n) || n < 0 || (data && n > data.max)) {
+        throw new Error(`That needs to be a whole number of days, 0 to ${data?.max ?? 90}.`)
+      }
+      return adminApi.setCorrectionWindow(n)
+    },
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-correction-window'], res)
+      setEditing(false)
+      setErr(null)
+      toast.success(res.days === 0 ? 'A released report is now final the moment it is released.' : `People now have ${res.days} ${res.days === 1 ? 'day' : 'days'} to correct their record after a report is released.`)
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e.message),
+  })
+  if (!data) return null
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Days to correct a record after release</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>Zero means a released report is final at once. The default is {data.default}.</div>
+        {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      </div>
+      {editing ? (
+        <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <input type="number" min={0} max={data.max} step={1} value={value} onChange={e => setValue(e.target.value)} aria-label="Days to correct a record" style={{ width: 70, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
+          <button type="submit" disabled={save.isPending} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+        </form>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.days}</span>
+          <button type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -489,8 +608,14 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={SL}>Integrations</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <WhatsAppToggle />
+          <CoachingSwitch />
           <StripeStatus />
         </div>
+      </section>
+
+      <section>
+        <div style={SL}>The record</div>
+        <CorrectionWindowRow />
       </section>
 
       <section>

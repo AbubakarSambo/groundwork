@@ -55,7 +55,8 @@ describe('one mapper, no false recall', () => {
   it('the service has no mapper of its own, and no recall mapper at all', () => {
     expect(code).not.toMatch(/function mapSpecificityLevel/);
     expect(code).not.toMatch(/mapRecallConfidence/);
-    expect(code).toMatch(/recallConfidence: null,/);
+    /* The column is gone (B12); the service must not have grown a mapper for it under any name. */
+    expect(code).not.toMatch(/recallConfidence/);
   });
 
   it('the report ranks by the shared order, not a map of its own', () => {

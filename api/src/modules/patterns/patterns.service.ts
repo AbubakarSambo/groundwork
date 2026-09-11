@@ -14,7 +14,6 @@ import {
   detectR3,
   checkF1Conditions,
   DetectionInput,
-  PatternConfigMap,
   collusionRuleGate,
   COLLUSION_COMPLETION_WORDS,
   COLLUSION_CONFIRM_PROMPT,
@@ -25,9 +24,6 @@ const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}
 
 const THREE_PERIOD_RULE = 3;
 
-/** Cache pattern configs for 5 minutes to avoid per-check-in DB roundtrips. */
-let configCache: { map: PatternConfigMap; expiresAt: number } | null = null;
-const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Grounds still in motion.
 const ACTIVE_STATUSES: GroundStatus[] = [
@@ -632,33 +628,7 @@ export class PatternsService {
     });
     const priorSurfacedCodes = surfaced.map((s) => s.code);
 
-    const config = await this.loadPatternConfig();
-    return { submissions, thinkingScore, outputScore, priorSurfacedCodes, config };
-  }
-
-  /** Load pattern thresholds from DB, cached for 5 minutes. */
-  private async loadPatternConfig(): Promise<PatternConfigMap> {
-    const now = Date.now();
-    if (configCache && configCache.expiresAt > now) return configCache.map;
-
-    const rows = await this.prisma.patternConfig.findMany({ where: { enabled: true } });
-    const map: PatternConfigMap = {};
-    for (const row of rows) {
-      map[row.code] = {
-        consecutivePeriods: row.consecutivePeriods,
-        outputScoreMax: row.outputScoreMax ?? undefined,
-        outputScoreMin: row.outputScoreMin ?? undefined,
-        thinkingScoreMax: row.thinkingScoreMax ?? undefined,
-        thinkingScoreMin: row.thinkingScoreMin ?? undefined,
-        meetingScoreMax: row.meetingScoreMax ?? undefined,
-        meetingScoreMin: row.meetingScoreMin ?? undefined,
-        specificityScoreMax: row.specificityScoreMax ?? undefined,
-        keywordCountMin: row.keywordCountMin ?? undefined,
-        enabled: row.enabled,
-      };
-    }
-    configCache = { map, expiresAt: now + CONFIG_CACHE_TTL_MS };
-    return map;
+    return { submissions, thinkingScore, outputScore, priorSurfacedCodes };
   }
 
   /**

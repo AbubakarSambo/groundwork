@@ -417,10 +417,6 @@ model Organization {
   firstGroundUsed        Boolean       @default(false) @map("first_ground_used")
   freeExtensionUsed      Boolean       @default(false) @map("free_extension_used")
   allowCodeCreation      Boolean       @default(false) @map("allow_code_creation")
-  // Exists in the database, referenced nowhere in the codebase. Declared here
-  // so the schema matches reality; removing it should be a deliberate decision
-  // with a migration of its own, not a side effect of a drift fix.
-  contributorBypass      Boolean       @default(false) @map("contributor_bypass")
 
   // Org subscription
   subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
@@ -440,7 +436,6 @@ model Organization {
   users               User[]
   grounds             Ground[]
   billingEvents       BillingEvent[]
-  orgIntelligence     OrgIntelligence[]
   contributorCodes    ContributorCode[]
   styleProfiles       PersonStyleProfile[]
   memberships         OrganizationMembership[]
@@ -1226,7 +1221,6 @@ model CheckIn {
   /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
   specificityScoredAt         DateTime?     @map("specificity_scored_at")
   specificityDimensions       Json?         @map("specificity_dimensions")
-  recallConfidence            String?       @map("recall_confidence") // written null since 2026-09-11: it was specificity under a second name. Dropped with the other dead columns (B12).
   /// THE REPORT AS THE PERSON SAW IT WHEN THEY FINISHED.
   ///
   /// "I want the exact same forming report to be openable. I have not seen it anywhere, when I
@@ -2642,6 +2636,22 @@ enum KnowledgeKind {
 /// `key` is the customer's own name for the thing and is stable across versions. `(org, key)` is
 /// therefore NOT unique - the whole history lives under one key, and exactly one row of it has a
 /// null `effectiveTo`.
+model KnowledgeRetrieval {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  /// What was asked, so a bad retrieval can be reproduced.
+  query            String   @db.Text
+  /// The cards, in the order they were ranked, with their scores.
+  cards            Json
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("knowledge_retrievals")
+}
+
 model KnowledgeCard {
   id             String        @id @default(uuid())
   organizationId String        @map("organization_id")
@@ -2837,22 +2847,6 @@ model KnowledgeProposal {
   @@unique([documentId, status])
   @@index([organizationId, status])
   @@map("knowledge_proposals")
-}
-
-model KnowledgeRetrieval {
-  id               String   @id @default(uuid())
-  organizationId   String   @map("organization_id")
-  personExternalId String   @map("person_external_id")
-  /// What was asked, so a bad retrieval can be reproduced.
-  query            String   @db.Text
-  /// The cards, in the order they were ranked, with their scores.
-  cards            Json
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId, createdAt])
-  @@map("knowledge_retrievals")
 }
 
 /// EVERY TURN OF A PANEL CONVERSATION, KEPT.
@@ -3192,7 +3186,7 @@ enum SubjectType {
 /// end: two places that must agree, each defensible alone, nothing reconciling them.
 ///
 /// ORG-SCOPED AND ADDITIVE. Grounds are untouched and keep working exactly as they do. This
-/// accumulates alongside them and nothing in the live product reads it yet.
+/// accumulates alongside them; the machine API, the handover brief and the board read it.
 model Subject {
   id             String      @id @default(uuid())
   organizationId String      @map("organization_id")
@@ -3253,18 +3247,6 @@ model Subject {
   @@index([organizationId, type])
   @@index([organizationId, syncedAt])
   @@map("subjects")
-}
-
-model OrgIntelligence {
-  id             String   @id @default(uuid())
-  organizationId String?  @map("organization_id")
-  patternSummary Json     @map("pattern_summary") // anonymised — no PII, no names
-  anonymised     Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-
-  @@map("org_intelligence")
 }
 
 model BillingEvent {
@@ -4350,25 +4332,6 @@ model FeedbackSubmission {
 
   @@index([tab, createdAt])
   @@map("feedback_submissions")
-}
-
-model PatternConfig {
-  id                  String   @id @default(uuid())
-  code                String   @unique // e.g. "D4", "B2", "F1"
-  consecutivePeriods  Int      @default(3) @map("consecutive_periods") // three-period gate
-  outputScoreMax      Float?   @map("output_score_max") // detector fires when outputScore < this
-  outputScoreMin      Float?   @map("output_score_min") // detector fires when outputScore > this
-  thinkingScoreMax    Float?   @map("thinking_score_max")
-  thinkingScoreMin    Float?   @map("thinking_score_min") // detector fires when thinkingScore > this
-  meetingScoreMax     Float?   @map("meeting_score_max")
-  meetingScoreMin     Float?   @map("meeting_score_min")
-  specificityScoreMax Float?   @map("specificity_score_max")
-  keywordCountMin     Int?     @map("keyword_count_min") // for keyword-based detectors
-  enabled             Boolean  @default(true)
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  updatedBy           String?  @map("updated_by") // userId of last editor
-
-  @@map("pattern_configs")
 }
 
 /// SOMETHING YOU WROTE DOWN BETWEEN SESSIONS.

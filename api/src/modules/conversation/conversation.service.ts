@@ -3276,8 +3276,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         completedAt: new Date(),
         specificityLevel: specificityData?.level ?? null,
         specificityScoredAt: new Date(),
-        /* Written null on purpose: it was specificity under a second name. See scoreSessionSpecificity. */
-        recallConfidence: null,
         specificityDimensions: specificityData?.dimensions ?? undefined,
         /* The one thing `by` decides. A person's completion leaves whatever reason was already there. */
         ...(by === 'the clock' ? { closedReason: CLOSED_BY_THE_CLOCK } : {}),

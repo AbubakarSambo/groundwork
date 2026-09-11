@@ -1262,7 +1262,6 @@ export class BoardService {
       previousSharedPicture: null,
       evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
       specificityLevel: null,
-      recallConfidence: null,
       centralQuestion: report.centralQuestion ?? null,
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
       movedOnTargets: held.movedOnTargets,

@@ -156,6 +156,17 @@ export function IntegrationsPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not remove it.'),
   })
   const embed = useQuery({ queryKey: ['integrations', 'embed'], queryFn: integrationsApi.embedConfig, enabled: isAdmin })
+  /*
+   * WHEN SOMEBODY LEAVES. The roster tells us a person has gone; after this many days their raw
+   * words are deleted. Every organisation ran on the default because nothing but SQL could set it.
+   */
+  const retention = useQuery({ queryKey: ['integrations', 'retention'], queryFn: integrationsApi.retention, enabled: isAdmin })
+  const [retentionDays, setRetentionDays] = useState('')
+  const saveRetention = useMutation({
+    mutationFn: () => integrationsApi.setRetention(Number(retentionDays)),
+    onSuccess: (r) => { qc.setQueryData(['integrations', 'retention'], r); setRetentionDays(''); toast.success(`Kept for ${r.turnRetentionDays} days after somebody leaves.`) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be saved.'),
+  })
   const [embedDomains, setEmbedDomains] = useState('')
   const [embedPlacement, setEmbedPlacement] = useState<'floating' | 'anchor'>('floating')
   const [embedOutOfScope, setEmbedOutOfScope] = useState('')
@@ -817,6 +828,34 @@ export function IntegrationsPage() {
           <input style={S.input} placeholder="Channel, as you call it (optional)" value={wsChannel} onChange={e => setWsChannel(e.target.value)} aria-label="Channel name" />
           <button style={S.btn} onClick={() => connectWs.mutate()} disabled={!wsUrl.trim().startsWith('https://') || connectWs.isPending}>Connect</button>
         </div>
+      </div>
+
+      {/* ---------------------------------------------------------------- when somebody leaves */}
+      <div style={S.sec}>When somebody leaves</div>
+      <div style={S.card}>
+        <div style={S.h3}>
+          {retention.data
+            ? `Their words are kept for ${retention.data.turnRetentionDays} days${retention.data.set ? '' : ' (the default)'}`
+            : 'How long a departed person\u2019s words are kept'}
+        </div>
+        <p style={S.body}>When your roster tells us somebody has left, their open commitments close and what they said stops being attributed to them the same day. Their raw words are deleted after this many days - after any handover brief is built, never before. {retention.data ? `Between ${retention.data.floor} and ${retention.data.ceiling} days.` : ''}</p>
+        {retention.data && (
+          <form onSubmit={(e) => { e.preventDefault(); saveRetention.mutate() }} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+            <input
+              style={{ ...S.input, width: 120 }}
+              type="number"
+              min={retention.data.floor}
+              max={retention.data.ceiling}
+              step={1}
+              placeholder={String(retention.data.turnRetentionDays)}
+              value={retentionDays}
+              onChange={(e) => setRetentionDays(e.target.value)}
+              aria-label="Days to keep a departed person's words"
+            />
+            <span style={S.body}>days</span>
+            <button type="submit" style={S.btn} disabled={!retentionDays.trim() || saveRetention.isPending}>Save</button>
+          </form>
+        )}
       </div>
 
       {/* ---------------------------------------------------------------- embed the panel */}

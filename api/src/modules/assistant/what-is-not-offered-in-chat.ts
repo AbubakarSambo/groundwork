@@ -105,6 +105,11 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     because: 'The panel’s own handshake. It is how the conversation exists at all.',
   },
   {
+    area: 'people',
+    why: 'not a person’s question',
+    because: 'How long a departed colleague’s words are kept. An organisation’s retention policy is set by its admin in the console, not changed by anybody typing a sentence.',
+  },
+  {
     area: 'entry',
     why: 'the chat is the wrong shape',
     because: 'Signing up and setting an organisation up for the first time. It is already a guided conversation of its own, before this assistant exists for that person.',

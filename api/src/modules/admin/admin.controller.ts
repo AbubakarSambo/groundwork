@@ -241,6 +241,24 @@ export class AdminController {
     return this.adminService.getCoaching();
   }
 
+  @Patch('coaching')
+  @ApiOperation({ summary: 'Let the coaching block reach a live prompt, or stop it. Read GET /admin/coaching first.' })
+  setCoachingLive(@CurrentUser('id') userId: string, @Body() body: { live: boolean }) {
+    return this.adminService.setCoachingLive(!!body?.live, userId);
+  }
+
+  @Get('correction-window')
+  @ApiOperation({ summary: 'How many days somebody has to correct their own record after a report is released' })
+  getCorrectionWindow() {
+    return this.adminService.getCorrectionWindow();
+  }
+
+  @Patch('correction-window')
+  @ApiOperation({ summary: 'Change the correction window. Whole days, 0 to 90.' })
+  setCorrectionWindow(@CurrentUser('id') userId: string, @Body() body: { days: number }) {
+    return this.adminService.setCorrectionWindow(Number(body?.days), userId);
+  }
+
   @Get('writers')
   @ApiOperation({ summary: 'Zero-row detection: every writer that should fill a table, its row count, last write and ship date. Zero since shipped is flagged.' })
   getWriters() {

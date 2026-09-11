@@ -29,6 +29,15 @@ export interface WorkspaceNotifier {
 }
 
 /** The embedded panel's configuration, without its signing secret (that is returned once, on setup). */
+export interface RetentionPolicy {
+  turnRetentionDays: number
+  /** False while the organisation runs on the default and has never chosen. */
+  set: boolean
+  floor: number
+  ceiling: number
+  default: number
+}
+
 export interface EmbedConfig {
   allowedDomains: string[]
   placement: 'floating' | 'anchor' | string
@@ -183,6 +192,10 @@ export const integrationsApi = {
     apiClient.post(`/integrations/workspace/${kind}/${on ? 'on' : 'off'}`, {}).then(r => r.data),
   disconnectWorkspace: (kind: 'slack' | 'teams') =>
     apiClient.delete(`/integrations/workspace/${kind}`).then(r => r.data),
+  /* How long a departed person's raw turns are kept. Read on every departure; writable here (B12). */
+  retention: () => apiClient.get<RetentionPolicy>('/org/retention').then(r => r.data),
+  setRetention: (turnRetentionDays: number) =>
+    apiClient.patch<RetentionPolicy>('/org/retention', { turnRetentionDays }).then(r => r.data),
   /* Embed the panel. Over 1,300 lines of served loader, panel and signing scheme, reachable only by a database write. */
   embedConfig: () => apiClient.get<EmbedConfig | null>('/integrations/embed').then(r => r.data),
   setUpEmbed: (body: { allowedDomains: string[]; placement: 'floating' | 'anchor'; outOfScopeDepartments: string[] }) =>

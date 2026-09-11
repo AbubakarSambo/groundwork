@@ -508,6 +508,14 @@ export class BillingService {
       {
       customer: customerId,
       mode: 'subscription',
+      /*
+       * QUANTITY 1, ON PURPOSE. Plans are flat-rate per tier; the member cap on the billing page is
+       * an in-app limit on how many people an organisation may add, not a seat count Stripe is
+       * charged for, and it is deliberately not transmitted. Platform admins occupy a seat like
+       * anybody else (SEAT_WHERE has no isPlatformAdmin exclusion). Recorded here because the
+       * billing page's number reads as "what we are charged" to anyone who does not know this;
+       * confirmed as the intended model in the fix plan (B12, P3-022) pending the owner's word.
+       */
       line_items: [{ price: priceId, quantity: 1 }],
       // subscription_data.metadata (not just the session-level metadata below)
       // so the resulting Subscription object itself carries organizationId/plan -

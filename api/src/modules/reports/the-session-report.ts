@@ -84,7 +84,6 @@ export interface SessionReportShape {
   sections: SessionReportSection[];
   howClearThisWas: {
     level: string | null;
-    recall: string | null;
     saying: string;
   };
   /**
@@ -139,7 +138,6 @@ export interface SessionReportInputs {
   /** Documents and other non-recalled evidence this record rests on. */
   evidence: { text: string; who: string | null }[];
   specificityLevel: string | null;
-  recallConfidence: string | null;
   /** The whole session's line count and documented count, for the confidence read. See howMuchThereIsToGoOn. */
   saidInAll?: number;
   documentedInAll?: number;
@@ -456,8 +454,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     sections,
     howClearThisWas: {
       level: input.specificityLevel ?? null,
-      recall: input.recallConfidence ?? null,
-      saying: howClear(input.specificityLevel, input.recallConfidence),
+      saying: howClear(input.specificityLevel),
     },
     theConversationWorthHaving: input.centralQuestion ?? null,
   };
@@ -554,7 +551,7 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
  * clause is gone with the number it read (see scoreSessionSpecificity). Where it was read from is
  * said, so a keyword count is never presented in the grammar of an assessment.
  */
-function howClear(level: string | null, _recall: string | null): string {
+function howClear(level: string | null): string {
   const clarity =
     level === 'specific'
       /* "Accounts" is the login word to a reader. What is meant is what people said, so it says that. */

@@ -1519,27 +1519,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       });
     }
 
-    const recallNotes: { label: string; recallConfidence: string; note: string }[] = [];
-    for (const p of parties) {
-      const lastCheckIn = await this.prisma.checkIn.findFirst({
-        where: { participantId: p.id, status: CheckInStatus.COMPLETED },
-        orderBy: { sessionNumber: 'desc' },
-        select: { recallConfidence: true, sessionNumber: true },
-      });
-      if (!lastCheckIn?.recallConfidence) continue;
-      const label = labelById.get(p.id) ?? 'a party';
-      const rcLabel: Record<string, string> = {
-        certain: 'certain',
-        mostly_certain: 'mostly certain',
-        uncertain: 'uncertain on key points',
-      };
-      recallNotes.push({
-        label,
-        recallConfidence: lastCheckIn.recallConfidence,
-        note: `${label} was ${rcLabel[lastCheckIn.recallConfidence] ?? lastCheckIn.recallConfidence} about their account in session ${lastCheckIn.sessionNumber}.`,
-      });
-    }
-
     const [groundDocsAll, annotatedEntries, tensionEntries] = await Promise.all([
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { id: true } }),
       this.prisma.recordEntry.findMany({ where: { disputedAt: null, participant: { groundId }, recallBased: false }, select: { id: true } }),
@@ -1620,7 +1599,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const enrichedEngagementRaw = {
       ...engagement,
       specificityNotes,
-      recallNotes,
       docStatus,
       session2Focus,
       hiddenContributors: result.hiddenContributors ?? [],
@@ -2039,7 +2017,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       me
         ? this.prisma.checkIn.findFirst({
           where: { groundId, participantId: me.id, sessionNumber },
-          select: { specificityLevel: true, recallConfidence: true },
+          select: { specificityLevel: true },
         })
         : Promise.resolve(null),
     ]);
@@ -2145,7 +2123,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       /* Named for what kind of thing it is: a typed document, a photo, notes written with a model. */
       evidence: docs.map((d) => ({ text: originLabel((d as any).origin) ? `${d.fileName} · ${originLabel((d as any).origin)}` : d.fileName, who: d.participantId ? whoOf(d.participantId) : null })),
       specificityLevel: checkIn?.specificityLevel ?? null,
-      recallConfidence: checkIn?.recallConfidence ?? null,
       centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,
       /*
        * THE THREE THE FOUR READS NEED THAT THE ENTRIES DO NOT CARRY. Read the same way the board

@@ -45,14 +45,14 @@ describe('the meter shows the engine\'s own read of thinness', () => {
   const spots = [{ line: 'Nothing else in this ground touches any part of this account.', wouldRaiseIt: 'One other person mentioning the same work would.' }]
 
   it('replaces the hand-written line when the engine has a read', () => {
-    render(<HowSpecificThisSessionWas level="directional" recall={null} spots={spots} />)
+    render(<HowSpecificThisSessionWas level="directional" spots={spots} />)
     expect(screen.getByText(/Nothing else in this ground touches/)).toBeTruthy()
     expect(screen.getByText(/One other person mentioning/)).toBeTruthy()
     expect(screen.queryByText(/One date, one number or one document/)).toBeNull()
   })
 
   it('and keeps the line when the engine has none', () => {
-    render(<HowSpecificThisSessionWas level="directional" recall={null} spots={[]} />)
+    render(<HowSpecificThisSessionWas level="directional" spots={[]} />)
     expect(screen.getByText(/One date, one number or one document/)).toBeTruthy()
   })
 })

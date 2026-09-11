@@ -1165,7 +1165,7 @@ export class GroundsService {
      */
     if (requestingUserId) await this.assertMaySeeGround(id, requestingUserId);
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -4683,20 +4683,6 @@ export class GroundsService {
    * stamped, so the shared report surfaces it as a flagged update rather than
    * silently blending it in as if it had always been there. No undo in v1.
    */
-  async signOff(groundId: string, userId: string): Promise<{ signedOffAt: Date }> {
-    const participant = await this.prisma.groundParticipant.findFirst({
-      where: { groundId, userId },
-      select: { id: true, signedOffAt: true },
-    });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
-    if (participant.signedOffAt) return { signedOffAt: participant.signedOffAt };
-    const updated = await this.prisma.groundParticipant.update({
-      where: { id: participant.id },
-      data: { signedOffAt: new Date() },
-      select: { signedOffAt: true },
-    });
-    return { signedOffAt: updated.signedOffAt! };
-  }
 }
 
 /**

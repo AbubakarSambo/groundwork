@@ -560,7 +560,7 @@ Never written, read only:
 
 Flagged by the count but actually read through a relation, so not dead: `RoundCompletion` (`grounds.service.ts:1189`, `:1230`), `ImportJobFailure` (`bulk-import.service.ts:345`), `OpsKeyResult` (`ops-intent.service.ts:154`, `:257`), `OpsContributorTarget` (`ops-target-companies.service.ts:144`).
 
-Also worth recording for a later pass: `Subject`'s own doc comment at `schema.prisma:3066` says "nothing in the live product reads it yet".
+Corrected 12 Sep 2026 (B12, P7-011): `Subject` is read at 22 non-spec call sites (the machine API, the handover brief, the board); its schema comment said "nothing in the live product reads it yet" and was stale. Comment fixed with the batch.
 
 ---
 
@@ -829,5 +829,5 @@ Re-running the same logic independently found nothing outside those exemptions. 
 3. `GET /api/v1/users/colleagues` (`users.controller.ts:138`), `POST /users/me/leave`, `GET /users/me/export`, `DELETE /users/me/data` are the only non-ADMIN routes on an otherwise ADMIN controller.
 4. `email.service.ts:54-60`: `isDev()` returns false in production regardless of the key, and `RESEND_API_KEY` is not in the production boot gate, so a production deploy with no key calls Resend with `undefined`.
 5. Every `@Cron` runs in-process via `ScheduleModule.forRoot()` (`app.module.ts:53`). There is no leader election, so a multi-instance deploy runs each job once per instance.
-6. `Subject`'s own schema comment (`schema.prisma:3066`) says nothing in the live product reads it yet, which matters when judging the machine API's value.
+6. `Subject` is read at 22 non-spec call sites; the schema comment that said nothing read it was stale and was corrected with B12.
 7. The path matching in F is string-based. A route with no literal caller string could still be reached through a computed URL; each F.2 entry should be spot-checked before anything is called dead.

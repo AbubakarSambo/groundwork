@@ -11,7 +11,7 @@ import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-
 const report = (specificityLevel: string | null) => theSessionReport({
   sessionNumber: 1, closed: false, agreements: [], divergences: [], entries: [], previousEntries: [],
   baselineSuccess: null, startingPoint: null, previousSharedPicture: null, evidence: [],
-  specificityLevel, recallConfidence: null, centralQuestion: null, movedOnTargets: null, blocked: 0, answeredThisSession: [],
+  specificityLevel, centralQuestion: null, movedOnTargets: null, blocked: 0, answeredThisSession: [],
 } as any);
 
 describe('the sentence at the foot of the report', () => {

@@ -7,6 +7,29 @@ export interface WhatsAppToggleState {
   live: boolean
 }
 
+export interface CoachingBatch {
+  live: boolean
+  count: number
+  rows: {
+    participantId: string
+    who: string
+    organisation: string | null
+    ground: string | null
+    scenario: string | null
+    roleAsDescribed: string | null
+    detectedFunction: string | null
+    currentStep: string | null
+    lastInput: unknown
+    updatedAt: string
+  }[]
+}
+
+export interface CorrectionWindow {
+  days: number
+  default: number
+  max: number
+}
+
 export interface PricingPlanRow {
   plan: SubscriptionPlan
   /** Null for a contact-sales plan. The panel shows "Contact us" and offers no price editor. */
@@ -77,6 +100,15 @@ export const adminApi = {
 
   setWhatsAppEnabled: (enabled: boolean) =>
     apiClient.patch<WhatsAppToggleState>('/admin/whatsapp', { enabled }).then(r => r.data),
+
+  /** The coaching batch, read before the switch is thrown, and the switch. */
+  getCoaching: () => apiClient.get<CoachingBatch>('/admin/coaching').then(r => r.data),
+  setCoachingLive: (live: boolean) =>
+    apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
+
+  getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
+  setCorrectionWindow: (days: number) =>
+    apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),
 
   /** Whether this deployment can take money. Never the key itself. */
   getStripeStatus: () =>

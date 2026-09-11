@@ -31,7 +31,6 @@ const base = {
   previousSharedPicture: null,
   evidence: [],
   specificityLevel: null,
-  recallConfidence: null,
   centralQuestion: null,
   /* The three the four reads need. Null targets is "none set", which must never read as "nothing
      moved" - the difference is asserted below. */

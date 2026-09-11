@@ -31,7 +31,6 @@ const base: SessionReportInputs = {
   previousSharedPicture: null,
   evidence: [],
   specificityLevel: null,
-  recallConfidence: null,
   centralQuestion: null,
   movedOnTargets: null,
   blocked: 0,

@@ -31,9 +31,8 @@ export function whereItSits(level: string | null | undefined): number | null {
   return null
 }
 
-export function HowSpecificThisSessionWas({ level, recall, spots }: {
+export function HowSpecificThisSessionWas({ level, spots }: {
   level?: string | null
-  recall?: string | null
   /**
    * WHAT IS THIN AND WHAT WOULD FIX IT, FROM THE ENGINE THAT COMPUTES IT.
    *
@@ -46,7 +45,6 @@ export function HowSpecificThisSessionWas({ level, recall, spots }: {
 }) {
   const at = whereItSits(level)
   if (at == null) return null
-  const anchored = (recall ?? '').toLowerCase() === 'high'
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
@@ -84,7 +82,6 @@ export function HowSpecificThisSessionWas({ level, recall, spots }: {
           : at === 1
             ? 'Specific in places. One date, one number or one document in the general parts would fill it.'
             : 'Mostly general. A date, a number, or what you were waiting on and from whom would fill it.'}
-        {anchored ? ' Most of it was anchored to something written down.' : ''}
       </div>
       )}
     </div>

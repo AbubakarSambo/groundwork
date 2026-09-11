@@ -9,7 +9,7 @@ describe('the list under a count has that many things in it', () => {
       agreements: [{ title: 'Ship dates' }, null, { title: '' }, 'Owners'],
       divergences: [null, { topic: 'Scope' }, undefined, {}],
       entries: [], previousEntries: [], baselineSuccess: null, startingPoint: null, previousSharedPicture: null,
-      evidence: [], specificityLevel: null, recallConfidence: null, centralQuestion: null,
+      evidence: [], specificityLevel: null, centralQuestion: null,
       movedOnTargets: null, blocked: 0, waiting: 0, answeredThisSession: [], peopleInAll: 0,
     } as any);
     const agreedTile = r.atAGlance.find((t) => /agree|settled|differences/i.test(t.label + t.sub))!;

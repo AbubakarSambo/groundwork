@@ -207,7 +207,7 @@ export default function SessionReportPage() {
           </div>
 
       {/* Simple and visual, and only on this half. See the component's own note for why. */}
-      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} recall={shape?.howClearThisWas?.recall} />
+      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
 
       {/*
         THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.

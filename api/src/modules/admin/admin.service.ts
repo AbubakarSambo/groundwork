@@ -14,6 +14,10 @@ import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { isSubscribed } from '../../common/subscription';
 import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
+import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
+import {
+  CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
+} from '../conversation/the-window-for-correcting-a-record';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -81,7 +85,7 @@ export class AdminService implements OnApplicationBootstrap {
    */
   async getCoaching() {
     const [live, rows] = await Promise.all([
-      this.prisma.platformSetting.findUnique({ where: { key: 'coaching_live' } }).catch(() => null),
+      this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } }).catch(() => null),
       this.prisma.coachingState.findMany({
         orderBy: { updatedAt: 'desc' },
         take: 200,
@@ -121,6 +125,40 @@ export class AdminService implements OnApplicationBootstrap {
   }
 
   /**
+   * A SETTING NOTHING CAN WRITE IS A CONSTANT IN A CONFIGURATION COSTUME (fix plan B12). Two of the
+   * four platform settings had readers, an admin page that described them, and no writer anywhere
+   * but SQL: the switch that lets the coaching block reach a live prompt, and the number of days
+   * somebody has to correct their own record after a report is released. Written the same way the
+   * WhatsApp switch and the two free limits are written, from the same page.
+   */
+  async setCoachingLive(live: boolean, adminUserId: string): Promise<{ live: boolean }> {
+    await this.prisma.platformSetting.upsert({
+      where: { key: COACHING_LIVE_KEY },
+      create: { key: COACHING_LIVE_KEY, value: live, updatedBy: adminUserId },
+      update: { value: live, updatedBy: adminUserId },
+    });
+    return { live };
+  }
+
+  async getCorrectionWindow(): Promise<{ days: number; default: number; max: number }> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key: CORRECTION_WINDOW_KEY } }).catch(() => null);
+    return { days: isAWindow(row?.value) ? (row!.value as number) : DEFAULT_CORRECTION_WINDOW_DAYS, default: DEFAULT_CORRECTION_WINDOW_DAYS, max: MAX_CORRECTION_WINDOW_DAYS };
+  }
+
+  /** Zero is allowed, on purpose - see the-window-for-correcting-a-record.ts. Above the ceiling is not. */
+  async setCorrectionWindow(days: unknown, adminUserId: string): Promise<{ days: number; default: number; max: number }> {
+    if (!isAWindow(days)) {
+      throw new BadRequestException(`The correction window is a whole number of days from 0 to ${MAX_CORRECTION_WINDOW_DAYS}.`);
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: CORRECTION_WINDOW_KEY },
+      create: { key: CORRECTION_WINDOW_KEY, value: days, updatedBy: adminUserId },
+      update: { value: days, updatedBy: adminUserId },
+    });
+    return { days, default: DEFAULT_CORRECTION_WINDOW_DAYS, max: MAX_CORRECTION_WINDOW_DAYS };
+  }
+
+  /**
    * ZERO-ROW DETECTION.
    *
    * Three subsystems were wired and never fired for the life of the codebase, and all three were
@@ -153,7 +191,6 @@ export class AdminService implements OnApplicationBootstrap {
       { table: 'person_style_profiles', writer: 'style read at complete()' },
       { table: 'reports', writer: 'report synthesis' },
       { table: 'report_rounds', writer: 'report rounds' },
-      { table: 'org_intelligence', writer: 'org intelligence pass' },
       { table: 'knowledge_cards', writer: 'how-we-do-it cards' },
       { table: 'knowledge_retrievals', writer: 'howWeDoIt prompt block', needs: 'a question that a how-we-do-it card answers' },
       { table: 'assistant_proposals', writer: 'the assistant' },

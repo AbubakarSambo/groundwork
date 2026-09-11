@@ -27,7 +27,6 @@ const base = (over: Partial<SessionReportInputs> = {}): SessionReportInputs => (
   previousSharedPicture: null,
   evidence: [],
   specificityLevel: null,
-  recallConfidence: null,
   centralQuestion: null,
   movedOnTargets: null,
   blocked: 0,
