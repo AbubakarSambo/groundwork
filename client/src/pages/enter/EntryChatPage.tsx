@@ -1427,7 +1427,7 @@ export function EntryChatPage() {
       }], onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
-      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
+      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you how it is actually going.' }
       const h: Turn[] = [transition, { role: 'assistant', content: res.reply }]
       setHistory(h)
       setDisplayedHistory(h)

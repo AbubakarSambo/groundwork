@@ -483,7 +483,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
               </div>
             )}
             <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-muted)', fontStyle: 'italic' }}>
-              Waiting for the other party to complete their session. Your cross-reference will appear here.
+              Waiting for everybody else to finish their check-in. Your cross-reference will appear here.
             </div>
           </div>
         )}
@@ -491,7 +491,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
         {/* STATE: waiting (no artifact yet) */}
         {state === 'waiting' && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            Your session is recorded. The cross-reference appears once the other party has completed their check-in.
+            Your session is saved. The cross-reference appears once everybody else has checked in.
           </div>
         )}
 

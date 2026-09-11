@@ -47,7 +47,7 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('asking sends a link and goes nowhere', async () => {
     renderJoin()
-    await screen.findByText(/has asked for your side of this/i)
+    await screen.findByText(/has asked how this is going from where you sit/i)
     fireEvent.change(screen.getByPlaceholderText(/you@example.com/i), { target: { value: 'cohort@acme.test' } })
     fireEvent.change(screen.getByPlaceholderText(/I run the clinic/i), { target: { value: 'Ward pharmacist' } })
     fireEvent.click(screen.getByRole('button', { name: /Email me my link/i }))
@@ -58,7 +58,7 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('and says the same thing whoever that address belongs to', async () => {
     renderJoin()
-    await screen.findByText(/has asked for your side of this/i)
+    await screen.findByText(/has asked how this is going from where you sit/i)
     fireEvent.change(screen.getByPlaceholderText(/you@example.com/i), { target: { value: 'admin@acme.test' } })
     fireEvent.change(screen.getByPlaceholderText(/I run the clinic/i), { target: { value: 'Org admin' } })
     fireEvent.click(screen.getByRole('button', { name: /Email me my link/i }))
@@ -68,13 +68,13 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('requires an email (button disabled until a valid email is entered)', async () => {
     renderJoin()
-    await screen.findByText(/has asked for your side of this/i)
+    await screen.findByText(/has asked how this is going from where you sit/i)
     expect((screen.getByRole('button', { name: /Email me my link/i }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('keeps the privacy assurance', async () => {
     renderJoin()
-    await screen.findByText(/has asked for your side of this/i)
+    await screen.findByText(/has asked how this is going from where you sit/i)
     /*
      * THE PROMISE CHANGED BECAUSE IT WAS NOT TRUE, AND WHAT REPLACED IT IS ALREADY WRITTEN DOWN.
      *

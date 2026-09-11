@@ -297,7 +297,7 @@ export function InvitePage() {
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your side of it, the picture is everybody else's.
+              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without what you are seeing, the picture is everybody else's.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>

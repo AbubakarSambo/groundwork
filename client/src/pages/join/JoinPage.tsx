@@ -111,7 +111,7 @@ export function JoinPage() {
   return (
     <Shell>
       {/* "invited your check-in" is not a sentence. It is an invitation to a person, so say that. */}
-      <h1 className="gw-ttl">{ground.initiatorName} has asked for your side of this</h1>
+      <h1 className="gw-ttl">{ground.initiatorName} has asked how this is going from where you sit</h1>
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
       {/* The same false promise as InvitePage carried, kept in step with it deliberately: these are

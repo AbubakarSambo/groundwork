@@ -149,10 +149,12 @@ export function TheReportYouSawAtTheEnd({
           </div>
         )}
 
-        {/* Clear on your side (not mutual agreement - only one party has checked in) */}
+        {/* Clear from what this person said - not mutual agreement, nobody else has checked in yet. Not
+            "your side": this is a team getting a read on something far more often than it is two
+            people arguing, and side language turns an update into a case. */}
         {report.alignmentReached.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <Sec title="Clear on your side" />
+            <Sec title="Clear from what you said" />
             {report.alignmentReached.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
