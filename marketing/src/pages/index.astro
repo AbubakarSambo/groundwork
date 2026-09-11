@@ -168,13 +168,6 @@ section{padding:72px 0}
 .settle p{font-size:15px;line-height:1.5;font-weight:600;color:var(--gw-dark);margin:0}
 .foot{padding:15px 20px;font-size:13px;color:var(--gw-sub);line-height:1.6}
 
-/* ── the pause ────────────────────────────────────────────────────────────
-   One place on the page that stops and says nothing else. */
-.pause{padding:96px 0}
-.pause p{font-size:37px;line-height:1.16;letter-spacing:-.028em;font-weight:700;margin:0}
-.pause p+p{margin-top:12px;color:var(--gw-sub)}
-@media(max-width:720px){ .pause{padding:64px 0} .pause p{font-size:27px} }
-
 /* ── privacy, drawn ───────────────────────────────────────────────────────
    Two check-ins that never touch, and one picture below them. This was three
    paragraphs, on the part of the page where a reader decides whether the whole
@@ -226,7 +219,7 @@ details.more>summary::marker{color:var(--gw-muted)}
   <div class="w">
     <p class="eyebrow">Independent team check-ins</p>
     <h1>No bias. No influence. Just a clearer picture.</h1>
-    <p>Run independent, conversational check-ins to build on solid ground, and see where work stands and how to move forward well.</p>
+    <p>Run independent, conversational check-ins to build on solid ground and help your team or partners stay aligned.</p>
     <div class="ctas">
       <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
       <a class="btn-2" href={`${APP_URL}/`}>Go to your check-ins</a>
@@ -242,11 +235,11 @@ details.more>summary::marker{color:var(--gw-muted)}
     <p class="lab">How it works</p>
     <div class="steps">
       <div class="step"><i>01</i><div><b>Groundwork asks each person separately.</b>
-        <span>A real conversation, not a form. It follows up, asks what would show it, and lets people say what they actually think. Nobody is describing anybody else.</span></div></div>
+        <span>A real conversation, not a form. It follows up, asks what would show it, and lets people say what they actually think.</span></div></div>
       <div class="step"><i>02</i><div><b>It compares the accounts.</b>
-        <span>Where they stop matching, what moved since last time, and what nothing has evidence for.</span></div></div>
+        <span>What is moving, risks, and where you need to help people align.</span></div></div>
       <div class="step"><i>03</i><div><b>Everyone gets the same picture.</b>
-        <span>One shared report, released to everybody at the same moment. It never says who said what about whom.</span></div></div>
+        <span>A shared report and your private report with notes.</span></div></div>
     </div>
   </div>
 </section>
@@ -271,7 +264,7 @@ details.more>summary::marker{color:var(--gw-muted)}
         <div class="rep-h"><b>New business, this quarter &middot; shared report</b><em>8 accounts &middot; check-in 3 of 6</em></div>
         <div class="find"><p>Nine of the twelve live deals are with somebody who cannot sign, at a tenth of the size the quarter was planned on.</p><small>Surfaced at check-in 3 of 6. The next time it would have come up on its own is the end-of-quarter number, when the meeting count will still look healthy.</small></div>
         <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+14</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-amber-t)">1 blocked</div><div class="s">waiting on someone else</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">64% document-backed</div></div></div>
-        <details class="more"><summary>Show what each of the eight said they did</summary><div class="more-body"><p style="font-size:12.5px;color:var(--gw-muted);margin-bottom:4px">Each person's own account of their own work. Nobody is describing anybody else.</p><div class="did"><b>Ada</b><span>Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</span></div><div class="did"><b>Dan</b><span>Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</span></div><div class="did"><b>Rachel</b><span>Six first meetings and three pilots agreed. All three start next month.</span></div><div class="did"><b>Naomi</b><span>Renewed Vanta at a higher tier and lost nothing this quarter. Most of three weeks went on renewal paperwork and contract admin. Two customer conversations in total.</span></div><div class="did"><b>Tom</b><span>Wrote the objection sheet the rest of the team is now using on calls.</span></div><div class="did"><b>Yusuf</b><span>Nineteen first meetings. No second meetings yet.</span></div><div class="did"><b>Kofi</b><span>New CRM shipped in week two. Team is on it.</span></div><div class="did"><b>Ellie</b><span>Nothing specific named yet across three check-ins.</span></div></div></details>
+        <details class="more"><summary>Show what each of the eight said they did</summary><div class="more-body"><p style="font-size:12.5px;color:var(--gw-muted);margin-bottom:4px">Each person's own account of their own work.</p><div class="did"><b>Ada</b><span>Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</span></div><div class="did"><b>Dan</b><span>Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</span></div><div class="did"><b>Rachel</b><span>Six first meetings and three pilots agreed. All three start next month.</span></div><div class="did"><b>Naomi</b><span>Renewed Vanta at a higher tier and lost nothing this quarter. Most of three weeks went on renewal paperwork and contract admin. Two customer conversations in total.</span></div><div class="did"><b>Tom</b><span>Wrote the objection sheet the rest of the team is now using on calls.</span></div><div class="did"><b>Yusuf</b><span>Nineteen first meetings. No second meetings yet.</span></div><div class="did"><b>Kofi</b><span>New CRM shipped in week two. Team is on it.</span></div><div class="did"><b>Ellie</b><span>Nothing specific named yet across three check-ins.</span></div></div></details>
         <div class="two"><div><q>The new CRM went live in week two. The team is on it.</q><cite>Kofi, sales operations</cite></div><div><p>Still working in the old sheet and entering everything twice. Three of them describe it as the reason their admin has doubled.</p><cite style="display:block;margin-top:9px;font-family:var(--mono);font-size:10.5px;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-muted)">Dan, Rachel, Naomi and Yusuf</cite></div></div>
         <div class="foot" style="border-bottom:1px solid var(--gw-border)">Both accounts are on record and neither person knew about the other. Nothing here decides who is right, and the report will not: it is a conversation that was otherwise going to happen at the end of the quarter.</div>
         <div class="settle"><div class="k">The one thing to settle first</div><p>Which buyer can actually sign, and who owns turning a finished pilot into a paid contract?</p></div>
@@ -309,17 +302,6 @@ details.more>summary::marker{color:var(--gw-muted)}
         </div></div>
     </div>
     <p style="font-size:12.5px;color:var(--gw-muted);margin-top:14px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. It quotes what people said about their own work, and it never says who said what about whom.</p>
-  </div>
-</section>
-
-<!-- ═══ THE PAUSE ═════════════════════════════════════════════════════════
-     The page stops once. Everything above has been evidence; this is the
-     sentence the evidence was for, and it is the reason this is not
-     surveillance software. -->
-<section class="pause fade">
-  <div class="w">
-    <p>Nobody was hiding anything.</p>
-    <p>Nobody had the whole picture.</p>
   </div>
 </section>
 
@@ -374,7 +356,6 @@ details.more>summary::marker{color:var(--gw-muted)}
          people actually need. Two of these sentences are pinned by a guard that
          checks the site does not promise more than the product delivers. -->
     <div class="callout">
-      <p>What you say about your own work can appear, in your own words. What you say about anybody else never does, and the report never says who said what about whom. That is why people tell the truth in it, and why the reports are worth reading.</p>
       <p>Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
     </div>
   </div>
