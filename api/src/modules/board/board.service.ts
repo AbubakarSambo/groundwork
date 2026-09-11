@@ -848,10 +848,17 @@ export class BoardService {
     return raw
       .map((g: any) => {
         const spec = LEADERSHIP_PATTERN_BY_KEY[g?.pattern];
-        // An unrecognised pattern is dropped rather than rendered as a bare
-        // string: without its pole and its label it is not actionable, and a
-        // half-rendered read about someone's management is worse than none.
-        if (!spec || !g?.gap) return null;
+        // A read with nothing in it is nothing to show. But a read we have the
+        // words for and no NAME for is still a read, and dropping it meant the
+        // board quietly lost whatever the model had found outside the library.
+        // It is shown under a generic heading instead.
+        if (!g?.gap) return null;
+        const named = spec ?? {
+          pattern: 'unrecognised',
+          pole: null,
+          label: 'Also worth your attention',
+          why: 'This came back outside the patterns we name, so it is shown as it was read.',
+        };
 
         // ENFORCED, not merely requested. The prompt forbids quoting and
         // labelling, but a prompt is a request and this is the one property
@@ -895,7 +902,7 @@ export class BoardService {
          * supplied one.
          */
         const modelNote = g.note == null ? null : String(g.note);
-        const noteText = modelNote ?? String(spec.why);
+        const noteText = modelNote ?? String(named.why);
 
         const toCheck: [string, string][] = [['gap', gapText]];
         if (modelNote !== null) toCheck.push(['note', modelNote]);
@@ -927,9 +934,9 @@ export class BoardService {
           // naming whose it is would undo the point.
           managerParticipantId: '',
           managerName: null,
-          pattern: spec.pattern,
-          pole: spec.pole,
-          label: spec.label,
+          pattern: named.pattern as any,
+          pole: named.pole as any,
+          label: named.label,
           gap: String(g.gap),
           note: noteText,
           periods,

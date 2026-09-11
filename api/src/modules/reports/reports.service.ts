@@ -7,7 +7,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
-import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
+import { markWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
@@ -17,7 +17,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
-import { stillRaised, notRaisedAgain } from '../board/a-blocker-nobody-raised-again';
+import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -51,7 +51,8 @@ import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
-import { isBaselineRound, withoutWhatOneRoundCannotShow } from './a-read-needs-a-run';
+import { withTheDisputeAttached, HOW_TO_READ_A_DISPUTED_LINE } from './a-disputed-line-is-shown-as-disputed';
+import { isBaselineRound, withoutWhatOneRoundCannotShow, whyItIsTooEarly } from './a-read-needs-a-run';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
@@ -715,13 +716,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // resolves back to the same person. See party-labels.ts.
     const labelById = labelsForParties(parties as any);
 
-    const records = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participant: { groundId } },
+    /*
+     * DISPUTED LINES COME THROUGH HERE, LABELLED. See
+     * a-disputed-line-is-shown-as-disputed.ts: a dispute stops a line counting, it does not delete
+     * it. The reads that COUNT still filter it out; this is the read the report is written from, so
+     * the claim and the objection arrive together and the report can say the accounts differ.
+     */
+    const records = (await this.prisma.recordEntry.findMany({
+      where: { participant: { groundId } },
       include: {
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true } },
       },
-    });
+    })).map(withTheDisputeAttached);
 
     // GW-41: fetch the full version object so we can stamp promptVersionId on the
     // report. Without this, Outcome records have no prompt attribution and the
@@ -732,7 +739,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // absent parties misrepresented, and actionable commitments buried.
     // The leadership-pattern block is generated FROM the role map, so adding or
     // changing a pattern changes what the synthesis looks for. Pinned by a test.
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock();
+    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE;
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -1275,23 +1282,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     if (leadNotes.length) {
       const partyEntries = records.map((r) => ({ text: r.text }));
-      const cleaned = withoutWhatOnlyTheLeadSaid(
+      /*
+       * KEPT AND LABELLED, NOT DROPPED. These used to be removed from the report with a line in the
+       * log - read by us, never by the person the finding is about. The report deletes nothing
+       * (11 September); a lead's unsupported read of a person is still not evidence, and saying
+       * that out loud beats making it vanish. A reader who can see the claim and its caveat can go
+       * and check it; a reader who cannot see it cannot.
+       */
+      const marked = markWhatOnlyTheLeadSaid(
         result.divergences ?? [],
         (d: any) => [d?.topic, d?.whatEachSaid, d?.note].filter(Boolean).join(' '),
+        (d: any, caveat: string) => ({ ...d, note: [d?.note, caveat].filter(Boolean).join(' ') }),
         leadNotes,
         partyEntries,
       );
-      for (const { text } of cleaned.dropped) this.logger.warn(whyItWasDropped(text));
-      result.divergences = cleaned.kept as any;
+      for (const { text } of marked.marked) this.logger.warn(whyItWasDropped(text));
+      result.divergences = marked.all as any;
 
-      const cleanedAgreements = withoutWhatOnlyTheLeadSaid(
+      const markedAgreements = markWhatOnlyTheLeadSaid(
         (result.agreements ?? []) as any[],
         (a: any) => (typeof a === 'string' ? a : [a?.topic, a?.note].filter(Boolean).join(' ')),
+        (a: any, caveat: string) => (typeof a === 'string' ? `${a} ${caveat}` : { ...a, note: [a?.note, caveat].filter(Boolean).join(' ') }),
         leadNotes,
         partyEntries,
       );
-      for (const { text } of cleanedAgreements.dropped) this.logger.warn(whyItWasDropped(text));
-      result.agreements = cleanedAgreements.kept as any;
+      for (const { text } of markedAgreements.marked) this.logger.warn(whyItWasDropped(text));
+      result.agreements = markedAgreements.all as any;
     }
 
     /* The model has been seen writing "atStake:" and its whole value INTO the topic, so the heading
@@ -1625,6 +1641,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const gated = baselineRound
       ? withoutWhatOneRoundCannotShow(enrichedEngagementRaw)
       : { engagement: enrichedEngagementRaw, removed: [] as string[] };
+    /* The reader is told why, in place of the section. An unexplained gap reads as "nothing to say". */
+    const tooEarlyToRead = whyItIsTooEarly(gated.removed);
+    if (tooEarlyToRead) (gated.engagement as any).tooEarlyToRead = tooEarlyToRead;
     if (gated.removed.length) {
       this.logger.log(
         `Ground ${groundId}: withheld ${gated.removed.join(', ')} from the first round of a ground opened at the start - there is no run to read yet.`,
@@ -2479,6 +2498,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
           pictureBasis: drafts.length ? 'engines' : 'none',
           theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
           whyNoQuestion: question ? null : WHY_NO_QUESTION,
+          /*
+           * The waiting list here is the still-raised one. Without this line the reader is shown a
+           * shorter list and nothing tells them why it got shorter - they read it as resolved. It
+           * may be. Nobody has said so, and that is what this says.
+           */
+          whatWentQuiet: sayingWhatWentQuiet(wentQuiet),
         };
       })()),
       /*

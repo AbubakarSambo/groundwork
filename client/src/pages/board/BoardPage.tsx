@@ -280,7 +280,7 @@ export function BoardPage() {
                 ) : null}
               </div>
             </div>
-            <div style={{ fontSize: 10.5, color: '#8891BC', textAlign: 'right', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10.5, color: '#A8AFD6', textAlign: 'right', lineHeight: 1.5 }}>
               {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
             </div>
           </div>
@@ -292,7 +292,7 @@ export function BoardPage() {
                   <div key={s.n} style={{
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? '#8BE0AE' : '#8891BC',
+                    color: s.state === 'current' ? '#8BE0AE' : '#A8AFD6',
                     fontWeight: s.state === 'current' ? 700 : 500,
                   }}>
                     {/* "now" on a check-in that has ended is a clock nobody is watching. */}
@@ -320,7 +320,7 @@ export function BoardPage() {
           within one click.
         */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#8891BC', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#A8AFD6', fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
@@ -476,7 +476,7 @@ export function BoardPage() {
                       */}
                       {o.target != null ? (
                         <>
-                          <div style={{ width: 140, height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden' }}>
+                          <div style={{ width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
@@ -620,7 +620,7 @@ export function BoardPage() {
                       )}
                       {d.atStake && (
                         <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)' }}>Why it matters </span>
+                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
                           {d.atStake}
                         </div>
                       )}
@@ -921,7 +921,7 @@ export function BoardPage() {
                   </div>
 
                   {b.coverageVariant === 'bar' && r.remitDefined && (
-                    <div style={{ height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden', marginTop: 9 }}>
+                    <div style={{ height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden', marginTop: 9 }}>
                       <div style={{ height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)' }} />
                     </div>
                   )}
@@ -932,7 +932,7 @@ export function BoardPage() {
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
                       Which of the four this is
                     </span>
                     {r.reasonText}

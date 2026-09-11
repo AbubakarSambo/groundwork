@@ -61,3 +61,24 @@ export function withoutWhatOneRoundCannotShow<T extends Record<string, any>>(
   }
   return { engagement: out, removed };
 }
+
+/**
+ * WHAT THE READER IS TOLD INSTEAD.
+ *
+ * Removing a section and saying nothing leaves the reader with an absence they will read as "there
+ * was nothing to say". There was something to say; it was too early to say it. The report shows the
+ * reason in place of the section rather than showing a gap. Nothing is deleted that could have been
+ * kept - these were never written, because the round they would have to be read from has not
+ * happened.
+ */
+const A_PLAIN_NAME: Record<string, string> = {
+  concernFlags: 'how steady each person has been',
+  hiddenContributors: 'who has been carrying work quietly',
+};
+
+export function whyItIsTooEarly(removed: readonly string[]): string | null {
+  if (!removed.length) return null;
+  const names = removed.map((f) => A_PLAIN_NAME[f] ?? f);
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `It is too early to read ${list}. That needs more than one round to mean anything, and this is the first.`;
+}

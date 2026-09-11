@@ -92,6 +92,10 @@
      rail uses its own colours, so nothing is made worse by this.
      --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
   --gw-muted: #706A65;
+  /* For type below 11px, where a ratio written for 14px text stops being enough. Small uppercase
+     labels at 9.5px measured 4.68-4.85 against white on --gw-muted: passing the letter of the bar
+     and not the point of it. This is the same family, darker, for exactly those labels. */
+  --gw-sub-d: #4A4540;
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
   --gw-clay: #9F5447;

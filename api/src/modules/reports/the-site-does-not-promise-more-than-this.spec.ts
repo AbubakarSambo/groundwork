@@ -115,17 +115,18 @@ describe('what the page promises about who sees what', () => {
     expect(visibleCopy()).not.toMatch(/The same picture goes to everyone in it/i);
   });
 
-  it('says the part that is true: everyone gets it at the same moment', () => {
+  it('says the part that is true: the people in it get the same report', () => {
     /**
-     * The claim, not one sentence's wording. It was the heading "Everyone gets the report, at the
-     * same moment." on a section Hafsah later removed, and it survives inside the report example:
-     * "If you are one of the eight, this is your report too. Same report, same moment."
+     * WHAT CHANGED, AND WHY. This pinned "at the same moment", which Hafsah read on the live page
+     * and said plainly is not true - the report does not reach everybody in one instant, and the
+     * page should not say it does. The wording is now "this is your report too. The same one."
      *
-     * Pinned as either phrasing on purpose. What must not disappear is the PROMISE - a page that
-     * describes a private check-in and never says the report is shared simultaneously invites the
-     * reader to assume it is not. Which sentence carries it is a copy decision.
+     * The PROMISE is what must not disappear, and the promise is sameness, not simultaneity: a
+     * page that describes a private check-in and never says the report is shared invites the
+     * reader to assume it is not. Which sentence carries it is a copy decision; that it is carried
+     * is not.
      */
-    expect(visibleCopy()).toMatch(/Everyone gets the report, at the same moment|Same report, same moment/i);
+    expect(visibleCopy()).toMatch(/this is your report too\. The same one/i);
   });
 });
 

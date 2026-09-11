@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TwoAccountsSideBySide, Folded } from '@/components/gw/two-accounts-side-by-side'
 import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -83,13 +84,13 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
       <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Resolution</div>
       {resolutionState && (
         <div style={{ marginBottom: data ? 12 : 0 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{resolutionState}</div>
         </div>
       )}
       {data && (
         <div>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 6 }}>Current status</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 6 }}>Current status</span>
           {isClosed && data.resolution ? (
             <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>Closed: {data.resolution.endState}</div>
@@ -517,19 +518,19 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
       {note && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{note}</div>}
       {observation && (
         <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>What we noticed</span>
           {observation}
         </div>
       )}
       {whyItMatters && (
         <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>Why it matters</span>
           {whyItMatters}
         </div>
       )}
       {recommendedMove && (
         <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
       )}
@@ -555,7 +556,7 @@ function HonestClose({ aligned, open, revisit, risk }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {cells.map(cell => cell.value ? (
           <div key={cell.label} style={{ borderRadius: 8, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-text)', background: cell.bg }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 3, color: cell.color }}>{cell.label}</span>
+            <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 3, color: cell.color }}>{cell.label}</span>
             {cell.value}
           </div>
         ) : null)}
@@ -1275,17 +1276,16 @@ export function ReportBody({
                         <AreaBlock key={i} title={area.title} observation={area.observation} whyItMatters={area.whyItMatters} recommendedMove={area.recommendedMove} />
                       ))
                     : divergences.map((d: any, i: number) => (
-                        // The engine now emits these ranked, most significant
-                        // first, so render order is the ranking - no re-sorting
-                        // here. `atStake` is what happens to the work if the gap
-                        // holds; it is omitted when the record could not support
-                        // saying anything, so it is conditional on being present.
-                        <AreaBlock
-                          key={i}
-                          title={d.topic}
-                          observation={d.positions.map((p: any) => p.view).join(' ')}
-                          whyItMatters={d.atStake}
-                        />
+                        /*
+                         * The engine emits these ranked, most significant first, so render order is
+                         * the ranking - no re-sorting here.
+                         *
+                         * WHAT CHANGED. This was `d.positions.map(p => p.view).join(' ')`: the two
+                         * conflicting accounts flattened into one paragraph, whose each one was
+                         * thrown away, and `d.evidence` rendered nowhere while the legend above
+                         * promised "the evidence behind it". Same rows, same order, both accounts.
+                         */
+                        <TwoAccountsSideBySide key={i} difference={d} />
                       ))
                   }
                 </div>
@@ -1308,7 +1308,7 @@ export function ReportBody({
                   the person leading it, because that is what the prompt is
                   instructed to produce and the framing has to match or the whole
                   thing reads as an appraisal. */}
-              {isAdmin && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
+              {(isAdmin || user?.role === 'ADMIN') && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                   <SecH>Worth your attention as the person leading this</SecH>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -1326,10 +1326,17 @@ export function ReportBody({
                 </div>
               )}
 
-              {/* Alignment reached */}
+              {/*
+                FOLDED, AND FOLDED AS A REAL `<details>`.
+
+                This list is long and it is the part a reader already knows - what everybody
+                already sees the same way. It pushed the differences, which is what they came for,
+                below the fold. A `<details>` keeps every word in the document, prints open, and is
+                announced as expandable; a `useState` and a conditional render would delete it from
+                the page, which is the one thing this pass exists not to do.
+              */}
               {agreements.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <SecH>Alignment reached</SecH>
+                <Folded summary={`${agreements.length} ${agreements.length === 1 ? 'thing you already see' : 'things you already see'} the same way`}>
                   {hasAreas
                     ? areas.filter((a: any) => a.reached).map((area: any, i: number) => (
                         <AreaBlock key={i} title={area.title} note={area.note} reached />
@@ -1340,7 +1347,7 @@ export function ReportBody({
                         </div>
                       ))
                   }
-                </div>
+                </Folded>
               )}
 
               <HonestClose aligned={honestClose.aligned} open={honestClose.open} revisit={honestClose.revisit} risk={honestClose.risk} />
@@ -1354,7 +1361,7 @@ export function ReportBody({
                 Lead only, and only once the ground is closing - the server returns nothing
                 before that, so this renders when it has something and never otherwise.
               */}
-              {isAdmin && (report as any).softSpots && (
+              {(isAdmin || user?.role === 'ADMIN') && (report as any).softSpots && (
                 <WhereTheRecordIsThin
                   spots={(report as any).softSpots}
                   nameFor={(pid) => {
@@ -1364,7 +1371,7 @@ export function ReportBody({
                 />
               )}
 
-              {isAdmin && (report as any).whatTheGroundCanTellYou && (
+              {(isAdmin || user?.role === 'ADMIN') && (report as any).whatTheGroundCanTellYou && (
                 <WhatTheGroundCanTellYou
                   section={(report as any).whatTheGroundCanTellYou}
                   note={(report as any).whatTheGroundCanTellYouNote}
@@ -1373,15 +1380,23 @@ export function ReportBody({
                 />
               )}
 
-              {/* The full account, after the sharp part. W13-7. */}
-              <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
-
+              {/*
+                MOVED UP, NOT CUT. This sat under the full account, which is the longest block on
+                the page, so the one sentence a lead most needs before walking into the room was
+                the last thing they reached. It is the same sentence from the same field.
+              */}
               {report.centralQuestion && (
-                <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px' }}>
-                  <SecH>What comes next</SecH>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{report.centralQuestion}</div>
+                <div style={{ marginBottom: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '12px 14px' }}>
+                  <SecH>The one thing to settle first</SecH>
+                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{report.centralQuestion}</div>
                 </div>
               )}
+
+              {/* The full account, after the sharp part. W13-7, and folded: it is explicitly the
+                  long read, and it repeats what the sharp part above already said. */}
+              <Folded summary="The full account">
+                <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
+              </Folded>
 
               {Array.isArray((report as any).engagement?.hiddenContributors) && (report as any).engagement.hiddenContributors.length > 0 && (
                 <HiddenContributorsSection groundId={id!} contributors={(report as any).engagement.hiddenContributors} isInitiator={isAdmin} />

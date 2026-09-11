@@ -41,7 +41,11 @@ function opening(picture: string): string {
   if (!t) return '';
   const end = t.search(/[.!?](\s|$)/);
   const first = end === -1 ? t : t.slice(0, end + 1);
-  return first.length > 220 ? `${first.slice(0, 217)}...` : first;
+  /*
+   * The whole sentence, not 217 characters of it. A line cut mid-word is the report deciding the
+   * reader cannot have the end of somebody's thought; length is a layout problem and belongs in CSS.
+   */
+  return first;
 }
 
 function count(divergences: unknown): number {
