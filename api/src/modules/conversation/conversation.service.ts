@@ -56,6 +56,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
+import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
@@ -4012,11 +4013,43 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       take: 200,
     });
 
-    const result = detectFunction(
+    let result = detectFunction(
       p.roleAsDescribed,
       entries.map((e) => e.text),
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
     );
+
+    /**
+     * WHEN THE KEYWORDS FIND NOTHING, READ IT.
+     *
+     * The matcher scores zero on all ten lists for 294 of the 298 people who have said anything at
+     * all - not a tuning problem, just that nobody writes the way the lists expect. So 92% had no
+     * job on record, the role map never loaded, and nobody was read in the terms of their own work.
+     *
+     * The matcher stays the fast path: free, deterministic, and usually right when it fires. This
+     * runs only when it did not, and only when there is something to read. It never overrides a
+     * read that already exists - a model call that can quietly replace a settled yardstick is a
+     * yardstick that moves.
+     */
+    if (!result.fn && entries.length) {
+      try {
+        const said = await this.anthropic.extract<{ fn?: string; certainty?: string; basis?: string }>(
+          WHAT_KIND_OF_WORK_PROMPT,
+          [{ role: 'user', content: entries.map((e) => e.text.replace(/^\[[^\]]*\]\s*/, '')).join('\n') }],
+          WHAT_KIND_OF_WORK_SCHEMA as any,
+          { fast: true },
+        );
+        const read = theJobTheyDescribed(said ?? null);
+        if (read) {
+          result = read;
+          this.logger.log(`Function read from the account for ${participantId}: ${read.fn} (${read.confidence}). ${read.basis}`);
+        }
+      } catch (err) {
+        /* The matcher's answer stands. Reading the job is an improvement on a silence, never a
+           reason a session cannot be completed. */
+        this.logger.warn(`Could not read the kind of work for ${participantId}: ${(err as Error)?.message}`);
+      }
+    }
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
