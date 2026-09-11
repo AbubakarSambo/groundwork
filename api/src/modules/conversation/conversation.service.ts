@@ -55,6 +55,7 @@ import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
+import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
@@ -2635,17 +2636,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-    if (!map?.failureSignals?.length || !confident) {
-      /* A WRITER THAT RAN AND COULD NOT COACH STILL WRITES. 95 of the first 100 backfilled sessions
-         left no row here, which is the same dark shape as a writer that never ran. The row says why. */
-      await this.recordCoachingStep(participantId, sessionNumber, {
-        noticed: null, lookingLike: null, reason: null, hadSubstance: false,
-        observed: null,
-        observations: undefined,
-        why: !map?.failureSignals?.length ? `no role map for function ${participant?.detectedFunction ?? 'none'}` : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`,
-      } as any).catch(() => undefined);
-      return;
-    }
+    /**
+     * A ROLE NOBODY MAPPED IS STILL A PERSON.
+     *
+     * This returned here, before reading a word of the transcript, whenever there was no role map
+     * or the function sat below the confidence floor. Both exits are RIGHT about the role - a map
+     * chosen from a guess coaches somebody out of the wrong one - and both were wrong about the
+     * person: 477 people on record, 32 clearing this gate, so 93% could never be coached about
+     * anything, not because nothing was noticed but because nothing was ever looked at.
+     *
+     * So the role gate now selects WHICH behaviours are read rather than whether anybody is read at
+     * all. With a confident map, the function's own failure signals, as before. Without one, the
+     * universal floor - which is deliberately weaker and says so: every line of it is about the
+     * ACCOUNT, not about the work, because the work is the part that cannot be read without
+     * knowing the job.
+     */
+    const readFromTheAccount = !map?.failureSignals?.length || !confident;
+    const whyTheFloor = readFromTheAccount
+      ? (!map?.failureSignals?.length
+        ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
+        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`)
+      : null;
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2656,7 +2667,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
+    const behaviours = (readFromTheAccount ? theBehavioursAnybodyCanBeRead() : map!.failureSignals!)
+      .map((b, i) => `${i}. ${b}`).join('\n');
 
     /**
      * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
@@ -2749,7 +2761,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // signalRead applies the guards that matter - an index off the end, an empty
     // reason - and returns null rather than something to hand a person.
-    const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
+    const read = readFromTheAccount
+      ? universalSignalRead(observed?.index ?? -1, observed?.reason ?? '')
+      : signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
 
     /**
      * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
@@ -2811,6 +2825,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         reason: offerable ? read!.reason : null,
         observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
+        /* Which floor this step came off. A step read from the account rather than the role has to
+           be traceable as one - it is weaker by construction, and a row that does not say so would
+           be indistinguishable later from a role-mapped read. */
+        why: whyTheFloor ?? undefined,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
