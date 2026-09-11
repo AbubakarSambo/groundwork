@@ -928,7 +928,7 @@ export function ChatPage() {
                 padding: '10px 14px',
                 fontSize: 14,
                 lineHeight: 1.6,
-                whiteSpace: 'pre-wrap',
+                whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                 opacity: isWaiting(m) ? 0.5 : 1,
                 boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
               }}

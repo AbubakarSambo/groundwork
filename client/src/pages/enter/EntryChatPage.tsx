@@ -2639,7 +2639,7 @@ export function EntryChatPage() {
                     padding: '10px 14px',
                     fontSize: 14,
                     lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                     boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                   }}
                 >
@@ -2772,7 +2772,7 @@ export function EntryChatPage() {
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
                   border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
                   padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                 }}>
                   {onboardingDraft ? onboardingDraft : (
                     <>
@@ -3075,7 +3075,7 @@ export function EntryChatPage() {
                       padding: '10px 14px',
                       fontSize: 14,
                       lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap',
+                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                       opacity: (m.content === '…') ? 0.45 : 1,
                       transition: 'opacity .3s',
                       boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',

@@ -312,7 +312,7 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
         padding: '10px 14px',
         fontSize: 14,
         lineHeight: 1.65,
-        whiteSpace: 'pre-wrap',
+        whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
         boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
@@ -439,7 +439,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
           </div>
           {waiting.map(n => (
             <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
-              <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{n.text}</div>
+              <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
               <button
                 onClick={() => remove.mutate(n.id)}
                 title="Delete this note"

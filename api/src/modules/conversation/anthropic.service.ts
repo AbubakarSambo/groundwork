@@ -143,6 +143,32 @@ const THINKING_BUDGET = 2048;
 // deeper budget - a one-time spinner there is fine.
 const CONVERSATION_THINKING_BUDGET = 256;
 
+/** How long the chat waits for a stream to open before saying it could not. */
+export const OPENING_A_STREAM_WAITS = 45_000;
+/** And how long it waits between chunks once one has opened. */
+export const A_CHUNK_WAITS = 30_000;
+
+/**
+ * A promise with a clock on it, and the clock is always cleared.
+ *
+ * Written out rather than inlined because the version that leaks is the one that looks right: a
+ * `Promise.race` against a bare `setTimeout` keeps the timer alive after the race is won, and in a
+ * chat that is one dangling timer per answer.
+ */
+export async function withADeadline<T>(work: Promise<T>, ms: number, whatFailed: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${whatFailed} after ${Math.round(ms / 1000)}s`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 @Injectable()
 export class AnthropicService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AnthropicService.name);
@@ -322,11 +348,28 @@ export class AnthropicService implements OnApplicationBootstrap {
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
-    const stream = await this.client.models.generateContentStream({
-      model: this.conversationModel,
-      contents,
-      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
-    });
+    /*
+     * A STREAM THAT NEVER ARRIVES USED TO WAIT FOR EVER.
+     *
+     * `respond()` has had a ninety-second ceiling since the hour every model call failed while
+     * /health said ok. This one, the path the chat actually uses, had none - not on opening the
+     * stream and not between chunks. Watched live: an answer typed into a check-in sat for over ten
+     * minutes with the dots still going, because nothing was ever going to give up.
+     *
+     * Two clocks, because there are two ways to hang. One on opening the stream, and one between
+     * chunks - a stream that opens and then stalls halfway through a sentence never trips a total
+     * budget that a long healthy answer would also trip. Both throw, and a throw is something the
+     * caller can say out loud. Waiting is not.
+     */
+    const stream = await withADeadline(
+      this.client.models.generateContentStream({
+        model: this.conversationModel,
+        contents,
+        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+      }),
+      OPENING_A_STREAM_WAITS,
+      'Gemini respondStream() did not open',
+    );
     /*
      * A CHUNK OF THE ANSWER WENT MISSING, MID-SENTENCE, AND WAS SAVED THAT WAY.
      *
@@ -341,8 +384,11 @@ export class AnthropicService implements OnApplicationBootstrap {
      * part with text is answer.
      */
     let answerHasBegun = false;
-    for await (const chunk of stream) {
-      const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
+    const chunks = (stream as AsyncIterable<unknown>)[Symbol.asyncIterator]();
+    for (;;) {
+      const next = await withADeadline(chunks.next(), A_CHUNK_WAITS, 'Gemini respondStream() stalled mid-answer');
+      if (next.done) break;
+      const parts = (next.value as any)?.candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
         if (part?.thought && !answerHasBegun) continue;
         if (part?.text) {
