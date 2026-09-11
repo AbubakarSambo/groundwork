@@ -49,6 +49,45 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
  * the facts and their sources are unchanged, only the shape is.
  */
 const ROW: React.CSSProperties = { padding: '16px 20px', borderTop: '1px solid var(--gw-border)' }
+
+/**
+ * WHAT A PHONE CHANGES ON THIS PAGE, AND IT IS NOT THE TYPE SIZE OF THE BODY.
+ *
+ * Two blocks were read back as too big to take in on a phone, and both for the same reason: they
+ * are sized for a SHORT string and the real ones are not short.
+ *
+ * The finding is set at 16.5px semi-bold because on a laptop it is one line that has to be the
+ * first thing anybody sees. The finding this board actually produced runs to two sentences - "the
+ * role was never clearly defined, so there is no boundary to measure work against. Define what
+ * this role owns before reading anything into where work is landing." At display size on a 375px
+ * column that is eight lines of heavy type before the reader has reached anything else.
+ *
+ * At a glance has the same shape of problem: four tiles whose sub-clause is a whole sentence, in a
+ * grid that collapses to one column, so a block meant to be glanced at becomes a screen of its
+ * own. It keeps its clause - a tile that is a label and a figure is a scoreboard - and loses the
+ * padding and the display-size figure.
+ *
+ * Nothing is cut. A phone gets the same words at a size that lets somebody read them.
+ */
+const SHEET = `
+.gw-sr .gw-find     { font-size: 16.5px; line-height: 1.4; font-weight: 600; }
+.gw-sr .gw-find-why { font-size: 12.5px; line-height: 1.6; }
+.gw-sr .gw-tile     { padding: 14px 18px; }
+.gw-sr .gw-tile-n   { border-left: 1px solid var(--gw-border); }
+.gw-sr .gw-tile-v   { font-size: 17px; font-weight: 800; line-height: 1.15; }
+.gw-sr .gw-tile-l   { font-size: 11.5px; font-weight: 700; }
+.gw-sr .gw-tile-s   { font-size: 12px; line-height: 1.45; }
+@media (max-width: 640px) {
+  .gw-sr .gw-find     { font-size: 15px; line-height: 1.5; font-weight: 600; }
+  .gw-sr .gw-find-why { font-size: 13px; }
+  /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
+  .gw-sr .gw-tile     { padding: 12px 16px; }
+  .gw-sr .gw-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
+  .gw-sr .gw-tile-v   { font-size: 16px; }
+  .gw-sr .gw-tile-l   { font-size: 12px; }
+  .gw-sr .gw-tile-s   { font-size: 13px; line-height: 1.5; }
+}
+`
 const LABEL: React.CSSProperties = {
   fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
   color: 'var(--gw-muted)', marginBottom: 10,
@@ -173,7 +212,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
   const next = () => (step += 1)
 
   return (
-    <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+    <div className="gw-sr" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+      <style>{SHEET}</style>
 
       {/* ── The masthead: what this is for, and where you are in it. */}
       <div style={{ padding: '16px 20px' }}>
@@ -212,14 +252,14 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {finding && (
         <div style={{ padding: '16px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
           <div style={{ ...LABEL, color: 'var(--gw-amber-t)', marginBottom: 8 }}>The finding</div>
-          <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.4, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{finding.text}</p>
+          <p className="gw-find" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '58ch' }}>{finding.text}</p>
           {finding.basis && (
-            <small style={{ display: 'block', marginTop: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>{finding.basis}</small>
+            <small className="gw-find-why" style={{ display: 'block', marginTop: 8, color: 'var(--gw-amber-t)' }}>{finding.basis}</small>
           )}
           {/* When it would have come up on its own. Under the finding and nowhere else: alone it is a
               remark about a calendar; here it is why the finding matters now rather than later. */}
           {finding.wouldHaveSurfaced && (
-            <small style={{ display: 'block', marginTop: 6, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, opacity: .85 }}>
+            <small className="gw-find-why" style={{ display: 'block', marginTop: 6, color: 'var(--gw-amber-t)', opacity: .85 }}>
               {finding.wouldHaveSurfaced}
             </small>
           )}
@@ -230,12 +270,12 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {(d.atAGlance ?? []).length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
           {d.atAGlance.map((r: any, i: number) => (
-            <div key={r.label} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 }}>{r.label}</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)', lineHeight: 1.15 }}>{r.value}</div>
+            <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
+              <div className="gw-tile-l" style={{ color: 'var(--gw-sub-d)', marginBottom: 4 }}>{r.label}</div>
+              <div className="gw-tile-v" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>{r.value}</div>
               {/* `sub` is the whole clause saying what the number is OF - a tile that is a label
                   and a figure is a scoreboard, and the clause is what stops it being one. */}
-              {r.sub && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.45 }}>{r.sub}</div>}
+              {r.sub && <div className="gw-tile-s" style={{ color: 'var(--gw-sub)', marginTop: 4 }}>{r.sub}</div>}
             </div>
           ))}
         </div>

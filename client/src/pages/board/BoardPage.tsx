@@ -16,6 +16,8 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
+import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 
 /**
  * The delivery board.
@@ -72,6 +74,8 @@ export function BoardPage() {
     enabled: !!id,
   })
   const user = useAuthStore((st) => st.user)
+  /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
+  const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -469,17 +473,39 @@ export function BoardPage() {
         {shown.quickRead && b.quickRead && (
           <>
             <Sec title="The quick read" src="alignment and trust from the report" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
-              {b.quickRead.map((q) => (
-                <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1,
-                    color: q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)',
-                  }}>{q.value}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
-                </div>
-              ))}
+            {/*
+              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
+
+              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
+              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
+              clause under it - about a phone screen and a half to read four short facts.
+
+              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
+              is the thing that stops it being one. What goes is the packaging. On a phone these
+              are four rows of one card, the value beside its label rather than under it at display
+              size, and the clause underneath in body text.
+            */}
+            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
+              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
+              : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+              {b.quickRead.map((q, i) => {
+                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
+                return onAPhone ? (
+                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
+                  </div>
+                ) : (
+                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -792,6 +818,15 @@ export function BoardPage() {
           <>
             <Sec title="Sessions this phase" src="from sessions" />
             <Card>
+              {/*
+                A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
+                IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
+                nine pills behind a scrollbar, names wrapping to two lines to make room for it.
+                The phone gets the same facts down the page instead - see the component.
+              */}
+              {onAPhone ? (
+                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows as any} sessions={b.checkInGrid.sessions} />
+              ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
                   <thead>
@@ -841,6 +876,7 @@ export function BoardPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </Card>
           </>
           )
