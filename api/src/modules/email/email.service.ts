@@ -487,7 +487,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>Groundwork is where you and the people you work with each give your own account of a piece of work, and get one shared record of it. Setting a password means you can sign in without Google.</p>` +
+        `<p>Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can sign in without Google.</p>` +
         `<p><a href="${url}">Set password</a></p>` +
         `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
       ),
@@ -555,7 +555,7 @@ export class EmailService implements OnModuleInit {
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
-      subject: `${founderName} invited you to check in on: ${groundLabel}`,
+      subject: `${founderName} would like your take on ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
@@ -811,7 +811,7 @@ export class EmailService implements OnModuleInit {
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared record is ready: ${groundLabel}`,
+      subject: `The shared picture for ${groundLabel} is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -821,10 +821,10 @@ export class EmailService implements OnModuleInit {
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
       html: this.layout(
-        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared record is open to all of you at the same moment.</p>` +
+        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
         `<p>It shows where your accounts agree, where they differ, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
-        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared record →</a></p>` +
-        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each give their own account of it, privately, and get one shared record back.</p>`,
+        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
       ),
     }, undefined, 'sendReportReady');
   }
@@ -890,7 +890,7 @@ export class EmailService implements OnModuleInit {
   async sendLateCorrectionNotice(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Someone added to what they said on "${groundLabel}"`,
+      subject: `Somebody added to what they said on "${groundLabel}"`,
       html: this.layout(
         `<p>One of the parties on <strong>${escapeHtml(groundLabel)}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
@@ -903,7 +903,7 @@ export class EmailService implements OnModuleInit {
   async sendActivationReminder(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your shared report for "${groundLabel}" is waiting`,
+      subject: `The shared picture for "${groundLabel}" is waiting for you`,
       html: this.layout(
         `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
          <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
@@ -925,7 +925,7 @@ export class EmailService implements OnModuleInit {
       to: email,
       subject: `Your report for "${groundLabel}" is ready to view`,
       html: this.layout(
-        `<p>Your shared record for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
+        `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
          <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
@@ -941,10 +941,10 @@ export class EmailService implements OnModuleInit {
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${escapeHtml(participantEmail)}</strong> has completed their check-in on <strong>${escapeHtml(groundLabel)}</strong>. Their account is on record.</p>
+        `<p><strong>${escapeHtml(participantEmail)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and the shared report once it is ready. You cannot see what anybody wrote — accounts stay private until the record is released to everybody at once.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and the picture reaches everybody at the same moment.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }
@@ -1007,11 +1007,11 @@ export class EmailService implements OnModuleInit {
     const endStateLabel = this.endStateLabel(endState);
     await this.sendEmail({
       to: email,
-      subject: 'A resolution has been proposed. Your confirmation is needed',
+      subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
-        `<p><strong>${escapeHtml(proposerLabel)}</strong> has proposed the following outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
-         <p>The check-in closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
-         <p><a href="${groundUrl}">View and confirm</a></p>`,
+        `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
+         <p>It only closes when everybody still involved says the same thing. Have a look, and either agree or say where you see it differently.</p>
+         <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
     }, undefined, 'sendResolutionProposal');
   }
@@ -1108,7 +1108,7 @@ export class EmailService implements OnModuleInit {
   async sendRecordPortabilityNotice(userEmail: string, firstName: string, downloadUrl: string): Promise<void> {
     await this.sendEmail({
       to: userEmail,
-      subject: 'Your Groundwork record is yours to keep',
+      subject: 'What you shared on Groundwork is yours to keep',
       html: this.layout(
         `<p>${greeting(firstName)} Your organisation's Groundwork subscription has been cancelled.</p>
          <p>Your record does not disappear. It belongs to you. Sign in and download it from your settings: <a href="${downloadUrl}">what Groundwork holds about you</a>.</p>`,
@@ -1225,6 +1225,8 @@ export class EmailService implements OnModuleInit {
     to: string,
     name: string,
     groundName: string,
+    /* Still taken, still true, and deliberately not said to them any more - see the note on the
+       body below. Kept in the signature because the caller counts it and the log line wants it. */
     missedCount: number,
     /**
      * A WAY BACK IN, WHICH THIS EMAIL DID NOT HAVE.
@@ -1238,12 +1240,21 @@ export class EmailService implements OnModuleInit {
   ): Promise<void> {
     await this.sendEmail({
       to,
-      subject: `Your version is still missing from ${groundName}`,
+      subject: `Still time to say how ${groundName} is going`,
       html: this.layout(
-        `<p>${greeting(name)}</p>
-         <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
-         <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
-         <p><a href="${checkInUrl}">Add your version</a></p>`,
+        /*
+        * THIS ONE GOES TO THE PERSON LEAST LIKELY TO WANT IT.
+        *
+        * It counted their misses to them - "you have missed 2 check-ins in a row", "your record is
+        * incomplete" - which is an attendance register, and the one mail where being told off
+        * guarantees no reply. The count is still true and still useful to us; it is not what this
+        * person needs to read. What they need is that it is not too late and nobody has seen
+        * anything yet.
+        */
+       `<p>${greeting(name)}</p>
+         <p>We have not heard from you on <strong>${groundName}</strong> in a while.</p>
+         <p>There is still time. The shared picture cannot show what you are seeing until you say it, and what you write stays private until everybody is in. It belongs to you, not to the organisation.</p>
+         <p><a href="${checkInUrl}">Say how it is going</a></p>`,
       ),
     }, undefined, 'sendAbsenceReminder');
   }
