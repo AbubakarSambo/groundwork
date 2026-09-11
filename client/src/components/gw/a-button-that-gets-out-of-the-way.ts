@@ -25,8 +25,6 @@ export type Resting = {
   y: number;
 };
 
-/** Where it sits when nobody has ever moved it: where it has always been. */
-export const WHERE_IT_STARTS: Resting = { corner: 'bottom-right', x: 20, y: 20 };
 
 /**
  * Kept away from the very edge so the button is never half-off, and away from the mobile nav strip
@@ -34,6 +32,27 @@ export const WHERE_IT_STARTS: Resting = { corner: 'bottom-right', x: 20, y: 20 }
  */
 export const A_MARGIN = 8;
 export const THE_NAV_STRIP_IS = 60;
+/**
+ * The composer row on a chat page: the text box, the send button and their padding. Reserved at
+ * the bottom-right the same way the nav strip is reserved at the bottom, because the button
+ * landing on the send control is the complaint that keeps coming back.
+ */
+export const A_COMPOSER_ROW_IS = 76;
+
+/**
+ * WHERE IT SITS WHEN NOBODY HAS EVER MOVED IT.
+ *
+ * It used to start twenty pixels off the bottom-right, which on every chat surface in this product
+ * is exactly where the send button is - so the first thing a new person met was a feedback button
+ * covering the control they needed, before they had any reason to know it could be dragged.
+ *
+ * Dragging is still the answer to "it is covering something". But the default should not need it,
+ * and the bottom-right of a chat page is the one corner the product's own layout guarantees is
+ * taken. So it starts clear of the composer's row. Anybody who has already put it somewhere keeps
+ * where they put it.
+ */
+export const WHERE_IT_STARTS: Resting = { corner: 'bottom-right', x: 20, y: 20 + A_COMPOSER_ROW_IS };
+/* keepItOnScreen enforces the same clearance on a remembered position, so this is the floor too. */
 
 export type Where = { x: number; y: number };
 export type Viewport = { width: number; height: number };
@@ -82,9 +101,18 @@ export function keepItOnScreen(resting: Resting, view: Viewport, size = 44): Res
     x: Math.max(A_MARGIN, view.width - size - A_MARGIN),
     y: Math.max(A_MARGIN, view.height - size - A_MARGIN),
   };
-  /* The nav strip only exists at the bottom and only on a narrow screen. Anywhere else this floor
-     is just the ordinary margin. */
-  const floor = resting.corner.startsWith('bottom') && view.width < 768 ? THE_NAV_STRIP_IS + A_MARGIN : A_MARGIN;
+  /*
+   * THE FLOOR, AND WHY THE COMPOSER IS PART OF IT.
+   *
+   * The nav strip only exists at the bottom and only on a narrow screen. The composer is at the
+   * bottom of every chat surface on every screen, and it is the thing this button keeps landing
+   * on - including for anybody whose remembered position was taken before this reservation
+   * existed, which is why it belongs in the floor and not only in the default. Reserving it on
+   * pages with no composer costs seventy-six pixels of empty margin and nothing else.
+   */
+  const bottom = resting.corner.startsWith('bottom');
+  const navStrip = bottom && view.width < 768 ? THE_NAV_STRIP_IS : 0;
+  const floor = bottom ? navStrip + A_COMPOSER_ROW_IS + A_MARGIN : A_MARGIN;
   return {
     corner: resting.corner,
     x: Math.min(Math.max(resting.x, A_MARGIN), room.x),

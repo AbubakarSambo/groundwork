@@ -2337,7 +2337,9 @@ export function EntryChatPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
+    /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
+       does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
+    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
 
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>

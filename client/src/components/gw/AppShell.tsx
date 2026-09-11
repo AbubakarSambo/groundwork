@@ -1361,7 +1361,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <FeedbackWidget />
 
       <style>{`
+        /*
+         * HOW MUCH ROOM A FULL-HEIGHT PAGE ACTUALLY HAS.
+         *
+         * A chat page fills the viewport and scrolls its own message list, so the composer stays
+         * on screen however long the conversation gets. It asked for 100vh. But on a narrow screen
+         * the main element also reserves 60px at the bottom for the fixed nav strip - so the page came to a
+         * viewport plus sixty, every chat scrolled by exactly the height of the nav bar, and the
+         * one thing you always need, the box you type in, was the thing pushed off the bottom.
+         *
+         * The room available is the viewport less whatever is pinned over it. Declared here, next
+         * to the padding that reserves it, because the two numbers have to agree and they were in
+         * different files.
+         */
+        :root { --gw-bottom-nav: 0px; }
         @media (max-width: 640px) {
+          :root { --gw-bottom-nav: calc(60px + env(safe-area-inset-bottom)); }
           .gw-sidebar-desktop { display: none !important; }
           .gw-sidebar-mobile  { display: flex !important; }
           .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }

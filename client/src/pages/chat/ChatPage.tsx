@@ -704,7 +704,9 @@ export function ChatPage() {
 
   /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
   return (
-    <div style={{ height: '100dvh', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
+       height had just subtracted. See --gw-bottom-nav in AppShell. */
+    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}
       {/**
         * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.
