@@ -196,7 +196,24 @@ export function BoardPage() {
     quickRead: has('quickRead') && !!b.quickRead,
     startingState: has('startingState') && !!b.startingState,
     decisions: has('decisions') && !!b.decisions?.length,
-    objectives: has('objectives') && !!b.objectives?.length,
+    /*
+     * THE ONLY WAY TO SET A TARGET WAS INSIDE A SECTION THAT ONLY APPEARED ONCE A TARGET EXISTED.
+     *
+     * Every other section here hides when it is empty, which is right: a heading with nothing under
+     * it reads as a screen that failed to load. This one is not like the others. It holds the
+     * lead's "Add target" form AND the server's own prompt for the empty case - "No targets set
+     * yet, so there is nothing for this board to measure progress against. Add two or three things
+     * this ground is aiming for." Gated on `b.objectives.length`, that sentence could never be
+     * read by the only person able to act on it, and the form to act with was hidden beside it.
+     *
+     * Found by setting one up as a customer would: ten salespeople, a number for each, and nowhere
+     * in the product to put a single one of them. It is also why no objective in the database has
+     * ever carried a target - not neglect, unreachable by construction.
+     *
+     * So it shows when there is something to show, OR when the reader is the person who can add
+     * the first one. A party who cannot edit still sees nothing rather than an empty heading.
+     */
+    objectives: has('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
     cascade: has('cascade') && !!b.cascade,
     hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
     divergence: has('divergence') && !!b.divergence,
