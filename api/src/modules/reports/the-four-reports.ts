@@ -72,7 +72,20 @@ export const WHERE_IT_BELONGS: Record<string, Placed> = {
   pictureLines: { cell: 'B_SESSION' },
   writtenPicture: { cell: 'B_SESSION' },
   pictureBasis: { cell: 'B_SESSION' },
-  divergences: { cell: 'B_SESSION', because: 'A difference is a fact about one sitting. It becomes a pattern only if it survives.' },
+  /**
+   * A DIFFERENCE IS NAMED ON THE SESSION AND READ IN FULL ON THE BOARD, and that split is
+   * deliberate rather than an omission.
+   *
+   * On the session's own report each difference arrives as a title in the still-open column: this
+   * is what has not been settled. The board carries the substance - both accounts, what each rests
+   * on, and what it costs if it holds - because `the-board-answers-its-own-question` moved it there
+   * so the board would stop sending a reader to a second document for it.
+   *
+   * So the field is session-scoped and `whereThingsStand` is the block that draws it. The run-scope
+   * block `whereAccountsDiffer` is the fuller read of the same thing, and the two are not
+   * duplication: one says a difference exists, the other says what it is.
+   */
+  divergences: { cell: 'B_SESSION', because: 'Named here as a title under still-open; read in full on the board.' },
   agreements: { cell: 'B_SESSION' },
   centralQuestion: { cell: 'B_SESSION' },
   theConversationWorthHaving: { cell: 'B_SESSION' },
@@ -170,6 +183,61 @@ export function whatThisSurfaceShows(crop: Crop, opts: { leadOnly?: boolean } = 
   const out = new Set(theFieldsOf(crop.cell, opts));
   for (const field of Object.keys(crop.without ?? {})) out.delete(field);
   return [...out];
+}
+
+/**
+ * THE EIGHT SURFACES, AND WHICH OF THE FOUR EACH ONE IS.
+ *
+ * A surface names its cell and what it leaves out. Two of the eight name no cell at all, and that
+ * is the decision rather than an omission - see below.
+ */
+export const EVERY_SURFACE: Record<string, Crop | { index: true; because: string }> = {
+  endOfTheEntryChat: {
+    cell: 'A_SESSION',
+    without: {
+      whereYouAre: 'there is no movement on a first session, and it says so rather than drawing an empty block',
+      howMuchYouGaveIt: 'no second account to be solid against yet',
+    },
+  },
+  endOfASignedInCheckIn: { cell: 'A_SESSION' },
+  theSessionReportTop: { cell: 'A_SESSION' },
+  theSessionReportBottom: { cell: 'B_SESSION' },
+  myRecord: { cell: 'A_RUN' },
+  theBoard: { cell: 'B_RUN' },
+  overWhatsApp: {
+    cell: 'B_SESSION',
+    without: {
+      whatPeopleSaid: 'no room, and no way to correct it from there',
+      whereThingsStand: 'a difference read on a phone with no way to answer it is the wrong place for it',
+      whatThisRestsOn: 'the link carries it',
+    },
+  },
+
+  /**
+   * THE REPORT TAB IS AN INDEX, AND THAT IS A DECISION SOMEBODY MADE ON PURPOSE.
+   *
+   * It held a report body once. It was taken out, and the three things that had nowhere else to go
+   * were each given a home deliberately: the private lines for the conversation ahead went to My
+   * record, the inferred claims to the page that already corrects the record, and how it is put
+   * together to the foot of the board. What was left is a list of the sessions, who answered each,
+   * and the one door to the board.
+   *
+   * A redesign proposed putting the body back. It was put to Hafsah as three options - keep the
+   * index, refill the tab, or drop the tab entirely - and the answer was to keep the index.
+   *
+   * SO IT NAMES NO CELL. It is not a fifth report and it is not a crop of one: it is how somebody
+   * finds the reports, which is a job none of the four does. Recorded here rather than left as an
+   * absence, because an absence is what invites the next person with a template to fill it.
+   */
+  theReportTab: {
+    index: true,
+    because: 'how somebody finds the reports, which is not one of them. Emptied deliberately; kept as an index by decision, 11 September 2026.',
+  },
+};
+
+/** Whether a surface is a way to find reports rather than one of them. */
+export function isAnIndex(s: Crop | { index: true }): s is { index: true; because: string } {
+  return 'index' in s;
 }
 
 /**

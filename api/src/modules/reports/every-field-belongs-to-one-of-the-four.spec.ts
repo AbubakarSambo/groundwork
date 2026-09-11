@@ -1,7 +1,7 @@
 import {
   EVERY_CELL, WHERE_IT_BELONGS, theFieldsOf, whichCell, whatThisSurfaceShows,
   placedNowhere, isYourOwn, readsARun, WHAT_A_SESSION_CELL_MAY_NOT_HOLD, NOT_REPORT_CONTENT,
-  REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS,
+  REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS, EVERY_SURFACE, isAnIndex,
 } from './the-four-reports';
 import { RUN_ONLY_FIELDS } from './a-read-needs-a-run';
 
@@ -148,6 +148,45 @@ describe('every field belongs to one of the four', () => {
     /* And each one is somewhere, or the list is a list of things nobody shows at all. */
     for (const block of RUN_BLOCKS) {
       expect(THE_ORDER.A_RUN.concat(THE_ORDER.B_RUN)).toContain(block);
+    }
+  });
+
+  it('places every surface in a cell, or says it is an index', () => {
+    for (const [name, surface] of Object.entries(EVERY_SURFACE)) {
+      if (isAnIndex(surface)) {
+        expect(surface.because.length).toBeGreaterThan(20);
+        continue;
+      }
+      expect(EVERY_CELL).toContain(surface.cell);
+      expect(name.trim()).toBe(name);
+    }
+  });
+
+  it('gives every cell at least one surface, so none of the four is a shape nobody draws', () => {
+    const drawn = new Set(
+      Object.values(EVERY_SURFACE).filter((s) => !isAnIndex(s)).map((s: any) => s.cell),
+    );
+    for (const cell of EVERY_CELL) expect(drawn.has(cell)).toBe(true);
+  });
+
+  it('keeps the report tab an index, which was decided rather than inherited', () => {
+    /*
+     * It held a report body once, it was taken out deliberately, and the three orphaned things were
+     * each re-homed one by one. A redesign proposed refilling it; the call was to keep the index.
+     * Asserted so that an absence does not read as an invitation to the next template.
+     */
+    const tab = EVERY_SURFACE.theReportTab;
+    expect(isAnIndex(tab)).toBe(true);
+  });
+
+  it('every crop names what it leaves out with a reason, never a bare list', () => {
+    /* A surface that lists what it TAKES silently stops taking anything added later. */
+    for (const surface of Object.values(EVERY_SURFACE)) {
+      if (isAnIndex(surface)) continue;
+      for (const [field, why] of Object.entries(surface.without ?? {})) {
+        expect(why.length).toBeGreaterThan(15);
+        expect(THE_ORDER[surface.cell]).toContain(field);
+      }
     }
   });
 
