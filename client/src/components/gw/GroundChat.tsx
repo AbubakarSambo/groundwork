@@ -109,9 +109,12 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
+      {/* Gated with the brief it heads: a check-in created without one showed this heading over nothing. */}
+      {brief && (
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         About this check-in
       </div>
+      )}
       {/*
         TWO THINGS ON THIS CARD: THE BRIEF, AND WHO IS IN IT.
         

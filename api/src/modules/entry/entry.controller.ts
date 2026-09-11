@@ -393,6 +393,8 @@ export class EntryCommitController {
     roleAsDescribed?: string;
     /** Optional, never inferred; blank means blank. */
     department?: string;
+    /** The honeypot on the join form. Filled means a bot; answered as success, mails nobody. */
+    trapFilled?: boolean;
   }) {
     return this.service.askToJoin(dto);
   }

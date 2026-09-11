@@ -4,6 +4,7 @@ import { joinApi } from '@/api/entry'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 type Phase = 'loading' | 'start' | 'sent' | 'error'
 
@@ -30,6 +31,8 @@ export function JoinPage() {
   /* Optional, beside their part. Never inferred; blank means blank. */
   const [department, setDepartment] = useState('')
   const [failure, setFailure] = useState('')
+  /* Reached from a link shared with a whole cohort, and every submission mails a typed address: the same trap the account-creating forms carry. */
+  const trap = useTheTrap()
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export function JoinPage() {
         lastName: lastName.trim() || undefined,
         roleAsDescribed: role.trim(),
         department: department.trim() || undefined,
+        trapFilled: !!trap.filled,
       })
       setSentTo(res.to)
       setSentSays(res.says)
@@ -120,11 +124,12 @@ export function JoinPage() {
       </div>
 
       <form noValidate onSubmit={e => { e.preventDefault(); join() }}>
+        {trap.field}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-first">First name</label><input id="join-first" className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
         </div>
-        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>
         {/*
           ONE LINE ON THEIR PART IN THIS, AND IT IS NOT OPTIONAL ANY MORE.
           205 of 223 people skipped it while it said "(optional)", and that one line is what the
@@ -139,12 +144,12 @@ export function JoinPage() {
         <div className="gw-fld"><label className="gw-label" htmlFor="join-department">Department</label><input id="join-department" className="gw-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" /></div>
         {failure && <div className="gw-er" role="alert">{failure}</div>}
         <button className="gw-btn" type="submit" disabled={joining || !looksLikeAnAddress(email) || !role.trim()} style={{ marginTop: 8, opacity: (joining || !looksLikeAnAddress(email) || !role.trim()) ? 0.6 : 1 }}>
-          {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
+          {joining ? 'Sending…' : 'Email me my link →'}
         </button>
       </form>
 
       <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-        This saves your place so you can come back any time and see the shared report once everyone has checked in. We'll email you a link to set a password for returning later.
+        This saves your place so you can come back any time and see the shared report once everyone has checked in. We'll email you a link for returning later.
       </div>
     </Shell>
   )

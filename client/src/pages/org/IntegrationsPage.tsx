@@ -5,6 +5,7 @@ import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { copy } from '@/components/gw/copying-can-fail'
 
 /**
  * WHERE AN ADMIN CONNECTS THEIR OWN SYSTEMS, WITHOUT TALKING TO US FIRST.
@@ -351,7 +352,7 @@ export function IntegrationsPage() {
         * webhook - and the first thing that fails is the token exchange, in your engineer's
         * terminal, with a 403. Everything up to that point behaves as though it worked.
         *
-        * The gate sits on one route (`oauth/token`, see the-api-is-a-paid-thing.ts) and nothing
+        * The gate sits on one route (`oauth/token`; the file that once held a plan gate, the-api-is-a-paid-thing.ts, is gone - approval is the gate now) and nothing
         * else, so this is precise about which half is affected: sending data IN needs a plan, being
         * TOLD about things does not. Saying "the API needs a plan" flatly would be simpler and
         * would be wrong about webhooks, which work either way.
@@ -383,7 +384,7 @@ export function IntegrationsPage() {
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {access.data.says}{' '}
-            One request covers the API, the panel on your own pages and your WhatsApp number. Somebody reads it and gets in touch; once it is approved, this page shows the keys, the calls and the reference.
+            One request covers the API, the panel on your own pages and your WhatsApp number. Using the API needs approval, not a plan: it is asked for here and read by a person. Once it is approved, this page shows the keys, the calls and the reference.
           </div>
 
           {access.data.status !== 'PENDING' && (
@@ -566,16 +567,19 @@ export function IntegrationsPage() {
         {freshSecret && (
           /* Shown once, said plainly. A secret a support engineer can recover is a secret an
              attacker can ask a support engineer to recover. */
-          <div style={{ marginTop: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
+          <div role="alert" tabIndex={-1} ref={(el) => el?.focus()} style={{ marginTop: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Copy this now. It is not shown again.</div>
             <div style={{ ...S.mono, wordBreak: 'break-all', color: 'var(--gw-text)' }}>{freshSecret.clientId}</div>
             <div style={{ ...S.mono, wordBreak: 'break-all', color: 'var(--gw-text)', marginTop: 3 }}>{freshSecret.clientSecret}</div>
-            <button style={{ ...S.ghost, marginTop: 9 }} onClick={() => { navigator.clipboard?.writeText(`${freshSecret.clientId}\n${freshSecret.clientSecret}`); toast.success('Copied.') }}>Copy both</button>
+            <button style={{ ...S.ghost, marginTop: 9 }} onClick={async () => { (await copy(`${freshSecret.clientId}\n${freshSecret.clientSecret}`)) ? toast.success('Copied.') : toast.error('Copying is not available here. Select both lines and copy them yourself.') }}>Copy both</button>
             <button style={{ ...S.ghost, marginTop: 9, marginLeft: 8 }} onClick={() => setFreshSecret(null)}>I have saved it</button>
           </div>
         )}
       </div>
 
+      {creds.data && creds.data.length === 0 && (
+        <div style={S.card}><p style={S.body}>No keys yet. Issue one above for the system you are connecting; it is shown once.</p></div>
+      )}
       {(creds.data ?? []).map(c => (
         <div key={c.id} style={{ ...S.card, paddingTop: 12, paddingBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -742,7 +746,7 @@ export function IntegrationsPage() {
           </p>
         )}
         {freshHookSecret && (
-          <div style={{ marginTop: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
+          <div role="alert" tabIndex={-1} ref={(el) => el?.focus()} style={{ marginTop: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px' }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Signing secret. Copy it now.</div>
             <div style={{ ...S.mono, wordBreak: 'break-all' }}>{freshHookSecret}</div>
             <button style={{ ...S.ghost, marginTop: 9 }} onClick={() => setFreshHookSecret(null)}>I have saved it</button>

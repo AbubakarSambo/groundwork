@@ -670,7 +670,7 @@ function HiddenContributorsSection({
                     style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
                   />
                 )}
-                {emailError && <div className="gw-er">{emailError}</div>}
+                {emailError && <div className="gw-er" role="alert">{emailError}</div>}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => {
@@ -857,6 +857,8 @@ export function ReportBody({
    */
   const downloadRecord = useMutation({
     mutationFn: (checkInId: string) => conversationApi.download(checkInId),
+    /* Under a claim that the record is portable and permanent, nothing said a file was produced. */
+    onSuccess: () => toast.success('Your record is downloading.'),
     onError: () => toast.error('Could not download that record. Please try again.'),
   })
 
@@ -1121,7 +1123,7 @@ export function ReportBody({
       )}
 
       {isForming && progress && (
-        <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
+        <div role="status" aria-live="polite" style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
           <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
             {/* The unit, named: without "for session N" this read as "3 of 5 have ever taken part". */}
             <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in for session {progress.sessionNumber}.
@@ -1501,6 +1503,7 @@ export function ReportBody({
                             onClick={() => downloadRecord.mutate(c.id)}
                             style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid #D6D2CA', borderRadius: 12, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
                             title={`Download your session ${c.sessionNumber} record as a text file`}
+                            aria-label={`Download your session ${c.sessionNumber} record`}
                           >
                             Session {c.sessionNumber}
                           </button>

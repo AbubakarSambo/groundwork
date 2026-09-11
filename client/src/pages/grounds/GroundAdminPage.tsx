@@ -40,6 +40,7 @@ import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { copy } from '@/components/gw/copying-can-fail'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -619,7 +620,7 @@ export function GroundAdminPage() {
   const closingSession = useMutation({
     mutationFn: () => groundsApi.beginClosingSession(id!),
     onSuccess: (r) => {
-      toast.success(`Closing session begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final check-in.`)
+      toast.success(`Closing session begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final session.`)
       setConfirmClosing(false)
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
@@ -675,7 +676,7 @@ export function GroundAdminPage() {
   const copyInviteLink = useMutation({
     mutationFn: async (participantId: string) => {
       const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id!, participantId)
-      await navigator.clipboard.writeText(inviteUrl)
+      if (!(await copy(inviteUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
       return inviteUrl
     },
     onSuccess: () => toast.success('Invite link copied. It is the same link as their email - send it however you like.'),
@@ -692,7 +693,7 @@ export function GroundAdminPage() {
   const copyCheckInLink = useMutation({
     mutationFn: async (participantId: string) => {
       const { checkInUrl } = await groundsApi.getParticipantCheckInUrl(id!, participantId)
-      await navigator.clipboard.writeText(checkInUrl)
+      if (!(await copy(checkInUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
       return checkInUrl
     },
     onSuccess: () => toast.success('Check-in link copied. Send it however you like.'),
@@ -1019,6 +1020,8 @@ export function GroundAdminPage() {
   // The report's own read, or nothing at all. "{conf}/5 {band}" counted
   // completed check-ins and called the result "Aligned".
   const alignRead = alignmentLabel((ground as any).alignment)
+  /* One source of attention for the header, computed once (fix plan C16): it decides which of three chips may speak. */
+  const attention = railAttention(ground as any, user?.id)
 
   // Every party, every session - not "twelve distinct numbers are complete
   // somewhere". See everySessionDone: the short version closed a ground over a
@@ -1206,7 +1209,7 @@ export function GroundAdminPage() {
         */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>← Check-ins</span>
+            <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>← Check-ins</button>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{ground.label}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -1292,9 +1295,14 @@ export function GroundAdminPage() {
           */}
           {tab !== 'report' && (
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              {/* ONE STATUS, NOT THREE. "No report yet" printed beside "report being written" (the same fact from two
+                  computations) and beside "Your turn". The attention line has precedence; the report state speaks next;
+                  this fallback only when neither has anything to say. */}
               {alignRead
                 ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
-                : <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>}
+                : (reportState === 'no report yet' && attention.kind === 'none')
+                  ? <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>
+                  : null}
             </div>
           )}
         </div>
@@ -1314,7 +1322,7 @@ export function GroundAdminPage() {
           * when there is something to say.
           */}
         {(() => {
-          const a = railAttention(ground as any, user?.id)
+          const a = attention
           const say =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn — 1 day late' : `Your turn — ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
             : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
@@ -1979,7 +1987,8 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ''}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own session`}`}
+                                aria-label={`Session ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isMine ? ', yours' : `, only ${p.email} can open it`}`}
                                 style={{
                                   fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
                                   padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
@@ -2805,7 +2814,7 @@ export function GroundAdminPage() {
                       <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 21 ? '3 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
                     ))}
                   </select>
-                  <select className="gw-input" aria-label="Check-in cadence" value={cadenceDraft}
+                  <select className="gw-input" aria-label="Session cadence" value={cadenceDraft}
                     onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
                     {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
                   </select>
@@ -2981,14 +2990,15 @@ export function GroundAdminPage() {
                 Closing a check-in permanently archives it. All parties keep their records. This action cannot be undone.
                 {isOrgAdmin && !isInitiator && ' You are not the lead here, so closing it ends something somebody else is running.'}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
-                Self-serve close is coming. For now, email{' '}
-                <a href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`} style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>hello@myground.work</a>
-                {' '}and we will archive it manually.
-              </div>
-              <button disabled style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'not-allowed', fontFamily: 'inherit', opacity: 0.4 }}>
-                Close this check-in
-              </button>
+              {/* The disabled "Close this check-in" button that sat here was scaffolding, not a state; the working
+                  route - mail us - was a footnote under it. The route is the action now. */}
+              <a
+                href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
+                style={{ display: 'inline-block', fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, textDecoration: 'none', fontFamily: 'inherit' }}
+              >
+                Ask us to archive this check-in
+              </a>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>Self-serve close is coming. Until then we archive it by hand, usually the same day.</div>
             </div>
 
             {/*
@@ -3108,11 +3118,13 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     }).catch(() => {})
   }, [joinUrl])
 
-  function copyLink() {
-    navigator.clipboard?.writeText(joinUrl).then(() => {
+  async function copyLink() {
+    if (await copy(joinUrl)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the link and copy it yourself.')
+    }
   }
 
   return (

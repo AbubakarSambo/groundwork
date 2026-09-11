@@ -85,6 +85,7 @@ export function BoardPage() {
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
+  const [pollCancelArmed, setPollCancelArmed] = useState(false)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
 
@@ -128,7 +129,7 @@ export function BoardPage() {
   })
 
   if (isLoading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
+    return <div role="status" style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
   }
   if (error || !data) {
     /*
@@ -494,12 +495,14 @@ export function BoardPage() {
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
                             disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
                             title="Move this count down"
+                            aria-label={`One fewer: ${o.name}`}
                             style={miniBtn}
                           >-</button>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
                             disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                             title="Move this count up"
+                            aria-label={`One more: ${o.name}`}
                             style={miniBtn}
                           >+</button>
                           <button
@@ -726,7 +729,7 @@ export function BoardPage() {
           const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
           return (
           <>
-            <Sec title="Check-ins this phase" src="from sessions" />
+            <Sec title="Sessions this phase" src="from sessions" />
             <Card>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
@@ -1054,7 +1057,7 @@ export function BoardPage() {
                       {b.poll ? 'Change the times' : 'Set up an availability poll'}
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
                         style={{ padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }} />
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
@@ -1065,13 +1068,17 @@ export function BoardPage() {
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => savePoll.mutate()} disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
+                        <button type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
                           style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !pollQ.trim() || !pollOpts.trim() || savePoll.isPending ? 0.5 : 1 }}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
                         </button>
-                        <button onClick={() => setShowPollForm(false)} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
+                        <button type="button" onClick={() => { if (pollQ.trim() || pollOpts.trim()) setPollCancelArmed(true); else setShowPollForm(false) }} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
                       </div>
-                    </div>
+                      {pollCancelArmed && (
+                        <Confirm saying="Discard the question and times you typed?" confirmLabel="Discard" keepLabel="Keep typing"
+                          onConfirm={() => { setPollCancelArmed(false); setShowPollForm(false) }} onKeep={() => setPollCancelArmed(false)} />
+                      )}
+                    </form>
                   )}
                 </div>
               )}

@@ -263,6 +263,8 @@ export const joinApi = {
     roleAsDescribed?: string
     /** Optional, never inferred; blank means blank. */
     department?: string
+    /** The honeypot: a filled trap is answered as success and mails nobody. */
+    trapFilled?: boolean
   }) =>
     apiClient.post<{ sent: true; to: string; says: string }>(
       '/entry/join-accept',

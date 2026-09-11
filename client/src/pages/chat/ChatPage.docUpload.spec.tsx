@@ -22,7 +22,9 @@ describe('#2 participant doc upload: the real engine exposes the upload path', (
     expect(src).toMatch(/id="doc-upload"/)
     expect(src).toMatch(/type="file"/)
     // accepts real document types, not just images
-    expect(src).toMatch(/\.pdf,\.doc/)
+    /* One list now (fix plan C13): the accept attribute is built from ACCEPTED_UPLOADS. */
+    expect(src).toMatch(/accept=\{ACCEPTED_UPLOADS\.join\(','\)\}/)
+    expect(src).toMatch(/const ACCEPTED_UPLOADS = \['\.pdf', '\.doc'/)
   })
 
   it('uploads through the engine document path with assessment', () => {

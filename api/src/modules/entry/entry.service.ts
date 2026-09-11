@@ -1775,9 +1775,14 @@ from finishing at all.`;
     lastName?: string;
     roleAsDescribed?: string;
     department?: string;
+    trapFilled?: boolean;
   }): Promise<WhatWeSay> {
     if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
     if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
+    /* The most publicly exposed form in the product, and every submission mails a typed address. A filled
+       honeypot is answered exactly like success - telling a bot it was caught is telling it what to change -
+       and nothing is written or sent. */
+    if (dto.trapFilled) return whatToSayAfterAsking(dto.email.trim().toLowerCase());
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },

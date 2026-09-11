@@ -82,7 +82,7 @@ export function JoinConfirmPage() {
 
   return (
     <Arrival>
-      <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Starting your check-in…</div>
+      <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Starting your session…</div>
     </Arrival>
   )
 }

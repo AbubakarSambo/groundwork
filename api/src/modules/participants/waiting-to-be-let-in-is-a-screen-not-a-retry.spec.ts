@@ -28,7 +28,9 @@ describe('the invite page', () => {
     expect(page).toMatch(/if \(waiting\) \{\s*return \(/);
   });
   it('prints the server\'s sentence on failure when there is one', () => {
-    expect(page).toMatch(/toast\.error\(err\?\.response\?\.data\?\.message \?\? 'Could not start your session/);
+    /* The sentence is kept on the page as well as toasted (fix plan C7). */
+    expect(page).toMatch(/const said = err\?\.response\?\.data\?\.message \?\? /);
+    expect(page).toMatch(/setFailed\(said\)\s*toast\.error\(said\)/);
   });
 });
 

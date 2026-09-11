@@ -11,6 +11,9 @@ import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 
+/** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
+const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.md']
+
 interface Msg {
   id: string
   role: 'AI' | 'PERSON'
@@ -763,10 +766,14 @@ export function ChatPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div
           ref={msgsRef}
+          aria-live="polite"
           style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
         >
-          {openSession.isPending && (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
+              two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
+              a blank screen. The jitter stays; the sentence starts earlier. */}
+          {(openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)) && (
+            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
           )}
 
           {/*
@@ -945,7 +952,7 @@ export function ChatPage() {
                   ))}
                   <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                   {waitedAWhile && (
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                       Still reading what you wrote. Nothing was lost — you do not need to send it again.
                     </span>
                   )}
@@ -976,7 +983,7 @@ export function ChatPage() {
           {!completed && confirmingFinish && (
             <div style={{ padding: '12px 0', textAlign: 'center' }}>
               <div style={{ maxWidth: 460, margin: '0 auto', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Ready to finish this check-in?</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Ready to finish this session?</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
                   Take a moment to look back over what you have said. Once you finish, this session's record is locked in and cross-referenced with the others. If a timeframe matters here, make sure you have confirmed it above.
                 </div>
@@ -1000,7 +1007,7 @@ export function ChatPage() {
                     disabled={complete.isPending}
                     style={{ padding: '10px 22px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
-                    {complete.isPending ? 'Saving…' : 'Finish check-in ✓'}
+                    {complete.isPending ? 'Saving…' : 'Finish session ✓'}
                   </button>
                   <button
                     /* "Not yet" means not yet: the offer to finish goes away too, and comes back on the next close signal. */
@@ -1251,12 +1258,15 @@ export function ChatPage() {
             )}
           </div>
           <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            {/* A label cannot be disabled: styled as disabled it still opened the picker and the change handler returned in silence. Hidden until there is a check-in to attach to. */}
+            {groundId && (
             <label htmlFor="doc-upload"
-              title="Accepted: PDF, DOC, DOCX, TXT, CSV, XLSX, PNG, JPG, MD"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
+              title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: 1 }}
             >
               📎 <span style={{ fontSize: 11 }}>Upload doc</span>
             </label>
+            )}
             <button
               onClick={() => { if (groundId) setPasteMode(true) }}
               disabled={!groundId || completed || declined}
@@ -1265,10 +1275,10 @@ export function ChatPage() {
             >
               📋 <span style={{ fontSize: 11 }}>Paste text</span>
             </button>
-            <input type="file" id="doc-upload" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.heic,.md,.html,.htm,.json,.xml,.js,.ts,.py,.java,.go,.rb,.php,.css" style={{ display: 'none' }} onChange={e => {
+            <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
               const f = e.target.files?.[0]
               if (f) {
-                const allowed = ['.pdf','.doc','.docx','.txt','.csv','.xlsx','.png','.jpg','.jpeg','.md']
+                const allowed = ACCEPTED_UPLOADS
                 const ext = '.' + f.name.split('.').pop()?.toLowerCase()
                 if (!allowed.includes(ext)) { toast.error(`File type not supported. Accepted: ${allowed.join(', ')}`); e.target.value = ''; return }
               }
@@ -1280,7 +1290,7 @@ export function ChatPage() {
               disabled={loading || completed || declined || !opened}
               style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
             />
-            <button onClick={send} disabled={loading || completed || declined || !opened}
+            <button onClick={send} disabled={loading || completed || declined || !opened} aria-label="Send message"
               style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
             >
               ↑

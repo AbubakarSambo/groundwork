@@ -36,6 +36,7 @@ export function InvitePage() {
   const [waiting, setWaiting] = useState('')
   /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
   const [failed, setFailed] = useState('')
+  const [declinedQuietly, setDeclinedQuietly] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
   const qc = useQueryClient()
 
@@ -205,10 +206,11 @@ export function InvitePage() {
             disabled={accept.isPending}
             onClick={() => accept.mutate()}
           >
-            {accept.isPending ? 'One moment…' : 'Pick up where I left off →'}
+            <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off →'}</span>
           </button>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>or</div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/grounds')}>
+          {/* /auth, not a protected route that bounces; and the secondary weight, because two identical primaries around an "or" is no choice. */}
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px', background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/auth')}>
             Sign in to continue →
           </button>
         </div>
@@ -377,7 +379,7 @@ export function InvitePage() {
             </div>
           </div>
           <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>
-            {accept.isPending ? 'Setting up your session…' : 'Add my version →'}
+            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Add my version →'}</span>
           </button>
         </form>
 
@@ -396,13 +398,22 @@ export function InvitePage() {
             You are never obligated to take part. If you would rather not, you can simply close this -
             nothing is shared, and declining is never shown as a negative.
           </div>
-          <button
-            className="gw-back"
-            style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
-            onClick={() => navigate('/')}
-          >
-            Not right now
-          </button>
+          {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
+              moment they decline, right after a paragraph promising declining is never held against them. A
+              settled state instead: nothing was shared, and they can come back. */}
+          {declinedQuietly ? (
+            <div role="status" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Nothing has been shared and nobody is told. This link keeps working if you change your mind.
+            </div>
+          ) : (
+            <button
+              className="gw-back"
+              style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
+              onClick={() => setDeclinedQuietly(true)}
+            >
+              Not right now
+            </button>
+          )}
         </div>
       </div>
     </Arrival>
@@ -431,6 +442,6 @@ function ErrorCard({ msg }: { msg: string }) {
 
 function LoadingCard() {
   return (
-    <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
+    <div role="status" style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
   )
 }

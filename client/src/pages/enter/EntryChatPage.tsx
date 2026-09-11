@@ -31,6 +31,7 @@ import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { copy } from '@/components/gw/copying-can-fail'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -45,6 +46,12 @@ interface EntrySession {
   email?: string
   onboardingStep?: number
   onboardingSelections?: OnboardingSelections
+  /** The plan the person agreed to (fix plan C11): lost on reload before, so "12 sessions" came back as "1". */
+  sessions?: number
+  cadence?: string
+  cadenceChosen?: boolean
+  groundName?: string
+  plannedFrom?: { timelineDays: number; cadence: string } | null
 }
 
 interface OnboardingSelections {
@@ -1263,6 +1270,11 @@ export function EntryChatPage() {
          and they are simply not read: the ground it commits to has no lead to invite. */
       if ((saved as any).flowPath === 'lead') setFlowPath('lead')
       if (saved.email) setEmail(saved.email)
+      /* Whole state or none: the plan comes back with the conversation. */
+      if (typeof saved.sessions === 'number' && saved.sessions > 0) setSessions(saved.sessions)
+      if (saved.cadence) { setCadence(saved.cadence as typeof cadence); setCadenceChosen(!!saved.cadenceChosen) }
+      if (saved.groundName) setGroundName(saved.groundName)
+      if (saved.plannedFrom) setPlannedFrom(saved.plannedFrom)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
       }
@@ -1355,8 +1367,11 @@ export function EntryChatPage() {
     sendOnboarding(said)
   }, [pickedScenario])
 
+  /* WHOLE STATE OR NONE. The conversation, the situation and the step survived a reload; the session count,
+     the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
+     as "1 session planned" - the number the person agreed to, replaced. */
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   function persistCheckin(h: Turn[], cl = false, rep = '') {
@@ -2184,12 +2199,14 @@ export function EntryChatPage() {
     return () => clearTimeout(t)
   }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
 
-  function copyInviteLink() {
+  async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
-    navigator.clipboard.writeText(link).then(() => {
+    if (await copy(link)) {
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the link and copy it yourself.')
+    }
   }
 
   function addInviteEmail() {
@@ -2309,7 +2326,7 @@ export function EntryChatPage() {
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
         {user && (
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</span>
+          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
         )}
         <div style={{ flex: 1 }}>
           {renamingGround ? (
@@ -2394,9 +2411,10 @@ export function EntryChatPage() {
                 timeline and cadence the engine extracted (see onboard, above)
                 and traceable to them in the button's title.
               */}
+              {/* The space is in the STRING: two spans separated by a margin read as "12sessions planned" in every text extraction. */}
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>
-                {sessions === 1 ? 'session planned' : 'sessions planned'}
+              <span style={{ fontSize: 10, color: 'var(--gw-sub)' }}>
+                {' '}{sessions === 1 ? 'session planned' : 'sessions planned'}
               </span>
             </button>
           )}
@@ -2572,6 +2590,7 @@ export function EntryChatPage() {
             )}
             <div
               ref={msgsRef}
+              aria-live="polite"
               // The picker needs the width for a multi-column grid so all 8
               // cards sit above the fold at laptop heights; conversation
               // bubbles keep the narrow reading column.
@@ -2887,7 +2906,7 @@ export function EntryChatPage() {
                 */}
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
-                  Starting your check-in…
+                  Starting your session…
                 </div>
               )}
             </div>
@@ -2944,15 +2963,17 @@ export function EntryChatPage() {
                     >
                       + Doc
                     </button>
-                    <input
-                      type="text"
+                    {/* A textarea, like the check-in composer two screens later: Enter sends, Shift+Enter breaks a
+                        line, and a multi-line setup answer keeps its shape. Same position, same handler. */}
+                    <textarea
                       placeholder="Type your response, or add a document with + Doc"
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && input.trim()) { sendOnboarding(input); } }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendOnboarding(input) } }}
                       disabled={onboardingLoading}
+                      rows={1}
                       style={{
-                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
+                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)', resize: 'none', minHeight: 38, maxHeight: 120, lineHeight: 1.4,
                         borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
                         color: 'var(--gw-text)', opacity: onboardingLoading ? 0.5 : 1,
                       }}
@@ -2961,6 +2982,7 @@ export function EntryChatPage() {
                     <button
                       onClick={() => { if (input.trim()) sendOnboarding(input) }}
                       disabled={!input.trim() || onboardingLoading}
+                      aria-label="Send message"
                       style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (input.trim() && !onboardingLoading) ? 1 : 0.35 }}
                     >
                       ↑
@@ -2985,10 +3007,11 @@ export function EntryChatPage() {
             )}
             <div
               ref={msgsRef}
+              aria-live="polite"
               style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your session…</div>
               )}
               {/*
                 W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
@@ -3141,7 +3164,7 @@ export function EntryChatPage() {
                     disabled={loading}
                     style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
                   />
-                  <button onClick={() => send()} disabled={loading || !input.trim()}
+                  <button onClick={() => send()} disabled={loading || !input.trim()} aria-label="Send message"
                     style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
                     ↑
                   </button>
@@ -3256,7 +3279,7 @@ export function EntryChatPage() {
               work, not a progress bar pretending to know.
             */}
             {generatingReport && !sessionReport && (
-              <div style={{ marginBottom: 18 }}>
+              <div style={{ marginBottom: 18 }} role="status" aria-live="polite">
                 <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
               </div>
             )}
@@ -3559,9 +3582,10 @@ export function EntryChatPage() {
                     </div>
                   </>
                 )}
-                <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
+                {/* The only way out of a full-screen save card, and a keyboard user inside it could not dismiss it. */}
+                <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
                   Not now
-                </div>
+                </button>
               </div>
             ) : (
               /**
@@ -3962,9 +3986,9 @@ export function EntryChatPage() {
                 </div>
               </div>
             ) : closed ? null : (
-              <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
+              <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
                 Later
-              </div>
+              </button>
             )}
           </div>
         </div>
