@@ -5149,7 +5149,53 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: checkIn.id },
       data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART },
     });
+    await this.closeTheRoundIfThisWasTheLastAnswer(checkIn.groundId, checkIn.sessionNumber);
     return { status: 'declined' };
+  }
+
+  /**
+   * A DECLINE IS AN ANSWER, SO IT CAN BE THE ONE THE ROUND WAS WAITING ON.
+   *
+   * Every reader was taught that a decline counts as an answer. The decline itself was not: it
+   * wrote DECLINED and returned, recording no round and emitting nothing. So when the last
+   * outstanding person declined, the round was closed in fact and open in the record, and the
+   * report - already written, already waiting - sat there until the 3am backstop found it. Up to a
+   * day late, for the one person who acted.
+   *
+   * This is the backstop's own logic, run at the moment it becomes true instead of overnight, and
+   * guarded the same way: the round row first, then release only if no report has been taken for
+   * this round. `recordRoundCompletion` returns false when the round is not closed, when it was
+   * already recorded, or when nobody completed - so a round of nothing but declines correctly
+   * produces no report, because there is no account to build one from.
+   *
+   * It rides the same event as the backstop, with the same `source: 'repair'`, which already means
+   * "a round closed without its report" everywhere that listens. That keeps the admin's "X has
+   * checked in" notice suppressed, which is right: nobody checked in.
+   */
+  private async closeTheRoundIfThisWasTheLastAnswer(groundId: string, sessionNumber: number): Promise<void> {
+    const roundJustClosed = await recordRoundCompletion(this.prisma, this.events, groundId, sessionNumber);
+    if (!roundJustClosed) return;
+
+    const taken = await this.prisma.reportRound.findUnique({
+      where: { groundId_sessionNumber: { groundId, sessionNumber } },
+      select: { id: true },
+    });
+    if (taken) return;
+
+    /* Somebody has to have given an account for there to be a report. */
+    const anAccount = await this.prisma.checkIn.findFirst({
+      where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED },
+      select: { id: true, participantId: true },
+    });
+    if (!anAccount) return;
+
+    this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+      checkInId: anAccount.id,
+      groundId,
+      participantId: anAccount.participantId,
+      sessionNumber,
+      source: 'repair',
+    } satisfies CheckInCompletedEvent);
   }
 
   // --- helpers ---

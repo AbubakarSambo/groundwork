@@ -23,6 +23,9 @@ function makeService(checkInRow: any) {
     },
     groundParticipant: {
       findUnique: jest.fn(async () => checkInRow?.participant ?? null),
+      /* A decline now asks whether it closed its round. No roster here, so the answer is no and the
+         scoping tests stay about scoping. */
+      findMany: jest.fn(async () => []),
     },
   };
 

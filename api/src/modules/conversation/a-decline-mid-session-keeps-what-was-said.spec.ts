@@ -9,16 +9,29 @@ import { ConversationService, DECLINED_TO_TAKE_PART } from './conversation.servi
  * said is theirs. The extraction complete() runs is run first, and the reason is written, so a
  * reader can tell a decline from a close.
  */
-const service = (status: CheckInStatus) => {
+/**
+ * `parties` is what the ground has to hear from. Empty by default, so `recordRoundCompletion`
+ * answers "this round is not closed" and the decline path stops there - these four tests are about
+ * what a decline keeps, not about what closing a round does. The fifth passes a real roster.
+ */
+const service = (status: CheckInStatus, parties: { id: string }[] = []) => {
+  const events = { emit: jest.fn() };
   const prisma: any = {
     checkIn: {
-      findUnique: jest.fn(async () => ({ id: 'ci', groundId: 'g', participantId: 'p', status, participant: { userId: 'me', user: { awaitingOrgApproval: false } } })),
+      findUnique: jest.fn(async () => ({ id: 'ci', groundId: 'g', participantId: 'p', sessionNumber: 1, status, participant: { userId: 'me', user: { awaitingOrgApproval: false } } })),
       update: jest.fn(async (a: any) => a),
+      count: jest.fn(async ({ where }: any) => (where?.status === CheckInStatus.COMPLETED ? 1 : parties.length)),
+      findFirst: jest.fn(async () => ({ id: 'theirs', participantId: 'other' })),
     },
+    groundParticipant: { findMany: jest.fn(async () => parties) },
+    roundCompletion: { create: jest.fn(async () => ({})) },
+    reportRound: { findUnique: jest.fn(async () => null) },
+    groundObjective: { findMany: jest.fn(async () => []) },
+    groundObjectiveSnapshot: { createMany: jest.fn(async () => ({})) },
   };
-  const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any, {} as any, { get: () => undefined } as any);
+  const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, events as any, {} as any, {} as any, {} as any, {} as any, { get: () => undefined } as any);
   svc.extractRecordEntries = jest.fn(async () => undefined);
-  return { svc, prisma };
+  return { svc, prisma, events };
 };
 
 describe('declining', () => {
@@ -42,6 +55,28 @@ describe('declining', () => {
     await svc.decline('ci', 'me');
     expect(prisma.checkIn.update).toHaveBeenCalledWith({ where: { id: 'ci' }, data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART } });
     expect(DECLINED_TO_TAKE_PART).toBe('declined');
+  });
+
+  it('closes the round when it was the last answer, so the report does not wait for the 3am sweep', async () => {
+    /**
+     * THE ONE THIS WAS MISSING. Every reader counts a decline as an answer; the decline itself
+     * recorded nothing, so a round it completed stayed open in the record and its report - already
+     * written - waited overnight.
+     */
+    const { svc, events, prisma } = service(CheckInStatus.NOT_STARTED, [{ id: 'p' }]);
+    await svc.decline('ci', 'me');
+    expect(prisma.roundCompletion.create).toHaveBeenCalled();
+    const released = events.emit.mock.calls.find((c: any[]) => c[0] === 'checkin.completed');
+    expect(released).toBeTruthy();
+    /* Carried as a repair, so nobody is told somebody checked in. Nobody did. */
+    expect(released![1]).toMatchObject({ groundId: 'g', sessionNumber: 1, source: 'repair' });
+  });
+
+  it('but says nothing when a report for that round has already gone out', async () => {
+    const { svc, events, prisma } = service(CheckInStatus.NOT_STARTED, [{ id: 'p' }]);
+    prisma.reportRound.findUnique = jest.fn(async () => ({ id: 'already' }));
+    await svc.decline('ci', 'me');
+    expect(events.emit.mock.calls.find((c: any[]) => c[0] === 'checkin.completed')).toBeFalsy();
   });
 
   it('a failed extraction does not stop the decline - saying no must always work', async () => {
