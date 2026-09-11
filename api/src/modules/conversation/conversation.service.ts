@@ -388,7 +388,10 @@ export class ConversationService {
       const withEntries = await Promise.all(
         priorCheckIns.map(async (ci) => {
           const entries = await this.prisma.recordEntry.findMany({
-            where: { checkInId: ci.id, participantId: checkIn.participantId },
+            /* A line they unsaid is not replayed to them as their record. Low harm - it is their
+               own page - but a disputed line shown back with nothing marking it reads as still
+               standing, which is the whole thing "this is not what I said" exists to stop. */
+            where: { checkInId: ci.id, participantId: checkIn.participantId, disputedAt: null },
             orderBy: { createdAt: 'asc' },
             select: { type: true, text: true },
             take: 10,
@@ -2500,7 +2503,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     try {
       const rows = await this.prisma.patternDetection.findMany({
         where: { participantId, status: PatternStatus.SURFACED },
-        select: { code: true, periodsObserved: true },
+        select: { code: true, periodsObserved: true, accuracyRating: true },
       });
       return askAboutItBlockFor(theOneWorthAsking(rows));
     } catch (err) {
@@ -4011,7 +4014,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (!p) return;
 
     const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId },
+      /*
+       * A LINE SOMEBODY UNSAID MUST NOT DECIDE WHAT KIND OF WORK THEY DO.
+       *
+       * This read the whole corpus, disputed lines included. "This is not what I said" sets
+       * `disputedAt` and every read filters on it - that is the rule the extraction wall rests on -
+       * and this one did not, so a wrongly extracted line could still be what picks the role map
+       * somebody is then coached and probed against for the rest of the run. The louder the
+       * misreading, the more it looked like a function.
+       */
+      where: { participantId, disputedAt: null },
       select: { text: true },
       orderBy: { createdAt: 'asc' },
       take: 200,
