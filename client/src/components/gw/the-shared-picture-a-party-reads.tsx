@@ -27,7 +27,11 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
   const picture: string | null = report?.sharedPicture ?? null
   if (!picture && !agreements.length && !divergences.length) return null
 
-  const textOf = (a: any) => (typeof a === 'string' ? a : [a?.topic, a?.note].filter(Boolean).join(' - '))
+  /* An agreement arrives as a string on some paths and an object on others, and either half of the
+     object can itself be a list. A page must not assume which shape arrived. */
+  const flat = (v: any): string => (typeof v === 'string' ? v.trim()
+    : Array.isArray(v) ? v.filter((x) => typeof x === 'string').join(' ').trim() : '')
+  const textOf = (a: any) => (typeof a === 'string' ? a : [flat(a?.topic), flat(a?.note)].filter(Boolean).join(' - '))
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
@@ -68,10 +72,10 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
         </div>
       )}
 
-      {(report?.centralQuestion ?? '').trim() && (
+      {flat(report?.centralQuestion) && (
         <div style={{ padding: '16px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
           <div style={LABEL}>The one thing to settle first</div>
-          <div style={PROSE}>{report.centralQuestion}</div>
+          <div style={PROSE}>{flat(report.centralQuestion)}</div>
         </div>
       )}
     </div>

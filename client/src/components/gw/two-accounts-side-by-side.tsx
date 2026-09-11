@@ -24,13 +24,27 @@ export interface ADifference {
   topic?: string | null
   positions?: APosition[] | null
   perspectives?: APosition[] | null
-  evidence?: string | null
+  /* The synthesis emits this as an ARRAY of lines on some paths and a single string on others, and
+     a page that assumes either one crashes on the other. Read live: a participant's report died on
+     "(difference.evidence ?? '').trim is not a function". */
+  evidence?: string | string[] | null
   atStake?: string | null
   note?: string | null
 }
 
+/** Whatever the server sent, as a printable line. A page must not assume which shape arrived. */
+function asText(v: unknown): string {
+  if (typeof v === 'string') return v.trim()
+  if (Array.isArray(v)) return v.filter((x) => typeof x === 'string').join(' ').trim()
+  return ''
+}
+
 export function TwoAccountsSideBySide({ difference }: { difference: ADifference }) {
   const sides = (difference.positions ?? difference.perspectives ?? []).filter((p) => (p?.view ?? '').trim())
+  /* One shape out of two. See the type: this arrives as a list on some paths and a sentence on others. */
+  const evidenceLines = (Array.isArray(difference.evidence) ? difference.evidence : [difference.evidence ?? ''])
+    .map((e) => (typeof e === 'string' ? e.trim() : ''))
+    .filter(Boolean)
   return (
     <div style={{ padding: '16px 0', borderTop: '1px solid var(--gw-border)' }}>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10, maxWidth: '68ch' }}>
@@ -51,21 +65,23 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
         ))}
       </div>
       {/* On the wire since the synthesis schema was written, rendered nowhere until now. */}
-      {(difference.evidence ?? '').trim() && (
+      {evidenceLines.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={CITE}>What this rests on</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>{difference.evidence}</div>
+          {evidenceLines.map((line, i) => (
+            <div key={i} style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch', marginTop: i ? 4 : 0 }}>{line}</div>
+          ))}
         </div>
       )}
-      {(difference.atStake ?? '').trim() && (
+      {asText(difference.atStake) && (
         <div style={{ marginTop: 12 }}>
           <div style={CITE}>Why it matters</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>{difference.atStake}</div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>{asText(difference.atStake)}</div>
         </div>
       )}
-      {(difference.note ?? '').trim() && (
+      {asText(difference.note) && (
         <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {difference.note}
+          {asText(difference.note)}
         </div>
       )}
     </div>
