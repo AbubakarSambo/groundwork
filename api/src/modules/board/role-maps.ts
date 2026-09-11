@@ -675,12 +675,38 @@ export function priorFunctionFromRole(
  * Returns '' when there is no map or confidence is too low, so an uncertain
  * profile simply adds nothing rather than coaching from a guess.
  */
+/**
+ * THE FLOOR WAS WRITTEN AND NEVER LAID.
+ *
+ * UNIVERSAL_PROBES exists because a person whose job was never mapped still deserves to be read
+ * fairly - its own header says the modes are the floor, not the job buckets. Nothing imported it.
+ * And this function returned an empty string the moment there was no map, so somebody in an
+ * unmapped role got a check-in with no probing in it at all: the vaguer their answer, the less the
+ * product had to say. That is the shape of "the questions seem unproductive".
+ *
+ * Now the modes are the floor for everybody. With no map they are the whole block. With a map they
+ * are added to it, because vagueness and non-commitment are not things only unmapped people do.
+ *
+ * The detection itself stays in function-detection.ts and the modes arrive already read, so this
+ * file keeps no dependency on it and there is no cycle.
+ */
 export function buildRoleProbeBlock(
   fn: string | null | undefined,
   confidence: number | null | undefined,
+  modes: UniversalMode[] = [],
 ): string {
   const map = roleMapFor(fn);
-  if (!map) return '';
+  const floor = modes.length
+    ? `HOW THIS ACCOUNT IS SHAPED, AND THE QUESTION THAT OPENS IT UP
+
+These are read from the shape of what they said, not from their job. Ask whichever genuinely fits
+what they just told you, in your own words:
+${modes.map((m) => `- ${UNIVERSAL_PROBES[m]}`).join('\n')}
+
+NEVER name the shape itself. Do not say they are being vague or avoiding something. Ask about the
+work; how they answer is the signal, and it is yours to read, not theirs to be told.`
+    : '';
+  if (!map) return floor;
   const confident = (confidence ?? 0) >= MIN_COACHING_CONFIDENCE;
 
   const probes = map.neutralProbes.map((p) => `- ${p}`).join('\n');
@@ -698,7 +724,7 @@ ${probes}
 
 NEVER name a failure mode in a question. Do not ask "are you avoiding this" or "are you being vague". Ask about the work; how they answer is the signal, and it is yours to read, not theirs to be told.
 
-Be fair to this function specifically: ${map.protectAgainst}${hedge}`;
+Be fair to this function specifically: ${map.protectAgainst}${hedge}${floor ? `\n\n${floor}` : ''}`;
 }
 
 /**

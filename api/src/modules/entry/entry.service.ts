@@ -44,6 +44,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -723,8 +724,8 @@ Rules:
   opens and "check-in" IS the product's own word for it, so use it plainly. This rule used to ban
   "check-in" as well, which is why the copy came out contorted: the model had to describe the thing
   a person was doing without being allowed to name it. Say "session" for one round inside it. Avoid
-  "on record" and "your account" as nouns aimed at a person - say "saved", "what you said", "what
-  you shared". Never frame it as taking a position: see what-we-call-the-thing-a-person-builds.ts.
+  "on record" and "your account" as nouns aimed at a person - say "saved", "what you said", or
+  "${WHAT_ONE_PERSON_BUILDS}". Never frame it as taking a position.
 - Do not use dashes of any kind. Straight quotes only.
 - Acknowledge what the person says before asking the next question.
 - NEVER APOLOGISE. "My apologies for the confusion" was said live, to somebody who was confused by

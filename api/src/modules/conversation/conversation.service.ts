@@ -38,13 +38,13 @@ import { UsageService } from '../usage/usage.service';
 import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
-import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
+import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
 import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
-import { detectFunction } from '../board/function-detection';
+import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
@@ -2341,7 +2341,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // Adds nothing at all when the function is unknown or confidence is low, so an
     // uncertain profile never produces coaching from a guess.
     const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
-    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence);
+    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence, roleRead.modes);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
@@ -3766,22 +3766,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * detectFunction's own rule applies (the words win, held more tentatively, minus 0.1) and it is
    * logged. The person sees none of this; the map only changes which question is asked next.
    */
+  /**
+   * ALSO READS THE SHAPE OF THE ACCOUNT, WHICH IS THE FLOOR UNDER THE FUNCTION READ.
+   *
+   * It used to return early when the stored function was already confident, which saved one query
+   * and skipped the thing everybody gets regardless of their job - vagueness, non-commitment, work
+   * that cannot be seen from outside. The texts are read once now and used for both.
+   */
   private async roleReadForThisTurn(
     checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
     latestMessage?: string,
-  ): Promise<{ fn: string | null; confidence: number | null }> {
+  ): Promise<{ fn: string | null; confidence: number | null; modes: UniversalMode[] }> {
     const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
-    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return stored;
     const turns = await this.prisma.conversationTurn
       .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true }, orderBy: { createdAt: 'asc' } })
       .catch(() => [] as { content: string }[]);
     const texts = turns.map((t) => t.content ?? '').concat(latestMessage ?? '').filter(Boolean);
-    if (!texts.length) return stored;
+    if (!texts.length) return { ...stored, modes: [] };
+    const modes = detectUniversalModes(texts);
+    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return { ...stored, modes };
     const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
     if (read.fn && read.fn !== stored.fn) {
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
-    return read.fn ? { fn: read.fn, confidence: read.confidence } : stored;
+    return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
   }
 
   /**
