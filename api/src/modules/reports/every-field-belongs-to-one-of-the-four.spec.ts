@@ -234,7 +234,12 @@ describe('the dead body is where ten rules are true', () => {
      * here because the alternative is deleting ten enforced rules on the day the code that broke
      * them last comes out. When the last entry leaves the list, this test and the file go together.
      */
-    const body = readFileSync(join(REPORT_SPECS, 'ReportPage.tsx'), 'utf8');
+    /* Comments stripped first, which is the repo's rule for any assertion about source: the
+       paragraph above this one mentions ReportBody by name, and a guard a comment satisfies is not
+       a guard. */
+    const body = readFileSync(join(REPORT_SPECS, 'ReportPage.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     expect(body).toContain('export function ReportBody(');
     expect(BEFORE_THE_DEAD_BODY_CAN_GO.length).toBeGreaterThan(0);
   });
