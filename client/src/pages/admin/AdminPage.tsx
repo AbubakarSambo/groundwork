@@ -1107,7 +1107,8 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>
               {r.name} &middot; {r.orgName}
-              <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>
+              {/* The public form stopped asking, so this row can be empty and " . people" is not a fact. */}
+              {r.teamSize?.trim() && <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>}
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               {/*

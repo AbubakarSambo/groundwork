@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -875,7 +876,7 @@ export const THE_OPENING_QUESTION =
      themselves, which is a question about us, and left them guessing what picking one would do.
      What a situation actually does is set the context for what the people they invite will be
      asked about - so the sentence says that, and the choice becomes a means rather than a label. */
-  'What brings you here? Describe it in your own words, or choose a situation to set the context for what you want people to check in on or provide updates about.'
+  `What brings you here? ${HOW_A_SITUATION_IS_CHOSEN}`
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.

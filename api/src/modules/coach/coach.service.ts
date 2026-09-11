@@ -41,7 +41,8 @@ export class CoachService {
     name: string;
     orgName: string;
     email: string;
-    teamSize: string;
+    /** Not asked on the public form; empty rather than null, because the column is non-null. */
+    teamSize?: string;
     intention: string;
     triedAlready?: boolean;
     /** When they would like the first conversation. Optional - asking without a time is fine. */
@@ -93,7 +94,9 @@ export class CoachService {
             intention,
             name: input.name.trim(),
             orgName: input.orgName.trim(),
-            teamSize: input.teamSize.trim(),
+            /* Only when they gave one. A second ask from the form that does not collect it must not
+               wipe the number they gave the first time. */
+            ...(input.teamSize?.trim() ? { teamSize: input.teamSize.trim() } : {}),
             /* The newer time, like the newer words - somebody asking again has moved on. */
             ...(preferredAt ? { preferredAt } : {}),
             ...(input.triedAlready !== undefined && { triedAlready: input.triedAlready }),
@@ -104,7 +107,7 @@ export class CoachService {
             name: input.name.trim(),
             orgName: input.orgName.trim(),
             email,
-            teamSize: input.teamSize.trim(),
+            teamSize: input.teamSize?.trim() ?? '',
             intention,
             isFreeMail,
             ...(preferredAt ? { preferredAt } : {}),

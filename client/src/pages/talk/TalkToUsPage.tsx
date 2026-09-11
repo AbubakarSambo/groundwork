@@ -73,7 +73,6 @@ export function TalkToUsPage() {
   const [name, setName] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
-  const [teamSize, setTeamSize] = useState('')
   const [intention, setIntention] = useState('')
   const [said, setSaid] = useState('')
 
@@ -87,7 +86,7 @@ export function TalkToUsPage() {
   const send = useMutation({
     mutationFn: () => coachApi.request({
       name: name.trim(), orgName: orgName.trim(), email: email.trim(),
-      teamSize: teamSize.trim(), intention: whole,
+      intention: whole,
     }),
     onSuccess: () => setSaid('sent'),
     onError: (e: any) => {
@@ -122,9 +121,15 @@ export function TalkToUsPage() {
     <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
       <BackOffThisPage />
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 8px' }}>Request a call</h1>
+      {/*
+        THE REASSURANCE IS GONE. Her call.
+
+        "This creates nothing in Groundwork and contacts nobody on your team" answered a fear nobody
+        had arrived with. A page that opens by promising it will not do something puts the thought
+        there. The sentence that remains is the one a person actually wants: when somebody replies.
+      */}
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 22 }}>
-        Tell us what you need and somebody will come back to you within two working days. This creates
-        nothing in Groundwork and contacts nobody on your team.
+        Tell us what you need and somebody will come back to you within two working days.
       </p>
 
       <form onSubmit={(e) => { e.preventDefault(); setSaid(''); if (longEnough) send.mutate() }}>
@@ -142,8 +147,14 @@ export function TalkToUsPage() {
         <label style={label} htmlFor="email">Your email</label>
         <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={field} autoComplete="email" required />
 
-        <label style={label} htmlFor="size">Roughly how many people</label>
-        <input id="size" value={teamSize} onChange={(e) => setTeamSize(e.target.value)} style={field} placeholder="e.g. 12" required maxLength={60} />
+        {/*
+          NO HEAD COUNT HERE. Her call.
+
+          Somebody who has not decided to talk to us yet was being asked to count their team before
+          they could send a sentence, on a required field, and it is a question the first call
+          answers in five seconds. The coach card inside the product still asks it, because by then
+          the person is set up and the number is in front of them.
+        */}
 
         <label style={label} htmlFor="what">What would you like help with?</label>
         <textarea

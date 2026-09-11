@@ -98,9 +98,14 @@ section{padding:72px 0}
    A FIXED WIDTH, not a share of the height. At `auto 74%` the drawing grew with
    the section, so the tallest one carried a drawing twice the size of the
    shortest and read as an illustration rather than as texture. One size, so the
-   four are the same weight. */
+   four are the same weight.
+
+   AND INSIDE THE EDGE, not hanging off it. Hung past the right edge, each frame
+   was cut by the viewport into a pale rectangle with half a drawing in it, which
+   looks like something went wrong rather than like a picture on a wall. The
+   whole frame sits in the margin now. */
 section.art-bg{position:relative;background-repeat:no-repeat;
-               background-position:right -20px center;background-size:300px auto}
+               background-position:right 40px center;background-size:250px auto}
 section.art-bg::after{content:'';position:absolute;inset:0;background:var(--ground);
                       opacity:.82;pointer-events:none;z-index:0}
 section.art-bg > .w, section.art-bg > .w-wide{position:relative;z-index:1}

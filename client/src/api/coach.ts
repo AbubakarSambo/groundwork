@@ -12,7 +12,8 @@ export interface CoachRequestInput {
   name: string
   orgName: string
   email: string
-  teamSize: string
+  /** Not asked on the public request page. The coach card in setup still collects it. */
+  teamSize?: string
   intention: string
   triedAlready?: boolean
   /** When they would like the first conversation, as an instant. A request, never a booking. */
