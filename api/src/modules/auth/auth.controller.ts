@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
@@ -44,6 +44,8 @@ class SwitchOrganizationDto {
 @Controller('auth')
 
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
@@ -207,8 +209,27 @@ export class AuthController {
       return res.redirect(
         `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}`,
       );
-    } catch {
-      return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+    } catch (err: any) {
+      /*
+       * THE ONE FAILURE NOBODY COULD SEE.
+       *
+       * This was `catch { redirect to /login?error=google_auth_failed }`. Two things made a real
+       * Google sign-in failure completely silent, and both of them are here.
+       *
+       * The error was swallowed. No log line, no message, nothing - so when somebody said "I cannot
+       * even log in with Google" there was nothing on the server to look at, and the only way to
+       * find out why was to reproduce it as them.
+       *
+       * And the reason never reached the page. `/login` is a route that renders nothing: it is
+       * `<Navigate to="/auth" replace />`, which drops the query string, so `error=google_auth_failed`
+       * was thrown away in the redirect. The person lands on an ordinary sign-in form with no
+       * indication that anything failed at all - which reads as the button doing nothing.
+       *
+       * So: the cause is logged where the server log is read, and the page is told, in the parameter
+       * it already understands.
+       */
+      this.logger.error(`Google sign-in failed for ${req?.user?.email ?? 'an unknown address'}: ${err?.message ?? err}`, err?.stack);
+      return res.redirect(`${frontendUrl}/auth?why=google-signin-failed`);
     }
   }
 

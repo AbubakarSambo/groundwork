@@ -1,5 +1,5 @@
 import { PageCrash } from '@/components/gw/PageCrash'
-import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
@@ -18,6 +18,13 @@ import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
+
+/** A redirect that carries the query string with it. See the /login route. */
+function KeepTheQuery({ to }: { to: string }) {
+  const { search, hash } = useLocation()
+  return <Navigate to={`${to}${search}${hash}`} replace />
+}
+
 function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
@@ -326,7 +333,15 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
+            {/*
+              * THE QUERY STRING SURVIVES THIS REDIRECT NOW.
+              *
+              * `<Navigate to="/auth">` drops it, and the Google callback's failure path sent people
+              * to `/login?error=...`. The reason was thrown away in the hop, so a failed Google
+              * sign-in put somebody back on an ordinary sign-in form with nothing said - which
+              * reads as the button having done nothing at all.
+              */}
+            <Route path="/login" element={<KeepTheQuery to="/auth" />} />
             <Route path="/auth" element={<AuthPage />} />
             {/* The link-sent state of /auth, not a page of its own. W8-49. */}
             <Route path="/auth/sent" element={<AuthPage />} />
