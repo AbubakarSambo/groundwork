@@ -22,7 +22,8 @@ describe('#20 moment badge uses a human label', () => {
     }
   })
 
-  it('renders the moment badge through MOMENT_LABELS, not the raw enum', () => {
-    expect(src).toMatch(/MOMENT_LABELS\[ground\.moment\]\s*\?\?\s*ground\.moment/)
+  it('no longer shows a moment badge in the header at all: the scenario pill says what kind this is, and an enum is not a sentence (10 Sep 2026)', () => {
+    expect(src).not.toMatch(/Opened for: \{/)
+    expect(src).toMatch(/export const MOMENT_LABELS/)
   })
 })

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 export interface CodeShareCardProps {
   code: string
@@ -19,20 +21,20 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
   const [codeCopied, setCodeCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
 
-  const formattedExpiry = new Date(expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formattedExpiry = whenItWas(expiresAt, 'day')
   const color = expiryColor(daysRemaining)
 
-  function handleCopyCode() {
-    navigator.clipboard?.writeText(code).then(() => {
-      setCodeCopied(true)
-      setTimeout(() => setCodeCopied(false), 2000)
-      onCopy?.()
-    })
+  async function handleCopyCode() {
+    if (!(await copy(code))) return
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+    onCopy?.()
   }
 
   function handleShare() {
     const msg = `Use code ${code} to create a free Ground on Groundwork - valid until ${formattedExpiry}`
-    navigator.clipboard?.writeText(msg).then(() => {
+    copy(msg).then((ok) => {
+      if (!ok) return
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
     })

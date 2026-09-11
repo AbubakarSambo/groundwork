@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
@@ -39,6 +40,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
   /** Only this session\'s rows are shown here; the page is about one session. */
   sessionNumber: number
 }) {
+  const [disputing, setDisputing] = useState(false)
   const qc = useQueryClient()
   const dispute = useMutation({
     mutationFn: ({ checkInId, id }: { checkInId: string; id: string }) => conversationApi.disputeEntry(checkInId, id),
@@ -57,12 +59,24 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
       <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>
         Lines taken from what you said
       </div>
+      {/* Eleven identical 'Not what I said' buttons made the one that mattered invisible. One control opens them. */}
       <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
-        Not what you typed. What the product took from it, and what every count on this page is built
-        from. If one is not what you said, say so and it stops counting.
+        Not what you typed. What the product took from it, and what every count on this page is built from.{' '}
+        {!disputing ? (
+          <button type="button" onClick={() => setDisputing(true)} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Something here is not what I said
+          </button>
+        ) : 'Pick the line, and it stops counting.'}
       </p>
       <div style={{ display: 'grid', gap: 6 }}>
-        {mine.map(r => (
+        {mine.map((r, i) => {
+        /*
+         * THE SAME DOCUMENT DISAGREEING TWICE IS ONE FACT, NOT TWO. On a closing report the lead's
+         * own plan contradicted their own summary on two lines running, and the same paragraph of
+         * explanation printed under each. Said once, on the first line it applies to.
+         */
+        const saidBefore = mine.slice(0, i).some(x => !x.disputedAt && x.documentSays === r.documentSays)
+        return (
           <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ color: r.disputedAt ? 'var(--gw-muted)' : 'var(--gw-text)', textDecoration: r.disputedAt ? 'line-through' : 'none' }}>{r.text}</span>
@@ -70,13 +84,13 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· {KIND[r.type] ?? r.type.toLowerCase()}</span>
               {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· you said this is not what you said</span>}
               {!r.disputedAt && r.documented && <span style={{ color: 'var(--gw-green-t)', fontSize: 11, marginLeft: 8 }}>· backed by a document</span>}
-              {!r.disputedAt && r.documentSays && (
+              {!r.disputedAt && r.documentSays && !saidBefore && (
                 <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 3, lineHeight: 1.5 }}>
                   A document you can see reads differently: “{r.documentSays}”. Yours stands as you said it; your next check-in will ask which is current.
                 </div>
               )}
             </div>
-            {!r.disputedAt && (
+            {!r.disputedAt && disputing && (
               <button
                 onClick={() => dispute.mutate({ checkInId: r.checkInId!, id: r.id })}
                 disabled={dispute.isPending}
@@ -86,7 +100,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               </button>
             )}
           </div>
-        ))}
+        )})}
       </div>
     </section>
   )

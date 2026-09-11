@@ -25,7 +25,8 @@ const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8')
 
 describe('who runs a ground, for the rule that hides peers', () => {
   it('is worked out from the initiator AND an admin of the ground\'s own organisation', () => {
-    expect(SRC).toMatch(/const viewerAdminsThisOrg\s*=\s*\n?\s*viewer\?\.role === 'ADMIN' && viewer\.organizationId === \(ground as any\)\.organizationId;/);
+    /* Through the one rule (who-may-read-this-check-in.ts): the role, in THIS organisation. */
+    expect(SRC).toMatch(/const viewerAdminsThisOrg = adminsThisOrg\(viewer, ground as any\);/);
     expect(SRC).toMatch(/const viewerRunsThisGround = viewerIsInitiator \|\| !!viewerAdminsThisOrg;/);
   });
 
@@ -40,7 +41,7 @@ describe('who runs a ground, for the rule that hides peers', () => {
    */
   it('and an admin of another organisation is not admitted by it', () => {
     const line = SRC.slice(SRC.indexOf('const viewerAdminsThisOrg'), SRC.indexOf('const viewerRunsThisGround'));
-    expect(line).toContain('organizationId');
+    expect(line).toContain('adminsThisOrg(');
   });
 
   /**

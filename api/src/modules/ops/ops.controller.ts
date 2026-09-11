@@ -1,3 +1,4 @@
+import { displayTimezone } from '../../common/a-date-reads-the-same-everywhere';
 import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -57,8 +58,9 @@ export class OpsController {
    */
   @Get('me')
   @ApiOperation({ summary: 'The caller as this system knows them' })
-  async me(@Req() req: { opsIdentity: unknown }) {
-    return req.opsIdentity;
+  async me(@Req() req: { opsIdentity: Record<string, unknown> }) {
+    /* The clock the boards date themselves by, so the client formats in the same zone the server does (B10). */
+    return { ...req.opsIdentity, displayTimezone: displayTimezone() };
   }
 
   /** The periods we are working in, so every board can date itself. */

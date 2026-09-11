@@ -23,6 +23,9 @@ function makeService(checkInRow: any) {
     },
     groundParticipant: {
       findUnique: jest.fn(async () => checkInRow?.participant ?? null),
+      /* A decline now asks whether it closed its round. No roster here, so the answer is no and the
+         scoping tests stay about scoping. */
+      findMany: jest.fn(async () => []),
     },
   };
 
@@ -110,11 +113,13 @@ describe('GW-PRI-CONV-02: decline() - party scoping', () => {
     const service = makeService(checkIn);
     const prisma: any = (service as any).prisma;
     prisma.checkIn.update = jest.fn(async () => ({}));
+    /* A decline partway through keeps what was said first; not this test's concern. */
+    (service as any).extractRecordEntries = jest.fn(async () => undefined);
     const result = await service.decline('ci1', 'user-1');
     expect(result).toEqual({ status: 'declined' });
     expect(prisma.checkIn.update).toHaveBeenCalledWith({
       where: { id: 'ci1' },
-      data: { status: 'DECLINED' },
+      data: { status: 'DECLINED', closedReason: 'declined' },
     });
   });
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TwoAccountsSideBySide, Folded } from '@/components/gw/two-accounts-side-by-side'
 import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -19,6 +20,8 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 type ViewTab = 'shared' | 'own'
 
@@ -81,13 +84,13 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
       <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Resolution</div>
       {resolutionState && (
         <div style={{ marginBottom: data ? 12 : 0 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{resolutionState}</div>
         </div>
       )}
       {data && (
         <div>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 6 }}>Current status</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 6 }}>Current status</span>
           {isClosed && data.resolution ? (
             <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>Closed: {data.resolution.endState}</div>
@@ -225,16 +228,16 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(true)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          It felt fair
+          {submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'}
         </button>
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(false)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          It did not
+          {submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'}
         </button>
       </div>
     </div>
@@ -403,9 +406,12 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
 }) {
   const rows: { h: string; items: string[]; empty?: string }[] = [
     { h: 'What you said doing well means', items: section.whatYouSaidGoodMeans.map(s => s.text) },
-    { h: 'What the record holds on that', items: section.whatTheRecordHolds.map(e => e.text), empty: 'Nothing on the record speaks to it yet.' },
+    { h: 'What people have said about that', items: section.whatTheRecordHolds.map(e => e.text), empty: 'Nobody has spoken to it yet.' },
     {
-      h: 'What nobody has evidence for',
+      /* It lists standards nobody's account reached, not things nobody can prove - the section's
+         own note says "never reached by anybody's account". The old heading described a different
+         section and carried the courtroom register besides. */
+      h: 'What nobody mentioned',
       items: section.whatNobodyHasEvidenceFor,
       empty: 'Everything you named was reached by something somebody said.',
     },
@@ -463,7 +469,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
             ))}
           </ul>
           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
-            Recorded at the beginning and left as written. Read what the record holds above against it.
+            Written at the beginning and left as it was. Read what people shared above against it.
           </div>
         </div>
       )}
@@ -512,19 +518,19 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
       {note && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{note}</div>}
       {observation && (
         <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>What we noticed</span>
           {observation}
         </div>
       )}
       {whyItMatters && (
         <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>Why it matters</span>
           {whyItMatters}
         </div>
       )}
       {recommendedMove && (
         <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-          <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
+          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
       )}
@@ -550,7 +556,7 @@ function HonestClose({ aligned, open, revisit, risk }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {cells.map(cell => cell.value ? (
           <div key={cell.label} style={{ borderRadius: 8, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-text)', background: cell.bg }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 3, color: cell.color }}>{cell.label}</span>
+            <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 3, color: cell.color }}>{cell.label}</span>
             {cell.value}
           </div>
         ) : null)}
@@ -602,6 +608,7 @@ function HiddenContributorsSection({
 }) {
   const [openFor, setOpenFor] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [name, setName] = useState('')
   const [reason, setReason] = useState('')
   const [done, setDone] = useState<Set<string>>(new Set())
@@ -668,10 +675,13 @@ function HiddenContributorsSection({
                     style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
                   />
                 )}
+                {emailError && <div className="gw-er" role="alert">{emailError}</div>}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => {
-                      if (!email.trim().includes('@')) return
+                      /* It used to return in silence, so a typo was indistinguishable from success. */
+                      if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
+                      setEmailError('')
                       if (isInitiator) {
                         addParticipant.mutate({ key, email: email.trim(), note: c.evidence })
                       } else {
@@ -852,6 +862,8 @@ export function ReportBody({
    */
   const downloadRecord = useMutation({
     mutationFn: (checkInId: string) => conversationApi.download(checkInId),
+    /* Under a claim that the record is portable and permanent, nothing said a file was produced. */
+    onSuccess: () => toast.success('Your record is downloading.'),
     onError: () => toast.error('Could not download that record. Please try again.'),
   })
 
@@ -993,7 +1005,16 @@ export function ReportBody({
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
-  const contributedParties = ((report.engagement ?? {}) as any).parties?.filter((p: any) => p.contributed).length ?? 2
+  const parties = ((report.engagement ?? {}) as any).parties as { contributed?: boolean }[] | undefined
+  const contributedParties = parties?.filter((p) => p.contributed).length ?? 2
+  /* How many are still to check in - said as a number, because "the second" on a four-person
+     check-in with three outstanding was wrong by two. */
+  const outstandingParties = parties ? Math.max(0, parties.length - contributedParties) : 0
+  const stillToCheckIn = outstandingParties === 0
+    ? 'One person has checked in so far. The next is what makes it a comparison.'
+    : outstandingParties === 1
+      ? 'One person has checked in so far. One more is still to check in, and that is what makes it a comparison.'
+      : `One person has checked in so far. ${outstandingParties} more are still to check in, and that is what makes it a comparison.`
   // Null when the report names nothing, and the header renders nothing in that
   // case rather than a reassuring placeholder.
   const read = agreements.length + divergences.length > 0
@@ -1015,7 +1036,7 @@ export function ReportBody({
 
   const solo = report.soloArtifact
   const releasedDate = report.releasedAt
-    ? new Date(report.releasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? whenItWas(report.releasedAt, 'full')
     : null
 
   /**
@@ -1041,10 +1062,10 @@ export function ReportBody({
    */
   const sessionPhrase = !statusLabel
     ? (oneSided
-      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      ? stillToCheckIn
       : 'Everyone has answered. This has not yet named an area they agree or differ on.')
     : oneSided
-      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      ? stillToCheckIn
       : divergences.length === 0
         ? 'You see this the same way.'
         : 'Where you see it differently is below, most important first.'
@@ -1107,9 +1128,10 @@ export function ReportBody({
       )}
 
       {isForming && progress && (
-        <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
+        <div role="status" aria-live="polite" style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
           <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
-            <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in.
+            {/* The unit, named: without "for session N" this read as "3 of 5 have ever taken part". */}
+            <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in for session {progress.sessionNumber}.
             {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this session - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
           </div>
         </div>
@@ -1254,17 +1276,16 @@ export function ReportBody({
                         <AreaBlock key={i} title={area.title} observation={area.observation} whyItMatters={area.whyItMatters} recommendedMove={area.recommendedMove} />
                       ))
                     : divergences.map((d: any, i: number) => (
-                        // The engine now emits these ranked, most significant
-                        // first, so render order is the ranking - no re-sorting
-                        // here. `atStake` is what happens to the work if the gap
-                        // holds; it is omitted when the record could not support
-                        // saying anything, so it is conditional on being present.
-                        <AreaBlock
-                          key={i}
-                          title={d.topic}
-                          observation={d.positions.map((p: any) => p.view).join(' ')}
-                          whyItMatters={d.atStake}
-                        />
+                        /*
+                         * The engine emits these ranked, most significant first, so render order is
+                         * the ranking - no re-sorting here.
+                         *
+                         * WHAT CHANGED. This was `d.positions.map(p => p.view).join(' ')`: the two
+                         * conflicting accounts flattened into one paragraph, whose each one was
+                         * thrown away, and `d.evidence` rendered nowhere while the legend above
+                         * promised "the evidence behind it". Same rows, same order, both accounts.
+                         */
+                        <TwoAccountsSideBySide key={i} difference={d} />
                       ))
                   }
                 </div>
@@ -1287,7 +1308,7 @@ export function ReportBody({
                   the person leading it, because that is what the prompt is
                   instructed to produce and the framing has to match or the whole
                   thing reads as an appraisal. */}
-              {isAdmin && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
+              {(isAdmin || user?.role === 'ADMIN') && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                   <SecH>Worth your attention as the person leading this</SecH>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -1305,10 +1326,17 @@ export function ReportBody({
                 </div>
               )}
 
-              {/* Alignment reached */}
+              {/*
+                FOLDED, AND FOLDED AS A REAL `<details>`.
+
+                This list is long and it is the part a reader already knows - what everybody
+                already sees the same way. It pushed the differences, which is what they came for,
+                below the fold. A `<details>` keeps every word in the document, prints open, and is
+                announced as expandable; a `useState` and a conditional render would delete it from
+                the page, which is the one thing this pass exists not to do.
+              */}
               {agreements.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <SecH>Alignment reached</SecH>
+                <Folded summary={`${agreements.length} ${agreements.length === 1 ? 'thing you already see' : 'things you already see'} the same way`}>
                   {hasAreas
                     ? areas.filter((a: any) => a.reached).map((area: any, i: number) => (
                         <AreaBlock key={i} title={area.title} note={area.note} reached />
@@ -1319,7 +1347,7 @@ export function ReportBody({
                         </div>
                       ))
                   }
-                </div>
+                </Folded>
               )}
 
               <HonestClose aligned={honestClose.aligned} open={honestClose.open} revisit={honestClose.revisit} risk={honestClose.risk} />
@@ -1333,7 +1361,7 @@ export function ReportBody({
                 Lead only, and only once the ground is closing - the server returns nothing
                 before that, so this renders when it has something and never otherwise.
               */}
-              {isAdmin && (report as any).softSpots && (
+              {(isAdmin || user?.role === 'ADMIN') && (report as any).softSpots && (
                 <WhereTheRecordIsThin
                   spots={(report as any).softSpots}
                   nameFor={(pid) => {
@@ -1343,7 +1371,7 @@ export function ReportBody({
                 />
               )}
 
-              {isAdmin && (report as any).whatTheGroundCanTellYou && (
+              {(isAdmin || user?.role === 'ADMIN') && (report as any).whatTheGroundCanTellYou && (
                 <WhatTheGroundCanTellYou
                   section={(report as any).whatTheGroundCanTellYou}
                   note={(report as any).whatTheGroundCanTellYouNote}
@@ -1352,15 +1380,23 @@ export function ReportBody({
                 />
               )}
 
-              {/* The full account, after the sharp part. W13-7. */}
-              <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
-
+              {/*
+                MOVED UP, NOT CUT. This sat under the full account, which is the longest block on
+                the page, so the one sentence a lead most needs before walking into the room was
+                the last thing they reached. It is the same sentence from the same field.
+              */}
               {report.centralQuestion && (
-                <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px' }}>
-                  <SecH>What comes next</SecH>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{report.centralQuestion}</div>
+                <div style={{ marginBottom: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '12px 14px' }}>
+                  <SecH>The one thing to settle first</SecH>
+                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{report.centralQuestion}</div>
                 </div>
               )}
+
+              {/* The full account, after the sharp part. W13-7, and folded: it is explicitly the
+                  long read, and it repeats what the sharp part above already said. */}
+              <Folded summary="The full account">
+                <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
+              </Folded>
 
               {Array.isArray((report as any).engagement?.hiddenContributors) && (report as any).engagement.hiddenContributors.length > 0 && (
                 <HiddenContributorsSection groundId={id!} contributors={(report as any).engagement.hiddenContributors} isInitiator={isAdmin} />
@@ -1416,7 +1452,7 @@ export function ReportBody({
                     <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
                         {personLabel(u)} updated what they said
-                        {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+                        {u.completedAt ? ` on ${whenItWas(u.completedAt, 'full')}` : ''}
                       </div>
                       {u.isPostSignOff && (
                         <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
@@ -1482,10 +1518,11 @@ export function ReportBody({
                         .map(c => (
                           <button
                             key={c.id}
-                            disabled={downloadRecord.isPending}
+                            disabled={downloadRecord.isPending && downloadRecord.variables === c.id}
                             onClick={() => downloadRecord.mutate(c.id)}
                             style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid #D6D2CA', borderRadius: 12, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
                             title={`Download your session ${c.sessionNumber} record as a text file`}
+                            aria-label={`Download your session ${c.sessionNumber} record`}
                           >
                             Session {c.sessionNumber}
                           </button>

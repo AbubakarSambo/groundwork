@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { IsString, IsNotEmpty, IsOptional, MaxLength, IsIn } from 'class-validator';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { FeedbackService } from './feedback.service';
@@ -73,6 +74,8 @@ export class FeedbackController {
   constructor(private readonly feedback: FeedbackService) {}
 
   @Public()
+  /* Anonymous and writes a row on every call; the only public POST with no limit of its own (A9). */
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
   @Post()
   create(@Body() dto: CreateFeedbackDto) {
     return this.feedback.create(dto);

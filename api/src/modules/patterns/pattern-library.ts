@@ -274,7 +274,11 @@ export interface PatternThresholds {
   enabled?: boolean;
 }
 
-/** Map of pattern code → thresholds, populated from DB at detection time. */
+/**
+ * Thresholds a caller may hand in. Nothing in the product does: the `pattern_configs` table these
+ * were loaded from had no writer, so every detection ran on the defaults below since the day it
+ * shipped, and the table went (fix plan B12). The defaults are the rule; this is the test seam.
+ */
 export type PatternConfigMap = Record<string, PatternThresholds>;
 
 export interface DetectionInput {
@@ -286,7 +290,7 @@ export interface DetectionInput {
   role?: string;               // participant's declared role
   /** Codes that have already been SURFACED for this participant (used for F1 composite). */
   priorSurfacedCodes?: string[];
-  /** Live thresholds loaded from DB. Detectors fall back to hardcoded defaults when absent. */
+  /** Threshold overrides, for tests. In the product the defaults in each detector are the thresholds. */
   config?: PatternConfigMap;
 }
 

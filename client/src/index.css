@@ -92,6 +92,10 @@
      rail uses its own colours, so nothing is made worse by this.
      --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
   --gw-muted: #706A65;
+  /* For type below 11px, where a ratio written for 14px text stops being enough. Small uppercase
+     labels at 9.5px measured 4.68-4.85 against white on --gw-muted: passing the letter of the bar
+     and not the point of it. This is the same family, darker, for exactly those labels. */
+  --gw-sub-d: #4A4540;
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
   --gw-clay: #9F5447;
@@ -689,7 +693,8 @@ body {
 /* Cadence, length and count. Three numbers a lead compares between two cards,
    so they are a real grid with tabular numerals and not a sentence. */
 .cg-meta { display: flex; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--gw-border); }
-.cg-meta > div { flex: 1; min-width: 0; }
+.cg-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+/* The pair wraps together: labels wrapping to three lines at ~1150px used to leave a value on the line above its own word. */
 .cg-meta dt {
   font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--gw-muted); margin: 0 0 1px; line-height: 1.3; min-height: 24px;

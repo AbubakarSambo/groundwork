@@ -21,7 +21,10 @@
  * not exist yet rather than being quietly given nothing.
  */
 export const SENDABLE_EVENTS = [
-  /** Every party is in for a round. The one the delivery discipline hangs on. */
+  /** Every party is in for a session. The one the delivery discipline hangs on. */
+  'session.completed',
+  /** The same event under the word the product retired from every human surface. Still fires, for
+      one release, so no integrator breaks; see DEPRECATED_EVENTS (fix plan B13). */
   'round.completed',
   /** One person finished one session. Fires per participant, not per round. */
   'checkin.completed',
@@ -46,6 +49,11 @@ export const SENDABLE_EVENTS = [
 ] as const;
 
 export type SendableEvent = (typeof SENDABLE_EVENTS)[number];
+
+/** Still sent, still subscribable, and going next release. Each names what to subscribe to instead. */
+export const DEPRECATED_EVENTS: Record<string, string> = {
+  'round.completed': 'session.completed',
+};
 
 /**
  * Named so the refusal can explain itself. These are real events in the contract that nothing emits

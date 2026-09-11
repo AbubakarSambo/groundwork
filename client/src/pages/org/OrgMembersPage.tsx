@@ -5,6 +5,7 @@ import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 interface OrgMember {
   id: string
@@ -216,7 +217,7 @@ export function OrgMembersPage() {
     mutationFn: (userId: string) => apiClient.patch('/users/organization/owner', { userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['org-owner'] })
-      toast.success('Handed over. They now hold this account.')
+      toast.success('Handed over. They now own this organisation.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not hand that over.'),
   })
@@ -230,7 +231,7 @@ export function OrgMembersPage() {
 
   function handleInvite() {
     const email = inviteEmail.trim()
-    if (!email.includes('@')) return
+    if (!looksLikeAnAddress(email)) return
     inviteMut.mutate(email)
   }
 
@@ -242,7 +243,15 @@ export function OrgMembersPage() {
     )
   }
 
-  const members = data?.data ?? []
+  const everybody = data?.data ?? []
+  /*
+   * A SEARCH BOX ONCE THE LIST IS LONGER THAN A SCREEN. An organisation putting its whole company
+   * on scrolls a hundred rows to change one person's role. Shown only where it earns its space.
+   */
+  const [find, setFind] = useState('')
+  const members = find.trim()
+    ? everybody.filter((m: any) => `${m.firstName ?? ''} ${m.lastName ?? ''} ${m.email}`.toLowerCase().includes(find.trim().toLowerCase()))
+    : everybody
 
   return (
     <div style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
@@ -270,7 +279,7 @@ export function OrgMembersPage() {
         People
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.6 }}>
-        Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
+        Everyone signed in to Groundwork in your organisation. Invite colleagues to give them access.
       </p>
 
       {/* THE QUEUE. Shown only when there is one - an empty "nobody is waiting" panel on every
@@ -405,7 +414,7 @@ export function OrgMembersPage() {
       <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 12, padding: '20px 22px', marginBottom: 32 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a team member</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.5 }}>
-          They will receive an email with a link to set up their Groundwork account.
+          They will receive an email with a link to set themselves up in Groundwork.
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <input
@@ -421,11 +430,11 @@ export function OrgMembersPage() {
           />
           <button
             onClick={handleInvite}
-            disabled={inviteMut.isPending || !inviteEmail.includes('@')}
+            disabled={inviteMut.isPending || !looksLikeAnAddress(inviteEmail)}
             style={{
               padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', border: 'none',
               borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: inviteMut.isPending || !inviteEmail.includes('@') ? 0.5 : 1,
+              opacity: inviteMut.isPending || !looksLikeAnAddress(inviteEmail) ? 0.5 : 1,
               whiteSpace: 'nowrap',
             }}
           >
@@ -580,8 +589,21 @@ export function OrgMembersPage() {
         <div style={{ color: 'var(--gw-sub)', fontSize: 14 }}>Loading…</div>
       ) : (
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+          {everybody.length > 12 && (
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)' }}>
+              <input
+                value={find}
+                onChange={(e) => setFind(e.target.value)}
+                placeholder={`Find somebody among ${everybody.length}`}
+                aria-label="Find somebody"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', fontSize: 13, borderRadius: 7, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white' }}
+              />
+            </div>
+          )}
           {members.length === 0 ? (
-            <div style={{ padding: '24px 20px', color: 'var(--gw-sub)', fontSize: 14 }}>No members yet.</div>
+            <div style={{ padding: '24px 20px', color: 'var(--gw-sub)', fontSize: 14 }}>
+              {find.trim() ? `Nobody here matches "${find.trim()}".` : 'No members yet.'}
+            </div>
           ) : (
             members.map((m, i) => (
               <div
@@ -656,7 +678,7 @@ export function OrgMembersPage() {
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
-                    }}>Holds this account</span>
+                    }}>Owns this organisation</span>
                   )}
                   {m.id === user?.id ? (
                     <span style={{
@@ -669,7 +691,7 @@ export function OrgMembersPage() {
                      * says "Holds this account" about somebody else, so this only needs to say the
                      * same thing about you.
                      */
-                    }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
+                    }}>{iAmTheOwner ? 'You · owner' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
                       /* An unnamed control. A screen reader reached this row and announced a
@@ -712,7 +734,7 @@ export function OrgMembersPage() {
                       onClick={() => {
                         const who = `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
                         if (window.confirm(
-                          `Hand this account to ${who}?\n\nThey become the person who cannot be `
+                          `Hand this organisation to ${who}?\n\nThey become the person who cannot be `
                           + 'removed by other admins, and you stop being that person. You stay an admin.',
                         )) handOverMut.mutate(m.id)
                       }}

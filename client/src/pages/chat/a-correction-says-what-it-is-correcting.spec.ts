@@ -34,6 +34,7 @@ describe('a correction session', () => {
   })
 
   it('while an ordinary session still says its own number', () => {
-    expect(CHAT).toContain('`Session ${sessionNumber} · Private`')
+    /* No privacy tag since 10 Sep 2026: the number is the whole label. */
+    expect(CHAT).toContain('`Session ${sessionNumber}`')
   })
 })

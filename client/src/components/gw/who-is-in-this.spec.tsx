@@ -44,6 +44,7 @@ function renderTopic(parties: { name: string; done: boolean; isSelf: boolean }[]
           onOpenSession={() => {}}
           openPending={false}
           parties={parties}
+          brief="A brief, so the card's heading renders: it is gated on the brief now (fix plan C16)."
         />
       </MemoryRouter>
     </QueryClientProvider>,

@@ -56,6 +56,10 @@ describe('a check-in can be brought to an end', () => {
     renderPanel()
     await userEvent.click(await screen.findByText('Keep the hire'))
     await userEvent.click(screen.getByText('This is my answer'))
+    /* The consequences, then the press (nothing-irreversible-happens-on-one-press.spec.tsx): one click
+       does not end an engagement. */
+    expect(resolutionApi.propose).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByText('Yes, that is my answer'))
     await waitFor(() => expect(resolutionApi.propose).toHaveBeenCalledWith('g1', 'KEEP'))
   })
 

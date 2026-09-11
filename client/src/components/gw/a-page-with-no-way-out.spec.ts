@@ -80,11 +80,25 @@ describe('a page with no way out', () => {
     ].join('\n')).toEqual([])
   })
 
-  it('org setup in particular has both, since every route redirects an admin to it', () => {
+  it('org setup in particular has both, because somebody can still land on it', () => {
+    /*
+     * THE PREMISE CHANGED, THE REQUIREMENT DID NOT.
+     *
+     * This used to read "since every route redirects an admin to it". That redirect is gone (fix
+     * plan F6): the organisation's address is optional, nothing mails it, and the payment step
+     * asks for one when it needs it - so a second address is no longer a wall in front of the
+     * whole product. The page is still reachable from settings, and a chromeless page anybody can
+     * land on still needs a way out.
+     *
+     * The `useEffect` assertion went with the redirect. It was there because the page used to
+     * bounce you to /grounds during render once the address was filled in, which logged a React
+     * warning every visit. There is nothing to bounce to now, so requiring the effect would be
+     * requiring the bug's dressing without the bug.
+     */
     const src = readFileSync(join(ROOT, 'src/pages/org/OrgSetupPage.tsx'), 'utf8')
     expect(src).toContain('MARKETING_URL')
     expect(src).toMatch(/logout\s*\(/)
-    /* And it no longer redirects during render, which logged a React warning on every visit. */
-    expect(src).toContain('useEffect')
+    /* And nothing navigates during render, which is what the old effect was protecting against. */
+    expect(src).not.toMatch(/^\s*if \([^)]*\)\s*(?:return\s*)?<Navigate/m)
   })
 })

@@ -7,6 +7,7 @@ import { CredentialsController } from './credentials.controller';
 import { ImportsController } from './imports.controller';
 import { CredentialsService } from './credentials.service';
 import { IdempotencyService } from './idempotency.service';
+import { IdempotencyInterceptor } from './idempotency.interceptor';
 import { MachineTokenGuard } from './machine-token.guard';
 import { SubjectsService } from '../subjects/subjects.service';
 import { ScimService } from '../people/scim.service';
@@ -21,6 +22,7 @@ import { ReportsModule } from '../reports/reports.module';
 import { GroundsModule } from '../grounds/grounds.module';
 import { HandoverService } from '../grounds/handover.service';
 import { DepartureService } from '../people/departure.service';
+import { RetentionController } from '../people/retention.controller';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -32,6 +34,8 @@ import { DraftsController } from '../drafts/drafts.controller';
 import { WhatICanSeeController } from '../assistant/what-i-can-see.controller';
 import { DraftsService } from '../drafts/drafts.service';
 import { ApiAccessService } from './api-access.service';
+import { ApiWatchCron } from './api-watch.cron';
+import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { ReadItIfWeCanService } from '../documents/read-it-if-we-can.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
@@ -39,10 +43,14 @@ import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
 import { ReviewsComingUpCron } from '../reports/reviews-coming-up.cron';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { CommitmentsByApiService } from './commitments-by-api.service';
+import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation.service';
+import { WhatsAppForAnOrganisationController } from './whatsapp-for-an-organisation.controller';
+import { WhatsAppController } from '../whatsapp/whatsapp.controller';
 import { TodosByApiService } from './todos-by-api.service';
 import { ConversationModule } from '../conversation/conversation.module';
 import { EmailModule } from '../email/email.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { UsersModule } from '../users/users.module';
 import { RolesService } from '../detectors/roles-and-their-action.service';
 import { DetectorsService } from '../detectors/detectors.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
@@ -65,13 +73,14 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
        the others: EmailService has its own dependency chain. */
     EmailModule,
     DocumentsModule,
+    UsersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, ApiAccessService, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron],
+  controllers: [PublicApiController, WhatsAppForAnOrganisationController, WhatsAppController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, RetentionController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController],
+  providers: [CredentialsService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

@@ -94,6 +94,13 @@ export interface CoachingInputs {
   noticedBehaviour: string | null;
   sessionNumber: number;
   totalSessions: number | null;
+  /**
+   * WHETHER THIS IS THE CLOSING SESSION, WHICH THE COUNT CANNOT TELL YOU. A lead can end a ground
+   * early - "begin the closing session" on session 4 of 6 - and `sessionNumber >= totalSessions`
+   * then reads false. Read live: the closing report told the lead what to do "before the next
+   * session" and handed them an opener for a conversation that was never going to happen.
+   */
+  isFinalSession?: boolean;
   scenario: string | null;
   /** What this person says they are waiting on. */
   waitingOn: Dependency[];
@@ -243,7 +250,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     : i.role?.trim() ? `your work as ${i.role.trim().toLowerCase()}` : 'this work';
 
   const early = i.sessionNumber <= 2;
-  const last = i.totalSessions != null && i.sessionNumber >= i.totalSessions;
+  const last = i.isFinalSession === true || (i.totalSessions != null && i.sessionNumber >= i.totalSessions);
   const actions: string[] = [];
 
   /*
@@ -307,7 +314,10 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
       whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
-      beforeNextTime: actions.slice(0, 3),
+      /* All of them. The list can hold six and the pattern probe is pushed last, so a cap at three
+         made the probe the first thing cut - the one line that was about the recurrence itself. The
+         page shows the first three and the rest under "also"; nothing is dropped here. */
+      beforeNextTime: actions,
       general: false,
       role: roleBlock(map, pair),
       whyNoRoleMap,
@@ -331,7 +341,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     whyItMatters: early
       ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
       : `This is ${where} of ${about}. Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
-    beforeNextTime: actions.slice(0, 3),
+    beforeNextTime: actions,
     general: true,
     role: roleBlock(map, pair),
     whyNoRoleMap,

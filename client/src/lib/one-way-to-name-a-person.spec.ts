@@ -24,12 +24,13 @@ describe('personLabel says what a person would say out loud', () => {
     expect(personLabel({ user, roleAsDescribed: 'the new hire', email: 'j@x.test' })).toBe('Jordan Reyes')
   })
 
-  it('then what they do here', () => {
-    expect(personLabel({ roleAsDescribed: 'the new hire', email: 'j@x.test' })).toBe('the new hire')
+  it('then their address, because a role in a list of people reads as a job title', () => {
+    /* 10 Sep 2026: "runs the connect page · waiting" sat in WHO IS IN THIS as if it were a name. */
+    expect(personLabel({ roleAsDescribed: 'the new hire', email: 'j@x.test' })).toBe('j@x.test')
   })
 
-  it('and the address only when there is nothing else', () => {
-    expect(personLabel({ email: 'j@x.test' })).toBe('j@x.test')
+  it('and the role only when there is no address either', () => {
+    expect(personLabel({ roleAsDescribed: 'the new hire' })).toBe('the new hire')
   })
 
   it('never blank', () => {

@@ -9,7 +9,7 @@ import { conversationApi } from '@/api/conversation'
  * End-confirmation guard (#4): a check-in must never finalise without an
  * explicit "ready to finish?" confirmation - it must not auto-end, and the
  * complete action must not fire on the first click. Clicking "Complete
- * session" now opens a confirm step; only "Finish check-in" finalises.
+ * session" now opens a confirm step; only "Finish session" finalises.
  * Wire the button straight back to complete.mutate() -> complete is called on
  * the first click -> this bites.
  */
@@ -55,16 +55,16 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
     const trigger = await screen.findByText(/Complete session/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
     // a confirm step appears...
-    await screen.findByText(/Ready to finish this check-in\?/i)
+    await screen.findByText(/Ready to finish this session\?/i)
     // ...and nothing has been finalised yet
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })
 
-  it('finalises only after the explicit "Finish check-in" confirmation', async () => {
+  it('finalises only after the explicit "Finish session" confirmation', async () => {
     renderChat()
     const trigger = await screen.findByText(/Complete session/i, {}, { timeout: 4000 })
     fireEvent.click(trigger)
-    const finish = await screen.findByRole('button', { name: /Finish check-in/i })
+    const finish = await screen.findByRole('button', { name: /Finish session/i })
     fireEvent.click(finish)
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalledTimes(1))
   })

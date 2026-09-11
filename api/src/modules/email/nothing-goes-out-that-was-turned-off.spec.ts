@@ -48,7 +48,12 @@ describe('somebody who used the unsubscribe link', () => {
 
   it('said something stronger than a preference, and it outranks one', () => {
     expect(whetherToSend('we decided to send it', gone).send).toBe(false);
-    expect(whetherToSend('asked for', gone).send).toBe(false);
+  });
+
+  it('but still gets what they asked for: a report they took part in is not a digest they left', () => {
+    /* Decided under fix plan D13 (NL-031): a consultant who unsubscribed from one customer's digest
+       did not ask to stop hearing about work they did for another. */
+    expect(whetherToSend('asked for', gone).send).toBe(true);
   });
 
   it('but is not locked out of their own account', () => {

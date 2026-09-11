@@ -15,6 +15,8 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 const svc = (over: { releasedAt?: Date | null; rounds?: any[] } = {}) => {
   const s = Object.create(ReportsService.prototype) as any;
   s.prisma = {
+    /* The org-admin read asks the role now, not only the organisation. */
+    user: { findUnique: async () => ({ role: 'ADMIN', organizationId: 'org1' }) },
     ground: {
       findUnique: async () => ({
         organizationId: 'org1',

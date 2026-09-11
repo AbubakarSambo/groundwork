@@ -26,7 +26,7 @@ describe('the weigh section reaches the page', () => {
   })
 
   it('with the three parts, in the order the module builds them', () => {
-    expect(CODE).toMatch(/What you said doing well means[\s\S]*What the record holds on that[\s\S]*What nobody has evidence for/)
+    expect(CODE).toMatch(/What you said doing well means[\s\S]*What people have said about that[\s\S]*What nobody mentioned/)
   })
 
   it('and "what nobody has evidence for" says so rather than rendering an empty list', () => {
@@ -103,8 +103,18 @@ describe('the engine\'s own markers do not reach the reader raw', () => {
 
 describe('what must not appear', () => {
   it('neither section is shown to anybody but the lead', () => {
-    // The service gates soft spots under `if (viewerIsLead)`, and this is the second gate.
-    for (const m of [/isAdmin && \(report as any\)\.softSpots/, /isAdmin && \(report as any\)\.whatTheGroundCanTellYou/]) {
+    /*
+     * The service gates soft spots under `if (viewerIsLead)`, and this is the second gate.
+     *
+     * WHAT THE GATE NOW SAYS. The server sends these to `isInitiator || isOrgAdmin`; the client
+     * read `isAdmin`, which is `partyType === 'INITIATOR'` only - so an org admin was served
+     * three sections and shown none of them. The two gates say the same thing now. It is still
+     * two gates, and the outer block on this page has always been written this way.
+     */
+    for (const m of [
+      /\(isAdmin \|\| user\?\.role === 'ADMIN'\) && \(report as any\)\.softSpots/,
+      /\(isAdmin \|\| user\?\.role === 'ADMIN'\) && \(report as any\)\.whatTheGroundCanTellYou/,
+    ]) {
       expect(CODE).toMatch(m)
     }
   })

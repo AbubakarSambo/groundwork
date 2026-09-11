@@ -14,9 +14,11 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
-import { RecordEntryType, EvidenceType } from '@prisma/client';
+import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
-import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
+import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
+import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
+import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -225,7 +227,7 @@ export class DocumentsService {
 
   /** Ask Gemini for a short "what this suggests / what we will do with it" read. */
   private async assessDocument(content: string, fileName: string): Promise<{ suggests: string[]; willDo: string[] } | null> {
-    if (content.startsWith('[Attached:')) return null;
+    if (weCouldNotReadIt(content)) return null;
     try {
       const result = await this.anthropic.extract<{ suggests: string[]; willDo: string[] }>(
         ASSESSMENT_PROMPT,
@@ -280,17 +282,17 @@ export class DocumentsService {
     const participant = await this.assertParticipant(groundId, userId);
     const content = await this.extractContent(file);
     /*
-     * A RECORD OF A CONVERSATION IS REFUSED UNTIL SOMEBODY CONFIRMS THE PEOPLE IN IT KNOW.
+     * A RECORD OF A CONVERSATION IS TAKEN ON THE UPLOADER'S WORD, AND THE WORD IS STATED.
      *
-     * Refused rather than kept pending: a transcript sitting in a database waiting for permission
-     * is exactly the thing this is meant to prevent. The content is read to recognise the shape and
-     * then dropped with the request - nothing is written.
-     *
-     * The check errs towards asking. Being asked about a strategy deck costs one click; a
-     * transcript slipping through as an ordinary document costs somebody else their privacy.
+     * This refused a transcript until `consentConfirmed` was sent - the person had to press a button
+     * saying the people in it knew. Reversed by the product owner on 11 September 2026: nothing is
+     * refused; the assumption is said instead, in the response, and shown to them. See
+     * a-conversation-belongs-to-the-people-in-it.ts for the reasoning. The flag is still accepted so
+     * no client breaks, and no longer read: uploading IS the confirmation, so the record of who and
+     * when is stamped from the upload itself.
      */
     const isConversation = looksLikeAConversation(file.originalname, content);
-    if (isConversation && !consentConfirmed) throw new BadRequestException(NOT_CONFIRMED);
+    void consentConfirmed;
 
     const assessment = await this.assessDocument(content, file.originalname);
     const origin = await this.decideOrigin(file, content, isConversation);
@@ -326,7 +328,11 @@ export class DocumentsService {
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
-    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
+    return {
+      ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
+      /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
+      ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+    };
   }
 
   /** Update a document's assessment (user-corrected version). */
@@ -383,7 +389,7 @@ export class DocumentsService {
     const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan });
     this.lastPdfWasAScan = false;
     if (fromFile) return fromFile;
-    if (content.startsWith('[Attached:')) return 'typed';
+    if (weCouldNotReadIt(content)) return 'typed';
     const cheap = looksGeneratedByAModel(content);
     /* A 74-character offer letter stub came back "generated" from the model on one of three identical
        copies. Too short to judge is typed unless the text itself carries the tells. */
@@ -408,7 +414,7 @@ export class DocumentsService {
     /* Not a card read: this feeds the check, not a list, so it selects the name under its own key rather than
        as `fileName`, which the-list-carries-what-was-read.spec treats as a card read. */
     const doc = await this.prisma.groundDocument.findUnique({ where: { id: docId }, select: { id: true, content: true, uploaderNote: true, fileName: true, assessment: true } });
-    if (!doc?.uploaderNote?.trim() || doc.content.startsWith('[Attached:')) return null;
+    if (!doc?.uploaderNote?.trim() || weCouldNotReadIt(doc.content)) return null;
     try {
       const read = await this.anthropic.extract<{ matches: boolean; reads: string }>(
         DESCRIPTION_CHECK_PROMPT,
@@ -418,7 +424,9 @@ export class DocumentsService {
       if (!read || typeof read.matches !== 'boolean') return null;
       const check = { matches: read.matches, reads: (read.reads ?? '').trim().slice(0, 300), checkedAt: new Date().toISOString() };
       await this.prisma.groundDocument.update({ where: { id: docId }, data: { descriptionCheck: check as any } });
-      this.logger.log(`description-check doc=${docId} matches=${check.matches} said=${JSON.stringify(doc.uploaderNote.trim().slice(0, 120))} reads=${JSON.stringify(check.reads)}`);
+      /* The verdict and the ids. What they wrote and what the document says are both on the row
+         this line points at, where only people entitled to them can read them (G4). */
+      this.logger.log(`description-check doc=${docId} matches=${check.matches}`);
       return check;
     } catch (err: any) {
       this.logger.warn(`Description check failed for ${docId}: ${err?.message}`);
@@ -502,19 +510,33 @@ export class DocumentsService {
       throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
     }
 
-    const participant = await this.prisma.groundParticipant.findUnique({
-      where: { inviteToken: token },
-    });
-    if (!participant) throw new NotFoundException('Invite not found');
+    /*
+     * THE SAME DOOR AS THE SIGNED-IN UPLOAD, WITH THE SAME QUESTIONS.
+     *
+     * This looked the token up bare - no expiry, no single-use - so an invite email from months ago
+     * still attached files to the ground; and it asked none of what the signed-in path asks, so a
+     * transcript arrived with no record that it was one, no visibility, and nobody's word behind it.
+     * The token rule is the invitation's (an-invite-link-still-opens.ts). The conversation check and
+     * the stated assumption are the upload's. The token no longer travels in the query string, where
+     * it landed in every access log on the path: see the controller.
+     */
+    const participant = assertInviteLinkStillOpens(
+      await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } }),
+    );
 
     const content = await this.extractContent(file);
+    const isConversation = looksLikeAConversation(file.originalname, content);
     const assessment = await this.assessDocument(content, file.originalname);
-    const origin = await this.decideOrigin(file, content, false);
+    const origin = await this.decideOrigin(file, content, isConversation);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
         groundId: participant.groundId,
         participantId: participant.id,
+        isConversation,
+        /* Taken on the word of whoever holds the invitation; they have no account yet, so no user id. */
+        ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: participant.userId ?? null } : {}),
+        visibility: defaultVisibilityForUpload(),
         fileName: file.originalname,
         mimeType: file.mimetype,
         content,
@@ -531,7 +553,11 @@ export class DocumentsService {
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
-    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
+    return {
+      ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
+      /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
+      ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+    };
   }
 
   /**

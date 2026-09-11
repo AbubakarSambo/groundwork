@@ -2,9 +2,12 @@ import 'reflect-metadata';
 import { CodeExpiryScheduler } from '../billing/code-expiry.scheduler';
 import { EntryCron } from '../entry/entry.cron';
 import { PatternsCron } from '../patterns/patterns.cron';
-import { IntelligenceService } from '../intelligence/intelligence.service';
 import { RemindService } from '../conversation/remind.service';
 import { ReportsService } from '../reports/reports.service';
+import { ApiWatchCron } from '../public-api/api-watch.cron';
+import { AuthCron } from '../auth/auth.cron';
+import { AnthropicService } from '../conversation/anthropic.service';
+import { BillingService } from '../billing/billing.service';
 
 /**
  * Follow-up to grounds.cron.ts's cron-timezone.spec.ts: the same implicit-
@@ -25,9 +28,12 @@ describe('every remaining @Cron job across the app is pinned to UTC', () => {
     ['CodeExpiryScheduler', CodeExpiryScheduler.prototype, 'handleCodeExpiryReminders', '0 0 * * *'], // EVERY_DAY_AT_MIDNIGHT
     ['EntryCron', EntryCron.prototype, 'purgeAbandonedDrafts', '0 03 * * *'], // EVERY_DAY_AT_3AM
     ['PatternsCron', PatternsCron.prototype, 'sweep', '0 02 * * *'], // EVERY_DAY_AT_2AM
-    ['IntelligenceService', IntelligenceService.prototype, 'weeklyLongitudinalSynthesis', '0 9 * * 1'],
     ['RemindService', RemindService.prototype, 'sendScheduledNudges', '0 08 * * *'], // EVERY_DAY_AT_8AM
     ['ReportsService', ReportsService.prototype, 'weeklyOutcomeLearningReport', '0 8 * * 1'],
+    ['ApiWatchCron', ApiWatchCron.prototype, 'pruneIdempotencyRecords', '0 1 * * *'],
+    ['AuthCron', AuthCron.prototype, 'pruneOAuthExchangeCodes', '0 4 * * *'],
+    ['AnthropicService', AnthropicService.prototype, 'probeTheEngine', '*/5 * * * *'],
+    ['BillingService', BillingService.prototype, 'retryStripeEventsWeCouldNotHandle', '15 * * * *'],
   ])('%s.%s is pinned to UTC', (_className, proto, methodName, expectedCronTime) => {
     const opts = cronOptionsFor(proto, methodName as string);
     expect(opts).toBeDefined();

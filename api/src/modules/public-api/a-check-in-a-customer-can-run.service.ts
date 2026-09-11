@@ -390,7 +390,7 @@ export class ACheckInACustomerCanRunService {
   async addAPerson(
     organizationId: string,
     personId: string,
-    dto: { email?: string; displayName?: string; externalId?: string },
+    dto: { email?: string; displayName?: string; externalId?: string; phone?: string; department?: string },
   ) {
     /* Refuses for the same reason every other panel route does: a session that cannot be resolved
        to a person is a session that may not act in this organisation at all. */
@@ -411,6 +411,12 @@ export class ACheckInACustomerCanRunService {
       userName: email,
       name: { givenName, familyName: rest.join(' ') || undefined },
       emails: [{ value: email, primary: true }],
+      ...(dto?.phone?.trim() ? { phoneNumbers: [{ value: dto.phone.trim(), primary: true }] } : {}),
+      /* Department rides the same enterprise extension the directory sync uses, so the two doors
+         write one column one way. Optional; blank is not sent, and never guessed from the address. */
+      ...(dto?.department?.trim()
+        ? { 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User': { department: dto.department.trim().slice(0, 120) } }
+        : {}),
       active: true,
     } as never);
   }
@@ -442,8 +448,10 @@ export class ACheckInACustomerCanRunService {
     /* The check-in is named by id; the document belongs to its ground. Resolved here rather than
        asking the caller for both, because a caller holding a check-in has no reason to know the
        ground's id and asking for it invites the two arriving mismatched. */
-    const checkIn = await this.prisma.checkIn.findUnique({
-      where: { id: checkInId },
+    const checkIn = await this.prisma.checkIn.findFirst({
+      /* Theirs, and here - not any check-in in the database. The upload two files away re-checks, and
+         a fence that holds only because a neighbour happens to is not a fence. */
+      where: { id: checkInId, participant: { userId, ground: { organizationId } } },
       select: { groundId: true },
     });
     if (!checkIn) throw new NotFoundException('We cannot see that check-in.');

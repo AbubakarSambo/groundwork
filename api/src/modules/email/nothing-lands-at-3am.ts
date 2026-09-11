@@ -44,6 +44,29 @@ export function localHour(now: Date, timezone: string | null): number {
 
 export type MayNotSend = 'unsubscribed' | 'opted_out' | 'quiet_hours' | 'already_nudged_today';
 
+/** Whether this moment is inside their quiet hours. The one rule, for every sender. */
+export function inQuietHours(now: Date, timezone: string | null, prefs: { quietBeforeHour: number | null; quietAfterHour: number | null } | null): boolean {
+  const hour = localHour(now, timezone);
+  const before = prefs?.quietBeforeHour ?? DEFAULT_QUIET_BEFORE;
+  const after = prefs?.quietAfterHour ?? DEFAULT_QUIET_AFTER;
+  return hour < before || hour > after;
+}
+
+/**
+ * THE NEXT MOMENT A MAIL MAY GO. Held, not dropped: a message refused for quiet hours is sent at the
+ * start of the next allowed hour in the recipient's own zone. Found by walking forward an hour at a
+ * time, because the zone's clock and not ours decides, and an offset is wrong twice a year.
+ */
+export function nextAllowedMoment(now: Date, timezone: string | null, prefs: { quietBeforeHour: number | null; quietAfterHour: number | null } | null): Date {
+  const onTheHour = new Date(now);
+  onTheHour.setUTCMinutes(0, 0, 0);
+  for (let i = 1; i <= 48; i++) {
+    const t = new Date(onTheHour.getTime() + i * 60 * 60 * 1000);
+    if (!inQuietHours(t, timezone, prefs)) return t;
+  }
+  return new Date(now.getTime() + 60 * 60 * 1000);
+}
+
 /**
  * Every reason not to send, in the order they matter.
  *
@@ -70,18 +93,15 @@ export function mayNotSend(args: {
    */
   if (args.kind === 'nudge' && args.nudgedInPanelToday) return 'already_nudged_today';
 
-  const hour = localHour(args.now, args.timezone);
-  const before = p?.quietBeforeHour ?? DEFAULT_QUIET_BEFORE;
-  const after = p?.quietAfterHour ?? DEFAULT_QUIET_AFTER;
   /*
    * SYMMETRIC WITH THE MORNING SIDE. `hour < before` already reads "don't send before this
    * hour, but the hour itself is fine" - `quietBeforeHour: 8` sends starting at 8am. The
    * evening side used `>=`, so `quietAfterHour: 23` (the fixture's own "no restriction, the
    * whole day is fine" value) refused every mail sent during the 23:00 hour - a real send
    * outside anybody's stated quiet hours, and a test that only failed when CI happened to run
-   * in that hour. `>` matches "don't send after this hour ends."
+   * in that hour. `>` matches "don't send after this hour ends." (inQuietHours)
    */
-  if (hour < before || hour > after) return 'quiet_hours';
+  if (inQuietHours(args.now, args.timezone, p)) return 'quiet_hours';
 
   return null;
 }
@@ -96,7 +116,7 @@ export function mayNotSend(args: {
  */
 export type DigestFacts = {
   groundLabel: string;
-  roundNumber: number;
+  sessionNumber: number;
   participantCount: number;
   /** How many things need attention. A number, never the things. */
   needsAttention: number;
@@ -104,7 +124,7 @@ export type DigestFacts = {
 };
 
 export function digestSubject(f: DigestFacts): string {
-  return `${f.groundLabel} - round ${f.roundNumber} is complete`;
+  return `${f.groundLabel} - session ${f.sessionNumber} is complete`;
 }
 
 export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
@@ -113,7 +133,7 @@ export function digestBody(f: DigestFacts, unsubscribeUrl: string): string {
     : `${f.needsAttention} ${f.needsAttention === 1 ? 'thing needs' : 'things need'} attention.`;
 
   return [
-    `Everyone has checked in for round ${f.roundNumber} of ${f.groundLabel}.`,
+    `Everyone has checked in for session ${f.sessionNumber} of ${f.groundLabel}.`,
     `${f.participantCount} ${f.participantCount === 1 ? 'person' : 'people'} took part. ${attention}`,
     /* The link is the point of the mail. What was actually said stays behind it, under whatever
        permissions govern it, rather than travelling into a mailbox. */

@@ -47,10 +47,10 @@ describe('a round closes once', () => {
   it('closes when the last person is in, and says who it was waiting on', async () => {
     const { prisma, events, created } = harness({ participants: 4, done: 4 });
     await expect(recordRoundCompletion(prisma, events, 'g1', 2)).resolves.toBe(true);
-    expect(created).toEqual([{ groundId: 'g1', roundNumber: 2, participantCount: 4 }]);
+    expect(created).toEqual([{ groundId: 'g1', sessionNumber: 2, participantCount: 4 }]);
     expect(events.emit).toHaveBeenCalledWith(GroundworkEvents.ROUND_COMPLETED, {
       groundId: 'g1',
-      roundNumber: 2,
+      sessionNumber: 2,
       participantCount: 4,
     });
   });
@@ -78,6 +78,30 @@ describe('a round closes once', () => {
     expect(prisma.checkIn.count).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ sessionNumber: 7 }) }),
     );
+  });
+
+  it('a decline is an answer: the round closes when the last person has answered, however they answered', async () => {
+    /* One refusal used to freeze the round for that session and every session after. The harness's
+       single count stands in for both counts here; the where clauses are what this pins. */
+    const { prisma, events } = harness({ participants: 2, done: 2 });
+    await recordRoundCompletion(prisma, events, 'g1', 1);
+    const wheres = prisma.checkIn.count.mock.calls.map((c: any) => c[0].where.status);
+    expect(wheres).toContainEqual({ in: expect.arrayContaining(['COMPLETED', 'DECLINED']) });
+    expect(wheres).toContainEqual('COMPLETED');
+  });
+
+  it('but a round where everybody declined has nothing to report, and does not close', async () => {
+    const created: any[] = [];
+    const prisma: any = {
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p0' }, { id: 'p1' }]) },
+      /* Two answered; none completed. */
+      checkIn: { count: jest.fn(async ({ where }: any) => (where.status === 'COMPLETED' ? 0 : 2)) },
+      roundCompletion: { create: jest.fn(async (a: any) => { created.push(a.data); return a.data; }) },
+    };
+    const events: any = { emit: jest.fn() };
+    await expect(recordRoundCompletion(prisma, events, 'g1', 1)).resolves.toBe(false);
+    expect(created).toEqual([]);
+    expect(events.emit).not.toHaveBeenCalled();
   });
 
   it('a ground with nobody to hear from has not closed a round', async () => {

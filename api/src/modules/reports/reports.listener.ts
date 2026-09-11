@@ -7,6 +7,7 @@ import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus } from '@prisma/client';
+import { hasEnded, isHeld } from '../grounds/a-ground-that-has-ended';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -33,7 +34,8 @@ export class ReportsListener {
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
     // Notify the admin when any participant checks in (best-effort, never blocks report flow)
-    this.notifyAdminOnCheckIn(event).catch((err: any) =>
+    /* A repair is not news to the admin: the backstop re-emitting a lost event must not re-send "X has checked in". */
+    if (event.source !== 'repair') this.notifyAdminOnCheckIn(event).catch((err: any) =>
       this.logger.warn(`Admin check-in notification failed for ground ${event.groundId}: ${err.message}`),
     );
 
@@ -54,20 +56,60 @@ export class ReportsListener {
       // agreement that isn't there - it just shows what's known so far.
       await this.reports.synthesize(event.groundId);
 
+      /*
+       * WORD THE READS NOW, NOT WHEN SOMEBODY OPENS THE PAGE. The session report and the shared
+       * report hand their drafts to the model for wording, and the worded lines are kept by their
+       * hash. Reading them here, for everybody who will read them, means the first open after a
+       * check-in costs a lookup rather than ten seconds. Best effort and off the critical path: a
+       * warm-up that fails leaves the page exactly as slow as it was, never broken.
+       */
+      this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
+        this.logger.warn(`Warming the reads for ${event.groundId} failed: ${err?.message}`),
+      );
+
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
       if (!allDone) return;
 
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
-        await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
+        /*
+         * THE REPORT OF THE LAST SESSION MUST NOT REOPEN THE GROUND. Releasing normally means the
+         * ground is live, and for the closing session it is the opposite: the report lands after
+         * the decision. Watched live - a CLOSED ground was set back to ACTIVE here, seconds after
+         * the lead ended it. See a-ground-that-has-ended.ts.
+         *
+         * NOR MAY IT LIFT A HOLD. A paused ground whose last participant finishes is still paused;
+         * the report is released and the hold stands until somebody resumes it on purpose.
+         */
+        if (hasEnded(g.status) || isHeld(g.status)) {
+          this.logger.log(
+            `Ground ${event.groundId} is ${g.status} (${hasEnded(g.status) ? 'ended' : 'held'}); report released and the status left as it is.`,
+          );
+        } else {
+          await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
+        }
       }
     } catch (err: any) {
       this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
     }
+  }
+
+  private async warmTheReads(groundId: string, sessionNumber: number) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
+    });
+    if (!ground) return;
+    const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    for (const userId of readers) {
+      await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
+      await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
+    }
+    this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
   }
 
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)
@@ -86,28 +128,12 @@ export class ReportsListener {
       this.logger.error(`Report release on ground.activated failed for ground ${event.groundId}: ${err.message}`);
     }
 
-    // Notify the participant(s) so they know to return.
-    try {
-      const ground = await this.prisma.ground.findUnique({
-        where: { id: event.groundId },
-        select: { label: true, participants: { include: { user: { select: { email: true, firstName: true } } } } },
-      });
-      if (!ground) return;
-
-      const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
-      const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
-
-      const participants = ground.participants.filter((p) => p.partyType === PartyType.PARTICIPANT && p.user);
-      await Promise.all(
-        participants.map((p) =>
-          this.email
-            .sendGroundActivated(p.user!.email, p.user!.firstName, ground.label, groundUrl)
-            .catch((err: any) => this.logger.error(`Failed to notify participant ${p.user!.email} of activation: ${err.message}`)),
-        ),
-      );
-    } catch (err: any) {
-      this.logger.error(`Participant activation notification failed for ground ${event.groundId}: ${err.message}`);
-    }
+    /*
+     * ONE REPORT, ONE MESSAGE (NL-005). release() above mails every participant that the shared record
+     * is ready, with the report link. This then mailed every participant a second time, seconds later,
+     * saying the same thing and pointing at the check-in instead, and neither said which to open. The
+     * second mail and its sender are gone; the report mail is the one.
+     */
   }
 
   private async notifyAdminOnCheckIn(event: CheckInCompletedEvent): Promise<void> {

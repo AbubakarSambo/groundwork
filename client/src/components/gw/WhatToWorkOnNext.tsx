@@ -102,7 +102,7 @@ export function WhatToWorkOnNext({ note, guide }: {
           */}
           {note.role?.protectAgainst && (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What this work gets read as unfairly</div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Where this kind of work gets misread</div>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
                 {note.role.protectAgainst}
               </p>

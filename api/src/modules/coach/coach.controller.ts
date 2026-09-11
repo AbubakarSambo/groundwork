@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { IsISO8601, IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
@@ -30,11 +31,22 @@ export class CoachRequestDto {
   @IsEmail()
   email!: string;
 
-  @ApiProperty({ description: 'Roughly how many people, so a conversation is not spent finding out.' })
+  /**
+   * OPTIONAL, BECAUSE ONE OF THE TWO FORMS STOPPED ASKING.
+   *
+   * The public request page dropped this field: somebody who has not decided to talk to us yet is
+   * being asked to count their team before they can send a sentence, and it is a question the first
+   * call answers in five seconds. The coach card inside the product still asks, because by then the
+   * person is already set up and the number is in front of them.
+   *
+   * Required here would have meant the public form silently 400ing on send. The column stays
+   * non-null and takes an empty string, so no migration and nothing downstream reads a null.
+   */
+  @ApiPropertyOptional({ description: 'Roughly how many people. Not asked on the public form.' })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(60)
-  teamSize!: string;
+  teamSize?: string;
 
   @ApiProperty({ description: `What they want help with, in their own words. At least ${MIN_INTENTION_LENGTH} characters.` })
   @IsString()
@@ -70,6 +82,7 @@ export class CoachController {
    * one their problem is. Requiring an account first would remove the only path they have.
    */
   @Public()
+  @Throttle({ global: { limit: 10, ttl: 60_000 } })
   @Post('request')
   @ApiOperation({ summary: 'Ask to speak to a coach. Creates no ground and invites nobody.' })
   async request(@Body() dto: CoachRequestDto) {

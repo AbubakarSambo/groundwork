@@ -1,5 +1,6 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability } from './what-somebody-may-do';
+import { medianOf, whatTheMedianSays } from './a-check-in-takes-about-as-long-as-we-say';
 
 /**
  * A number, and the rows that made it.
@@ -406,6 +407,40 @@ export const METRICS: MetricDefinition[] = [
         unit: 'use cases',
         rows: rows.map((r) => ({ company: r.company.name, useCase: r.title })),
         says: `${rows.length} supported`,
+      };
+    },
+  },
+  {
+    key: 'product.session_minutes_median',
+    label: 'How long a session takes',
+    shape: 'derived',
+    capability: 'product:read',
+    counts: 'The median minutes from a session being started to being completed, over customers\' real sessions completed in the window. The copy says about ten.',
+    async compute(prisma, window) {
+      const sessions = await prisma.checkIn.findMany({
+        where: {
+          status: 'COMPLETED',
+          isSetup: false,
+          startedAt: { not: null },
+          completedAt: within(window),
+          ground: { organization: { isInternal: false } },
+        },
+        select: { id: true, sessionNumber: true, startedAt: true, completedAt: true },
+      });
+      const rows = sessions
+        .map((c) => {
+          const started = c.startedAt ? new Date(c.startedAt).getTime() : NaN;
+          const completed = c.completedAt ? new Date(c.completedAt).getTime() : NaN;
+          const minutes = Math.round((completed - started) / 60000);
+          return { session: c.id, sessionNumber: c.sessionNumber, minutes };
+        })
+        .filter((r) => Number.isFinite(r.minutes) && r.minutes >= 0);
+      const median = medianOf(rows.map((r) => r.minutes));
+      return {
+        value: median ?? 0,
+        unit: 'minutes',
+        rows,
+        says: whatTheMedianSays(median, rows.length),
       };
     },
   },

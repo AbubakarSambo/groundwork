@@ -49,22 +49,22 @@ describe('the three questions, in the order somebody has them', () => {
 })
 
 describe('what it promises them', () => {
-  it('the same report the person running it gets, released to everybody at once', () => {
+  it('the same report the person running it gets, and the press that opens it', () => {
     /*
-     * THE TIMING CLAIM IS TRUE AND THE SCREEN LEFT OUT WHAT HAPPENS NEXT.
+     * THE TIMING CLAIM IS GONE, AND THE PROMISE THAT MATTERS IS NOT.
      *
-     * `releasedAt` is stamped once, atomically, so "released to everybody at once" is exactly
-     * right and stays. What this page never mentioned is that a party then meets an activation
-     * gate the lead is exempt from: reports.service.ts checks each participant's own
-     * ReportActivation before returning content. So somebody promised the report at the same
-     * moment as their manager clicks through and finds a button, which reads as the promise being
-     * withdrawn at the last step.
+     * `releasedAt` is stamped once, so "released to everybody at once" was true of the stamp. It
+     * was not true of the reading: a party then meets an activation gate the lead is exempt from,
+     * and reports.service.ts checks each participant's own ReportActivation before returning
+     * anything. Somebody told they get it at the same moment as their manager clicks through,
+     * finds a button, and reads that as the promise being withdrawn at the last step.
      *
-     * The phrase "at the same moment" is no longer matched literally, because the sentence now
-     * carries the press as well and would fail on wording rather than on the promise.
+     * Ruled out by the owner on 11 September: the sentence claims sameness the product does not
+     * deliver. What is true and worth saying is that it is the SAME REPORT, and that opening it is
+     * one press. Both are asserted here.
      */
-    expect(SRC).toMatch(/released to\s+everybody at once/)
-    expect(SRC).toMatch(/open your copy with one press/)
+    expect(SRC).toMatch(/The same report \{preview\.initiatorName\} gets/)
+    expect(SRC).toMatch(/open your\s+copy with one press/)
   })
 
   it('and their own private note', () => {

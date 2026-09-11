@@ -7,6 +7,29 @@ export interface WhatsAppToggleState {
   live: boolean
 }
 
+export interface CoachingBatch {
+  live: boolean
+  count: number
+  rows: {
+    participantId: string
+    who: string
+    organisation: string | null
+    ground: string | null
+    scenario: string | null
+    roleAsDescribed: string | null
+    detectedFunction: string | null
+    currentStep: string | null
+    lastInput: unknown
+    updatedAt: string
+  }[]
+}
+
+export interface CorrectionWindow {
+  days: number
+  default: number
+  max: number
+}
+
 export interface PricingPlanRow {
   plan: SubscriptionPlan
   /** Null for a contact-sales plan. The panel shows "Contact us" and offers no price editor. */
@@ -50,12 +73,20 @@ export interface ApiAccessRequest {
   decidedBy: string | null
   decidedAt: string | null
   note: string | null
+  acceptedTermsAt: string | null
+  termsVersion: string | null
+  /** The version accepted is not the version in force. Shown; what to do about it is the terms owner's call. */
+  termsOutOfDate: boolean
+  /** The last 24 hours of machine calls, when there were any. */
+  lastDay: { calls: number; reads: number; writes: number } | null
+  /** What the watch noticed and nobody has cleared. See the-api-is-watched.ts. */
+  flags: { id: string; kind: string; detail: string; raisedAt: string }[]
 }
 
 export const adminApi = {
   /** Zero-row detection: which writers have never written. */
   writers: () =>
-    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; error?: string }[] }>('/admin/writers').then(r => r.data),
+    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; needs?: string; error?: string }[] }>('/admin/writers').then(r => r.data),
   /** Every organisation that has asked for the API — ours among them. */
   getApiAccessRequests: () =>
     apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => r.data),
@@ -63,11 +94,23 @@ export const adminApi = {
   decideApiAccess: (id: string, status: ApiAccessRequest['status'], note?: string) =>
     apiClient.patch(`/admin/api-access/${id}`, { status, note }).then(r => r.data),
 
+  clearApiFlag: (flagId: string) =>
+    apiClient.patch(`/admin/api-access/flags/${flagId}/clear`).then(r => r.data),
+
   getWhatsAppStatus: () =>
     apiClient.get<WhatsAppToggleState>('/admin/whatsapp').then(r => r.data),
 
   setWhatsAppEnabled: (enabled: boolean) =>
     apiClient.patch<WhatsAppToggleState>('/admin/whatsapp', { enabled }).then(r => r.data),
+
+  /** The coaching batch, read before the switch is thrown, and the switch. */
+  getCoaching: () => apiClient.get<CoachingBatch>('/admin/coaching').then(r => r.data),
+  setCoachingLive: (live: boolean) =>
+    apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
+
+  getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
+  setCorrectionWindow: (days: number) =>
+    apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),
 
   /** Whether this deployment can take money. Never the key itself. */
   getStripeStatus: () =>

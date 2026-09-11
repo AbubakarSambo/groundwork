@@ -52,9 +52,10 @@ describe('the two views of a check-in are a pair', () => {
   })
 
   it('each view says which it is, in words that contrast with the other', () => {
-    // Whole against part, on the same axis, so the two lines answer each other.
-    expect(ADMIN).toContain('Everyone in it - you are running this')
-    expect(PARTY).toContain('Just yours - only you see this until the report releases.')
+    /* The party view still says whose it is, because that is the news. The lead's line went on
+       10 Sep 2026: the rail, the card and "Led by" already said it three times over. */
+    expect(ADMIN).not.toContain('Everyone in it - you are running this')
+    expect(PARTY).toContain('Your own check-in. The report shows where you and the others agree, differ, and what to do next.')
   })
 
   it('THE DOOR OUT OF THE LEAD\'S VIEW IS GONE, BECAUSE THERE IS NOWHERE IT LED', () => {

@@ -1,4 +1,4 @@
-import { Controller, Post, Patch, Get, Delete, Param, Query, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Delete, Param, Query, Body, Headers, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { IsArray, IsString } from 'class-validator';
@@ -17,14 +17,22 @@ import { Public } from '../../common';
 export class InviteDocumentsController {
   constructor(private readonly docs: DocumentsService) {}
 
+  /**
+   * THE TOKEN IS A CREDENTIAL, SO IT IS NOT IN THE URL. It arrived as `?token=` and so sat in every
+   * access log between the browser and this process. It is read from a header or the multipart body
+   * now, and the query string is not consulted.
+   */
   @Post('invite-upload')
-  @ApiOperation({ summary: 'Upload a document using an invite token (no auth required)' })
+  @ApiOperation({ summary: 'Upload a document using an invite token (no auth required). Token in the x-invite-token header or the `token` form field.' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   uploadByToken(
-    @Query('token') token: string,
+    @Headers('x-invite-token') headerToken: string | undefined,
+    @Body() body: { token?: string } | undefined,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    const token = (headerToken ?? body?.token ?? '').trim();
+    if (!token) throw new BadRequestException('An invite token is required, in the x-invite-token header or the token field.');
     return this.docs.uploadByInviteToken(token, file);
   }
 }

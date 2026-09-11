@@ -35,7 +35,7 @@ describe('switchOrganization', () => {
     };
     const jwt: any = { sign: jest.fn((claims: any) => JSON.stringify(claims)) };
     const service = new AuthService(
-      prisma, jwt, { get: () => undefined } as any, {} as any, {} as any, {} as any,
+      prisma, jwt, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,
     );
     return { service, prisma, jwt };
   }
@@ -109,7 +109,7 @@ describe('myOrganizations', () => {
       organization: { findUnique: jest.fn(async () => ({ id: 'org-own', name: 'Mine', slug: 'mine' })) },
     };
     const service = new AuthService(
-      prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any,
+      prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,
     );
     const rows = await service.myOrganizations('u1');
     expect(rows).toHaveLength(1);
@@ -128,7 +128,7 @@ describe('myOrganizations', () => {
       organization: { findUnique: jest.fn(async () => null) },
     };
     const service = new AuthService(
-      prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any,
+      prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,
     );
     const rows = await service.myOrganizations('u1');
     expect(rows.filter(r => r.active)).toHaveLength(1);

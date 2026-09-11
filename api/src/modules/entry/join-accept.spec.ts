@@ -21,7 +21,12 @@ function makeService(overrides: any = {}) {
   const created: any = { checkIn: null, participant: null, pending: null, user: null };
   const store: any = { pending: overrides.pending ?? null };
   const prisma: any = {
-    ground: { findUnique: jest.fn(async () => (overrides.ground === null ? null : { id: 'g1', organizationId: 'org1' })) },
+    /* The join now runs its writes in one transaction, like the invitation path; the client handed in is this mock. */
+    $transaction: async (fn: any) => fn(prisma),
+    ground: { findUnique: jest.fn(async () => (overrides.ground === null ? null : { id: 'g1', organizationId: 'org1', initiatorId: 'u-lead', isFreeGround: false, freeParticipantCap: 5 })) },
+    organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: null })) },
+    organizationMembership: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
+    membershipRequest: { upsert: jest.fn(async () => ({})) },
     pendingJoin: {
       create: jest.fn(async (a: any) => { created.pending = { id: 'pj1', ...a.data }; return created.pending; }),
       updateMany: jest.fn(async () => ({ count: 0 })),
@@ -30,6 +35,8 @@ function makeService(overrides: any = {}) {
     },
     user: {
       findUnique: jest.fn(async () => (overrides.existingUser ?? null)),
+      findMany: jest.fn(async () => []),
+      update: jest.fn(async () => ({})),
       create: jest.fn(async (a: any) => { created.user = { id: 'u1', ...a.data }; return created.user; }),
     },
     emailVerificationToken: { create: jest.fn(async () => ({})) },

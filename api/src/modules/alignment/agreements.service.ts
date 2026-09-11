@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theGroundIsHere } from './the-ground-is-here';
 import {
   AgreementVersion,
   whatWasInForce,
@@ -50,6 +51,7 @@ export class AgreementsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async start(organizationId: string, groundId: string, says: string, inForceFrom: Date) {
+    await theGroundIsHere(this.prisma, groundId, organizationId);
     const agreement = await this.prisma.agreement.create({
       data: { organizationId, groundId, says },
     });
@@ -65,9 +67,10 @@ export class AgreementsService {
    * Not every write here is the same kind of act — see `who-may-speak-for-a-side.ts`. Recording a
    * figure is work; saying a version is signed binds the organisation to a reading of a contract.
    */
-  private async mustBeAbleToSpeakForThisSide(groundId: string, who: { userId: string; role: string }) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
+  private async mustBeAbleToSpeakForThisSide(organizationId: string, groundId: string, who: { userId: string; role: string }) {
+    /* The initiator of a ground in THIS organisation. Read by id alone, an initiator elsewhere would do. */
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
       select: { initiatorId: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -124,7 +127,7 @@ export class AgreementsService {
    * `an-amendment-is-not-a-conversation.ts`.
    */
   async agreed(organizationId: string, groundId: string, versionId: string, who: string, by: { userId: string; role: string }) {
-    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
 
     const version = await this.prisma.agreementVersion.findFirst({
       where: { id: versionId, agreement: { organizationId, groundId } },
@@ -153,7 +156,7 @@ export class AgreementsService {
    * contradict.
    */
   async signed(organizationId: string, groundId: string, versionId: string, said: string, by: { userId: string; role: string }, on?: Date) {
-    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
 
     const version = await this.prisma.agreementVersion.findFirst({
       where: { id: versionId, agreement: { organizationId, groundId } },
@@ -242,7 +245,7 @@ export class AgreementsService {
 
   /** Somebody who would know says the reading is right. Two sides, and it is agreed. */
   async checked(organizationId: string, groundId: string, termId: string, who: string, by: { userId: string; role: string }) {
-    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
 
     const term = await this.prisma.agreementTerm.findFirst({
       where: { id: termId, version: { agreement: { organizationId, groundId } } },
@@ -269,7 +272,7 @@ export class AgreementsService {
    * an argument about money. Both readings are kept, in both people's words.
    */
   async readsItDifferently(organizationId: string, groundId: string, termId: string, who: string, reads: string, by: { userId: string; role: string }) {
-    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
 
     const term = await this.prisma.agreementTerm.findFirst({
       where: { id: termId, version: { agreement: { organizationId, groundId } } },

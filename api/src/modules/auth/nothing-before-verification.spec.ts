@@ -55,7 +55,7 @@ const SCHEMA = readFileSync(join(__dirname, '..', '..', '..', 'prisma', 'schema.
 const NEW_ADDRESS_BRANCH = (() => {
   const i = AUTH.indexOf('async entrySave');
   expect(i).toBeGreaterThan(-1);
-  const j = AUTH.indexOf('// Existing user saving a (new) anonymous session', i);
+  const j = AUTH.indexOf('AN ADDRESS THAT ALREADY HAS AN ACCOUNT GETS EXACTLY ONE EFFECT', i);
   expect(j).toBeGreaterThan(-1);
   return AUTH.slice(i, j);
 })();

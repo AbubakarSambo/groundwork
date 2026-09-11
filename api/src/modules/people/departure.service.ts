@@ -2,6 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CommitmentState, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+
+/**
+ * A PARTICIPANT LINK THAT IS, OR WAS, THIS PERSON. Erasing an account rewrites the link's address
+ * to a placeholder, so matching on the address alone let an erased person's raw turns outlive the
+ * retention window - the opposite of what erasing is for (fix plan A16). The link keeps the hash of
+ * the address it had; both sites that match a person to their links use this.
+ */
+export const wasThisPerson = (email: string) => ({ OR: [{ email }, { erasedFrom: hashed(email.toLowerCase()) }] });
 import {
   clampRetention, collapsedAttribution, readyToAgeOut, RETENTION_DEFAULT_DAYS,
 } from './when-somebody-leaves';
@@ -70,8 +79,8 @@ export class DepartureService {
           status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] },
           ground: { organizationId },
           OR: [
-            { fromParticipant: { email: person.email } },
-            { onParticipant: { email: person.email } },
+            { fromParticipant: wasThisPerson(person.email) },
+            { onParticipant: wasThisPerson(person.email) },
           ],
         },
         data: { status: DependencyStatus.CLEARED, clearedAt: departedAt },
@@ -147,7 +156,7 @@ export class DepartureService {
            */
           const conversation = person?.email
             ? await this.prisma.conversationTurn.deleteMany({
-              where: { checkIn: { participant: { email: person.email, ground: { organizationId } } } },
+              where: { checkIn: { participant: { ...wasThisPerson(person.email), ground: { organizationId } } } },
             })
             : { count: 0 };
           const assistant = await this.prisma.assistantTurn.deleteMany({

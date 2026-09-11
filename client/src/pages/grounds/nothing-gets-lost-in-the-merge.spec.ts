@@ -70,7 +70,8 @@ const PAGES = [
 
 /** Everything the four ground surfaces can do, by the call that does it. */
 const OPERATIONS: Record<string, string[]> = {
-  'ground state': ['groundsApi.update(', 'confirmLead(', 'beginClosingSession('],
+  /* confirmLead went with the lead page, 10 Sep 2026: a ground is open from the moment it is made. */
+  'ground state': ['groundsApi.update(', 'beginClosingSession('],
   people: ['addParticipant(', 'getParticipantInviteUrl(', 'participantsApi.updateEmail(', 'participantsApi.updateRole('],
   requests: ['participantRequestsApi.list(', 'participantRequestsApi.update(', 'participantRequestsApi.create('],
   documents: ['documentsApi.list(', 'documentsApi.upload(', 'documentsApi.remove(', 'documentsApi.setVisibility('],
@@ -127,6 +128,7 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
   }
 
   it('and the inventory is the whole inventory', () => {
+    /* 40 since confirmLead went with the lead page, 10 Sep 2026. */
     /**
      * 43 DISTINCT CALLS, NOT THE 45 W8-52 WROTE DOWN.
      *
@@ -144,7 +146,7 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
        purpose, which is the one reason this number is allowed to go down. 42 until `activate`
        went the same way with the reveal: see there-is-no-reveal.spec.ts. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(41)
+    expect(total).toBe(40)
   })
 })
 

@@ -1,17 +1,32 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Logger } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
+import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
+import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class TurnDto {
-  @IsString() role: 'user' | 'assistant';
-  @IsString() content: string;
-}
+/**
+ * THE POSTURE OF THIS CONTROLLER, STATED ONCE. Every handler here is anonymous. Each one therefore
+ * has all three of: a DTO class (the pipe cannot see an inline type), a @Throttle naming the one
+ * registered throttler, and - where it reaches the model - a usage event, so anonymous spend is
+ * visible. Five handlers had five different answers to those three questions before this was
+ * written down (fix plan B14, F13); a guard in common/dto enumerates the handlers rather than
+ * listing them, so the next one added inherits the answer.
+ */
 
-class EntryChatDto {
+/**
+ * THE HISTORY IS CLIENT-SUPPLIED AND REPLAYED TO THE MODEL, so `role` is load-bearing: a bare string
+ * let an anonymous caller forge assistant turns. The shared turn class refuses anything but user or
+ * assistant, caps a user turn like a message, and caps an assistant turn at the model's own limit.
+ */
+class TurnDto extends ATurnDto {}
+
+export class EntryChatDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -23,14 +38,11 @@ class EntryChatDto {
   @IsOptional()
   @IsString()
   groundLabel?: string;
-
-  @IsOptional()
-  @IsString()
-  joinToken?: string;
 }
 
 class EntryOnboardDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -60,7 +72,48 @@ class EntryOnboardDto {
 class EntryOpenerDto {
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   scenario?: string;
+}
+
+/** classify-intent took an inline type, which the validation pipe cannot see, so `description` was unbounded. */
+class EntryClassifyDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(A_MESSAGE_MAX)
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  mode?: string;
+}
+
+/**
+ * THE LAST THREE PUBLIC HANDLERS ON INLINE TYPES. An inline body type is invisible to the validation
+ * pipe, so these took anything. The service checks that stay behind them are kept: a DTO is the
+ * door's posture, the service's checks are its own (a-check-that-can-never-be-true allows the one
+ * on joinToken for exactly this reason).
+ */
+class EntryDraftPatchDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) draftToken: string;
+  @IsObject() payload: Record<string, any>;
+}
+
+class EntryJoinAcceptDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) joinToken: string;
+  @IsEmail() @MaxLength(254) email: string;
+  @IsOptional() @IsString() @MaxLength(120) firstName?: string;
+  @IsOptional() @IsString() @MaxLength(120) lastName?: string;
+  @IsOptional() @IsString() @MaxLength(500) roleAsDescribed?: string;
+  /** Optional, never inferred; blank means blank. */
+  @IsOptional() @IsString() @MaxLength(120) department?: string;
+  /** The honeypot on the join form. Filled means a bot; answered as success, mails nobody. */
+  @IsOptional() @IsBoolean() trapFilled?: boolean;
+}
+
+class EntryJoinConfirmDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) token: string;
 }
 
 class EntryFaqDto {
@@ -71,6 +124,7 @@ class EntryFaqDto {
 
 class EntryReportDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -110,12 +164,93 @@ class EntryLeadDto {
 // reportSummary should not exist" - i.e. every commit where the committer had
 // completed their own check-in session before saving. The client and service
 // were already correct; only this DTO was stale.
+/*
+ * THE WHOLE REPORT, NOT TWO FIELDS OF IT. The person read nine fields at the end of their entry
+ * chat; this DTO carried two, the merge rebuilt a one-key object from them, and that one key is what
+ * was written to CheckIn.sessionReport. Seven of nine fields were shown and then dropped at the
+ * moment they made an account - "the report looks nothing like what I got at the end", four times.
+ * Every key the client's EntryReport has is declared here, because forbidNonWhitelisted turns an
+ * undeclared key into a 400 (which is how this DTO came to exist in the first place).
+ */
+/**
+ * THE ITEMS INSIDE THE REPORT'S ARRAYS, DECLARED - AND THIS WAS THE BUG.
+ *
+ * The arrays below were `@IsOptional() @IsArray()` with no item type. The global pipe runs with
+ * `whitelist: true`, which strips every property it was not told about - and with no `@Type()` on
+ * the item, it was told about none of them. So each `{title, observation, whyItMatters,
+ * recommendedMove}` arrived, passed validation, and was written to the database with nothing left
+ * in it.
+ *
+ * WHAT THAT LOOKED LIKE. The report the person read at the end of their session was complete: it
+ * comes straight back from `POST /entry/report` and never passes through this pipe. The copy stored
+ * on their check-in went through here, so when they opened the same report a minute later from
+ * Report, it was three cards headed "What we noticed", "Why it matters" and "What to do next" with
+ * no words under any of them. Reported four times as "the report looks nothing like what I got at
+ * the end". It looked nothing like it because half of it had been stripped off in the doorway.
+ *
+ * Every array on this DTO gets its item type for the same reason. An `@IsArray()` with no `@Type()`
+ * under a whitelisting pipe is not a loose check - it is a silent delete.
+ */
+class AreaRequiringAlignmentDto {
+  @IsOptional() @IsString() @MaxLength(300) title?: string;
+  @IsString() @MaxLength(4000) observation: string;
+  @IsString() @MaxLength(4000) whyItMatters: string;
+  @IsString() @MaxLength(4000) recommendedMove: string;
+}
+
+class AlignmentReachedDto {
+  @IsOptional() @IsString() @MaxLength(300) title?: string;
+  @IsString() @MaxLength(4000) note: string;
+}
+
+class PersonMentionedDto {
+  @IsString() @MaxLength(300) name: string;
+  @IsOptional() @IsString() @MaxLength(2000) context?: string;
+}
+
+class SuggestedPartyDto {
+  @IsString() @MaxLength(300) role: string;
+  @IsOptional() @IsString() @MaxLength(2000) reason?: string;
+}
+
 class EntryReportSummaryDto {
   @IsIn(['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'])
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
 
-  @IsString()
+  @IsString() @MaxLength(6000)
   whatGroundworkSaw: string;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  yourRole?: string | null;
+
+  @IsOptional() @IsString() @MaxLength(4000)
+  alignmentBasis?: string;
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  @ValidateNested({ each: true }) @Type(() => AreaRequiringAlignmentDto)
+  areasRequiringAlignment?: AreaRequiringAlignmentDto[];
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  @ValidateNested({ each: true }) @Type(() => AlignmentReachedDto)
+  alignmentReached?: AlignmentReachedDto[];
+
+  @IsOptional() @IsObject()
+  honestClose?: { aligned: string; open: string; revisit: string; risk: string };
+
+  @IsOptional() @IsArray() @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
+  mentionedPeople?: PersonMentionedDto[];
+
+  @IsOptional() @IsArray() @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
+  alsoCameUp?: PersonMentionedDto[];
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  alsoCameUpNote?: string | null;
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  @ValidateNested({ each: true }) @Type(() => SuggestedPartyDto)
+  suggestedParties?: SuggestedPartyDto[];
 }
 
 export class EntryDocumentDto {
@@ -130,6 +265,12 @@ export class EntryCommitDto {
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
+  /**
+   * WHETHER THE CADENCE WAS CHOSEN OR IS THE PAGE'S DEFAULT. The client's `cadence` state starts at
+   * FORTNIGHTLY and is sent whether or not anybody picked it, so the ground recorded a choice nobody
+   * made. This says which, and the ground's `cadenceStated` follows it (fix plan B15).
+   */
+  @IsOptional() @IsBoolean() cadenceChosen?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   @IsOptional() @IsString() checkInBy?: string;
   @IsOptional() @IsString() lastCheckInBy?: string;
@@ -196,6 +337,7 @@ export class EntryCommitDto {
 
 @Controller('entry')
 export class EntryController {
+  private readonly logger = new Logger(EntryController.name);
   constructor(private service: EntryService) {}
 
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
@@ -208,7 +350,7 @@ export class EntryController {
      silent no-op — this route was falling back to the plain 60/min. */
   @Throttle({ global: { limit: 30, ttl: 60_000 } })
   @Patch('draft')
-  async patchDraft(@Body() body: { draftToken: string; payload: Record<string, any> }) {
+  async patchDraft(@Body() body: EntryDraftPatchDto) {
     return this.service.patchDraft(body.draftToken, body.payload);
   }
 
@@ -219,26 +361,50 @@ export class EntryController {
     return this.service.onboard(dto.messages, dto.scenario, dto.moment);
   }
 
+  /*
+   * THE SAME TWO CALLS, STREAMED. Setup sat on "Thinking" for the whole of a model turn; the
+   * check-in page has streamed for months. Same guard, same reply at the end: the `done` event
+   * carries exactly what the plain route would have returned.
+   */
   @Public()
-  @Post('opener')
-  opener(@Body() dto: EntryOpenerDto) {
-    return { reply: this.service.opener(dto.scenario) };
+  @Post('onboard/stream')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response) {
+    this.openStream(res);
+    const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }));
+      write({ type: 'done', ...out });
+    } catch (err: any) {
+      this.logger.warn(`Entry stream failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
+    } finally {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   }
 
   @Public()
-  @Post('chat')
+  @Post('chat/stream')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  async chat(@Body() dto: EntryChatDto) {
-    const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, dto.joinToken);
-    /**
-     * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
-     *
-     * This used to be phrases alone, and none of them matched the marker the model is told to emit:
-     * it tests for "[session complete]" and the marker is "[[SESSION_COMPLETE]]". So the reliable
-     * signal was never consulted, and whether a session closed depended on the assistant happening
-     * to use one of six wordings.
-     */
-    const markerClosed = this.service.didLastReplyClose();
+  async chatStream(@Body() dto: EntryChatDto, @Res() res: Response) {
+    this.openStream(res);
+    const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }));
+      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
+    } catch (err: any) {
+      this.logger.warn(`Entry stream failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
+    } finally {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+
+
+  /* `closed` travels with the reply it belongs to (entry.service#chat) - never read off the service. */
+  private sessionCompleteFrom(reply: string, markerClosed: boolean): boolean {
     const r = reply.toLowerCase();
     const sessionComplete =
       markerClosed ||
@@ -248,17 +414,54 @@ export class EntryController {
       r.includes('your record is saved as is') ||
       r.includes('cannot be verified from this account') ||
       r.includes('your contribution is saved');
+        return sessionComplete;
+  }
+
+  private chatResponse(reply: string, closed: boolean) {
+    const sessionComplete = this.sessionCompleteFrom(reply, closed);
     return { reply, sessionComplete };
+  }
+
+  private openStream(res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+  }
+
+  @Public()
+  @Post('opener')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  opener(@Body() dto: EntryOpenerDto) {
+    return { reply: this.service.opener(dto.scenario) };
+  }
+
+  @Public()
+  @Post('chat')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async chat(@Body() dto: EntryChatDto) {
+    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel);
+    /**
+     * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
+     *
+     * This used to be phrases alone, and none of them matched the marker the model is told to emit:
+     * it tests for "[session complete]" and the marker is "[[SESSION_COMPLETE]]". So the reliable
+     * signal was never consulted, and whether a session closed depended on the assistant happening
+     * to use one of six wordings.
+     */
+    return this.chatResponse(reply, closed);
   }
 
   @Public()
   @Post('classify-intent')
-  async classifyIntent(@Body() dto: { description: string; mode?: string }) {
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async classifyIntent(@Body() dto: EntryClassifyDto) {
     return this.service.classifyIntent(dto.description, dto.mode);
   }
 
   @Public()
   @Post('faq')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
   async faq(@Body() dto: EntryFaqDto) {
     const reply = await this.service.faq(dto.question);
     return { reply };
@@ -297,13 +500,7 @@ export class EntryCommitController {
   @Public()
   @Throttle({ global: { limit: 5, ttl: 60000 } })
   @Post('join-accept')
-  async joinAccept(@Body() dto: {
-    joinToken: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    roleAsDescribed?: string;
-  }) {
+  async joinAccept(@Body() dto: EntryJoinAcceptDto) {
     return this.service.askToJoin(dto);
   }
 
@@ -311,7 +508,7 @@ export class EntryCommitController {
   @Public()
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @Post('join-confirm')
-  async joinConfirm(@Body() dto: { token: string }) {
-    return this.service.joinConfirm(dto?.token);
+  async joinConfirm(@Body() dto: EntryJoinConfirmDto) {
+    return this.service.joinConfirm(dto.token);
   }
 }

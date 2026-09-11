@@ -1564,7 +1564,7 @@ export class AssistantService {
    * rule is asked first, and its reason is the reply when it says no.
    */
   private async offerToSeed(organizationId: string, who: string, draft: { id: string; workingTitle: string }): Promise<Reply> {
-    const status = await this.drafts.status(organizationId, draft.id);
+    const status = await this.drafts.status(organizationId, draft.id, who);
     if (!status.ready) return rules('set_an_objective', text(`"${draft.workingTitle}" has your answers. It cannot be set yet: ${status.because}`));
     const proposal = await this.prisma.assistantProposal.create({
       data: {
@@ -1590,7 +1590,7 @@ export class AssistantService {
     const payload = parked.payload as { draftId: string; title: string };
     if (decision === 'decline') return rules('set_an_objective', text(`Left as a draft. "${payload.title}" is still here when you want it.`));
     try {
-      const r = await this.drafts.seed(organizationId, payload.draftId, `chat-${payload.draftId}`, 'groundwork-chat');
+      const r = await this.drafts.seed(organizationId, payload.draftId, `chat-${payload.draftId}`, 'groundwork-chat', who);
       return rules(
         'set_an_objective',
         text(`Set. "${payload.title}" is on your organisation's board as an objective you own (subject ${r.subjectExternalId}). Check-ins against it read your evidence from here on.`),

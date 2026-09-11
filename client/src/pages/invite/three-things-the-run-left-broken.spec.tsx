@@ -82,7 +82,8 @@ describe('the status badge says something or says nothing', () => {
 
   it('still speaks for the states that change whether you click', () => {
     /** Paused, closed, resolved, stalled, and waiting-on-somebody all still show. */
-    expect(SHELL).toMatch(/AWAITING_LEAD.*AWAITING_APPROVAL.*PAUSED/)
+    /* AWAITING_LEAD no longer exists as a state anybody meets (10 Sep 2026). */
+    expect(SHELL).toMatch(/AWAITING_APPROVAL.*PAUSED/)
   })
 })
 

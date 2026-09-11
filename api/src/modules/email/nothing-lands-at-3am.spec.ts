@@ -76,13 +76,13 @@ describe('one nudge budget across both channels', () => {
 
 describe('what a digest may carry', () => {
   const facts: DigestFacts = {
-    groundLabel: 'Renewal push', roundNumber: 3, participantCount: 4,
+    groundLabel: 'Renewal push', sessionNumber: 3, participantCount: 4,
     needsAttention: 2, permalink: 'https://app/grounds/g1',
   };
 
   it('a headline, a count, and a link', () => {
     const body = digestBody(facts, 'https://app/u/tok');
-    expect(digestSubject(facts)).toBe('Renewal push - round 3 is complete');
+    expect(digestSubject(facts)).toBe('Renewal push - session 3 is complete');
     expect(body).toMatch(/4 people took part/);
     expect(body).toMatch(/2 things need attention/);
     expect(body).toMatch(/https:\/\/app\/grounds\/g1/);
@@ -100,7 +100,7 @@ describe('what a digest may carry', () => {
       expect(SRC).not.toContain(field);
     }
     expect(Object.keys(facts).sort()).toEqual(
-      ['groundLabel', 'needsAttention', 'participantCount', 'permalink', 'roundNumber'],
+      ['groundLabel', 'needsAttention', 'participantCount', 'permalink', 'sessionNumber'],
     );
   });
 

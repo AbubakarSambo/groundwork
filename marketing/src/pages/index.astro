@@ -72,6 +72,50 @@ a{color:inherit}
 section{padding:72px 0}
 .band{background:var(--gw-paper-2);border-top:1px solid var(--gw-border);border-bottom:1px solid var(--gw-border)}
 
+
+/* ── the drawings ─────────────────────────────────────────────────────────
+   The sections below the hero were text in a 660px column with a third of a
+   wide screen empty on either side of it. These fill that margin.
+
+   BEHIND THE SECTION, THE WAY THE HERO'S IS. They were a positioned <img> in a
+   second grid column first, which made each drawing a thing on the page to be
+   looked at and a second column to be laid out. Her call: keep them the way the
+   hero does it. So each one is the section's own background, sized to the
+   margin, under a wash of the ground it sits on - texture rather than a picture,
+   nothing in front of the text, nothing to shift the layout while it loads, and
+   on a screen where the image never arrives the section is exactly what it was.
+
+   `--ground` is the colour of the wash and every section that takes a drawing
+   sets it, because the page has three grounds and an overlay that guessed would
+   be visible on two of them. */
+/* `section.art-bg`, NOT `.art-bg`. Two of the three grounds set `background` as
+   a shorthand - `.band` and `.end` both do - and a shorthand resets every
+   background property it does not mention, including repeat. `.end` is declared
+   after this block, so at equal specificity it won, and the close tiled the
+   drawing four times across the band. The element selector settles it wherever
+   these rules end up in the file.
+
+   A FIXED WIDTH, not a share of the height. At `auto 74%` the drawing grew with
+   the section, so the tallest one carried a drawing twice the size of the
+   shortest and read as an illustration rather than as texture. One size, so the
+   four are the same weight.
+
+   AND INSIDE THE EDGE, not hanging off it. Hung past the right edge, each frame
+   was cut by the viewport into a pale rectangle with half a drawing in it, which
+   looks like something went wrong rather than like a picture on a wall. The
+   whole frame sits in the margin now. */
+section.art-bg{position:relative;background-repeat:no-repeat;
+               background-position:right 40px center;background-size:250px auto}
+section.art-bg::after{content:'';position:absolute;inset:0;background:var(--ground);
+                      opacity:.82;pointer-events:none;z-index:0}
+section.art-bg > .w, section.art-bg > .w-wide{position:relative;z-index:1}
+/* Under 900px the margin is gone and the drawing would sit under the words, so it
+   moves off to the side, smaller and fainter, and stays texture. */
+@media(max-width:900px){
+  section.art-bg{background-position:right -66px bottom 6%;background-size:190px auto}
+  section.art-bg::after{opacity:.9}
+}
+
 /* ── the one label style on the page ─────────────────────────────────────── */
 .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
      color:var(--gw-muted);margin:0 0 18px}
@@ -81,7 +125,18 @@ section{padding:72px 0}
 /* ── hero ─────────────────────────────────────────────────────────────────
    The dark ground is the one place the page raises its voice. Everything after
    it is paper, so the eye has somewhere to land. */
-.hero{background:var(--gw-dark);color:#fff;padding:76px 0 84px}
+/* THE PICTURE UNDER THE BLUE.
+   The hero is a flat dark field; the illustration sits behind it at low opacity so it reads as
+   texture rather than a photograph somebody has to look at. `background-blend-mode` rather than a
+   positioned <img> so there is no element to sit in front of the text, nothing to shift the layout
+   while it loads, and the dark stays the dark on any screen where the image does not arrive.
+   `position:relative` so the content keeps its own stacking context above it. */
+.hero{background:var(--gw-dark);color:#fff;padding:76px 0 84px;position:relative;
+  background-image:url('/hero-teamwork.jpg');background-size:cover;background-position:center;
+  background-blend-mode:luminosity;}
+.hero::after{content:'';position:absolute;inset:0;background:var(--gw-dark);opacity:.88;pointer-events:none}
+.hero > .w{position:relative;z-index:1}
+@media (prefers-reduced-motion:no-preference){}
 .hero .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
                color:var(--gw-amber-b);margin:0 0 18px}
 .hero h1{font-size:46px;line-height:1.08;letter-spacing:-.03em;margin:0 0 18px}
@@ -157,13 +212,6 @@ section{padding:72px 0}
 .settle p{font-size:15px;line-height:1.5;font-weight:600;color:var(--gw-dark);margin:0}
 .foot{padding:15px 20px;font-size:13px;color:var(--gw-sub);line-height:1.6}
 
-/* ── the pause ────────────────────────────────────────────────────────────
-   One place on the page that stops and says nothing else. */
-.pause{padding:96px 0}
-.pause p{font-size:37px;line-height:1.16;letter-spacing:-.028em;font-weight:700;margin:0}
-.pause p+p{margin-top:12px;color:var(--gw-sub)}
-@media(max-width:720px){ .pause{padding:64px 0} .pause p{font-size:27px} }
-
 /* ── privacy, drawn ───────────────────────────────────────────────────────
    Two check-ins that never touch, and one picture below them. This was three
    paragraphs, on the part of the page where a reader decides whether the whole
@@ -215,7 +263,7 @@ details.more>summary::marker{color:var(--gw-muted)}
   <div class="w">
     <p class="eyebrow">Independent team check-ins</p>
     <h1>No bias. No influence. Just a clearer picture.</h1>
-    <p>Run independent, conversational check-ins to build on solid ground, and see where work stands and how to move forward well.</p>
+    <p>Run independent, conversational check-ins to build on solid ground and help your team or partners stay aligned.</p>
     <div class="ctas">
       <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
       <a class="btn-2" href={`${APP_URL}/`}>Go to your check-ins</a>
@@ -226,16 +274,16 @@ details.more>summary::marker{color:var(--gw-muted)}
 <!-- ═══ HOW IT WORKS ══════════════════════════════════════════════════════
      Hairlines, not cards. Three cards make three things of equal weight; this
      is one sequence and reads as one. -->
-<section class="fade">
+<section class="fade art-bg" style="--ground:var(--gw-paper);background-image:url(/art/rowing.png)">
   <div class="w">
     <p class="lab">How it works</p>
     <div class="steps">
       <div class="step"><i>01</i><div><b>Groundwork asks each person separately.</b>
-        <span>A real conversation, not a form. It follows up, asks what would show it, and lets people say what they actually think. Nobody is describing anybody else.</span></div></div>
+        <span>A real conversation, not a form. It follows up, asks what would show it, and lets people say what they actually think.</span></div></div>
       <div class="step"><i>02</i><div><b>It compares the accounts.</b>
-        <span>Where they stop matching, what moved since last time, and what nothing has evidence for.</span></div></div>
+        <span>What is moving, risks, and where you need to help people align.</span></div></div>
       <div class="step"><i>03</i><div><b>Everyone gets the same picture.</b>
-        <span>One shared report, released to everybody at the same moment. It never says who said what about whom.</span></div></div>
+        <span>A shared report and your private report with notes.</span></div></div>
     </div>
   </div>
 </section>
@@ -260,11 +308,11 @@ details.more>summary::marker{color:var(--gw-muted)}
         <div class="rep-h"><b>New business, this quarter &middot; shared report</b><em>8 accounts &middot; check-in 3 of 6</em></div>
         <div class="find"><p>Nine of the twelve live deals are with somebody who cannot sign, at a tenth of the size the quarter was planned on.</p><small>Surfaced at check-in 3 of 6. The next time it would have come up on its own is the end-of-quarter number, when the meeting count will still look healthy.</small></div>
         <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+14</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-amber-t)">1 blocked</div><div class="s">waiting on someone else</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">64% document-backed</div></div></div>
-        <details class="more"><summary>Show what each of the eight said they did</summary><div class="more-body"><p style="font-size:12.5px;color:var(--gw-muted);margin-bottom:4px">Each person's own account of their own work. Nobody is describing anybody else.</p><div class="did"><b>Ada</b><span>Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</span></div><div class="did"><b>Dan</b><span>Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</span></div><div class="did"><b>Rachel</b><span>Six first meetings and three pilots agreed. All three start next month.</span></div><div class="did"><b>Naomi</b><span>Renewed Vanta at a higher tier and lost nothing this quarter. Most of three weeks went on renewal paperwork and contract admin. Two customer conversations in total.</span></div><div class="did"><b>Tom</b><span>Wrote the objection sheet the rest of the team is now using on calls.</span></div><div class="did"><b>Yusuf</b><span>Nineteen first meetings. No second meetings yet.</span></div><div class="did"><b>Kofi</b><span>New CRM shipped in week two. Team is on it.</span></div><div class="did"><b>Ellie</b><span>Nothing specific named yet across three check-ins.</span></div></div></details>
+        <details class="more"><summary>Show what each of the eight said they did</summary><div class="more-body"><p style="font-size:12.5px;color:var(--gw-muted);margin-bottom:4px">Each person's own account of their own work.</p><div class="did"><b>Ada</b><span>Closed Microdot Inc. First deal over a hundred thousand, and the reference call is booked.</span></div><div class="did"><b>Dan</b><span>Eleven first meetings, four second meetings, two proposals out. Six of the eleven were with Halden, who has not put anyone in the room who can sign.</span></div><div class="did"><b>Rachel</b><span>Six first meetings and three pilots agreed. All three start next month.</span></div><div class="did"><b>Naomi</b><span>Renewed Vanta at a higher tier and lost nothing this quarter. Most of three weeks went on renewal paperwork and contract admin. Two customer conversations in total.</span></div><div class="did"><b>Tom</b><span>Wrote the objection sheet the rest of the team is now using on calls.</span></div><div class="did"><b>Yusuf</b><span>Nineteen first meetings. No second meetings yet.</span></div><div class="did"><b>Kofi</b><span>New CRM shipped in week two. Team is on it.</span></div><div class="did"><b>Ellie</b><span>Nothing specific named yet across three check-ins.</span></div></div></details>
         <div class="two"><div><q>The new CRM went live in week two. The team is on it.</q><cite>Kofi, sales operations</cite></div><div><p>Still working in the old sheet and entering everything twice. Three of them describe it as the reason their admin has doubled.</p><cite style="display:block;margin-top:9px;font-family:var(--mono);font-size:10.5px;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-muted)">Dan, Rachel, Naomi and Yusuf</cite></div></div>
         <div class="foot" style="border-bottom:1px solid var(--gw-border)">Both accounts are on record and neither person knew about the other. Nothing here decides who is right, and the report will not: it is a conversation that was otherwise going to happen at the end of the quarter.</div>
         <div class="settle"><div class="k">The one thing to settle first</div><p>Which buyer can actually sign, and who owns turning a finished pilot into a paid contract?</p></div>
-        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        <div class="foot">If you are one of the people in it, this is your report too. The same one.</div>
         </div></div>
         <div class="case" data-case="1" role="tabpanel">
         <h2 class="h2">Day 62 of a 90 day handover.</h2>
@@ -274,7 +322,7 @@ details.more>summary::marker{color:var(--gw-muted)}
         <div class="find"><p>Two of the three things you started apart on have closed. The third is about money and has not moved.</p><small>Both closed in the session after they surfaced. Neither was raised in a meeting first.</small></div>
         <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">down from three</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+7</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">83% document-backed</div></div></div>
         <div class="settle"><div class="k">The one thing to settle first</div><p>What exactly does the grant require each month, per site rather than across the network, and who is accountable for the two sites that have filed nothing?</p></div>
-        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        <div class="foot">If you are one of the people in it, this is your report too. The same one.</div>
         </div></div>
         <div class="case" data-case="2" role="tabpanel">
         <h2 class="h2">Fourteen people started the same job in the same month.</h2>
@@ -284,7 +332,7 @@ details.more>summary::marker{color:var(--gw-muted)}
         <div class="find"><p>Nine of the fourteen described the escalation rule the same wrong way. That is the induction, not the people.</p><small>Fourteen accounts given separately, in fourteen districts, by people who have never met. One briefing produced all nine.</small></div>
         <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">2 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+11</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-amber-t)">3 blocked</div><div class="s">all waiting on the same thing</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-amber-t)">thin</div><div class="s">29% document-backed</div></div></div>
         <div class="settle"><div class="k">The one thing to settle first</div><p>What does a stock-out require, in one sentence every officer can repeat, and who do they call? The three districts out of kits are waiting on that answer.</p></div>
-        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        <div class="foot">If you are one of the people in it, this is your report too. The same one.</div>
         </div></div>
         <div class="case" data-case="3" role="tabpanel">
         <h2 class="h2">Week seven of a ninety day probation.</h2>
@@ -294,28 +342,17 @@ details.more>summary::marker{color:var(--gw-muted)}
         <div class="find"><p>He is hitting the only target anybody gave him, and it is not the one he is being judged against.</p><small>Week seven of twelve. Nothing in the record has pointed at the ninety-day goal yet, and nothing has told him to.</small></div>
         <div class="qr"><div><div class="k"><s>&#9680;</s>Aligned?</div><div class="v" style="color:var(--gw-amber-t)">1 open</div><div class="s">differences between accounts</div></div><div><div class="k"><s>&#8593;</s>Moving?</div><div class="v" style="color:var(--gw-green-t)">+18</div><div class="s">across targets this session</div></div><div><div class="k"><s>&#8214;</s>Stuck?</div><div class="v" style="color:var(--gw-green-t)">clear</div><div class="s">nothing hard-blocked</div></div><div><div class="k"><s>&#9673;</s>Solid?</div><div class="v" style="color:var(--gw-green-t)">good</div><div class="s">76% document-backed</div></div></div>
         <div class="settle"><div class="k">The one thing to settle first</div><p>Which of the two is he being measured on for the rest of the ninety days, and what changes in his week if the answer is judgement rather than the queue?</p></div>
-        <div class="foot">If you are one of the people in it, this is your report too. Same report, same moment.</div>
+        <div class="foot">If you are one of the people in it, this is your report too. The same one.</div>
         </div></div>
     </div>
     <p style="font-size:12.5px;color:var(--gw-muted);margin-top:14px">An extract from a shared report, as the person running it sees it. The people in it read this same shared picture. It quotes what people said about their own work, and it never says who said what about whom.</p>
   </div>
 </section>
 
-<!-- ═══ THE PAUSE ═════════════════════════════════════════════════════════
-     The page stops once. Everything above has been evidence; this is the
-     sentence the evidence was for, and it is the reason this is not
-     surveillance software. -->
-<section class="pause fade">
-  <div class="w">
-    <p>Nobody was hiding anything.</p>
-    <p>Nobody had the whole picture.</p>
-  </div>
-</section>
-
 <!-- ═══ WHY LEADERS MISS PROBLEMS ═════════════════════════════════════════
      The argument the reports illustrate. Kept in full: it is 7% of the page and
      it is the reason the product exists. -->
-<section class="band fade">
+<section class="band fade art-bg" style="--ground:var(--gw-paper-2);background-image:url(/art/compass-blue.png)">
   <div class="w">
     <p class="lab">Why leaders miss problems</p>
     <h2 class="h2">Every update you get has been through someone else first.</h2>
@@ -335,7 +372,7 @@ details.more>summary::marker{color:var(--gw-muted)}
      NOT "fairness improves team culture" - unprovable, the register every HR
      product already occupies, and not how anything else here talks. The
      mechanism is stated; the reader draws the conclusion. -->
-<section class="fade">
+<section class="fade art-bg" style="--ground:var(--gw-paper);background-image:url(/art/puzzle-three.png)">
   <div class="w">
     <p class="lab">If you are the one being checked in on</p>
     <h2 class="h2" style="font-size:25px">Everyone is asked the same way, at the same time.</h2>
@@ -347,13 +384,12 @@ details.more>summary::marker{color:var(--gw-muted)}
       <div class="node"><b>Them</b><span>their own check-in</span></div>
     </div>
     <div class="down">&#8595;</div>
-    <div class="one"><b>One shared picture</b><span>released to everybody at the same moment</span></div>
+    <div class="one"><b>One shared picture</b><span>everybody in it is told the moment it is ready</span></div>
 
     <p style="font-size:15px;font-weight:700;margin:26px 0 0">Your answers do not go sideways.</p>
     <ul class="nots">
       <li><i>&#215;</i>Not to your manager, in your words.</li>
       <li><i>&#215;</i>Not to your colleagues.</li>
-      <li><i>&#215;</i>Not quoted as a finding about anybody.</li>
     </ul>
 
     <!-- VERIFIED LINE BY LINE BEFORE IT WENT ON A PUBLIC PAGE, and carried over
@@ -363,14 +399,13 @@ details.more>summary::marker{color:var(--gw-muted)}
          people actually need. Two of these sentences are pinned by a guard that
          checks the site does not promise more than the product delivers. -->
     <div class="callout">
-      <p>What you say about your own work can appear, in your own words. What you say about anybody else never does, and the report never says who said what about whom. That is why people tell the truth in it, and why the reports are worth reading.</p>
       <p>Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
     </div>
   </div>
 </section>
 
 <!-- ═══ CLOSE ════════════════════════════════════════════════════════════ -->
-<section class="end">
+<section class="end art-bg" style="--ground:var(--gw-dark);background-image:url(/art/seedling.png)">
   <div class="w">
     <h2>Start with something that matters.</h2>
     <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>

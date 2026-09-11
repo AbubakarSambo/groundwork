@@ -102,7 +102,7 @@ describe('an admin', () => {
 
   it('still gets the real page', async () => {
     renderBilling()
-    await waitFor(() => expect(screen.getByText(/Manage sessions for your check-ins/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Your plan, and how many people it covers/i)).toBeTruthy())
     expect(screen.queryByText(/need admin access/i)).toBeNull()
   })
 

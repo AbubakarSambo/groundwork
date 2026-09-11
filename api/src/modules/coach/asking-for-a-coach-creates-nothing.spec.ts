@@ -43,7 +43,7 @@ const makeService = (over: Record<string, any> = {}) => {
       emailed.push({ to, name });
     }),
   };
-  return { service: new CoachService(prisma, email), prisma, email, created, updated, emailed };
+  return { service: new CoachService(prisma, email, { emit: jest.fn() } as any), prisma, email, created, updated, emailed };
 };
 
 describe('asking to speak to a coach', () => {
@@ -161,7 +161,8 @@ describe('who can read the requests', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   it('asking is public, because the person asking has no account yet', () => {
-    expect(src).toMatch(/@Public\(\)\s*@Post\('request'\)/);
+    /* A limit sits between the two since A9: public, and not somewhere to sit and try. */
+    expect(src).toMatch(/@Public\(\)\s*@Throttle\(\{ global: [^)]*\)\s*@Post\('request'\)/);
   });
 
   it('but reading them is platform admin only', () => {

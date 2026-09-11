@@ -266,6 +266,8 @@ describe('and complete() calls it, which is the part that was missing', () => {
         count: jest.fn(async () => 1),
         findUnique: jest.fn(async () => checkIn),
         update: jest.fn(async () => ({ status: 'COMPLETED', groundId: 'g1' })),
+        /* The completion write is a guarded updateMany now; one row, this one, wins. */
+        updateMany: jest.fn(async () => ({ count: 1 })),
       },
       ground: {
         findUnique: jest.fn(async () => ({ status: 'ACTIVE', organizationId: 'org1', isFreeGround: false })),

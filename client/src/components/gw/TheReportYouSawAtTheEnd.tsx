@@ -140,7 +140,8 @@ export function TheReportYouSawAtTheEnd({
             <Sec title={`What's still open`} />
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
+                {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
+                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
@@ -149,13 +150,15 @@ export function TheReportYouSawAtTheEnd({
           </div>
         )}
 
-        {/* Clear on your side (not mutual agreement - only one party has checked in) */}
+        {/* Clear from what this person said - not mutual agreement, nobody else has checked in yet. Not
+            "your side": this is a team getting a read on something far more often than it is two
+            people arguing, and side language turns an update into a case. */}
         {report.alignmentReached.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <Sec title="Clear on your side" />
+            <Sec title="Clear from what you said" />
             {report.alignmentReached.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
+                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
               </div>
             ))}
@@ -275,7 +278,7 @@ export function TheReportYouSawAtTheEnd({
                 {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
                 {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
               </div>
-            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing settled or in dispute yet. That arrives once more than one person has checked in.</div>}
+            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
           <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>

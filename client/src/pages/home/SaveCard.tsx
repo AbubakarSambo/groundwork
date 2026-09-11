@@ -5,6 +5,9 @@ import { authApi } from '@/api/auth'
 import { entryStorage } from '@/api/entry'
 import type { EntryMode } from '@/api/entry'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { copy } from '@/components/gw/copying-can-fail'
 
 type Variant = 'admin' | 'participant'
 
@@ -15,7 +18,12 @@ const MODE_LABEL: Record<string, string> = {
   both: 'Both',
 }
 
-const APP_URL = import.meta.env.VITE_APP_URL ?? ''
+/*
+ * VITE_APP_URL WAS SET NOWHERE. Referenced in exactly one place in the client and present in neither
+ * env file, so every invite link copied off this card was `/invite?token=...` with no origin - in every
+ * environment - and unopenable. The page's own origin is the right answer whenever nothing says otherwise.
+ */
+const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin
 
 function generateToken(): string {
   const arr = new Uint8Array(24)
@@ -38,6 +46,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
   const [note, setNote] = useState('')
   const [participantEmail, setParticipantEmail] = useState('')
   const [participantAdded, setParticipantAdded] = useState(false)
+  const [participantError, setParticipantError] = useState('')
 
   const [inviteToken] = useState<string>(() => {
     const session = entryStorage.load()
@@ -61,12 +70,14 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       localStorage.setItem('gw_magic_email', trimmed)
       navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
+    /*
+     * A FAILURE MUST NEVER RENDER THE SUCCESS SCREEN. This body was byte-for-byte the onSuccess
+     * above: it wrote the two storage keys and navigated to "check your email" on a request that had
+     * failed - so nothing was sent and the person was told to go and look for it. Stay here, keep
+     * what they typed, say what happened, and leave the button live.
+     */
     onError: () => {
-      const trimmed = email.trim()
-      sessionStorage.setItem('gw_magic_type', 'entry')
-      sessionStorage.setItem('gw_magic_email', trimmed)
-      localStorage.setItem('gw_magic_email', trimmed)
-      navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
+      setEmailError('That did not save - nothing has been sent. Try again.')
     },
   })
 
@@ -81,7 +92,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your check-in is saved. Nobody reads your words directly. The report shows where people agree and where they differ.</span>
+              <span>Your check-in is saved. The report shows where people agree, where they differ, and what to do next.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
@@ -96,7 +107,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         {/* Save account */}
         <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-            Save your account to receive the report.
+            Save this to receive the report.
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
             Enter the email where you received this invite. We will send you a link when the report is ready.
@@ -104,37 +115,33 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         </div>
         <div style={{ padding: '16px' }}>
           <form onSubmit={save}>
-          {trap.field}
+            {/* Once. Two renders shared an id and a name, which is invalid markup and exactly what makes a password
+                manager fill the trap and lock a real person out. */}
             {trap.field}
             <div className="gw-fld">
               <label className="gw-label">Your email</label>
               <input
                 className="gw-input"
                 type="email"
-                placeholder="you@company.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailError('') }}
                 autoFocus
               />
             </div>
-            {emailError && <div className="gw-er">{emailError}</div>}
+            {emailError && <div className="gw-er" role="alert">{emailError}</div>}
             <button
               type="submit"
               className="gw-btn"
               disabled={saveSession.isPending}
               style={{ marginTop: 4 }}
             >
-              {saveSession.isPending ? 'Sending…' : 'Send me my account link'}
+              {saveSession.isPending ? 'Sending…' : 'Send me my link'}
             </button>
           </form>
         </div>
         <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-          <button
-            onClick={onClear}
-            style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-          >
-            Start over
-          </button>
+          <StartOver onClear={onClear} />
         </div>
       </div>
     )
@@ -143,7 +150,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
   function save(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = email.trim().toLowerCase()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Enter a valid email.'); return }
+    if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     setEmailError('')
     const session = entryStorage.load()
     if (session) {
@@ -152,25 +159,31 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     saveSession.mutate(trimmed)
   }
 
-  function copyLink() {
-    navigator.clipboard?.writeText(inviteUrl).then(() => {
+  async function copyLink() {
+    /* The button never flipped to "Copied" where copy is unsupported, while the note below still saved - so the
+       card looked alive and the lead pasted whatever was already on the clipboard into the invite email. */
+    if (await copy(inviteUrl)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    } else {
+      setEmailError('Copying is not available here. Select the link and copy it yourself.')
+    }
     const session = entryStorage.load()
     if (session && note.trim()) {
       entryStorage.save({ ...session, inviteToken, inviteNote: note.trim() })
     }
   }
 
+  /* Two silent returns - a bad address, and no session to attach to - each produced exactly the
+     same nothing as success. Both say so now. */
   function addParticipant() {
     const trimmed = participantEmail.trim().toLowerCase()
-    if (!trimmed || !trimmed.includes('@')) return
+    if (!looksLikeAnAddress(trimmed)) { setParticipantError(NOT_AN_ADDRESS); return }
     const session = entryStorage.load()
-    if (session) {
-      entryStorage.save({ ...session, participantEmail: trimmed, inviteToken, inviteNote: note.trim() || undefined })
-      setParticipantAdded(true)
-    }
+    if (!session) { setParticipantError('Nothing to attach this to - reload and try again.'); return }
+    setParticipantError('')
+    entryStorage.save({ ...session, participantEmail: trimmed, inviteToken, inviteNote: note.trim() || undefined })
+    setParticipantAdded(true)
   }
 
   return (
@@ -194,29 +207,31 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       {/* Section 1: email */}
       <div style={{ padding: '16px', borderBottom: '1px solid var(--gw-border)' }}>
         <form onSubmit={save}>
+          {/* The admin variant called entrySave with trap.filled and never rendered the trap, so its spam defence did nothing. */}
+          {trap.field}
           <div className="gw-fld">
             <label className="gw-label">Your email</label>
             <input
               className="gw-input"
               type="email"
-              placeholder="you@company.com"
+              placeholder="you@example.com"
               value={email}
               onChange={e => { setEmail(e.target.value); setEmailError('') }}
               autoFocus
             />
           </div>
-          {emailError && <div className="gw-er">{emailError}</div>}
+          {emailError && <div className="gw-er" role="alert">{emailError}</div>}
           <button
             type="submit"
             className="gw-btn"
             disabled={saveSession.isPending}
             style={{ marginTop: 4 }}
           >
-            {saveSession.isPending ? 'Sending…' : 'Create your account'}
+            {saveSession.isPending ? 'Sending…' : 'Save and continue'}
           </button>
         </form>
         <div style={{ marginTop: 10, fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          A link lands in your inbox. Click it to finish setting up your account and set a password.
+          A link lands in your inbox. Click it to finish saving and set a password.
         </div>
       </div>
 
@@ -252,7 +267,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
             rows={2}
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="e.g. I opened this so we both have a record before the conversation."
+            placeholder="e.g. I started this so we both know where things stand before we talk."
           />
         </div>
       </div>
@@ -263,11 +278,12 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           Invite a participant
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
-          Add their email and we will send them an invite once your account is set up.
+          Add their email and we will send them an invite once you have saved.
         </div>
+        {participantError && <div className="gw-er" role="alert" style={{ marginBottom: 6 }}>{participantError}</div>}
         {participantAdded ? (
           <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-            Saved. They will receive an invite once your account is created.
+            Saved. They will receive an invite once you have saved.
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
@@ -291,13 +307,34 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       </div>
 
       <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-        <button
-          onClick={onClear}
-          style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-        >
-          Start over
-        </button>
+        <StartOver onClear={onClear} />
       </div>
     </div>
+  )
+}
+
+/**
+ * "START OVER" ASKS FIRST. Two bare buttons discarded the whole anonymous conversation and its report
+ * on one press. EntryChatPage confirms the identical action in all three of its placements with one
+ * sentence, already written and already approved; it is the sentence here.
+ */
+function StartOver({ onClear }: { onClear: () => void }) {
+  const [asking, setAsking] = useState(false)
+  if (asking) {
+    return (
+      <Confirm
+        saying="This throws away this session and everything in it."
+        confirmLabel="Start over" keepLabel="Keep going"
+        onConfirm={onClear} onKeep={() => setAsking(false)}
+      />
+    )
+  }
+  return (
+    <button
+      onClick={() => setAsking(true)}
+      style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
+    >
+      Start over
+    </button>
   )
 }

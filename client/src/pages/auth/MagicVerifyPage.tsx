@@ -10,6 +10,8 @@ import { useAuthStore } from '@/stores/auth'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
+import { copy } from '@/components/gw/copying-can-fail'
+import { toast } from 'sonner'
 const FRONTEND_URL = window.location.origin
 
 // Verifying the token flips the auth state, which swaps the route into the
@@ -20,7 +22,9 @@ const FRONTEND_URL = window.location.origin
 type VerifyOutcome =
   | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
   | { kind: 'noSession' }
-  | { kind: 'commitError' }
+  /* The save is still running somewhere else (COMMIT_IN_PROGRESS): not lost, not failed. */
+  | { kind: 'stillSaving' }
+  | { kind: 'commitError'; message?: string }
   | { kind: 'redirect'; to: string }
   | { kind: 'verifyError'; message: string }
 // SINGLE-FLIGHT per token: the remount can happen while the first mount's
@@ -34,6 +38,10 @@ export function MagicVerifyPage() {
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
   const [commitError, setCommitError] = useState(false)
+  /* The server's own sentence for a refused commit - the plan limit, the seat limit, "not named as able
+     to open check-ins" - which all used to arrive as one generic line. */
+  const [commitErrorMessage, setCommitErrorMessage] = useState<string | null>(null)
+  const [stillSaving, setStillSaving] = useState(false)
   // Server said NO_ENTRY_SESSION: no draft and no local payload. Shown as an
   // explicit "we couldn't find your session" screen - never a silent /setup.
   const [noSession, setNoSession] = useState(false)
@@ -74,6 +82,9 @@ export function MagicVerifyPage() {
       setNoSession(true)
     } else if (outcome.kind === 'commitError') {
       setCommitError(true)
+      setCommitErrorMessage(outcome.message ?? null)
+    } else if (outcome.kind === 'stillSaving') {
+      setStillSaving(true)
     } else if (outcome.kind === 'redirect') {
       navigate(outcome.to, { replace: true })
     } else if (outcome.kind === 'verifyError') {
@@ -123,6 +134,12 @@ export function MagicVerifyPage() {
       // the explicit lost-session state for someone who did - never the
       // initiator-only "your ground wasn't saved" copy, which is nonsensical
       // for anyone who was never an initiator.
+      /*
+       * A SLOW SAVE IS NOT A LOST ONE. COMMIT_IN_PROGRESS means another attempt is still running; the
+       * draft is intact on the server. For somebody who ran the entry flow that is "still saving, try
+       * again in a moment" - never the lost-session screen, which offers to start over and discard it.
+       */
+      if (msg.includes('COMMIT_IN_PROGRESS') && hadEntryIntent) return { kind: 'stillSaving' }
       if (msg.includes('NO_ENTRY_SESSION') || msg.includes('COMMIT_IN_PROGRESS')) {
         if (hadEntryIntent) return { kind: 'noSession' }
         /**
@@ -138,7 +155,7 @@ export function MagicVerifyPage() {
          */
         return { kind: 'redirect', to: '/grounds' }
       }
-      return { kind: 'commitError' }
+      return { kind: 'commitError', message: msg || undefined }
     }
   }
 
@@ -321,14 +338,14 @@ export function MagicVerifyPage() {
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your check-in is set up.</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is saved and you are signed in.</div>
           </div>
           {joinUrl && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
               <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--gw-dark)', background: 'var(--gw-paper-2)', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
               <button
-                onClick={() => { navigator.clipboard.writeText(joinUrl).catch(() => {}) }}
+                onClick={async () => { if (!(await copy(joinUrl))) toast.error('Copying is not available here. Select the link and copy it yourself.') }}
                 style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-dark)', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Copy link
@@ -377,9 +394,9 @@ export function MagicVerifyPage() {
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
-              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
-              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. Nobody reads anyone else\'s words directly. The report shows where people agree and where they differ.' },
-              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time. Nobody sees it before anybody else.' },
+              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently.' },
+              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.' },
+              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody in it.' },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>
@@ -441,13 +458,40 @@ export function MagicVerifyPage() {
     )
   }
 
+  if (stillSaving) {
+    return (
+      <Arrival wide>
+        <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Your check-in is still being saved.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>Another tab or device is saving it right now. Nothing is lost. Give it a moment, then try again.</div>
+          </div>
+          <button
+            className="gw-btn"
+            disabled={retrying}
+            style={{ opacity: retrying ? 0.6 : 1 }}
+            onClick={async () => {
+              if (!lastAttempt.current) { navigate('/grounds', { replace: true }); return }
+              setRetrying(true)
+              setStillSaving(false)
+              applyOutcome(await commitFlow(lastAttempt.current.payload, true))
+              setRetrying(false)
+            }}
+          >
+            {retrying ? 'Trying again...' : 'Try again'}
+          </button>
+        </div>
+      </Arrival>
+    )
+  }
+
   if (commitError) {
     return (
       <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the check-in wasn't saved.</div>
-            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your check-ins page and start again from there.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>You are signed in, but the check-in wasn't saved.</div>
+            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>{commitErrorMessage || 'Something went wrong saving your session. Your sign-in is ready - go to your check-ins page and start again from there.'}</div>
           </div>
           <button
             className="gw-btn"

@@ -31,13 +31,15 @@ describe('GW-BEHAVIOR-ENTRY-C: the assembled entry prompt carries the entry rule
   it('carries the ENTRY_SESSION_ADDENDUM: record-builder, first session, no prior/other-party leak', () => {
     expect(entryPrompt).toContain('Entry session context');
     expect(entryPrompt).toContain('This is the person\'s first session.');
-    // isolation: never reference prior sessions or the other party in session 1
-    expect(entryPrompt).toContain('Do not reference prior sessions or the other party');
+    /* Isolation: session 1 references no earlier session and nothing anybody else said. The
+       wording moved off "the other party" - see this-is-not-a-court.spec.ts - but the rule it
+       carries is the same one, and it is the rule this line is here to hold. */
+    expect(entryPrompt).toContain('Do not reference prior sessions or what anybody else said');
   });
 
   it('keeps the exact entry completion phrase authored in the addendum', () => {
     // this is the phrase the AI must say to end an entry session (ties to D below)
-    expect(entryPrompt).toContain('Your record is here.');
+    expect(entryPrompt).toContain('Here is what you shared.');
   });
 
   it('FAQ mode answers plainly and states the free-first-session fact', () => {
@@ -79,7 +81,7 @@ describe('GW-BEHAVIOR-END-D: end-detection is locked AND its cross-path inconsis
   });
 
   // THE LATENT BUG (surfaced, not hidden): the ENTRY flow and the AUTH flow use different
-  // phrase sets for the SAME signal. The AI's authored entry closing "Your record is here."
+  // phrase sets for the SAME signal. The AI's authored entry closing "Here is what you shared."
   // ends an ENTRY session but is INVISIBLE to the auth detector. If these are ever unified
   // to one source (task_35534866), this test flips red and must be updated to the unified set.
   it('SURFACES the divergence: entry completion phrases the AUTH detector fails to recognise', () => {
@@ -130,11 +132,14 @@ describe('GW-BEHAVIOR-ENTRY-REPORT-G: the one-sided entry report reflects realit
     // Was "has not been cross-referenced with any other account yet", which is
     // how a database describes itself. The promise it pins is unchanged: a
     // one-sided report must say it is one-sided, in the first breath.
-    expect(ENTRY_REPORT_PROMPT).toContain('Nobody else has weighed in yet');
+    /* The framing line lost its courtroom staging with the rest of the entry voice; what it has
+       to keep saying is that this is one person's report and nobody else has answered. */
+    expect(ENTRY_REPORT_PROMPT).toContain('Nobody else has checked in yet');
   });
 
-  it('forbids claiming alignment when only one party has checked in (no false consensus, solo path)', () => {
-    expect(ENTRY_REPORT_PROMPT).toContain('only ONE party has checked in');
+  it('forbids claiming alignment when only one person has checked in (no false consensus, solo path)', () => {
+    /* "party" went with the courtroom vocabulary; the rule is unchanged and is what matters. */
+    expect(ENTRY_REPORT_PROMPT).toContain('only this person has checked in');
     expect(ENTRY_REPORT_PROMPT).toContain('Do NOT use the word "Aligned"');
   });
 

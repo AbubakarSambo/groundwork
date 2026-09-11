@@ -63,7 +63,15 @@ export interface Confidence {
  * compared. Then whether what was agreed has a name and a date on it, which is the difference
  * between a conversation and a commitment.
  */
-export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
+export function howMuchThereIsToGoOn(input: WhatItRestsOn): Confidence {
+  /* Both terms of each ratio must come from one population. A numerator larger than its denominator
+     is a caller that mixed two, and the score it would produce is a lie; clamp, so the sentence
+     below can never say "5 of 4". */
+  const r: WhatItRestsOn = {
+    ...input,
+    answered: Math.min(input.answered, input.ofPeople),
+    documented: Math.min(input.documented, input.saidInAll),
+  };
   const reasons: string[] = [];
 
   const coverage = r.ofPeople > 0 ? r.answered / r.ofPeople : 0;

@@ -147,6 +147,9 @@ function serviceFor(scenario: GroundScenario, peopleWorkTogether: boolean | null
     },
     workMention: { findMany: jest.fn(async () => []) },
     groundDependency: { findMany: jest.fn(async () => []) },
+    groundObjective: { findMany: jest.fn(async () => []) },
+    groundObjectiveSnapshot: { findMany: jest.fn(async () => []) },
+    groundParticipant: { findMany: jest.fn(async () => []) },
     patternDetection: { findMany: jest.fn(async () => []) },
   };
   return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any) as any;

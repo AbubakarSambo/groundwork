@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -15,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
+import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
 import { VennIcon } from '@/components/gw/VennIcon'
@@ -29,6 +31,11 @@ import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { copy } from '@/components/gw/copying-can-fail'
+
+/** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
+const A_MESSAGE_MAX = 8000
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -43,6 +50,12 @@ interface EntrySession {
   email?: string
   onboardingStep?: number
   onboardingSelections?: OnboardingSelections
+  /** The plan the person agreed to (fix plan C11): lost on reload before, so "12 sessions" came back as "1". */
+  sessions?: number
+  cadence?: string
+  cadenceChosen?: boolean
+  groundName?: string
+  plannedFrom?: { timelineDays: number; cadence: string } | null
 }
 
 interface OnboardingSelections {
@@ -224,7 +237,7 @@ export function replyHasQuestion(text: string): boolean {
  * What replaces it points at the derived summary rather than competing with it.
  */
 export const ONBOARD_READY_CLOSER =
-  'That is the setup questions done. Here is what is on the record so far.'
+  'That is the setup questions done. Here is what you have told us so far.'
 // The reply to actually display: when the endpoint signals ready but the reply
 // still asks a question, show the clean closer instead so no question is
 // stranded. Otherwise show the reply verbatim.
@@ -857,8 +870,13 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
 export const THE_OPENING_QUESTION =
   /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
      were both true of a long scrolling list with the catch-all last, and both wrong the moment it
-     became one group at a time with describing your own at the top. */
-  'What brings you here? Describe it in your own words, or pick the situation that fits.'
+     became one group at a time with describing your own at the top.
+  
+     Then they followed the job. "Pick the situation that fits" asked somebody to classify
+     themselves, which is a question about us, and left them guessing what picking one would do.
+     What a situation actually does is set the context for what the people they invite will be
+     asked about - so the sentence says that, and the choice becomes a means rather than a label. */
+  `What brings you here? ${HOW_A_SITUATION_IS_CHOSEN}`
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -948,6 +966,9 @@ export function EntryChatPage() {
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
   const urlInitial = params.get('initial') ?? ''
+  /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
+     the picker never showed, "unless I click go backwards". Now it asks. */
+  const wantsANewOne = params.get('new') === '1'
 
   const user = useAuthStore(s => s.user)
   const queryClient = useQueryClient()
@@ -1018,6 +1039,8 @@ export function EntryChatPage() {
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
+  /** What the model has said so far on the turn in flight. Empty until the first sentence lands. */
+  const [onboardingDraft, setOnboardingDraft] = useState('')
   // Doc-add during onboarding: paste or upload a text document + context, so the
   // AI reads it and reports what it gathered (instead of the person typing it out).
   const [showDocPanel, setShowDocPanel] = useState(false)
@@ -1082,6 +1105,31 @@ export function EntryChatPage() {
   // the same inviteAdded contributor queue used below - they go out for real
   // once the ground is created at save time.
   const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  /*
+   * THE PEOPLE ALREADY HERE. A lead had to type every colleague's address in full, for people the
+   * organisation already knows. Read once when signed in; empty for a stranger, who has nobody yet.
+   */
+  const [colleagues, setColleagues] = useState<{ email: string; name: string | null }[]>([])
+  useEffect(() => {
+    if (!user) return
+    authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
+  }, [user])
+  /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
+  function colleagueNamed(label: string): { email: string; name: string | null } | null {
+    const name = label.split(' - ')[0].trim().toLowerCase()
+    if (name.length < 2) return null
+    const hits = colleagues.filter(c => {
+      const full = (c.name ?? '').toLowerCase()
+      const first = full.split(' ')[0]
+      return full && (full === name || first === name || full.startsWith(name + ' ') || name.startsWith(full))
+    })
+    return hits.length === 1 ? hits[0] : null
+  }
+  function queueColleague(c: { email: string; name: string | null }, note?: string, key?: string) {
+    const entry = note ? `${c.email} - ${note}` : c.email
+    setInviteAdded(prev => (prev.some(e => e === c.email || e.startsWith(`${c.email} - `)) ? prev : [...prev, entry]))
+    if (key) setQueuedFromSuggestion(prev => new Set(prev).add(key))
+  }
   /* The note that travels with a queued address, remembered when the field opens so Save can
      queue it too. `renderAdd` hands the label to the button, not to the save handler. */
   const [addingContributorLabel, setAddingContributorLabel] = useState('')
@@ -1149,6 +1197,8 @@ export function EntryChatPage() {
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  /* Where the planned session count came from, so the chip can say so instead of presenting it as fact. */
+  const [plannedFrom, setPlannedFrom] = useState<{ timelineDays: number; cadence: string } | null>(null)
   /**
    * Did anyone actually choose this rhythm?
    *
@@ -1216,7 +1266,7 @@ export function EntryChatPage() {
   // Load or start session
   useEffect(() => {
     const saved = loadSession()
-    const branch = saved ? entryRestoreBranch(saved, scenario) : 'fresh'
+    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
     // Closed-but-unsaved sessions MUST restore too: they hold the report and
     // the locked transcript. Excluding them made the fallback below DELETE an
     // ended session on reload, right when it is most valuable.
@@ -1229,6 +1279,11 @@ export function EntryChatPage() {
          and they are simply not read: the ground it commits to has no lead to invite. */
       if ((saved as any).flowPath === 'lead') setFlowPath('lead')
       if (saved.email) setEmail(saved.email)
+      /* Whole state or none: the plan comes back with the conversation. */
+      if (typeof saved.sessions === 'number' && saved.sessions > 0) setSessions(saved.sessions)
+      if (saved.cadence) { setCadence(saved.cadence as typeof cadence); setCadenceChosen(!!saved.cadenceChosen) }
+      if (saved.groundName) setGroundName(saved.groundName)
+      if (saved.plannedFrom) setPlannedFrom(saved.plannedFrom)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
       }
@@ -1321,64 +1376,47 @@ export function EntryChatPage() {
     sendOnboarding(said)
   }, [pickedScenario])
 
+  /* WHOLE STATE OR NONE. The conversation, the situation and the step survived a reload; the session count,
+     the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
+     as "1 session planned" - the number the person agreed to, replaced. */
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   function persistCheckin(h: Turn[], cl = false, rep = '') {
     saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections })
   }
 
-  // Typewriter streaming effect for check-in phase
+  /*
+   * THE STREAM IS THE ANIMATION. A typewriter used to redraw each reply over about a second after
+   * it had arrived whole. Replies arrive a sentence at a time now (entryApi.chatStream), so the
+   * words appear as the model says them and nothing is redrawn. The typewriter also broke on a real
+   * stream: every delta restarted it, and the final reply could match the last delta and skip the
+   * redraw with a half-drawn line still on screen.
+   */
   useEffect(() => {
     if (phase !== 'checkin') return
+    setDisplayedHistory(history)
     const lastIdx = history.length - 1
     const last = history[lastIdx]
-    if (!last || last.role !== 'assistant' || last.content === '…') {
-      setDisplayedHistory(history)
-      setStreamingIdx(null)
-      return
-    }
-    if (displayedHistory[lastIdx]?.content === last.content) return
+    setStreamingIdx(loading && last?.role === 'assistant' && last.content !== '…' ? lastIdx : null)
+  }, [history, phase, loading])
 
-    setStreamingIdx(lastIdx)
-    let i = 0
-    const full = last.content
-    /*
-     * THE TYPEWRITER IS NOT A STREAM, AND IT WAS CHARGING LIKE ONE.
-     *
-     * The reply arrives whole - this endpoint does not stream - and then this animated it at two
-     * characters every 25ms. That is 80 characters a second, so a 500-character answer spent six
-     * more seconds appearing AFTER the model had already finished. Reported as "the chat is slow
-     * on both entry and when signed in, the response is slow and doesn't render as writing".
-     *
-     * A real stream is slow because the words genuinely are not there yet. This one is slow on
-     * purpose, over text already sitting in memory, which is the worst version: all of the waiting
-     * and none of the reason for it.
-     *
-     * So the animation is bounded by TIME rather than by length - about a second, whatever the
-     * reply's size. Short answers still feel written rather than pasted; long ones stop punishing
-     * the person for having asked something that deserved a full answer.
-     */
-    const ABOUT_A_SECOND = 900
-    const DELAY = 25
-    const CHUNK = Math.max(2, Math.ceil(full.length / (ABOUT_A_SECOND / DELAY)))
-    const base = history.slice(0, lastIdx)
-    const tick = setInterval(() => {
-      i += CHUNK
-      setDisplayedHistory([...base, { role: 'assistant', content: full.slice(0, i) }])
-      if (i >= full.length) {
-        clearInterval(tick)
-        setDisplayedHistory(history)
-        setStreamingIdx(null)
-      }
-    }, DELAY)
-    return () => clearInterval(tick)
-  }, [history, phase])
-
+  /**
+   * SCROLL TO THE NEWEST MESSAGE - IN BOTH CHATS, NOT ONE OF THEM.
+   *
+   * One ref serves two conversations: the setup chat and the check-in. The dependency list only
+   * carried the check-in's history, so in setup nothing ever scrolled. Every answer was appended
+   * below the fold of a list that did not move, and the composer - painted after it - covered it.
+   * Read back as "the message I type goes behind the chat input field", which is exactly what it
+   * looked like: the message was there, underneath, and nothing had scrolled down to it.
+   *
+   * `onboardingLoading` is in here too, because the typing indicator appears and disappears as its
+   * own row and changes the height of the list without changing the history.
+   */
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
-  }, [displayedHistory, loading, onboardingStep, phase])
+  }, [displayedHistory, onboardingHistory, loading, onboardingLoading, onboardingStep, phase])
 
   // Start first check-in question (AI-generated) after onboarding
   const startCheckin = useMutation({
@@ -1402,7 +1440,7 @@ export function EntryChatPage() {
       }], onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
-      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
+      const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you how it is actually going.' }
       const h: Turn[] = [transition, { role: 'assistant', content: res.reply }]
       setHistory(h)
       setDisplayedHistory(h)
@@ -1415,7 +1453,24 @@ export function EntryChatPage() {
   const sendMut = useMutation({
     /* Same situation for every turn after the first, and for the same reason - a check-in that
        opens on the right question and continues on a generic one is the same bug, one turn later. */
-    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined),
+    mutationFn: (msgs: Turn[]) => {
+      /* The '…' placeholder send() appended becomes the reply as the sentences arrive. */
+      let shown = ''
+      return entryApi.chatStream(
+        msgs,
+        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        groundName || undefined,
+        (text) => {
+          shown += text
+          const live = shown
+          setHistory(prev => {
+            const last = prev[prev.length - 1]
+            if (!last || last.role !== 'assistant') return prev
+            return [...prev.slice(0, -1), { role: 'assistant', content: live }]
+          })
+        },
+      )
+    },
     onSuccess: (res, msgs) => {
       const newTurn: Turn = { role: 'assistant', content: res.reply }
       const updated = [...msgs, newTurn]
@@ -1432,9 +1487,9 @@ export function EntryChatPage() {
       }
       persistCheckin(updated)
     },
-    onError: () => {
+    onError: (_err, msgs) => {
       setLoading(false)
-      setHistory(prev => prev.filter(m => m.role !== 'assistant' || m.content !== '…'))
+      setHistory(msgs)
       toast.error('Message failed. Try again.')
     },
   })
@@ -1581,11 +1636,15 @@ export function EntryChatPage() {
        * (onboarding a group is a different question from an ongoing read of one), and guessing it
        * would ask the wrong one of the two with complete confidence.
        */
-      const res = await entryApi.onboard(
+      setOnboardingDraft('')
+      let draft = ''
+      const res = await entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
         onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
+        (text) => { draft += text; setOnboardingDraft(draft) },
       )
+      setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
       // question (the input hides). Swap the question-reply for a clean closer
@@ -1652,12 +1711,14 @@ export function EntryChatPage() {
            * was contradict the number the person had just agreed to.
            */
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
-          if (planned != null) setSessions(planned)
+          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
         }
         // Background classify intent when we have initial
         if (res.extracted.initial) {
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
-            setOnboardingSelections(prev => ({ ...prev, classifiedScenario: r.scenario }))
+            /* A low-confidence answer comes back as null and the card they picked stands. */
+            const sure = r.scenario
+            if (sure) setOnboardingSelections(prev => ({ ...prev, classifiedScenario: sure }))
           }).catch(() => { /* non-critical */ })
         }
       }
@@ -1803,10 +1864,10 @@ export function EntryChatPage() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) ?? ''
-      if (content.length > 8000) {
+      if (content.length > A_MESSAGE_MAX) {
         toast.warning(`${file.name} is large - only the first portion will be used in this session.`)
       }
-      setUploadedDoc({ name: file.name, content: content.slice(0, 8000) })
+      setUploadedDoc({ name: file.name, content: content.slice(0, A_MESSAGE_MAX) })
     }
     reader.onerror = () => toast.error('Could not read file.')
     if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
@@ -1823,7 +1884,11 @@ export function EntryChatPage() {
     const ctx = docContext.trim()
     setDocContextMode(false)
     if (!uploadedDoc) return
-    const content = `[Document: "${uploadedDoc.name}"]\n${uploadedDoc.content}\n\nContext from me: ${ctx || 'See attached document.'}`
+    /* The whole turn has to fit a message (8,000 characters, the same cap every door has), so the
+       document part gives way to the wrapper and the context rather than the server refusing it. */
+    const head = `[Document: "${uploadedDoc.name}"]\n`
+    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}`
+    const content = `${head}${uploadedDoc.content.slice(0, Math.max(0, A_MESSAGE_MAX - head.length - tail.length))}${tail}`
     setUploadedDoc(null)
     setDocContext('')
     setLoading(true)
@@ -1847,10 +1912,13 @@ export function EntryChatPage() {
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence,
+        /* The page's default is not a choice; the server records only a confirmed pick as one. */
+        cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
-        reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
+        /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
+        reportSummary: sessionReport ?? undefined,
         // The setter's own part in this, as the interview extracted it. Lands on their participant row.
         roleAsDescribed: sessionReport?.yourRole?.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
@@ -1960,6 +2028,7 @@ export function EntryChatPage() {
    * simply never asked whether it was talking to somebody who had already signed in.
    */
   const [savingAsUser, setSavingAsUser] = useState(false)
+  const [saving, setSaving] = useState(false)
   /**
    * WHO DID NOT GET A MAIL, AND WHY - CARRIED OVER FROM THE SCREEN THAT USED TO DO IT.
    *
@@ -2054,7 +2123,18 @@ export function EntryChatPage() {
     }
   }
 
+  /*
+   * ONE PRESS IS ONE CALL. A double press fired two entrySave calls - two drafts, two emails, and the
+   * second draftToken overwrote the first in localStorage, so the earlier mail's link pointed at a
+   * draft this browser would no longer patch. Same guard the signed-in save (savingAsUser) has had.
+   */
   async function handleSave() {
+    if (saving) return
+    setSaving(true)
+    try { await handleSaveInner() } finally { setSaving(false) }
+  }
+
+  async function handleSaveInner() {
     /*
      * WHATEVER IS STILL IN THE OPEN "ADD THEM" FIELD COUNTS AS ADDED.
      *
@@ -2068,7 +2148,7 @@ export function EntryChatPage() {
       if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
     }
     const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
     // field only renders AFTER the email is sent (the admin section below is
     // emailSent-gated) - so the gate deadlocked every anonymous save. The
@@ -2089,6 +2169,13 @@ export function EntryChatPage() {
       if (res.draftToken) {
         setDraftToken(res.draftToken)
         try { localStorage.setItem('gw_draft_token', res.draftToken) } catch { /* */ }
+      } else {
+        /* No token means the address already has an account and the server wrote nothing for it - by
+           design, since this request is unauthenticated. Post-email edits stay in localStorage and
+           travel with the same-browser commit; a token left over from an earlier session must not be
+           used to patch a draft this address no longer has. */
+        setDraftToken(null)
+        try { localStorage.removeItem('gw_draft_token') } catch { /* */ }
       }
       try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
     } catch (err: any) {
@@ -2107,6 +2194,8 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         cadence,
+        /* The page's default is not a choice; the server records only a confirmed pick as one. */
+        cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
@@ -2139,17 +2228,19 @@ export function EntryChatPage() {
     return () => clearTimeout(t)
   }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
 
-  function copyInviteLink() {
+  async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
-    navigator.clipboard.writeText(link).then(() => {
+    if (await copy(link)) {
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the link and copy it yourself.')
+    }
   }
 
   function addInviteEmail() {
     const e = inviteEmail.trim()
-    if (!e || !e.includes('@')) return
+    if (!looksLikeAnAddress(e)) return
     setInviteEmail('')
     setInviteContextFor(e)
     setInviteContext('')
@@ -2171,8 +2262,8 @@ export function EntryChatPage() {
    */
   function queueSuggestedContributor(key: string, note: string): boolean {
     const email = addingContributorEmail.trim()
-    if (!email || !email.includes('@')) {
-      setAddingContributorError(email ? 'That does not look like an email address.' : 'Add their email address, or close this to leave them out.')
+    if (!looksLikeAnAddress(email)) {
+      setAddingContributorError(email ? NOT_AN_ADDRESS : 'Add their email address, or close this to leave them out.')
       return false
     }
     setAddingContributorError('')
@@ -2242,8 +2333,8 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
-                <CardTitle weight={700}>The shared report - not your words</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where everyone agrees and where they differ. It does not quote anyone.</div>
+                <CardTitle weight={700}>The shared report</CardTitle>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
               </div>
             </div>
           </div>
@@ -2259,12 +2350,14 @@ export function EntryChatPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
+    /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
+       does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
+    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
 
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
         {user && (
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</span>
+          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
         )}
         <div style={{ flex: 1 }}>
           {renamingGround ? (
@@ -2333,7 +2426,7 @@ export function EntryChatPage() {
             <button
               onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
               style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-              title="Edit number of sessions"
+              title={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'} - from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
             >
               {/*
                 This read "1/{sessions}" - so during setup, before anyone has
@@ -2345,14 +2438,14 @@ export function EntryChatPage() {
                 conversation said. GW-005.
 
                 The prefix is gone and the number is labelled as the plan, which
-                is what it actually is - an editable estimate. The engine does not
-                yet extract cadence from the conversation (the /entry/onboard
-                response carries no session or duration field), so the number
-                still has to be set here rather than inferred.
+                is what it actually is - an editable estimate, derived from the
+                timeline and cadence the engine extracted (see onboard, above)
+                and traceable to them in the button's title.
               */}
+              {/* The space is in the STRING: two spans separated by a margin read as "12sessions planned" in every text extraction. */}
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>
-                {sessions === 1 ? 'session planned' : 'sessions planned'}
+              <span style={{ fontSize: 10, color: 'var(--gw-sub)' }}>
+                {' '}{sessions === 1 ? 'session planned' : 'sessions planned'}
               </span>
             </button>
           )}
@@ -2367,10 +2460,10 @@ export function EntryChatPage() {
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
-        const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
+        const labels = ['What is going on', 'Your check-in', 'Save & invite']
         const hints = [
-          "You're describing the situation. Nothing is saved to an account yet.",
-          "You're saying how you see it. It stays private until the report.",
+          "You are telling us what is going on. Nothing is saved yet.",
+          "You're saying how you see it.",
           'Save this and invite the people involved.',
         ]
         return (
@@ -2468,7 +2561,7 @@ export function EntryChatPage() {
                 person "additional sessions are $5 each" at the moment they were
                 deciding whether to start - and it was not even true: their
                 first ground is free with unlimited sessions. */}
-            <strong>{sessions} sessions</strong> needs an account, and it is free. Save your session below to get set up.
+            <strong>{sessions} sessions</strong> means signing in, and it is free. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -2519,21 +2612,34 @@ export function EntryChatPage() {
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set this up</h1>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Tell us what is going on</h1>
                   <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                    Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
+                    A few questions to work out what this is. You get something just for you now, and a shared picture once everybody else has checked in.
                   </div>
                 </div>
               </div>
             )}
             <div
               ref={msgsRef}
+              aria-live="polite"
               // The picker needs the width for a multi-column grid so all 8
               // cards sit above the fold at laptop heights; conversation
               // bubbles keep the narrow reading column.
               style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
-              {onboardingHistory.map((m, i) => (
+              {onboardingHistory.map((m, i) => {
+                /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
+                   user turn so the model has a situation; drawing it as a navy bubble put words in
+                   their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */
+                const picked = m.role === 'user' && SITUATION_CARDS.find((c) => c.message === m.content)
+                if (picked) {
+                  return (
+                    <div key={i} style={{ alignSelf: 'flex-end', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 12px', border: '1px solid var(--gw-border)', borderRadius: 999, background: 'white' }}>
+                      You picked <strong style={{ color: 'var(--gw-text)' }}>{picked.label}</strong>
+                    </div>
+                  )
+                }
+                return (
                 <div
                   key={i}
                   style={{
@@ -2546,7 +2652,7 @@ export function EntryChatPage() {
                     padding: '10px 14px',
                     fontSize: 14,
                     lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                     boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                   }}
                 >
@@ -2555,7 +2661,8 @@ export function EntryChatPage() {
                       server too - this is a net, not the fix. */}
                   {nothingInternalReachesTheBubble(m.content)}
                 </div>
-              ))}
+                )
+              })}
 
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
@@ -2678,10 +2785,14 @@ export function EntryChatPage() {
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
                   border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
                   padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                 }}>
-                  <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
-                  <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+                  {onboardingDraft ? onboardingDraft : (
+                    <>
+                      <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
+                      <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+                    </>
+                  )}
                 </div>
               )}
 
@@ -2752,7 +2863,7 @@ export function EntryChatPage() {
                           ))}
                           {sum.missing.length > 0 && (
                             <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 6, color: 'var(--gw-amber-t)' }}>
-                              <span style={{ fontWeight: 700 }}>Not on the record: </span>
+                              <span style={{ fontWeight: 700 }}>Not said yet: </span>
                               {sum.missing.join(', ')}. You can add it in your check-in.
                             </div>
                           )}
@@ -2826,7 +2937,7 @@ export function EntryChatPage() {
                 */}
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
-                  Starting your check-in…
+                  Starting your session…
                 </div>
               )}
             </div>
@@ -2883,15 +2994,17 @@ export function EntryChatPage() {
                     >
                       + Doc
                     </button>
-                    <input
-                      type="text"
+                    {/* A textarea, like the check-in composer two screens later: Enter sends, Shift+Enter breaks a
+                        line, and a multi-line setup answer keeps its shape. Same position, same handler. */}
+                    <textarea
                       placeholder="Type your response, or add a document with + Doc"
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && input.trim()) { sendOnboarding(input); } }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendOnboarding(input) } }}
                       disabled={onboardingLoading}
+                      rows={1}
                       style={{
-                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)',
+                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)', resize: 'none', minHeight: 38, maxHeight: 120, lineHeight: 1.4,
                         borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
                         color: 'var(--gw-text)', opacity: onboardingLoading ? 0.5 : 1,
                       }}
@@ -2900,6 +3013,7 @@ export function EntryChatPage() {
                     <button
                       onClick={() => { if (input.trim()) sendOnboarding(input) }}
                       disabled={!input.trim() || onboardingLoading}
+                      aria-label="Send message"
                       style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (input.trim() && !onboardingLoading) ? 1 : 0.35 }}
                     >
                       ↑
@@ -2924,10 +3038,11 @@ export function EntryChatPage() {
             )}
             <div
               ref={msgsRef}
+              aria-live="polite"
               style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your check-in…</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your session…</div>
               )}
               {/*
                 W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
@@ -2973,7 +3088,7 @@ export function EntryChatPage() {
                       padding: '10px 14px',
                       fontSize: 14,
                       lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap',
+                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                       opacity: (m.content === '…') ? 0.45 : 1,
                       transition: 'opacity .3s',
                       boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
@@ -3080,7 +3195,7 @@ export function EntryChatPage() {
                     disabled={loading}
                     style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
                   />
-                  <button onClick={() => send()} disabled={loading || !input.trim()}
+                  <button onClick={() => send()} disabled={loading || !input.trim()} aria-label="Send message"
                     style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
                     ↑
                   </button>
@@ -3160,13 +3275,18 @@ export function EntryChatPage() {
                * as a page arguing with itself, which is the same defect as "Reports ready 0" over
                * a finished report. The number was never wrong; the place was.
                */
+              /*
+               * AND NOT A MEASUREMENT IT IS NOT. This was a five-dot bar and a grade word ("Thin",
+               * "Moderate", "Strong") under a tooltip claiming it measured how concrete the answers
+               * were. It was a turn count. The real specificity read is server-side and not on the
+               * anonymous entry report, so nothing is invented: the number is labelled as what it
+               * counts, and the bar out of five - which specificity-shows-as-what-it-is-made-of.spec
+               * records as decided may not come back - is gone with the grade word.
+               */
               const turns = history.filter(m => m.role === 'user').length
-              const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
-              const label = depth <= 1 ? 'Thin · more exchanges strengthen the report' : depth <= 2 ? 'Moderate · a solid start' : depth <= 3 ? 'Good' : depth <= 4 ? 'Strong' : 'Rich'
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? 'var(--gw-green-b)' : 'rgba(255,255,255,.18)' }} />)}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }} title="How concrete and specific your answers were (Thin, Fair, Good, Strong)">Specificity: {label}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Depth: {turns} {turns === 1 ? 'exchange' : 'exchanges'}{turns < 4 ? ' · more exchanges strengthen the report' : ''}</span>
                 </div>
               )
             })()}
@@ -3190,7 +3310,7 @@ export function EntryChatPage() {
               work, not a progress bar pretending to know.
             */}
             {generatingReport && !sessionReport && (
-              <div style={{ marginBottom: 18 }}>
+              <div style={{ marginBottom: 18 }} role="status" aria-live="polite">
                 <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
               </div>
             )}
@@ -3237,8 +3357,8 @@ export function EntryChatPage() {
                 }
                 onRecordLine={
                   uploadedDoc
-                    ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                    : 'On record: what you said this session. No documents uploaded yet.'
+                    ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
+                    : 'Built from what you said today. Nothing attached yet.'
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (
@@ -3258,6 +3378,14 @@ export function EntryChatPage() {
                         <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
                       )}
                     </>
+                  ) : colleagueNamed(label) ? (
+                    /* Already in the organisation: one click, no address to type. */
+                    <button
+                      onClick={() => queueColleague(colleagueNamed(label)!, label, key)}
+                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      + Add {colleagueNamed(label)!.name ?? colleagueNamed(label)!.email} ({colleagueNamed(label)!.email})
+                    </button>
                   ) : (
                     <button
                       onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
@@ -3363,12 +3491,12 @@ export function EntryChatPage() {
                   {(user
                     ? [
                       'Save this. Your invites go out straight away.',
-                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
                       'Save your email below to keep access to this report.',
                       'Open the confirmation link we email you - that saves it and sends your invites.',
-                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
@@ -3443,14 +3571,16 @@ export function EntryChatPage() {
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
                 />
                 {trap.field}
+                {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
+                <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
                 {emailError && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginBottom: 6 }}>{emailError}</div>}
-                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
-                  Save my check-in →
+                <button type="submit" disabled={saving || (generatingReport && !sessionReport)} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: saving ? 'wait' : generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving || (generatingReport && !sessionReport) ? 0.5 : 1 }}>
+                  {saving ? 'Saving…' : 'Save my check-in →'}
                 </button>
+                </form>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
                 </div>
@@ -3483,9 +3613,10 @@ export function EntryChatPage() {
                     </div>
                   </>
                 )}
-                <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
+                {/* The only way out of a full-screen save card, and a keyboard user inside it could not dismiss it. */}
+                <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
                   Not now
-                </div>
+                </button>
               </div>
             ) : (
               /**
@@ -3659,8 +3790,8 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can give their own version of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
-                : 'Each person gives their own version of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
+                ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
               <FieldLabel>{inviteHeading}</FieldLabel>
@@ -3717,6 +3848,18 @@ export function EntryChatPage() {
                 </div>
               )}
 
+              {/* Colleagues, picked the way a group chat picks them: search, tick, one button. Each goes on the list without a note; notes can be added on Setup. */}
+              {!inviteContextFor && !bulkInviteMode && (
+                <PeoplePicker
+                  people={colleagues.filter((c) => c.email !== user?.email)}
+                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0])}
+                  onAdd={(picked) => {
+                    for (const c of picked) queueColleague(c)
+                    toast.success(picked.length === 1 ? `${picked[0].name ?? picked[0].email} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
+                  }}
+                />
+              )}
+
               {inviteContextFor ? (
                 <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -3759,6 +3902,7 @@ export function EntryChatPage() {
                         const emails = bulkInviteText
                           .split(/[\n,]+/)
                           .map(e => e.trim().toLowerCase())
+                          /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
                           .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
                         if (emails.length === 0) return
                         setBulkInviteText('')
@@ -3873,9 +4017,9 @@ export function EntryChatPage() {
                 </div>
               </div>
             ) : closed ? null : (
-              <div onClick={() => setShowSave(false)} style={{ textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
+              <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
                 Later
-              </div>
+              </button>
             )}
           </div>
         </div>
@@ -3887,11 +4031,15 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Starting a new scenario will clear your current session. Your progress will be lost.
+              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Keep it to carry on where you left off.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={() => { setShowNewScenarioConflict(false); setPendingNewScenario(null) }}
+                onClick={() => {
+                  setShowNewScenarioConflict(false); setPendingNewScenario(null)
+                  /* Came from the rail with a saved setup: keeping it means restoring it, which the plain address does. */
+                  if (wantsANewOne) navigate('/start', { replace: true })
+                }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Keep current session

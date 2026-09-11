@@ -12,14 +12,17 @@ const arriving = (over: Partial<Parameters<typeof needsApproval>[0]> = {}) => ({
 });
 
 describe('somebody from outside, added to a check-in', () => {
-  it('waits for an admin', () => {
-    expect(needsApproval(arriving())).toBe(true);
+  it('waits for an admin when their account is being created right now', () => {
+    /* The commonest case and the one that was silently making members: no account anywhere, so
+       one is created in the inviting organisation. This is the only person who waits. */
+    expect(needsApproval(arriving({ theirHomeOrganizationId: null }))).toBe(true);
   });
 
-  it('and so does somebody whose account is being created right now', () => {
-    /* The commonest case and the one that was silently making members: no account anywhere, so
-       one is created in the inviting organisation. */
-    expect(needsApproval(arriving({ theirHomeOrganizationId: null }))).toBe(true);
+  it('but somebody with an account elsewhere does not - they are a guest, and the role is the gate', () => {
+    /* The flag is on the account, so making them wait locked them out of their OWN organisation's
+       check-ins. A guest holds no seat here and no keys, which is everything the queue was for. */
+    expect(needsApproval(arriving())).toBe(false);
+    expect(whyTheyDoNotNeedApproval(arriving())).toMatch(/guest/);
   });
 });
 
@@ -34,8 +37,9 @@ describe('who never waits', () => {
       .toMatch(/their own organisation/);
   });
 
-  it('and somebody an admin of this organisation added, because that IS the approval', () => {
-    expect(whyTheyDoNotNeedApproval(arriving({ addedByAnAdminOfThisOrg: true })))
+  it('and a new account an admin of this organisation is creating, because that IS the approval', () => {
+    /* Only a brand-new account can reach this rule: an existing one is a guest before it is asked. */
+    expect(whyTheyDoNotNeedApproval(arriving({ theirHomeOrganizationId: null, addedByAnAdminOfThisOrg: true })))
       .toMatch(/an admin of this organisation added them/);
   });
 
@@ -44,7 +48,8 @@ describe('who never waits', () => {
     for (const over of [
       { alreadyAMemberHere: true },
       { theirHomeOrganizationId: 'acme' },
-      { addedByAnAdminOfThisOrg: true },
+      { theirHomeOrganizationId: 'other-co' },
+      { theirHomeOrganizationId: null, addedByAnAdminOfThisOrg: true },
     ]) {
       expect(whyTheyDoNotNeedApproval(arriving(over))).toBeTruthy();
     }

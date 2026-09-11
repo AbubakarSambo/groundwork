@@ -91,8 +91,9 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   const bodyOf = (name: string) => {
-    const at = SRC.indexOf(`async ${name}(checkInId: string, requestingUserId: string`);
-    return at === -1 ? '' : SRC.slice(at, at + 400);
+    /** Generators are `async *name(`; the star is optional so the stream route is covered. */
+    const m = new RegExp(`async \\*?${name}\\(checkInId: string, requestingUserId: string`).exec(SRC);
+    return m ? SRC.slice(m.index, m.index + 400) : '';
   };
 
   it('the loader that refuses a settled session exists and names both settled states', () => {
@@ -101,12 +102,28 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
     expect(SRC).toMatch(/CheckInStatus\.COMPLETED[\s\S]{0,160}?already complete/);
   });
 
-  it.each(['open', 'sendMessage', 'complete', 'documentReceived', 'decline'])(
-    '%s refuses a declined session',
-    (method) => {
-      expect(bodyOf(method)).toContain('loadOwnedOpenCheckIn(');
-    },
-  );
+  /**
+   * The four session routes now reach the loader through one door (`openTheDoor`, or
+   * `aSessionUnderway` which is that door plus a question) - see a-hold-must-actually-hold.spec.ts.
+   * The rule is unchanged: what matters is which loader the path ends up on, and the door picks the
+   * refusing one. The two paths outside the door still name it directly.
+   */
+  it('the door itself picks the refusing loader', () => {
+    const door = SRC.slice(SRC.indexOf('private async openTheDoor('), SRC.indexOf('private async openTheDoor(') + 400);
+    expect(door).toContain('loadOwnedOpenCheckIn(');
+    expect(door).not.toMatch(/loadOwnedCheckIn\(/);
+  });
+
+  it.each([
+    ['open', /openTheDoor\(/],
+    ['sendMessage', /aSessionUnderway\(/],
+    ['sendMessageStream', /aSessionUnderway\(/],
+    ['complete', /openTheDoor\(/],
+    ['documentReceived', /loadOwnedOpenCheckIn\(/],
+    ['decline', /loadOwnedOpenCheckIn\(/],
+  ])('%s refuses a declined session', (method, through) => {
+    expect(bodyOf(method as string)).toMatch(through as RegExp);
+  });
 
   it.each(['getTranscript', 'getDownload', 'getSoloArtifact'])(
     '%s still works on one, because reading your own record is not writing to it',

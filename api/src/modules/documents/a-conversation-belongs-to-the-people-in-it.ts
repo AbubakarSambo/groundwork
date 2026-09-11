@@ -5,26 +5,31 @@
  * or a workplan, and the difference is not about us: other people are in it who never signed up to
  * this product, and the person uploading is the only one in a position to have told them.
  *
- * SO THE CONFIRMATION IS AT THE MOMENT OF UPLOADING, and it is a refusal rather than a warning.
- * A tick-box in a settings page somebody clicked a year ago is not consent, it is paperwork. The
- * moment a person is about to hand over a recording of somebody else is the only moment the
- * question lands, and it is the only moment they can still go and ask.
+ * SO THE ASSUMPTION IS STATED AT THE MOMENT OF UPLOADING, AND NOTHING IS REFUSED. This used to be a
+ * refusal: a transcript was turned away until the uploader pressed a button confirming the people
+ * in it knew. Reversed by the product owner on 11 September 2026 - "don't refuse anything, just
+ * say the assumption" - and the reasoning holds: a person uploading a record of a conversation to
+ * a tool that reads it has already decided to share it, and a gate in front of that decision
+ * teaches them to press through gates rather than to think about the people in the room. What
+ * lands is the sentence, at the one moment it can land: uploading this means you are telling us
+ * they know, and that you told them.
  *
  * IT IS NOT A CONSENT RECORD FOR THE CUSTOMER. We are not in a position to hold one - we never met
- * them. It records that the person who was in the room says they told them, which is a different
- * and smaller claim, and pretending otherwise would be worse than not asking.
+ * them. It records that the person who was in the room uploaded it under that stated assumption,
+ * which is a different and smaller claim, and pretending otherwise would be worse than not saying.
  */
 
-/** The words somebody has to have read. Kept here so the page and the refusal cannot drift. */
+/** The words shown beside the upload. Kept here so the page and the response cannot drift. */
 export const WHAT_THEY_ARE_CONFIRMING =
-  'This is a record of a conversation other people were part of. Confirm that they know '
+  'This is a record of a conversation other people were part of. Uploading it means they know '
   + 'conversations like this may be used to help your team work better - and that you told them, '
   + 'rather than us.';
 
-export const NOT_CONFIRMED =
-  'This looks like a record of a conversation. Before it can be stored, confirm that the people in '
-  + 'it know their conversations may be used this way. We cannot ask them, and you are the one who '
-  + 'was in the room.';
+/** What the response says back when a conversation was recognised and taken on the uploader's word. */
+export const THE_ASSUMPTION_WHEN_UPLOADING =
+  'This looks like a record of a conversation. It has been kept on your word that the people in it '
+  + 'know their conversations may be used this way. We cannot ask them, and you are the one who was '
+  + 'in the room.';
 
 /**
  * Does this look like a record of a conversation?

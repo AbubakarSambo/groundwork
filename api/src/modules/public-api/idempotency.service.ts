@@ -4,6 +4,8 @@ import { createHash } from 'crypto';
 
 /** The contract's window. A retry outside it is a new call, which is the honest answer. */
 const WINDOW_HOURS = 24;
+/** How long a record is kept after the window closes. Nothing read one this old; nothing deleted them either. */
+export const KEEP_RECORDS_HOURS = 48;
 
 /**
  * A RETRY MUST BE INDISTINGUISHABLE FROM THE ORIGINAL CALL.
@@ -29,12 +31,24 @@ export class IdempotencyService {
     endpoint: string,
     body: unknown,
     work: () => Promise<T>,
+    opts: { deriveKeyFrom?: string } = {},
   ): Promise<T> {
-    /* No key offered means the caller is not asking for the guarantee, and inventing one for them
-       would be a promise they did not make and cannot rely on. */
-    if (!key?.trim()) return work();
-
-    const k = key.trim();
+    /*
+     * NO KEY OFFERED. For most routes that means the caller is not asking for the guarantee, and
+     * inventing one for them would be a promise they did not make and cannot rely on - so the work
+     * simply runs.
+     *
+     * For a route that IS an upsert on the caller's own key, the same body from the same credential
+     * within the window can only mean the same operation, and a retry that arrives without a header
+     * is still a retry. Those routes pass `deriveKeyFrom` - the source system the credential speaks
+     * for, not its clientId, so a retry sent after a credential rotation is still the same retry -
+     * and get the guarantee by default: the key is derived from who is calling, what they are
+     * calling and what they sent. Scoped to upserts on purpose: on a route that creates, two genuinely-intended
+     * identical calls would collapse into one.
+     */
+    const offered = key?.trim();
+    if (!offered && !opts.deriveKeyFrom) return work();
+    const k = offered || `derived:${createHash('sha256').update(`${opts.deriveKeyFrom}\n${endpoint}\n${JSON.stringify(body ?? null)}`).digest('hex').slice(0, 40)}`;
     const since = new Date(Date.now() - WINDOW_HOURS * 3_600_000);
     const fingerprint = createHash('sha256').update(JSON.stringify(body ?? null)).digest('hex');
 

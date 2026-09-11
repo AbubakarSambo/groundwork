@@ -12,7 +12,8 @@ export interface CoachRequestInput {
   name: string
   orgName: string
   email: string
-  teamSize: string
+  /** Not asked on the public request page. The coach card in setup still collects it. */
+  teamSize?: string
   intention: string
   triedAlready?: boolean
   /** When they would like the first conversation, as an instant. A request, never a booking. */
@@ -52,7 +53,7 @@ export const MIN_INTENTION_LENGTH = 40
  * ends up wrong in two of them. The guard that caught the card did not look here, and now does.
  */
 export const COACHING_PRICE = {
-  hourly: '$700 an hour, no retainer',
+  hourly: '$700 per month, no retainer',
   retained: '$7,500 a year for twelve sessions',
   note: 'We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.',
 }

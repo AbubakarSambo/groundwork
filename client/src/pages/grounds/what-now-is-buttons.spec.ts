@@ -45,7 +45,7 @@ describe('what now is buttons', () => {
   })
 
   it('and the follow-up leads, because the link is not the thing to do next', () => {
-    const follow = BLOCK.indexOf('Open a follow-up check-in')
+    const follow = BLOCK.indexOf('Start a new check-in')
     const link = BLOCK.indexOf('Copy the link')
     expect(follow).toBeGreaterThan(-1)
     expect(follow).toBeLessThan(link)
@@ -58,7 +58,7 @@ describe('what now is buttons', () => {
   })
 
   it('and offers the follow-up check-in', () => {
-    expect(BLOCK).toContain('Open a follow-up check-in')
+    expect(BLOCK).toContain('Start a new check-in')
     expect(BLOCK).toMatch(/navigate\('\/grounds\/new'\)/)
   })
 
@@ -81,6 +81,7 @@ describe('what now is buttons', () => {
   it('says so if the copy fails', () => {
     /* Either shape of catch - the block form, or `.catch()` on the clipboard promise. What is
        being protected is that a failure is SAID, not which syntax says it. */
-    expect(BLOCK).toMatch(/(catch \{|\.catch\()[\s\S]{0,120}toast\.error/)
+    /* Or the helper's boolean (fix plan C14): copy() resolves false where the API is absent, and the caller says so. */
+    expect(BLOCK).toMatch(/(catch \{|\.catch\(|else toast\.error|await copy\()[\s\S]{0,160}toast\.error/)
   })
 })

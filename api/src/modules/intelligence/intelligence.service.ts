@@ -1,9 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { AnthropicService } from '../conversation/anthropic.service';
 import { CheckInStatus, GroundStatus, PatternStatus } from '@prisma/client';
-import { forbiddenNames, namesAnyone } from '../reports/guide-sanitiser';
 
 /**
  * The learning loop + cross-org intelligence. When a ground resolves, its
@@ -17,10 +14,7 @@ import { forbiddenNames, namesAnyone } from '../reports/guide-sanitiser';
 export class IntelligenceService {
   private readonly logger = new Logger(IntelligenceService.name);
 
-  constructor(
-    private prisma: PrismaService,
-    private anthropic: AnthropicService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Record the structural data point on resolution: prompt version, moment, end
@@ -190,48 +184,6 @@ export class IntelligenceService {
   }
 
   /**
-   * Roll resolved-ground patterns into an anonymised org-intelligence summary.
-   * MUST NOT include names, emails, or any free text that identifies a person.
-   */
-  async rollupAnonymised(organizationId: string, patternSummary: Record<string, unknown>) {
-    return this.prisma.orgIntelligence.create({
-      data: { organizationId, patternSummary: patternSummary as any, anonymised: true },
-    });
-  }
-
-  /**
-   * Weekly longitudinal synthesis. Runs Monday at 09:00 UTC.
-   *
-   * For each active org, fetches surfaced pattern observations from the last 30
-   * days (plain language only - no codes, no names, no PII) and asks the AI to
-   * write a 2–3 sentence narrative describing what the record shows about how
-   * the team is working. The result is stored in OrgIntelligence.patternSummary
-   * as { narrative: "...", generatedAt: "..." }.
-   *
-   * Cross-org summaries are fully anonymised: observations are stripped of any
-   * person-identifying text before being sent to the model.
-   */
-  // timeZone pinned to UTC - previously implicit, same fix as the weekly
-  // pattern crons in grounds.cron.ts.
-  @Cron('0 9 * * 1', { timeZone: 'UTC' })
-  async weeklyLongitudinalSynthesis() {
-    this.logger.log('Weekly longitudinal synthesis: starting');
-
-    const orgs = await this.prisma.organization.findMany({ select: { id: true } });
-    this.logger.log(`Weekly longitudinal synthesis: processing ${orgs.length} org(s)`);
-
-    for (const org of orgs) {
-      try {
-        await this.synthesiseOrgNarrative(org.id);
-      } catch (err: any) {
-        this.logger.error(`Weekly synthesis failed for org ${org.id}: ${err.message}`);
-      }
-    }
-
-    this.logger.log('Weekly longitudinal synthesis: complete');
-  }
-
-  /**
    * Degree-3 force-multiplier detection. Scans org-wide record entries for
    * mentions of this participant by name combined with operational delivery words.
    * If 2+ distinct participants mention them operationally, the participant is
@@ -298,85 +250,5 @@ export class IntelligenceService {
     }
 
     return false;
-  }
-
-  /**
-   * detectCollusion LIVED HERE AND NOTHING CALLED IT.
-   *
-   * COLLUSION_RISK was rebuilt as a cross-party detector in patterns.service, which
-   * is what actually runs - this was the superseded copy, left behind by the rebuild
-   * and still reading like the live one. The same shape as the solo artifact: two
-   * implementations of one detector, one dead, and no way to tell from the outside.
-   *
-   * Found by the dead-method rule, which exists because the file-level rule could
-   * not see inside a service everything imports.
-   */
-
-
-  private async synthesiseOrgNarrative(organizationId: string): Promise<void> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Fetch surfaced pattern observations for this org over the last 30 days.
-    // We use observationText only - never codes, never names, never participant IDs.
-    const detections = await this.prisma.patternDetection.findMany({
-      where: {
-        status: PatternStatus.SURFACED,
-        lastSeenAt: { gte: thirtyDaysAgo },
-        ground: { organizationId },
-      },
-      select: { observationText: true },
-    });
-
-    if (detections.length === 0) return;
-
-    const observations = detections
-      .map((d) => d.observationText?.trim())
-      .filter(Boolean)
-      .join('\n- ');
-
-    const prompt =
-      'Based on these pattern observations across an organisation, write 2-3 sentences describing what the record shows about how this team is working. No names. No verbatim quotes. Plain language only.';
-
-    const narrative = await this.anthropic.respond(prompt, [
-      { role: 'user', content: `Observations:\n- ${observations}` },
-    ]);
-
-    if (!narrative?.trim()) return;
-
-    /*
-     * THE "NO NAMES" RULE WAS A LINE IN THE PROMPT, WHICH IS A REQUEST.
-     *
-     * This codebase has learned that twice already and written it down both times: the post-report
-     * guide named a participant despite a prompt forbidding it, and the `atStake` pass was only
-     * fixed by never handing the model the names at all. Here the instruction was the whole of the
-     * protection, on the one record in the product that is org-wide and marked `anonymised: true` -
-     * a flag that would have been false the first time a name came through, with nothing checking.
-     *
-     * DROP, NEVER REDACT, the same as the guide sanitiser. A summary with a name cut out of it still
-     * says a specific person was discussed, and the org has other summaries. Losing one costs
-     * nothing next to a name appearing under a heading that promises there are none.
-     */
-    const people = await this.prisma.user.findMany({
-      where: { organizationId },
-      select: { firstName: true, lastName: true, email: true },
-    });
-    const names = forbiddenNames(people);
-    if (namesAnyone(narrative, names)) {
-      this.logger.warn(
-        `Org narrative named somebody despite the prompt forbidding it - dropped for org ${organizationId}.`,
-      );
-      return;
-    }
-
-    await this.prisma.orgIntelligence.create({
-      data: {
-        organizationId,
-        patternSummary: { narrative: narrative.trim(), generatedAt: new Date().toISOString() } as any,
-        anonymised: true,
-      },
-    });
-
-    this.logger.log(`Weekly synthesis: narrative stored for org ${organizationId}`);
   }
 }

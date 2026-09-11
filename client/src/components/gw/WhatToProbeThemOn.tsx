@@ -84,15 +84,15 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
       <div style={{ display: 'grid', gap: 18, marginTop: 14 }}>
       {weigh && (
         <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>What you said you were looking for, and what the record holds</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>What you said you were looking for, and what people have said about it</div>
           {weigh.whatYouSaidGoodMeans.length > 0 && (
             <Block title="What you said good would mean" lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} />
           )}
           {weigh.whatTheRecordHolds.length > 0 && (
-            <Block title="What the record holds on that" lines={weigh.whatTheRecordHolds.map(x => x.text)} />
+            <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} />
           )}
           {weigh.whatNobodyHasEvidenceFor.length > 0 && (
-            <Block title="What nobody has evidence for yet" lines={weigh.whatNobodyHasEvidenceFor} />
+            <Block title="What nobody has mentioned yet" lines={weigh.whatNobodyHasEvidenceFor} />
           )}
           {(weighNote ?? weigh.note) && (
             <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6, maxWidth: '68ch' }}>{weighNote ?? weigh.note}</div>
@@ -104,7 +104,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{r.who}</div>
             <Block title="Worth asking" lines={r.probe} />
             <Block title="Worth saying" lines={r.encourage} />
-            <Block title="What the record shows they did about being stuck" lines={[r.triedToUnblock]} />
+            <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />
           </div>
         ))}
       </div>

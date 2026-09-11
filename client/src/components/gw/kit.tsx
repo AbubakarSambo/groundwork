@@ -142,3 +142,26 @@ export const td: React.CSSProperties = { padding: '9px 12px', textAlign: 'left',
 export const btn: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-block' }
 export const miniBtn: React.CSSProperties = { width: 22, height: 22, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 12, lineHeight: 1, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }
 export const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }
+
+/**
+ * A TEXT LINK THAT IS A BUTTON. Lifted from AuthPage, where it was written because the "create an
+ * account" and "forgot your password" links were <span onClick> - so the only route to creating an
+ * account was a mouse click, and the keyboard could not reach it. Styled to read as a link; a button,
+ * so it is focusable, activates on Enter and Space, and is named in the accessibility tree.
+ */
+export function TextAction({ onClick, strong, children, size }: { onClick: () => void; strong?: boolean; children: React.ReactNode; size?: number }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer',
+        background: 'none', border: 'none', padding: 0, font: 'inherit',
+        fontWeight: strong ? 700 : undefined,
+        fontSize: size,
+      }}
+    >
+      {children}
+    </button>
+  )
+}

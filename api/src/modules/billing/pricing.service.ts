@@ -46,6 +46,10 @@ export const MAX_FREE_GROUND_LIMIT = 1000;
  * per-check-in cap. Five means them plus four others, and every message that quotes the number
  * has to say so, because "5 people" reads as "5 people I can invite".
  */
+/** What the admin is told when a price changes: the public page does not follow. */
+export const THE_SITE_IS_NOW_OUT_OF_STEP = (plan: string, amountCents: number) =>
+  `${plan} is now ${(amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} a month here; the public pricing page still shows the figure it was built with until the site is rebuilt.`;
+
 export const FREE_MEMBER_LIMIT_KEY = 'pricing.freeMemberLimit';
 export const DEFAULT_FREE_MEMBER_LIMIT = 5;
 export const MAX_FREE_MEMBER_LIMIT = 1000;
@@ -102,6 +106,13 @@ export class PricingService {
       data: { amountCents, stripePriceId: null },
     });
     this.logger.log(`Pricing updated for plan ${plan}: ${amountCents} cents (cached Stripe price cleared)`);
+    /*
+     * THE PUBLIC SITE CANNOT SEE THIS. marketing/src/pages/pricing.astro carries the figures at build
+     * time and is frozen, so from this moment the page and the table disagree until the site is
+     * rebuilt with the new number. Said in the log and to the admin (fix plan A15, as corrected):
+     * the drift cannot be prevented from here, only made impossible to miss.
+     */
+    this.logger.warn(THE_SITE_IS_NOW_OUT_OF_STEP(plan, amountCents));
   }
 
   /**

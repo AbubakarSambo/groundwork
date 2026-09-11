@@ -2,12 +2,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
 import { GroundworkEvents, RoundCompletedEvent } from '../../common/events';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 
 /**
  * A ROUND CLOSING, DECIDED IN ONE PLACE.
  *
- * The rule is not new and is not changed here: a round is complete when every participant who is
- * not managing-only has a COMPLETED check-in at that session number. What is new is where it lives.
+ * The rule was not changed when this was written: a round was complete when every participant who
+ * is not managing-only had a COMPLETED check-in at that session number. IT IS CHANGED NOW, on
+ * purpose, and here is the reversal stated: a round is complete when everybody has ANSWERED - and a
+ * decline is an answer (an-answer-includes-a-refusal.ts). Counting only COMPLETED froze every round
+ * with one refusal in it, for that session and all that followed. At least one account must be
+ * COMPLETED, or there is nothing to report. What is unchanged is where the rule lives.
  * It lived on the client - GroundAdminPage, recomputed from the check-in list on every render - so
  * the server never knew a round had closed and nothing could act on it.
  *
@@ -37,7 +42,16 @@ export async function recordRoundCompletion(
    */
   if (participants.length === 0) return false;
 
-  const done = await prisma.checkIn.count({
+  const answered = await prisma.checkIn.count({
+    where: {
+      groundId,
+      sessionNumber: roundNumber,
+      status: { in: AN_ANSWER },
+      participantId: { in: participants.map((p) => p.id) },
+    },
+  });
+  if (answered < participants.length) return false;
+  const completed = await prisma.checkIn.count({
     where: {
       groundId,
       sessionNumber: roundNumber,
@@ -45,11 +59,11 @@ export async function recordRoundCompletion(
       participantId: { in: participants.map((p) => p.id) },
     },
   });
-  if (done < participants.length) return false;
+  if (completed < AT_LEAST_ONE_ACCOUNT) return false;
 
   try {
     await prisma.roundCompletion.create({
-      data: { groundId, roundNumber, participantCount: participants.length },
+      data: { groundId, sessionNumber: roundNumber, participantCount: participants.length },
     });
   } catch {
     /*
@@ -60,9 +74,28 @@ export async function recordRoundCompletion(
     return false;
   }
 
+  /*
+   * THE OBJECTIVES, AS THEY STOOD WHEN THE ROUND CLOSED. Movement used to be `count - prevCount`,
+   * and prevCount defaults to 0, so an objective never edited reported its whole lifetime as this
+   * session's movement. A snapshot per objective per round makes "moved this session" the difference
+   * between two rows, and nothing at all when there is only one (what-this-session-holds.ts).
+   * Best-effort: a round closes whether or not its snapshot is written.
+   */
+  try {
+    const objectives = await prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true } });
+    if (objectives.length) {
+      await prisma.groundObjectiveSnapshot.createMany({
+        data: objectives.map((o) => ({ groundId, objectiveId: o.id, sessionNumber: roundNumber, count: o.count })),
+        skipDuplicates: true,
+      });
+    }
+  } catch {
+    /* A missing snapshot reads as "movement not known", which is honest; a failed round close is not. */
+  }
+
   events.emit(GroundworkEvents.ROUND_COMPLETED, {
     groundId,
-    roundNumber,
+    sessionNumber: roundNumber,
     participantCount: participants.length,
   } satisfies RoundCompletedEvent);
   return true;

@@ -104,12 +104,15 @@ export const databaseConfig = registerAs("database", () => ({
 }));
 
 export const jwtConfig = registerAs("jwt", () => ({
-  secret: process.env.JWT_SECRET || "super-secret-key",
+  /* No default. A missing secret is refused at boot by the-jwt-secret.ts, in every environment (B16). */
+  secret: process.env.JWT_SECRET,
   expiresIn: process.env.JWT_EXPIRES_IN || "7d",
 }));
 
 export const resendConfig = registerAs("resend", () => ({
   apiKey: process.env.RESEND_API_KEY,
+  /* Mail leaves the building only when somebody says so, never because NODE_ENV happened to be set (D20). */
+  sendsForReal: process.env.EMAIL_SENDS_FOR_REAL === 'true',
   fromEmail: process.env.RESEND_FROM_EMAIL || "Groundwork <noreply@myground.work>",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 }));
@@ -129,6 +132,10 @@ export const geminiConfig = registerAs("gemini", () => ({
   projectId: process.env.GEMINI_PROJECT_ID || "groundwork-500011",
   location: process.env.GEMINI_LOCATION || "us-central1",
   model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
+  // The model a person talks to. Turns are one question at a time and a person is waiting, so the
+  // fast model answers them; reports, synthesis and extraction stay on `model`. Measured 10 Sep 2026
+  // on the same prompt: pro 3.9-4.5s to the first word, flash 0.65s.
+  conversationModel: process.env.GEMINI_CONVERSATION_MODEL || "gemini-2.5-flash",
   maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "8192", 10),
 }));
 
@@ -147,6 +154,11 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
    */
   appSecret: process.env.WHATSAPP_APP_SECRET,
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+  /**
+   * Template names Meta has approved, comma-separated. A business-initiated message outside the
+   * 24-hour window goes as one of these or not at all (whatsapp/a-message-outside-the-window.ts).
+   */
+  approvedTemplates: (process.env.WHATSAPP_APPROVED_TEMPLATES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 }));
 
 // Stripe, USD. Subscription billing: ten free grounds per org with unlimited

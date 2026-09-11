@@ -45,7 +45,7 @@ describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
     };
     const service = new AuthService(
       prisma, { sign: () => 'tok' } as any, { get: () => undefined } as any,
-      {} as any, {} as any, {} as any,
+      {} as any, {} as any, {} as any, { emit: () => undefined } as any,
     );
     return { service, prisma };
   }

@@ -113,8 +113,11 @@ export function SettingsPage() {
 
   const eraseMyData = useMutation({
     mutationFn: myDataApi.erase,
-    onSuccess: () => { toast.success('Your data has been erased.'); logout(); navigate('/auth') },
-    onError: () => toast.error('Could not erase your data. Try again.'),
+    /* Not "erased": eraseAccount anonymises the way in and deliberately keeps what was shared,
+       because it is also the other people's picture of what happened. Saying erased contradicts
+       both the code and this page's own explanation three hundred lines below. */
+    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
+    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
   })
 
   /**
@@ -251,7 +254,7 @@ export function SettingsPage() {
               </div>
               {([
                 ['NAMED_LEADS', 'Only people I name', 'You choose who on the People page. Everybody else takes part.'],
-                ['EVERYONE', 'Anybody here', 'Anybody with an account can open one.'],
+                ['EVERYONE', 'Anybody here', 'Anybody signed in here can open one.'],
               ] as const).map(([value, title, body]) => (
                 <label
                   key={value}
@@ -359,7 +362,7 @@ export function SettingsPage() {
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
               Add your number to get check-in links and reminders on WhatsApp as well as email. Your
-              emails keep coming either way. We match messages to your account by this number.
+              emails keep coming either way. We match messages to you by this number.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input

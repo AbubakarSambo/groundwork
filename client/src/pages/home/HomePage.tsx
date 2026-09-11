@@ -161,10 +161,10 @@ export function HomePage() {
           */}
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-              No account needed to start. Your words stay private until you save them.
+              Nothing to sign up for to start.
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-              Already have an account?{' '}
+              Already signed up?{' '}
               <span
                 style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={() => navigate('/auth')}

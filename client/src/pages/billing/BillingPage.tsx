@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
+import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
 
@@ -191,7 +193,9 @@ export function BillingPage() {
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Try again.'),
+    /* The server's own sentence when billing is not set up on this deployment - "no card was touched" -
+       was swallowed into this generic toast. Say it when it is there. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.'),
   })
 
   const changePlanMut = useMutation({
@@ -217,20 +221,41 @@ export function BillingPage() {
     onError: () => toast.error('Could not open the billing portal. Try again in a moment.'),
   })
 
+  /*
+   * CANCELLING RUNS TO THE END OF WHAT WAS PAID FOR. This used to end the subscription that moment
+   * behind a window.confirm that promised "per-session billing" - a mode that no longer exists -
+   * and a customer who cancelled on day two lost the rest of the month. Now it schedules the end,
+   * the confirmation below says when access stops, and pause is offered in the same place for
+   * somebody who wants to stop paying sooner.
+   */
+  const [confirming, setConfirming] = useState<'cancel' | 'pause' | null>(null)
+  const sayTheDate = (d: string | Date | null | undefined) =>
+    d ? whenItWas(d, 'full') : 'the end of the paid period'
   const cancelSubscriptionMut = useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['billing-status'] })
+      setConfirming(null)
+      toast.success(`Your subscription ends on ${sayTheDate(res?.endsAt)}. Everything works until then.`)
+    },
+    onError: () => toast.error('Could not schedule the cancellation. Try again.'),
+  })
+
+  const keepSubscriptionMut = useMutation({
+    mutationFn: () => billingApi.keepSubscription(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
-      toast.success('Subscription cancelled.')
+      toast.success('Kept. Your subscription carries on as before.')
     },
-    onError: () => toast.error('Could not cancel subscription. Try again.'),
+    onError: () => toast.error('Could not undo the cancellation. Try again.'),
   })
 
   const pauseSubscriptionMut = useMutation({
     mutationFn: () => billingApi.pauseSubscription(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
-      toast.success('Subscription paused.')
+      setConfirming(null)
+      toast.success('Paused. Nothing is charged until you resume.')
     },
     onError: () => toast.error('Could not pause subscription. Try again.'),
   })
@@ -244,11 +269,13 @@ export function BillingPage() {
     onError: () => toast.error('Could not resume subscription. Try again.'),
   })
 
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
+  async function copyToClipboard(text: string) {
+    if (await copy(text)) {
       setCopied(text)
       setTimeout(() => setCopied(null), 2000)
-    })
+    } else {
+      toast.error('Copying is not available here. Select the text and copy it yourself.')
+    }
   }
 
   /**
@@ -265,6 +292,8 @@ export function BillingPage() {
   const orgSub = billingStatus?.subscription ?? null
   const isSubscribed = !!(orgSub?.plan && orgSub?.status === 'active')
   const isPaused = orgSub?.status === 'paused'
+  /* A cancellation is scheduled: still active, still working, ending on this date. */
+  const endsAt = orgSub?.endsAt ?? null
   const peopleOverCap =
     billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
   const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
@@ -291,13 +320,11 @@ export function BillingPage() {
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)' }}>
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
 
-        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>
-          Back
-        </div>
+        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>Back</button>
 
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Manage sessions for your check-ins and generate access codes.
+          Your plan, and how many people it covers.
         </div>
 
         {/**
@@ -353,7 +380,7 @@ export function BillingPage() {
             {(isSubscribed || isPaused) && <Stat
               label={isPaused ? 'Paused since' : 'Renews'}
               value={orgSub?.periodEnd
-                ? new Date(orgSub.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                ? whenItWas(orgSub.periodEnd, 'dayAndMonth')
                 : 'Not set'}
               /**
                * IT POINTED AT SOMETHING THAT IS NOT ON THE PAGE. W-UX-5.
@@ -384,14 +411,24 @@ export function BillingPage() {
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                 {isPaused
                   ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
-                  : peopleOverCap
-                    ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
-                    : 'Running normally.'}
+                  : endsAt
+                    ? `Ending on ${sayTheDate(endsAt)}. Everything works until then, and then it stops.`
+                    : peopleOverCap
+                      ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
+                      : 'Running normally.'}
               </div>
-              <Pill tone={isPaused ? 'warn' : 'good'}>{isPaused ? 'Paused' : 'Active'}</Pill>
+              <Pill tone={isPaused || endsAt ? 'warn' : 'good'}>{isPaused ? 'Paused' : endsAt ? 'Ending' : 'Active'}</Pill>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {isPaused ? (
+              {endsAt ? (
+                <button
+                  onClick={() => keepSubscriptionMut.mutate()}
+                  disabled={keepSubscriptionMut.isPending}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: keepSubscriptionMut.isPending ? 0.7 : 1 }}
+                >
+                  {keepSubscriptionMut.isPending ? 'Keeping...' : 'Keep subscription'}
+                </button>
+              ) : isPaused ? (
                 <button
                   onClick={() => resumeSubscriptionMut.mutate()}
                   disabled={resumeSubscriptionMut.isPending}
@@ -401,7 +438,7 @@ export function BillingPage() {
                 </button>
               ) : (
                 <button
-                  onClick={() => pauseSubscriptionMut.mutate()}
+                  onClick={() => setConfirming('pause')}
                   disabled={pauseSubscriptionMut.isPending}
                   style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: pauseSubscriptionMut.isPending ? 0.7 : 1 }}
                 >
@@ -427,18 +464,53 @@ export function BillingPage() {
               >
                 {portalMut.isPending ? 'Opening...' : 'Invoices and payment method'}
               </button>
-              <button
-                onClick={() => {
-                  if (window.confirm('Cancel your subscription? Your team will move to per-session billing.')) {
-                    cancelSubscriptionMut.mutate()
-                  }
-                }}
-                disabled={cancelSubscriptionMut.isPending}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit', opacity: cancelSubscriptionMut.isPending ? 0.7 : 1 }}
-              >
-                {cancelSubscriptionMut.isPending ? 'Cancelling...' : 'Cancel subscription'}
-              </button>
+              {!endsAt && !isPaused && (
+                <button
+                  onClick={() => setConfirming('cancel')}
+                  disabled={cancelSubscriptionMut.isPending}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit', opacity: cancelSubscriptionMut.isPending ? 0.7 : 1 }}
+                >
+                  Cancel subscription
+                </button>
+              )}
             </div>
+
+            {confirming === 'cancel' && (
+              <div role="dialog" aria-label="Cancel at the end of the period" style={{ marginTop: 14, border: '1px solid #F0D6D3', background: '#FBF3F2', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-clay)', marginBottom: 6 }}>Cancel at the end of the period?</div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
+                  Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause instead'}
+                  </button>
+                  <button onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {cancelSubscriptionMut.isPending ? 'Scheduling...' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}
+                  </button>
+                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Keep it
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirming === 'pause' && (
+              <div role="dialog" aria-label="Pause the subscription" style={{ marginTop: 14, border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Pause the subscription?</div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
+                  Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause'}
+                  </button>
+                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Not now
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
@@ -612,7 +684,10 @@ export function BillingPage() {
                     disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
                   >
-                    {createSubscriptionMut.isPending || changePlanMut.isPending ? '...' : isSubscribed ? 'Switch' : 'Subscribe'}
+                    {/* Mid-flight the page says WHICH plan is being bought; the other five keep their word. */}
+                    {(createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+                      ? (isSubscribed ? 'Switching…' : 'Subscribing…')
+                      : isSubscribed ? 'Switch' : 'Subscribe'}
                   </button>
                 )}
               </div>
@@ -628,7 +703,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>Contact us</span>
               <a
-                href={`mailto:${user?.email ?? 'support@myground.work'}?subject=Enterprise plan enquiry`}
+                href="mailto:hello@myground.work?subject=Enterprise plan enquiry"
                 style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
               >
                 Contact

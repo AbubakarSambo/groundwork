@@ -62,7 +62,8 @@ describe('no surface quotes a per-session price', () => {
   it('tells a new person the truth about what their first ground costs', () => {
     const entry = code(join(__dirname, 'enter/EntryChatPage.tsx'))
     expect(entry).not.toMatch(/\$5/)
-    expect(entry).toMatch(/needs an account, and it is free/)
+    /* "account" is a banned word in this product's copy; the promise it carried is unchanged. */
+    expect(entry).toMatch(/means signing in, and it is free/)
   })
 
   it('keeps access-code redemption, which grants access and costs nothing', () => {

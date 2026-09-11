@@ -22,7 +22,7 @@ const REQUIRED_CHAT_RULES: Record<string, string[]> = {
   'DOCUMENT PROBE (is it written down)': ['DOCUMENT PROBE', 'written down'],
   'EVIDENCE DEFINITION standard':        ['EVIDENCE DEFINITION'],
   'PUSHBACK RULES':                       ['PUSHBACK RULES'],
-  'WILLINGNESS GATE':                     ['WILLINGNESS GATE'],
+  'REFUSING TO TAKE PART (record it, do not gate on it)': ['REFUSING TO TAKE PART', 'There is no gate before a session'],
   'HUMAN FIRST (overrides every probe)':  ['HUMAN FIRST RULE', 'overrides every probe'],
   'ACKNOWLEDGE BEFORE PROBE':             ['ACKNOWLEDGE BEFORE PROBE'],
   'GENERAL KNOWLEDGE (answer their questions)': ['GENERAL KNOWLEDGE RULE', 'answer it properly'],

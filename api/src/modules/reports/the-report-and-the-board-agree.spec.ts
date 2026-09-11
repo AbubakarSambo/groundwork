@@ -25,10 +25,10 @@ const service = fs
 
 describe('the four reads', () => {
   it('are on the report, computed from the rows the board reads', () => {
-    expect(service).toContain('groundObjective.findMany');
-    expect(service).toContain("groundDependency.count({ where: { groundId, status: 'BLOCKING' } })");
-    expect(service).toContain('movedOnTargets:');
-    expect(service).toContain('blocked: blockedCount');
+    /* Through the one owner of the session's counts, which the board reads too. */
+    expect(service).toContain('whatThisSessionHolds(this.prisma, groundId, sessionNumber)');
+    expect(service).toContain('movedOnTargets: held.movedOnTargets');
+    expect(service).toContain('blocked: held.blocked');
   });
 
   it('and are on the onboarding board, which is where they were missing', () => {

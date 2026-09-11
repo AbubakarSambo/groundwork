@@ -32,8 +32,24 @@ export class ResolutionService {
     private config: ConfigService,
   ) {}
 
+  /**
+   * READING IT IS NOT DECIDING IT. Proposing and confirming stay with the parties; reading what was
+   * decided is open to whoever runs the check-in, which includes an organisation's admin. It was
+   * party-only, so the one page that shows the outcome answered 403 to the admin who is told on the
+   * same screen that they can see everything here - and the report drew "Resolution · not set yet"
+   * over a check-in that had ended.
+   */
   async get(groundId: string, userId: string) {
-    await this.assertParty(groundId, userId);
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
+    if (!isParty) {
+      const admin = await this.prisma.user.findFirst({
+        where: { id: userId, organizationId: ground.organizationId, role: 'ADMIN' },
+        select: { id: true },
+      });
+      if (!admin) throw new ForbiddenException('You are not part of this check-in.');
+    }
     return this.buildState(groundId, userId);
   }
 

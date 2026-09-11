@@ -15,17 +15,24 @@
  */
 const STEPS = ['General', 'Some of both', 'Specific'] as const
 
-/** Where a level sits on the bar. Unread is not zero, and is drawn as nothing rather than as low. */
+/**
+ * Where a level sits on the bar. Unread is not zero, and is drawn as nothing rather than as low.
+ *
+ * This switched on `high`/`low`, which the scorer never emits, so every read session drew as "some
+ * of both" whatever it was - the same bug the server's sentence had. The four real levels, in the
+ * order the server ranks them (api: how-checkable-a-session-was.ts): managed and vague are general,
+ * directional is some of both, specific is specific.
+ */
 export function whereItSits(level: string | null | undefined): number | null {
   const l = (level ?? '').toLowerCase()
-  if (l === 'low') return 0
-  if (l === 'high') return 2
-  return l ? 1 : null
+  if (l === 'managed' || l === 'vague') return 0
+  if (l === 'specific') return 2
+  if (l === 'directional') return 1
+  return null
 }
 
-export function HowSpecificThisSessionWas({ level, recall, spots }: {
+export function HowSpecificThisSessionWas({ level, spots }: {
   level?: string | null
-  recall?: string | null
   /**
    * WHAT IS THIN AND WHAT WOULD FIX IT, FROM THE ENGINE THAT COMPUTES IT.
    *
@@ -38,7 +45,6 @@ export function HowSpecificThisSessionWas({ level, recall, spots }: {
 }) {
   const at = whereItSits(level)
   if (at == null) return null
-  const anchored = (recall ?? '').toLowerCase() === 'high'
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
@@ -76,7 +82,6 @@ export function HowSpecificThisSessionWas({ level, recall, spots }: {
           : at === 1
             ? 'Specific in places. One date, one number or one document in the general parts would fill it.'
             : 'Mostly general. A date, a number, or what you were waiting on and from whom would fill it.'}
-        {anchored ? ' Most of it was anchored to something written down.' : ''}
       </div>
       )}
     </div>

@@ -33,7 +33,7 @@ function makeService(pendingRevealRows: any[]) {
   };
   const config: any = { get: () => 'http://localhost:5173' };
   const events: any = { emit: jest.fn() };
-  const service = new GroundsCron(prisma, email, config, events, {} as any, {} as any);
+  const service = new GroundsCron(prisma, email, config, events, {} as any, {} as any, {} as any);
   return { service, updated, sentTo, email };
 }
 

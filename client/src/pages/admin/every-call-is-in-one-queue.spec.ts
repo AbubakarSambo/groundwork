@@ -46,8 +46,12 @@ describe('every call somebody asked for is in one place', () => {
 })
 
 describe('and it is asked for where the question comes up', () => {
-  it('Connect asks about integration', () => {
-    expect(CONNECT).toContain("{ subject: 'INTEGRATION' }")
+  it('Connect asks about integration, through the one access request', () => {
+    /* 10 Sep 2026: the separate "Ask for a call" went. Asking for access IS the integration call:
+       the credentials controller raises it with subject INTEGRATION when the request is recorded. */
+    const CREDENTIALS = readFileSync(join(__dirname, '../../../../api/src/modules/public-api/credentials.controller.ts'), 'utf8')
+    expect(CREDENTIALS).toContain("'INTEGRATION'")
+    expect(CONNECT).not.toMatch(/callMut|call-request/)
   })
 
   it('Billing asks about coaching and setup', () => {
@@ -66,6 +70,5 @@ describe('and it is asked for where the question comes up', () => {
   it('and each button tracks its own subject, not one shared flag', () => {
     /* Asking about a coach must not make the setup button claim it was already asked. */
     expect(BILLING).toContain('open[r.subject]')
-    expect(CONNECT).toContain('call.data?.open?.INTEGRATION')
   })
 })

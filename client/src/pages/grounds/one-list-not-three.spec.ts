@@ -71,9 +71,9 @@ describe('two different things are not both called Admin', () => {
     expect(CODE).not.toMatch(/>Sign out</)
   })
 
-  it('and "Admin" is left saying only what you are in this organisation', () => {
+  it('and there is no "Admin" badge on the list at all: a badge of rank on every screen, removed 10 Sep 2026', () => {
     /** One occurrence: the role pill, which is not navigation. A second one is the bug. */
-    expect(CODE.match(/'Admin'/g) ?? []).toHaveLength(1)
+    expect(CODE).not.toMatch(/isAdmin \? 'Admin' : 'Team member'/)
   })
 })
 

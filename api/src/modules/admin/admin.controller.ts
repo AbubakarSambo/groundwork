@@ -223,6 +223,12 @@ export class AdminController {
     return this.apiAccess.decide(id, dto.status, userId, dto.note);
   }
 
+  @Patch('api-access/flags/:flagId/clear')
+  @ApiOperation({ summary: 'Mark one API usage flag as looked at' })
+  clearApiFlag(@Param('flagId') flagId: string) {
+    return this.apiAccess.clearFlag(flagId);
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: 'Everything /admin/dashboard draws: overview, codes, free-reason split, feedback, per-user usage' })
   getDashboard() {
@@ -235,16 +241,28 @@ export class AdminController {
     return this.adminService.getCoaching();
   }
 
+  @Patch('coaching')
+  @ApiOperation({ summary: 'Let the coaching block reach a live prompt, or stop it. Read GET /admin/coaching first.' })
+  setCoachingLive(@CurrentUser('id') userId: string, @Body() body: { live: boolean }) {
+    return this.adminService.setCoachingLive(!!body?.live, userId);
+  }
+
+  @Get('correction-window')
+  @ApiOperation({ summary: 'How many days somebody has to correct their own record after a report is released' })
+  getCorrectionWindow() {
+    return this.adminService.getCorrectionWindow();
+  }
+
+  @Patch('correction-window')
+  @ApiOperation({ summary: 'Change the correction window. Whole days, 0 to 90.' })
+  setCorrectionWindow(@CurrentUser('id') userId: string, @Body() body: { days: number }) {
+    return this.adminService.setCorrectionWindow(Number(body?.days), userId);
+  }
+
   @Get('writers')
   @ApiOperation({ summary: 'Zero-row detection: every writer that should fill a table, its row count, last write and ship date. Zero since shipped is flagged.' })
   getWriters() {
     return this.adminService.getWriters();
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
-  getPlatformStats() {
-    return this.adminService.getPlatformStats();
   }
 
   @Get('codes')
@@ -283,18 +301,6 @@ export class AdminController {
   @ApiOperation({ summary: 'Mark one inbound message read' })
   markInboundRead(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.adminService.markInboundRead(id, userId);
-  }
-
-  @Get('feedback')
-  @ApiOperation({ summary: 'All OutcomeFeedback records with ground/org context' })
-  getFeedback() {
-    return this.adminService.getFeedback();
-  }
-
-  @Get('usage')
-  @ApiOperation({ summary: 'Per-user and per-org usage patterns' })
-  getUsagePatterns() {
-    return this.adminService.getUsagePatterns();
   }
 
   @Get('grounds/:groundId')

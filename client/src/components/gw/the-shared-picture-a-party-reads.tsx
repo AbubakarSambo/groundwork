@@ -1,0 +1,83 @@
+import { TwoAccountsSideBySide, Folded } from './two-accounts-side-by-side'
+
+/**
+ * THE SHARED REPORT, FOR THE PEOPLE IN IT.
+ *
+ * Every example report on the marketing page closes with "If you are one of the people in it, this
+ * is your report too. The same one." It was not true. Once the report released, the party's Report
+ * tab returned null: a button to the board and a list of their own sessions, and no report.
+ *
+ * So this renders the shared half - the picture, what is agreed, where accounts differ with both
+ * sides and the evidence, and the one thing to settle. Nothing lead-only is here and nothing
+ * lead-only is filtered here either: the server strips leadershipGaps, softSpots and the arc
+ * advisories before the payload leaves, and it must stay that way. A client-side filter would mean
+ * a person's browser receives findings about themselves and chooses not to draw them, which is
+ * worse than the blank page this replaces.
+ */
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+const LABEL: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
+  color: 'var(--gw-sub-d)', marginBottom: 10,
+}
+const PROSE: React.CSSProperties = { fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)', maxWidth: '68ch' }
+
+export function TheSharedPictureAPartyReads({ report }: { report: any }) {
+  const agreements: any[] = report?.agreements ?? []
+  const divergences: any[] = report?.divergences ?? []
+  const picture: string | null = report?.sharedPicture ?? null
+  if (!picture && !agreements.length && !divergences.length) return null
+
+  /* An agreement arrives as a string on some paths and an object on others, and either half of the
+     object can itself be a list. A page must not assume which shape arrived. */
+  const flat = (v: any): string => (typeof v === 'string' ? v.trim()
+    : Array.isArray(v) ? v.filter((x) => typeof x === 'string').join(' ').trim() : '')
+  const textOf = (a: any) => (typeof a === 'string' ? a : [flat(a?.topic), flat(a?.note)].filter(Boolean).join(' - '))
+
+  return (
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gw-border)' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700 }}>The shared picture</div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+          Built from what each person said. If you are one of the people in it, this is your report too. The same one.
+        </div>
+      </div>
+
+      {picture && (
+        <div style={{ padding: '16px 20px' }}>
+          <div style={LABEL}>What came out of it</div>
+          <div style={PROSE}>{picture}</div>
+        </div>
+      )}
+
+      {divergences.length > 0 && (
+        <div style={{ padding: '4px 20px 16px' }}>
+          <div style={{ ...LABEL, marginTop: 12 }}>
+            Where accounts differ ({divergences.length})
+          </div>
+          {divergences.map((d, i) => (
+            <TwoAccountsSideBySide key={i} difference={d} />
+          ))}
+        </div>
+      )}
+
+      {agreements.length > 0 && (
+        <div style={{ padding: '0 20px 8px' }}>
+          <Folded summary={`${agreements.length} ${agreements.length === 1 ? 'thing you already see' : 'things you already see'} the same way`}>
+            {agreements.map((a, i) => (
+              <div key={i} style={{ ...PROSE, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
+                {textOf(a)}
+              </div>
+            ))}
+          </Folded>
+        </div>
+      )}
+
+      {flat(report?.centralQuestion) && (
+        <div style={{ padding: '16px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
+          <div style={LABEL}>The one thing to settle first</div>
+          <div style={PROSE}>{flat(report.centralQuestion)}</div>
+        </div>
+      )}
+    </div>
+  )
+}

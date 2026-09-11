@@ -26,7 +26,7 @@ function service(pending: any) {
   const email: any = {
     sendMagicLinkEmail: jest.fn(async (to: string, _n: string, token: string) => { sent.push({ to, token }); }),
   };
-  const svc = new AuthService(prisma, {} as any, { get: () => undefined } as any, email, {} as any, {} as any);
+  const svc = new AuthService(prisma, {} as any, { get: () => undefined } as any, email, {} as any, {} as any, { emit: () => undefined } as any);
   return { svc, prisma, store, sent };
 }
 

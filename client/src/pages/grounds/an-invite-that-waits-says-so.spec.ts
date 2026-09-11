@@ -43,7 +43,8 @@ describe('an invite that waits says so', () => {
      * going up without the sentence is the bug.
      */
     const said = ADMIN.match(/is on the check-in\. Their invitation goes out on the start date\./g) ?? []
-    expect(said.length).toBe(2)
+    /* Was 2: the lead's waiting view reported invites too, and that view went on 10 Sep 2026. */
+    expect(said.length).toBe(1)
   })
 
   it('never claims an invite was sent when the row says it was not', () => {

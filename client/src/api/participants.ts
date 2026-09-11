@@ -15,6 +15,9 @@ export interface AcceptInviteResponse {
   user: User
   groundId: string
   checkInId: string | null
+  /** Signed in, and not yet let in: an admin has to approve them. `saying` is the server's sentence. */
+  queuedForApproval?: boolean
+  saying?: string
 }
 
 export const participantsApi = {

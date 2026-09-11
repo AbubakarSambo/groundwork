@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { setDisplayTimezone } from '../../common/a-date-reads-the-same-everywhere';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -60,7 +61,20 @@ export const SETTING_DEFAULTS: Record<string, { value: string; note: string }> =
 };
 
 @Injectable()
-export class OpsSettingsService {
+export class OpsSettingsService implements OnModuleInit {
+  /**
+   * THE ONE READER `display.timezone` NEVER HAD. Declared 2026-09-05 with its rationale and wired to
+   * nothing (fix plan B10). Read once at boot into the formatter every dated surface uses, and again
+   * whenever it is set, so the boards date themselves where the company is run from.
+   */
+  async onModuleInit(): Promise<void> {
+    try {
+      setDisplayTimezone(await this.get(OPS_SETTINGS.displayTimezone));
+    } catch {
+      /* No database yet, or no row: the formatter stays on UTC, which every stored timestamp is. */
+    }
+  }
+
   constructor(private readonly prisma: PrismaService) {}
 
   async get(key: string): Promise<string> {
@@ -86,6 +100,7 @@ export class OpsSettingsService {
   }
 
   async set(key: string, value: string, updatedBy?: string) {
+    if (key === OPS_SETTINGS.displayTimezone) setDisplayTimezone(value);
     if (!SETTING_DEFAULTS[key]) throw new Error(`${key} is not a setting this system knows about`);
     return this.prisma.opsSetting.upsert({
       where: { key },

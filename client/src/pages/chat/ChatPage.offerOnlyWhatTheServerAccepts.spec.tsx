@@ -129,7 +129,7 @@ describe('a send that never lands does not unlock the offer', () => {
   async function typeAndSend(text: string) {
     const box = await screen.findByPlaceholderText(/Share what you have been working on/i, {}, { timeout: 5000 })
     fireEvent.change(box, { target: { value: text } })
-    fireEvent.click(screen.getByRole('button', { name: '↑' }))
+    fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
   }
 
   it('keeps the offer away when the third answer never reaches the server', async () => {

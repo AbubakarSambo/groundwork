@@ -56,9 +56,22 @@ describe('the rules that were only logged now ask again', () => {
      */
     const start = src.indexOf('const faults = faultsIn(result)');
     expect(start).toBeGreaterThan(0);
-    const block = src.slice(start, start + 1200);
+    /* Up to the lift block, which is a SEPARATE, bounded ask - see below. */
+    const block = src.slice(start, src.indexOf('const stillLifted = liftsInReport'));
     expect((block.match(/anthropic\s*\n?\s*\.extract/g) ?? []).length).toBe(1);
     expect(block).not.toMatch(/faultsIn\(result\)[\s\S]*faultsIn\(result\)/);
+  });
+
+  it('and the restate of lifted phrases is one more ask, once, never a loop', () => {
+    /* Decided 11 September 2026: their words do not ship in any field, and the information does. So
+       a lift that survives the general retry gets exactly one targeted ask to say those phrases
+       differently, and then its sentence is withheld. Two asks in the worst case, never a third. */
+    const start = src.indexOf('const stillLifted = liftsInReport');
+    expect(start).toBeGreaterThan(0);
+    const block = src.slice(start, src.indexOf('const stillSevere = severeFaultsIn'));
+    expect((block.match(/anthropic\s*\n?\s*\.extract/g) ?? []).length).toBe(1);
+    expect(block).toMatch(/withholdLiftsIn\(/);
+    expect(block).not.toMatch(/while\s*\(|for \(let attempt/);
   });
 
   it('keeps the first report when the second is no better, and says so', () => {

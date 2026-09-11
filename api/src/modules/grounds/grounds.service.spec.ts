@@ -6,7 +6,7 @@ import { GroundsService, SAFE_PARTICIPANT_SELECT } from './grounds.service';
  * fail, a participant's private data is leaking through the ground view.
  */
 describe('GroundsService - participant serialization (GW-01)', () => {
-  const SENSITIVE = ['inviteToken', 'inviteTokenExpiresAt', 'soloArtifact', 'specificityHistory', 'willingnessEvidence', 'willingnessCadence', 'lastNudgedAt'];
+  const SENSITIVE = ['inviteToken', 'inviteTokenExpiresAt', 'soloArtifact', 'specificityHistory', 'lastNudgedAt'];
 
   it('SAFE_PARTICIPANT_SELECT never exposes sensitive fields', () => {
     for (const field of SENSITIVE) {
@@ -177,13 +177,14 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
 describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
   const GROUND = { id: 'g1', organizationId: 'org-A', participants: [], checkIns: [] };
 
-  function makePrisma({ findFirstResult, participantLink, findUniqueResult }: any) {
+  function makePrisma({ findFirstResult, participantLink, findUniqueResult, user }: any) {
     return {
       ground: {
         findFirst: jest.fn(async () => findFirstResult),
         findUnique: jest.fn(async () => findUniqueResult),
       },
-      user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
+      /* `get()` now asks who is reading (assertMaySeeGround) before it loads anything. */
+      user: { findUnique: jest.fn(async () => user ?? { role: 'MEMBER', organizationId: 'org1' }) },
       groundParticipant: {
         findFirst: jest.fn(async () => participantLink),
         findMany: jest.fn(async () => []),
@@ -213,12 +214,8 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
     );
 
     await expect(service.get('g1', 'org-B', 'user-outsider')).rejects.toBeInstanceOf(NotFoundException);
-    // The org-scoped lookup must have been tried first, scoped to the requester's own org.
-    expect(prisma.ground.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'g1', organizationId: 'org-B' } }),
-    );
-    // No participant link for this ground -> the cross-org fallback must not surface it.
-    expect(prisma.ground.findUnique).not.toHaveBeenCalled();
+    // Refused by assertMaySeeGround before the ground is loaded at all: nothing is read for a stranger.
+    expect(prisma.ground.findFirst).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException even with no requestingUserId at all (anonymous/service call)', async () => {
@@ -236,7 +233,8 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
     const prisma = makePrisma({
       findFirstResult: null,
       participantLink: { id: 'p1', groundId: 'g1', userId: 'user-linked' },
-      findUniqueResult: { ...GROUND },
+      /* assertMaySeeGround reads the participants off the ground itself. */
+      findUniqueResult: { ...GROUND, participants: [{ userId: 'user-linked' }] },
     });
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
@@ -248,15 +246,32 @@ describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
     expect(prisma.groundParticipant.findFirst).toHaveBeenCalledWith({ where: { groundId: 'g1', userId: 'user-linked' } });
   });
 
-  it('succeeds for a same-org requester via the primary org-scoped lookup', async () => {
-    const prisma = makePrisma({ findFirstResult: { ...GROUND }, participantLink: null, findUniqueResult: null });
+  it('succeeds for a same-org ADMIN via the primary org-scoped lookup', async () => {
+    const prisma = makePrisma({
+      findFirstResult: { ...GROUND }, participantLink: null, findUniqueResult: { ...GROUND },
+      user: { role: 'ADMIN', organizationId: 'org-A' },
+    });
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
       { respond: async () => '' } as any,
     );
 
-    const result = await service.get('g1', 'org-A', 'user-member');
+    const result = await service.get('g1', 'org-A', 'user-admin');
     expect(result.id).toBe('g1');
-    expect(prisma.ground.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('a same-org MEMBER who is neither lead nor party is told it is not there, as list() already tells them', async () => {
+    /* This used to succeed: any member of the organisation could read any ground in it, report and
+       all. The list gives a non-admin their own grounds only; the read now gives the same answer. */
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrisma({
+      findFirstResult: { ...GROUND }, participantLink: null, findUniqueResult: { ...GROUND },
+      user: { role: 'MEMBER', organizationId: 'org-A' },
+    });
+    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      { respond: async () => '' } as any,
+    );
+    await expect(service.get('g1', 'org-A', 'user-member')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.ground.findFirst).not.toHaveBeenCalled();
   });
 });

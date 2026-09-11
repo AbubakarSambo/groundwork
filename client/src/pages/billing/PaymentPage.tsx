@@ -51,9 +51,7 @@ export function PaymentPage() {
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
 
-        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>
-          Back
-        </div>
+        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>Back</button>
 
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
           {ground?.isFreeGround ? 'This check-in' : 'Add sessions to this check-in'}

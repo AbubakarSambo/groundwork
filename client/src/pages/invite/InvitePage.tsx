@@ -25,9 +25,18 @@ import { toast } from 'sonner'
 export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  /* WHERE TO GO ONCE SIGNED IN, when the mail said. The report-ready mail sends a participant with no
+     password through their own invite link with the report as next, because the report route is behind
+     the sign-in wall. Only a check-in path is honoured: this is a link in a mail, not an open redirect. */
+  const next = params.get('next') ?? ''
   const navigate = useNavigate()
   /** Set when the server has emailed a fresh way in, instead of signing us in here. */
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
+  /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
+  const [waiting, setWaiting] = useState('')
+  /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
+  const [failed, setFailed] = useState('')
+  const [declinedQuietly, setDeclinedQuietly] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
   const qc = useQueryClient()
 
@@ -102,12 +111,22 @@ export function InvitePage() {
         toast.info(`Welcome back - continuing as ${res.user.email}`)
       }
       qc.invalidateQueries({ queryKey: ['grounds'] })
+      /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
+         message about something else and a retry that can never work, is P4-B03. Told here. */
+      if (res.queuedForApproval) {
+        setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start. They have been asked.')
+        return
+      }
       // Seamless handoff: straight into their session-1 check-in on the
       // initiator's ground (the check-in row already exists - accept()
       // returns it, it never creates a second one). Fall back to the ground
       // page only if no open check-in was found.
       const checkInId = (res as any).checkInId as string | null
       const groundId = (res as any).groundId as string
+      if (next.startsWith('/grounds/')) {
+        navigate(next, { replace: true })
+        return
+      }
       if (checkInId) {
         navigate(`/checkin/${checkInId}`, {
           state: { groundId, sessionNumber: 1, groundLabel: preview?.groundLabel },
@@ -122,8 +141,12 @@ export function InvitePage() {
         navigate(`/grounds/${groundId}/p`, { replace: true })
       }
     },
-    onError: () => {
-      toast.error('Could not start your session. Please try again.')
+    onError: (err: any) => {
+      /* The server's own sentence when there is one: it says which thing refused and what to do. Kept on
+         the page, because this is the one person with no other route in. */
+      const said = err?.response?.data?.message ?? (err?.response ? 'Could not start your session. Please try again.' : 'We could not reach Groundwork just then. Check your connection and try again.')
+      setFailed(said)
+      toast.error(said)
     },
   })
 
@@ -132,6 +155,18 @@ export function InvitePage() {
    * on. Not an error, and not a dead end - just one more click, landing in the
    * inbox that was actually invited.
    */
+  if (waiting) {
+    return (
+      <InviteShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🕐</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>One thing before you start</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{waiting}</div>
+        </div>
+      </InviteShell>
+    )
+  }
+
   if (emailedTo) {
     return (
       <InviteShell>
@@ -171,10 +206,11 @@ export function InvitePage() {
             disabled={accept.isPending}
             onClick={() => accept.mutate()}
           >
-            {accept.isPending ? 'One moment…' : 'Pick up where I left off →'}
+            <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off →'}</span>
           </button>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>or</div>
-          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px' }} onClick={() => navigate('/grounds')}>
+          {/* /auth, not a protected route that bounces; and the secondary weight, because two identical primaries around an "or" is no choice. */}
+          <button className="gw-btn" style={{ display: 'inline-block', width: 'auto', padding: '10px 20px', background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/auth')}>
             Sign in to continue →
           </button>
         </div>
@@ -205,7 +241,7 @@ export function InvitePage() {
               the invitation already says, two paragraphs down, that she is not expected to agree
               with any of it.
             */}
-            Why you were added, in their words: <strong>{preview.roleAsDescribed}</strong>
+            Your part in this: <strong>{preview.roleAsDescribed}</strong>
           </div>
         )}
 
@@ -229,10 +265,8 @@ export function InvitePage() {
           in a product it reads as a login, and it was carrying the false claim anyway.
         */}
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          What you write is used to build the shared report and nothing else. It shows{' '}
-          <strong>where what you said and what they said agree or differ</strong>. Your own words
-          about your own work can appear in it. Anything you say about somebody else never does,
-          and it never says who said what about whom.
+          What you write builds the shared report: <strong>where what you said and what they said
+          agree or differ</strong>, and what to do next.
         </div>
 
         {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
@@ -263,7 +297,7 @@ export function InvitePage() {
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your side of it, the picture is everybody else's.
+              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without what you are seeing, the picture is everybody else's.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
@@ -277,15 +311,15 @@ export function InvitePage() {
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
               {/*
                 AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
-                stroke - `releasedAt` is stamped once - so "the same report, at the same moment" is
-                true and stays. What was missing is that a party then meets an activation gate the
-                lead does not: you press once to open it, and until you do, it is closed. Somebody
-                who has been told they get it at the same moment and then finds a button reads the
-                button as the product going back on the first half.
+                stroke - `releasedAt` is stamped once - which made "at the same moment" true of the
+                stamp and false of the reading: a party then meets an activation gate the lead does
+                not, and until they press it is closed. Somebody told they get it at the same moment
+                as their manager clicks through, finds a button, and reads that as the promise being
+                withdrawn at the last step. Ruled out 11 September; what is true is that it is the
+                SAME report and opening it is one press.
               */}
-              <b>What you get back.</b> The same report {preview.initiatorName} gets, released to
-              everybody at once. You open your copy with one press when it lands, plus a short
-              private note meant only for you.
+              <b>What you get back.</b> The same report {preview.initiatorName} gets. You open your
+              copy with one press when it lands, plus a short private note meant only for you.
             </div>
           </div>
         </div>
@@ -320,7 +354,7 @@ export function InvitePage() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nothing here trains a model</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build this record and nothing else.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>What you say is used to build the shared picture and nothing else.</p>
             </div>
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 3 }}>And the part we are not going to dress up</div>
@@ -329,9 +363,10 @@ export function InvitePage() {
           </div>
         </details>
 
-        <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>
+        <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
+          {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-            Your name is optional - the other party will see it on the shared report if you add it.
+            Your name is optional - the others will see it on the shared report if you add it.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
             <div className="gw-fld" style={{ margin: 0 }}>
@@ -344,12 +379,12 @@ export function InvitePage() {
             </div>
           </div>
           <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>
-            {accept.isPending ? 'Setting up your session…' : 'Add my version →'}
+            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Add my version →'}</span>
           </button>
         </form>
 
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-          This also sets up your account, so you can come back any time to add to
+          This also saves your place, so you can come back any time to add to
           your record - and see the shared report once everyone has checked in.
           We'll email you a link for returning later.
         </div>
@@ -363,13 +398,22 @@ export function InvitePage() {
             You are never obligated to take part. If you would rather not, you can simply close this -
             nothing is shared, and declining is never shown as a negative.
           </div>
-          <button
-            className="gw-back"
-            style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
-            onClick={() => navigate('/')}
-          >
-            Not right now
-          </button>
+          {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
+              moment they decline, right after a paragraph promising declining is never held against them. A
+              settled state instead: nothing was shared, and they can come back. */}
+          {declinedQuietly ? (
+            <div role="status" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Nothing has been shared and nobody is told. This link keeps working if you change your mind.
+            </div>
+          ) : (
+            <button
+              className="gw-back"
+              style={{ width: 'auto', padding: '6px 14px', fontSize: 12 }}
+              onClick={() => setDeclinedQuietly(true)}
+            >
+              Not right now
+            </button>
+          )}
         </div>
       </div>
     </Arrival>
@@ -398,6 +442,6 @@ function ErrorCard({ msg }: { msg: string }) {
 
 function LoadingCard() {
   return (
-    <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
+    <div role="status" style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
   )
 }

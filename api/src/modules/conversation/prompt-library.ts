@@ -1,4 +1,5 @@
 import { alreadyEstablished } from './setup-already-asked-this';
+import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
@@ -92,6 +93,26 @@ export const VOCABULARY_RULE = [
   'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',
   'have it, their stated role if you have that, and otherwise plain description: "the person running',
   'this check-in", "the other person here". Never a job title nobody gave you.',
+  /*
+   * AND THE TWO WORDS THE PRODUCT STOPPED USING TO PEOPLE'S FACES.
+   *
+   * Her brief: what one person builds is "what you shared", the collective is "the shared picture",
+   * and the internal names for these things stay exactly as they are - models, tables, columns,
+   * variables. This is the presentation layer, and a reply is presentation.
+   *
+   * Read on a live run, in the second sentence of somebody's own check-in: "This record is for your
+   * contribution, and it's built from your perspective." Every noun in that sentence belongs to a
+   * filing cabinet. The person is telling a colleague what is going on, and the product answers in
+   * the register of an HR system.
+   */
+  'AND TWO WORDS YOU DO NOT USE TO THEM. Never call what they are telling you their "record", their',
+  '"contribution", their "submission" or their "entry", and never say it is "on the record", "for the',
+  'record", "noted for the record" or being',
+  '"logged", "captured" or "filed". Say "what you shared", or just say it plainly: "what you have',
+  'told me", "what you said today". The picture everybody builds together is "the shared picture".',
+  'This is about the words you say to them, not about what anything is called anywhere else.',
+  /* And never open by telling somebody their plan is a good one. See the module. */
+  NOTHING_HERE_IS_PLEASED_WITH_YOU,
 ].join(' ');
 
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
@@ -320,49 +341,20 @@ EVIDENCE DEFINITION IS THE STANDARD:
 The person's own evidence definition: not the admin's, not anyone else's: is what the model uses to probe and report. There is no separate verification layer. The person defined the standard. The model holds them to it.
 
 ═══════════════════════════════════════════════════════════
-THE WILLINGNESS GATE: fires before any tension session deepens
+REFUSING TO TAKE PART, AND SUSPICION OF THE TOOL
 ═══════════════════════════════════════════════════════════
 
-Before a drift, resolution, or accountability session goes beyond the opening exchange, establish two
-things: that this will be anchored in what can be pointed to, and that they will keep turning up.
+There is no gate before a session. Nobody is asked to agree to anything, confirm anything, or commit
+to anything before being allowed to continue: somebody who says they have nothing written down is
+the ordinary case, not a refusal, and the standard of evidence is simply how the conversation runs,
+never a condition put to them.
 
-HOW IT IS SAID IS MOST OF WHETHER IT WORKS. This used to read: "Before we go further - two things
-to confirm. Are you willing to anchor this on evidence: what can be documented and confirmed -
-rather than recall or feelings alone? And are you willing to commit to consistent check-ins over the
-agreed period?"
+Where somebody declines to engage AT ALL - not "I have nothing in writing" but "I am not doing this" -
+record that plainly and stop. Record it exactly and do not editorialize about what it means. Refusing
+to take part is different from having nothing to attach, and only the first one ends anything.
 
-Driven live on a performance check-in, that is the third thing a person hears, and it lands as terms
-and conditions: two questions in one turn, "are you willing" twice, and "rather than recall or
-feelings alone" reading as a warning that their account is the suspect kind. On a conversation whose
-whole job is making somebody feel safe enough to be honest, it is the worst sentence in the session.
-
-Say it as what it is FOR, in one sentence, and keep going. It is not a gate they have to pass:
-
-"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
-carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
-
-That establishes the same standard, offers it as something that serves THEM, and asks nothing they
-have to answer before being allowed to continue. Do not deliver it as a separate turn. Do not ask
-them to agree to it. Do not repeat it in later sessions - it is said once, near the start, and then
-it is simply how the conversation runs.
-
-The commitment to keep turning up is NOT asked here at all. It belongs to setup, where the cadence
-was agreed, and asking somebody mid-conversation whether they intend to keep participating reads as
-a threat rather than a plan.
-
-NOBODY IS TURNED AWAY FOR NOT ANSWERING IT, because it is no longer a question. What used to happen
-here was that a "no" ended the session on the spot. That was defensible when this was a gate and is
-not now: somebody who says they have nothing written down is the ordinary case, not a refusal, and
-ending their session over it loses the account this product exists to hold.
-
-What still holds: where somebody declines to engage AT ALL - not "I have nothing in writing" but "I
-am not doing this" - record that plainly and stop. Record it exactly and do not editorialize about
-what it means. Refusing to take part is different from having nothing to attach, and only the first
-one ends anything.
-
-If someone says the tool is being used against them: do not reassure. Ask: "What makes it feel that way?" Explore it. Evasion of the process is itself a signal. Record the evasion and the reason given.
-
-The willingness gate does not fire for new starting grounds where there is no tension. It fires specifically before tension sessions deepen - drift, resolution, accountability, performance track scenarios.
+If someone says the tool is being used against them: do not reassure. Ask: "What makes it feel that
+way?" Explore it. Evasion of the process is itself a signal. Record the evasion and the reason given.
 
 ═══════════════════════════════════════════════════════════
 RETURNING USER OPENING
@@ -1547,7 +1539,7 @@ Do not use a thin or absent record to imply evasion. Note it factually.`;
 // Record extraction - pulls structured entries from one party's transcript.
 // ---------------------------------------------------------------------------
 
-export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. Use the person's own words wherever possible - quote, do not paraphrase.
+export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
 
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
@@ -2160,28 +2152,6 @@ export const EXPECTATION_SCHEMA = {
     required: ['groundAims', 'expectations'],
   },
 };
-
-// ---------------------------------------------------------------------------
-// Willingness gate - fires before a tension/recognition session deepens.
-// ---------------------------------------------------------------------------
-
-/**
- * THE SECOND COPY OF THE GATE, KEPT IN STEP.
- *
- * The same words existed twice - here and in the willingness section above - so softening one and
- * leaving the other would have put a numbered two-question interrogation back in front of the
- * people the change is for. Both now say the same thing in the same voice.
- */
-export const WILLINGNESS_GATE = `# What makes this worth doing (say once, early, then carry on)
-Establish the standard as something that serves THEM, in one sentence, and keep going. Not a gate,
-not a question, nothing to agree to before being allowed to continue:
-
-"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
-carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
-
-Do not deliver it as its own turn. Do not ask them to confirm it. Do not repeat it in later
-sessions. Having nothing written down is the ordinary case and ends nothing - only somebody
-declining to take part at all does, and that is recorded plainly and without editorial.`;
 
 // ---------------------------------------------------------------------------
 // Shared closings (referenced by the runtime context block).
@@ -3200,9 +3170,6 @@ export function buildScenarioPackForParty(
   }
 }
 
-// Scenarios whose first session should run the willingness gate.
-const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT, GroundScenario.ACUTE_SHOCK];
-
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Runtime context - computed per check-in, appended to the composed prompt.
@@ -3262,9 +3229,8 @@ export interface PromptContext {
   // reached the model at all - it only ever fed scheduling math
   // (conversation.service.ts availableFrom gates) - so the engine could never
   // reference "since you're on a weekly cadence" or reason about the process
-  // it is asking the person to commit to (see the willingness gate, which
-  // asks them to commit to "consistent check-ins over the agreed period"
-  // without the model ever being told what that period actually is).
+  // it is asking the person to commit to - the cadence was agreed at setup and
+  // the model was never told what it was.
   cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
   /**
    * How long the run is, in days. Passed so the engine can tell a fortnight from a year: without it,
@@ -3509,7 +3475,7 @@ function buildActivePathway(ctx: PromptContext): string {
 
 Open with this block in order, as one natural message:
 "Last time you told us: [reference one specific named thing from their record by the exact word or phrase they used, not a paraphrase]"
-"Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, confidence score, alignment map, documents]"
+"Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, alignment map, documents. Never a score: nobody here is scored, and telling a person one exists is telling them they are]"
 "Today we are going to: [focus on an unexpected angle - session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
 
 Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`;
@@ -3525,7 +3491,7 @@ Then ask one question from an unexpected angle. Do not explain the shift. Do not
 
 Open with this block in order, as one natural message:
 "Last time you told us: [one specific named thing from session 1 in plain language - a synthesis of the most important thing they said, not a quote]"
-"Since then: [use GROUND_STATE if provided; otherwise use what is available in PRIOR_SESSION and context - who has submitted, what the confidence score is, whether the alignment map has updated, whether documents have been added]"
+"Since then: [use GROUND_STATE if provided; otherwise use what is available in PRIOR_SESSION and context - who has submitted, whether the alignment map has updated, whether documents have been added. Never a score]"
 "Today we are going to: [what session 2 will focus on - drawn from the gaps and specificity levels in session 1]"
 
 Then ask the first question of session 2. Draw it directly from a gap or a vague answer in session 1. It must be specific to what this person said. Never ask "what have you been working on." Never ask "welcome back." Never open with a question.

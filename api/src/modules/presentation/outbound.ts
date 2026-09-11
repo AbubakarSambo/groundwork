@@ -355,3 +355,18 @@ export function withoutQuotedQuestions(text: string): string {
   if (straight % 2 === 1) return unwrapped.replace(/"/g, '');
   return unwrapped;
 }
+
+/**
+ * WHAT IS NEW IN A CLEANED PREFIX, WITHOUT LOSING A LETTER.
+ *
+ * `forHumans` is not prefix-stable: stripping "**Two things:**" shortens the text, and a phrase
+ * rewrite can change characters that were already shown. The stream used to slice the newly cleaned
+ * prefix at the LENGTH of the last one, so when cleaning shifted earlier text the slice skipped real
+ * words and cut others in half: "That's a clea writing the text for all of them." When the new
+ * cleaning still begins with what was shown, the new part is the tail. When it does not, nothing is
+ * new yet - the earlier text moved under us - and the final reply, cleaned whole, sets the record.
+ */
+export function whatIsNewSince(shownSoFar: string, cleanedNow: string): string {
+  if (cleanedNow.startsWith(shownSoFar)) return cleanedNow.slice(shownSoFar.length);
+  return '';
+}

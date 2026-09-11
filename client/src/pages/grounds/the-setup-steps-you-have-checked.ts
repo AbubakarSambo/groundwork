@@ -43,7 +43,13 @@ export async function forgetYouCheckedIt(groundId: string, step: number): Promis
 }
 
 export function howFarThroughSetup(checked: number[], total: number): string {
-  const done = checked.length;
+  /*
+   * COUNTED AGAINST THE BANDS THIS CHECK-IN ACTUALLY HAS. The stored list is band numbers, and the
+   * number of bands differs by family - so a list kept from a longer setup counted a band that is
+   * not on the page, and the line read "6 of 5 setup questions signed off". Out of range does not
+   * count, and neither does the same band twice.
+   */
+  const done = new Set(checked.filter((n) => Number.isInteger(n) && n >= 1 && n <= total)).size;
   if (total === 0) return '';
   if (done === 0) return `You have not signed off any of the ${total} setup questions yet.`;
   if (done >= total) return `You have looked at all ${total} setup questions.`;

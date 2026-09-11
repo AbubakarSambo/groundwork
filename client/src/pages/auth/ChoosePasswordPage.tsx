@@ -60,7 +60,9 @@ export function ChoosePasswordPage() {
    * way of forwarding them off the product.
    */
   const requested = params.get('next') ?? ''
-  const next = /^\/(?!\/)/.test(requested) ? requested : (kind === 'set' ? '/grounds?welcome=1' : '/grounds')
+  /* The destination the person arrived with, kept by AuthPage for this browser; same guard, so it cannot be an open redirect. */
+  const kept = (() => { try { return sessionStorage.getItem('gw_next') ?? '' } catch { return '' } })()
+  const next = /^\/(?!\/)/.test(requested) ? requested : /^\/(?!\/)/.test(kept) ? kept : (kind === 'set' ? '/grounds?welcome=1' : '/grounds')
 
   const save = useMutation({
     mutationFn: () => kind === 'set'
@@ -68,6 +70,7 @@ export function ChoosePasswordPage() {
       : authApi.resetPassword(token, password),
     onSuccess: res => {
       setAuth(res.user, res.accessToken)
+      try { sessionStorage.removeItem('gw_next') } catch { /* */ }
       navigate(next, { replace: true })
     },
     onError: (err: any) => {
@@ -77,6 +80,9 @@ export function ChoosePasswordPage() {
   })
 
   function submit() {
+    /* Enter in the confirm field was not disabled while the button was; against a single-use token the
+       second call came back "invalid or expired" over the success of the first. */
+    if (save.isPending) return
     setError('')
     if (!token) { setError('Invalid link - no token.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
@@ -111,7 +117,7 @@ export function ChoosePasswordPage() {
           Password links are single use and expire. Open the most recent one from your inbox, or
           ask for a new one below.
         </div>
-        <button className="gw-btn" onClick={() => navigate('/auth')}>Get a new link</button>
+        <button className="gw-btn" onClick={() => navigate('/auth?mode=member')}>Get a new link</button>
       </>,
     )
   }
@@ -141,12 +147,16 @@ export function ChoosePasswordPage() {
         </div>
       )}
 
+      {/* A form, so Enter submits from the first field too - which has autoFocus, so it is where everybody
+          starts - and the password manager is told what these are. */}
+      <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
       <div className="gw-fld">
         <label className="gw-label" htmlFor="new-password">{kind === 'set' ? 'Password' : 'New password'}</label>
         <input
           id="new-password"
           className="gw-input"
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={e => setPassword(e.target.value)}
           placeholder="At least 8 characters"
@@ -159,9 +169,9 @@ export function ChoosePasswordPage() {
           id="confirm-password"
           className="gw-input"
           type="password"
+          autoComplete="new-password"
           value={confirm}
           onChange={e => setConfirm(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
           placeholder="Same as above"
         />
       </div>
@@ -170,11 +180,12 @@ export function ChoosePasswordPage() {
         Must be 8+ characters with at least one uppercase and one lowercase letter.
       </div>
 
-      {error && <div className="gw-er" style={{ marginBottom: 10 }}>{error}</div>}
+      {error && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
 
-      <button className="gw-btn" onClick={submit} disabled={save.isPending}>
+      <button className="gw-btn" type="submit" disabled={save.isPending}>
         {save.isPending ? 'Saving…' : kind === 'set' ? 'Set password and open Groundwork →' : 'Reset password →'}
       </button>
+      </form>
 
       {/*
         THE LINK SAID "BACK TO SIGN IN" AND WENT SOMEWHERE ELSE. W8-42.
@@ -186,7 +197,7 @@ export function ChoosePasswordPage() {
       <div style={{ textAlign: 'center', marginTop: 14 }}>
         <button
           type="button"
-          onClick={() => navigate('/auth')}
+          onClick={() => navigate('/auth?mode=member')}
           style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', background: 'none', border: 'none', font: 'inherit' }}
         >
           Back to sign in

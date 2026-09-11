@@ -18,6 +18,8 @@
  * inside a 2,000-line component where the last drift went unnoticed.
  */
 
+import { OR_CHOOSE_A_SITUATION } from '@/lib/one-way-to-say-what-a-situation-does';
+
 export type TheWordsForPickingASituation = {
   /** The sentence under "Step 2 . The situation". */
   intro: string;
@@ -27,8 +29,14 @@ export type TheWordsForPickingASituation = {
 
 export function theWordsForPickingASituation(): TheWordsForPickingASituation {
   return {
+    /* The invitation is the entry chat's, to the word - see the module it comes from. "Pick the
+       closest fit" asked somebody to classify themselves and left them guessing what picking one
+       would do; this says what it does.
+       The cadence clause stays and stays here: this is the screen showing all 22, and how often
+       people are asked is the thing that most separates one from another. The entry chat, which
+       shows none of them, does not need it. */
     intro:
-      'situations, grouped by the question you are actually asking. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Pick the closest fit: it sets the questions people are asked and how often.',
+      `situations, grouped by the question you are actually asking. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Describe your own, or ${OR_CHOOSE_A_SITUATION}: it sets the questions people are asked and how often.`,
     describeOwnLabel: 'Describe your own situation',
   };
 }

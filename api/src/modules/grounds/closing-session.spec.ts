@@ -24,6 +24,8 @@ function makeService(overrides: { ground?: any } = {}) {
     ground: { findFirst: jest.fn(async () => ground) },
     checkIn: {
       findFirst: jest.fn(async ({ where }: any) => {
+        // final-session lookup: nobody has one yet
+        if (where.isFinal) return null;
         if (where.status) {
           // open-session lookup: p1 has an open session, p2/p3 do not
           return where.participantId === 'p1' ? { id: 'ci-open-p1', sessionNumber: 3 } : null;
@@ -35,6 +37,8 @@ function makeService(overrides: { ground?: any } = {}) {
       create: jest.fn(async () => ({})),
     },
   };
+  /* The loop runs inside one transaction now; the client passed in is this same mock. */
+  prisma.$transaction = async (fn: any) => fn(prisma);
   const service = Object.create(GroundsService.prototype) as GroundsService;
   (service as any).prisma = prisma;
   return { service, prisma };
@@ -45,12 +49,13 @@ describe('GW-CLOSING: beginClosingSession', () => {
     const { service, prisma } = makeService();
     const res = await service.beginClosingSession('g1', 'org1', 'u-init');
 
-    expect(res.participantsFlagged).toBe(3);
+    /* Two, not three: p3 never joined (no userId) and gets no closing session to never answer. */
+    expect(res.participantsFlagged).toBe(2);
     // p1's open session flagged in place - never a new row for them
     expect(prisma.checkIn.update).toHaveBeenCalledWith({ where: { id: 'ci-open-p1' }, data: { isFinal: true } });
     expect(prisma.checkIn.update).toHaveBeenCalledTimes(1);
-    // p2 and p3 get fresh final sessions after their last (4 -> 5)
-    expect(prisma.checkIn.create).toHaveBeenCalledTimes(2);
+    // p2 gets a fresh final session after their last (4 -> 5)
+    expect(prisma.checkIn.create).toHaveBeenCalledTimes(1);
     for (const call of prisma.checkIn.create.mock.calls) {
       expect(call[0].data).toMatchObject({ sessionNumber: 5, status: 'NOT_STARTED', isFinal: true });
     }

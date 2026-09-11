@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode } from '@nestjs/common';
+import { AMessageIntoACheckInDto } from '../../common/dto';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode, Logger } from '@nestjs/common';
+import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { Response } from 'express';
@@ -6,12 +8,8 @@ import { ConversationService } from './conversation.service';
 import { RemindService } from './remind.service';
 import { CurrentUser, JwtAuthGuard } from '../../common';
 
-class SendMessageDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(8000)
-  message: string;
-}
+/** The one posture every door has. See common/dto/a-message-into-a-check-in.dto.ts. */
+export class SendMessageDto extends AMessageIntoACheckInDto {}
 
 class WhatWorkedDto {
   /* What they were stuck on, in their words. Short, because it is what matching happens on. */
@@ -34,6 +32,7 @@ class WhatWorkedDto {
 @UseGuards(JwtAuthGuard)
 @Controller('check-ins')
 export class ConversationController {
+  private readonly logger = new Logger(ConversationController.name);
   constructor(
     private readonly conversation: ConversationService,
     private readonly remind: RemindService,
@@ -95,7 +94,9 @@ export class ConversationController {
         write(evt);
       }
     } catch (err: any) {
-      write({ type: 'error', message: err?.message ?? 'stream failed' });
+      /* The wire gets a stable code and a safe sentence; the internal text goes to the log (F14). */
+      this.logger.warn(`Stream on check-in ${id} failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
     } finally {
       res.write('data: [DONE]\n\n');
       res.end();

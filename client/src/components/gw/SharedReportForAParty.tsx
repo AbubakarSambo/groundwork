@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Sec } from './kit'
+import { TheSharedPictureAPartyReads } from './the-shared-picture-a-party-reads'
 import { howCheckable } from './how-checkable-was-that-session'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE SHARED REPORT, AS A PARTY READS IT.
@@ -123,7 +125,7 @@ export function SharedReportForAParty({
                     <span>
                       <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
                       <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
+                        {ci.completedAt ? `Finished ${whenItWas(ci.completedAt, 'day')}` : 'Finished'}
                         {howCheckable(specificityBySession?.[ci.sessionNumber])}
                       </span>
                     </span>
@@ -209,7 +211,18 @@ export function SharedReportForAParty({
               something. What is left on the tab is the board, your sessions, and - before everyone
               has shown theirs - the one thing that is an act rather than a reading: the reveal.
             */
-            null
+            /*
+              AND NOW THE REPORT ITSELF.
+
+              This branch returned null. Once the report released, a person IN it opened their Report
+              tab and found a button to the board and a list of their own sessions - no report. Every
+              example on the marketing page ends "If you are one of the people in it, this is your
+              report too. The same one." It was not true here.
+
+              The lead-only blocks are stripped by the server before this payload is built, and that
+              is where they must stay stripped. See the component.
+            */
+            <TheSharedPictureAPartyReads report={report} />
           )}
     </>
   )

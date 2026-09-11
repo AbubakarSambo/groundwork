@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { PromptsService } from './prompts.service';
@@ -52,8 +52,8 @@ export class PromptsController {
 
   @Get('platform-funnel')
   @ApiOperation({ summary: 'Usage funnel data - session drop-off, scenario breakdown, engagement' })
-  async platformFunnel() {
-    return this.prompts.usageFunnel();
+  async platformFunnel(@Query('range') range?: string) {
+    return this.prompts.usageFunnel(range);
   }
 
   @Get('by-key/:key')
@@ -64,8 +64,8 @@ export class PromptsController {
 
   @Get('platform-dashboard')
   @ApiOperation({ summary: 'Cross-org usage dashboard - session data, ground activity, prompt performance' })
-  async platformDashboard() {
-    return this.prompts.platformDashboard();
+  async platformDashboard(@Query('range') range?: string) {
+    return this.prompts.platformDashboard(range);
   }
 
   @Get('org-list')
@@ -76,8 +76,8 @@ export class PromptsController {
 
   @Get('usage-stats')
   @ApiOperation({ summary: '14-day check-in trend and event totals' })
-  async usageStats() {
-    return this.prompts.usageStats();
+  async usageStats(@Query('range') range?: string) {
+    return this.prompts.usageStats(range);
   }
 
   @Get('feedback-summary')

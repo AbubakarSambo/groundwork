@@ -139,3 +139,29 @@ describe('what the server calls the thing when it talks to a person', () => {
     expect(sessions.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * AND IN THE CONTRACT CUSTOMERS BUILD AGAINST (fix plan B13). "Round" was retired from every human
+ * surface and survived as the published name of the first webhook event and as two of the three
+ * names for the session integer. One event name going forward, one integer name in the schema.
+ */
+describe('what the webhook contract and the schema call it', () => {
+  it('the only event name still saying round is the deprecated alias, and it names its replacement', () => {
+    const events = readFileSync(join(SRC, 'modules/webhooks/events-we-can-actually-send.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    const names = [...new Set([...events.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]))];
+    expect(names).toContain('session.completed');
+    expect(names.filter((n) => /round/.test(n))).toEqual(['round.completed']);
+    expect(events).toMatch(/DEPRECATED_EVENTS[\s\S]*'round\.completed': 'session\.completed'/);
+  });
+
+  it('the session integer has one name in the schema', () => {
+    const schema = readFileSync(join(SRC, '..', 'prisma', 'schema.prisma'), 'utf8')
+      .replace(/\/\/\/.*$/gm, '')
+      .replace(/\/\/.*$/gm, '');
+    expect(schema).not.toMatch(/^\s*roundNumber\s+Int/m);
+    expect(schema).not.toMatch(/^\s*round\s+Int/m);
+    expect((schema.match(/^\s*sessionNumber\s+Int/gm) ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+});

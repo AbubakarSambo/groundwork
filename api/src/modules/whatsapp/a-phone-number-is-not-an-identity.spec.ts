@@ -90,7 +90,9 @@ describe('the controller verifies before it reads anything', () => {
     expect(recv).toMatch(/if \(!\(await this\.whatsapp\.isEnabled\(\)\)\) return/);
     /** Same trap: assert both are present before comparing positions. */
     expect(recv.indexOf('isEnabled')).toBeGreaterThan(-1);
-    expect(recv.indexOf('findUserByPhoneNumber')).toBeGreaterThan(-1);
-    expect(recv.indexOf('isEnabled')).toBeLessThan(recv.indexOf('findUserByPhoneNumber'));
+    /* The lookup is which ORGANISATIONS the number is on - never an unscoped user by phone. */
+    expect(recv.indexOf('whichOrganisation(')).toBeGreaterThan(-1);
+    expect(recv.indexOf('isEnabled')).toBeLessThan(recv.indexOf('whichOrganisation('));
+    expect(recv).not.toContain('findUserByPhoneNumber');
   });
 });

@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { THE_THROTTLER } from './common/the-throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BackOfficeDoorGuard } from './modules/back-office/back-office-door.guard';
+import { BackOfficeModule } from './modules/back-office/back-office.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from './config';
 import { PrismaModule } from './modules/prisma';
@@ -47,7 +50,15 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
 @Module({
   imports: [
     ConfigModule,
-    ThrottlerModule.forRoot([{ name: 'global', ttl: 60000, limit: 60 }]),
+    /*
+     * THE THROTTLER COUNTS IN PROCESS MEMORY. No `storage` is given, so the default in-memory store
+     * is used: a restart resets every counter, and N instances allow N times the limit. This governs
+     * the OTP and the public /start routes, so it is a security control with a single-process
+     * assumption in it. This deployment has no Redis; when it does, hand the store in here
+     * (@nestjs/throttler accepts one) and delete this comment. Said here rather than left to be
+     * discovered, the way the old exchange-code Map said it (fix plan B15).
+     */
+    ThrottlerModule.forRoot([{ name: THE_THROTTLER, ttl: 60000, limit: 60 }]),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     PrismaModule,
@@ -74,6 +85,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     EntryModule,
     AdminModule,
     OpsModule,
+    BackOfficeModule,
     WorkspaceModule,
     AlignmentModule,
   ],
@@ -87,6 +99,9 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     { provide: APP_GUARD, useClass: ASyncLoopIsNotABrowser },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    /* /ops and /admin need a code emailed to the signed-in address once a week, unless the session
+       came from Google. See ops/the-back-office-has-a-door.ts. */
+    { provide: APP_GUARD, useClass: BackOfficeDoorGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],
