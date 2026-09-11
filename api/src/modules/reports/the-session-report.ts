@@ -71,6 +71,8 @@ export interface WhatOnePersonSaid {
 
 export interface SessionReportShape {
   sessionNumber: number;
+  /** How many this run holds, so the header can say "check-in 3 of 6". Null when nobody set both. */
+  plannedSessions?: number | null;
   /** 'forming' while the round is open, 'final' once it closed and was snapshotted. */
   state: 'forming' | 'final';
   whereThingsStand: {
@@ -115,6 +117,8 @@ export interface SessionReportShape {
 
 export interface SessionReportInputs {
   sessionNumber: number;
+  /** From the length and the rhythm. Null where either is unset, so the header simply omits it. */
+  plannedSessions?: number | null;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
   /**
@@ -448,6 +452,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
 
   return {
     sessionNumber: input.sessionNumber,
+    plannedSessions: input.plannedSessions ?? null,
     state: input.closed ? 'final' : 'forming',
     confidence,
     whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow },

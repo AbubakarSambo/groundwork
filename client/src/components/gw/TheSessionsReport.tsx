@@ -123,16 +123,48 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
   return (
     <div>
-      {/* How much there is to go on. First, because it decides how to read everything under it. */}
-      {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
+      {/*
+        HOW MUCH THERE IS TO GO ON MOVED TO THE FOOT, AND THIS REVERSES A WRITTEN DECISION.
+        
+        It said "first, because it decides how to read everything under it", and that argument is
+        real. Two things beat it. The same read is already at a glance a few inches down - "How much
+        was said · all from memory" is one of the four tiles - so the band on top was the second copy
+        of it, and it was the larger one: a bar, a band word and three paragraphs of caveat filling
+        the first screen before the reader reached a single finding.
+        
+        And the templates put the method last and folded, which is the shape Hafsah asked every
+        surface to match. A caveat above the thing it qualifies is read as a verdict on it.
+        
+        Nothing is lost: the tile carries the glance, and the band itself is at the foot with what
+        this rests on, which is where somebody goes when they want to know how solid this is.
+      */}
 
       <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         {/* The header line: what this is, and how many are in it. */}
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
           {/* "Still forming" after everybody had answered and the report was out. Three states, not two. */}
-          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : ofPeople > 0 && answered >= ofPeople ? 'everyone answered' : 'still forming'}</b>
-          <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            {ofPeople ? `${answered} of ${ofPeople} answered` : ''}
+          {/*
+            WHAT THIS IS FOR, AND WHERE YOU ARE IN IT - the template's header line.
+
+            It said "Session 3", which is a number without a subject. The objective is the thing
+            every line underneath is measured against, so it belongs in the one place a reader
+            cannot miss, and the position says how much of the run has happened - the marketing
+            card has carried "8 accounts · check-in 3 of 6" since before this page existed.
+          */}
+          <b style={{ fontSize: 15 }}>
+            {d.againstSuccess?.stated?.trim() || `Session ${d.sessionNumber}`}
+          </b>
+          <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-sub)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+            {[
+              ofPeople ? `${ofPeople} account${ofPeople === 1 ? '' : 's'}` : '',
+              `check-in ${d.sessionNumber}${d.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
+              /* The state word stays on the forming case. "2 of 4 answered" says how many but not
+                 that the picture is still moving, and a reader who has not read one before does
+                 not know that a report changes. Both, not one. */
+              final ? 'closed'
+                : answered >= ofPeople && ofPeople > 0 ? 'everyone answered'
+                  : `still forming · ${answered} of ${ofPeople} answered`,
+            ].filter(Boolean).join(' · ')}
           </em>
         </div>
 
@@ -387,6 +419,11 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
           </Row>
         ) : null}
+
+        {/* How much there is to go on, in full, beside what it rests on. */}
+        {d.confidence && (
+          <div style={{ padding: '4px 18px 0' }}><HowMuchThereIsToGoOn read={d.confidence} /></div>
+        )}
 
         {/* The documents, when there are any. When there are none it is a reason under confidence. */}
         {restsOn.length > 0 && restsOn[0].items.length > 0 && (

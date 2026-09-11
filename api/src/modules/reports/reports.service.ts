@@ -2210,6 +2210,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const shape = theSessionReport({
       sessionNumber,
+      /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
+         the rhythm. Null where either is unset, so the header omits the position rather than
+         inventing a denominator. */
+      plannedSessions: (() => {
+        const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
+        const days = (ground as any).timelineDays;
+        return step && days ? Math.max(1, Math.floor(days / step)) : null;
+      })(),
       closed: !!snapshot,
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
       divergences: (snapshot?.divergences ?? ground.report?.divergences ?? []) as unknown[],
