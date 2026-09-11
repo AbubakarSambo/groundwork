@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
+import { MARKETING_URL } from '@/lib/marketing'
 
 /**
  * A REQUEST THAT GOES SOMEWHERE.
@@ -28,6 +29,40 @@ const WHAT_ABOUT = [
   { key: 'integration', label: 'Integration support', lead: 'We would like help connecting Groundwork to our own tools.' },
   { key: 'other', label: 'Something else', lead: '' },
 ] as const
+
+/**
+ * THE WAY BACK OFF THIS PAGE.
+ *
+ * There wasn't one. This is a leaf: it has no nav, no rail and no product chrome, because the person
+ * it is written for is usually not signed in - so somebody who opened it to read what a call costs,
+ * and decided not to ask for one, had the browser's own back button and nothing else. On a phone,
+ * where that button is a swipe some people do not know about, that is a dead end on the one page
+ * whose whole job is to not feel like a commitment.
+ *
+ * Two ways in, so two ways back. Most people arrive from the pricing page, which is a different
+ * origin, and `history.back()` is right for them and for anyone who came from inside the product.
+ * Opened cold in a new tab there is no history to go back to, and the honest destination is the site
+ * they would have come from.
+ */
+function BackOffThisPage() {
+  const goBack = () => {
+    if (window.history.length > 1) window.history.back()
+    else window.location.href = MARKETING_URL
+  }
+  return (
+    <button
+      type="button"
+      onClick={goBack}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
+        padding: '4px 0', marginBottom: 14, cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)',
+      }}
+    >
+      <span aria-hidden="true">&larr;</span> Back
+    </button>
+  )
+}
 
 export function TalkToUsPage() {
   const [params] = useSearchParams()
@@ -70,6 +105,7 @@ export function TalkToUsPage() {
   if (said === 'sent') {
     return (
       <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '56px 20px 80px' }}>
+        <BackOffThisPage />
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 10px' }}>We have your request</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
           Somebody reads these and will come back to you within two working days. We have emailed you
@@ -84,6 +120,7 @@ export function TalkToUsPage() {
 
   return (
     <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
+      <BackOffThisPage />
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 8px' }}>Request a call</h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 22 }}>
         Tell us what you need and somebody will come back to you within two working days. This creates

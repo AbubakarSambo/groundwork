@@ -72,6 +72,31 @@ a{color:inherit}
 section{padding:72px 0}
 .band{background:var(--gw-paper-2);border-top:1px solid var(--gw-border);border-bottom:1px solid var(--gw-border)}
 
+
+/* ── the drawings ─────────────────────────────────────────────────────────
+   The sections below the hero were text in a 660px column with a third of a
+   wide screen empty on either side of it. These fill that margin rather than
+   the column: one framed drawing per section, sitting beside the words at the
+   width the margin already had.
+
+   They carry no information and they say so - `alt` is empty and the frame is
+   aria-hidden, so a screen reader is not read a description of a picture that
+   is there to make the page feel like something people made. The words are the
+   page; these are the room it is read in.
+
+   Under 900px there is no margin to fill, so the drawing goes above the text at
+   a smaller size rather than squeezing the measure. */
+.art-row{max-width:1020px;margin:0 auto;padding:0 24px;display:grid;
+         grid-template-columns:minmax(0,1fr) 216px;gap:44px;align-items:start}
+.art-row > .w{max-width:660px;margin:0;padding:0}
+.art-row img{width:100%;height:auto;display:block}
+.art-row .art{margin-top:6px}
+.end .art-row{align-items:center}
+@media(max-width:900px){
+  .art-row{grid-template-columns:1fr;gap:22px;max-width:708px}
+  .art-row .art{order:-1;width:150px;margin:0 auto}
+}
+
 /* ── the one label style on the page ─────────────────────────────────────── */
 .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
      color:var(--gw-muted);margin:0 0 18px}
@@ -231,7 +256,8 @@ details.more>summary::marker{color:var(--gw-muted)}
      Hairlines, not cards. Three cards make three things of equal weight; this
      is one sequence and reads as one. -->
 <section class="fade">
-  <div class="w">
+  <div class="art-row">
+    <div class="w">
     <p class="lab">How it works</p>
     <div class="steps">
       <div class="step"><i>01</i><div><b>Groundwork asks each person separately.</b>
@@ -241,6 +267,8 @@ details.more>summary::marker{color:var(--gw-muted)}
       <div class="step"><i>03</i><div><b>Everyone gets the same picture.</b>
         <span>A shared report and your private report with notes.</span></div></div>
     </div>
+    </div>
+    <div class="art" aria-hidden="true"><img src="/art/rowing.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
@@ -309,12 +337,15 @@ details.more>summary::marker{color:var(--gw-muted)}
      The argument the reports illustrate. Kept in full: it is 7% of the page and
      it is the reason the product exists. -->
 <section class="band fade">
-  <div class="w">
+  <div class="art-row">
+    <div class="w">
     <p class="lab">Why leaders miss problems</p>
     <h2 class="h2">Every update you get has been through someone else first.</h2>
     <p class="lede" style="margin-bottom:14px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
     <p class="lede" style="margin-bottom:14px">Some people dominate meetings. Some avoid conflict. Some do not feel safe challenging a decision. So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
     <p class="lede">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and nobody has checked.</p>
+    </div>
+    <div class="art" aria-hidden="true"><img src="/art/compass-blue.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
@@ -329,7 +360,8 @@ details.more>summary::marker{color:var(--gw-muted)}
      product already occupies, and not how anything else here talks. The
      mechanism is stated; the reader draws the conclusion. -->
 <section class="fade">
-  <div class="w">
+  <div class="art-row">
+    <div class="w">
     <p class="lab">If you are the one being checked in on</p>
     <h2 class="h2" style="font-size:25px">Everyone is asked the same way, at the same time.</h2>
     <p class="lede" style="margin-bottom:14px">Your account carries the same weight whether or not you were in the room, and whether or not you got to anybody first.</p>
@@ -357,18 +389,23 @@ details.more>summary::marker{color:var(--gw-muted)}
     <div class="callout">
       <p>Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
     </div>
+    </div>
+    <div class="art" aria-hidden="true"><img src="/art/puzzle-three.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
 <!-- ═══ CLOSE ════════════════════════════════════════════════════════════ -->
 <section class="end">
-  <div class="w">
-    <h2>Start with something that matters.</h2>
-    <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
-    <div class="ctas">
-      <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
-      <a class="btn-2" href="/how-it-works">See how it works</a>
+  <div class="art-row">
+    <div class="w">
+      <h2>Start with something that matters.</h2>
+      <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
+      <div class="ctas">
+        <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
+        <a class="btn-2" href="/how-it-works">See how it works</a>
+      </div>
     </div>
+    <div class="art" aria-hidden="true"><img src="/art/seedling.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
