@@ -57,6 +57,8 @@ import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
+import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
+import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
@@ -3283,6 +3285,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
+    this.extractStatedFigures(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -4896,6 +4900,80 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: expectation.id },
       data: { alignment: verdict, alignmentNote: (result.note ?? '').trim() || null },
     }).catch(() => undefined);
+  }
+
+  /**
+   * THE FIGURES A TRACKING CHECK-IN IS FOR.
+   *
+   * The implementation-tracking pack presses harder on this than on anything else - the figures,
+   * the period each covers, and where it came from - and twelve contract check-ins have run with
+   * `ReportedFigure` empty, because nothing carried an answer out of the conversation. The chat
+   * asked the right question and the answer stayed prose.
+   *
+   * ONLY ON AN AGREEMENT GROUND. Every other situation has numbers in it too, and they are not
+   * figures reported under an arrangement - they are somebody describing their week. Writing those
+   * here would put a person's own account into a table built for reconciling two companies.
+   *
+   * EVERYTHING WRITTEN IS UNCONFIRMED. The schema's own rule, obeyed: a model's reading is not the
+   * figure until a person says so, and nothing compares an unconfirmed one to anything.
+   */
+  async extractStatedFigures(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, organizationId: true },
+    });
+    if (!ground || familyFor(ground.scenario) !== BoardFamily.AGREEMENT) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (!turns.length) return;
+    const transcript = turns
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
+      .join('\n');
+
+    /* The model does not know what year it is. Driven live, "the thirty-first of August" came back
+       dated 2024 on a check-in run in 2026 - see theDayThisWasSaid for why that is the worst error
+       this table can hold. */
+    const said = await this.anthropic.extract<{ figures?: unknown }>(
+      FIGURE_PROMPT + theDayThisWasSaid(new Date()),
+      [{ role: 'user', content: transcript }],
+      FIGURE_SCHEMA as any,
+    );
+    const figures = theFiguresTheyStated(said ?? null);
+    if (!figures.length) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    /* `from` is which side stated it and `statedBy` is who. Both are the customer's own handles
+       rather than row ids, because a figure has to stay readable after anybody leaves. */
+    const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
+      || participant?.email
+      || participantId;
+
+    for (const f of figures) {
+      await this.prisma.reportedFigure.create({
+        data: {
+          organizationId: ground.organizationId,
+          groundId,
+          says: f.says,
+          minorUnits: f.minorUnits,
+          currency: f.currency,
+          periodFrom: f.periodFrom,
+          periodTo: f.periodTo,
+          source: f.source,
+          statedBy: who,
+          from: who,
+          // Unconfirmed, always. See the module's header and the schema's.
+          confirmedAt: null,
+        },
+      }).catch((err: any) => this.logger.warn(`Could not keep a stated figure on ${checkInId}: ${err?.message}`));
+    }
+    this.logger.log(`Kept ${figures.length} stated figure(s) from ${checkInId}, unconfirmed.`);
   }
 
   async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
