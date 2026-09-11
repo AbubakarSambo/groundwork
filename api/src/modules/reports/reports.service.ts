@@ -2944,7 +2944,7 @@ happened, and what is in the way.`;
   async release(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
-      include: { participants: true, report: true },
+      include: { participants: { include: { user: { select: { passwordHash: true } } } }, report: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (!ground.report) throw new NotFoundException('Report not generated yet');
@@ -2968,8 +2968,19 @@ happened, and what is in the way.`;
      * and the string looks perfectly reasonable sitting here.
      */
     const reportUrl = `${frontend}/grounds/${groundId}/report`;
+    /*
+     * A REPORT LINK OPENS THE REPORT (NL-022). The route is behind the sign-in wall, and this mail goes
+     * to people invited by address who have never set a password - so the one mail whose whole job is
+     * to bring somebody back landed them on a sign-in page. For them the link is their own invite
+     * link, which signs them in the way it always has, with the report as where to go next. Somebody
+     * with a password gets the report route directly.
+     */
+    const linkFor = (p: { inviteToken: string | null; user: { passwordHash: string | null } | null }) =>
+      p.user?.passwordHash || !p.inviteToken
+        ? reportUrl
+        : `${frontend}/invite?token=${p.inviteToken}&next=${encodeURIComponent(`/grounds/${groundId}/report`)}`;
     const emailResults = await Promise.allSettled(
-      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)),
+      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, linkFor(p))),
     );
     /*
      * AND THE CHANNEL, IF THERE IS ONE.

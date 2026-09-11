@@ -1056,6 +1056,9 @@ model GroundParticipant {
   // Magic-link invite (cleared once accepted; userId is set on accept).
   inviteToken                String?        @unique @map("invite_token")
   inviteTokenExpiresAt       DateTime?      @map("invite_token_expires_at")
+  /// The two stamps of the invite-expiry sweep (grounds.cron.ts), so each mail goes once.
+  inviteExpiryWarnedAt       DateTime?      @map("invite_expiry_warned_at")
+  inviteLapsedToldAt         DateTime?      @map("invite_lapsed_told_at")
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]        @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)

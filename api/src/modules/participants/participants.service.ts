@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
+import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
@@ -412,7 +413,7 @@ export class ParticipantsService {
       data: {
         email,
         inviteToken: token,
-        inviteTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        inviteTokenExpiresAt: inviteExpiryFrom(),
         notifiedAt: null,
         // recordSend() resets this to SENT when the fresh invite goes out
         inviteDeliveryStatus: null,

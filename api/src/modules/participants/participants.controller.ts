@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength, Length } from 'class-validator';
 import { ParticipantsService } from './participants.service';
 import { Public, CurrentUser, OptionalAuth } from '../../common';
+import { Throttle } from '@nestjs/throttler';
 
 class AcceptInviteDto {
   @IsString()
@@ -41,6 +42,9 @@ export class ParticipantsController {
   constructor(private readonly participants: ParticipantsService) {}
 
   @Public()
+  /* It returns the check-in's label, the lead's name and the invitee's address for a token: throttled
+     like every other public token route, so nothing can sit and try tokens. */
+  @Throttle({ global: { limit: 30, ttl: 60_000 } })
   @Get('invite')
   @ApiOperation({ summary: 'Preview a participant invite from its token' })
   async preview(@Query('token') token: string) {

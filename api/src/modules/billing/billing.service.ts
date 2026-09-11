@@ -936,7 +936,10 @@ export class BillingService {
     await this.tellThemBillingChanged(organizationId, 'Your subscription has been cancelled. Your reports and boards stay available; new check-ins are paused.')
       .catch(() => undefined);
 
-    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/users/me/export`;
+    /* /settings is where "what we hold about you" and its download live. /users/me/export was the API
+       path, which the client has no route for, so the widest broadcast in the product opened the
+       not-found page. */
+    const downloadUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/settings`;
     const orgUsers = await this.prisma.user.findMany({
       where: { organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true },

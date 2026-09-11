@@ -25,6 +25,10 @@ import { toast } from 'sonner'
 export function InvitePage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
+  /* WHERE TO GO ONCE SIGNED IN, when the mail said. The report-ready mail sends a participant with no
+     password through their own invite link with the report as next, because the report route is behind
+     the sign-in wall. Only a check-in path is honoured: this is a link in a mail, not an open redirect. */
+  const next = params.get('next') ?? ''
   const navigate = useNavigate()
   /** Set when the server has emailed a fresh way in, instead of signing us in here. */
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
@@ -116,6 +120,10 @@ export function InvitePage() {
       // page only if no open check-in was found.
       const checkInId = (res as any).checkInId as string | null
       const groundId = (res as any).groundId as string
+      if (next.startsWith('/grounds/')) {
+        navigate(next, { replace: true })
+        return
+      }
       if (checkInId) {
         navigate(`/checkin/${checkInId}`, {
           state: { groundId, sessionNumber: 1, groundLabel: preview?.groundLabel },

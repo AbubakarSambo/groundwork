@@ -170,6 +170,11 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendWhoHasNotStarted: 'asked for',
   /* They sent the invitation; this is what became of it. */
   sendInviteBounced: 'asked for',
+  sendInviteLapsed: 'asked for',
+  /* They asked for the API; this is the answer, whichever it is. */
+  sendApiAccessApproved: 'asked for',
+  sendApiAccessDeclined: 'asked for',
+  sendApiAccessWithdrawn: 'asked for',
 
   /* MONEY AND THE ACCOUNT'S ABILITY TO KEEP WORKING.
      A warning that the plan is about to stop working is not a nudge, even though nobody asked for
@@ -186,6 +191,7 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
+  sendInviteAboutToLapse: 'we decided to send it',
   /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
      so it is ours to send — but it is about their system rather than about their team. */
   sendWebhookEndpointDying: 'we decided to send it',

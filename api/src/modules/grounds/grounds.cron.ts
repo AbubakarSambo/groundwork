@@ -13,6 +13,7 @@ import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
 import { ConversationService } from '../conversation/conversation.service';
+import { WARN_BEFORE_IT_LAPSES_DAYS } from '../participants/how-long-an-invite-lasts';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -405,6 +406,49 @@ export class GroundsCron {
   }
 
   /**
+   * AN INVITATION THAT IS ABOUT TO LAPSE, AND ONE THAT HAS (NL-009). Nothing warned before a link
+   * lapsed, so a person who lost the mail quietly never arrived and the lead never knew. Two days out
+   * the invitee is told, with the link that still works; once it has lapsed the lead is told, once.
+   */
+  @Cron('0 7 * * *', { timeZone: 'UTC' })
+  async tellThemBeforeAnInviteLapses() {
+    await this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
+      const now = new Date();
+      const soon = new Date(now.getTime() + WARN_BEFORE_IT_LAPSES_DAYS * 24 * 60 * 60 * 1000);
+      const frontend = this.config.get<string>('resend.frontendUrl') || '';
+      const aboutToLapse = await this.prisma.groundParticipant.findMany({
+        where: { userId: null, inviteToken: { not: null }, inviteExpiryWarnedAt: null, invitedAt: { not: null }, inviteTokenExpiresAt: { gt: now, lte: soon }, ground: { status: { notIn: TERMINAL } } },
+        select: { id: true, email: true, inviteToken: true, ground: { select: { label: true } } },
+        take: 200,
+      });
+      for (const p of aboutToLapse) {
+        try {
+          await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
+          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
+        } catch (err: any) {
+          this.logger.warn(`Could not warn ${p.email} about a lapsing invite: ${err?.message}`);
+        }
+      }
+      const lapsed = await this.prisma.groundParticipant.findMany({
+        where: { userId: null, inviteToken: { not: null }, inviteLapsedToldAt: null, invitedAt: { not: null }, inviteTokenExpiresAt: { lte: now }, ground: { status: { notIn: TERMINAL } } },
+        select: { id: true, email: true, ground: { select: { id: true, label: true, initiator: { select: { email: true, firstName: true } } } } },
+        take: 200,
+      });
+      for (const p of lapsed) {
+        try {
+          if (p.ground.initiator?.email) {
+            await this.email.sendInviteLapsed(p.ground.initiator.email, p.ground.initiator.firstName, p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}`);
+          }
+          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteLapsedToldAt: now } });
+        } catch (err: any) {
+          this.logger.warn(`Could not tell the lead about a lapsed invite for ${p.email}: ${err?.message}`);
+        }
+      }
+      if (aboutToLapse.length || lapsed.length) this.logger.log(`Invite expiry: warned ${aboutToLapse.length}, told the lead about ${lapsed.length}.`);
+    });
+  }
+
+  /**
    * Daily reminders (B1) - grounds die silently without them. Two kinds, both
    * throttled to once per NUDGE_THROTTLE_DAYS per party via lastNudgedAt:
    *   1. Return-nudge: an accepted party with an open, now-due session that
@@ -452,7 +496,9 @@ export class GroundsCron {
             id: true,
             email: true,
             ground: { select: { label: true } },
-            recordEntries: { orderBy: { createdAt: 'desc' }, take: 1, select: { text: true } },
+            /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
+               private record line into the mail and the WhatsApp body as "Last time: ...". The product's
+               central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
             user: { select: { phoneNumber: true } },
           },
         },
@@ -462,7 +508,6 @@ export class GroundsCron {
 
     for (const ci of newlyOpen) {
       const p = ci.participant;
-      const lastContext = p.recordEntries[0]?.text;
       const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**
@@ -481,12 +526,11 @@ export class GroundsCron {
          * failure there cannot lose the email, cannot leave the stamp unwritten, and cannot cause the
          * next cron pass to email the same person twice.
          */
-        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, lastContext);
+        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
 
         if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
-          const contextLine = lastContext ? `\n\nLast time: "${lastContext}"` : '';
           try {
-            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
+            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
           } catch (waErr: any) {
             // The email is already out. A second channel failing is worth knowing about, not retrying.
             this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);

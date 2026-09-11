@@ -632,6 +632,33 @@ export class EmailService {
     }, undefined, 'sendWebhookEndpointDying');
   }
 
+  /** Two days before their invitation lapses, the invitee is told, with the link that still works. */
+  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your invitation to ${groundLabel} lapses in two days`,
+      html: this.layout(
+        `<p>You were invited to give your account of <strong>${escapeHtml(groundLabel)}</strong>, and the invitation has not been opened. It lapses in two days.</p>` +
+        `<p><a href="${inviteUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
+      ),
+    }, { kind: 'REMINDER', participantId }, 'sendInviteAboutToLapse');
+  }
+
+  /** An invitation lapsed unopened; the lead who sent it can resend or take them off. */
+  async sendInviteLapsed(email: string, firstName: string | null, invitee: string, groundLabel: string, groundUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `An invitation to ${groundLabel} has lapsed`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>The invitation you sent to <strong>${escapeHtml(invitee)}</strong> for <strong>${escapeHtml(groundLabel)}</strong> was never opened and has now lapsed. They are still on the check-in; nothing has been sent to them since the reminder two days ago.</p>` +
+        `<p>Resend it from the check-in, correct the address, or take them off - whichever is true.</p>` +
+        `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
+      ),
+    }, undefined, 'sendInviteLapsed');
+  }
+
   /** The invitation bounced hard; the lead who sent it is the one who can fix the address. */
   async sendInviteBounced(email: string, firstName: string | null, invitee: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
@@ -644,6 +671,49 @@ export class EmailService {
         `<p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendInviteBounced');
+  }
+
+  /* --- The answer to a request for API access. Somebody asked; these are the three things that can become of it. --- */
+
+  async sendApiAccessApproved(email: string, firstName: string | null, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access is approved',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's request for API access has been approved. The Connect page now shows your keys, the calls, and the reference.</p>` +
+        `<p>Next step: issue a key for the system you are connecting, swap it for a token, and send something - the page ticks off each step as it sees it happen.</p>` +
+        `<p><a href="${link}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open Connect →</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessApproved');
+  }
+
+  async sendApiAccessDeclined(email: string, firstName: string | null, note: string, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access request was not approved',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's request for API access was not approved. The reason given:</p>` +
+        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p>If that changes what you intend to build, you can ask again from the Connect page, and it is read by a person.</p>` +
+        `<p><a href="${link}">Open Connect</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessDeclined');
+  }
+
+  async sendApiAccessWithdrawn(email: string, firstName: string | null, note: string, link: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork API access has been withdrawn',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Your organisation's API access has been withdrawn, effective now: calls made with your keys will be refused from this point. The reason given:</p>` +
+        `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
+        `<p>Nothing you have built is deleted, and your records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
+        `<p><a href="${link}">Open Connect</a></p>`,
+      ),
+    }, undefined, 'sendApiAccessWithdrawn');
   }
 
   /** The base the product's own links are built from, for callers that need to make one. */
@@ -764,14 +834,13 @@ export class EmailService {
    * moment a new session becomes available, carrying context from the last
    * check-in so the person doesn't have to remember where they left off.
    */
-  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string, lastCheckInContext?: string): Promise<void> {
-    const contextNote = lastCheckInContext
-      ? `<p style="color:#6B6560;">Last time: "${lastCheckInContext}"</p>`
-      : '';
+  async sendSessionReady(email: string, groundLabel: string, checkInUrl: string): Promise<void> {
+    /* No "Last time: ..." line (NL-007). It quoted the person's own last record entry into a mailbox
+       their administrators can read, forward and export - the one thing the product promises not to do. */
     await this.sendEmail({
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>A new check-in is ready for <strong>${escapeHtml(groundLabel)}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>A new check-in is ready for <strong>${escapeHtml(groundLabel)}</strong>.</p><p><a href="${checkInUrl}">Check in</a></p>`),
     }, undefined, 'sendSessionReady');
   }
 
@@ -1007,7 +1076,7 @@ export class EmailService {
       subject: 'Your Groundwork record is yours to keep',
       html: this.layout(
         `<p>${greeting(firstName)} Your organisation's Groundwork subscription has been cancelled.</p>
-         <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
+         <p>Your record does not disappear. It belongs to you. Sign in and download it from your settings: <a href="${downloadUrl}">what Groundwork holds about you</a>.</p>`,
       ),
     }, undefined, 'sendRecordPortabilityNotice');
   }

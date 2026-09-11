@@ -117,4 +117,6 @@ export const CronLock = {
   /** Its own lock: it shared SEND_REMINDERS with the daily reminder job, and a long pass overlapping
       09:00 skipped the day's reminders with no retry. */
   SESSION_READY: 920_010,
+  /** The invite-expiry sweep. See grounds.cron.ts tellThemBeforeAnInviteLapses. */
+  INVITE_EXPIRY: 920_011,
 } as const;

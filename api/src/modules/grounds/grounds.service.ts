@@ -39,6 +39,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
+import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -630,7 +631,7 @@ export class GroundsService {
             roleAsDescribed: p.roleAsDescribed,
             invitedAt: new Date(),
             inviteToken,
-            inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            inviteTokenExpiresAt: inviteExpiryFrom(),
           },
         });
         pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
@@ -2504,7 +2505,7 @@ export class GroundsService {
     // If the entry flow pre-generated a token (so the share link could be shown
     // immediately before auth), honour it here - no separate lookup needed.
     const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
-    const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+    const inviteTokenExpiresAt = inviteExpiryFrom();
 
     // Prevent duplicate participant - surface a clean 400 instead of a Prisma constraint error.
     // Exception: if the existing record was never accepted (userId=null), refresh the token and
@@ -2525,7 +2526,7 @@ export class GroundsService {
        * link - only the expiry is refreshed.
        */
       const freshToken = existing.inviteToken ?? crypto.randomBytes(32).toString('hex');
-      const freshExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      const freshExpiry = inviteExpiryFrom();
       await this.prisma.groundParticipant.update({
         where: { id: existing.id },
         data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
@@ -2867,7 +2868,7 @@ export class GroundsService {
     if (completedCheckIn) throw new BadRequestException('This participant has already completed their check-in');
 
     const token = participant.inviteToken ?? crypto.randomBytes(32).toString('hex');
-    const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const inviteTokenExpiresAt = inviteExpiryFrom();
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
