@@ -54,6 +54,8 @@ export interface Heard {
    */
   expectationPerson?: string | null;
   expectationText?: string | null;
+  /** The measures this work is counted by, where the lead named them or pointed at a document. */
+  targets?: { name?: string | null; target?: number | null }[] | null;
 }
 
 export type Proposal =
@@ -61,7 +63,8 @@ export type Proposal =
   | { kind: 'timeline'; days: number; say: string }
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
-  | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string };
+  | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string }
+  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string };
 
 /**
  * A day count somebody would actually choose. Below a week there is nothing to check in against;
@@ -80,6 +83,43 @@ const MAX_SUCCESS = 600;
  * which is the difference between a product that helps and one that edits your record while you talk
  * to it.
  */
+/**
+ * THE MEASURES, WHEN A LEAD NAMES THEM OR POINTS AT THE DOCUMENT THAT HAS THEM.
+ *
+ * Asked directly: a document does not have to set the bar, but it can be read for evidence, and it
+ * can set the bar if somebody tells it to. That second half is what this is. The context chat
+ * already has the open documents in its prompt, so "use the targets in the delivery plan" is an
+ * instruction it can already follow - what was missing is somewhere for the answer to land.
+ *
+ * IT IS STILL PROPOSED AND CONFIRMED, like every other thing this chat produces. A target read out
+ * of a plan and written without anybody saying yes is a bar nobody set, appearing on a board people
+ * are then read against. The lead says yes and it is theirs; nobody says yes and it is nothing.
+ *
+ * A TARGET WITHOUT A NUMBER IS KEPT, NOT REFUSED. `GroundObjective.target` is nullable and its own
+ * comment says why: a qualitative objective is tracked and not counted. Refusing "get the new depot
+ * running" for having no number would drop the thing the quarter is actually about.
+ *
+ * WHAT IS REFUSED is a number with nothing it counts, and a name so long it is a sentence - both of
+ * which are the model handing back prose where a measure goes.
+ */
+function theMeasuresTheyNamed(heard: Heard): { name: string; target: number | null }[] {
+  const rows = Array.isArray(heard.targets) ? heard.targets : [];
+  const out: { name: string; target: number | null }[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const name = String(r?.name ?? '').trim();
+    if (name.length < 2 || name.split(/\s+/).length > 12) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const n = r?.target;
+    const target = Number.isFinite(n) && (n as number) >= 0 ? Math.round(n as number) : null;
+    out.push({ name, target });
+  }
+  /* Eight is already more than a board reads at a glance, and a longer list is a plan pasted in. */
+  return out.slice(0, 8);
+}
+
 export function proposalFrom(
   gap: string | null,
   heard: Heard,
@@ -87,6 +127,21 @@ export function proposalFrom(
   parties: { id: string; email: string; name?: string | null }[] = [],
 ): Proposal {
   if (!gap) return { kind: 'none', why: 'There is no open question for this to answer.' };
+
+  if (gap === 'targets') {
+    const targets = theMeasuresTheyNamed(heard);
+    if (!targets.length) {
+      return { kind: 'none', why: 'Nothing in that answer reads as a measure, so nothing was set.' };
+    }
+    const counted = targets.filter((t) => t.target != null).length;
+    return {
+      kind: 'targets',
+      targets,
+      say: counted
+        ? `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, ${counted} of them with a number to count against. You can change any of them on the board.`
+        : `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, tracked rather than counted, because no number was named for them.`,
+    };
+  }
 
   if (gap === 'timeline') {
     const days = heard.timelineDays;
@@ -205,6 +260,21 @@ export function extractionToolFor(gap: string) {
     props.expectationText = {
       type: 'string',
       description: 'What they expect of that person, in THEIR words, trimmed to the expectation itself. Omit if they did not say, and never invent a sensible one.',
+    };
+  }
+
+  if (gap === 'targets') {
+    props.targets = {
+      type: 'array',
+      description: 'The measures this work is counted by. Take them from what the person said, INCLUDING when they point at a document you can read - "use the targets in the delivery plan" means read them out of it. Omit entirely if they named none and pointed at nothing.',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'What is being counted, in their words or the document\'s. Short: "shops onboarded", "first response under four hours". Never a sentence.' },
+          target: { type: 'number', description: 'The number to reach, when one is stated. OMIT it rather than guessing - plenty of real measures have no number and are tracked rather than counted.' },
+        },
+        required: ['name'],
+      },
     };
   }
 
