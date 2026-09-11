@@ -1401,9 +1401,21 @@ export function EntryChatPage() {
     setStreamingIdx(loading && last?.role === 'assistant' && last.content !== '…' ? lastIdx : null)
   }, [history, phase, loading])
 
+  /**
+   * SCROLL TO THE NEWEST MESSAGE - IN BOTH CHATS, NOT ONE OF THEM.
+   *
+   * One ref serves two conversations: the setup chat and the check-in. The dependency list only
+   * carried the check-in's history, so in setup nothing ever scrolled. Every answer was appended
+   * below the fold of a list that did not move, and the composer - painted after it - covered it.
+   * Read back as "the message I type goes behind the chat input field", which is exactly what it
+   * looked like: the message was there, underneath, and nothing had scrolled down to it.
+   *
+   * `onboardingLoading` is in here too, because the typing indicator appears and disappears as its
+   * own row and changes the height of the list without changing the history.
+   */
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
-  }, [displayedHistory, loading, onboardingStep, phase])
+  }, [displayedHistory, onboardingHistory, loading, onboardingLoading, onboardingStep, phase])
 
   // Start first check-in question (AI-generated) after onboarding
   const startCheckin = useMutation({
