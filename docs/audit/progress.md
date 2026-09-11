@@ -142,9 +142,10 @@ this one.
 
 ## Two things that need a decision, not code
 
-**The invite-link upload now answers the consent question on the uploader's behalf**, recording it
-as taken on the word of whoever holds the invitation. The signed-in path still asks. The plan said
-refuse when unconfirmed. The asymmetry is deliberate and has a test pinning it.
+~~The invite-link upload answers the consent question on the uploader's behalf while the signed-in
+path still asks.~~ **Wrong, corrected 11 September.** Both paths behave identically, and it is the
+product owner's own decision of the same day: nothing is refused, the assumption is stated at the
+moment of upload instead. There is no asymmetry and nothing to decide.
 
 **One sentence on the frozen privacy page is now demonstrably false.** It says staff cannot access
 organisational data. The words half is true - a spec proves no staff surface reads turns, record
