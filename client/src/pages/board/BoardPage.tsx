@@ -193,6 +193,7 @@ export function BoardPage() {
     startingState: has('startingState') && !!b.startingState,
     decisions: has('decisions') && !!b.decisions?.length,
     objectives: has('objectives') && !!b.objectives?.length,
+    cascade: has('cascade') && !!b.cascade,
     divergence: has('divergence') && !!b.divergence,
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && !!b.dependencies,
@@ -519,7 +520,39 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- against the plan */}
-        {(shown.objectives || shown.divergence) && <Zone label="Against the plan" />}
+        {(shown.objectives || shown.divergence || shown.cascade) && <Zone label="Against the plan" />}
+
+        {/*
+          WHAT THIS SITS UNDER, ABOVE EVERYTHING IT QUALIFIES.
+
+          A team writing results underneath a wider objective cannot be read at all without the
+          wider objective on the page - every line of movement below means something different
+          depending on what it was in service of. So this goes at the very top of the zone, above
+          the definition of success, and it renders its own no: a group that opened an alignment
+          check-in and never named what it aligns to is told so plainly rather than shown a gap.
+        */}
+        {shown.cascade && b.cascade && (
+          <Card>
+            <Row first>
+              <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 6 }}>
+                {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
+              </div>
+              {b.cascade.parentNamed && (
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.35 }}>
+                  {b.cascade.parentNamed}
+                </div>
+              )}
+              <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{b.cascade.why}</p>
+              {b.cascade.teamsNamed.length > 1 && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {b.cascade.teamsNamed.map((t: string) => (
+                    <span key={t} style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)' }}>{t}</span>
+                  ))}
+                </div>
+              )}
+            </Row>
+          </Card>
+        )}
 
         {/*
           THE PLAN'S OWN TOP LINE, WHICH THIS ZONE WAS MISSING.

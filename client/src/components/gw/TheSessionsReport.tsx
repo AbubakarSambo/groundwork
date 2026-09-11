@@ -300,6 +300,23 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           the standard is said once above them: either what is set, or that nothing is. Not both as
           competing statements, and not the same four lines twice.
         */}
+        {/*
+          WHAT THIS SITS UNDER, ABOVE WHAT GOOD LOOKS LIKE.
+
+          Where a team's objectives serve a wider one, the wider one has to be on the page before
+          anything measured against it. The no case prints too, and only where the situation asked
+          for a cascade: "nothing above this has been named yet" is a finding on an alignment
+          check-in, not an empty state.
+        */}
+        {d.cascade && (
+          <Row label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+            {d.cascade.parentNamed && (
+              <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
+            )}
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', ...PROSE }}>{d.cascade.why}</p>
+          </Row>
+        )}
+
         {d.againstSuccess && (
           <Row label="Against what good looks like">
             {/* The definitions render folded below, once; the component's own copy of them is switched off. */}

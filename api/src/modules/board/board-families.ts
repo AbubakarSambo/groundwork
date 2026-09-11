@@ -148,6 +148,11 @@ export type BoardSection =
   | 'checkInGrid'
   | 'contribution'
   | 'coverage'
+  /**
+   * SOMETHING SITS ABOVE THIS. Rendered only when the record says so - see is-this-a-cascade.ts.
+   * A family opting in means "a cascade may be shown here", never "show a tree".
+   */
+  | 'cascade'
   | 'patterns'
   | 'decisions'
   | 'poll';
@@ -165,7 +170,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.DELIVERY]: [
     'phaseSpine', 'quickRead', 'objectives', 'startingState', 'divergence',
     'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
-    'patterns', 'decisions', 'poll',
+    'cascade', 'patterns', 'decisions', 'poll',
   ],
   /**
    * COHORT KEEPS ITS SECTIONS, and its board is simply not SHARED by default.
@@ -180,7 +185,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.COHORT]: [
     'phaseSpine', 'quickRead', 'objectives', 'divergence',
-    'checkInGrid', 'contribution', 'patterns',
+    'checkInGrid', 'contribution', 'cascade', 'patterns',
   ],
   [BoardFamily.ONBOARDING]: [
     /*
@@ -285,7 +290,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
   [BoardFamily.RECURRING]: [
     'quickRead', 'objectives', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
-    'divergence', 'contribution', 'patterns', 'decisions', 'poll',
+    'divergence', 'contribution', 'cascade', 'patterns', 'decisions', 'poll',
   ],
 };
 

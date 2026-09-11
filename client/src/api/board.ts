@@ -3,7 +3,7 @@ import { apiClient } from './client'
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
-  | 'patterns' | 'decisions' | 'poll'
+  | 'cascade' | 'patterns' | 'decisions' | 'poll'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING'
 export type CoverageVariant = 'text' | 'bar'
@@ -37,6 +37,18 @@ export type BoardPresent = {
   /** Whether the caller may set targets and the poll question (initiator only). */
   canEditFrame: boolean
   readOnlyNote: string
+  /**
+   * What this ground's objectives sit under, where anything sits above them. Present only on
+   * boards whose family opted in, and only where the record named something above - or where the
+   * situation said there should be one and nothing was named, which is the case worth showing.
+   */
+  cascade?: {
+    isCascade: boolean
+    basis: ('DECLARED' | 'A_PARENT_IS_RECORDED' | 'SAID_IN_THE_CHAT' | 'SEVERAL_TEAMS_NAMED')[]
+    parentNamed: string | null
+    teamsNamed: string[]
+    why: string
+  } | null
   participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
 
   phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null }[] }
