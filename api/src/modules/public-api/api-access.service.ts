@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { API_ACCESS_ASKED_EVENT, ApiAccessAskedEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { whyThisRequestCannotBeRecorded, whyTheApiIsRefused } from './access-is-asked-for-not-bought';
+import { EmailService } from '../email/email.service';
 
 /**
  * ASKING FOR THE API, AND DECIDING WHO GETS IT.
@@ -19,6 +20,7 @@ export class ApiAccessService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly email: EmailService,
   ) {}
 
   /**
@@ -178,6 +180,27 @@ export class ApiAccessService {
     });
 
     this.logger.log(`API access for ${request.organizationId} is now ${status}.`);
+    /*
+     * SOMEBODY IS TOLD. The comment on the note said "somebody is going to be told no", and nothing
+     * told them: a customer who asked waited with no answer, or found out a working integration was
+     * off when their calls began failing. The person who asked hears, and so does every admin of the
+     * organisation, with the note that was made mandatory so that they could be told.
+     */
+    void this.tellThem(request.organizationId, request.requestedByUserId, status, updated.note ?? null)
+      .catch((err: any) => this.logger.warn(`Could not tell ${request.organizationId} about the API access decision: ${err?.message}`));
     return updated;
+  }
+
+  private async tellThem(organizationId: string, requestedByUserId: string, status: ApiAccessStatus, note: string | null): Promise<void> {
+    const people = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null, isActive: true, OR: [{ id: requestedByUserId }, { role: 'ADMIN' }] },
+      select: { email: true, firstName: true },
+    });
+    const link = `${this.email.frontendUrlForLinks().replace(/\/$/, '')}/org/integrations`;
+    for (const p of people) {
+      if (status === ApiAccessStatus.APPROVED) await this.email.sendApiAccessApproved(p.email, p.firstName, link);
+      else if (status === ApiAccessStatus.DECLINED) await this.email.sendApiAccessDeclined(p.email, p.firstName, note ?? '', link);
+      else await this.email.sendApiAccessWithdrawn(p.email, p.firstName, note ?? '', link);
+    }
   }
 }
