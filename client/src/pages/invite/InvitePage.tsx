@@ -311,11 +311,12 @@ export function InvitePage() {
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
               {/*
                 AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
-                stroke - `releasedAt` is stamped once - so "the same report, at the same moment" is
-                true and stays. What was missing is that a party then meets an activation gate the
-                lead does not: you press once to open it, and until you do, it is closed. Somebody
-                who has been told they get it at the same moment and then finds a button reads the
-                button as the product going back on the first half.
+                stroke - `releasedAt` is stamped once - which made "at the same moment" true of the
+                stamp and false of the reading: a party then meets an activation gate the lead does
+                not, and until they press it is closed. Somebody told they get it at the same moment
+                as their manager clicks through, finds a button, and reads that as the promise being
+                withdrawn at the last step. Ruled out 11 September; what is true is that it is the
+                SAME report and opening it is one press.
               */}
               <b>What you get back.</b> The same report {preview.initiatorName} gets. You open your
               copy with one press when it lands, plus a short private note meant only for you.
