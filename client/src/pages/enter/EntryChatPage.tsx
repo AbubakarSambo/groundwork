@@ -33,6 +33,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, WEEKDAYS, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
@@ -1223,6 +1224,10 @@ export function EntryChatPage() {
     staleTime: 5 * 60 * 1000,
   })
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  /* Which days this team works. Empty means nobody said, which is not the same as every day - and
+     it is never pre-set to Monday-Friday, because that is one region's office week rather than a
+     fact about anybody's. */
+  const [workingDays, setWorkingDays] = useState<number[]>([])
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
@@ -1915,6 +1920,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
@@ -2197,6 +2203,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
@@ -2219,6 +2226,7 @@ export function EntryChatPage() {
           if (patch.orgName !== undefined) payload.orgName = patch.orgName
           if (patch.cadence !== undefined) payload.cadence = patch.cadence
           if (patch.cadenceAnchorDay !== undefined) payload.cadenceAnchorDay = patch.cadenceAnchorDay
+          if (patch.workingDays !== undefined) payload.workingDays = patch.workingDays
           if (patch.checkInBy !== undefined) payload.checkInBy = patch.checkInBy
           if (patch.lastCheckInBy !== undefined) payload.lastCheckInBy = patch.lastCheckInBy
           localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
@@ -2226,7 +2234,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -3722,6 +3730,42 @@ export function EntryChatPage() {
                   </div>
                 </div>
               )}
+              {/*
+                WHICH DAYS THIS TEAM WORKS.
+
+                A daily cadence was +1 day flat, so it landed on Saturdays and Sundays, and daily is
+                the one rhythm with no day picker - so "weekdays only" could not be said at all.
+                Offered for every rhythm rather than only daily, because a fortnightly anchor lands
+                on a weekend too, just more quietly.
+
+                Nothing is pre-selected. Monday to Friday is one region's office week, not a fact
+                about anybody's: field teams work Saturdays and the week starts on Sunday across
+                much of where this is used.
+              */}
+              {cadence !== 'ONE_TIME' && (
+                <div style={{ marginBottom: 8 }}>
+                  <FieldLabel>Which days does this team work? (optional)</FieldLabel>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
+                      const on = workingDays.includes(i)
+                      return (
+                        <button key={d} type="button"
+                          onClick={() => setWorkingDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b))}
+                          style={{
+                            flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                            background: on ? 'var(--gw-blue-bg)' : 'white', color: on ? 'var(--gw-navy)' : 'var(--gw-muted)',
+                          }}>{d}</button>
+                      )
+                    })}
+                  </div>
+                  <button type="button" onClick={() => setWorkingDays(workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? [] : [...WEEKDAYS])}
+                    style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
+                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear — any day is fine' : 'Weekdays only, skip weekends'}
+                  </button>
+                </div>
+              )}
+
               {/* Day-of-month anchor for monthly ("on the 1st") */}
               {cadence === 'MONTHLY' && (
                 <div style={{ marginBottom: 8 }}>
@@ -3775,6 +3819,43 @@ export function EntryChatPage() {
               {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
                 <div style={{ fontSize: 11.5, color: 'var(--gw-danger)', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
               )}
+
+              {/*
+                WHAT THE FOUR FIELDS ACTUALLY PRODUCE.
+
+                A rhythm, a day of the week, a start date and a set of working days are four
+                controls nobody can compose in their head, and the only way to find out what they
+                produced was to wait for the first check-in to open on the wrong day. It says
+                "would" rather than "will" because nothing is scheduled until the check-in exists.
+              */}
+              {(() => {
+                const dates = whenTheCheckInsLand({
+                  cadence: cadence as CadenceName,
+                  anchorDay: cadenceAnchorDay,
+                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                  workingDays,
+                  howMany: cadence === 'DAILY' ? 5 : 4,
+                })
+                return (
+                  <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
+                      {dates.length > 1 ? 'Check-ins would open on' : 'The check-in would open on'}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                      {dates.map(sayTheDate).join(' · ')}{dates.length > 1 ? ' · and on from there' : ''}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
+                      {whatIsSetAndWhatIsNot({
+                        name: groundName,
+                        cadenceChosen,
+                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                        workingDays,
+                        peopleAdded: inviteAdded.length,
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Invite contributors - before create account */}

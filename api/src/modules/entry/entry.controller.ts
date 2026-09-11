@@ -5,7 +5,7 @@ import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -272,6 +272,9 @@ export class EntryCommitDto {
    */
   @IsOptional() @IsBoolean() cadenceChosen?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
+  /** Which days this team works, 0=Sun..6=Sat. Absent means nobody said; never defaulted. */
+  @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  workingDays?: number[];
   @IsOptional() @IsString() checkInBy?: string;
   @IsOptional() @IsString() lastCheckInBy?: string;
 

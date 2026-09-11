@@ -86,6 +86,7 @@ import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 
 /**
@@ -3391,7 +3392,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true },
     });
 
     /*
@@ -3425,7 +3426,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
-      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
+      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null, ground?.workingDays ?? []);
     // Respect the end date: do not schedule a next session past it.
     const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
     if (!pastEnd) {
@@ -3547,11 +3548,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Convert a cadence enum to the next available date from now.
    * anchorDay: weekly/fortnightly = weekday (0=Sun..6=Sat); monthly = day of month (1-31).
    */
-  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
+  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null, workingDays: number[] = []): Date {
+    /*
+     * EVERY BRANCH ENDS AT THE SAME ROLL-FORWARD, WHICH IS WHY IT IS WRAPPED RATHER THAN REPEATED.
+     *
+     * Daily was `+1 day` flat and landed on Saturdays. Fixing only that branch would have left a
+     * fortnightly anchor doing the same thing more quietly, and a check-in that opens on a day
+     * nobody works reads on the board as somebody who did not answer.
+     */
+    const onADayTheyWork = (date: Date) => theNextDayTheyWork(date, workingDays);
     const d = new Date();
     if (cadence === Cadence.DAILY) {
       d.setDate(d.getDate() + 1);
-      return d;
+      return onADayTheyWork(d);
     }
     if (cadence === Cadence.MONTHLY) {
       // Next month; if a day-of-month anchor is set, land on it (clamped to month length).
@@ -3560,7 +3569,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         d.setDate(Math.min(anchorDay, daysInMonth));
       }
-      return d;
+      return onADayTheyWork(d);
     }
     const days = cadence === Cadence.WEEKLY ? 7 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
@@ -3569,7 +3578,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if ((cadence === Cadence.WEEKLY || cadence === Cadence.FORTNIGHTLY) && anchorDay != null && anchorDay >= 0 && anchorDay <= 6) {
       while (d.getDay() !== anchorDay) d.setDate(d.getDate() + 1);
     }
-    return d;
+    return onADayTheyWork(d);
   }
 
   /**
