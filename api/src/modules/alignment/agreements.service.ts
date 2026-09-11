@@ -300,6 +300,79 @@ export class AgreementsService {
     });
   }
 
+  /**
+   * WHAT SOMEBODY SAID THE ARRANGEMENT IS, RECORDED BESIDE WHAT IS WRITTEN.
+   *
+   * The point of the whole surface: not to arm anybody for a conversation, but to get the basis
+   * everybody is working from onto one page, early, so that nothing later turns on two people
+   * having read one sentence two ways.
+   *
+   * Two shapes, one discovery. A different understanding of a clause that exists goes onto the term
+   * as both readings side by side. Something described that no clause covers becomes its own row
+   * with no clause reference, because there is nothing to go and look at - and that absence is the
+   * information.
+   *
+   * NOTHING HERE IS AGREED BY ANYBODY. A reading arrives as a reading whoever said it, and
+   * `whatItMayBeUsedFor` still refuses to let either shape say that something did or did not
+   * happen. This records understandings; people settle them.
+   */
+  async whatTheyUnderstandItToBe(
+    organizationId: string,
+    groundId: string,
+    versionId: string,
+    who: string,
+    said: {
+      differences: { about: string; reads: string; termId: string }[];
+      notInTheDocument: { about: string; reads: string }[];
+    },
+  ) {
+    const version = await this.prisma.agreementVersion.findFirst({
+      where: { id: versionId, agreement: { organizationId, groundId } },
+      select: { id: true },
+    });
+    if (!version) return { recorded: 0 };
+    let recorded = 0;
+
+    for (const d of said.differences) {
+      const term = await this.prisma.agreementTerm.findFirst({ where: { id: d.termId, versionId: version.id } });
+      if (!term) continue;
+      const existing = (term.readDifferently as { by: string; reads: string }[] | null) ?? [];
+      /* Said twice by the same person is one understanding, not two. */
+      if (existing.some((e) => e.by === who)) continue;
+      const both = [
+        ...(existing.length ? existing : [{ by: 'the document', reads: term.reads }]),
+        { by: who, reads: d.reads },
+      ];
+      await this.prisma.agreementTerm.update({
+        where: { id: term.id },
+        data: { state: 'read differently by each side', readDifferently: both },
+      });
+      recorded += 1;
+    }
+
+    for (const n of said.notInTheDocument) {
+      const already = await this.prisma.agreementTerm.findFirst({
+        where: { versionId: version.id, says: n.about, state: 'said, and not in the document' },
+        select: { id: true },
+      });
+      if (already) continue;
+      await this.prisma.agreementTerm.create({
+        data: {
+          versionId: version.id,
+          says: n.about,
+          reads: n.reads,
+          clause: null,
+          state: 'said, and not in the document',
+          /* Who described it, so the row is never anonymous. It is not a check - nobody has
+             confirmed a clause here, because there is no clause. */
+          checkedBy: [who],
+        },
+      });
+      recorded += 1;
+    }
+    return { recorded };
+  }
+
   /** Somebody who would know says the reading is right. Two sides, and it is agreed. */
   async checked(organizationId: string, groundId: string, termId: string, who: string, by: { userId: string; role: string }) {
     await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);

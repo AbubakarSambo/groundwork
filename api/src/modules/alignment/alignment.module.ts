@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AlignmentService } from './alignment.service';
 import { AgreementsService } from './agreements.service';
@@ -7,11 +7,13 @@ import { PartiesService } from './parties.service';
 import { ObligationsService } from './obligations.service';
 import { GroundsModule } from '../grounds';
 import { AlignmentController } from './alignment.controller';
+import { WhatEachSideUnderstands } from './it-listens-for-a-check-in-and-writes-nothing-else';
+import { ConversationModule } from '../conversation';
 
 @Module({
-  imports: [PrismaModule, GroundsModule],
+  imports: [PrismaModule, GroundsModule, forwardRef(() => ConversationModule)],
   controllers: [AlignmentController],
-  providers: [AlignmentService, AgreementsService, AssertionsService, PartiesService, ObligationsService],
+  providers: [AlignmentService, AgreementsService, AssertionsService, PartiesService, ObligationsService, WhatEachSideUnderstands],
   exports: [AlignmentService, AgreementsService, AssertionsService, PartiesService, ObligationsService],
 })
 export class AlignmentModule {}
