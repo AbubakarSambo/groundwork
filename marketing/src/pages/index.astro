@@ -75,26 +75,40 @@ section{padding:72px 0}
 
 /* ── the drawings ─────────────────────────────────────────────────────────
    The sections below the hero were text in a 660px column with a third of a
-   wide screen empty on either side of it. These fill that margin rather than
-   the column: one framed drawing per section, sitting beside the words at the
-   width the margin already had.
+   wide screen empty on either side of it. These fill that margin.
 
-   They carry no information and they say so - `alt` is empty and the frame is
-   aria-hidden, so a screen reader is not read a description of a picture that
-   is there to make the page feel like something people made. The words are the
-   page; these are the room it is read in.
+   BEHIND THE SECTION, THE WAY THE HERO'S IS. They were a positioned <img> in a
+   second grid column first, which made each drawing a thing on the page to be
+   looked at and a second column to be laid out. Her call: keep them the way the
+   hero does it. So each one is the section's own background, sized to the
+   margin, under a wash of the ground it sits on - texture rather than a picture,
+   nothing in front of the text, nothing to shift the layout while it loads, and
+   on a screen where the image never arrives the section is exactly what it was.
 
-   Under 900px there is no margin to fill, so the drawing goes above the text at
-   a smaller size rather than squeezing the measure. */
-.art-row{max-width:1020px;margin:0 auto;padding:0 24px;display:grid;
-         grid-template-columns:minmax(0,1fr) 216px;gap:44px;align-items:start}
-.art-row > .w{max-width:660px;margin:0;padding:0}
-.art-row img{width:100%;height:auto;display:block}
-.art-row .art{margin-top:6px}
-.end .art-row{align-items:center}
+   `--ground` is the colour of the wash and every section that takes a drawing
+   sets it, because the page has three grounds and an overlay that guessed would
+   be visible on two of them. */
+/* `section.art-bg`, NOT `.art-bg`. Two of the three grounds set `background` as
+   a shorthand - `.band` and `.end` both do - and a shorthand resets every
+   background property it does not mention, including repeat. `.end` is declared
+   after this block, so at equal specificity it won, and the close tiled the
+   drawing four times across the band. The element selector settles it wherever
+   these rules end up in the file.
+
+   A FIXED WIDTH, not a share of the height. At `auto 74%` the drawing grew with
+   the section, so the tallest one carried a drawing twice the size of the
+   shortest and read as an illustration rather than as texture. One size, so the
+   four are the same weight. */
+section.art-bg{position:relative;background-repeat:no-repeat;
+               background-position:right -20px center;background-size:300px auto}
+section.art-bg::after{content:'';position:absolute;inset:0;background:var(--ground);
+                      opacity:.82;pointer-events:none;z-index:0}
+section.art-bg > .w, section.art-bg > .w-wide{position:relative;z-index:1}
+/* Under 900px the margin is gone and the drawing would sit under the words, so it
+   moves off to the side, smaller and fainter, and stays texture. */
 @media(max-width:900px){
-  .art-row{grid-template-columns:1fr;gap:22px;max-width:708px}
-  .art-row .art{order:-1;width:150px;margin:0 auto}
+  section.art-bg{background-position:right -66px bottom 6%;background-size:190px auto}
+  section.art-bg::after{opacity:.9}
 }
 
 /* ── the one label style on the page ─────────────────────────────────────── */
@@ -255,9 +269,8 @@ details.more>summary::marker{color:var(--gw-muted)}
 <!-- ═══ HOW IT WORKS ══════════════════════════════════════════════════════
      Hairlines, not cards. Three cards make three things of equal weight; this
      is one sequence and reads as one. -->
-<section class="fade">
-  <div class="art-row">
-    <div class="w">
+<section class="fade art-bg" style="--ground:var(--gw-paper);background-image:url(/art/rowing.png)">
+  <div class="w">
     <p class="lab">How it works</p>
     <div class="steps">
       <div class="step"><i>01</i><div><b>Groundwork asks each person separately.</b>
@@ -267,8 +280,6 @@ details.more>summary::marker{color:var(--gw-muted)}
       <div class="step"><i>03</i><div><b>Everyone gets the same picture.</b>
         <span>A shared report and your private report with notes.</span></div></div>
     </div>
-    </div>
-    <div class="art" aria-hidden="true"><img src="/art/rowing.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
@@ -336,16 +347,13 @@ details.more>summary::marker{color:var(--gw-muted)}
 <!-- ═══ WHY LEADERS MISS PROBLEMS ═════════════════════════════════════════
      The argument the reports illustrate. Kept in full: it is 7% of the page and
      it is the reason the product exists. -->
-<section class="band fade">
-  <div class="art-row">
-    <div class="w">
+<section class="band fade art-bg" style="--ground:var(--gw-paper-2);background-image:url(/art/compass-blue.png)">
+  <div class="w">
     <p class="lab">Why leaders miss problems</p>
     <h2 class="h2">Every update you get has been through someone else first.</h2>
     <p class="lede" style="margin-bottom:14px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
     <p class="lede" style="margin-bottom:14px">Some people dominate meetings. Some avoid conflict. Some do not feel safe challenging a decision. So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
     <p class="lede">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and nobody has checked.</p>
-    </div>
-    <div class="art" aria-hidden="true"><img src="/art/compass-blue.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
@@ -359,9 +367,8 @@ details.more>summary::marker{color:var(--gw-muted)}
      NOT "fairness improves team culture" - unprovable, the register every HR
      product already occupies, and not how anything else here talks. The
      mechanism is stated; the reader draws the conclusion. -->
-<section class="fade">
-  <div class="art-row">
-    <div class="w">
+<section class="fade art-bg" style="--ground:var(--gw-paper);background-image:url(/art/puzzle-three.png)">
+  <div class="w">
     <p class="lab">If you are the one being checked in on</p>
     <h2 class="h2" style="font-size:25px">Everyone is asked the same way, at the same time.</h2>
     <p class="lede" style="margin-bottom:14px">Your account carries the same weight whether or not you were in the room, and whether or not you got to anybody first.</p>
@@ -389,23 +396,18 @@ details.more>summary::marker{color:var(--gw-muted)}
     <div class="callout">
       <p>Nobody can speak for you. Your check-in is read and synthesized by a language model, not by a person: not by us, and not by whoever brought your team here. Leaders get the report. They cannot request an individual's check-in, and there is no screen anywhere that shows one, including ours.</p>
     </div>
-    </div>
-    <div class="art" aria-hidden="true"><img src="/art/puzzle-three.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 
 <!-- ═══ CLOSE ════════════════════════════════════════════════════════════ -->
-<section class="end">
-  <div class="art-row">
-    <div class="w">
-      <h2>Start with something that matters.</h2>
-      <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
-      <div class="ctas">
-        <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
-        <a class="btn-2" href="/how-it-works">See how it works</a>
-      </div>
+<section class="end art-bg" style="--ground:var(--gw-dark);background-image:url(/art/seedling.png)">
+  <div class="w">
+    <h2>Start with something that matters.</h2>
+    <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
+    <div class="ctas">
+      <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
+      <a class="btn-2" href="/how-it-works">See how it works</a>
     </div>
-    <div class="art" aria-hidden="true"><img src="/art/seedling.png" alt="" width="344" height="348" loading="lazy" /></div>
   </div>
 </section>
 

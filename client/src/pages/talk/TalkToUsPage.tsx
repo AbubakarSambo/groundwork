@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
+import { coachApi, MIN_INTENTION_LENGTH } from '@/api/coach'
 import { MARKETING_URL } from '@/lib/marketing'
 
 /**
@@ -158,9 +158,19 @@ export function TalkToUsPage() {
           </p>
         )}
 
-        <p style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 14 }}>
-          {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
-        </p>
+        {/*
+          NO PRICE ON THIS FORM. Her call.
+
+          It sat between the last field and the send button: the retainer, the monthly rate and the
+          two-sessions-per-issue note, on a page whose own first line says nothing is being created
+          and nobody is being contacted. A figure directly above a button turns a request for a
+          conversation into a quote somebody is agreeing to, which is the one thing this page is
+          written not to feel like.
+
+          The price has not moved out of the product - the coach card in the setup flow still shows
+          it, the pricing page carries it, and the confirmation email quotes it once the request is
+          in. `COACHING_PRICE` stays the single source for all three.
+        */}
 
         {said && said !== 'sent' && <p className="gw-er" role="alert" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
 
