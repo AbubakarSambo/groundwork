@@ -6,6 +6,24 @@ import { ConfigService } from '@nestjs/config';
 export type SendResult = { sent: boolean; status?: number; error?: string };
 /** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
 export type SendContext = { checkInId?: string | null; kind?: string };
+
+/**
+ * WHAT META REFUSED, WITHOUT WHAT WE SENT IT (G4).
+ *
+ * A failed send used to log two hundred characters of Meta's response body. That body quotes the
+ * request back, so a delivery failure wrote the message - somebody's check-in question, or their
+ * own report - into the application log. The code and type are what a failure is diagnosed from;
+ * the free-text half is Meta's prose about our request and is not needed to act on it.
+ */
+export function metaErrorCode(body: string): string {
+  try {
+    const e = (JSON.parse(body) ?? {}).error ?? {};
+    const bits = [e.type, e.code, e.error_subcode].filter((b: unknown) => b !== undefined && b !== null);
+    return bits.length ? bits.join('/') : 'no error code';
+  } catch {
+    return 'unparseable error body';
+  }
+}
 import { PrismaService } from '../prisma/prisma.service';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
@@ -138,7 +156,9 @@ export class WhatsAppService {
       if (process.env.NODE_ENV === 'production') {
         this.logger.warn(`WhatsApp is not configured; a message to ${to} was not sent (${text.length} characters).`);
       } else {
-        this.logger.warn(`[DEV WHATSAPP] To: ${to} | Body: ${text}`);
+        /* The length, never the message. A check-in question and a person's own report both go
+           out this way, and a local log is still a log (G4). */
+        this.logger.warn(`[DEV WHATSAPP] a message of ${text.length} characters was not sent.`);
       }
       const result: SendResult = { sent: false, error: 'WhatsApp is not configured on this deployment' };
       this.writeItDown(null, to, result, context);
@@ -163,7 +183,9 @@ export class WhatsAppService {
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${body.slice(0, 200)}`);
+        /* Meta's status and error code, not the body it echoed back to us - that body can carry
+           the message we just tried to send. */
+        this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${metaErrorCode(body)}`);
         return { sent: false, status: res.status, error: body.slice(0, 500) || `HTTP ${res.status}` };
       }
       return { sent: true, status: res.status };

@@ -423,7 +423,9 @@ export class DocumentsService {
       if (!read || typeof read.matches !== 'boolean') return null;
       const check = { matches: read.matches, reads: (read.reads ?? '').trim().slice(0, 300), checkedAt: new Date().toISOString() };
       await this.prisma.groundDocument.update({ where: { id: docId }, data: { descriptionCheck: check as any } });
-      this.logger.log(`description-check doc=${docId} matches=${check.matches} said=${JSON.stringify(doc.uploaderNote.trim().slice(0, 120))} reads=${JSON.stringify(check.reads)}`);
+      /* The verdict and the ids. What they wrote and what the document says are both on the row
+         this line points at, where only people entitled to them can read them (G4). */
+      this.logger.log(`description-check doc=${docId} matches=${check.matches}`);
       return check;
     } catch (err: any) {
       this.logger.warn(`Description check failed for ${docId}: ${err?.message}`);

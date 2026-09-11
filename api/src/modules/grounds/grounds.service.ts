@@ -1939,7 +1939,8 @@ export class GroundsService {
     const reply = screened.text || ASK_AGAIN;
     const shortened = truncationsOfTheirWords(reply, leadSaid);
     if (shortened.length) {
-      this.logger.warn(`Shortened one of their own words in the context chat for ground ${ground.id}: ${shortened.join(', ')}.`);
+      /* The count, not the words: a log has wider access than the record and no retention policy (G4). */
+      this.logger.warn(`Shortened ${shortened.length} of their own words in the context chat for ground ${ground.id}.`);
     }
 
     /**

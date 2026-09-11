@@ -3871,9 +3871,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
     let backed = 0;
     for (const b of rows) {
-      /* Every decision, greppable, with the line, the passage and the document: a false match is
-         something to see, not something to watch for. */
-      this.logger.log(`anchoring-decision participant=${participantId} line=${JSON.stringify(entries[b.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[b.document].fileName)} passage=${JSON.stringify((b.where ?? '').slice(0, 200))}`);
+      /*
+       * EVERY DECISION, GREPPABLE - BY ITS IDENTIFIERS, NOT ITS CONTENT (G4).
+       *
+       * This printed the record entry in full and two hundred characters of the document passage.
+       * That is the private record, in a log that more people can read than the database and that
+       * no retention policy sweeps. The ids are what a false match is chased with anyway: the row
+       * is one query away for anybody who is allowed to see it, and this line is readable by
+       * people who are not.
+       */
+      this.logger.log(`anchoring-decision participant=${participantId} entry=${entries[b.line].id} document=${docs[b.document].id} passageChars=${(b.where ?? '').length}`);
       await this.prisma.recordEntry
         .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (docs[b.document] as any).origin ?? null } })
         .then(() => { backed++; })
@@ -3887,7 +3894,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
     for (const d of differs) {
-      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} line=${JSON.stringify(entries[d.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[d.document].fileName)} says=${JSON.stringify(d.says.trim().slice(0, 200))}`);
+      /* Ids, not content. See the anchoring-decision line above. */
+      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} entry=${entries[d.line].id} document=${docs[d.document].id} saysChars=${d.says.trim().length}`);
       await this.prisma.recordEntry
         .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
         .catch(() => undefined);
