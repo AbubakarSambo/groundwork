@@ -43,11 +43,12 @@ function makeService() {
   return { service, grounds };
 }
 
+/* `cadenceChosen: true` since fix plan B15: a cadence sent without it is the page's default, not a choice, and is not handed on. */
 describe('entry.service.ts cadenceMap passes ONE_TIME through correctly', () => {
   it('self-serve path: passes Cadence.ONE_TIME, not FORTNIGHTLY', async () => {
     const { service, grounds } = makeService();
     await service.commit('org1', 'user1', {
-      groundLabel: 'Solo review', scenario: 'NEW_PROJECT', cadence: 'ONE_TIME',
+      groundLabel: 'Solo review', scenario: 'NEW_PROJECT', cadence: 'ONE_TIME', cadenceChosen: true,
       history: [{ role: 'user', content: 'hi' }] as any, report: null, contributors: [],
     } as any);
     expect(grounds.create).toHaveBeenCalledTimes(1);
@@ -57,7 +58,7 @@ describe('entry.service.ts cadenceMap passes ONE_TIME through correctly', () => 
   it('for-lead path: passes Cadence.ONE_TIME, not FORTNIGHTLY', async () => {
     const { service, grounds } = makeService();
     await service.commit('org1', 'admin1', {
-      groundLabel: 'Q3 review', scenario: 'NEW_PROJECT', cadence: 'ONE_TIME',
+      groundLabel: 'Q3 review', scenario: 'NEW_PROJECT', cadence: 'ONE_TIME', cadenceChosen: true,
       history: [], report: null, brief: 'Context', lead: { email: 'lead@test.com' }, contributors: [],
     } as any);
     expect(grounds.createForLead).toHaveBeenCalledTimes(1);

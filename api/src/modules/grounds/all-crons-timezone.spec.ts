@@ -5,6 +5,7 @@ import { PatternsCron } from '../patterns/patterns.cron';
 import { RemindService } from '../conversation/remind.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApiWatchCron } from '../public-api/api-watch.cron';
+import { AuthCron } from '../auth/auth.cron';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { BillingService } from '../billing/billing.service';
 
@@ -30,6 +31,7 @@ describe('every remaining @Cron job across the app is pinned to UTC', () => {
     ['RemindService', RemindService.prototype, 'sendScheduledNudges', '0 08 * * *'], // EVERY_DAY_AT_8AM
     ['ReportsService', ReportsService.prototype, 'weeklyOutcomeLearningReport', '0 8 * * 1'],
     ['ApiWatchCron', ApiWatchCron.prototype, 'pruneIdempotencyRecords', '0 1 * * *'],
+    ['AuthCron', AuthCron.prototype, 'pruneOAuthExchangeCodes', '0 4 * * *'],
     ['AnthropicService', AnthropicService.prototype, 'probeTheEngine', '*/5 * * * *'],
     ['BillingService', BillingService.prototype, 'retryStripeEventsWeCouldNotHandle', '15 * * * *'],
   ])('%s.%s is pinned to UTC', (_className, proto, methodName, expectedCronTime) => {

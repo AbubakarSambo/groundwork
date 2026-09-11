@@ -1,3 +1,4 @@
+import { AMessageIntoACheckInDto } from '../../common/dto';
 import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
@@ -6,12 +7,8 @@ import { ConversationService } from './conversation.service';
 import { RemindService } from './remind.service';
 import { CurrentUser, JwtAuthGuard } from '../../common';
 
-class SendMessageDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(8000)
-  message: string;
-}
+/** The one posture every door has. See common/dto/a-message-into-a-check-in.dto.ts. */
+export class SendMessageDto extends AMessageIntoACheckInDto {}
 
 class WhatWorkedDto {
   /* What they were stuck on, in their words. Short, because it is what matching happens on. */

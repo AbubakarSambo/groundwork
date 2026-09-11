@@ -9,6 +9,9 @@ import { AssistantService } from '../assistant/assistant.service';
 import { DocumentsService } from '../documents/documents.service';
 import { ReportsService } from '../reports/reports.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { AMessageIntoACheckInDto, A_MESSAGE_MAX } from '../../common/dto';
+import { validateSync } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
@@ -52,6 +55,14 @@ export class WhatsAppForAnOrganisationService {
     const say = (text: string) => this.whatsapp.sendFor(organizationId, from, text);
 
     if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
+    /* The same checks as every other door, on the one field this door plucks off a raw request. */
+    if (arrived.kind === 'text') {
+      const checked = validateSync(plainToInstance(AMessageIntoACheckInDto, { message: arrived.text }));
+      if (checked.length) {
+        if (arrived.text.trim()) await say(`That is longer than a check-in can take in one message - up to ${A_MESSAGE_MAX.toLocaleString()} characters. Send it in parts.`);
+        return;
+      }
+    }
 
     const who = await this.whatsapp.whoIsWritingTo(organizationId, from);
     if (!who.personId && !who.userId) {

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { posthog } from '@/lib/posthog'
 import { markSignedIn, clearSignedIn } from '@/lib/signed-in-flag'
+import { takeItAllWithYou } from '@/lib/what-signing-out-takes-with-it'
 import type { User } from '@/types'
 
 interface AuthState {
@@ -45,7 +46,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('token')
+        /* The token and everything else this app wrote about the person. See the module. */
+        takeItAllWithYou()
         clearSignedIn()
         posthog.reset()
         set({ user: null, token: null, isAuthenticated: false })

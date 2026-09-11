@@ -743,6 +743,20 @@ model AdminProfile {
   @@map("admin_profiles")
 }
 
+/// A one-time code the Google callback hands the browser in place of the JWT, redeemed within a
+/// minute. It lived in a process-local Map, so a restart or a second instance broke Google sign-in
+/// with "Invalid or expired exchange code" (fix plan B15). Deleted on use; the rest pruned daily.
+model OAuthExchangeCode {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  token     String    @db.Text
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("oauth_exchange_codes")
+}
+
 model EmailVerificationToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")

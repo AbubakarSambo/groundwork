@@ -119,4 +119,6 @@ export const CronLock = {
   SESSION_READY: 920_010,
   /** The invite-expiry sweep. See grounds.cron.ts tellThemBeforeAnInviteLapses. */
   INVITE_EXPIRY: 920_011,
+  /** The daily sweep of unredeemed Google sign-in codes. See auth/auth.cron.ts. */
+  OAUTH_CODES: 920_012,
 } as const;

@@ -253,7 +253,7 @@
     if (busy) return;
     bubble('me', message);
     setBusy(true);
-    api('POST', '/check-ins/' + encodeURIComponent(id) + '/messages', { content: message })
+    api('POST', '/check-ins/' + encodeURIComponent(id) + '/messages', { message: message })
       .then(function (r) {
         /* The answer ceiling, a legal hold and a network fault are three different sentences. */
         if (!r.ok) return refusalFrom(r, 'I could not reach the record just then. Say that again in a moment.').then(function (said) { bubble('them', said); return null; });

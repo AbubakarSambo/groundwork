@@ -208,6 +208,7 @@ export const entryApi = {
     groundLabel: string
     orgName?: string
     scenario?: string
+    cadenceChosen?: boolean
     history: ChatTurn[]
     report?: EntryReport | null
     contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]

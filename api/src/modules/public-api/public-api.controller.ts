@@ -5,6 +5,7 @@ import {
   UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint, ApiConsumes } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
+import { AMessageIntoACheckInDto } from '../../common/dto';
 import { CredentialsService } from './credentials.service';
 import { SubjectsService, SubjectPush } from '../subjects/subjects.service';
 import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
@@ -303,8 +304,8 @@ export class PublicApiController {
   @HttpCode(200)
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'Ask the assistant. Returns typed blocks, not a string.' })
-  async chat(@Req() req: { panel: PanelCaller }, @Body() dto: { message?: string }) {
-    return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto?.message ?? '');
+  async chat(@Req() req: { panel: PanelCaller }, @Body() dto: AMessageIntoACheckInDto) {
+    return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto.message);
   }
 
   /**
@@ -664,10 +665,9 @@ export class PublicApiController {
   async sayInCheckIn(
     @Req() req: { panel: PanelCaller },
     @Param('id') id: string,
-    @Body() dto: { content?: string },
+    @Body() dto: AMessageIntoACheckInDto,
   ) {
-    if (!dto?.content?.trim()) throw new BadRequestException('content is required.');
-    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.content);
+    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.message);
   }
 
   /**

@@ -1133,6 +1133,7 @@ from finishing at all.`;
       orgName?: string;
       scenario?: string;
       cadence?: string;
+      cadenceChosen?: boolean;
       cadenceAnchorDay?: number;
       checkInBy?: string;
       lastCheckInBy?: string;
@@ -1321,6 +1322,10 @@ from finishing at all.`;
       SEQUENTIAL: Cadence.SEQUENTIAL,
       ONE_TIME: Cadence.ONE_TIME,
     };
+    /* Fix plan B15: the client's cadence state starts at FORTNIGHTLY and is sent whether or not
+       anybody picked it, so every ground set up here recorded a choice nobody made. */
+    const chosenCadence: Cadence | undefined =
+      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence] : undefined;
 
     // --- Coordinator/lead path ---------------------------------------------
     // The committer is setting this ground up for someone ELSE to run: route
@@ -1350,7 +1355,9 @@ from finishing at all.`;
          * available answer, and it is a recommendation the lead can change afterwards.
          */
         moment: RECOMMENDED_MOMENT[scenario],
-        cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+        /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
+           service records an absent cadence as unstated and takes the scenario's recommendation. */
+        cadence: chosenCadence,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
@@ -1430,7 +1437,7 @@ from finishing at all.`;
          * available answer, and it is a recommendation the lead can change afterwards.
          */
         moment: RECOMMENDED_MOMENT[scenario],
-      cadence: (dto.cadence && cadenceMap[dto.cadence]) ? cadenceMap[dto.cadence] : Cadence.FORTNIGHTLY,
+      cadence: chosenCadence,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: dto.lastCheckInBy || undefined,

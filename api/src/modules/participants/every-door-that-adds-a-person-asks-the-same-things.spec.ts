@@ -25,7 +25,8 @@ describe('the doors', () => {
     expect(page).toMatch(/department: newParticipantDepartment\.trim\(\) \|\| undefined/);
   });
   it('the join page asks it beside "your part in this"', () => {
-    expect(read('../entry/entry.controller.ts')).toMatch(/joinAccept[\s\S]{0,300}department\?: string/);
+    /* The join body is a DTO class since B14 (the pipe could not see the inline type); the field is on it. */
+    expect(read('../entry/entry.controller.ts')).toMatch(/class EntryJoinAcceptDto[\s\S]{0,900}department\?: string/);
     const page = strip(readFileSync(join(CLIENT, 'pages', 'join', 'JoinPage.tsx'), 'utf8'));
     expect(page).toContain('htmlFor="join-department"');
     expect(page).toMatch(/department: department\.trim\(\) \|\| undefined/);

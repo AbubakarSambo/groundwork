@@ -33,6 +33,9 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 
+/** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
+const A_MESSAGE_MAX = 8000
+
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
 
@@ -1843,10 +1846,10 @@ export function EntryChatPage() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) ?? ''
-      if (content.length > 8000) {
+      if (content.length > A_MESSAGE_MAX) {
         toast.warning(`${file.name} is large - only the first portion will be used in this session.`)
       }
-      setUploadedDoc({ name: file.name, content: content.slice(0, 8000) })
+      setUploadedDoc({ name: file.name, content: content.slice(0, A_MESSAGE_MAX) })
     }
     reader.onerror = () => toast.error('Could not read file.')
     if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
@@ -1863,7 +1866,11 @@ export function EntryChatPage() {
     const ctx = docContext.trim()
     setDocContextMode(false)
     if (!uploadedDoc) return
-    const content = `[Document: "${uploadedDoc.name}"]\n${uploadedDoc.content}\n\nContext from me: ${ctx || 'See attached document.'}`
+    /* The whole turn has to fit a message (8,000 characters, the same cap every door has), so the
+       document part gives way to the wrapper and the context rather than the server refusing it. */
+    const head = `[Document: "${uploadedDoc.name}"]\n`
+    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}`
+    const content = `${head}${uploadedDoc.content.slice(0, Math.max(0, A_MESSAGE_MAX - head.length - tail.length))}${tail}`
     setUploadedDoc(null)
     setDocContext('')
     setLoading(true)
@@ -1887,6 +1894,8 @@ export function EntryChatPage() {
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
         cadence,
+        /* The page's default is not a choice; the server records only a confirmed pick as one. */
+        cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
@@ -2167,6 +2176,8 @@ export function EntryChatPage() {
         groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         cadence,
+        /* The page's default is not a choice; the server records only a confirmed pick as one. */
+        cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,

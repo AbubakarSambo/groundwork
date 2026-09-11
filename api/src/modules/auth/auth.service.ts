@@ -1151,25 +1151,33 @@ export class AuthService {
     return this.getProfile(userId);
   }
 
-  // In-memory store for short-lived OAuth exchange codes (TTL 60s, single-use).
-  // Acceptable for a single-process deployment; replace with Redis for multi-instance.
-  private readonly oauthCodes = new Map<string, { token: string; expiresAt: number }>();
+  /**
+   * THE EXCHANGE CODE IS A ROW, NOT A MAP ENTRY. It was the only mutable in-memory Map in the API,
+   * and it made Google sign-in a single-process feature: a deploy between the callback and the
+   * redirect, or a second instance taking the redeem, and the person saw "Invalid or expired
+   * exchange code" (fix plan B15). Sixty seconds, single use, deleted on redemption; the ones nobody
+   * redeemed are pruned by AuthCron.
+   */
+  static readonly AN_EXCHANGE_CODE_LASTS_MS = 60_000;
 
   async createOAuthExchangeCode(token: string): Promise<string> {
     const code = crypto.randomBytes(24).toString('hex');
-    this.oauthCodes.set(code, { token, expiresAt: Date.now() + 60_000 });
-    // Prune expired codes opportunistically.
-    for (const [k, v] of this.oauthCodes) {
-      if (v.expiresAt < Date.now()) this.oauthCodes.delete(k);
-    }
+    await this.prisma.oAuthExchangeCode.create({
+      data: { code, token, expiresAt: new Date(Date.now() + AuthService.AN_EXCHANGE_CODE_LASTS_MS) },
+    });
     return code;
   }
 
+  /** Unknown and expired are told apart: one is a wrong link, the other is a slow one. */
   async redeemOAuthExchangeCode(code: string): Promise<{ accessToken: string }> {
-    const entry = this.oauthCodes.get(code);
-    if (!entry || entry.expiresAt < Date.now()) throw new BadRequestException('Invalid or expired exchange code');
-    this.oauthCodes.delete(code);
-    return { accessToken: entry.token };
+    if (!code?.trim()) throw new BadRequestException('That is not a sign-in code we issued.');
+    const row = await this.prisma.oAuthExchangeCode.findUnique({ where: { code } });
+    if (!row) throw new BadRequestException('That is not a sign-in code we issued.');
+    /* Delete first: a second redeem racing this one finds nothing and is told the code is gone. */
+    const gone = await this.prisma.oAuthExchangeCode.deleteMany({ where: { id: row.id } });
+    if (gone.count === 0) throw new BadRequestException('That sign-in code has already been used. Sign in again.');
+    if (row.expiresAt.getTime() < Date.now()) throw new BadRequestException('That sign-in code has expired. Sign in again.');
+    return { accessToken: row.token };
   }
 
   /**

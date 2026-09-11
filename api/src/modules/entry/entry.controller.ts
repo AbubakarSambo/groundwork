@@ -2,17 +2,21 @@ import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res }
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
+import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { EntryService } from './entry.service';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class TurnDto {
-  @IsString() role: 'user' | 'assistant';
-  @IsString() content: string;
-}
+/**
+ * THE HISTORY IS CLIENT-SUPPLIED AND REPLAYED TO THE MODEL, so `role` is load-bearing: a bare string
+ * let an anonymous caller forge assistant turns. The shared turn class refuses anything but user or
+ * assistant, caps a user turn like a message, and caps an assistant turn at the model's own limit.
+ */
+class TurnDto extends ATurnDto {}
 
-class EntryChatDto {
+export class EntryChatDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -28,6 +32,7 @@ class EntryChatDto {
 
 class EntryOnboardDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -57,7 +62,48 @@ class EntryOnboardDto {
 class EntryOpenerDto {
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   scenario?: string;
+}
+
+/** classify-intent took an inline type, which the validation pipe cannot see, so `description` was unbounded. */
+class EntryClassifyDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(A_MESSAGE_MAX)
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  mode?: string;
+}
+
+/**
+ * THE LAST THREE PUBLIC HANDLERS ON INLINE TYPES. An inline body type is invisible to the validation
+ * pipe, so these took anything. The service checks that stay behind them are kept: a DTO is the
+ * door's posture, the service's checks are its own (a-check-that-can-never-be-true allows the one
+ * on joinToken for exactly this reason).
+ */
+class EntryDraftPatchDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) draftToken: string;
+  @IsObject() payload: Record<string, any>;
+}
+
+class EntryJoinAcceptDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) joinToken: string;
+  @IsEmail() @MaxLength(254) email: string;
+  @IsOptional() @IsString() @MaxLength(120) firstName?: string;
+  @IsOptional() @IsString() @MaxLength(120) lastName?: string;
+  @IsOptional() @IsString() @MaxLength(500) roleAsDescribed?: string;
+  /** Optional, never inferred; blank means blank. */
+  @IsOptional() @IsString() @MaxLength(120) department?: string;
+  /** The honeypot on the join form. Filled means a bot; answered as success, mails nobody. */
+  @IsOptional() @IsBoolean() trapFilled?: boolean;
+}
+
+class EntryJoinConfirmDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) token: string;
 }
 
 class EntryFaqDto {
@@ -68,6 +114,7 @@ class EntryFaqDto {
 
 class EntryReportDto {
   @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
@@ -162,6 +209,12 @@ export class EntryCommitDto {
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
+  /**
+   * WHETHER THE CADENCE WAS CHOSEN OR IS THE PAGE'S DEFAULT. The client's `cadence` state starts at
+   * FORTNIGHTLY and is sent whether or not anybody picked it, so the ground recorded a choice nobody
+   * made. This says which, and the ground's `cadenceStated` follows it (fix plan B15).
+   */
+  @IsOptional() @IsBoolean() cadenceChosen?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   @IsOptional() @IsString() checkInBy?: string;
   @IsOptional() @IsString() lastCheckInBy?: string;
@@ -240,7 +293,7 @@ export class EntryController {
      silent no-op — this route was falling back to the plain 60/min. */
   @Throttle({ global: { limit: 30, ttl: 60_000 } })
   @Patch('draft')
-  async patchDraft(@Body() body: { draftToken: string; payload: Record<string, any> }) {
+  async patchDraft(@Body() body: EntryDraftPatchDto) {
     return this.service.patchDraft(body.draftToken, body.payload);
   }
 
@@ -319,6 +372,7 @@ export class EntryController {
 
   @Public()
   @Post('opener')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
   opener(@Body() dto: EntryOpenerDto) {
     return { reply: this.service.opener(dto.scenario) };
   }
@@ -341,12 +395,14 @@ export class EntryController {
 
   @Public()
   @Post('classify-intent')
-  async classifyIntent(@Body() dto: { description: string; mode?: string }) {
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async classifyIntent(@Body() dto: EntryClassifyDto) {
     return this.service.classifyIntent(dto.description, dto.mode);
   }
 
   @Public()
   @Post('faq')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
   async faq(@Body() dto: EntryFaqDto) {
     const reply = await this.service.faq(dto.question);
     return { reply };
@@ -385,17 +441,7 @@ export class EntryCommitController {
   @Public()
   @Throttle({ global: { limit: 5, ttl: 60000 } })
   @Post('join-accept')
-  async joinAccept(@Body() dto: {
-    joinToken: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    roleAsDescribed?: string;
-    /** Optional, never inferred; blank means blank. */
-    department?: string;
-    /** The honeypot on the join form. Filled means a bot; answered as success, mails nobody. */
-    trapFilled?: boolean;
-  }) {
+  async joinAccept(@Body() dto: EntryJoinAcceptDto) {
     return this.service.askToJoin(dto);
   }
 
@@ -403,7 +449,7 @@ export class EntryCommitController {
   @Public()
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @Post('join-confirm')
-  async joinConfirm(@Body() dto: { token: string }) {
-    return this.service.joinConfirm(dto?.token);
+  async joinConfirm(@Body() dto: EntryJoinConfirmDto) {
+    return this.service.joinConfirm(dto.token);
   }
 }

@@ -49,6 +49,14 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
 @Module({
   imports: [
     ConfigModule,
+    /*
+     * THE THROTTLER COUNTS IN PROCESS MEMORY. No `storage` is given, so the default in-memory store
+     * is used: a restart resets every counter, and N instances allow N times the limit. This governs
+     * the OTP and the public /start routes, so it is a security control with a single-process
+     * assumption in it. This deployment has no Redis; when it does, hand the store in here
+     * (@nestjs/throttler accepts one) and delete this comment. Said here rather than left to be
+     * discovered, the way the old exchange-code Map said it (fix plan B15).
+     */
     ThrottlerModule.forRoot([{ name: 'global', ttl: 60000, limit: 60 }]),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
