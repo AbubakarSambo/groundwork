@@ -123,6 +123,50 @@ export function IntegrationsPage() {
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
   const whatsapp = useQuery({ queryKey: ['integrations', 'whatsapp'], queryFn: integrationsApi.whatsapp, enabled: isAdmin })
+  /*
+   * SWITCH ON WHAT IS ALREADY BUILT. Slack and Teams notices were wired end to end and read a table
+   * nothing in the console could write; the embedded panel had a served loader, a panel page and a
+   * signing scheme reachable only by a database row written by hand, while this page's copy promised
+   * "you can put the check-in inside your own product". Both get a section here.
+   */
+  const notifiers = useQuery({ queryKey: ['integrations', 'workspace'], queryFn: integrationsApi.workspaceNotifiers, enabled: isAdmin })
+  const [wsKind, setWsKind] = useState<'slack' | 'teams'>('slack')
+  const [wsUrl, setWsUrl] = useState('')
+  const [wsChannel, setWsChannel] = useState('')
+  const connectWs = useMutation({
+    mutationFn: () => integrationsApi.connectWorkspace(wsKind, wsUrl.trim(), wsChannel.trim() || undefined),
+    onSuccess: () => { setWsUrl(''); setWsChannel(''); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }); toast.success('Connected, and switched off until you test it and turn it on.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect that address.'),
+  })
+  const testWs = useMutation({
+    mutationFn: (kind: 'slack' | 'teams') => integrationsApi.testWorkspace(kind),
+    onSuccess: (r) => { r.posted ? toast.success('Posted. Check the channel.') : toast.error(r.because ?? 'It did not post.'); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The test did not post.'),
+  })
+  const turnWs = useMutation({
+    mutationFn: ({ kind, on }: { kind: 'slack' | 'teams'; on: boolean }) => integrationsApi.turnWorkspace(kind, on),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
+  })
+  const disconnectWs = useMutation({
+    mutationFn: (kind: 'slack' | 'teams') => integrationsApi.disconnectWorkspace(kind),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not remove it.'),
+  })
+  const embed = useQuery({ queryKey: ['integrations', 'embed'], queryFn: integrationsApi.embedConfig, enabled: isAdmin })
+  const [embedDomains, setEmbedDomains] = useState('')
+  const [embedPlacement, setEmbedPlacement] = useState<'floating' | 'anchor'>('floating')
+  const [embedOutOfScope, setEmbedOutOfScope] = useState('')
+  const [embedSecret, setEmbedSecret] = useState<string | null>(null)
+  const setUpEmbed = useMutation({
+    mutationFn: () => integrationsApi.setUpEmbed({
+      allowedDomains: embedDomains.split(/[\s,]+/).map(d => d.trim()).filter(Boolean),
+      placement: embedPlacement,
+      outOfScopeDepartments: embedOutOfScope.split(',').map(d => d.trim()).filter(Boolean),
+    }),
+    onSuccess: (r) => { setEmbedSecret(r.signingSecret); qc.invalidateQueries({ queryKey: ['integrations', 'embed'] }); toast.success('Saved. Copy the signing secret now - it is shown once.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not save the embed setup.'),
+  })
   const [waNumberId, setWaNumberId] = useState('')
   const [waBusinessId, setWaBusinessId] = useState('')
   const [waDisplay, setWaDisplay] = useState('')
@@ -709,6 +753,68 @@ export function IntegrationsPage() {
           </div>
         </div>
       ))}
+
+      {/* ---------------------------------------------------------------- where we tell you */}
+      <div style={S.sec}>Where we tell you</div>
+      <div style={S.card}>
+        <div style={S.h3}>A report is ready, a handoff is stuck, an integration cannot be reached: said in the channel your team lives in</div>
+        <p style={S.body}>Paste an incoming-webhook address from Slack or Teams. It arrives switched off; post one test notice, see it land, then turn it on. A notice says that something is ready and links to it - never what is in it, because a channel is read by more people than a check-in.</p>
+        {(notifiers.data ?? []).map(n => (
+          <div key={n.kind} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{n.kind === 'SLACK' ? 'Slack' : 'Teams'}{n.channelSaid ? ` · ${n.channelSaid}` : ''} <Pill tone={n.enabled ? 'ok' : 'flat'}>{n.enabled ? 'on' : 'off'}</Pill></div>
+              <div style={{ fontSize: 11.5, color: n.lastError ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3 }}>
+                {n.lastError ? `Last post failed: ${n.lastError}` : n.lastPostedAt ? `Last posted ${new Date(n.lastPostedAt).toLocaleDateString()}` : 'Nothing posted yet'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button style={S.ghost} onClick={() => testWs.mutate(n.kind === 'SLACK' ? 'slack' : 'teams')} disabled={testWs.isPending}>Post a test</button>
+              <button style={S.ghost} onClick={() => turnWs.mutate({ kind: n.kind === 'SLACK' ? 'slack' : 'teams', on: !n.enabled })}>{n.enabled ? 'Switch off' : 'Switch on'}</button>
+              <button style={S.ghost} onClick={() => { if (window.confirm('Forget this address? Nothing already posted is deleted.')) disconnectWs.mutate(n.kind === 'SLACK' ? 'slack' : 'teams') }}>Remove</button>
+            </div>
+          </div>
+        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
+          <select style={S.input} value={wsKind} onChange={e => setWsKind(e.target.value as 'slack' | 'teams')} aria-label="Slack or Teams">
+            <option value="slack">Slack</option>
+            <option value="teams">Teams</option>
+          </select>
+          <input style={S.input} placeholder="https://hooks.slack.com/services/…" value={wsUrl} onChange={e => setWsUrl(e.target.value)} aria-label="Incoming webhook address" />
+          <input style={S.input} placeholder="Channel, as you call it (optional)" value={wsChannel} onChange={e => setWsChannel(e.target.value)} aria-label="Channel name" />
+          <button style={S.btn} onClick={() => connectWs.mutate()} disabled={!wsUrl.trim().startsWith('https://') || connectWs.isPending}>Connect</button>
+        </div>
+      </div>
+
+      {/* ---------------------------------------------------------------- embed the panel */}
+      <div style={S.sec}>Embed the panel</div>
+      <div style={S.card}>
+        <div style={S.h3}>{embed.data ? `Set up for ${embed.data.allowedDomains.length} domain${embed.data.allowedDomains.length === 1 ? '' : 's'}` : 'Put the check-in inside your own product'}</div>
+        <p style={S.body}>Your people check in from a panel on your own pages, signed in as themselves by your login. Say which domains may load it, where it sits, and which departments should see nothing at all - not a disabled launcher, nothing. Saving issues a signing secret your server uses to mint identity tokens; it is shown once.</p>
+        <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+          <input style={S.input} placeholder={embed.data?.allowedDomains.join(', ') || 'app.yourcompany.com, intranet.yourcompany.com'} value={embedDomains} onChange={e => setEmbedDomains(e.target.value)} aria-label="Allowed domains" />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select style={{ ...S.input, width: 'auto' }} value={embedPlacement} onChange={e => setEmbedPlacement(e.target.value as 'floating' | 'anchor')} aria-label="Placement">
+              <option value="floating">Floating launcher</option>
+              <option value="anchor">Anchored to an element</option>
+            </select>
+            <input style={S.input} placeholder={embed.data?.outOfScopeDepartments.join(', ') || 'Departments that see nothing (optional, comma-separated)'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} aria-label="Out-of-scope departments" />
+          </div>
+          <div><button style={S.btn} onClick={() => setUpEmbed.mutate()} disabled={!embedDomains.trim() || setUpEmbed.isPending}>{embed.data ? 'Save and issue a new signing secret' : 'Save and issue the signing secret'}</button></div>
+        </div>
+        {embedSecret && (
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)' }}>Signing secret - shown once</div>
+            <div style={{ ...S.mono, wordBreak: 'break-all', marginTop: 4 }}>{embedSecret}</div>
+          </div>
+        )}
+        {embed.data && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>Paste on the pages that should carry it</div>
+            <pre style={{ ...S.mono, background: 'var(--gw-bg)', padding: '10px 12px', borderRadius: 8, overflowX: 'auto', margin: 0 }}>{`<script src="${API_ORIGIN}/embed.js" data-mode="${embed.data.placement}" data-token="TOKEN_YOUR_SERVER_MINTS"${embed.data.placement === 'anchor' ? ' data-anchor="#groundwork"' : ''}></script>`}</pre>
+            <p style={{ ...S.body, marginTop: 6 }}>Your server signs a short-lived token for the signed-in person with the secret above (HS256, their id in <span style={S.mono}>sub</span>) and puts it in <span style={S.mono}>data-token</span>. The panel then knows who they are without a second login.</p>
+          </div>
+        )}
+      </div>
 
       {/* ---------------------------------------------------------------- whatsapp */}
       <div style={S.sec}>Your WhatsApp number</div>

@@ -19,6 +19,24 @@ export interface IssuedCredential extends Omit<Credential, 'lastUsedAt' | 'revok
   clientSecret: string
 }
 
+/** Where we tell you: a Slack or Teams incoming webhook. The address is write-only and never comes back. */
+export interface WorkspaceNotifier {
+  kind: 'SLACK' | 'TEAMS'
+  channelSaid: string | null
+  enabled: boolean
+  lastPostedAt: string | null
+  lastError: string | null
+}
+
+/** The embedded panel's configuration, without its signing secret (that is returned once, on setup). */
+export interface EmbedConfig {
+  allowedDomains: string[]
+  placement: 'floating' | 'anchor' | string
+  outOfScopeDepartments: string[]
+  frameAncestors?: string
+  createdAt?: string
+}
+
 export interface WebhookEndpoint {
   id: string
   url: string
@@ -154,6 +172,21 @@ export const integrationsApi = {
   /** Back on, after an endpoint was switched off for being unreachable (the notice mail says so). */
   reactivateEndpoint: (id: string) =>
     apiClient.post<{ id: string; active: boolean }>(`/integrations/webhooks/endpoints/${id}/reactivate`, {}).then(r => r.data),
+  /* Where we tell you. Routes existed with no caller; a notice engine with five live call sites read an
+     empty table for every organisation because nothing could write a row. */
+  workspaceNotifiers: () => apiClient.get<WorkspaceNotifier[]>('/integrations/workspace').then(r => r.data),
+  connectWorkspace: (kind: 'slack' | 'teams', url: string, channelSaid?: string) =>
+    apiClient.post<{ kind: string; channelSaid: string | null; enabled: boolean }>(`/integrations/workspace/${kind}`, { url, channelSaid }).then(r => r.data),
+  testWorkspace: (kind: 'slack' | 'teams') =>
+    apiClient.post<{ posted: boolean; because?: string }>(`/integrations/workspace/${kind}/test`, {}).then(r => r.data),
+  turnWorkspace: (kind: 'slack' | 'teams', on: boolean) =>
+    apiClient.post(`/integrations/workspace/${kind}/${on ? 'on' : 'off'}`, {}).then(r => r.data),
+  disconnectWorkspace: (kind: 'slack' | 'teams') =>
+    apiClient.delete(`/integrations/workspace/${kind}`).then(r => r.data),
+  /* Embed the panel. Over 1,300 lines of served loader, panel and signing scheme, reachable only by a database write. */
+  embedConfig: () => apiClient.get<EmbedConfig | null>('/integrations/embed').then(r => r.data),
+  setUpEmbed: (body: { allowedDomains: string[]; placement: 'floating' | 'anchor'; outOfScopeDepartments: string[] }) =>
+    apiClient.post<EmbedConfig & { signingSecret: string }>('/integrations/embed', body).then(r => r.data),
   deliveries: (status?: string) =>
     apiClient.get<WebhookDelivery[]>(`/integrations/webhooks/deliveries${status ? `?status=${status}` : ''}`).then(r => r.data),
   replay: (id: string) =>
