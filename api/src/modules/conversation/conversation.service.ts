@@ -219,7 +219,7 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person put on the record. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.

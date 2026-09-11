@@ -3741,7 +3741,7 @@ happened, and what is in the way.`;
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
       );
-      // This party's own solo artifact ("Your private record shows:") is generated
+      // This party's own solo artifact ("What you shared:") is generated
       // as soon as their own check-in completes, but was only ever attached to the
       // response after the FINAL release - so a participant who finished before the
       // other party had no way to see their own private record at all in the
