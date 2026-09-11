@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
@@ -168,6 +168,15 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  /* A dialog is a room you can leave: focus moves in on open, Escape closes, and focus goes back to the
+     button that opened it - it used to drop to the top of the document after a code disable. */
+  const opener = useRef<HTMLElement | null>(null)
+  const first = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    opener.current = document.activeElement as HTMLElement | null
+    first.current?.focus()
+    return () => { opener.current?.focus?.() }
+  }, [])
 
   async function handleRequestOtp() {
     setLoading(true)
@@ -199,8 +208,10 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
 
   return (
     <div
+      role="dialog" aria-modal="true" aria-label={title}
       style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onKeyDown={e => { if (e.key === 'Escape' && !loading) onClose() }}
     >
       <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
@@ -213,6 +224,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
+                ref={first}
                 onClick={handleRequestOtp}
                 disabled={loading}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}
@@ -307,7 +319,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
 
   return (
     <section>
-      <div style={SL}>Code Management</div>
+      <div style={SL}>Access codes</div>
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -318,7 +330,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--gw-border)' }}>
-              {['Code', 'Creator', 'Created', 'Expires', 'Days Left', 'Status', 'Allow Create', 'Redemptions', 'Actions'].map(h => (
+              {['Code', 'Creator', 'Created', 'Expires', 'Days left', 'Status', 'Can create codes', 'Redemptions', 'Actions'].map(h => (
                 <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', padding: '6px 10px', textTransform: 'uppercase', letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -383,14 +395,15 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
 
   return (
     <section>
-      <div style={SL}>Usage Breakdown</div>
+      <div style={SL}>Where check-ins came from</div>
       <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {entries.map(({ label, key, color }) => {
           const count = breakdown[key]
           const pct = total > 0 ? (count / total) * 100 : 0
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{label}</div>
+              {/* Not minWidth 160 on a plain flex row outside any scroll container: it produced horizontal page scroll. */}
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', flex: '0 1 160px', minWidth: 0 }}>{label}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
               <Bar pct={pct} color={color} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</div>
@@ -860,7 +873,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
 
   return (
     <section>
-      <div style={SL}>Per-user Usage Patterns</div>
+      <div style={SL}>What each person has done</div>
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -951,7 +964,7 @@ export function AdminDashboardPage() {
               onClick={() => navigate('/admin')}
               style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              Ops →
+              Platform console →
             </button>
             <button
               onClick={() => navigate('/ops')}

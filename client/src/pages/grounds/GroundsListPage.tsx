@@ -402,6 +402,14 @@ export function GroundsListPage() {
           </div>
         )}
 
+        {/* ABOVE the admin/member split: this sat inside the member branch, and self-serve signup creates an
+            ADMIN, so the person who had just set a password never saw "You are in." (fix plan C11). */}
+        {justSetUp && (
+          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>You are in.</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
+          </div>
+        )}
         {isAdmin ? (
           <>
             {/* Stats bar */}
@@ -631,12 +639,6 @@ export function GroundsListPage() {
         ) : (
           <>
             {/* Welcome banner after password setup */}
-            {justSetUp && (
-              <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>You are in.</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
-              </div>
-            )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               {/* COUNTED THE SAME WAY THE ADMIN'S LIST COUNTS. This said "In progress (1)" over a

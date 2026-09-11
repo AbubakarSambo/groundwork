@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -15,6 +15,7 @@ import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { TextAction } from '@/components/gw/kit'
 
 
 
@@ -38,21 +39,7 @@ type View = 'password' | 'link' | 'create' | 'forgot'
  * On this screen that meant the ONLY route to creating an account was a mouse click.
  * Buttons, styled to look the same.
  */
-function TextAction({ onClick, strong, children }: { onClick: () => void; strong?: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer',
-        background: 'none', border: 'none', padding: 0, font: 'inherit',
-        fontWeight: strong ? 700 : undefined,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
+/* TextAction lives in components/gw/kit.tsx now, so the other screens with a <span onClick> could use it too. */
 
 /**
  * GOOGLE'S OWN MARK, WHICH THE BUTTON DID NOT HAVE.
@@ -146,6 +133,10 @@ export function AuthPage() {
   const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
+  /* `next` reached signIn.onSuccess and nowhere else: a ?next=/pricing visitor who created an account or
+     asked for a link landed on the grounds list. The magic link opens in this browser in the ordinary case,
+     so the destination is kept here for ChoosePasswordPage to honour, under the same same-origin guard. */
+  useEffect(() => { try { if (nextPath) sessionStorage.setItem('gw_next', nextPath); } catch { /* storage may be unavailable */ } }, [nextPath])
   /**
    * `/auth/sent?email=...` is this page in its link-sent state, not a page of its own.
    * `SaveCard` on the marketing home still sends people to that URL, so it keeps
@@ -163,6 +154,8 @@ export function AuthPage() {
   const [resetSent, setResetSent] = useState(false)
   /** Set when the server says this account has no password and a link is on its way. */
   const [passwordlessNotice, setPasswordlessNotice] = useState('')
+  /* A notice about a link sent to address A stayed on screen while somebody typed address B. Both go together. */
+  const clearNotices = () => { setError(''); setPasswordlessNotice('') }
 
   /**
    * Does this deployment have Google credentials?
@@ -371,9 +364,10 @@ export function AuthPage() {
                   id="signin-email"
                   className="gw-input"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  onChange={e => { setEmail(e.target.value); clearNotices() }}
                   autoFocus
                 />
               </div>
@@ -383,9 +377,10 @@ export function AuthPage() {
                   id="signin-password"
                   className="gw-input"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={e => { setPassword(e.target.value); setError('') }}
+                  onChange={e => { setPassword(e.target.value); clearNotices() }}
                 />
               </div>
 
@@ -397,7 +392,7 @@ export function AuthPage() {
                   You were signed out because you had been away a while. Sign in and we will take you back to where you were — nothing you wrote has been lost.
                 </div>
               )}
-              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
               {/* Rendered only when the server confirms it can complete the
@@ -428,9 +423,9 @@ export function AuthPage() {
 
 
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
-              <TextAction onClick={() => { setError(''); setView('forgot') }}>Forgot your password?</TextAction>
+              <TextAction onClick={() => { clearNotices(); setView('forgot') }}>Forgot your password?</TextAction>
               <br />
-              <TextAction strong onClick={() => { setError(''); setView('create') }}>New here? Create an account</TextAction>
+              <TextAction strong onClick={() => { clearNotices(); setView('create') }}>New here? Create an account</TextAction>
             </div>
           </>
         )}
@@ -450,7 +445,7 @@ export function AuthPage() {
                   className="gw-input"
                   placeholder="Sam Taylor"
                   value={firstName}
-                  onChange={e => { setFirstName(e.target.value); setError('') }}
+                  onChange={e => { setFirstName(e.target.value); clearNotices() }}
                   autoFocus
                 />
               </div>
@@ -471,9 +466,10 @@ export function AuthPage() {
                   id="signup-email"
                   className="gw-input"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  onChange={e => { setEmail(e.target.value); clearNotices() }}
                 />
               </div>
               <div className="gw-fld">
@@ -489,14 +485,14 @@ export function AuthPage() {
                   className="gw-input"
                   placeholder="Acme Ltd"
                   value={orgName}
-                  onChange={e => { setOrgName(e.target.value); setError('') }}
+                  onChange={e => { setOrgName(e.target.value); clearNotices() }}
                 />
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5, lineHeight: 1.5 }}>
-                  What your workspace will be called. You can change it later.
+                  What your organisation will be called. You can change it later.
                 </div>
               </div>
 
-              {error && <div className="gw-er" style={{ marginBottom: 10 }}>{error}</div>}
+              {error && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
 
               <button className="gw-btn" type="submit" disabled={createAccount.isPending}>
                 {createAccount.isPending ? 'Sending…' : 'Create my account →'}
@@ -524,7 +520,7 @@ export function AuthPage() {
             )}
 
             <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <TextAction onClick={() => { setError(''); setView('password') }}>Already have an account? Sign in</TextAction>
+              <TextAction onClick={() => { clearNotices(); setView('password') }}>Already have an account? Sign in</TextAction>
             </div>
           </>
         )}
@@ -540,13 +536,15 @@ export function AuthPage() {
             <form noValidate onSubmit={submitLink}>
               {trap.field}
               <div className="gw-fld">
-                <label className="gw-label">Email</label>
+                <label className="gw-label" htmlFor="link-email">Email</label>
                 <input
+                  id="link-email"
                   className="gw-input"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  onChange={e => { setEmail(e.target.value); clearNotices() }}
                   autoFocus
                 />
               </div>
@@ -554,11 +552,11 @@ export function AuthPage() {
               <button className="gw-btn" type="submit" disabled={sendLink.isPending}>
                 {sendLink.isPending ? 'Sending…' : 'Send link'}
               </button>
-              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <TextAction onClick={() => { setError(''); setView('password') }}>Sign in with password instead</TextAction>
+              <TextAction onClick={() => { clearNotices(); setView('password') }}>Sign in with password instead</TextAction>
             </div>
           </>
         )}
@@ -571,13 +569,15 @@ export function AuthPage() {
 
             <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
               <div className="gw-fld">
-                <label className="gw-label">Email</label>
+                <label className="gw-label" htmlFor="forgot-email">Email</label>
                 <input
+                  id="forgot-email"
                   className="gw-input"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  onChange={e => { setEmail(e.target.value); clearNotices() }}
                   autoFocus
                 />
               </div>
@@ -585,16 +585,11 @@ export function AuthPage() {
               <button className="gw-btn" type="submit" disabled={sendReset.isPending}>
                 {sendReset.isPending ? 'Sending…' : 'Send reset link'}
               </button>
-              {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
+              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <span
-                style={{ color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setError(''); setView('password') }}
-              >
-                Back to sign in
-              </span>
+              <TextAction onClick={() => { clearNotices(); setView('password') }}>Back to sign in</TextAction>
             </div>
           </>
         )}
@@ -607,12 +602,10 @@ export function AuthPage() {
               If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
             </div>
             <div style={{ marginTop: 16 }}>
-              <span
-                style={{ fontSize: 13, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => { setResetSent(false); setView('password') }}
+              <TextAction size={13} onClick={() => { setResetSent(false); setView('password') }}
               >
                 Back to sign in
-              </span>
+              </TextAction>
             </div>
           </div>
         )}

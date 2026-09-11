@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, type ApiAccessRequest } from '@/api/admin'
 
+/** "1 writes" was read daily by staff. */
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
 /**
  * WHO HAS ASKED TO CONNECT, AND WHAT WE DECIDED.
  *
@@ -64,7 +67,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
       {(request.lastDay || request.flags.length > 0) && (
         <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           {request.lastDay && (
-            <div style={small}>Last 24 hours: {request.lastDay.calls} calls, {request.lastDay.reads} reads, {request.lastDay.writes} writes.</div>
+            <div style={small}>Last 24 hours: {plural(request.lastDay.calls, 'call')}, {plural(request.lastDay.reads, 'read')}, {plural(request.lastDay.writes, 'write')}.</div>
           )}
           {request.flags.map((f) => (
             <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 6, padding: '8px 10px', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 6 }}>
