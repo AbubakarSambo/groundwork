@@ -152,10 +152,15 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
             onClick={() => picked && setConfirming(true)}
             disabled={!picked || proposeMut.isPending}
             style={{
-              padding: '10px 18px', borderRadius: 7, border: 'none', fontFamily: 'inherit',
+              padding: '10px 18px', borderRadius: 7, fontFamily: 'inherit',
               fontSize: 13, fontWeight: 700,
-              background: picked ? 'var(--gw-dark)' : 'var(--gw-border)',
-              color: picked ? 'white' : 'var(--gw-muted)',
+              /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
+                 Grey ink on the border grey measured 4.04:1 - the one contrast failure on this
+                 whole page. Paper with a line round it says "not yet" just as clearly and the
+                 words stay legible. */
+              background: picked ? 'var(--gw-dark)' : 'var(--gw-card)',
+              border: picked ? '1px solid var(--gw-dark)' : '1px solid var(--gw-border)',
+              color: picked ? 'white' : 'var(--gw-sub-d)',
               cursor: picked && !proposeMut.isPending ? 'pointer' : 'default',
             }}
           >

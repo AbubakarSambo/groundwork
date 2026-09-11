@@ -73,7 +73,7 @@ function Surface({ n, name, cell, note, children }: {
  */
 function ThePageItself({ to, tall }: { to: string; tall?: boolean }) {
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--gw-bg)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--gw-card)' }}>
       <iframe
         src={to}
         title={to}
@@ -107,8 +107,8 @@ function NothingStored({ what }: { what: string }) {
 /** The one message the product actually sends. Quoted, not written here, so it cannot drift. */
 function AsItIsSent({ head, lines }: { head: string; lines: string[] }) {
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, maxWidth: 620, background: 'var(--gw-bg)' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 8 }}>{head}</div>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, maxWidth: 620, background: 'var(--gw-card)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 8 }}>{head}</div>
       {lines.map(l => (
         <p key={l} style={{ fontSize: 13, color: 'var(--gw-text)', margin: '0 0 8px', lineHeight: 1.55 }}>{l}</p>
       ))}

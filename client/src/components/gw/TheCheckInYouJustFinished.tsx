@@ -47,11 +47,57 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  */
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
-const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.6 }
-const LABEL: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
-  color: 'var(--gw-muted)', marginBottom: 10,
+
+/**
+ * ONE STYLESHEET, BECAUSE A PHONE NEEDS A DIFFERENT SHAPE AND NOT JUST SMALLER TYPE.
+ *
+ * Inline styles cannot hold a media query, so every size here was one number that had to work at
+ * 375px and at 1180px, and it worked properly at neither: 20px of side padding on a 375px screen
+ * spends a ninth of the width on nothing, and block 2's three columns put a state word in a
+ * four-character gutter.
+ *
+ * The rules below are the ones that have to CHANGE with the width. Everything that does not is
+ * still inline, where it sits beside the thing it describes.
+ *
+ * NO GREY INK ON A GREY GROUND, anywhere in here. The secondary inks are only ever used on the
+ * card itself, which is white; anything sitting on paper or on a tint uses --gw-sub-d, which is
+ * the darker of the two. The same rule took the unfilled specificity step off --gw-bg.
+ */
+const SHEET = `
+.gw-close { --pad: 20px; }
+.gw-close .gw-blk { padding: 15px var(--pad); border-top: 1px solid var(--gw-border); }
+.gw-close .gw-head { padding: 15px var(--pad) 13px; }
+.gw-close .gw-foot { padding: 13px var(--pad); border-top: 1px solid var(--gw-border); display: grid; gap: 9px; }
+.gw-close .gw-lbl {
+  font-family: ${MONO}; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gw-sub-d); margin-bottom: 9px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
+.gw-close .gw-lbl .gw-note { color: var(--gw-sub); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.gw-close .gw-n { color: var(--gw-muted); margin-right: 7px; }
+/* Rows: text, then the word. On a phone the word drops under the text rather than into a gutter. */
+.gw-close .gw-row { display: grid; grid-template-columns: 9px 1fr auto; gap: 9px; align-items: start; }
+.gw-close .gw-said { font-size: 13px; line-height: 1.6; }
+.gw-close .gw-p { font-size: 13px; line-height: 1.6; }
+.gw-close .gw-big { font-size: 14px; line-height: 1.5; font-weight: 600; }
+.gw-close .gw-small { font-size: 12px; line-height: 1.55; }
+.gw-close .gw-stamp { font-family: ${MONO}; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+@media (max-width: 640px) {
+  .gw-close { --pad: 14px; }
+  .gw-close .gw-row { grid-template-columns: 9px 1fr; }
+  /* The state word moves to its own line under the row it belongs to, indented to line up. */
+  .gw-close .gw-state { grid-column: 2; margin-top: 3px; }
+  /* THE NOTE STACKS THE SAME WAY EVERY TIME, which it did not. Justified apart and allowed to
+     wrap, a short note sat right-aligned on the label's line and a long one dropped to its own
+     line on the left - so three blocks in a row put the same element in two different places.
+     On a phone there is no room for a second column anyway: it goes underneath, always. */
+  .gw-close .gw-lbl { font-size: 9.5px; margin-bottom: 8px; flex-direction: column; gap: 3px; }
+  .gw-close .gw-lbl .gw-note { font-size: 11px; }
+  .gw-close .gw-said, .gw-close .gw-p { font-size: 12.5px; }
+  .gw-close .gw-big { font-size: 13.5px; }
+  .gw-close .gw-small { font-size: 11.5px; }
+}
+`
 
 /** One numbered block: its number, its name, and a note saying what the block is FOR. */
 function Block({ n, label, note, children }: {
@@ -61,15 +107,15 @@ function Block({ n, label, note, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div style={{ padding: '16px 20px', borderTop: '1px solid var(--gw-border)' }}>
-      <div style={{ ...LABEL, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+    <div className="gw-blk">
+      <div className="gw-lbl">
         <span>
           {/* The space is real, not a margin: a screen reader announces the number and the name as
               two things only if there is one between them. */}
-          <span style={{ color: 'var(--gw-muted)', marginRight: 8 }}>{String(n).padStart(2, '0')}{' '}</span>
+          <span className="gw-n">{String(n).padStart(2, '0')}{' '}</span>
           {label}
         </span>
-        {note && <span style={{ color: 'var(--gw-sub)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{note}</span>}
+        {note && <span className="gw-note">{note}</span>}
       </div>
       {children}
     </div>
@@ -103,19 +149,19 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
     <div style={{ display: 'grid', gap: 4 }}>
       {/* A quote, because it is one: these are this person's own words, lifted. Set as plain
           body text they read as the product's prose about them, which is the opposite of true. */}
-      <p style={{
-        margin: 0, fontSize: 13.5, fontStyle: 'italic',
-        color: gone ? 'var(--gw-muted)' : 'var(--gw-text)',
-        textDecoration: gone ? 'line-through' : undefined, ...PROSE,
+      <p className="gw-said" style={{
+        margin: 0, fontStyle: 'italic',
+        color: gone ? 'var(--gw-sub)' : 'var(--gw-text)',
+        textDecoration: gone ? 'line-through' : undefined, maxWidth: '68ch',
       }}>
         “{row.text}”
       </p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+        <span className="gw-stamp" style={{ color: 'var(--gw-sub-d)' }}>
           {row.type.replace(/_/g, ' ').toLowerCase()}{row.documented ? ' · from a document' : ''}
         </span>
         {gone
-          ? <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>You said this is not what you said. It counts toward nothing.</span>
+          ? <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>You said this is not what you said. It counts toward nothing.</span>
           : (
             <button
               onClick={onTakeBack}
@@ -123,6 +169,8 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
               style={{
                 background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)',
                 cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
+                /* A press on a phone needs somewhere to land that is not four pixels tall. */
+                minHeight: 28, display: 'inline-flex', alignItems: 'center',
               }}
             >
               This is not what I said
@@ -258,14 +306,15 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
   const next = () => (step += 1)
 
   return (
-    <div style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+    <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+      <style>{SHEET}</style>
 
       {/* ── The masthead. What it is, whose it is, and where in the run it sits. */}
-      <div style={{ padding: '16px 20px' }}>
+      <div className="gw-head">
         <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.3 }}>
           {closed ? 'Where this ended, in your own words' : 'What you said this time'}
         </div>
-        <div style={{ marginTop: 4, fontFamily: MONO, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
+        <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
           {[
             `check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
             /* The date this sitting happened. A report with no date on it is a report somebody
@@ -296,8 +345,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             ? <WhatSuccessLooksLike data={{ ...d.againstSuccess, conditions: yours, definitions: [] }} yourName={yourName} headingIsTheCallers />
             : (
               <>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--gw-text)', fontWeight: 600, ...PROSE }}>{mySuccess}</p>
-                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+                <p className="gw-big" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{mySuccess}</p>
+                <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
                   Your own words for what good looks like. Nobody has set one for everybody yet, so
                   this is what your half is read against.
                 </p>
@@ -310,7 +359,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             reason their own half opens with it.
           */}
           {yours.length > 0 && (
-            <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+            <p className="gw-p" style={{ margin: '10px 0 0', color: 'var(--gw-text)', maxWidth: '68ch' }}>
               <b>Your part:</b> {yours.map((c: any) => c.text).join('; ')}.
             </p>
           )}
@@ -324,24 +373,21 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             {yours.map((c: any, i: number) => {
               const says = SAYS[c.state as string] ?? SAYS.unspoken
               return (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr auto', gap: 10, alignItems: 'start' }}>
+                <div key={i} className="gw-row">
                   <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: says.dot }} />
                   <div>
-                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{c.text}</p>
+                    <p className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{c.text}</p>
                     {/* The match is shown, never just asserted: a row is put in a state by a line
                         somebody actually wrote, and that line is printed under it, so a reader who
                         thinks the match is wrong can see that it is wrong. */}
-                    {c.why && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--gw-sub)', ...PROSE }}>“{c.why}”</p>}
+                    {c.why && <p className="gw-small" style={{ margin: '2px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>“{c.why}”</p>}
                   </div>
-                  <span style={{
-                    fontFamily: MONO, fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase',
-                    color: 'var(--gw-sub)', whiteSpace: 'nowrap', marginTop: 3,
-                  }}>{says.word}</span>
+                  <span className="gw-state gw-stamp" style={{ color: 'var(--gw-sub-d)', whiteSpace: 'nowrap', marginTop: 3 }}>{says.word}</span>
                 </div>
               )
             })}
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+          <p className="gw-small" style={{ margin: '10px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             No score, and no on-track label. Each row says what it says.
           </p>
         </Block>
@@ -350,10 +396,10 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       {/* ── 03 · What you said. Extracted lines, disputable, and the press sits with them. */}
       {said.length > 0 && (
         <Block n={next()} label="What you said" note="yours to take back">
-          <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+          <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 13 }}>
             {said.map(row => (
               <Row
                 key={row.id}
@@ -371,7 +417,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         <Block n={next()} label="What is still open for you" note="what you asked for, and what you raised">
           <div style={{ display: 'grid', gap: 8 }}>
             {open.map(x => (
-              <p key={x.id} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{x.text}</p>
+              <p key={x.id} className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
             ))}
           </div>
         </Block>
@@ -382,12 +428,12 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         <Block n={next()} label="What you carry into the next one" note="one thing, named">
           {/* The session's own sentence, not a row echoed from block 3 - see the note on the
               type lists above. */}
-          {carry && <p style={{ margin: 0, fontSize: 14, color: 'var(--gw-text)', fontWeight: 600, ...PROSE }}>{carry}</p>}
+          {carry && <p className="gw-big" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{carry}</p>}
           {/* NAMED AND DATED, which is the note on this block and half of what it was missing.
               The date is the one this person gave for the work, not one invented here - so where
               they never gave one, the block says a thing with no date on it rather than a date. */}
           {d?.myTimeframe && (
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+            <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
               By when, in your words: {d.myTimeframe}
             </p>
           )}
@@ -398,11 +444,12 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           */}
           {note?.showingUp && (
             <div style={{ marginTop: 12, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '11px 13px' }}>
-              <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you · not part of the shared picture</div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-navy)', ...PROSE }}>{note.showingUp}</p>
-              {note.whyItMatters && <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--gw-navy)', opacity: .85, ...PROSE }}>{note.whyItMatters}</p>}
+              {/* Navy on the blue tint, never a grey ink on a tinted ground. */}
+              <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '.09em' }}>Written for you · not part of the shared picture</div>
+              <p className="gw-p" style={{ margin: 0, color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.showingUp}</p>
+              {note.whyItMatters && <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.whyItMatters}</p>}
               {(note.beforeNextTime ?? []).length > 0 && (
-                <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
+                <ul className="gw-small" style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--gw-navy)' }}>
                   {note.beforeNextTime.map((b: string, i: number) => <li key={i}>{b}</li>)}
                 </ul>
               )}
@@ -414,7 +461,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       {/* ── 06 · How much you gave it. Folded and last: a caveat above the thing it qualifies reads
              as a verdict on it. */}
       {d?.howClearThisWas?.level && (
-        <div style={{ padding: '0 20px', borderTop: '1px solid var(--gw-border)' }}>
+        <div className="gw-blk" style={{ paddingTop: 0, paddingBottom: 0 }}>
           <Folded summary="How much you gave this one">
             <HowSpecificThisSessionWas level={d.howClearThisWas.level} spots={r?.mySoftSpots ?? null} />
             {/* The bar says how much; these five say of WHAT, which is the difference between a
@@ -426,7 +473,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
               mostUseful={mySpecificity.data?.mostUseful ?? null}
               strongest={mySpecificity.data?.strongest ?? null}
             />
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--gw-sub)', ...PROSE }}>
+            <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
               Yours alone. It is a read of how checkable this sitting is, not a mark on you.
             </p>
           </Folded>
@@ -435,8 +482,8 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
 
       {/* ── Nothing yet, said as what it is rather than as an empty card. */}
       {step === 0 && (
-        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--gw-border)' }}>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>
+        <div className="gw-blk">
+          <p className="gw-p" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             {artifact.data?.artifact?.summary
               ?? 'Your check-in is saved. The lines taken from it appear here in a moment.'}
           </p>
@@ -444,12 +491,13 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       )}
 
       {/* ── The way out, and the way to argue with it. */}
-      <div style={{ padding: '14px 20px', borderTop: '1px solid var(--gw-border)', display: 'grid', gap: 10 }}>
+      <div className="gw-foot">
         <button
           onClick={() => navigate(`/grounds/${groundId}/session/${sessionNumber}`)}
           style={{
             background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)',
             cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', justifySelf: 'start',
+            minHeight: 32, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
           }}
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
@@ -474,18 +522,19 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
               style={{
                 background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)',
                 cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
+                minHeight: 32, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
               }}
             >
               {correct.isPending ? 'Opening…' : 'Something here is wrong - correct it'}
             </button>
-            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, marginTop: 4, ...PROSE }}>
+            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 2, maxWidth: '68ch' }}>
               This opens a short session to correct or add to what you said. Nothing is overwritten -
               the change is shown alongside the original.
             </div>
           </div>
         )}
         {/* Everyone reads the same report - true at two people and at twelve. */}
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, ...PROSE }}>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, maxWidth: '68ch' }}>
           {r?.releasedAt
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
