@@ -275,6 +275,49 @@ export function isACrop(s: Crop | NotAReport): s is Crop {
 }
 
 /**
+ * THE SEVEN PER-SITUATION VARIANTS, CHECKED AGAINST THE CODE RATHER THAN BUILT BLIND.
+ *
+ * The templates listed seven situations where a block has to change. Reading what each already
+ * does: two are built and better reasoned than the drawing, two are moot, and three wait on one
+ * read that did not exist. None of the seven was work.
+ */
+export const THE_VARIANTS: { situation: string; change: string; state: 'already true' | 'moot' | 'waiting on the finding' }[] = [
+  {
+    situation: 'Several people in the same role, or a cohort',
+    change: 'a difference becomes convergence across many, because the count is the diagnosis',
+    state: 'already true',
+    /* `counts-accounts.ts` says it better than the template did: on shared work "four of six
+       described the same delay" is a headcount dressed as a verdict, because the six are describing
+       one thing they all saw. On a cohort it is the opposite - fourteen people who have never met,
+       nine describing the same rule the same wrong way, points at the briefing rather than at
+       anybody in it. Told apart by `peopleWorkTogether`, which already exists. */
+  } as any,
+  {
+    situation: 'A raise, a renewal, somebody on a plan',
+    change: 'no at-a-glance tiles - a how-are-they-doing strip on a page about whether somebody keeps their job is a scoreboard on a person',
+    state: 'already true',
+    /* EVALUATION has no `quickRead` in FAMILY_SECTIONS, deliberately, and tiles exist nowhere else. */
+  } as any,
+  {
+    situation: 'Board or leadership strategy',
+    change: 'what both sides read the same way unfolds, because apparent agreement is the finding',
+    state: 'moot',
+    /* Nothing folds it on the session report: settled and still open are two columns, side by side,
+       already. The template was describing a fold that does not exist. */
+  } as any,
+  {
+    situation: 'An agreement before it is signed',
+    change: 'four cells is a maximum - there is no board, so no run scope',
+    state: 'moot',
+    /* True when both contract cards sat in SENSING. They have their own family now, and it has a
+       board, so all four cells exist for them. */
+  } as any,
+  { situation: 'A one-off read', change: 'no position in the header, no counterfactual under the finding', state: 'waiting on the finding' },
+  { situation: 'An agreement that is running', change: 'a nothing-changed state, because saying so plainly is the product working', state: 'waiting on the finding' },
+  { situation: 'Something serious has just happened', change: 'no counterfactual - it has already surfaced, which is why the check-in exists', state: 'waiting on the finding' },
+];
+
+/**
  * WHAT HAS TO BE TRUE BEFORE THE DEAD BODY CAN GO.
  *
  * `ReportBody` is 983 lines in `client/src/pages/report/ReportPage.tsx` with no importers. The

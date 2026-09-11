@@ -74,6 +74,17 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
    * This exemption comes out when the first surface assembles from it. If it is still here after
    * the phases finish, the overhaul stopped halfway and this line is the evidence.
    */
+  /**
+   * THE ONE READ THE REDESIGN NEEDED THAT DID NOT EXIST.
+   *
+   * "The next time it would have come up on its own is the end-of-quarter number" - the most
+   * persuasive line on the marketing page, and the product had never said it once, though every
+   * part it needs was already on the ground. Three of the seven per-situation variants are about
+   * when NOT to say it, so it is built before the block that draws it.
+   *
+   * Unwired until the finding block exists. That block is the remaining work.
+   */
+  'when-this-would-have-surfaced.ts': 'report overhaul: the counterfactual, built ahead of the finding block that will draw it',
   'the-four-reports.ts': 'report overhaul phase 1: the map, argued with before anything moved. Comes out when the first surface assembles from it.',
   'a-hypothesis-is-not-a-finding.ts': "the lead-context corroboration rules, stated as a boundary and asserted by its spec. The behaviour it describes is now enforced by a-lead-note-is-not-evidence.ts, which does the arithmetic on real findings - so this stays as the statement of the rule rather than its implementation.",
 };
