@@ -23,6 +23,8 @@ function assertProductionConfig(logger: Logger) {
   if (!process.env.STRIPE_SECRET_KEY) problems.push('STRIPE_SECRET_KEY must be set');
   if (!process.env.STRIPE_WEBHOOK_SECRET) problems.push('STRIPE_WEBHOOK_SECRET must be set (webhooks are unverified otherwise)');
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) problems.push('GOOGLE_SERVICE_ACCOUNT_JSON must be set');
+  if (process.env.EMAIL_SENDS_FOR_REAL !== 'true') problems.push("EMAIL_SENDS_FOR_REAL must be 'true' in production (no mail leaves the deployment otherwise)");
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY.startsWith('re_...') || process.env.RESEND_API_KEY === 're_test') problems.push('RESEND_API_KEY must be set to a real key');
   if (problems.length) {
     logger.error(`Refusing to start in production with insecure configuration:\n - ${problems.join('\n - ')}`);
     process.exit(1);

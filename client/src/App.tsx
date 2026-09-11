@@ -82,7 +82,6 @@ import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
-import type { User } from '@/types'
 
 // Shared so code outside the React tree can invalidate too - see lib/queryClient.
 const qc = queryClient
@@ -161,11 +160,6 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
  *
  * Falls back to the old reading only when the field is absent - a `user` persisted by an older
  * build, before the next `/auth/me` refreshes it. */
-function mustSetUpOrg(user: User | null | undefined) {
-  if (!user) return false // let RequireAuth handle the unauthenticated case
-  if (typeof user.mustSetUpOrganisation === 'boolean') return user.mustSetUpOrganisation
-  return user.role === 'ADMIN' && !user.organization?.email
-}
 
 /* The two doors. Each reads the one field that decides it, and nothing else. */
 function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
@@ -178,15 +172,18 @@ function AdminsOnly({ children, what = 'add people to your organisation' }: { ch
   return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
 
+/**
+ * THE WALL IN FRONT OF THE WHOLE PRODUCT CAME DOWN (fix plan F6). This redirected every admin to
+ * /org/setup until Organization.email was filled in - a second address, in front of everything,
+ * for a column nothing ever mails and that only Stripe reads, at checkout, where it can be asked
+ * for. The name stays because eleven routes wrap it and it also does the signed-in check; what it
+ * requires now is exactly what RequireAuth requires. /org/setup is still reachable from settings.
+ */
 function RequireOrgSetup({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const user = useAuthStore(s => s.user)
   if (!isAuthenticated) {
     const dest = window.location.pathname + window.location.search
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
-  }
-  if (mustSetUpOrg(user)) {
-    return <Navigate to="/org/setup" replace />
   }
   return children
 }
@@ -233,7 +230,6 @@ function AFrontDoorOfItsOwn() {
 
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const user = useAuthStore(s => s.user)
   if (!isAuthenticated) {
     /**
      * ONE ANSWER TO "WHERE IS HOME", SHARED WITH THE LOGO. W15-4.
@@ -303,9 +299,6 @@ function RootRoute() {
    * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
    * and it is easy to read this as unreachable.
    */
-  if (mustSetUpOrg(user)) {
-    return <Navigate to="/org/setup" replace />
-  }
   return <GroundsListPage />
 }
 

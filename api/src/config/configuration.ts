@@ -111,6 +111,8 @@ export const jwtConfig = registerAs("jwt", () => ({
 
 export const resendConfig = registerAs("resend", () => ({
   apiKey: process.env.RESEND_API_KEY,
+  /* Mail leaves the building only when somebody says so, never because NODE_ENV happened to be set (D20). */
+  sendsForReal: process.env.EMAIL_SENDS_FOR_REAL === 'true',
   fromEmail: process.env.RESEND_FROM_EMAIL || "Groundwork <noreply@myground.work>",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 }));

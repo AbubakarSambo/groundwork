@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
@@ -18,7 +18,7 @@ import { withWhatGroundworkIs } from './what-groundwork-is';
  * not to the org, not to the founder. Keep that voice when filling these in.
  */
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private resend: Resend;
   private fromEmail: string;
@@ -52,12 +52,33 @@ export class EmailService {
     return `${this.frontendUrl}/grounds/new`;
   }
 
+  /**
+   * DECIDED ON THE CREDENTIAL AND AN EXPLICIT FLAG, NOT ON NODE_ENV (fix plan D20). This returned
+   * true whenever NODE_ENV was anything but production, so a staging deployment with real
+   * credentials and NODE_ENV unset silently sent nothing, and the log line was the only evidence.
+   * Now: mail goes to Resend only when EMAIL_SENDS_FOR_REAL=true AND the key is real. A misjudged
+   * condition here starts sending real mail from a staging box, so the flag is explicit.
+   */
   private isDev(): boolean {
-    const nodeEnv = process.env.NODE_ENV ?? 'development';
-    if (nodeEnv === 'production') return false;
-    // Secondary guard: also treat placeholder/test keys as dev mode.
+    return !this.canSendForReal();
+  }
+
+  private keyIsAPlaceholder(): boolean {
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
+  }
+
+  private canSendForReal(): boolean {
+    return this.configService.get<boolean>('resend.sendsForReal') === true && !this.keyIsAPlaceholder();
+  }
+
+  /** A deployment that cannot send says so at boot, once, where the deploy log is read. */
+  onModuleInit(): void {
+    const deployed = (process.env.NODE_ENV ?? 'development') === 'production';
+    if (this.canSendForReal()) { this.logger.log('Mail is sent for real through Resend.'); return; }
+    const because = this.keyIsAPlaceholder() ? 'RESEND_API_KEY is missing or a placeholder' : 'EMAIL_SENDS_FOR_REAL is not "true"';
+    const line = `No mail leaves this deployment: ${because}. Every send is logged here instead.`;
+    if (deployed) this.logger.error(line); else this.logger.warn(line);
   }
 
   /**
@@ -333,8 +354,8 @@ export class EmailService {
 
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
-      const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      /* The body no longer goes to the log (G4): it is somebody's words and it carries their links.
+         The links below are what a local run needs to follow the journey; the prose is not. */
       /* THE LINK, WHICH THE BODY ABOVE HAS JUST THROWN AWAY.
          Stripping the tags leaves the anchor TEXT and drops the href, so the one thing anybody
          testing locally needs — the address the person would click — was the one thing not in the

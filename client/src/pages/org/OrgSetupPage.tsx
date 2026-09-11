@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
@@ -26,7 +26,8 @@ export function OrgSetupPage() {
   })
 
   function handleSave() {
-    if (!orgName.trim() || !looksLikeAnAddress(orgEmail)) return
+    /* The organisation's contact address is optional (F6): nothing mails it, and Stripe asks for one at checkout if it is empty. */
+    if (!orgName.trim() || (orgEmail.trim() && !looksLikeAnAddress(orgEmail))) return
     saveMut.mutate()
   }
 
@@ -34,11 +35,6 @@ export function OrgSetupPage() {
    * NAVIGATING DURING RENDER IS A BUG, and this one was logging "Cannot update a component while
    * rendering a different component" on every visit. An effect is where a redirect belongs.
    */
-  useEffect(() => {
-    if (org?.email) navigate('/grounds', { replace: true })
-  }, [org?.email, navigate])
-
-  if (org?.email) return null
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
