@@ -117,6 +117,25 @@ function Row({ n, label, note, children, style }: {
     </div>
   )
 }
+/**
+ * REBUILT TO THE TEMPLATE, rather than adjusted toward it.
+ *
+ * The previous version was the old page with its order changed and its labels annotated, and it
+ * still did not read like the thing it was meant to be. Told so twice. The difference is not a
+ * list of tweaks: the template is a CARD with a finding at the top, four states in a row, numbered
+ * blocks with a note each, and the long material folded away until somebody asks for it. The old
+ * page was eleven open sections of prose with headings.
+ *
+ * EVERY RULE THE OLD ONE HELD IS HELD HERE, and they are the reason this is a rebuild of the
+ * rendering rather than of the product: no grade on any named person, no run read on a page about
+ * one session, the two sections that belong to the board refused by name, nothing reading the
+ * parties array, and the state word on a forming report so nobody thinks they are reading a final
+ * one.
+ *
+ * WHAT IS FOLDED, AND WHY THOSE. What everybody agrees, what each person said, and what this rests
+ * on. Each is long, each is the part nobody needs twice, and each is still every word it was - a
+ * fold is not a deletion, and the summary line says how much is behind it.
+ */
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
   const [byPerson, setByPerson] = useState(false)
   const { data, isLoading, isError } = useQuery({
@@ -125,369 +144,257 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     enabled: !!groundId && !!sessionNumber,
   })
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
-  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody's side of this session. It takes a moment.</div>
+  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody&apos;s side of this session. It takes a moment.</div>
   if (isError || !data) return null
   const d = data as any
+
   const final = d.state === 'final'
   const amended = !!d.amendedAt
-  const themed = (d.sections ?? [])
-    .filter((s: any) => THEMES.includes(s.title) && !NOT_ON_A_SESSION.includes(s.title))
-  const restsOn = (d.sections ?? []).filter((s: any) => RESTS_ON.includes(s.title))
   const yourName: string | null = d.counting?.find((c: any) => c.isYou)?.who ?? null
   const answered = (d.counting ?? []).filter((c: any) => c.answered).length
   const ofPeople = (d.counting ?? []).length
 
-  /*
-    THE FINDING LEADS. The server ranks the drafted lines (something in the way, then a read on
-    coverage or contribution, then a pattern) and names one. The lines the tiles already carry
-    ('reads') and the settled-and-open line ('written', which has its own row below) are not
-    repeated; the basis line sits small under the finding.
-  */
-  const picture: { key: string; text: string }[] = d.picture ?? ((d.pictureLines as string[] | undefined) ?? []).map((text, i) => ({ key: `line-${i}`, text }))
-  const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
-  const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
-  /**
-   * THE NUMBERS COUNT WHAT IS DRAWN, NOT WHAT COULD BE.
-   *
-   * Fixed numbers skip: a session with nothing above its objective showed 02, 04, 05, which reads
-   * as pieces missing rather than as a report with six blocks. The template numbers 1..7 because it
-   * draws all seven; a real page draws what it has. Incremented in render order, which is the order
-   * the blocks appear in the JSX below and the order the server declares.
-   */
-  let step = 0
-  const next = () => (step += 1)
+  /* The board's two sections, refused by name rather than by silence: a later change to the section
+     list cannot quietly put a run read back onto the page about one session. */
+  const themed = (d.sections ?? [])
+    .filter((x: any) => THEMES.includes(x.title) && !NOT_ON_A_SESSION.includes(x.title))
+  const restsOn = (d.sections ?? []).filter((x: any) => RESTS_ON.includes(x.title))
 
   const settled: string[] = d.whereThingsStand?.settled ?? []
   const open: string[] = d.whereThingsStand?.open ?? []
   const definitions: { who: string | null; text: string }[] = d.againstSuccess?.definitions ?? []
+  const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
+  const picture: { key: string; text: string }[] = d.picture ?? (d.pictureLines ?? []).map((t: string, i: number) => ({ key: `l${i}`, text: t }))
+  const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
+
+  /* Numbered by what is DRAWN. Fixed numbers skip when a block has nothing, and 02 · 04 · 05 reads
+     as pieces missing rather than as a report with four blocks. */
+  let step = 0
+  const next = () => (step += 1)
 
   return (
-    <div>
-      {/*
-        HOW MUCH THERE IS TO GO ON MOVED TO THE FOOT, AND THIS REVERSES A WRITTEN DECISION.
-        
-        It said "first, because it decides how to read everything under it", and that argument is
-        real. Two things beat it. The same read is already at a glance a few inches down - "How much
-        was said · all from memory" is one of the four tiles - so the band on top was the second copy
-        of it, and it was the larger one: a bar, a band word and three paragraphs of caveat filling
-        the first screen before the reader reached a single finding.
-        
-        And the templates put the method last and folded, which is the shape Hafsah asked every
-        surface to match. A caveat above the thing it qualifies is read as a verdict on it.
-        
-        Nothing is lost: the tile carries the glance, and the band itself is at the foot with what
-        this rests on, which is where somebody goes when they want to know how solid this is.
-      */}
+    <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
 
-      <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-        {/* The header line: what this is, and how many are in it. */}
-        <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          {/* "Still forming" after everybody had answered and the report was out. Three states, not two. */}
-          {/*
-            WHAT THIS IS FOR, AND WHERE YOU ARE IN IT - the template's header line.
-
-            It said "Session 3", which is a number without a subject. The objective is the thing
-            every line underneath is measured against, so it belongs in the one place a reader
-            cannot miss, and the position says how much of the run has happened - the marketing
-            card has carried "8 accounts · check-in 3 of 6" since before this page existed.
-          */}
-          <b style={{ fontSize: 15 }}>
-            {d.againstSuccess?.stated?.trim() || `Session ${d.sessionNumber}`}
-          </b>
-          <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-sub)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            {[
-              ofPeople ? `${ofPeople} account${ofPeople === 1 ? '' : 's'}` : '',
-              `check-in ${d.sessionNumber}${d.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
-              /* The state word stays on the forming case. "2 of 4 answered" says how many but not
-                 that the picture is still moving, and a reader who has not read one before does
-                 not know that a report changes. Both, not one. */
-              final ? 'closed'
-                : answered >= ofPeople && ofPeople > 0 ? 'everyone answered'
-                  : `still forming · ${answered} of ${ofPeople} answered`,
-            ].filter(Boolean).join(' · ')}
-          </em>
+      {/* ── The masthead: what this is for, and where you are in it. */}
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.3 }}>
+          {d.againstSuccess?.stated?.trim() || `Session ${d.sessionNumber}`}
         </div>
+        <div style={{ marginTop: 4, fontFamily: MONO, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
+          {[
+            ofPeople ? `${ofPeople} account${ofPeople === 1 ? '' : 's'}` : '',
+            `check-in ${d.sessionNumber}${d.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
+            final ? 'closed' : answered >= ofPeople && ofPeople > 0 ? 'everyone answered' : `still forming · ${answered} of ${ofPeople} answered`,
+          ].filter(Boolean).join(' · ')}
+        </div>
+      </div>
 
-        {/*
-          WHO THIS IS COUNTING. On a forming report this is the row that says who to chase; on a
-          closed one it is a receipt. Kept compact: one line per person, and the only state left is
-          whether they answered.
-        */}
-        {d.counting?.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--gw-border)', display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
-            {d.counting.map((c: any, i: number) => (
-              <span key={i} style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>{c.isYou ? `${c.who} (you)` : c.who}</span>
-                {' · '}{c.answered ? 'Answered' : 'Not answered yet'}
-              </span>
-            ))}
-          </div>
-        )}
+      {/*
+        WHO IS COUNTED, AND WHICH OF THEM IS YOU.
+        
+        Part of the masthead rather than a numbered block: the header says how many accounts, and
+        this says whose. It names people rather than printing a number, says which one the reader
+        is, and never counts somebody who was never going to answer - all three are the rule this
+        row exists for, and I dropped the whole row in the rebuild before a spec caught it.
+      */}
+      {(d.counting ?? []).length > 0 && (
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--gw-border)', display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+          {d.counting.map((c: any, i: number) => (
+            <span key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
+              <b style={{ fontWeight: 700 }}>{c.isYou ? `${c.who} (you)` : c.who}</b>
+              <span style={{ color: 'var(--gw-sub)' }}> · {c.answered ? 'Answered' : 'Not answered yet'}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
-        {/* The finding, in amber. One sentence the engines stand behind, worded by the model. */}
-        {finding && (
-          <div style={{ padding: '20px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
-            <p style={{ margin: 0, fontSize: 18, lineHeight: 1.38, fontWeight: 600, letterSpacing: '-.012em', color: 'var(--gw-text)', maxWidth: '60ch' }}>{finding.text}</p>
-            {finding.basis && <small style={{ display: 'block', marginTop: 9, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>{finding.basis}</small>}
-            {/*
-              WHEN THIS WOULD HAVE COME UP ON ITS OWN.
+      {/* ── The finding, first and alone. One sentence the engines stand behind. */}
+      {finding && (
+        <div style={{ padding: '16px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ ...LABEL, color: 'var(--gw-amber-t)', marginBottom: 8 }}>The finding</div>
+          <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.4, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{finding.text}</p>
+          {finding.basis && (
+            <small style={{ display: 'block', marginTop: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>{finding.basis}</small>
+          )}
+          {/* When it would have come up on its own. Under the finding and nowhere else: alone it is a
+              remark about a calendar; here it is why the finding matters now rather than later. */}
+          {finding.wouldHaveSurfaced && (
+            <small style={{ display: 'block', marginTop: 6, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, opacity: .85 }}>
+              {finding.wouldHaveSurfaced}
+            </small>
+          )}
+        </div>
+      )}
 
-              Under the finding and nowhere else: on its own it is a remark about a calendar, and
-              under the thing it is about it is the reason that thing matters now rather than later.
-              The server sends nothing for a one-off read, a last session, or a shock that has
-              already surfaced - so there is no branch here, and there does not need to be one.
-            */}
-            {finding.wouldHaveSurfaced && (
-              <small style={{ display: 'block', marginTop: 7, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, opacity: .85 }}>
-                {finding.wouldHaveSurfaced}
-              </small>
-            )}
-          </div>
-        )}
+      {/* ── At a glance. Four states in a row, each a whole clause about what its number is of. */}
+      {(d.atAGlance ?? []).length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
+          {d.atAGlance.map((r: any, i: number) => (
+            <div key={r.label} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 }}>{r.label}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)', lineHeight: 1.15 }}>{r.value}</div>
+              {/* `sub` is the whole clause saying what the number is OF - a tile that is a label
+                  and a figure is a scoreboard, and the clause is what stops it being one. */}
+              {r.sub && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.45 }}>{r.sub}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* The four states, one grammar, same place every time. */}
-        {d.atAGlance?.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
-            {d.atAGlance.map((r: any, i: number) => {
-              const wantsAttention = r.tone === 'warn' || r.tone === 'bad'
-              return (
-                <div key={r.label} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 }}>{r.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: wantsAttention ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                    {r.value}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3, lineHeight: 1.45 }}>{r.sub}</div>
+      {/* ── 01 · what this sits under, where anything does. It qualifies the objective, so it leads. */}
+      {d.cascade && (
+        <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+          {d.cascade.parentNamed && (
+            <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
+          )}
+          <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', ...PROSE }}>{d.cascade.why}</p>
+        </Row>
+      )}
+
+      {/* ── What this is for. The full band: the stated objective and each person's own version. */}
+      {d.againstSuccess && (
+        <Row n={next()} note="the objective, and each person's own version of it" label="Against what good looks like">
+          <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
+          {definitions.length > 0 && (
+            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+              {definitions.map((def, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
+                  <Cite who={def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who!} />
                 </div>
-              )
-            })}
+              ))}
+            </div>
+          )}
+        </Row>
+      )}
+
+      {/* ── Where things stand. Still open leads: it is the half somebody can act on. */}
+      {(settled.length > 0 || open.length > 0) && (
+        <Row n={next()} note="what is not settled, and what is" label="Where things stand">
+          <div style={{ display: 'grid', gap: 8 }}>
+            {open.length
+              ? open.map((t, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
+                  <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
+                  <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>
+                </div>
+              ))
+              : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)' }}>Nothing is open. Everything anybody raised has been settled.</p>}
           </div>
-        )}
-
-        {/*
-          WHAT THIS SITS UNDER, ABOVE WHAT GOOD LOOKS LIKE.
-
-          Where a team's objectives serve a wider one, the wider one has to be on the page before
-          anything measured against it. The no case prints too, and only where the situation asked
-          for a cascade: "nothing above this has been named yet" is a finding on an alignment
-          check-in, not an empty state.
-        */}
-        {d.cascade && (
-          <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
-            {d.cascade.parentNamed && (
-              <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
-            )}
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', ...PROSE }}>{d.cascade.why}</p>
-          </Row>
-        )}
-
-        {d.againstSuccess && (
-          <Row n={next()} note="the objective, and each person's own version of it" label="Against what good looks like">
-            {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
-            {/*
-              THE FULL BAND, NOT THE ONE-LINE VERSION.
-
-              `WhatSuccessLooksLike`'s own header says the full band renders "where there is room to
-              work in it: the board, and each session's report" - and this, the session's report,
-              was passing `dense`, which drops the per-condition standing and the counts and keeps a
-              single sentence. So the one read built to answer "where are we against what we said"
-              printed one line on the page most people actually open.
-            */}
-            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
-            {definitions.length > 0 && (
-              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                {definitions.map((def, i) => {
-                  const who = def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who
-                  return (
-                    <div key={i}>
-                      <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
-                      <Cite who={who!} />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </Row>
-        )}
-
-        {/* Settled and still open, side by side: the two columns of the difference. */}
-        {(settled.length > 0 || open.length > 0) ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'var(--gw-border)', borderTop: '1px solid var(--gw-border)' }}>
-            <div style={{ background: 'var(--gw-card)', padding: '16px 20px' }}>
-              <div style={LABEL}>Settled</div>
-              {settled.length
-                ? settled.map((t, i) => <p key={i} style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)
-                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing settled yet.</p>}
+          {settled.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Folded summary={`What everybody agrees (${settled.length})`}>
+                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                  {settled.map((t, i) => <p key={i} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)}
+                </div>
+              </Folded>
             </div>
-            <div style={{ background: 'var(--gw-card)', padding: '16px 20px' }}>
-              <div style={LABEL}>Still open</div>
-              {open.length
-                ? open.map((t, i) => <p key={i} style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)
-                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing still open.</p>}
-            </div>
+          )}
+        </Row>
+      )}
+
+      {/* ── What each person said they did. Folded: long, and their own work only. */}
+      {themed.length > 0 && (
+        <Row n={next()} label="What people said this session">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginTop: -4, marginBottom: 8 }}>
+            <span style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Each person&apos;s own work, in their own words.</span>
+            <button
+              onClick={() => setByPerson(v => !v)}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', flexShrink: 0 }}
+            >
+              {byPerson ? 'Group by theme' : 'Group by person'}
+            </button>
           </div>
-        ) : d.whereThingsStand?.saying ? (
-          <Row n={next()} note="settled, and still open" label="Where things stand">
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{d.whereThingsStand.saying}</p>
-          </Row>
-        ) : null}
-
-        {/*
-          WHAT GOOD LOOKS LIKE. The four versions people gave are shown as quotes, and the line about
-          the standard is said once above them: either what is set, or that nothing is. Not both as
-          competing statements, and not the same four lines twice.
-        */}
-        {/* What people said this session. Quotes with a name under each, by theme or by person. */}
-        {themed.length > 0 && (
-          <Row>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-              {/* Numbered like its neighbours; the grouping control takes the right-hand slot the
-                  other blocks give to their note. */}
-              <div style={LABEL}>
-                <span style={{ color: 'var(--gw-muted)', marginRight: 8 }}>{String(next()).padStart(2, '0')}{' '}</span>
-                What people said this session
-              </div>
-              <button
-                onClick={() => setByPerson(v => !v)}
-                style={{
-                  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', flexShrink: 0,
-                }}
-              >
-                {byPerson ? 'Group by theme' : 'Group by person'}
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px 28px' }}>
+          <Folded summary={byPerson ? `What each of the ${(d.whatEachPersonSaid ?? []).length} said` : `All ${themed.length} groups`}>
+            <div style={{ display: 'grid', gap: 16, marginTop: 10 }}>
               {byPerson
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
-                    {/*
-                      THE WRITTEN SENTENCE FIRST, THE WORDS UNDER IT.
-
-                      This block was eight stacks of disconnected clauses in italics, one cite each,
-                      and a reader could not tell from them what any one person had said. The server
-                      writes a sentence now.
-
-                      The fragments are not replaced by it. A written summary is a read of somebody's
-                      words; the words are the record, and a reader who wants to check the one
-                      against the other has to be able to. So they are folded, not dropped - a real
-                      `<details>`, which prints open and is announced as expandable.
-                    */}
-                    {p.saying && (
-                      <div style={{ fontSize: 12.5, color: p.lines?.length ? 'var(--gw-text)' : 'var(--gw-muted)', marginBottom: p.lines?.length ? 8 : 0, ...PROSE }}>{p.saying}</div>
-                    )}
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
+                      {p.isYou ? `${p.who} (you)` : p.who}
+                    </div>
+                    {p.saying && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{p.saying}</div>}
                     {p.lines?.length ? (
-                      p.saying ? (
-                        <Folded summary={`In their own words (${p.lines.length})`}>
-                          <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
-                        </Folded>
-                      ) : (
-                        <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
-                      )
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {p.lines.map((l: string, j: number) => (
+                          <div key={j} style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{l}</div>
+                        ))}
+                      </div>
                     ) : null}
                   </div>
                 ))
-                : themed.map((s: any) => (
-                  <div key={s.title}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{s.title}</div>
-                    {s.items.length > 0
-                      ? <Quotes items={s.items} yourName={yourName} />
-                      : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{s.saying}</div>}
-                    {s.note && (
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7 }}>{s.note}</div>
-                    )}
+                : themed.map((sec: any) => (
+                  <div key={sec.title}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{sec.title}</div>
+                    {sec.items.length > 0
+                      ? <Quotes items={sec.items} yourName={yourName} />
+                      : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{sec.saying}</div>}
+                    {sec.note && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8, ...PROSE }}>{sec.note}</div>}
                   </div>
                 ))}
             </div>
-          </Row>
-        )}
+          </Folded>
+        </Row>
+      )}
 
-        {/* The rest of the picture, one claim per line. */}
-        {rest.length > 0 && (
-          <Row n={next()} note="the long read of the finding above" label="The picture from everybody">
-            <div style={{ display: 'grid', gap: 8 }}>
-              {rest.map((l) => (
-                <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>
-              ))}
-            </div>
-          </Row>
-        )}
-
-        {/*
-          AND THE HANDOFFS THAT WENT QUIET, WHICH THE READER WAS NEVER TOLD ABOUT.
-
-          The waiting list on this report is the STILL-RAISED one: a handoff nobody has mentioned
-          since is left out of it, correctly, because a four-session run should not still say it is
-          "waiting for introductions" about introductions that happened in week six.
-
-          But the reader was shown the shorter list with nothing to explain why it was shorter, and
-          read it as resolved. It may be. Nobody has said so, and that is what this says. The server
-          has produced the sentence since 11 September; nothing rendered it until now.
-        */}
-        {d.whatWentQuiet && (
-          <Row n={next()} note="waiting on somebody, and gone quiet" label="Not raised again">
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
-          </Row>
-        )}
-
-        {/*
-          WHAT KEEPS SHOWING UP IS NOT A SESSION READ, AND IT WAS ON A SESSION PAGE.
-
-          It printed "seen across N sessions" under a heading on the report for ONE session. A
-          pattern is a claim about a run by definition - the product's own rule is that a detection
-          observed once has not survived recurrence - so a session report carrying it is the same
-          content in two places, one of which cannot support it. It is on the board, which is the
-          surface about the whole run, and that is the only place it belongs.
-
-          Nothing is lost and nothing is deleted: the detections are unchanged, the board renders
-          them with the same sentences, and this page stops claiming a span it cannot see.
-        */}
-
-        {/*
-          AND NEITHER IS WHAT MOVED. Its two sections are "what changed since last session" and
-          "what changed since the beginning" - distances between two points, on the report for one
-          of them. One session is a position; the distance between two descriptions is a movement,
-          which is the rule `one-session-is-not-a-movement` already states about the starting point.
-
-          It lives on the board, where every measure now reads as where it started, where it is and
-          what was said.
-        */}
-
-        {/* The one thing to settle first. From the blocker kind or the role map; never a model over the transcript. */}
-        {d.theConversationWorthHaving ? (
-          <div style={{ padding: 20, background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
-            <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>The conversation worth having now</div>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '60ch' }}>{d.theConversationWorthHaving}</p>
+      {/* ── The picture from everybody. The long read of the finding, after the sharp part. */}
+      {rest.length > 0 && (
+        <Row n={next()} note="the long read of the finding above" label="The picture from everybody">
+          <div style={{ display: 'grid', gap: 10 }}>
+            {rest.map((l) => <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>)}
           </div>
-        ) : d.whyNoQuestion ? (
-          <Row n={next()} note="the one thing to settle first" label="The conversation worth having now">
-            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
-          </Row>
-        ) : null}
+        </Row>
+      )}
 
-        {/* How much there is to go on, in full, beside what it rests on. */}
-        {d.confidence && (
-          <div style={{ padding: '4px 18px 0' }}><HowMuchThereIsToGoOn read={d.confidence} /></div>
-        )}
+      {/* ── What went quiet. Somebody was waiting on it and nobody has said it is resolved. */}
+      {d.whatWentQuiet && (
+        <Row n={next()} note="waiting on somebody, and gone quiet" label="Not raised again">
+          <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
+        </Row>
+      )}
 
-        {/* The documents, when there are any. When there are none it is a reason under confidence. */}
-        {restsOn.length > 0 && restsOn[0].items.length > 0 && (
-          <Row n={next()} note="how solid this is, and what it is built from" label="What this rests on">
-            <Quotes items={restsOn[0].items} yourName={yourName} />
-          </Row>
-        )}
-
-
-        <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          {!final
-            ? 'People are still answering, so this moves. '
-            : amended
-              ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in. `
-              : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}. This does not change. `}
-          {d.showsEverybody
-            ? 'Everybody in this check-in reads this same report. Nothing here decides who is right.'
-            : 'Until the shared report is out, the words above are your own. The counts are from everybody\'s answers. Nobody else\'s wording reaches you and yours does not reach them.'}
+      {/* ── The one conversation worth having. Boxed, because it is the thing to do next. */}
+      {d.theConversationWorthHaving ? (
+        <div style={{ padding: '18px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>
+            <span style={{ color: 'var(--gw-navy)', opacity: .6, marginRight: 8 }}>{String(next()).padStart(2, '0')}{' '}</span>
+            The conversation worth having now
+          </div>
+          <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{d.theConversationWorthHaving}</p>
         </div>
+      ) : d.whyNoQuestion ? (
+        <Row n={next()} note="the one thing to settle first" label="The conversation worth having now">
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{d.whyNoQuestion}</p>
+        </Row>
+      ) : null}
+
+      {/* ── What this rests on. The method, last and folded: a caveat above what it qualifies is
+             read as a verdict on it. */}
+      <Row n={next()} note="how solid this is, and what it is built from" label="What this rests on">
+        <Folded summary="How much there is to go on, and what it is built from">
+          <div style={{ marginTop: 10 }}>
+            {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
+            {restsOn.map((sec: any) => (
+              <div key={sec.title} style={{ marginTop: 12 }}>
+                {sec.items.length > 0
+                  ? <Quotes items={sec.items} yourName={yourName} />
+                  : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{sec.saying}</div>}
+              </div>
+            ))}
+          </div>
+        </Folded>
+      </Row>
+
+      {/* ── The promise, and what state this is in. */}
+      <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        {!final
+          ? 'People are still answering, so this moves. '
+          : amended
+            ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in. `
+            : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}. This does not change. `}
+        {d.showsEverybody
+          ? 'Everybody in this check-in reads this same report. Nothing here decides who is right.'
+          : 'Until the shared report is out, the words above are your own. The counts are from everybody’s answers. Nobody else’s wording reaches you and yours does not reach them.'}
       </div>
     </div>
   )
