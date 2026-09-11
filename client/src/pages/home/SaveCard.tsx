@@ -5,6 +5,8 @@ import { authApi } from '@/api/auth'
 import { entryStorage } from '@/api/entry'
 import type { EntryMode } from '@/api/entry'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 
 type Variant = 'admin' | 'participant'
 
@@ -43,6 +45,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
   const [note, setNote] = useState('')
   const [participantEmail, setParticipantEmail] = useState('')
   const [participantAdded, setParticipantAdded] = useState(false)
+  const [participantError, setParticipantError] = useState('')
 
   const [inviteToken] = useState<string>(() => {
     const session = entryStorage.load()
@@ -136,12 +139,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           </form>
         </div>
         <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-          <button
-            onClick={onClear}
-            style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-          >
-            Start over
-          </button>
+          <StartOver onClear={onClear} />
         </div>
       </div>
     )
@@ -150,7 +148,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
   function save(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = email.trim().toLowerCase()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Enter a valid email.'); return }
+    if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     setEmailError('')
     const session = entryStorage.load()
     if (session) {
@@ -170,14 +168,16 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     }
   }
 
+  /* Two silent returns - a bad address, and no session to attach to - each produced exactly the
+     same nothing as success. Both say so now. */
   function addParticipant() {
     const trimmed = participantEmail.trim().toLowerCase()
-    if (!trimmed || !trimmed.includes('@')) return
+    if (!looksLikeAnAddress(trimmed)) { setParticipantError(NOT_AN_ADDRESS); return }
     const session = entryStorage.load()
-    if (session) {
-      entryStorage.save({ ...session, participantEmail: trimmed, inviteToken, inviteNote: note.trim() || undefined })
-      setParticipantAdded(true)
-    }
+    if (!session) { setParticipantError('Nothing to attach this to - reload and try again.'); return }
+    setParticipantError('')
+    entryStorage.save({ ...session, participantEmail: trimmed, inviteToken, inviteNote: note.trim() || undefined })
+    setParticipantAdded(true)
   }
 
   return (
@@ -272,6 +272,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
           Add their email and we will send them an invite once you have saved.
         </div>
+        {participantError && <div className="gw-er" style={{ marginBottom: 6 }}>{participantError}</div>}
         {participantAdded ? (
           <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
             Saved. They will receive an invite once you have saved.
@@ -298,13 +299,34 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       </div>
 
       <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-        <button
-          onClick={onClear}
-          style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-        >
-          Start over
-        </button>
+        <StartOver onClear={onClear} />
       </div>
     </div>
+  )
+}
+
+/**
+ * "START OVER" ASKS FIRST. Two bare buttons discarded the whole anonymous conversation and its report
+ * on one press. EntryChatPage confirms the identical action in all three of its placements with one
+ * sentence, already written and already approved; it is the sentence here.
+ */
+function StartOver({ onClear }: { onClear: () => void }) {
+  const [asking, setAsking] = useState(false)
+  if (asking) {
+    return (
+      <Confirm
+        saying="This throws away this session and everything in it."
+        confirmLabel="Start over" keepLabel="Keep going"
+        onConfirm={onClear} onKeep={() => setAsking(false)}
+      />
+    )
+  }
+  return (
+    <button
+      onClick={() => setAsking(true)}
+      style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
+    >
+      Start over
+    </button>
   )
 }

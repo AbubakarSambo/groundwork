@@ -4,6 +4,7 @@ import { joinApi } from '@/api/entry'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 type Phase = 'loading' | 'start' | 'sent' | 'error'
 
@@ -51,7 +52,8 @@ export function JoinPage() {
    * the work.
    */
   async function join() {
-    if (!email.trim().includes('@') || !role.trim() || joining) return
+    /* The button waits for both fields, by a written decision (see the field's comment below). */
+    if (!looksLikeAnAddress(email) || !role.trim() || joining) return
     setJoining(true)
     try {
       const res = await joinApi.accept({
@@ -115,7 +117,7 @@ export function JoinPage() {
         who said what about whom.
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); join() }}>
+      <form noValidate onSubmit={e => { e.preventDefault(); join() }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-first">First name</label><input id="join-first" className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
@@ -133,7 +135,7 @@ export function JoinPage() {
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
         </div>
         <div className="gw-fld"><label className="gw-label" htmlFor="join-department">Department</label><input id="join-department" className="gw-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" /></div>
-        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@') || !role.trim()} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@') || !role.trim()) ? 0.6 : 1 }}>
+        <button className="gw-btn" type="submit" disabled={joining || !looksLikeAnAddress(email) || !role.trim()} style={{ marginTop: 8, opacity: (joining || !looksLikeAnAddress(email) || !role.trim()) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>
       </form>

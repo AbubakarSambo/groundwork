@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { CARD, LABEL } from './OpsLayout'
 import { scrollTo } from '@/lib/scroll-to'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 /**
  * THE SITUATIONS OFFERED IN THE PANEL.
@@ -547,7 +548,7 @@ export function TheAssistantAsACustomerSeesIt() {
    * than implying somebody has just been let in.
    */
   async function addSomebody() {
-    if (!ready || !session || !form.email.includes('@')) return
+    if (!ready || !session || !looksLikeAnAddress(form.email)) return
     setBusy(true)
     try {
       const res = await fetch(`${ready.baseUrl}/api/org/v1/people`, {
@@ -978,7 +979,7 @@ export function TheAssistantAsACustomerSeesIt() {
                 until they accept something and an admin approves them.
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                <button type="button" className="gw-btn" style={{ margin: 0, padding: '7px 14px', fontSize: 13 }} disabled={busy || !form.email.includes('@')} onClick={addSomebody}>
+                <button type="button" className="gw-btn" style={{ margin: 0, padding: '7px 14px', fontSize: 13 }} disabled={busy || !looksLikeAnAddress(form.email)} onClick={addSomebody}>
                   {busy ? 'Adding…' : 'Add them'}
                 </button>
                 <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => setDoing(null)}>Cancel</button>

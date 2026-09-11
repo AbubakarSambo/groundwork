@@ -11,6 +11,7 @@ import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -1303,7 +1304,7 @@ export function CreateGroundPage() {
                         type="button"
                         className="gw-btn"
                         style={{ margin: 0 }}
-                        disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !coach.email.includes('@') || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
+                        disabled={coachBusy || !coach.name.trim() || !coach.orgName.trim() || !looksLikeAnAddress(coach.email) || !coach.teamSize.trim() || coach.intention.trim().length < MIN_INTENTION_LENGTH}
                         onClick={async () => {
                           setCoachBusy(true); setCoachErr(null)
                           try {

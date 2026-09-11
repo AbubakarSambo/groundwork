@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
 import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 export function OrgSetupPage() {
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ export function OrgSetupPage() {
   })
 
   function handleSave() {
-    if (!orgName.trim() || !orgEmail.includes('@')) return
+    if (!orgName.trim() || !looksLikeAnAddress(orgEmail)) return
     saveMut.mutate()
   }
 
@@ -104,11 +105,11 @@ export function OrgSetupPage() {
 
           <button
             onClick={handleSave}
-            disabled={saveMut.isPending || !orgName.trim() || !orgEmail.includes('@')}
+            disabled={saveMut.isPending || !orgName.trim() || !looksLikeAnAddress(orgEmail)}
             style={{
               width: '100%', padding: '11px 20px', background: 'var(--gw-navy)', color: 'white', border: 'none',
               borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: saveMut.isPending || !orgName.trim() || !orgEmail.includes('@') ? 0.5 : 1,
+              opacity: saveMut.isPending || !orgName.trim() || !looksLikeAnAddress(orgEmail) ? 0.5 : 1,
             }}
           >
             {saveMut.isPending ? 'Saving…' : 'Continue'}

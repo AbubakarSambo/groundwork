@@ -5,6 +5,7 @@ import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 interface OrgMember {
   id: string
@@ -230,7 +231,7 @@ export function OrgMembersPage() {
 
   function handleInvite() {
     const email = inviteEmail.trim()
-    if (!email.includes('@')) return
+    if (!looksLikeAnAddress(email)) return
     inviteMut.mutate(email)
   }
 
@@ -429,11 +430,11 @@ export function OrgMembersPage() {
           />
           <button
             onClick={handleInvite}
-            disabled={inviteMut.isPending || !inviteEmail.includes('@')}
+            disabled={inviteMut.isPending || !looksLikeAnAddress(inviteEmail)}
             style={{
               padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', border: 'none',
               borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: inviteMut.isPending || !inviteEmail.includes('@') ? 0.5 : 1,
+              opacity: inviteMut.isPending || !looksLikeAnAddress(inviteEmail) ? 0.5 : 1,
               whiteSpace: 'nowrap',
             }}
           >

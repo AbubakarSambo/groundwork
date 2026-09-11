@@ -14,6 +14,7 @@ import { personLabel } from '@/lib/utils'
 import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
 import { useHelpStore } from '@/stores/help'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
@@ -488,13 +489,13 @@ export function GroundsListPage() {
                     placeholder="colleague@company.com"
                     value={colleagueEmail}
                     onChange={e => setColleagueEmail(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
                     style={{ flex: 1, padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-blue-b)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white' }}
                     autoFocus
                   />
                   <button
-                    onClick={() => { if (colleagueEmail.includes('@')) teamInviteMut.mutate(colleagueEmail.trim()) }}
-                    disabled={teamInviteMut.isPending || !colleagueEmail.includes('@')}
+                    onClick={() => { if (looksLikeAnAddress(colleagueEmail)) teamInviteMut.mutate(colleagueEmail.trim()) }}
+                    disabled={teamInviteMut.isPending || !looksLikeAnAddress(colleagueEmail)}
                     style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
                   >
                     {teamInviteMut.isPending ? 'Sending…' : 'Send invite'}

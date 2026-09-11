@@ -19,6 +19,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 
 type ViewTab = 'shared' | 'own'
 
@@ -225,16 +226,16 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(true)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          It felt fair
+          {submit.isPending && submit.variables === true ? 'Recording…' : 'It felt fair'}
         </button>
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(false)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          It did not
+          {submit.isPending && submit.variables === false ? 'Recording…' : 'It did not'}
         </button>
       </div>
     </div>
@@ -602,6 +603,7 @@ function HiddenContributorsSection({
 }) {
   const [openFor, setOpenFor] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [name, setName] = useState('')
   const [reason, setReason] = useState('')
   const [done, setDone] = useState<Set<string>>(new Set())
@@ -668,10 +670,13 @@ function HiddenContributorsSection({
                     style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
                   />
                 )}
+                {emailError && <div className="gw-er">{emailError}</div>}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => {
-                      if (!email.trim().includes('@')) return
+                      /* It used to return in silence, so a typo was indistinguishable from success. */
+                      if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
+                      setEmailError('')
                       if (isInitiator) {
                         addParticipant.mutate({ key, email: email.trim(), note: c.evidence })
                       } else {
@@ -1492,7 +1497,7 @@ export function ReportBody({
                         .map(c => (
                           <button
                             key={c.id}
-                            disabled={downloadRecord.isPending}
+                            disabled={downloadRecord.isPending && downloadRecord.variables === c.id}
                             onClick={() => downloadRecord.mutate(c.id)}
                             style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid #D6D2CA', borderRadius: 12, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
                             title={`Download your session ${c.sessionNumber} record as a text file`}

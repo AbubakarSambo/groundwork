@@ -30,6 +30,7 @@ import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -1985,6 +1986,7 @@ export function EntryChatPage() {
    * simply never asked whether it was talking to somebody who had already signed in.
    */
   const [savingAsUser, setSavingAsUser] = useState(false)
+  const [saving, setSaving] = useState(false)
   /**
    * WHO DID NOT GET A MAIL, AND WHY - CARRIED OVER FROM THE SCREEN THAT USED TO DO IT.
    *
@@ -2079,7 +2081,18 @@ export function EntryChatPage() {
     }
   }
 
+  /*
+   * ONE PRESS IS ONE CALL. A double press fired two entrySave calls - two drafts, two emails, and the
+   * second draftToken overwrote the first in localStorage, so the earlier mail's link pointed at a
+   * draft this browser would no longer patch. Same guard the signed-in save (savingAsUser) has had.
+   */
   async function handleSave() {
+    if (saving) return
+    setSaving(true)
+    try { await handleSaveInner() } finally { setSaving(false) }
+  }
+
+  async function handleSaveInner() {
     /*
      * WHATEVER IS STILL IN THE OPEN "ADD THEM" FIELD COUNTS AS ADDED.
      *
@@ -2093,7 +2106,7 @@ export function EntryChatPage() {
       if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
     }
     const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
+    if (!looksLikeAnAddress(trimmed)) { setEmailError(NOT_AN_ADDRESS); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
     // field only renders AFTER the email is sent (the admin section below is
     // emailSent-gated) - so the gate deadlocked every anonymous save. The
@@ -2181,7 +2194,7 @@ export function EntryChatPage() {
 
   function addInviteEmail() {
     const e = inviteEmail.trim()
-    if (!e || !e.includes('@')) return
+    if (!looksLikeAnAddress(e)) return
     setInviteEmail('')
     setInviteContextFor(e)
     setInviteContext('')
@@ -2203,8 +2216,8 @@ export function EntryChatPage() {
    */
   function queueSuggestedContributor(key: string, note: string): boolean {
     const email = addingContributorEmail.trim()
-    if (!email || !email.includes('@')) {
-      setAddingContributorError(email ? 'That does not look like an email address.' : 'Add their email address, or close this to leave them out.')
+    if (!looksLikeAnAddress(email)) {
+      setAddingContributorError(email ? NOT_AN_ADDRESS : 'Add their email address, or close this to leave them out.')
       return false
     }
     setAddingContributorError('')
@@ -3504,14 +3517,16 @@ export function EntryChatPage() {
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
                 />
                 {trap.field}
+                {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
+                <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
                 />
                 {emailError && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginBottom: 6 }}>{emailError}</div>}
-                <button onClick={handleSave} disabled={generatingReport && !sessionReport} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: generatingReport && !sessionReport ? 0.5 : 1 }}>
-                  Save my check-in →
+                <button type="submit" disabled={saving || (generatingReport && !sessionReport)} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: saving ? 'wait' : generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving || (generatingReport && !sessionReport) ? 0.5 : 1 }}>
+                  {saving ? 'Saving…' : 'Save my check-in →'}
                 </button>
+                </form>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
                 </div>
@@ -3832,6 +3847,7 @@ export function EntryChatPage() {
                         const emails = bulkInviteText
                           .split(/[\n,]+/)
                           .map(e => e.trim().toLowerCase())
+                          /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
                           .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
                         if (emails.length === 0) return
                         setBulkInviteText('')

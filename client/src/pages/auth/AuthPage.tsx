@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 
 
 
@@ -311,7 +312,7 @@ export function AuthPage() {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return }
+    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
     if (!password) { setError('Enter your password.'); return }
     signIn.mutate()
   }
@@ -320,7 +321,7 @@ export function AuthPage() {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return }
+    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
     sendLink.mutate()
   }
 
@@ -363,7 +364,7 @@ export function AuthPage() {
         {/* `!linkSent`: on /auth/sent this whole form rendered above the panel. W8-62. */}
         {view === 'password' && !linkSent && (
           <>
-            <form onSubmit={submitPassword}>
+            <form noValidate onSubmit={submitPassword}>
               <div className="gw-fld">
                 <label className="gw-label" htmlFor="signin-email">Email</label>
                 <input
@@ -440,7 +441,7 @@ export function AuthPage() {
               No password to choose. We send you a link, and your account is made when you open it.
             </div>
 
-            <form onSubmit={e => { e.preventDefault(); setError(''); if (!email.trim().includes('@')) { setError('Enter a valid email address.'); return } createAccount.mutate() }}>
+            <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
               {trap.field}
               <div className="gw-fld">
                 <label className="gw-label" htmlFor="signup-name">Your name</label>
@@ -536,7 +537,7 @@ export function AuthPage() {
                 : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
             </div>
 
-            <form onSubmit={submitLink}>
+            <form noValidate onSubmit={submitLink}>
               {trap.field}
               <div className="gw-fld">
                 <label className="gw-label">Email</label>
@@ -568,7 +569,7 @@ export function AuthPage() {
               Enter your email and we will send you a link to reset your password.
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); setError(''); const e2 = email.trim(); if (!e2 || !e2.includes('@')) { setError('Enter a valid email address.'); return } sendReset.mutate() }}>
+            <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
               <div className="gw-fld">
                 <label className="gw-label">Email</label>
                 <input
