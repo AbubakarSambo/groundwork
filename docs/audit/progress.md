@@ -40,6 +40,35 @@ plan. Read-only: every verdict below comes from the code as it stands, not from 
 | E3 wire the manager rule | **Not started** |
 | E4 the organisation switch | Withdrawn, correctly not built |
 
+## Parts D, F and G — channels, promises, privacy
+
+28 landed, 3 partly, 4 uncommitted and in flight, 6 not started, 3 withdrawn, 1 awaiting a decision.
+The two sequencing traps in the plan were both taken correctly: one inbound WhatsApp path now, and
+the twelve-character fix landed after it, with the bug it could have recreated handled explicitly.
+The platform route was hollowed out rather than deleted, so a live Meta app still gets an answer.
+
+## Across all 104 batches
+
+| | |
+|---|---|
+| Landed | 72 |
+| Partly | 16 |
+| Not started | 8 |
+| Uncommitted, in flight | 4 |
+| Withdrawn or superseded | 5 |
+
+## Before anything else
+
+**The working tree does not compile.** Three unused-variable errors in the client, left behind by
+the in-flight work on the sign-up wall. Confirmed with a typecheck.
+
+**Two log lines write a person's record entry in full.** On every anchoring decision the log
+carries the entry's complete text plus two hundred characters of the document passage and of what
+the document says. This is the private record, in the application log, which is read by more people
+than the database is. The spec written to catch exactly this has a broken pattern and cannot see
+it, so it passes them and fails only on a WhatsApp error body. Fix the pattern first, then the
+lines, or the spec will certify a leak as clean.
+
 ## What is actually left, in order of harm
 
 1. **A5, the meter.** `open()` still decrements the balance and increments the free-session count
