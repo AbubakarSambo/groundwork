@@ -113,8 +113,11 @@ export function SettingsPage() {
 
   const eraseMyData = useMutation({
     mutationFn: myDataApi.erase,
-    onSuccess: () => { toast.success('Your data has been erased.'); logout(); navigate('/auth') },
-    onError: () => toast.error('Could not erase your data. Try again.'),
+    /* Not "erased": eraseAccount anonymises the way in and deliberately keeps what was shared,
+       because it is also the other people's picture of what happened. Saying erased contradicts
+       both the code and this page's own explanation three hundred lines below. */
+    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
+    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
   })
 
   /**

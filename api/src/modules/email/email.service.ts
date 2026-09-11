@@ -534,7 +534,21 @@ export class EmailService implements OnModuleInit {
   /** Participant added to a check-in. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
-    /* The paragraph below promises that ignoring this is enough. This is what makes it true. */
+    /*
+     * THE FIRST THING MOST PEOPLE EVER SEE OF THIS PRODUCT, AND IT READ LIKE A SUMMONS.
+     *
+     * "Share your account of", "what you put on record belongs to you", "Add my account" - three
+     * filing-cabinet phrases in one mail, sent to somebody who has never heard of us and is being
+     * asked to be honest about their own work.
+     *
+     * AND IT OVERPROMISED, which has been flagged before. "Nobody reads what you write" is not
+     * true: the model reads it, the shared picture is built from it, and the lead reads that
+     * picture. The narrower claim is the one the product actually enforces - nobody on your team
+     * sees the words - and it is worth more than the broad one precisely because it holds.
+     *
+     * The last paragraph promises that ignoring this is enough. theWayToStopBeingChased is what
+     * makes that true.
+     */
     const stopLine = await this.theWayToStopBeingChased(context?.participantId);
     /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
        with an ampersand or an angle bracket renders as written rather than as half a sentence. */
@@ -544,11 +558,11 @@ export class EmailService implements OnModuleInit {
       subject: `${founderName} invited you to check in on: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p><strong>${escapeHtml(founderName)}</strong> has invited you to share your account of <strong>${escapeHtml(groundLabel)}</strong> using Groundwork.</p>
-         <p>What this means: a short private check-in, about 10 minutes, where you give your own version of what is going on. Nobody reads what you write. The shared report shows where your account and theirs agree or differ. It does not quote you.</p>
-         <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
+         <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
+         <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
+         <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Say what I am seeing →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
