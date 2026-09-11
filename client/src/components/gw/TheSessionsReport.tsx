@@ -181,6 +181,23 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           </Row>
         )}
 
+        {/*
+          AND THE HANDOFFS THAT WENT QUIET, WHICH THE READER WAS NEVER TOLD ABOUT.
+
+          The waiting list on this report is the STILL-RAISED one: a handoff nobody has mentioned
+          since is left out of it, correctly, because a four-session run should not still say it is
+          "waiting for introductions" about introductions that happened in week six.
+
+          But the reader was shown the shorter list with nothing to explain why it was shorter, and
+          read it as resolved. It may be. Nobody has said so, and that is what this says. The server
+          has produced the sentence since 11 September; nothing rendered it until now.
+        */}
+        {d.whatWentQuiet && (
+          <Row label="Not raised again">
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
+          </Row>
+        )}
+
         {/* What keeps showing up: the pattern engine's own sentences, with the span that makes them a pattern. */}
         {d.patterns?.length > 0 && (
           <Row label="What keeps showing up">
