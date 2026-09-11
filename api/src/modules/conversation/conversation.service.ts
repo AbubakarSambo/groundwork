@@ -19,6 +19,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { aNameOrNothing } from '../board/a-name-is-short';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
@@ -1687,7 +1688,8 @@ export class ConversationService {
         select: { id: true, user: { select: { firstName: true } }, roleAsDescribed: true },
       }).catch(() => [] as any[]);
       for (const p of owed) {
-        const name = p.user?.firstName?.trim() || p.roleAsDescribed?.trim();
+        /* A sentence is not a name - see a-name-is-short.ts. */
+        const name = p.user?.firstName?.trim() || aNameOrNothing(p.roleAsDescribed);
         if (name) nameByParticipantId.set(p.id, name);
       }
     }
@@ -1866,7 +1868,7 @@ export class ConversationService {
         .map((p) => ({
           label:
             displayName(p as any) ??
-            p.roleAsDescribed?.trim() ??
+            aNameOrNothing(p.roleAsDescribed) ??
             'a teammate',
         })),
       /**
@@ -1896,7 +1898,7 @@ export class ConversationService {
                 const row = expectationByParticipant.get(p.id);
                 if (!row?.text?.trim()) return null;
                 return {
-                  label: displayName(p as any) ?? p.roleAsDescribed?.trim() ?? 'a teammate',
+                  label: displayName(p as any) ?? aNameOrNothing(p.roleAsDescribed) ?? 'a teammate',
                   text: row.text.trim(),
                 };
               })

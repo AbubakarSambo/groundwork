@@ -29,6 +29,7 @@ import {
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { theSessionReport } from '../reports/the-session-report';
+import { aNameOrNothing } from './a-name-is-short';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -287,7 +288,8 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
-      return n || p.roleAsDescribed?.trim() || null;
+      /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
+      return n || aNameOrNothing(p.roleAsDescribed) || null;
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.

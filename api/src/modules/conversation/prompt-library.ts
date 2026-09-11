@@ -106,7 +106,8 @@ export const VOCABULARY_RULE = [
    * the register of an HR system.
    */
   'AND TWO WORDS YOU DO NOT USE TO THEM. Never call what they are telling you their "record", their',
-  '"contribution", their "submission" or their "entry", and never say it is "on the record" or being',
+  '"contribution", their "submission" or their "entry", and never say it is "on the record", "for the',
+  'record", "noted for the record" or being',
   '"logged", "captured" or "filed". Say "what you shared", or just say it plainly: "what you have',
   'told me", "what you said today". The picture everybody builds together is "the shared picture".',
   'This is about the words you say to them, not about what anything is called anywhere else.',
