@@ -28,7 +28,7 @@ const weigh = {
 describe('the lead weighs on the session page too', () => {
   it('renders the weigh section when the server sends one', () => {
     render(<WhatToProbeThemOn reads={[]} weigh={weigh} weighNote="This is material, not a verdict." />)
-    expect(screen.getByText('What you said you were looking for, and what the record holds')).toBeTruthy()
+    expect(screen.getByText('What you said you were looking for, and what people have said about it')).toBeTruthy()
     expect(screen.getByText('The rota is written down and held to')).toBeTruthy()
     expect(screen.getByText('Nights are covered without calling the lead')).toBeTruthy()
     expect(screen.getByText('This is material, not a verdict.')).toBeTruthy()
@@ -36,7 +36,7 @@ describe('the lead weighs on the session page too', () => {
 
   it('and nothing about it when there is none, rather than an empty heading', () => {
     render(<WhatToProbeThemOn reads={[]} weigh={null} />)
-    expect(screen.queryByText('What you said you were looking for, and what the record holds')).toBeNull()
+    expect(screen.queryByText('What you said you were looking for, and what people have said about it')).toBeNull()
   })
 })
 

@@ -59,7 +59,7 @@ describe('a check-in can be brought to an end', () => {
     /* The consequences, then the press (nothing-irreversible-happens-on-one-press.spec.tsx): one click
        does not end an engagement. */
     expect(resolutionApi.propose).not.toHaveBeenCalled()
-    await userEvent.click(screen.getByText('Yes, record it'))
+    await userEvent.click(screen.getByText('Yes, that is my answer'))
     await waitFor(() => expect(resolutionApi.propose).toHaveBeenCalledWith('g1', 'KEEP'))
   })
 

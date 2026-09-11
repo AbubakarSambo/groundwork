@@ -89,7 +89,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
 }
 
 const QUICK_ACTIONS = [
-  { label: 'What am I missing?',        msg: 'What is missing from my record that would make it stronger?' },
+  { label: 'What am I missing?',        msg: 'What is missing from what I have said that would make it stronger?' },
   { label: 'Is there a document?',      msg: 'Is there anything written down that we should look at for this?' },
   { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
 ]

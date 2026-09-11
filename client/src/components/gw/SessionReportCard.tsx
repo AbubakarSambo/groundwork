@@ -231,7 +231,7 @@ function AdminCrossRef({ report, closed, picture }: { report: Report; closed: bo
 
       {/* Doc line */}
       {engagement?.documentBacked && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents on record from this check-in.</div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 4 }}>Documents added during this check-in.</div>
       )}
 
       {closed && (
@@ -474,7 +474,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
         {/* STATE: solo artifact */}
         {state === 'solo' && soloArtifact && (
           <div>
-            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 9 }}>Your private record</div>
+            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 9 }}>Just for you</div>
             <p style={{ fontSize: 14, lineHeight: 1.65, marginBottom: soloArtifact.whatToCarry ? 12 : 0 }}>{soloArtifact.summary}</p>
             {soloArtifact.whatToCarry && (
               <div style={{ background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.55 }}>

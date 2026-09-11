@@ -26,7 +26,7 @@ describe('the weigh section reaches the page', () => {
   })
 
   it('with the three parts, in the order the module builds them', () => {
-    expect(CODE).toMatch(/What you said doing well means[\s\S]*What the record holds on that[\s\S]*What nobody has evidence for/)
+    expect(CODE).toMatch(/What you said doing well means[\s\S]*What people have said about that[\s\S]*What nobody mentioned/)
   })
 
   it('and "what nobody has evidence for" says so rather than rendering an empty list', () => {

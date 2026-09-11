@@ -95,7 +95,10 @@ export function groundTabs({ contextEnabled, canRunThisCheckIn, isAParty }: TabC
    * you.
    */
   if (canRunThisCheckIn) tabs.push({ key: 'sessions', label: 'Sessions' })
-  if (isAParty) tabs.push({ key: 'record', label: 'My record' })
+  /* The one label every participant sees on every visit. "My record" is the filing cabinet the
+     product decided against - see what-we-call-the-thing-a-person-builds.ts. The key stays
+     'record': it is a route, not a word anybody reads. */
+  if (isAParty) tabs.push({ key: 'record', label: 'What I shared' })
 
   tabs.push({ key: 'context', label: contextEnabled ? 'Context' : 'Documents' })
   tabs.push({ key: 'settings', label: 'Setup' })

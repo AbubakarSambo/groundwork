@@ -159,7 +159,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
               cursor: picked && !proposeMut.isPending ? 'pointer' : 'default',
             }}
           >
-            {proposeMut.isPending ? 'Recording…' : myChoiceExists ? 'Change my answer' : 'This is my answer'}
+            {proposeMut.isPending ? 'Saving…' : myChoiceExists ? 'Change my answer' : 'This is my answer'}
           </button>
           )}
           {/*
@@ -170,7 +170,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
           {canChoose && confirming && picked && (
             <Confirm danger={false}
               saying={`Record "${options.find(o => o.value === picked)?.label ?? picked}" as your answer? It is kept on the record with your name against it. ${leadDecides ? 'As the lead, your answer closes this check-in.' : 'This check-in closes only when everyone picks the same outcome, and nobody closes it alone.'} Everybody's accounts stay on the record whichever way it goes.`}
-              confirmLabel="Yes, record it" keepLabel="Not yet" pending={proposeMut.isPending} pendingLabel="Recording…"
+              confirmLabel="Yes, that is my answer" keepLabel="Not yet" pending={proposeMut.isPending} pendingLabel="Saving…"
               onConfirm={() => proposeMut.mutate(picked)} onKeep={() => setConfirming(false)}
             />
           )}

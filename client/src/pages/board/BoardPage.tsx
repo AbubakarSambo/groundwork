@@ -675,7 +675,7 @@ export function BoardPage() {
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nothing on record yet.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said anything about this yet.</div>
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
@@ -927,7 +927,7 @@ export function BoardPage() {
                   )}
 
                   <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <b style={{ color: 'var(--gw-dark)' }}>What the record shows:</b> {r.what}
+                    <b style={{ color: 'var(--gw-dark)' }}>What people said:</b> {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}

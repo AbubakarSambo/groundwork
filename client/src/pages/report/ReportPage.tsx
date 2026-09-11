@@ -229,14 +229,14 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
           onClick={() => submit.mutate(true)}
           style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          {submit.isPending && submit.variables === true ? 'Recording…' : 'It felt fair'}
+          {submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'}
         </button>
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(false)}
           style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
-          {submit.isPending && submit.variables === false ? 'Recording…' : 'It did not'}
+          {submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'}
         </button>
       </div>
     </div>
@@ -405,9 +405,12 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
 }) {
   const rows: { h: string; items: string[]; empty?: string }[] = [
     { h: 'What you said doing well means', items: section.whatYouSaidGoodMeans.map(s => s.text) },
-    { h: 'What the record holds on that', items: section.whatTheRecordHolds.map(e => e.text), empty: 'Nothing on the record speaks to it yet.' },
+    { h: 'What people have said about that', items: section.whatTheRecordHolds.map(e => e.text), empty: 'Nobody has spoken to it yet.' },
     {
-      h: 'What nobody has evidence for',
+      /* It lists standards nobody's account reached, not things nobody can prove - the section's
+         own note says "never reached by anybody's account". The old heading described a different
+         section and carried the courtroom register besides. */
+      h: 'What nobody mentioned',
       items: section.whatNobodyHasEvidenceFor,
       empty: 'Everything you named was reached by something somebody said.',
     },
@@ -465,7 +468,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
             ))}
           </ul>
           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
-            Recorded at the beginning and left as written. Read what the record holds above against it.
+            Written at the beginning and left as it was. Read what people shared above against it.
           </div>
         </div>
       )}

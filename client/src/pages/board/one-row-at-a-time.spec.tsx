@@ -25,8 +25,8 @@ describe('per-row guards', () => {
   })
   it('feedback says which answer is recording, and downloads go one session at a time', () => {
     const report = read('report/ReportPage.tsx')
-    expect(report).toContain("submit.isPending && submit.variables === true ? 'Recording…' : 'It felt fair'")
-    expect(report).toContain("submit.isPending && submit.variables === false ? 'Recording…' : 'It did not'")
+    expect(report).toContain("submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'")
+    expect(report).toContain("submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'")
     expect(report).toContain('disabled={downloadRecord.isPending && downloadRecord.variables === c.id}')
   })
   it('"Send again" on a delivery row is guarded per row', () => {

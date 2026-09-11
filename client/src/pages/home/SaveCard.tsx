@@ -267,7 +267,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
             rows={2}
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="e.g. I opened this so we both have a record before the conversation."
+            placeholder="e.g. I started this so we both know where things stand before we talk."
           />
         </div>
       </div>
