@@ -37,7 +37,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience, PatternStatus } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
@@ -55,6 +55,7 @@ import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
+import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -2374,6 +2375,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
     /*
+     * WHAT KEEPS HAPPENING, AS A QUESTION.
+     *
+     * The pattern library has carried a `probe` on every code from the start - the ordinary
+     * question to ask about the work when that thing keeps coming up - and it reached exactly one
+     * caller: the board, as a suggestion to a LEAD. So the person it is about was never asked
+     * anything, and the one surface that could ask naturally, in the moment, with their own words
+     * still on the screen, was the one surface that never saw it.
+     *
+     * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
+     * anybody. Gated on SURFACED and two periods, one question at most, and never named.
+     */
+    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2447,13 +2462,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2470,6 +2485,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * which is most sessions: a coach that always has something to say is a product that always has
    * something to say about you.
    */
+  /**
+   * The one recurring thing worth a question this session, or nothing.
+   *
+   * SURFACED only, never CANDIDATE - see the module next door for why. Reads the detections for
+   * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
+   * exist for the alignment feed only, and picks at most one.
+   */
+  private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
+    try {
+      const rows = await this.prisma.patternDetection.findMany({
+        where: { participantId, status: PatternStatus.SURFACED },
+        select: { code: true, periodsObserved: true },
+      });
+      return askAboutItBlockFor(theOneWorthAsking(rows));
+    } catch (err) {
+      // A probe must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the pattern probe for ${participantId}: ${(err as Error)?.message}`);
+      return '';
+    }
+  }
+
   private coachingEnabled(): boolean {
     return true;
   }
