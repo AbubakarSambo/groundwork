@@ -44,6 +44,19 @@ const MODE_COLORS: Record<string, { bg: string; color: string }> = {
  * two jobs is fine.
  */
 function whatThisWants(g: Ground, myUserId: string | null | undefined) {
+  /*
+   * A REPORT WAITING FOR YOU IS THE MOST ACTIONABLE THING ON THE CARD, and it was the one thing
+   * this function did not answer - so it was said by a seventh chip in the footer instead, while
+   * the badge whose whole job is "what needs you" said "Waiting on 2 of 3".
+   *
+   * First, because it outranks the rest: a round you still owe is work to do, and a report already
+   * written for you is work already done that nobody has read. Across ten grounds and thirty-three
+   * people not one report was ever activated, and the release email was the only thing that ever
+   * said so.
+   */
+  if ((g as any).reportWaitingForMe) {
+    return { text: 'Your report is ready', bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
+  }
   const a = railAttention(g as any, myUserId)
   switch (a.kind) {
     case 'overdue':
@@ -190,13 +203,18 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           {/* Visible without opening it: a check-in with one person on it will never produce a shared report (B17). */}
           {g.status === 'ACTIVE' && (g.participants as any[]).filter((p: any) => !p.managingOnly).length < 2 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Needs a second person for a shared report</span>}
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
-          {/* A report was released to this person and they have not opened it.
-              Across ten grounds and thirty-three people, not one report was
-              ever activated - the release email was the only thing that ever
-              said so, and nothing in the product did. */}
-          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
+          {/*
+            "Your report is ready" MOVED UP, into the badge that answers what needs you - see
+            whatThisWants. Two places saying what a person should do next is how a card ends up with
+            a green chip down here and "Waiting on 2 of 3" at the top.
+          */}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
-          {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
+          {/*
+            AND THE REPORT_READY CHIP IS GONE, because nothing writes that status. This file already
+            says so about the two lines that sort on it: "nothing has written that status". A chip
+            behind a dead condition is a chip that can never appear, sitting next to a live one that
+            says the same thing.
+          */}
           {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
         </div>
       </div>
