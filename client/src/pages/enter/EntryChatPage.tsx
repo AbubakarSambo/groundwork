@@ -10,6 +10,10 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
 import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
+import { theWordsForPickingASituation } from '@/pages/grounds/whose-situation-is-it'
+
+/* One pair of sentences for the freeform card, shared with the setup step. */
+const THE_WORDS = theWordsForPickingASituation()
 import { SituationCard } from '@/components/gw/SituationCard'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -2698,8 +2702,9 @@ export function EntryChatPage() {
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Describe your own situation</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                      {/* Her words, and the same pair the setup step asks with - see whose-situation-is-it. */}
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{THE_WORDS.describeOwnQuestion}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{THE_WORDS.describeOwnHelp}</div>
                     </div>
                     <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
                   </button>

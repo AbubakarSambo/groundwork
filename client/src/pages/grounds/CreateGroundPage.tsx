@@ -1391,10 +1391,18 @@ export function CreateGroundPage() {
             {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
-                <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
+                {/*
+                  THE SAME QUESTION THE ENTRY CHAT ASKS. The two doors asked for this in their own
+                  words - one said "Describe your own situation / tell it in your own words", this
+                  one said "Describe it in your own words" and then explained the routing - so the
+                  same act had two names depending on how somebody arrived.
+                  What the sentence under it must keep saying is the routing, because it is true
+                  here and it is the thing a person needs to know before typing.
+                */}
+                <label className="gw-label" htmlFor="own-situation">{theWords.describeOwnQuestion}</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
-                  What is happening, who is involved, and what you want out of it. We will suggest the closest
-                  situation and you can change it - what gets picked decides the questions people are asked.
+                  {theWords.describeOwnHelp} We will suggest the closest situation and you can change
+                  it - what gets picked decides the questions people are asked.
                 </div>
                 <textarea id="own-situation" className="gw-ta" rows={4} value={ownDescription}
                   onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}

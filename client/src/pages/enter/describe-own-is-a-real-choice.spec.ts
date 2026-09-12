@@ -65,12 +65,25 @@ const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/
  * FULL-WIDTH BUTTON with its own label at full strength, not an 11px text link. That distinction is
  * the whole reason the file exists, and it survived the move.
  */
-const CARD_LABEL = 'Describe your own situation'
+/*
+ * ANCHORED ON THE CARD, NOT ON ITS WORDS.
+ *
+ * This found the block by searching for the literal "Describe your own situation", and the card no
+ * longer says that: it asks "What are you trying to achieve with this check-in?", from the one place
+ * both doors read that pair of sentences. Re-pinning the new string would set the same trap for the
+ * next rewording - and the words are not what this file protects. What it protects is that the
+ * route is a FULL-WIDTH BUTTON at full strength rather than an 11px text link, which is a fact
+ * about the markup.
+ *
+ * `setPickedSituation('other')` is the card's identity: it is what the card DOES, it appears
+ * nowhere else, and a restructure that detaches the click fails here rather than passing quietly.
+ */
+const CARD_ACTION = "setPickedSituation('other')"
 const BLOCK = (() => {
-  const anchor = SRC.indexOf(CARD_LABEL)
+  const anchor = SRC.indexOf(CARD_ACTION)
   if (anchor === -1) {
     throw new Error(
-      `The describe-your-own CARD is gone from EntryChatPage.tsx: no "${CARD_LABEL}". ` +
+      `The describe-your-own CARD is gone from EntryChatPage.tsx: nothing calls ${CARD_ACTION}. ` +
         'The 11px "describe your own" shortcut in the count line is not a substitute - ' +
         'it is a text link at the top, not the full-width route for anyone the list does not fit.',
     )
@@ -78,10 +91,10 @@ const BLOCK = (() => {
   const start = SRC.lastIndexOf('<button', anchor)
   const end = SRC.indexOf('</button>', anchor)
   const block = SRC.slice(start, end)
-  // Belt and braces: the card's own setter must be inside the slice, so a
-  // restructure that leaves the label but detaches the click cannot pass.
-  if (!block.includes("setPickedSituation('other')")) {
-    throw new Error('Found the card label but no setPickedSituation(\'other\') inside its button.')
+  /* Belt and braces: it has to be a button, and the words have to come from the shared pair. */
+  if (start === -1 || end === -1) throw new Error('Found the card action but not a button around it.')
+  if (!block.includes('describeOwnQuestion')) {
+    throw new Error('The card no longer asks the shared question - see whose-situation-is-it.')
   }
   return block
 })()
@@ -108,7 +121,8 @@ describe('the describe-your-own card', () => {
     // The slice is taken BACKWARDS from the label, so it is empty when the label
     // is missing - and an empty string satisfies every not.toMatch below. Hence
     // the positive assertion first: there has to be something here to judge.
-    const at = BLOCK.indexOf(CARD_LABEL)
+    /* The question is interpolated now, so the thing to find in the source is the expression. */
+    const at = BLOCK.indexOf('describeOwnQuestion')
     expect(at).toBeGreaterThan(0)
     const label = BLOCK.slice(at - 220, at)
     expect(label).toMatch(/color:\s*'var\(--gw-navy\)'/)
@@ -117,8 +131,9 @@ describe('the describe-your-own card', () => {
 
   it('says what it is, without asking a question about a list nobody has read yet', () => {
     /* "None of these?" was written for the bottom of a scrolling list. At the top it asks about
-       cards that have not been shown. */
-    expect(BLOCK).toMatch(/Describe your own situation/)
+       cards that have not been shown. The card's own words moved to whose-situation-is-it, so what
+       is checked here is that the old framing has not come back with them. */
+    expect(BLOCK).toMatch(/describeOwnQuestion/)
     expect(BLOCK).not.toMatch(/None of these/)
   })
 
@@ -129,7 +144,7 @@ describe('the describe-your-own card', () => {
      * card is first now, so the shortcut has nothing left to shortcut - and the stronger property
      * is checkable directly: the card comes BEFORE the group dropdown in the source.
      */
-    expect(SRC.indexOf(CARD_LABEL)).toBeLessThan(SRC.indexOf('Or select from the options below'))
+    expect(SRC.indexOf(CARD_ACTION)).toBeLessThan(SRC.indexOf('Or select from the options below'))
   })
 
   it('is still a button, and still reachable', () => {
