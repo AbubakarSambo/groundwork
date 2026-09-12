@@ -550,8 +550,21 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       {step === 0 && (
         <div className="gw-blk">
           <p className="gw-p" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
+            {/*
+              TWO DIFFERENT EMPTIES, AND ONE SENTENCE WAS BEING USED FOR BOTH.
+              "The lines taken from it appear here in a moment" is true while extraction is still
+              running. It is a promise that never comes true for somebody whose answers had nothing
+              in them to take a line from - watched on a live run, where a person answered "yeah,
+              all good from my side" and "I think I am doing what is expected" and was told, on a
+              closed sitting, to wait for lines that were never coming.
+              Not a telling-off either: it says what happened, not what they should have done. The
+              five things that make an answer checkable are already on this card, folded, for
+              anybody who wants to know what would have been taken.
+            */}
             {artifact.data?.artifact?.summary
-              ?? 'Your check-in is saved. The lines taken from it appear here in a moment.'}
+              ?? (closed
+                ? 'Your check-in is saved. Nothing in it was specific enough to take a line from this time.'
+                : 'Your check-in is saved. The lines taken from it appear here in a moment.')}
           </p>
         </div>
       )}

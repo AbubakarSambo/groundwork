@@ -107,7 +107,7 @@ describe('situation card timeline hints', () => {
      * the first place. It is exempt by name rather than by loosening the pattern until it fits.
      */
     /* The one-off. Its hint states a fact rather than hedging a length, because it has none. */
-    const NOTHING_TO_HEDGE = [SCENARIO_LABELS.SNAPSHOT]
+    const NOTHING_TO_HEDGE: string[] = [SCENARIO_LABELS.SNAPSHOT]
     for (const [label, hint] of Object.entries(EXPECTED)) {
       if (NOTHING_TO_HEDGE.includes(label)) continue
       expect(hint).toMatch(/^typically /)
