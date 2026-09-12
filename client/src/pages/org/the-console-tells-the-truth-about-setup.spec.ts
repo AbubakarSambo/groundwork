@@ -55,7 +55,9 @@ describe('the plain-language half comes first', () => {
      * The order is the feature. An operations lead should be able to read the top of this page and
      * decide whether to involve their engineer, without meeting a scope checkbox first.
      */
-    const plain = SRC.indexOf('What this does, in plain terms')
+    /* The heading is "What it does" now: the section was 1,083 words of prose and the old title
+       was part of that, promising plain terms above nine paragraphs. */
+    const plain = SRC.indexOf('What it does')
     const credentials = SRC.indexOf('>Credentials<')
     const setup = SRC.indexOf('Setting it up')
     expect(plain).toBeGreaterThan(-1)

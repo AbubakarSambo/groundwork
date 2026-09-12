@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TheThingsYouCanConnect, WhatsAppMark } from '@/components/gw/TheThingsYouCanConnect'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
@@ -342,45 +343,20 @@ export function IntegrationsPage() {
         * A reader who only saw the first half concluded this was somewhere to hand over data and
         * wait, which is neither what it is nor what it costs them.
         */}
+      {/*
+        SHORTER, AND IN THE WORDS SOMEBODY WOULD USE. This page was 1,083 words of prose before a
+        person got to anything they could do. Three paragraphs of introduction, then nine cards each
+        with a paragraph under it. "Too much prose, we want simple, no jargon, laymans terms, do not
+        write a book."
+        One short opening, then one line per thing. The detail an engineer needs is further down,
+        behind the approval, where an engineer is looking. This half is for whoever is deciding.
+      */}
       <p style={S.lede}>
-        <strong>Yes - this is the API page.</strong> Two separate things live here, and most teams
-        want both.
-      </p>
-      <p style={S.lede}>
-        <strong>Your data moves both ways.</strong> People and objectives come in from the tools you
-        already use, and what check-ins produce goes back out to them. You are not handing anything
-        over and waiting - you keep your systems as they are and Groundwork reads from them.
-      </p>
-      <p style={S.lede}>
-        <strong>And you can put the check-in inside your own product.</strong> An embedded panel your
-        users open without leaving your app, asking on behalf of the person already signed in to it.
-        Your engineers get a key here for both.
+        Connect Groundwork to the tools you already use. Your people and goals come in, what
+        check-ins produce goes back out, and you can put the check-in inside your own product.
+        One key covers all of it.
       </p>
 
-      {/*
-        * WHAT THE PLAN ALLOWS, BEFORE ANY OF THE WORK.
-        *
-        * On the free plan you can read this whole page, issue a key, copy the secret and register a
-        * webhook - and the first thing that fails is the token exchange, in your engineer's
-        * terminal, with a 403. Everything up to that point behaves as though it worked.
-        *
-        * The gate sits on one route (`oauth/token`; the file that once held a plan gate, the-api-is-a-paid-thing.ts, is gone - approval is the gate now) and nothing
-        * else, so this is precise about which half is affected: sending data IN needs a plan, being
-        * TOLD about things does not. Saying "the API needs a plan" flatly would be simpler and
-        * would be wrong about webhooks, which work either way.
-        *
-        * Nothing is disabled. Somebody evaluating this should be able to set it all up first and
-        * subscribe when they are ready - the key they issue today starts working the day they do.
-        */}
-      {/*
-        * SENDING DATA IN NEEDS TO BE ASKED FOR, and it used to need a plan.
-        *
-        * The banner is shown on the ACCESS REQUEST rather than on the
-        * subscription, because that is what the API now checks. Getting this
-        * wrong in the safe-looking direction — leaving the old plan warning up —
-        * would tell somebody to go and pay for something that is free, which is
-        * the worst version of a stale message.
-        */}
       {/* A failed read of access used to strand the customer with nothing: the request form is gated on
           access.data, so no data meant no form and no explanation. Say which it is. */}
       {access.isLoading && (
@@ -396,7 +372,8 @@ export function IntegrationsPage() {
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {access.data.says}{' '}
-            One request covers the API, the panel on your own pages and your WhatsApp number. Using the API needs approval, not a plan: it is asked for here and read by a person. Once it is approved, this page shows the keys, the calls and the reference.
+            {/* WhatsApp is not in this list any more: it is set up above without asking. */}
+            One request covers the API and the panel on your own pages. A person reads it. Once it is approved, the keys and the reference appear here.
           </div>
 
           {access.data.status !== 'PENDING' && (
@@ -452,65 +429,45 @@ export function IntegrationsPage() {
 
       {/* THE PLAIN-LANGUAGE HALF, FIRST. An operations lead should be able to read this and decide
           whether to involve their engineer, without reading a single JSON payload. */}
-      <div style={S.sec}>What this does, in plain terms</div>
+      {/* What we talk to, so somebody can see whether their tools are on the list. */}
+      <TheThingsYouCanConnect />
+
+      <div style={S.sec}>What it does</div>
       <div style={S.card}>
-        <div style={S.h3}>Your people and structure come in</div>
-        <p style={S.body}>Who works here, what they are called, who they report to. Sent from your HR or identity system so you are not keeping a second list. When somebody joins, moves team or leaves, that arrives too.</p>
+        <div style={S.h3}>Your people come in</div>
+        <p style={S.body}>Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too, so you are not keeping a second list.</p>
       </div>
       <div style={S.card}>
-        {/*
-          * IT SAID "OKR TOOL" AND THE API HAS NEVER BEEN OKR-SHAPED.
-          *
-          * Her reading: "you have okrs there but we are meant to be able to look at their crm etc
-          * and all the tools they use", and "this is a lot more than okrs". Both true of what is
-          * built - a subject is an objective, a project or a decision, with a measure, a target, an
-          * owner, contributors, a parent and dates - and the page named one tool and one shape.
-          *
-          * What follows is the whole list of what the API accepts, because the page described two
-          * of eight and the other six are the reason somebody would connect anything at all.
-          */}
-        <div style={S.h3}>What you are working towards comes in</div>
-        <p style={S.body}>Objectives, projects and decisions - from your OKR tool, your project tracker, your CRM, wherever the work actually lives. Each one can carry what it is measured by, the target, who owns it, who else is on it, and what it sits under. Groundwork holds a pointer and the wording as it stood when you last sent it - never a second editable copy, because two versions that must agree is the problem this product exists to end. If it goes out of date, it says so rather than pretending.</p>
+        <div style={S.h3}>Your goals come in</div>
+        <p style={S.body}>Goals, projects and decisions, from wherever you already keep them. Groundwork points at yours instead of holding a second copy that can go out of step.</p>
       </div>
       <div style={S.card}>
-        <div style={S.h3}>Your people check in against it</div>
-        <p style={S.body}>This is the part that is not a dashboard. The objectives you send become what each person is asked about, on the cadence you set - their own account of the work, in their own words, against the thing you said mattered. The report shows where those accounts agree and where they do not.</p>
+        <div style={S.h3}>Your team checks in against them</div>
+        <p style={S.body}>Each person is asked about the goals you sent, as often as you choose, in their own words. The report shows where their answers agree and where they do not.</p>
       </div>
       <div style={S.card}>
-        {/*
-          * THE CRM ANSWER, DECIDED AND THEN FOUND TO BE ALREADY BUILT.
-          *
-          * "I think the CRM is evidence against objectives" - and that is exactly the shape the API
-          * already had. A deal, a stage, an amount is not a thing to check in about; it is a number
-          * that says how the thing you ARE checking in about is going. So there is no `deal` type
-          * and there should not be: it arrives as evidence against an objective that already
-          * exists, and lands in the check-in that asks about that objective.
-          *
-          * The page had never mentioned evidence at all, which is why a customer with a CRM had no
-          * idea where it goes and reasonably concluded this was an OKR tool.
-          */}
-        <div style={S.h3}>Your numbers come in as evidence, not as more things to track</div>
-        <p style={S.body}>Your CRM, your billing, your support desk, your analytics - whatever holds the number. It arrives against an objective that already exists rather than as another item on a list, so the person checking in is asked about the work with the current figure in front of them. Counts and short labels, never prose: "committed: 1.1m, stage: negotiation" against the objective it belongs to. We hold the last figure you sent and when you observed it, so a stale one says it is stale rather than pretending.</p>
+        <div style={S.h3}>Your numbers come in as evidence</div>
+        <p style={S.body}>Send a figure from your CRM, billing or support desk and it sits beside the goal it belongs to. Nothing extra to keep up to date.</p>
       </div>
       <div style={S.card}>
-        <div style={S.h3}>Roles, handovers and what each role turns on</div>
-        <p style={S.body}>Who holds which role and since when, so a handover produces a brief rather than a gap. Each role can name the one action it lives or dies by and how often it is due - the visit, the review, the presentation - and Groundwork notices when somebody active has stopped doing it. Not before the period is half gone, and never as a verdict.</p>
+        <div style={S.h3}>Roles and handovers</div>
+        <p style={S.body}>Who holds which role and since when, so a handover leaves a written brief rather than a gap.</p>
       </div>
       <div style={S.card}>
-        <div style={S.h3}>Your handbook and how you work</div>
-        <p style={S.body}>Send the documents that say how things are done here and people can ask them in plain words. Answers quote what is written rather than paraphrasing it, and a policy that changed in March still explains a finding from March.</p>
+        <div style={S.h3}>Your handbook</div>
+        <p style={S.body}>Send the documents that say how things are done here. People can ask them questions and the answer quotes the page it came from.</p>
       </div>
       <div style={S.card}>
-        <div style={S.h3}>What a lead should read before a hard conversation</div>
-        <p style={S.body}>For one named person: what they said they would do and what carried a date, what other people are waiting on them for and what they are waiting on, what the record raised, and what they are carrying - including any objective with no measure on it, because there is nothing to be doing well or badly against. Every section says where it came from. It is never a score, it always says what it does not know, and nothing here decides anything about anybody.</p>
+        <div style={S.h3}>What a lead reads before a hard conversation</div>
+        <p style={S.body}>One page on one person: what they said they would do, what they are waiting on, and what they raised. Never a score.</p>
       </div>
       <div style={S.card}>
         <div style={S.h3}>Invitations go out</div>
-        <p style={S.body}>Groundwork gives you a link for a person to check in. Your system delivers it however it already reaches people. The link carries an invitation and nothing else.</p>
+        <p style={S.body}>Groundwork gives you a link. You send it however you already reach people.</p>
       </div>
       <div style={S.card}>
         <div style={S.h3}>Results come back</div>
-        <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
+        <p style={S.body}>When everyone has checked in, your systems are told what happened and where to look. Never what anybody said.</p>
       </div>
 
       {/* ---------------------------------------------------------------- whatsapp
@@ -520,7 +477,9 @@ export function IntegrationsPage() {
         Nothing here gives away how the API works: an address to paste into Meta and a token you
         made up. So it stands on its own, above the part that does need approving.
       */}
-      <div style={S.sec}>Your WhatsApp number</div>
+      <div style={{ ...S.sec, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <WhatsAppMark size={20} /> Your WhatsApp number
+      </div>
       <div style={S.card}>
         <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
         <p style={S.body}>
