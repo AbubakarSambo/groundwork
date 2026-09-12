@@ -111,6 +111,21 @@ export const groundsApi = {
       .patch<{ id: string; peersVisibleToEachOther: boolean }>(`/grounds/${id}/peer-visibility`, { visible })
       .then(r => r.data),
 
+  /*
+   * Whether people see each other's numbers, and whether a blocker comes with having tried. Both
+   * columns were read in two places each and written by nothing, so their careful defaults
+   * described a choice nobody in the product could make. See the service.
+   */
+  setWhoSeesTargets: (id: string, everybody: boolean) =>
+    apiClient
+      .patch<{ id: string; whoSeesTargets: 'THEIR_OWN' | 'EVERYBODY' }>(`/grounds/${id}/who-sees-targets`, { everybody })
+      .then(r => r.data),
+
+  setExpectThemToUnblock: (id: string, expect: boolean) =>
+    apiClient
+      .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
+      .then(r => r.data),
+
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),

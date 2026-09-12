@@ -1691,6 +1691,14 @@ export class GroundsService {
       peersVisibleEffective: peersVisible,
       peersDefaultVisible: !evaluative,
       /*
+       * AND THE TWO THAT HAD NO WAY IN. Both were read by the board and the conversation and
+       * travelled to nobody, so a control for either would have read its own default forever and
+       * silently shown "off" whatever was stored. Named rather than spread, like everything else
+       * on this payload.
+       */
+      whoSeesTargets: (ground as any).whoSeesTargets ?? 'THEIR_OWN',
+      expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
+      /*
        * WHO THE VIEWER IS TO THIS CHECK-IN, said by the side that enforces it. The client rebuilt
        * these two from initiatorId and role in three places and disagreed with the server on the
        * edges - an org admin offered a control only the initiator may use (fix plan A12). Two plain
@@ -2284,6 +2292,65 @@ export class GroundsService {
    * do, the default is by kind of ground: hidden where the period decides
    * something about a person, shown where it does not.
    */
+  /**
+   * TWO SETTINGS THAT EXISTED, WERE READ, AND COULD NOT BE SET BY ANYBODY.
+   *
+   * `whoSeesTargets` is read by the board and by the conversation. `expectThemToUnblock` is read by
+   * the conversation and decides whether a check-in asks what somebody actually tried before
+   * recording a blocker. Both had a default, both had a careful note on the column explaining when
+   * the other value is right, and nothing in the product wrote either one - so the note described a
+   * choice nobody could make.
+   *
+   * It is the same shape as `peersVisibleToEachOther`, which sat in exactly this state until it was
+   * found, and the same shape as the target form that was hidden until a target existed. Three in
+   * one codebase means the gap is systematic rather than unlucky: a column, a reader, and no writer
+   * compiles clean and passes everything.
+   *
+   * Same permission as its neighbours: the lead of this check-in, or an admin in this organisation.
+   */
+  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException(
+        'Only the lead of this check-in, or an admin in this organisation, can change this.',
+      );
+    }
+  }
+
+  /** Whether people on this check-in see each other's numbers, or only their own. */
+  async setWhoSeesTargets(groundId: string, requestingUserId: string, everybody: boolean) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { whoSeesTargets: everybody ? 'EVERYBODY' : 'THEIR_OWN' },
+      select: { id: true, whoSeesTargets: true },
+    });
+  }
+
+  /**
+   * Whether being blocked is expected to come with having tried.
+   *
+   * On by default and right most of the time. Off for the cases the column names: a cohort of new
+   * starters with no standing to chase anybody, an external party who cannot escalate inside
+   * somebody else's company, a crisis check-in where the point is to hear what happened.
+   */
+  async setExpectThemToUnblock(groundId: string, requestingUserId: string, expect: boolean) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { expectThemToUnblock: expect },
+      select: { id: true, expectThemToUnblock: true },
+    });
+  }
+
   async setPeerVisibility(groundId: string, requestingUserId: string, visible: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },

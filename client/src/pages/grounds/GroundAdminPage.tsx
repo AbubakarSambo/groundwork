@@ -732,6 +732,30 @@ export function GroundAdminPage() {
     onError: () => toast.error('Not saved. What you typed is still here — try again.'),
   })
 
+  /**
+   * TWO SETTINGS THAT WERE READ IN FOUR PLACES AND WRITTEN BY NOTHING.
+   *
+   * `whoSeesTargets` decides whether ten colleagues' numbers land on somebody's first screen, and
+   * the board and the check-in conversation both read it. `expectThemToUnblock` decides whether a
+   * check-in asks what somebody actually tried before recording a blocker, and the conversation
+   * reads it. Each had a default and a careful note on the column saying when the other value is
+   * right - describing a choice nobody in the product could make.
+   *
+   * Exactly the state `peersVisibleToEachOther` was in above, which is the point: a column, a
+   * reader and no writer compiles clean and passes every test.
+   */
+  const setWhoSeesTargets = useMutation({
+    mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+  })
+
+  const setExpectThemToUnblock = useMutation({
+    mutationFn: (expect: boolean) => groundsApi.setExpectThemToUnblock(id!, expect),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+  })
+
   const setContactVisibility = useMutation({
     mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
@@ -1191,6 +1215,10 @@ export function GroundAdminPage() {
   const peersDefaultHidden = (ground as any)?.peersDefaultVisible === false
 
   const contactHidden = ground.restrictExternalVisibility !== false
+  /* Narrow unless somebody chose otherwise: a default that publishes is not a default. */
+  const numbersShared = (ground as any)?.whoSeesTargets === 'EVERYBODY'
+  /* On unless somebody turned it off, matching the column. */
+  const expectsUnblocking = (ground as any)?.expectThemToUnblock !== false
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -2984,6 +3012,62 @@ export function GroundAdminPage() {
                   style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setContactVisibility.isPending ? 'wait' : 'pointer', background: contactHidden ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setContactVisibility.isPending ? 0.5 : 1, padding: 0 }}
                 >
                   <span style={{ position: 'absolute', top: 2, left: contactHidden ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            </div>
+            {/*
+              AND THE THIRD ROW OF THE SAME QUESTION. Whether somebody's number is their own
+              business is who-sees-whom, not a separate subject, so it sits in this card rather
+              than starting another one.
+            */}
+            <div className="gw-fld" style={{ marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Show everyone each other{'\u2019'}s numbers</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {numbersShared
+                      ? 'Everyone sees every target on the board. On a team carrying one number between them, that is how people see where the gap is.'
+                      : 'Each person sees their own number. You see all of them. Ten colleagues\u2019 targets on somebody\u2019s first screen is a decision worth making on purpose.'}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={numbersShared}
+                  aria-label="Show everyone each other's numbers"
+                  disabled={setWhoSeesTargets.isPending}
+                  onClick={() => setWhoSeesTargets.mutate(!numbersShared)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setWhoSeesTargets.isPending ? 'wait' : 'pointer', background: numbersShared ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setWhoSeesTargets.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: numbersShared ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            </div>
+            </Fold>
+
+            {/*
+              HOW THE CHECK-IN TREATS A BLOCKER. Its own card, because it is not about who sees
+              what - it changes what the conversation asks a person.
+            */}
+            <Fold {...foldProps(setupBand())} title="When somebody is blocked" src="what the check-in asks for" summary={expectsUnblocking ? 'It asks what they tried' : 'It records it and moves on'}>
+            <div className="gw-fld">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Ask what they tried, and offer ways through</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {expectsUnblocking
+                      ? 'A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. Their lead sees the same thing as one thing to ask for.'
+                      : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody \u2014 a new cohort, somebody outside the company \u2014 or a check-in that is there to hear what happened.'}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={expectsUnblocking}
+                  aria-label="Ask what they tried, and offer ways through"
+                  disabled={setExpectThemToUnblock.isPending}
+                  onClick={() => setExpectThemToUnblock.mutate(!expectsUnblocking)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setExpectThemToUnblock.isPending ? 'wait' : 'pointer', background: expectsUnblocking ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setExpectThemToUnblock.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: expectsUnblocking ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
                 </button>
               </div>
             </div>

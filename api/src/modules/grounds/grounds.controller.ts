@@ -641,6 +641,26 @@ export class GroundsController {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
   }
 
+  @Patch(':id/who-sees-targets')
+  @ApiOperation({ summary: "Whether people on this check-in see each other's numbers, or only their own" })
+  async setWhoSeesTargets(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { everybody: boolean },
+  ) {
+    return this.grounds.setWhoSeesTargets(id, userId, !!body.everybody);
+  }
+
+  @Patch(':id/expect-them-to-unblock')
+  @ApiOperation({ summary: 'Whether this check-in asks what somebody tried before recording a blocker' })
+  async setExpectThemToUnblock(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { expect: boolean },
+  ) {
+    return this.grounds.setExpectThemToUnblock(id, userId, !!body.expect);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {
