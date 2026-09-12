@@ -945,6 +945,19 @@ model Ground {
   /// Whether people on this check-in see each other's numbers. Narrow unless somebody chose
   /// otherwise: a default that publishes is not a default.
   whoSeesTargets             WhoSeesTargets @default(THEIR_OWN) @map("who_sees_targets")
+
+  /// WHETHER BEING BLOCKED IS EXPECTED TO COME WITH HAVING TRIED.
+  ///
+  /// "People get lazy, they don't nudge people to unblock them and they don't follow up." Stated by
+  /// a chief of staff, and true of most work most of the time - so this is on by default and the
+  /// conversation asks what was actually done before a blocker is recorded as one.
+  ///
+  /// It can be turned off, and the cases are real rather than theoretical: a cohort of new starters
+  /// with no standing to chase anybody, an external party who cannot escalate inside somebody
+  /// else's company, a crisis check-in where the point is to hear what happened and not to coach.
+  /// Asking somebody what they tried, when trying was never theirs to do, is the fastest way to
+  /// make a check-in feel like an interrogation.
+  expectThemToUnblock        Boolean        @default(true) @map("expect_them_to_unblock")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   poll                       GroundPoll?

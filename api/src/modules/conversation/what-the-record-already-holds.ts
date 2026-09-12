@@ -96,8 +96,19 @@ export function whatTheRecordAlreadyHolds(input: {
   /** What this person themselves said last session, oldest first. Their own words only. */
   saidLastTime: string[];
   now: Date;
+  /**
+   * WHETHER THIS CHECK-IN EXPECTS PEOPLE TO HAVE TRIED, which is a decision its lead makes.
+   *
+   * On for most work. Off where chasing was never theirs to do - a cohort of new starters with no
+   * standing to escalate, an outside party who cannot go over somebody's head inside another
+   * company, a crisis session that exists to hear what happened. Asking what somebody tried when
+   * trying was not available to them is the fastest way to make a check-in feel like an
+   * interrogation, and the blocker still gets recorded either way.
+   */
+  expectThemToUnblock?: boolean;
 }): string {
   const { targets, inTheWay, saidLastTime, now } = input;
+  const expectThemToUnblock = input.expectThemToUnblock !== false;
   const parts: string[] = [];
 
   const withNumbers = targets.filter((t) => t.target != null);
@@ -138,7 +149,7 @@ export function whatTheRecordAlreadyHolds(input: {
      * Where one is missing the conversation asks for it, and the asking is written out so it
      * cannot be crowded out by the other 273 things the prompt is asking for.
      */
-    const owedQuestions = inTheWay.flatMap((r) => stillToAsk({
+    const owedQuestions = !expectThemToUnblock ? [] : inTheWay.flatMap((r) => stillToAsk({
       what: r.what, owner: r.on, days: daysSince(r.since, now), tried: r.tried ?? 'nothing', chaseBy: r.chaseBy ?? null,
     })); 
     const stale = inTheWay.filter((r) => daysSince(r.since, now) >= WAITED_LONG_ENOUGH_TO_ASK);
@@ -160,11 +171,14 @@ export function whatTheRecordAlreadyHolds(input: {
         ? '\nStill unanswered about these, and worth more than anything new:\n' +
           owedQuestions.map((q) => `- ${q}`).join('\n')
         : '') +
-      '\nIf they are still only waiting, put the ways through to them as options rather than as a ' +
-      'telling-off: ' + waysThrough({
-        what: inTheWay[0].what, owner: inTheWay[0].on, days: daysSince(inTheWay[0].since, now),
-        tried: inTheWay[0].tried ?? 'nothing', chaseBy: inTheWay[0].chaseBy ?? null,
-      }).join(' / '),
+      (expectThemToUnblock
+        ? '\nIf they are still only waiting, put the ways through to them as options rather than as a ' +
+          'telling-off: ' + waysThrough({
+            what: inTheWay[0].what, owner: inTheWay[0].on, days: daysSince(inTheWay[0].since, now),
+            tried: inTheWay[0].tried ?? 'nothing', chaseBy: inTheWay[0].chaseBy ?? null,
+          }).join(' / ')
+        : '\nThis check-in does not ask people to unblock themselves. Record what is in their way ' +
+          'and do not ask what they tried.'),
     );
   }
 

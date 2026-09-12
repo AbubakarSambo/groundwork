@@ -19,6 +19,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
+import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 
 /**
  * The delivery board.
@@ -639,6 +640,9 @@ export function BoardPage() {
             <Sec title="What we are aiming for" src="the lead sets these" />
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
+            {/* One total, ten people, from the export they already have. Above the form, because
+                somebody with a team and a committed number reaches for this before typing. */}
+            {b.canEditFrame && <SplitOneTotalAcrossPeople groundId={id!} />}
             {b.targetsNobodyOwns && (
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
                 {b.targetsNobodyOwns}

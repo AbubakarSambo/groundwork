@@ -109,3 +109,32 @@ describe('what the record already holds', () => {
     expect(WAITED_LONG_ENOUGH_TO_ASK).toBe(14);
   });
 });
+
+describe('and where chasing was never theirs to do', () => {
+  const stuck = {
+    targets: [], saidLastTime: [], now: NOW,
+    inTheWay: [{ what: 'the Sokoto lease', on: null, since: daysAgo(21), escalated: false, tried: 'asked-again' as const }],
+  };
+
+  it('still records what is in their way', () => {
+    const out = whatTheRecordAlreadyHolds({ ...stuck, expectThemToUnblock: false });
+    expect(out).toContain('the Sokoto lease');
+    expect(out).toContain('21 days old');
+  });
+
+  it('but asks nothing about what they tried, and offers no ways through', () => {
+    /* A cohort with no standing to chase, an outside party who cannot escalate inside somebody
+       else's company, a crisis session that exists to hear what happened. Asking what somebody
+       tried when trying was not theirs to do is how a check-in starts feeling like an
+       interrogation. */
+    const out = whatTheRecordAlreadyHolds({ ...stuck, expectThemToUnblock: false });
+    expect(out).not.toContain('Still unanswered about these');
+    expect(out).not.toContain('options rather than as a telling-off');
+    expect(out).toContain('do not ask what they tried');
+  });
+
+  it('and asks by default, because most work is not that', () => {
+    const out = whatTheRecordAlreadyHolds(stuck);
+    expect(out).toContain('Still unanswered about these');
+  });
+});

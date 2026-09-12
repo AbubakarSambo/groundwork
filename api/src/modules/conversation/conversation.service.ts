@@ -1908,6 +1908,8 @@ export class ConversationService {
         then: d.then,
       })),
       saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
+      /* The lead's call for this check-in, not a global rule. See the field on the ground. */
+      expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
       now: new Date(),
     });
 

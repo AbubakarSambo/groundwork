@@ -154,6 +154,19 @@ export const boardApi = {
       } as any)
       .then((r) => r.data),
 
+  /**
+   * PROPOSE A SPLIT OF ONE TOTAL ACROSS PEOPLE. Writes nothing.
+   *
+   * Either people typed in, or `rows` straight out of a CRM export - first row the header. What it
+   * read comes back beside the numbers, so a wrong column is obvious rather than buried in a figure.
+   */
+  proposeObjectives: (groundId: string, dto: { total: number; people?: { key: string; lastPeriod: number; months?: number }[]; rows?: (string | number | null)[][] }) =>
+    apiClient.post<{
+      shares: { key: string; target: number; runRate: number; upliftPct: number; because: string; monthsKnown: boolean }[]
+      saying: string
+      readFromTheFile: { missing: string[]; skipped: number; people: number } | null
+    }>(`/grounds/${groundId}/board/objectives/propose`, dto).then((r) => r.data),
+
   /** Initiator only: the lead's frame. A target, never an assessment of a person. */
   createObjective: (groundId: string, dto: { name: string; target?: number | null }) =>
     apiClient.post(`/grounds/${groundId}/board/objectives`, dto).then((r) => r.data),
