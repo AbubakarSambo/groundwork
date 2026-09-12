@@ -42,6 +42,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { whatTheyCouldTry } from './what-you-could-try-next';
+import { oneBlockerPerThingWaitedOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -3802,9 +3803,21 @@ happened, and what is in the way.`;
       select: { id: true, what: true, onLabel: true, createdAt: true, triedSaid: true, escalatedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => []) ?? [];
 
+    /*
+     * THE SAME COLLAPSE THE BOARD DOES, BECAUSE THE ADVICE QUOTED THE STALE ROW.
+     *
+     * One live run recorded "a specific request" and "the finance dependency" as two blockers on
+     * one person against one owner. The board showed two, and the ways through were drawn from the
+     * older - so somebody with one problem was handed two lists, the first about a row they would
+     * not recognise. The board deduped on read for exactly this reason and this path did not.
+     */
+    const theirs = oneBlockerPerThingWaitedOn(
+      (mine as any[]).map((d) => ({ ...d, fromParticipantId: participantId })) as any,
+    ) as any[];
+
     const day = 24 * 60 * 60 * 1000;
     return whatTheyCouldTry(
-      (mine as any[]).map((d) => ({
+      theirs.map((d) => ({
         id: d.id,
         what: d.what,
         /* Only a resolved person is somebody you can be waiting on - a team cannot answer an email. */

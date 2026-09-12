@@ -41,6 +41,7 @@ import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
+import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   OrgDependency,
   whatThePlaceIsWaitingOn,
@@ -246,7 +247,12 @@ export class BoardService {
 
     // Collapse duplicate handoffs before anything reads them, so existing
     // grounds get the same answer as new ones.
-    (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
+    /*
+     * Two passes, because they catch different things. `dedupeDependencies` joins two descriptions
+     * of one named thing; `oneBlockerPerThingWaitedOn` joins the times somebody said they were
+     * stuck without naming anything. See that file for why neither is a similarity threshold.
+     */
+    (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     const sections = sectionsFor(ground.scenario);
     const has = (s: BoardSection) => sections.includes(s);
