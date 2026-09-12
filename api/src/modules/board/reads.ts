@@ -193,7 +193,20 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
     );
     if (hit) {
       (hit as any).status = d.status;
-      (hit as any).what = d.what;
+      /*
+       * THE NEWEST STATUS, THE FULLEST WORDS - and they are not the same choice.
+       *
+       * This took the newest text too, and the newest is often the shortest: somebody says "the
+       * finance sign-off" in one round and "finance sign-off" in the next. Two words instead of
+       * three, and `blockerHasSubstance` needs three - so merging a real blocker with a briefer
+       * restatement of itself pushed it under the bar and the board stopped showing it at all.
+       * Found by counting blockers for the check-in list and getting none where there was one.
+       *
+       * The note above is about STATUS, and it still holds: a handoff nobody is describing as
+       * blocking any more is no longer blocking. It was never an argument for forgetting the better
+       * description of the thing.
+       */
+      if ((d.what ?? '').trim().length > ((hit as any).what ?? '').trim().length) (hit as any).what = d.what;
       (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
       continue;

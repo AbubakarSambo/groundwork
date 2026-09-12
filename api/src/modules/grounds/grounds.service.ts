@@ -25,6 +25,9 @@ import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageE
 import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
+import { atAGlance } from './what-a-manager-needs-at-a-glance';
+import { totalSessionsFor } from './session-count';
+import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
@@ -1038,7 +1041,9 @@ export class GroundsService {
          * THE LATEST ROUND'S FINDING, for the card. One row per ground, newest first: the list is
          * read often and a whole history here would be paid for on every load for a single line.
          */
-        reportRounds: { select: { sessionNumber: true, finding: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        /* For the at-a-glance read. Counted the way the board counts it - see the module. */
+        dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
         reportActivations: { select: { participantId: true, status: true } },
       },
     });
@@ -1097,7 +1102,9 @@ export class GroundsService {
             report: { select: { releasedAt: true, agreements: true, divergences: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
                one would fall back to the brief for ever while its twin showed the finding. */
-            reportRounds: { select: { sessionNumber: true, finding: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+            reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+            /* Same as the sibling query: both feed the same card. */
+            dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
             reportActivations: { select: { participantId: true, status: true } },
           },
         });
@@ -1171,6 +1178,23 @@ export class GroundsService {
          */
         const latestFinding = ((rest as any).reportRounds?.[0]?.finding as string | null) ?? null;
         /*
+         * HOW THINGS ARE GOING, IN TWO OR THREE PLAIN SENTENCES.
+         *
+         * "This should be 2 sentences or 3 on how things are going, in clear laymans terms - it
+         * carries a simple summary of the session."
+         *
+         * It already exists: the shared picture is exactly that, written for the round and kept
+         * with it. The card was showing the BRIEF - the sentence somebody set the check-in up with -
+         * so every goal check-in read the same, and then one ranked line, which is a headline rather
+         * than a summary.
+         *
+         * Cut to three sentences here rather than on the card, because a card cannot tell where a
+         * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
+         * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
+         */
+        const summary = ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null;
+        const latestSummary = summary ? sentencesIn(summary).slice(0, 3).join(' ').trim() || null : null;
+        /*
          * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
          *
          * Eight of the twenty-two situations have none - the sensing family and the one-off - and
@@ -1180,7 +1204,19 @@ export class GroundsService {
          * that map. There are enough of those.
          */
         const hasBoard = boardRendersFor((rest as any).scenario);
-        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, hasBoard };
+        /*
+         * WHAT A MANAGER WANTS OFF THE CARD: how far through, and what is in the way. See
+         * what-a-manager-needs-at-a-glance for why the blockers are counted there rather than here.
+         */
+        const openRound = Math.max(1, ...sessions.map((c: any) => c.sessionNumber ?? 1));
+        const glance = atAGlance({
+          roundsDone,
+          roundsPlanned: totalSessionsFor((rest as any).timelineDays, (rest as any).cadence) ?? null,
+          people: (rest as any).participants ?? [],
+          thisRound: sessions.filter((c: any) => (c.sessionNumber ?? 1) === openRound),
+          dependencies: ((rest as any).dependencies ?? []) as any,
+        });
+        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
