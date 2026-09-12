@@ -1,4 +1,5 @@
 import { PageCrash } from '@/components/gw/PageCrash'
+import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -400,6 +401,14 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/*
+              BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
+              real home - which was checked, and was the wrong question. The question is whether
+              each surface MATCHES the template it was rebuilt against, and this page is the only
+              place that can be seen. One of its own notes says surface 02 was never rebuilt.
+              Verifying that is a pre-merge requirement. This goes again once it is done.
+            */}
+            <Route path="/preview/reports" element={<RequireOrgSetup><EveryReportSideBySide /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/*
               EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.

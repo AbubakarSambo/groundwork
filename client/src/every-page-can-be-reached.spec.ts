@@ -53,6 +53,7 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
      checks the mail really points here. */
   '/unsubscribe/:token': 'the unsubscribe link on every round digest',
   '/stop-reminders/:token': 'the stop-the-reminders link on an invitation and every reminder',
+  '/preview/reports': 'pasted by whoever is checking the reports against the templates; goes when that is done',
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
   '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**
