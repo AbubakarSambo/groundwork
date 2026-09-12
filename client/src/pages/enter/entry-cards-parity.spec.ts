@@ -59,7 +59,9 @@ const ENTRY_COVERS: Record<string, string[]> = {
      at the top with other teams writing their own underneath. The map is keyed by label because a
      label is a job and a scenario is an engine, and they were never one to one. */
   [L.OKR_ALIGNMENT]: ['OKR_ALIGNMENT'],
-  'Connect Goals Across the Team': ['OKR_ALIGNMENT'],
+  /* Its own card in the signed-in picker now, so it stands in for that one rather than for the
+     scenario the two goal cards share. */
+  'Connect Goals Across the Team': ['OKR_CASCADE'],
   /**
    * WAS 'BOARD_STRATEGY', WHICH IS THE CARD BELOW THIS ONE.
    *

@@ -515,7 +515,8 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'planning',
+    /* A monthly read on an agreement already signed and running is a read, not a plan. */
+    group: 'reading',
     scenario: 'IMPLEMENTATION_TRACKING',
     label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
     detail: 'Understand how an agreement is working in practice.',

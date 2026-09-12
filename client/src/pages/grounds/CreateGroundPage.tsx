@@ -23,9 +23,12 @@ interface ScenarioCard {
   scenario: GroundScenario
   label: string
   desc: string
-  tag: string
-  tagBg: string
-  tagColor: string
+  /*
+   * NO TAG HERE. It was three fields per card and a third vocabulary beside the group headings and
+   * the labels, and it had drifted from both - a monthly read on a running agreement wore
+   * "Planning" while living in the reads. It is derived from the card's group where it is drawn.
+   * See TAG_FOR_GROUP.
+   */
   // Recognizer lines ("e.g. ...") shown under the description so people can
   // self-select from concrete situations, not abstract labels.
   examples?: string[]
@@ -54,7 +57,7 @@ interface ScenarioCard {
 const DRAFT_KEY = 'gw-new-ground-draft'
 
 export const SCENARIOS: ScenarioCard[] = [
-  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: SCENARIO_LABELS.NEW_HIRE, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: SCENARIO_LABELS.NEW_HIRE,
     desc: "Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it. Each check-in then tests what they are doing against that, so a mismatch surfaces in week two instead of at a review.",
     moment: 'Help a new team member settle in, understand their role, and surface what they need.',
     agreed: 'Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it.',
@@ -65,7 +68,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'You just hired a senior person and need what they own pinned down before day one.',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
     ] },
-  { cardKey: 'ROLE_HANDOVER', scenario: 'ROLE_HANDOVER', label: SCENARIO_LABELS.ROLE_HANDOVER, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'ROLE_HANDOVER', scenario: 'ROLE_HANDOVER', label: SCENARIO_LABELS.ROLE_HANDOVER,
     desc: "Agree what is actually outstanding, what is fragile, and which relationships come with the role rather than the person. Each check-in then tests what has really transferred against that, so the gaps are named while the person who can close them is still here.",
     moment: 'Help someone take over a role without losing important context or work.',
     agreed: 'Both sides write down what is outstanding, what is fragile, and which relationships come with the role.',
@@ -76,7 +79,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A role is moving between two people and nobody has written down what the first one was carrying.',
       'You want the incoming person to say what they would be guessing about, before they stop noticing.',
     ] },
-  { cardKey: 'CONTRACT_REVIEW', scenario: 'CONTRACT_REVIEW', label: SCENARIO_LABELS.CONTRACT_REVIEW, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'CONTRACT_REVIEW', scenario: 'CONTRACT_REVIEW', label: SCENARIO_LABELS.CONTRACT_REVIEW,
     desc: "Before you sign, each side writes down its own expectations separately - what the numbers are actually of, who does what, and what happens if. Each check-in then tests the two versions against each other, so a difference surfaces while changing it is still free.",
     moment: 'Make sure the people involved understand and are comfortable with an agreement.',
     agreed: 'Each side says, on its own, what it expects to give and to get, and what the numbers are actually of.',
@@ -87,7 +90,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A licence where one side assumes a client list is fixed and the other assumes it grows.',
       'A partnership you are about to sign with somebody you would rather not fall out with.',
     ] },
-  { cardKey: 'IMPLEMENTATION_TRACKING', scenario: 'IMPLEMENTATION_TRACKING', label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING, tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  { cardKey: 'IMPLEMENTATION_TRACKING', scenario: 'IMPLEMENTATION_TRACKING', label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
     desc: "A quiet monthly read on an agreement that is running. Each check-in tests what is actually happening against what was agreed, and most months it should say the numbers reconcile and nothing needs anybody - which is the point. When something does not add up, it stays on the record until somebody explains it.",
     moment: 'Understand how an agreement is working in practice.',
     agreed: 'What each side reports, where the figures come from, and what falls due when.',
@@ -98,7 +101,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'An arrangement that has quietly drifted from what was signed, and both sides half know it.',
       'A relationship that is fine, where you would like to be able to prove it was fine.',
     ] },
-  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: SCENARIO_LABELS.NEW_PROJECT, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: SCENARIO_LABELS.NEW_PROJECT,
     desc: "Agree scope, who owns what, and what \"done\" means before anyone starts. The check-ins then test the work against that, so a quiet change of scope or a task nobody owns shows up while there is still time to act.",
     moment: 'Get everyone clear on the work, their role, and what needs to happen.',
     agreed: 'Agree scope, who owns what, and what "done" means before anyone starts.',
@@ -109,7 +112,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A cross-team project where each team quietly assumes a different owner.',
       'Starting work with a client and you want both sides\' version of the goal on record.',
     ] },
-  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: SCENARIO_LABELS.NEW_ADVISOR, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_ADVISOR', scenario: 'NEW_ADVISOR', label: SCENARIO_LABELS.NEW_ADVISOR,
     desc: "Agree up front what the advisor will actually contribute, and on what terms. Each check-in across the year tests the work against that, so \"available\" cannot quietly replace contributing.",
     moment: 'Build a shared understanding of the role, expectations, and contribution.',
     agreed: 'Agree up front what the advisor will actually contribute, and on what terms.',
@@ -119,7 +122,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
-  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: SCENARIO_LABELS.NEW_COFOUNDER, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: SCENARIO_LABELS.NEW_COFOUNDER,
     desc: "Each of you sets down what you expect to build, own and contribute, before the assumptions harden. The check-ins over the next 90 days test what each of you is actually doing against that, so a drift in who carries what surfaces while it is still a conversation.",
     moment: 'Build a shared understanding of a new co-founder or partner relationship.',
     agreed: 'Each of you sets down what you expect to build, own and contribute, before the assumptions harden.',
@@ -129,7 +132,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
-  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: SCENARIO_LABELS.NEW_MANAGER, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: SCENARIO_LABELS.NEW_MANAGER,
     desc: "Agree what they own, who they report to, and what success looks like in the first 90 days. Each check-in then tests what they are doing against what you handed over, so a gap in scope shows up in week three rather than month three.",
     moment: 'Help a new manager understand the team and how the work is going.',
     agreed: 'Agree what they own, who they report to, and what success looks like in the first 90 days.',
@@ -139,7 +142,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'An interim leader stepping into an existing team for six months.',
       'A new manager taking over mid-project and you want scope and authority clear.',
     ] },
-  { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: SCENARIO_LABELS.CONTRACT_RENEWAL, tag: 'Renewal', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: SCENARIO_LABELS.CONTRACT_RENEWAL,
     desc: "Set out what the term was meant to deliver, from both sides. The check-ins across the renewal window test the real work against that, so you negotiate the next term from a record instead of from impressions.",
     moment: 'Understand how a working relationship is going before deciding what happens next.',
     agreed: 'Set out what the term was meant to deliver, from both sides.',
@@ -149,7 +152,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A contractor\'s term is ending and you are deciding whether to renew.',
       'An agency engagement up for renewal and you want an honest read of what got delivered.',
     ] },
-  { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: SCENARIO_LABELS.RECOGNITION, tag: 'Recognition', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
+  { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: SCENARIO_LABELS.RECOGNITION,
     desc: "The person sets out their case and the evidence behind it; you set out what the decision actually turns on. Over the month the check-ins test that evidence against that bar, so the answer rests on the record rather than on who asked most recently.",
     moment: "Understand someone's contribution and experience before making a recognition decision.",
     agreed: 'The person sets out their case and the evidence behind it; you set out what the decision actually turns on.',
@@ -159,7 +162,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'You are going to ask for a raise and want the evidence lined up first.',
       'Someone is up for promotion and you want their record and your read to match before the talk.',
     ] },
-  { cardKey: 'PIP', scenario: 'PIP', label: SCENARIO_LABELS.PIP, tag: 'Accountability', tagBg: 'var(--gw-red-bg)', tagColor: 'var(--gw-red-t)',
+  { cardKey: 'PIP', scenario: 'PIP', label: SCENARIO_LABELS.PIP,
     desc: "Agree the concern, the support on offer, and the standard being measured, and make sure they have seen it. Every check-in across the 90 days tests the work against that same standard, so the decision at the end rests on a run of evidence rather than a write-up assembled afterwards.",
     moment: "Understand what is getting in the way when someone's work is off track.",
     agreed: 'Agree the concern, the support on offer, and the standard being measured, and make sure they have seen it.',
@@ -169,7 +172,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
       'A capability concern where you want a fair record, not a he-said-she-said.',
     ] },
-  { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: SCENARIO_LABELS.OKR_ALIGNMENT, tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: SCENARIO_LABELS.OKR_ALIGNMENT,
     desc: "Each person writes the two or three objectives they think matter most, before the room converges on one version. The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.",
     moment: 'Set goals, targets or OKRs and keep track of how the work is going.',
     agreed: 'Each person writes the two or three objectives they think matter most, before the room converges on one version.',
@@ -179,7 +182,27 @@ export const SCENARIOS: ScenarioCard[] = [
       'Planning season and you want to check everyone\'s goals actually connect before they lock.',
       'Two teams whose objectives depend on each other and you are not sure the handoff is agreed.',
     ] },
-  { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: SCENARIO_LABELS.WORKPLAN_BUDGET, tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  /**
+   * THE SECOND GOAL CARD, WHICH HAS NEVER BEEN IN A PICKER.
+   *
+   * Both goal cards run on OKR_ALIGNMENT, because a cascade is detected from what somebody says
+   * rather than declared at setup - and the card had been written up in SITUATION_CARDS, a list
+   * that turns out to render nowhere. So of the two cards there is copy for, one could be chosen
+   * and the other could only be stumbled into by typing a sentence that happened to sound like a
+   * cascade. Its own copy comes from that entry, unchanged.
+   *
+   * `cardKey` is its own, because two cards sharing a scenario is exactly what cardKey is for.
+   */
+  { cardKey: 'OKR_CASCADE', scenario: 'OKR_ALIGNMENT', label: 'Connect Goals Across the Team',
+    desc: 'The goal at the top is written down, and then each team lead or partner writes the goal and target they own underneath it, in their own words. The check-ins across the period test whether each one still connects to the thing above it and whether they add up together, so a team quietly working to its own number shows up while the quarter can still absorb it.',
+    moment: 'Set a main goal, then have team leads and partners set their own goals and targets.',
+    agreed: 'The goal at the top, and then each team lead or partner writing the goal and target they own underneath it, in their own words.',
+    tests: 'The check-ins test whether each one still connects to the thing above it and whether they add up together, so a team quietly working to its own number shows up while the quarter can still absorb it.',
+    examples: [
+      'A company target with three departments each writing their own results under it.',
+      'Team goals that each look sensible on their own and may not add up to the thing at the top.',
+    ] },
+  { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: SCENARIO_LABELS.WORKPLAN_BUDGET,
     desc: "Each person commits to their own plan and budget, and the numbers have to hold together. The check-ins then test spend and delivery against what they committed, so an overlap or an overrun shows up while there is still quarter left.",
     moment: "Bring people's plans together so the work and budget line up.",
     agreed: 'Each person commits to their own plan and budget, and the numbers have to hold together.',
@@ -189,7 +212,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
-  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: SCENARIO_LABELS.PULSE_CHECK, tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: SCENARIO_LABELS.PULSE_CHECK,
     desc: "A lightweight recurring check-in, with no setup and no target to measure against: about five minutes each on one thing going well, one thing stuck, and what has changed since last time. Reach for this when you want a temperature read, not a record. If there is a specific thing you need people held to, pick that situation instead.",
     moment: 'Regularly understand how work is going while it is happening.',
     agreed: 'Agree what the team is working on and what each person owns.',
@@ -199,7 +222,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
-  { cardKey: 'DRIFT', scenario: 'DRIFT', label: SCENARIO_LABELS.DRIFT, tag: 'Off track', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
+  { cardKey: 'DRIFT', scenario: 'DRIFT', label: SCENARIO_LABELS.DRIFT,
     desc: "Pin down what was agreed, what actually exists now, and the exact gap between them. The check-ins then test whether that gap is closing or holding, so something unresolved three sessions running reads as a pattern rather than bad luck.",
     moment: 'Understand why a project is off track and what needs to change.',
     agreed: 'Pin down what was agreed, what actually exists now, and the exact gap between them.',
@@ -220,7 +243,7 @@ export const SCENARIOS: ScenarioCard[] = [
    * two are genuinely different: a strategy ground is a standing read on direction, this is one
    * decision with a date on it.
    */
-  { cardKey: 'CRISIS_ALIGNMENT', scenario: 'CRISIS_ALIGNMENT', label: SCENARIO_LABELS.CRISIS_ALIGNMENT, tag: 'Deciding', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  { cardKey: 'CRISIS_ALIGNMENT', scenario: 'CRISIS_ALIGNMENT', label: SCENARIO_LABELS.CRISIS_ALIGNMENT,
     desc: "One real choice, with a date on it. Each person's own read comes in before the room converges, and the check-ins after it test whether what people are doing matches what was actually decided.",
     moment: 'Bring different views together around an important decision.',
     agreed: 'One real choice with a date on it, and each person\'s own read before the room converges.',
@@ -231,7 +254,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A decision everyone will agree to in the meeting and re-litigate afterwards.',
       'Two options on the table and you suspect the quiet objection is the important one.',
     ] },
-  { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: SCENARIO_LABELS.BOARD_STRATEGY, tag: 'Leadership', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+  { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: SCENARIO_LABELS.BOARD_STRATEGY,
     desc: "Each leader sets out their own read on the strategy before the room debates it. The check-ins across the quarter then test whether what the business is actually doing matches the strategy that was agreed, so quiet disagreement shows up now rather than after the decision.",
     moment: 'Understand how leaders see the direction and where their views differ.',
     agreed: 'Each leader sets out their own read on the strategy before the room debates it.',
@@ -241,7 +264,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
-  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: SCENARIO_LABELS.COHORT_CHECK, tag: 'Recurring', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: SCENARIO_LABELS.COHORT_CHECK,
     desc: "One set of expectations, many people in the same role, each answering on their own. The check-ins test each person's work against that same frame, so you see who is on track and who is stuck without them swaying each other. For a group who are new, use \"Onboarding several people at once\" instead.",
     moment: 'Understand how people doing similar work are experiencing it.',
     agreed: 'One set of expectations, for many people in the same role, each answering on their own.',
@@ -274,7 +297,7 @@ export const SCENARIOS: ScenarioCard[] = [
    * are going", and the only way to tell them apart is to read them side by side. Hence notThisOneIf
    * on all three.
    */
-  { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT, tag: 'One time', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+  { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT,
     desc: 'One honest read from everyone, once. No setup and no target: about five minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
     moment: 'Get a quick picture of how people are experiencing the work right now.',
     agreed: 'Nothing. No setup and no target to measure against, which is the point.',
@@ -284,7 +307,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'You want to know how people are actually doing this week, without booking a meeting.',
       'Something feels off across the team and you want a read before deciding whether it needs watching.',
     ] },
-  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+  { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once',
     desc: "Several people starting the same role at once, each answering on their own against the same expectations. The check-ins test how each of them is settling against those, so you see early who is finding it and who is struggling, before the end of the period decides anything.",
     moment: 'Help several people starting the same role at once settle in, and see who is on track.',
     agreed: 'The same expectations for several people starting the same role together.',
@@ -295,7 +318,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A cohort of new starters where you need to know by month two, not month three, who needs help.',
       'Trainees in different locations who never work together but are all learning the same job.',
     ] },
-  { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: SCENARIO_LABELS.ACUTE_SHOCK, tag: 'Urgent', tagBg: 'var(--gw-red-bg)', tagColor: 'var(--gw-red-t)',
+  { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: SCENARIO_LABELS.ACUTE_SHOCK,
     desc: "Something has just happened that nobody planned for, and versions of it are already diverging. The first check-in gets each person's version down while it is fresh and separates the facts everyone agrees on from the ones still contested, and a follow-up a week later tests what turned out different once the dust settled.",
     moment: 'Give people a private way to explain what happened and what needs attention.',
     agreed: 'First the facts everyone actually has, separated from what is being repeated. Then what you are now trying to achieve, with a date on it.',
@@ -306,7 +329,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'An incident just took things down and people are scrambling to understand what happened.',
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
-  { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM, tag: 'Team', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
+  { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM,
     desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the official one. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
     moment: "Understand different views when people don't see a situation the same way.",
     agreed: 'Each person gives their own read of the situation before the group talks, and that first session sets out what you do and do not agree on.',
@@ -346,7 +369,7 @@ export const SCENARIOS: ScenarioCard[] = [
    * It is also no longer only for somebody who cannot name their situation. It is for anybody who
    * would rather say it in their own words, which is a different and much larger offer.
    */
-  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'In your own words', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ,
     desc: "Say what is happening in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
     moment: "Give people a starting point when the situation doesn't fit a predefined scenario.",
     agreed: 'Nothing fixed: each person gives their own read first, privately, because the situation is not named yet.',
@@ -372,6 +395,8 @@ export const SCENARIOS: ScenarioCard[] = [
  */
 const CARD_GROUP: Record<string, ScenarioGroupKey> = {
   COHORT_ONBOARDING: 'starting',
+  /* Shares OKR_ALIGNMENT's scenario and its group, but named here so it cannot be missed. */
+  OKR_CASCADE: 'planning',
 }
 
 /**

@@ -213,13 +213,21 @@ export const SCENARIO_GROUPS = [
    */
   { key: 'open', heading: 'Not sure yet',
     question: 'You cannot name it, so nothing below should be guessed on your behalf.' },
-  { key: 'starting', heading: 'Starting something',
+  { key: 'starting', heading: 'Beginning something well',
     question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
-  { key: 'planning', heading: 'Setting the target',
+  /**
+   * WAS "SETTING THE TARGET", AND TWO OF ITS FIVE CARDS DO NOT SET ONE.
+   *
+   * A big decision is not a target and neither is a strategy the room has not converged on. What
+   * the five have in common is getting people pointed the same way, which is what the group is
+   * called now. The one that genuinely did not belong - a monthly read on an agreement already
+   * running - moved to the reads, where it had always belonged.
+   */
+  { key: 'planning', heading: 'Getting people aligned',
     question: "You are deciding what the period is for, and you want each person's own answer before the room converges on one version." },
-  { key: 'reading', heading: 'A read on live work',
-    question: 'Work is already running and you want to know what is actually happening in it. These three sit close together, so each card says when not to pick it.' },
-  { key: 'person', heading: 'A decision about one person',
+  { key: 'reading', heading: 'Get a read',
+    question: 'Work is already running and you want to know what is actually happening in it. These sit close together, so each card says when not to pick it.' },
+  { key: 'person', heading: 'A decision about someone',
     question: 'Something is being decided about somebody, and both of you should be reading the same record when it is.' },
   { key: 'off', heading: 'Something is off',
     question: 'It has already happened. What separates these is whether the gap is against something agreed, between two people, or the result of one event.' },
@@ -232,6 +240,40 @@ export const SCENARIO_GROUPS = [
 export const GROUPS_YOU_PICK_FROM = SCENARIO_GROUPS.filter((g) => g.key !== 'open')
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
+
+/**
+ * THE TAG IS THE GROUP, SAID SHORT.
+ *
+ * Every card carried its own hand-written tag and they had become a third vocabulary next to the
+ * headings and the labels: "Starting", "Planning", "Recurring" repeated their group, while
+ * "Renewal", "Accountability", "Leadership", "Urgent", "Team" and "Deciding" named something else
+ * entirely - so a card could sit under "A decision about someone" wearing a tag that said Renewal,
+ * and a monthly read on a running agreement wore Planning while living in the reads.
+ *
+ * Four separate copies of the card NAMES turned up this week and every one of them had drifted.
+ * This is the same shape, so it gets the same answer: derived, once, from the group the card is
+ * actually in. A tag cannot contradict its heading if there is nothing left to contradict.
+ */
+export const TAG_FOR_GROUP: Record<ScenarioGroupKey, string> = {
+  open: 'Not sure yet',
+  starting: 'Beginning',
+  planning: 'Aligning',
+  reading: 'A read',
+  person: 'A decision',
+  off: 'Something is off',
+}
+
+/** One colour per group, so the tag reads as the group at a glance rather than as decoration. */
+export const TAG_COLOURS: Record<ScenarioGroupKey, { bg: string; fg: string }> = {
+  open:     { bg: 'var(--gw-paper)',    fg: 'var(--gw-sub)' },
+  starting: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)' },
+  planning: { bg: 'var(--gw-blue-bg)',  fg: 'var(--gw-navy)' },
+  reading:  { bg: 'var(--gw-blue-bg)',  fg: 'var(--gw-navy)' },
+  person:   { bg: 'var(--gw-clay-bg)',  fg: 'var(--gw-clay)' },
+  off:      { bg: 'var(--gw-red-bg)',   fg: 'var(--gw-red-t)' },
+}
+
+
 /**
  * THE COACH CARD, WHICH IS A CHOICE RATHER THAN A LAST RESORT.
  *
@@ -322,7 +364,7 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   WORKPLAN_BUDGET:  { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   BOARD_STRATEGY:   { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   CRISIS_ALIGNMENT: { group: 'planning', cadence: 'Every 2 weeks', timelineDays: 60 },
-  IMPLEMENTATION_TRACKING: { group: 'planning', cadence: 'Monthly',  timelineDays: 365,
+  IMPLEMENTATION_TRACKING: { group: 'reading', cadence: 'Monthly',  timelineDays: 365,
                       notThisOneIf: 'Nothing is signed yet. Use "an agreement before it is signed" instead.' },
 
   /*

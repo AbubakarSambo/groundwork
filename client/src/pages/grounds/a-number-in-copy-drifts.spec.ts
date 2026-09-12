@@ -50,14 +50,20 @@ describe('how many situations the page claims', () => {
 
   it('and the sentence counts CARDS, which is what the groups under it count', () => {
     /*
-     * The catalogue counts scenarios; the picker offers cards, and COHORT_CHECK has two of them.
-     * The page said 21 while its own dropdown summed to 22. Both numbers now come off the same
-     * array, so the only way to make them disagree is to count something else on purpose.
+     * The catalogue counts scenarios; the picker offers cards, and TWO scenarios have two cards
+     * each - COHORT_CHECK is offered as an ongoing read and as onboarding, and OKR_ALIGNMENT is
+     * offered as setting goals and as connecting them across teams. The page said 21 while its own
+     * dropdown summed to 22. Both numbers come off the same array, so the only way to make them
+     * disagree is to count something else on purpose.
+     *
+     * 23 since the cascade card was added to the picker: it had been written up in a list that
+     * renders nowhere, so one of the two goal cards could be chosen and the other could only be
+     * reached by typing a sentence that happened to sound like a cascade.
      */
     const page = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
     const cards = [...page.matchAll(/cardKey:\s*'[A-Z_]+',\s*scenario:\s*'([A-Z_]+)'/g)].map(m => m[1])
     const named = cards.filter(s => s !== 'OPEN_READ')
-    expect(named.length).toBe(22)
+    expect(named.length).toBe(23)
     expect(new Set(named).size).toBe(HOW_MANY_NAMED_SITUATIONS)
   })
 })

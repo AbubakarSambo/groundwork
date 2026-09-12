@@ -23,7 +23,12 @@ export interface Searchable {
   cardKey: string
   label: string
   desc: string
-  tag: string
+  /*
+   * OPTIONAL, BECAUSE THE TAG IS NO LONGER A FIELD ON THE CARD - it is the card's group, derived
+   * where the card is drawn. Search still weighs it when a caller has one, because somebody typing
+   * "recurring" or "renewal" was being matched on it and that is worth keeping.
+   */
+  tag?: string
   moment?: string
   examples?: string[]
   /** Words people type that are nowhere on the card. See WORDS_PEOPLE_TYPE. */
@@ -89,7 +94,7 @@ function scoreOneWord<T extends Searchable>(needle: string, card: T): number {
   for (const e of card.examples ?? []) if (hits(needle, e)) best = Math.max(best, WEIGHT.example)
   for (const w of card.alsoTyped ?? []) if (hits(needle, w)) best = Math.max(best, WEIGHT.alsoTyped)
   if (card.moment && hits(needle, card.moment)) best = Math.max(best, WEIGHT.moment)
-  if (hits(needle, card.tag)) best = Math.max(best, WEIGHT.tag)
+  if (card.tag && hits(needle, card.tag)) best = Math.max(best, WEIGHT.tag)
   if (hits(needle, card.desc)) best = Math.max(best, WEIGHT.desc)
   return best
 }

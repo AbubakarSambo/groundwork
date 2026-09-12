@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { SCENARIO_FACTS, recommendedSessions } from '@/lib/scenario-catalog'
+import { SCENARIO_FACTS, recommendedSessions, TAG_FOR_GROUP, TAG_COLOURS, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
 
 /**
  * ONE SITUATION CARD, DRAWN ONCE, FOR BOTH PICKERS.
@@ -29,10 +30,11 @@ export type SituationCardData = {
   cardKey: string
   scenario: string
   label: string
-  tag: string
-  tagBg: string
-  tagColor: string
-  /** The one line on the face: the moment you would open the app, not a description. */
+  /**
+   * NO TAG, NO COLOURS. They were three fields per card and a third vocabulary beside the headings
+   * and the labels - see TAG_FOR_GROUP. The tag is the card's group now, derived where it is drawn.
+   */
+  /** The one line on the face. Her table's description, and the concrete moment moved to examples. */
   moment: string
   agreed: string
   tests: string
@@ -61,6 +63,9 @@ export function SituationCard({
   extra?: ReactNode
 }) {
   const facts = SCENARIO_FACTS[card.scenario as keyof typeof SCENARIO_FACTS]
+  /* The card's own group, which is also its tag. The override for the two cohort cards lives in
+     groupOfCard, so reading the scenario's group directly here would file both under one. */
+  const group: ScenarioGroupKey = groupOfCard(card)
   const sessions = recommendedSessions(card.scenario as any)
 
   return (
@@ -79,7 +84,7 @@ export function SituationCard({
       onClick={onPick}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: TAG_COLOURS[group].bg, color: TAG_COLOURS[group].fg }}>{TAG_FOR_GROUP[group]}</span>
         <div className="cg-sit-check" />
       </div>
       <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{label}</div>
