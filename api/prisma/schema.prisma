@@ -4280,6 +4280,17 @@ model ReportRound {
   divergences     Json
   centralQuestion String @map("central_question") @db.Text
 
+  /// THE ONE LINE THIS ROUND FOUND, which is what sits at the top of its report.
+  ///
+  /// Kept because it is the only part of a round somebody wants at a glance, and it was computed
+  /// live and thrown away. The check-in list showed each ground's BRIEF instead - the sentence it
+  /// was set up with - so four goal check-ins read the same and the list said nothing about where
+  /// any of them was.
+  ///
+  /// Nullable: rounds kept before this existed have none, and a round can legitimately produce no
+  /// finding at all. The card falls back to the brief either way.
+  finding String? @db.Text
+
   /// When the round closed. Not when this row was written - a retry days later is still that round.
   takenAt DateTime @map("taken_at")
 

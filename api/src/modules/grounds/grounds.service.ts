@@ -1034,6 +1034,11 @@ export class GroundsService {
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
         report: { select: { releasedAt: true, agreements: true, divergences: true } },
+        /*
+         * THE LATEST ROUND'S FINDING, for the card. One row per ground, newest first: the list is
+         * read often and a whole history here would be paid for on every load for a single line.
+         */
+        reportRounds: { select: { sessionNumber: true, finding: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         reportActivations: { select: { participantId: true, status: true } },
       },
     });
@@ -1090,6 +1095,9 @@ export class GroundsService {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
             },
             report: { select: { releasedAt: true, agreements: true, divergences: true } },
+            /* Must match the sibling query above: both feed the same list, and a card fed by this
+               one would fall back to the brief for ever while its twin showed the finding. */
+            reportRounds: { select: { sessionNumber: true, finding: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
             reportActivations: { select: { participantId: true, status: true } },
           },
         });
@@ -1156,7 +1164,13 @@ export class GroundsService {
             sessions.filter(ci => ci.sessionNumber === n).every(ci => ci.status === CheckInStatus.COMPLETED),
           ).length;
         })();
-        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName };
+        /*
+         * WHAT THE LAST ROUND FOUND, which is what the card leads with. The brief is the fallback
+         * and is still on the payload: a check-in nobody has finished a round on has no finding and
+         * still has to say what it is for.
+         */
+        const latestFinding = ((rest as any).reportRounds?.[0]?.finding as string | null) ?? null;
+        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }

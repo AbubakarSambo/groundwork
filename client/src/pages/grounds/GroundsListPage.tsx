@@ -107,7 +107,22 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
             : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No report yet</div>}
         </div>
       </div>
-      {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
+      {/*
+        THE LATEST FINDING, NOT THE BRIEF.
+        The brief is the sentence somebody set this up with, so four goal check-ins read "We are
+        setting shared goals for this period and I want everyone aligned on what matters most" four
+        times and the list says nothing about where any of them actually is. The finding is the line
+        at the top of the last session's report - the one thing that round found.
+        The brief is still the fallback, because a check-in nobody has finished a round on has no
+        finding yet and still has to say what it is for.
+      */}
+      {(g as any).latestFinding
+        ? (
+          <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5, marginBottom: 10, borderLeft: '2px solid var(--gw-amber-b)', paddingLeft: 10 }}>
+            {(g as any).latestFinding}
+          </div>
+        )
+        : g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/*
           WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.

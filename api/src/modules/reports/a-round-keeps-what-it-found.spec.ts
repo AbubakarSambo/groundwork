@@ -1,0 +1,75 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+/**
+ * THE CHECK-IN LIST WAS SHOWING EVERY GROUND'S BRIEF.
+ *
+ * "These cards need to carry the highlight from the latest session, that thing that sits at the top
+ * of the session report. Not this, we are setting shared goals etc."
+ *
+ * The brief is the sentence somebody set a check-in up with, so four goal check-ins read "We are
+ * setting shared goals for this period and I want everyone aligned on what matters most" four times
+ * and the list said nothing about where any of them actually was.
+ *
+ * The finding - the line at the top of a session's report - was computed from the round's own
+ * drafts and thrown away, so the only place it ever existed was a page somebody had open. A round
+ * keeps it now.
+ *
+ * WHERE IT IS WRITTEN IS THE DECISION. Not on a read, because a read must not write. Not in
+ * synthesis, because synthesis does not build the drafts the finding is picked from. It goes where
+ * the session report is already being computed for every reader the moment a round closes.
+ */
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8'));
+
+const LISTENER = read('reports.listener.ts');
+const GROUNDS = read('..', 'grounds', 'grounds.service.ts');
+const SCHEMA = read('..', '..', '..', 'prisma', 'schema.prisma');
+
+describe('a round keeps what it found', () => {
+  it('there is somewhere to keep it, and it is nullable', () => {
+    /* Rounds kept before this have none, and a round may legitimately produce no finding. */
+    const round = SCHEMA.slice(SCHEMA.indexOf('model ReportRound'), SCHEMA.indexOf('model ReportRound') + 1400);
+    expect(round).toMatch(/finding\s+String\?/);
+  });
+
+  it('it is written where the report is already in hand, not recomputed', () => {
+    const warm = LISTENER.slice(LISTENER.indexOf('private async warmTheReads'));
+    expect(warm).toMatch(/reportRound\.updateMany/);
+    expect(warm).toMatch(/finding: String\(/);
+  });
+
+  it('and only once per round, however many readers there are', () => {
+    /* Every reader gets their own report warmed; the first one that produces a finding is the
+       round's, and writing it per reader would be the same row rewritten four times. */
+    const warm = LISTENER.slice(LISTENER.indexOf('private async warmTheReads'));
+    expect(warm).toMatch(/if \(!kept &&/);
+  });
+
+  it('keeping it never breaks the thing somebody is waiting on', () => {
+    const warm = LISTENER.slice(LISTENER.indexOf('private async warmTheReads'));
+    const write = warm.slice(warm.indexOf('reportRound.updateMany'));
+    expect(write.slice(0, 400)).toMatch(/\.catch\(/);
+  });
+});
+
+describe('and the list carries it', () => {
+  it('both queries fetch it, because both feed the same list', () => {
+    /*
+     * THE ONE THAT MATTERS. There are two: the organisation's grounds and the ones this person is a
+     * party to in somebody else's org. A card fed by the second would fall back to the brief for
+     * ever while its twin showed the finding, and nothing on the screen would say why.
+     */
+    const fetches = GROUNDS.match(/reportRounds: \{ select: \{ sessionNumber: true, finding: true \}/g) ?? [];
+    expect(fetches.length).toBe(2);
+  });
+
+  it('newest round only, because the list is read constantly', () => {
+    expect(GROUNDS).toMatch(/orderBy: \{ sessionNumber: 'desc' \}, take: 1/);
+  });
+
+  it('and the card is given it by name', () => {
+    expect(GROUNDS).toMatch(/const latestFinding = /);
+    expect(GROUNDS).toMatch(/reportWaitingForMe, otherOrgName, latestFinding \}/);
+  });
+});

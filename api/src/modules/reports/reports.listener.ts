@@ -105,9 +105,29 @@ export class ReportsListener {
     });
     if (!ground) return;
     const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    let kept = false;
     for (const userId of readers) {
-      await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
+      const said = await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
       await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
+
+      /*
+       * AND THE ROUND KEEPS WHAT IT FOUND, once, while it is in hand.
+       *
+       * The finding is picked from the round's own drafts and was then thrown away, so the only
+       * place it existed was a page somebody had open. The check-in list showed each ground's brief
+       * instead - the sentence it was set up with - and four goal check-ins read identically.
+       *
+       * Here rather than on a read, because a read must not write, and rather than in synthesis,
+       * because synthesis does not build the drafts the finding is picked from. This loop already
+       * computes the report for every reader; the first one that produces a finding is the round's.
+       */
+      if (!kept && (said as any)?.finding?.text) {
+        kept = true;
+        await this.prisma.reportRound.updateMany({
+          where: { groundId, sessionNumber },
+          data: { finding: String((said as any).finding.text) },
+        }).catch((err: any) => this.logger.warn(`Keeping the finding for ${groundId} failed: ${err?.message}`));
+      }
     }
     this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
   }

@@ -81,6 +81,26 @@ export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   { id: 'targets', what: 'the goals or targets, as numbers or dates', role: ['lead'], stage: ['first'], satisfiedBy: [T.TIMEFRAME, T.SUCCESS_DEFINITION] },
   { id: 'going-in', what: 'what people should know going in', role: ['lead'], stage: ['first'], satisfiedBy: [], noTypeYet: true },
 
+  /**
+   * AND THE PLAN UNDER THE GOAL, WHERE THERE IS ONE.
+   *
+   * "Sometimes workplans are attached to goals, and if they exist and who is responsible for what,
+   * we need to track it well." A goal with a plan under it is the ordinary case, so the plan is
+   * part of this conversation rather than a separate situation.
+   *
+   * IT ASKS, IT DOES NOT INSIST - "it can ask but it is not always available so no forcing it".
+   * That is not a note, it is what `noTypeYet` does: nothing on the record can ever prove these, so
+   * they are asked, recorded as a gap, and after ASK_TWICE_THEN_LET_IT_GO they are let go and never
+   * raised again. A goal with no plan under it is a real answer and the conversation moves on.
+   *
+   * The member's own part is not noTypeYet, because it CAN be proved: somebody saying which piece
+   * is theirs is a commitment or an intent, and a slot that can close should close rather than be
+   * asked twice and dropped.
+   */
+  { id: 'the-plan', what: 'the workplan under the goal, if there is one', role: ['lead'], stage: ['first'], satisfiedBy: [], noTypeYet: true },
+  { id: 'plan-owners', what: 'who is responsible for which part of that plan', role: ['lead'], stage: ['first', 'middle'], satisfiedBy: [], noTypeYet: true },
+  { id: 'my-part-of-the-plan', what: 'the part of the plan that is theirs to do', role: ['member', 'partner'], stage: ['first'], satisfiedBy: [T.COMMITMENT, T.INTENT] },
+
   { id: 'own-work', what: 'what they are working on', role: ['member'], stage: ['first'], satisfiedBy: [T.INTENT, T.COMMITMENT] },
   { id: 'how-it-is', what: 'how it is actually going', role: ['member'], stage: ['first'], satisfiedBy: [T.INTENT, T.WORRY, T.TENSION] },
   { id: 'unclear', what: 'what is clear and what is not', role: ['member'], stage: ['first'], satisfiedBy: [T.WORRY, T.ASK, T.TENSION] },
