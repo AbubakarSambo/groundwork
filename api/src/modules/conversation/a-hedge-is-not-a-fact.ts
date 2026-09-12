@@ -47,7 +47,22 @@ const HEDGES = [
  * the 902, so the bare-number branch read a ticket reference as a quantity of something - on the
  * very check-in this was written from. A number that is part of an identifier is not a count.
  */
-const QUANTITY = /(?<![\w-])(\d+(?:\.\d+)?\s*(?:%|per ?cent|percent)|\d+(?:\.\d+)?\s*(?:of|out of)\s*\d+|(?:a |one )?(?:third|quarter|half|fifth|tenth)|\d+(?:\.\d+)?)/gi;
+/*
+ * AND NUMBERS PEOPLE WRITE OUT. "Twelve tickets are over a day old" is as much a figure as "12",
+ * and check-ins are typed in a chat box where both happen. Written numbers start at two: "one" does
+ * far more work in English as a near-article - "one thing", "the one that", "no one" - than it does
+ * as a count, and reading it as a quantity would flag ordinary sentences all day.
+ */
+const WRITTEN = 'two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen';
+
+const QUANTITY = new RegExp(
+  `(?<![\\w-])(\\d+(?:\\.\\d+)?\\s*(?:%|per ?cent|percent)` +
+  `|\\d+(?:\\.\\d+)?\\s*(?:of|out of)\\s*\\d+` +
+  `|(?:a |one )?(?:third|quarter|half|fifth|tenth)` +
+  `|(?:${WRITTEN})` +
+  `|\\d+(?:\\.\\d+)?)`,
+  'gi',
+);
 
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 

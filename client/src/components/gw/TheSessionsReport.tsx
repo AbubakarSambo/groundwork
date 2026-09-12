@@ -93,10 +93,18 @@ const LABEL: React.CSSProperties = {
   color: 'var(--gw-muted)', marginBottom: 10,
 }
 
-function Cite({ who, documented }: { who: string; documented?: boolean }) {
+function Cite({ who, documented, figureIs }: { who: string; documented?: boolean; figureIs?: string }) {
   return (
     <div style={{ marginTop: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
       {who}{documented ? ' · from a document' : ''}
+      {/*
+        A FIGURE THE READER CANNOT CHECK SAYS SO, BESIDE THE LINE AND NOWHERE ELSE.
+
+        "About a third of the way there I would say" and a count read off a system arrive here as
+        two sentences with numbers in them. On the page somebody uses to decide what to do about a
+        person, they look identical. This says which; it is about the figure, never about them.
+      */}
+      {figureIs ? <span style={{ color: 'var(--gw-amber-t)' }}> · {figureIs}</span> : null}
     </div>
   )
 }
@@ -106,13 +114,13 @@ function Cite({ who, documented }: { who: string; documented?: boolean }) {
  * The reader's own lines used to arrive with no name at all, so the list read as three voices and
  * one anonymous one. A line with no name is the reader's, and says so.
  */
-function Quotes({ items, yourName }: { items: { text: string; who?: string | null; documented?: boolean }[]; yourName: string | null }) {
+function Quotes({ items, yourName }: { items: { text: string; who?: string | null; documented?: boolean; figureIs?: string }[]; yourName: string | null }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       {items.map((it, i) => (
         <div key={i}>
           <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{it.text}</div>
-          <Cite who={it.who == null || it.who === yourName ? (yourName ? `${yourName} (you)` : 'You') : it.who} documented={it.documented} />
+          <Cite who={it.who == null || it.who === yourName ? (yourName ? `${yourName} (you)` : 'You') : it.who} documented={it.documented} figureIs={it.figureIs} />
         </div>
       ))}
     </div>

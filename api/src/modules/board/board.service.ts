@@ -50,6 +50,7 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { whereEachPersonIs } from './where-each-person-is-against-their-number';
+import { whichRoundIsOpen } from './which-round-is-open';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 
 /**
@@ -543,8 +544,7 @@ export class BoardService {
        * page of red on the morning the round begins, about a round nobody was late for. A round
        * nobody has touched is next week's.
        */
-      const started = checkIns.filter((c) => c.status !== CheckInStatus.NOT_STARTED).map((c) => c.sessionNumber);
-      const openRound = started.length ? Math.max(...started) : Math.max(0, ...checkIns.map((c) => c.sessionNumber));
+      const openRound = whichRoundIsOpen(checkIns as any);
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1121,14 +1121,23 @@ export class BoardService {
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
-    const [count, maxSession] = await Promise.all([
+    const [count, rounds] = await Promise.all([
       this.prisma.groundObjective.count({ where: { groundId } }),
-      this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }),
+      /* Optional-chained like the reads next door: a caller whose prisma double stubs only what it
+         needs must get an empty list, not a crash on a write that does not depend on it. */
+      this.prisma.checkIn?.findMany?.({ where: { groundId }, select: { sessionNumber: true, status: true } })?.catch(() => [] as any[]) ?? [],
     ]);
     // Stamp the session it was added in, so the board can flag it as new and show
     // who has been asked about it. A target means nothing until people have
     // checked in against it.
-    const addedAtSession = count === 0 ? null : (maxSession._max.sessionNumber ?? 1);
+    /*
+     * STAMPED AGAINST THE ROUND THAT IS RUNNING, not the row written ahead for next week.
+     *
+     * Taking the highest session number meant a target set this morning was stamped against next
+     * week, so the board reported "still to be asked" about people who could have been asked in the
+     * round that was actually open - and would keep reporting it for a week. See whichRoundIsOpen.
+     */
+    const addedAtSession = count === 0 ? null : (whichRoundIsOpen(rounds as any) || 1);
     return this.prisma.groundObjective.create({
       data: {
         groundId,

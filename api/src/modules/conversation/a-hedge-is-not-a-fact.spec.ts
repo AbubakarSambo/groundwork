@@ -49,6 +49,17 @@ describe('a hedge is not a fact', () => {
     expect(s).toContain('what the actual figure is and where it can be seen');
   });
 
+  it('reads a number somebody wrote out, because check-ins are typed in a chat box', () => {
+    expect(quantitiesIn('Twelve tickets are over a day old')).toContain('twelve');
+    expect(hardenedAGuess('I think about twelve are still open.', 'Twelve are still open.')).toBe('twelve');
+  });
+
+  it('but not "one", which does more work in English as a near-article than as a count', () => {
+    /* "one thing", "the one that", "no one" - reading it as a quantity would flag ordinary
+       sentences all day, and the cost of a false catch here is a turn sent back for nothing. */
+    expect(quantitiesIn('I think one thing is still open')).not.toContain('one');
+  });
+
   it('says nothing about an empty turn', () => {
     expect(hardenedAGuess('', 'You are a third of the way there.')).toBeNull();
     expect(hardenedAGuess(THE_LIVE_ONE, '')).toBeNull();

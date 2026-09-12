@@ -3,6 +3,7 @@ import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-i
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
 import { atAGlanceTiles, type AGlanceRead } from './what-this-session-holds';
+import { howSolid, MARK } from './a-figure-nobody-can-check-says-so';
 
 /**
  * THE PER-SESSION REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -44,6 +45,15 @@ export interface SaidThing {
   who: string | null;
   /** True when it was anchored to a document rather than recalled. */
   documented: boolean;
+  /**
+   * A CAVEAT ON A FIGURE, WHERE THE LINE CARRIES ONE THE READER CANNOT CHECK.
+   *
+   * "About a third of the way there I would say" and "Twelve tickets are over a day old" arrive on
+   * a manager's screen as two sentences with numbers in them, in a list beside lines that came off
+   * a system. One is a guess made in a chat. The mark says which; it never scores the person and
+   * never removes the line. Absent where the line holds no figure, so it does not become wallpaper.
+   */
+  figureIs?: 'their estimate' | 'from memory';
 }
 
 export interface SessionReportSection {
@@ -178,11 +188,15 @@ function titleOf(x: unknown): string | null {
   return null;
 }
 
-const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => ({
-  text: e.text,
-  who: e.who,
-  documented: !e.recallBased,
-});
+const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => {
+  const how = howSolid({ text: e.text, recallBased: e.recallBased });
+  return {
+    text: e.text,
+    who: e.who,
+    documented: !e.recallBased,
+    ...(how === 'estimated' || how === 'from-memory' ? { figureIs: MARK[how] as 'their estimate' | 'from memory' } : {}),
+  };
+};
 
 const ofTypes = (
   entries: SessionReportInputs['entries'],
