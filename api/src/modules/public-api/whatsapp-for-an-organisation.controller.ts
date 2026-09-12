@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -35,7 +36,16 @@ export class WhatsAppForAnOrganisationController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: "The organisation's WhatsApp connection, secrets withheld" })
   async connection(@CurrentUser('organizationId') organizationId: string) {
-    return { connection: await this.whatsapp.connectionFor(organizationId), webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}` };
+    /*
+     * The languages the check-in can be held in, from the one list that decides it. Named here so
+     * the setup page can say them rather than keeping its own copy, which is how a page ends up
+     * promising a language nobody added.
+     */
+    return {
+      connection: await this.whatsapp.connectionFor(organizationId),
+      webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}`,
+      languages: Object.values(LANGUAGES_WE_CONVERSE_IN),
+    };
   }
 
   @Put('integrations/whatsapp')

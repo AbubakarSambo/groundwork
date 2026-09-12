@@ -513,6 +513,79 @@ export function IntegrationsPage() {
         <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
       </div>
 
+      {/* ---------------------------------------------------------------- whatsapp
+        OUT FROM BEHIND THE API REQUEST. Setting up WhatsApp sat inside the block that only shows
+        once API access is approved, so somebody who only wanted their team to check in by message
+        had to ask for API keys and wait for a person to read the request.
+        Nothing here gives away how the API works: an address to paste into Meta and a token you
+        made up. So it stands on its own, above the part that does need approving.
+      */}
+      <div style={S.sec}>Your WhatsApp number</div>
+      <div style={S.card}>
+        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
+        <p style={S.body}>
+          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
+        </p>
+        {/*
+          WHAT IT SOUNDS LIKE, AND IN WHICH LANGUAGES. Somebody deciding whether to put this in
+          front of a field team needs to know it will not read like a form. Short words, one
+          question at a time, and the person can answer in their own language.
+          The list comes from the server so this page cannot promise a language nobody added.
+        */}
+        {(whatsapp.data as any)?.languages?.length > 0 && (
+          <p style={S.body}>
+            On WhatsApp the questions are short and in plain everyday words, one at a time, the way
+            you would ask somebody in person. People can answer in {(whatsapp.data as any).languages.length} languages
+            and the check-in carries on in whichever they use: {(whatsapp.data as any).languages.join(', ')}.
+            What goes on the record is kept in English so everyone reads the same thing.
+          </p>
+        )}
+        {whatsapp.data?.connection ? (
+          <>
+            <div style={{ ...S.row, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
+                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
+                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
+              </div>
+              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
+            </div>
+            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
+              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
+              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
+              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
+            </div>
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
+              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
+              </div>
+            </details>
+          </>
+        ) : (
+          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
+            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
+            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
+            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
+          </div>
+        )}
+      </div>
+
+
       {approved && (<>
       {/* GUIDED SETUP, and each step reports whether it actually happened rather than whether it was
           attempted. An admin who has finished step three should KNOW the connection works. */}
@@ -887,58 +960,6 @@ export function IntegrationsPage() {
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>Paste on the pages that should carry it</div>
             <pre style={{ ...S.mono, background: 'var(--gw-bg)', padding: '10px 12px', borderRadius: 8, overflowX: 'auto', margin: 0 }}>{`<script src="${API_ORIGIN}/embed.js" data-mode="${embed.data.placement}" data-token="TOKEN_YOUR_SERVER_MINTS"${embed.data.placement === 'anchor' ? ' data-anchor="#groundwork"' : ''}></script>`}</pre>
             <p style={{ ...S.body, marginTop: 6 }}>Your server signs a short-lived token for the signed-in person with the secret above (HS256, their id in <span style={S.mono}>sub</span>) and puts it in <span style={S.mono}>data-token</span>. The panel then knows who they are without a second login.</p>
-          </div>
-        )}
-      </div>
-
-      {/* ---------------------------------------------------------------- whatsapp */}
-      <div style={S.sec}>Your WhatsApp number</div>
-      <div style={S.card}>
-        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
-        <p style={S.body}>
-          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
-        </p>
-        {whatsapp.data?.connection ? (
-          <>
-            <div style={{ ...S.row, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
-                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
-                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
-                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
-              </div>
-              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
-            </div>
-            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
-              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
-              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
-              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
-            </div>
-            <details style={{ marginTop: 12 }}>
-              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
-              </div>
-            </details>
-          </>
-        ) : (
-          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
-            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
-            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
-            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
-            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
           </div>
         )}
       </div>
