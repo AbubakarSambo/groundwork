@@ -1,6 +1,7 @@
 import { stripCloseMarker } from '../conversation/prompt-library';
 import { withoutDashes } from '../reports/forensic-voice';
 import { houseStyle } from '../conversation/anthropic.service';
+import { sentencesIn } from './where-a-sentence-actually-ends';
 
 /**
  * THE ONE PLACE ANYTHING CROSSES FROM THE SYSTEM TO A PERSON.
@@ -221,7 +222,7 @@ export function unwrapRecordNarration(sentence: string): string | null {
 }
 
 export function withoutRecordNarration(text: string): string {
-  const sentences = text.split(/(?<=[.!?])\s+/);
+  const sentences = sentencesIn(text);
   const kept = sentences.map((sentence) => {
     /* The tail form first: it rewrites the whole sentence, so a lead-in pass over it would be
        looking at a string this is about to replace. */
@@ -271,10 +272,12 @@ export function withoutRecordNarration(text: string): string {
  * The adjective list stays alongside it, because "that's helpful" has no noun to anchor to.
  */
 const A_MARK_AND_NOTHING_ELSE =
-  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:good|great|clear|strong|helpful|useful|important|solid)\s+(?:start|place to start|outcome|goal|sign|basis|foundation)(?:[\s,]+\w+){0,4}|that\s+sense of(?:[\s,]+\w+){0,10}|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
 
 export function withoutTheMark(text: string): string {
-  const sentences = text.split(/(?<=[.!?])\s+/);
+  /* Split properly: a mark riding on the end of a quotation was the reason this stripper was
+     letting "That's a good start." through. See where-a-sentence-actually-ends.ts. */
+  const sentences = sentencesIn(text);
   const kept = sentences.filter((sentence) => {
     const bare = sentence.trim().replace(/^["']|["']$/g, '');
     return !A_MARK_AND_NOTHING_ELSE.test(bare);

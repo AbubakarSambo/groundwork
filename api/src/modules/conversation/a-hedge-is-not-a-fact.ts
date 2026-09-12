@@ -49,6 +49,11 @@ const HEDGES = [
  */
 const QUANTITY = /(?<![\w-])(\d+(?:\.\d+)?\s*(?:%|per ?cent|percent)|\d+(?:\.\d+)?\s*(?:of|out of)\s*\d+|(?:a |one )?(?:third|quarter|half|fifth|tenth)|\d+(?:\.\d+)?)/gi;
 
+import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
+
+/* Sentences, and line breaks count as boundaries too: people write lists into a check-in box. */
+const splitLines = (t: string): string[] => t.split(/\n+/).flatMap((l) => sentencesIn(l));
+
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
 /** The quantities in a piece of text, as written. */
@@ -64,7 +69,7 @@ export function quantitiesIn(text: string): string[] {
  */
 export function wasHedged(personTurn: string, quantity: string): boolean {
   const t = norm(personTurn);
-  for (const sentence of t.split(/(?<=[.!?])\s+|\n+/)) {
+  for (const sentence of splitLines(t)) {
     if (!sentence.includes(quantity)) continue;
     if (HEDGES.some((h) => sentence.includes(h))) return true;
   }
@@ -74,7 +79,7 @@ export function wasHedged(personTurn: string, quantity: string): boolean {
 /** Did the reply state this quantity without carrying any hedge of its own? */
 export function statedFlatly(reply: string, quantity: string): boolean {
   const r = norm(reply);
-  for (const sentence of r.split(/(?<=[.!?])\s+|\n+/)) {
+  for (const sentence of splitLines(r)) {
     if (!sentence.includes(quantity)) continue;
     /* A question about the number is not an assertion of it, and neither is a hedged restatement. */
     if (sentence.trimEnd().endsWith('?')) continue;
