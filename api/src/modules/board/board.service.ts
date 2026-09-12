@@ -49,6 +49,8 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { whereEachPersonIs } from './where-each-person-is-against-their-number';
+import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -519,6 +521,54 @@ export class BoardService {
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
       };
+    }
+
+    /*
+     * TEN ROWS, ONE PER PERSON, ORDERED BY WHAT NEEDS ATTENTION.
+     *
+     * The board answers "how is the team doing". A manager running ten people each against their
+     * own number is asking something else - "where is each person and what do I do with them" - and
+     * nothing here could answer it. See the module for why it ranks situations and never people.
+     *
+     * Lead-only: it names what to ask somebody to do, which is a manager's read of their own team,
+     * not something a colleague may have about a colleague. `own-reads-only` strips it for anybody
+     * else; this is the narrower gate at the point it is built.
+     */
+    if (has('checkInGrid') && runsThisGround) {
+      const openRound = Math.max(0, ...checkIns.map((c) => c.sessionNumber));
+      out.eachPerson = whereEachPersonIs(
+        ground.participants.filter((p) => !p.managingOnly).map((p) => {
+          const theirs = (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
+          const mine = checkIns.filter((c) => c.participantId === p.id);
+          const thisRound = mine.find((c) => c.sessionNumber === openRound);
+          return {
+            participantId: p.id,
+            /* A person whose name this reader may not resolve still has a row: the read is about
+               what to do, and "a teammate" with a three-week blocker is still worth acting on. */
+            who: nameOf(p.id) ?? 'A teammate',
+            target: theirs?.target ?? null,
+            count: theirs?.count ?? 0,
+            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
+            roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
+            inTheWay: (ground.dependencies ?? [])
+              .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
+              .map((d: any) => ({
+                what: d.what,
+                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
+                /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
+                tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
+              })),
+            /* A round with a date, a number or a document in it is one somebody else can check. */
+            saidAnythingCheckable: (thisRound as any)?.specificityLevel
+              ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
+              : false,
+          };
+        }),
+        /* The planned length, for the only honest read of pace. Without one it says nothing
+           rather than guessing the bar - see behindThePace. */
+        (ground as any).totalSessions ?? null,
+      );
     }
 
     if (has('checkInGrid')) {
@@ -1051,9 +1101,10 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
     const [count, maxSession] = await Promise.all([
       this.prisma.groundObjective.count({ where: { groundId } }),
       this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }),
@@ -1067,10 +1118,28 @@ export class BoardService {
         groundId,
         name: dto.name.trim(),
         target: dto.target ?? null,
+        ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
       },
     });
+  }
+
+  /**
+   * A PARTICIPANT ID FROM SOMEWHERE ELSE IS NOT AN OWNER.
+   *
+   * Ids arrive from a form, and an id belonging to another check-in would hang one person's number
+   * off a check-in they are not on - visible to everybody on it, and invisible to them. Checked
+   * rather than trusted; anything that does not belong here becomes nobody's, which is the state
+   * every target was in before this existed.
+   */
+  private async whoOnThisGround(groundId: string, participantId?: string | null): Promise<string | null> {
+    if (!participantId?.trim()) return null;
+    const found = await this.prisma.groundParticipant.findFirst({
+      where: { id: participantId.trim(), groundId },
+      select: { id: true },
+    });
+    return found?.id ?? null;
   }
 
   /**

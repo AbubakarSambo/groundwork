@@ -14,6 +14,17 @@ class ObjectiveDto {
 
   @IsOptional() @IsInt() @Min(0)
   count?: number;
+
+  /**
+   * WHOSE NUMBER THIS IS, WHERE IT IS SOMEBODY'S.
+   *
+   * Optional, and null is the ordinary case: a target for the whole check-in belonging to nobody in
+   * particular, which is every target this product had until a chief of staff set ten of them, one
+   * per salesperson. Validated as a participant on this ground by the service - a participant id
+   * from somewhere else would attach a person's number to a check-in they are not on.
+   */
+  @IsOptional() @IsString() @MaxLength(64)
+  ownerParticipantId?: string | null;
 }
 
 class PollDto {

@@ -14,8 +14,22 @@ describe('what the record already holds', () => {
       targets: [{ name: 'Musa - North', target: 35, count: 0 }],
       inTheWay: [], saidLastTime: [], now: NOW,
     });
-    expect(out).toContain('Musa - North: 0 of 35');
+    expect(out).toContain('Musa - North, 0 of 35');
     expect(out).toContain('Do not ask what this person is aiming for');
+  });
+
+  it('puts their own number first and on its own, with the others as context under it', () => {
+    /* Ten salespeople each saw all ten targets on their own screen, theirs buried eighth. */
+    const out = whatTheRecordAlreadyHolds({
+      targets: [
+        { name: 'Bala - Central', target: 40, count: 3 },
+        { name: 'Amina - North', target: 21, count: 2, yours: true },
+      ],
+      inTheWay: [], saidLastTime: [], now: NOW,
+    });
+    expect(out).toContain('Theirs: Amina - North, 2 of 21');
+    expect(out.indexOf('Theirs:')).toBeLessThan(out.indexOf('The rest of the check-in'));
+    expect(out).toContain('The rest of the check-in: Bala - Central, 3 of 40');
   });
 
   it('leaves out a target nobody put a number on', () => {

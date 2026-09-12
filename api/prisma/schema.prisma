@@ -1055,6 +1055,8 @@ model CoachingState {
 }
 
 model GroundParticipant {
+  /// Board targets that are this person's own. See GroundObjective.ownerParticipantId.
+  objectivesOwned            GroundObjective[] @relation("ObjectiveOwner")
   whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
@@ -1444,6 +1446,18 @@ model GroundObjective {
   name     String
   target   Int? // null = a qualitative objective, tracked but not counted
 
+  /// WHOSE NUMBER THIS IS, WHERE IT IS SOMEBODY'S.
+  ///
+  /// A board target was the whole check-in's: "paying companies", "first response under four
+  /// hours". Watched with a real team, a chief of staff set ten of them - one per salesperson,
+  /// summing to the number committed to the board - and the product had nowhere to say which was
+  /// whose. So every rep saw all ten, the board could not say where any one person stood, and the
+  /// only read a manager wanted, ten rows against ten numbers, could not be built at all.
+  ///
+  /// Null keeps the original meaning and is still the common case: a target for the whole thing,
+  /// belonging to nobody in particular.
+  ownerParticipantId String? @map("owner_participant_id")
+
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
   prevCount      Int      @default(0) @map("prev_count")
@@ -1457,9 +1471,11 @@ model GroundObjective {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   ground    Ground                    @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  owner     GroundParticipant?        @relation("ObjectiveOwner", fields: [ownerParticipantId], references: [id], onDelete: SetNull)
   snapshots GroundObjectiveSnapshot[]
 
   @@index([groundId])
+  @@index([ownerParticipantId])
   @@map("ground_objectives")
 }
 

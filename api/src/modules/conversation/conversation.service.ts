@@ -1834,7 +1834,7 @@ export class ConversationService {
       this.prisma.groundObjective?.findMany({
         where: { groundId: ground.id },
         orderBy: { sortOrder: 'asc' },
-        select: { name: true, target: true, count: true },
+        select: { name: true, target: true, count: true, ownerParticipantId: true },
       })?.catch(() => [] as any[]) ?? [],
       /*
        * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
@@ -1865,7 +1865,7 @@ export class ConversationService {
        undefined list is not an empty one as far as the labeller is concerned. */
     const labelOf = labelsForParties((ground.participants ?? []) as any);
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
-      targets: (objectivesOnRecord as any[]).map((o) => ({ name: o.name, target: o.target, count: o.count })),
+      targets: (objectivesOnRecord as any[]).map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId })),
       inTheWay: (inTheWayRows as any[]).map((d) => ({
         what: d.what,
         on: d.onParticipantId ? (labelOf.get(d.onParticipantId) ?? d.onLabel ?? null) : (d.onLabel ?? null),

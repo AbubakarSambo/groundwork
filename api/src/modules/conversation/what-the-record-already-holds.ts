@@ -28,6 +28,8 @@ export interface TargetOnRecord {
   name: string;
   target: number | null;
   count: number;
+  /** True where this target belongs to the person being interviewed. */
+  yours?: boolean;
 }
 
 /** Something this person said is in their way, as the record holds it. */
@@ -100,11 +102,30 @@ export function whatTheRecordAlreadyHolds(input: {
 
   const withNumbers = targets.filter((t) => t.target != null);
   if (withNumbers.length > 0) {
+    /*
+     * THEIRS FIRST, AND ON ITS OWN.
+     *
+     * Ten salespeople each saw all ten targets, top to bottom, on their own screen. Whatever that
+     * is, it is not this person's check-in: their number is the one thing here that is about them,
+     * and burying it eighth in a league table is how a conversation ends up asking somebody what
+     * they are aiming for while the answer sits above it.
+     *
+     * The rest still go in where there are any - a person's own number means nothing without the
+     * whole it is part of - but as context underneath, not as the subject.
+     */
+    const mine = withNumbers.filter((t) => t.yours);
+    const theRest = withNumbers.filter((t) => !t.yours);
     parts.push(
       'WHAT IS ALREADY ON THE RECORD FOR THIS CHECK-IN. These numbers are set. Do not ask what ' +
       'this person is aiming for as though nobody has said - ask where they are against it, and ' +
       'what the next ones are by name.\n' +
-      withNumbers.map((t) => `- ${t.name}: ${t.count} of ${t.target}`).join('\n'),
+      (mine.length
+        ? `Theirs: ${mine.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        : '') +
+      (theRest.length
+        ? `${mine.length ? 'The rest of the check-in' : 'On this check-in'}: ` +
+          theRest.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')
+        : ''),
     );
   }
 
