@@ -1831,9 +1831,24 @@ export class ConversationService {
                 .getActiveContent(`${packKeyBase}.${String(ground.moment).toLowerCase()}.${packParty}`)
                 .catch(() => null)
             : Promise.resolve(null)
-          ).then((momentSpecific) =>
+          ).then(async (momentSpecific) =>
             momentSpecific ??
-            this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null),
+            (await this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null)) ??
+            /*
+             * AND A PACK WRITTEN ONCE FOR SITUATIONS THAT DO NOT DIFFER BY ROLE.
+             *
+             * Twelve of the twenty-three situations have byte-identical initiator and participant
+             * packs, because the pack describes the SITUATION and that situation reads the same to
+             * whoever is answering. What differs by role is what a person owes, and that lives in
+             * what-a-check-in-owes now, as slots per role and stage.
+             *
+             * Two identical rows are not a cost at runtime - only one is ever loaded - they are a
+             * trap: edit the lead's, forget the participant's, and the two roles diverge in a way
+             * nobody chose. This lets the next one be written once. The existing pairs are left
+             * alone, because they are still correct and rewriting live prompt rows to tidy them is
+             * a change with risk and no reader.
+             */
+            (await this.prompts.getActiveContent(packKeyBase).catch(() => null)),
           )
             // null (not '') throughout - buildActivePathway's `??` only falls
             // through to the in-code pack on null/undefined, so resolving to

@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { RecordEntryType as T } from '@prisma/client';
 import {
   KEEP_THE_TEAM_ON_TRACK, CONNECT_GOALS_ACROSS, whatIsStillOwed, sayWhatIsMissing, stageOf,
@@ -120,5 +122,29 @@ describe('what a check-in owes', () => {
     /* A heading with nothing under it reads to a model as an absence to be filled, which is how a
        check-in starts inventing things to ask. */
     expect(sayWhatIsMissing([], 'middle')).toBe('');
+  });
+});
+
+/**
+ * A PACK CAN BE WRITTEN ONCE, FOR A SITUATION THAT READS THE SAME TO EVERYBODY.
+ *
+ * Twelve of the twenty-three situations have byte-identical initiator and participant packs. Only
+ * one is ever loaded, so the duplication costs nothing at runtime - it is a trap: edit the lead's,
+ * forget the participant's, and the two roles diverge in a way nobody chose.
+ *
+ * The loader falls back to a role-free key now, so the next one is written once. What differs by
+ * role is what a person owes, and that is here rather than in the pack.
+ */
+describe('the pack lookup falls back to a role-free key', () => {
+  it('tries the moment, then the role, then the situation alone', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const at = src.indexOf('const scenarioPackOverride');
+    const block = src.slice(at, at + 2200);
+    const moment = block.indexOf('String(ground.moment).toLowerCase()');
+    const role = block.indexOf('`${packKeyBase}.${packParty}`');
+    const bare = block.indexOf('getActiveContent(packKeyBase)');
+    expect(moment).toBeGreaterThan(-1);
+    expect(role).toBeGreaterThan(moment);
+    expect(bare).toBeGreaterThan(role);
   });
 });

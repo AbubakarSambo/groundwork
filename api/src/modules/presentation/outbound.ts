@@ -313,6 +313,58 @@ const OURS_NOT_THEIRS: [RegExp, string][] = [
   [/\b(?:the|both|all(?: \w+)?|these|those)\s+accounts\b/gi, 'what people said'],
 ];
 
+/**
+ * PERFORMED EMPATHY AND FILLER, TAKEN OUT RATHER THAN ASKED FOR.
+ *
+ * The prompt bans these by listing them: "I understand", "I hear you", "That is a really important
+ * insight", "It takes courage to name that". They perform empathy, they add nothing to the record,
+ * and they delay the question. The list has been in the prompt for eighteen versions.
+ *
+ * A list of exact phrases is the one kind of rule that does not need a model to remember it. What
+ * cannot move is the judgement around it - when to press, when to offer a reading, whose version
+ * goes first - and none of that is touched here.
+ *
+ * WHOLE SENTENCES ONLY. "It sounds like the finance sign-off is stuck" carries a fact; deleting the
+ * clause would take the fact with it. So a sentence goes only when the filler is all it is, and the
+ * openers are cut from the front of a sentence that continues without them.
+ */
+const NOTHING_BUT_FILLER = [
+  /^that (?:is|was) a really (?:important|valuable|useful) (?:insight|point)\.?$/i,
+  /^i can see (?:this|that) has been weighing on you\.?$/i,
+  /^you are clearly someone who cares deeply about (?:this|it)\.?$/i,
+  /^that (?:is|was) a really (?:complex|difficult|tough) situation\.?$/i,
+  /^it takes courage to name that\.?$/i,
+  /^i understand\.?$/i,
+  /^i hear you\.?$/i,
+  /^i(?:'| a)m here to listen\.?$/i,
+];
+
+/** Openers that prefix a real sentence. The sentence stays; the performance goes. */
+/*
+ * THE COMMA IS NOT OPTIONAL, and leaving it optional deleted a verb. "I understand the contract
+ * runs to June" is somebody understanding a contract; "I understand, the contract runs to June" is
+ * the performance this rule is for. Without the comma required, the first became "The contract runs
+ * to June" - a fact kept and a meaning quietly changed, inside a record somebody is read against.
+ */
+const AN_OPENER = /^(?:i understand|i hear you|i can see that|that makes sense|thank you for sharing that)\s*,\s+/i;
+
+export function withoutPerformedEmpathy(text: string): string {
+  const out: string[] = [];
+  for (const sentence of sentencesIn(text)) {
+    const bare = sentence.trim();
+    if (!bare) continue;
+    if (NOTHING_BUT_FILLER.some((re) => re.test(bare))) continue;
+    const cut = bare.replace(AN_OPENER, '');
+    /*
+     * A CAPITAL ONLY WHERE ONE WAS TAKEN AWAY. The first version capitalised every sentence it
+     * passed through, which is not this function's business: it turned "bold and italic" into "Bold
+     * and italic" in text that had every right to start lowercase.
+     */
+    out.push(cut === bare ? bare : (cut ? cut[0].toUpperCase() + cut.slice(1) : bare));
+  }
+  return out.join(' ');
+}
+
 export function saysWhatTheySaid(text: string): string {
   let out = text;
   for (const [re, to] of OURS_NOT_THEIRS) out = out.replace(re, (m, ...rest) => {
@@ -343,6 +395,8 @@ export function forHumans(text: string | null | undefined): string {
   out = oneWordForTheThing(out);
   /* Beside the other word that is ours and reads as something else. */
   out = saysWhatTheySaid(out);
+  /* Last of the word rules: the phrases that perform rather than say. */
+  out = withoutPerformedEmpathy(out);
   out = withoutQuotedQuestions(out);
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */
