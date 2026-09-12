@@ -352,44 +352,22 @@ export function BoardPage() {
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
-            Built from what each person said, given privately, on the record.{' '}
-            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>It is not decided by who speaks the loudest or argues best.</b>
+            Built from what each person shared in their private check-in.{' '}
+            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.</b>
           </p>
           {howToRead && (
             <>
               <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                Use it as the basis of the conversation, not something to be talked down in the moment.
+                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
               <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                If someone disagrees with what the record shows about them, they{' '}
-                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>put it in their next check-in</b>, not debate the board until it gives way.
-                It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
+                Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              {/*
-                * THERE IS NO LONGER A SECOND DOCUMENT TO BE POINTED AT.
-                *
-                * This paragraph existed to settle which of two shared pictures to trust: "the board
-                * is the report arranged for running the work... where it points at a difference, the
-                * report is where that is set out in full. If the two ever read differently, the
-                * report is the record."
-                *
-                * True when it was written, and untrue as of tonight. The report body a participant
-                * could open has gone - it was a fourth place to read the same three findings - and
-                * each disagreement on this board now carries both accounts and what is at stake,
-                * directly under it. So the sentence sends a reader looking for a page that is not
-                * there, which is worse than the ambiguity it was written to remove.
-                *
-                * What replaces it is not a shorter version of the same explanation. Two documents
-                * needed a rule about precedence; one does not. What a reader still needs to know is
-                * where the words came from and what this is not - and the paragraph above already
-                * says that. So this says the one thing left that is not obvious: it is built per
-                * session, and it moves.
-                */}
               <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                This is the whole shared picture, not a summary of one held somewhere else. It is
-                rebuilt each session from the accounts given that session, so{' '}
-                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>it changes as people check in</b>.
-                What each person said about a difference sits under that difference.
+                This is the shared picture from this round of check-ins. It can change as the picture changes.
+              </p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+                Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
           )}

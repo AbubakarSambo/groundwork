@@ -41,7 +41,11 @@ const ENTRY_COVERS: Record<string, string[]> = {
   'A new project starting': ['NEW_PROJECT'],
   'A new co-founder or partner': ['NEW_COFOUNDER'],
   'A new manager taking over': ['NEW_MANAGER'],
-  'Setting shared goals': ['OKR_ALIGNMENT'],
+  /* Two cards, one scenario: setting targets and keeping a team moving against them, and one goal
+     at the top with other teams writing their own underneath. The map is keyed by label because a
+     label is a job and a scenario is an engine, and they were never one to one. */
+  'Set Goals and Keep the Team on Track': ['OKR_ALIGNMENT'],
+  'Connect Goals Across the Team': ['OKR_ALIGNMENT'],
   /**
    * WAS 'BOARD_STRATEGY', WHICH IS THE CARD BELOW THIS ONE.
    *

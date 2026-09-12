@@ -43,7 +43,7 @@ ENTRY_CARDS = [
     "A new co-founder or partner",
     "A new advisor or board member",
     "Onboarding several people at once",
-    "Setting shared goals",
+    "Set Goals and Keep the Team on Track",
     "A big decision",
     "A workplan and budget",
     "Board or leadership strategy",

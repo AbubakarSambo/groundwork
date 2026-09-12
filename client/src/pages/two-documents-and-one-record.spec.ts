@@ -55,10 +55,15 @@ describe('two documents and one record', () => {
     expect(BOARD).not.toContain('holds the detail of what each account said')
   })
 
-  it('and says outright that it is the whole picture, not a summary of one', () => {
-    expect(BOARD).toContain('not a summary of one held somewhere else')
-    /* And what a reader still needs, which the precedence rule never told them: it moves. */
-    expect(BOARD).toContain('it changes as people check in')
+  it('and says outright that it is the picture itself, and that it moves', () => {
+    /*
+     * The wording changed with the plain-English rewrite of this block; the rule did not. What a
+     * reader needed from the old precedence paragraph was that there is no second document to go
+     * and find, and that this one is rebuilt rather than fixed. Both survive in fewer words.
+     */
+    expect(BOARD).toContain('This is the shared picture from this round of check-ins')
+    expect(BOARD).toContain('It can change as the picture changes')
+    expect(BOARD).toContain('The board updates as people share more')
   })
 
   it('the prompt tools live under /admin', () => {

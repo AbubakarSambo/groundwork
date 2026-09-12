@@ -27,6 +27,10 @@ const PINNED_MESSAGES = [
   'We have a new working arrangement starting and want to make sure we are set up well.',
   // two new positive cards added in the rebalance
   'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+  /* Added with the second goal card. Its message is the whole reason it is a separate card: the
+     scenario is the same engine, and this sentence is what tells the conversation there is
+     something above this team rather than a team agreeing among themselves. */
+  'We have one overarching goal and separate teams are setting their own goals and targets underneath it. I want to know whether they connect to the main goal and add up together.',
   'We are making a big decision and I want each person\'s honest read before we commit.',
   // retained addressing cards - messages byte-identical
   'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
@@ -80,7 +84,9 @@ describe('entry cards: display reframed, routing untouched', () => {
     const negative = SITUATION_CARDS.filter(c => c.group === 'off').length
     expect(positive).toBeGreaterThan(negative)
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('Setting shared goals')
+    /* Renamed for the job rather than the mechanism. What this line protects is that a positive
+       card is still offered, not what it happens to be called this month. */
+    expect(labels).toContain('Set Goals and Keep the Team on Track')
     expect(labels).toContain('A big decision')
     expect(labels).toContain('People see it differently')
   })

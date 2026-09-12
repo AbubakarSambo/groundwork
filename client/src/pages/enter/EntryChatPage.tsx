@@ -582,12 +582,37 @@ export const SITUATION_CARDS = [
     group: 'planning',
     scenario: 'OKR_ALIGNMENT',
     label: SCENARIO_LABELS.OKR_ALIGNMENT,
-    detail: "A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.",
+    detail: 'Set goals, targets or OKRs for your team. Your team can get coaching and share updates on their progress, while you can see what is on track and where you need to support them.',
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
     timelineHint: 'typically 90 days',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',
+    ],
+  },
+  {
+    /*
+     * THE SECOND GOAL CARD, AND THE ONE PEOPLE ACTUALLY DESCRIBE MOST.
+     *
+     * "People are setting an overarching target and then having their teams - separate teams - set
+     * their KRs to align with that objective, and checking if teams align across them. This seems
+     * to be the main thing people want and they track it across departments and across quarters."
+     *
+     * It runs on OKR_ALIGNMENT because a cascade is detected from what people say rather than
+     * declared at setup - the scenario opens the shape, the record confirms it. What is different
+     * here is the MESSAGE, which is what routes and what the first question is built from: this one
+     * says there is something above, so the conversation asks what each team's goal sits under
+     * instead of asking a team to agree on priorities among themselves.
+     */
+    group: 'planning',
+    scenario: 'OKR_ALIGNMENT',
+    label: 'Connect Goals Across the Team',
+    detail: 'Set a main goal, then have team leads and partners set their own goals and targets. Make sure their goals connect to the main goal and make sense together.',
+    message: 'We have one overarching goal and separate teams are setting their own goals and targets underneath it. I want to know whether they connect to the main goal and add up together.',
+    timelineHint: 'typically 90 days',
+    examples: [
+      'A company target with three departments each writing their own results under it.',
+      'Team goals that each look sensible on their own and may not add up to the thing at the top.',
     ],
   },
   {

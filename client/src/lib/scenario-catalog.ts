@@ -39,7 +39,16 @@ export const SCENARIO_LABELS = {
   NEW_COFOUNDER: 'A new co-founder or partner',
   NEW_MANAGER: 'A new manager taking over',
   NEW_ADVISOR: 'A new advisor or board member',
-  OKR_ALIGNMENT: 'Setting shared goals',
+  /**
+   * NAMED FOR THE JOB, NOT THE MECHANISM.
+   *
+   * "Setting shared goals" describes what the product does. What somebody arrives wanting is to set
+   * targets and then keep a team moving against them. A second card sits beside this one for the
+   * other job - one goal at the top with other teams writing their own underneath - and it runs on
+   * this same scenario, because a cascade is detected from what people say rather than declared at
+   * setup. See SITUATION_CARDS.
+   */
+  OKR_ALIGNMENT: 'Set Goals and Keep the Team on Track',
   WORKPLAN_BUDGET: 'A workplan and budget',
   BOARD_STRATEGY: 'Board or leadership strategy',
   CRISIS_ALIGNMENT: 'A big decision',

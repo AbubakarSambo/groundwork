@@ -17,7 +17,7 @@ const EXPECTED: Record<string, string> = {
   'A new project starting': 'typically 90 days',
   'A new co-founder or partner': 'typically 90 days',
   'A new manager taking over': 'typically 90 days',
-  'Setting shared goals': 'typically 90 days',
+  'Set Goals and Keep the Team on Track': 'typically 90 days',
   'A big decision': 'typically one check-in',
   "Someone's work is off track": 'typically 90 days',
   'A project is off track': 'typically 90 days',
@@ -60,6 +60,9 @@ const EXPECTED: Record<string, string> = {
   /* A year, monthly, because the value of this one is entirely in the months where nothing
      happens. */
   'An agreement that is running': 'typically a year',
+  /* The same quarter as the card beside it: a cascade is read across the same period, and giving
+     the two goal cards different lengths would be a distinction with nothing behind it. */
+  'Connect Goals Across the Team': 'typically 90 days',
 }
 
 describe('situation card timeline hints', () => {

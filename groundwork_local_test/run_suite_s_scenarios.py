@@ -65,7 +65,7 @@ CREATE_CARDS = [
     "A new hire starting", "A role changing hands", "A new project starting",
     "A new advisor or board member", "A new co-founder or partner", "A new manager taking over",
     "A contract or renewal", "A raise, promotion, or recognition", "Someone's work is off track",
-    "Setting shared goals", "A workplan and budget", "A regular read on live work",
+    "Set Goals and Keep the Team on Track", "A workplan and budget", "A regular read on live work",
     "A project is off track", "A big decision", "Board or leadership strategy",
     "Several people in the same role", "A pulse check", "Onboarding several people at once",
     "Something serious just happened", "People see it differently",
