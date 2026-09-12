@@ -38,7 +38,6 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
    * of its own, so it adds no route to any data - every surface on it calls the endpoint it always
    * calls, with the reader's own token.
    */
-  '/preview/reports': 'pasted by whoever is reviewing the report rebuild; temporary',
   '/verify-email': 'the link in the sign-up email',
   '/set-password': 'the link in the invite and add-a-password emails',
   '/reset-password': 'the link in the password-reset email',

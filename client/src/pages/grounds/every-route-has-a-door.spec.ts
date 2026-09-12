@@ -71,10 +71,6 @@ const APP = readFileSync(join(SRC, 'App.tsx'), 'utf8')
  * redirects, and the auth flow. Each is genuinely doorless on purpose.
  */
 const REACHED_FROM_OUTSIDE = [
-  /* The report rebuild's review page. No door on purpose: a workbench rather than a place, opened
-     by pasting its address, and gone when the last surface is ported. See the same declaration in
-     every-page-can-be-reached.spec.ts, which carries the longer reason. */
-  '/preview/reports',
   '/auth', '/login', '/signup', '/entry', '/verify', '/reset', '/forgot',
   '/invite', '/join', '/accept', '/set-password', '/magic', '/r/', '/admin',
   /**
