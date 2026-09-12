@@ -155,7 +155,15 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
             <div>
               <span style={{ color: 'var(--gw-muted)' }}>Progress </span>
               <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>
-                {q.progress.roundsPlanned
+                {/*
+                  "8 OF 8 ROUNDS" BESIDE "1 OF 4 ANSWERED THIS ROUND" IS A CARD ARGUING WITH ITSELF.
+                  Seen on the live list: a run that met its planned eight and kept going, so a ninth
+                  was open with one answer in it. "8 of 8" reads as finished and the clause beside it
+                  says it plainly is not.
+                  Past the plan, the count drops the total: eight rounds are done, the run is still
+                  going, and how far through is no longer the useful fact.
+                */}
+                {q.progress.roundsPlanned && q.progress.roundsDone < q.progress.roundsPlanned
                   ? `${q.progress.roundsDone} of ${q.progress.roundsPlanned} rounds`
                   : `${q.progress.roundsDone} ${q.progress.roundsDone === 1 ? 'round' : 'rounds'} done`}
               </span>
