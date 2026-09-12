@@ -396,10 +396,23 @@ export const NOT_REPORT_CONTENT = [
  * a surface gaining a section; a field joining it is a regression.
  */
 export const REACHES_NO_SCREEN = [
-  'concernFlags', 'hiddenContributors', 'softSpots', 'arcSignals',
+  'concernFlags', 'arcSignals',
   'coverageBand', 'currentBestReading', 'difficultyDisclosures', 'pictureConfidence',
   'recallNotes', 'session2Focus', 'specificityNotes',
 ] as const;
+/*
+ * TWO CAME OFF THIS LIST, AND THE LIST DID NOT NOTICE FOR MONTHS.
+ *
+ * `hiddenContributors` draws on the board and `softSpots` draws on the close card, as `mySoftSpots`
+ * - the person's own share of it. Both were still listed here as reaching nobody.
+ *
+ * That is worse than it sounds. This list is the backlog: it is how anybody knows which computed
+ * reads are being paid for and never seen. A stale one says the debt is larger than it is, so the
+ * nine that ARE still dark sit behind two that were fixed, and nobody can tell which is which.
+ *
+ * `nothing-on-the-dark-list-is-lit` now reads the client and fails when a field on this list is
+ * rendered. The list cannot go stale again without a red test.
+ */
 
 export function placedNowhere(keys: string[]): string[] {
   const skip = new Set<string>(NOT_REPORT_CONTENT);
@@ -423,6 +436,41 @@ export function placedNowhere(keys: string[]): string[] {
  *
  *   THE METHOD GOES LAST AND FOLDED. A caveat above the thing it qualifies reads as a verdict.
  */
+/**
+ * WHAT EACH BLOCK IS CALLED ON THE SCREEN.
+ *
+ * THE_ORDER was read by nothing but the spec that defines it. The order was declared here, once,
+ * with three rules written above it about why it is that order - and every surface still held its
+ * own order in its own JSX, which is the state the declaration was written to end.
+ *
+ * A block name is not a label, so the two could not be compared. This is the join: the name, and
+ * the words a person reads. `the-order-is-the-order-on-screen` checks the screens against it, so
+ * moving a block on a page without moving it here is a red test rather than a drift nobody sees.
+ *
+ * Only the two rebuilt session surfaces are joined so far. The rest are listed as not yet checked,
+ * which is honest: a map that claims to cover a surface it does not is worse than one that says
+ * where it stops.
+ */
+export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
+  /* A - somebody's own half, one sitting. */
+  whatThisIsFor: 'What this is for',
+  whereYouAre: 'Where you are against it',
+  whatYouSaid: 'What you said',
+  stillOpenForYou: 'What is still open for you',
+  whatYouCarry: 'What you carry into the next one',
+  /* The folded one says "this one" on the page, because it is about the sitting rather than the run. */
+  howMuchYouGaveIt: 'How much you gave this one',
+
+  /* B - everybody's half, one sitting. */
+  againstWhatGoodLooksLike: 'Against what good looks like',
+  whereThingsStand: 'Where things stand',
+  whatPeopleSaid: 'What people said this session',
+  thePictureFromEverybody: 'The picture from everybody',
+  notRaisedAgain: 'Not raised again',
+  theConversationWorthHaving: 'The conversation worth having now',
+  whatThisRestsOn: 'What this rests on',
+};
+
 export const THE_ORDER: Record<Cell, string[]> = {
   A_SESSION: [
     'whatThisIsFor',      // the objective, your part in it, and why the number is the number

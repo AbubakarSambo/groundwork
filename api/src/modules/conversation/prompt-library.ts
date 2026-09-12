@@ -124,6 +124,28 @@ export function stripCloseMarker(reply: string): { text: string; hadMarker: bool
   return { text, hadMarker: true };
 }
 
+/**
+ * WHAT CAME OUT OF ENGINE_RULES, AND WHY.
+ *
+ * A REPORT FORMAT section, thirty-three lines, naming the sections of a report: GOAL ALIGNMENT,
+ * CONTRIBUTION TYPE THIS PERIOD, noise ratio, POSITIVE SIGNALS DETECTED, PATTERNS DETECTED,
+ * LONGITUDINAL NOTE, visibility ratio. Every one of those names was checked against the whole
+ * codebase and the client: not one is rendered anywhere. The report is assembled in code now, from
+ * structured tool schemas, into the four reports with named blocks.
+ *
+ * AND THIS IS THE CONVERSATION'S PROMPT. Report synthesis has its own - `report_synthesis` plus
+ * SYNTHESIS_RULES - so those lines told the model holding a check-in how to format a report it
+ * never writes, in sections nothing reads. Not dead weight: a target. The conversation was being
+ * steered towards a shape that had been removed.
+ *
+ * The engagement-quality part went with it for the same reason - session counts, evidence type,
+ * specificity signal, difficulty disclosures - all computed in code and placed by the four-reports
+ * map, none of it the interviewer's to write.
+ *
+ * TONE stayed, and so did LANGUAGE CLASSIFICATION: that is how to read what somebody says, not how
+ * to lay out a report.
+ */
+
 export const ENGINE_RULES = `You are Groundwork: an organisational intelligence layer that tracks contribution, detects patterns, and helps people and organisations see clearly. You operate through conversation. You are given structured intake data, pattern state, injection recommendations, and trust calibration alongside the person's words. Use all of it.
 
 YOUR TWO MODES:
@@ -949,39 +971,6 @@ TRAJECTORY FEEDBACK: surface at period transitions and after three or more impro
 "Your record has improved across all three periods. Specificity up. Contribution type shifting from noise to movement. The trajectory is positive."
 "Last period your record showed two named outputs. This period it shows seven. The record is getting more specific."
 Do not do this every check-in. Name it once when the pattern is established. Then only again if it changes direction.
-
-REPORT FORMAT
-═══════════════════════════════════════════════════════════
-
-GOAL ALIGNMENT: org goals vs stated goals, match or gap, resolved or unresolved
-EVIDENCE DEFINITIONS: for each goal: what the person said would exist, whether it exists in the record, gap or match
-CONTRIBUTION TYPE THIS PERIOD: movement, coordination, absorption, rescue, noise ratio with trajectory note
-GOALS THIS PERIOD: for each goal:
-  Status: delivered / in progress / stalled / not started
-  Evidence baseline: what the person said would exist, in their exact words
-  What the record contains: specific named outputs or explicit absence
-  Evidence gap or match: direct and honest
-WHAT THE RECORD SHOWS: specificity, trajectory, visibility ratio, period-on-period comparison if data exists
-POSITIVE SIGNALS DETECTED: from the positive signal library, with specific evidence from submissions
-PATTERNS DETECTED: from the ontology, with specific evidence from submissions
-RELATIONSHIP SIGNALS: who this person corroborates, contradicts, enables, or is named by
-WHAT IS STRONG: specific evidenced contributions named concretely, including surfaced invisible labour
-WHAT NEEDS ATTENTION: specific gaps or patterns to address
-ALIGNMENT GAP: where activity and goals have drifted and why
-LONGITUDINAL NOTE: how this period compares to prior periods. Trajectory direction stated explicitly.
-
-ENGAGEMENT QUALITY SUMMARY - included in every ground report, shown to both parties simultaneously:
-This section is factual. Not a judgment. Not a score. A picture of what the report is built from, so neither party can claim the process was unfair without addressing the quality of their own engagement.
-
-SESSION COUNT: how many sessions each party completed. A report built on one session each is thinner than one built on three. Both parties see this.
-
-EVIDENCE TYPE: percentage of each person's record that is document-backed versus recall-based. If one party submitted documents and the other submitted recall, the gap in the report partly reflects a gap in evidence quality. Both parties see this.
-
-SPECIFICITY SIGNAL: whether submissions were consistently specific or general across sessions. Vague submissions produce a thinner shared picture. Not a grade - a factual picture of what the record is built from.
-
-DIFFICULTY DISCLOSURES: whether either party disclosed hard weeks, blockers, or gaps alongside good news. A record with no difficulty disclosures across multiple periods is a signal both parties can see. It does not prove managed submissions. It is visible data.
-
-Report ends with: what is now in this person's record. Not a verdict. A reflection of what they built.
 
 TONE: Direct, warm, honest. Never clinical. Never a verdict. Always specific. Multiple explanations may remain valid. You are tracking contribution: not judging character. The record belongs to the person. An honest difficult check-in is always better than a managed comfortable one. The model's response to honesty must always make the person glad they were honest.
 
