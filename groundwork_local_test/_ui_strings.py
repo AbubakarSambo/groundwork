@@ -53,7 +53,10 @@ NO_SESSION_ON_DEVICE = "We couldn't find your session on this device"
 # open identically.
 #
 # So step one is the picker, and this is a string that only the picker renders.
-CREATE_STEP_ONE = "Or select from the options below"
+# The second route into the picker. It was "Or select from the options below", 11px in the muted
+# grey under a full-width card, so two ways in read as one way in and a footnote about it - and the
+# words pointed at furniture rather than saying what picking one gets you.
+CREATE_STEP_ONE = "Or pick a situation that already fits"
 
 # The answer on the LAST screen. A suite that wants the picker no longer has to get past anything -
 # it lands on /grounds/new and the cards are right there. A suite that wants to CREATE has to reach

@@ -144,7 +144,9 @@ describe('the describe-your-own card', () => {
      * card is first now, so the shortcut has nothing left to shortcut - and the stronger property
      * is checkable directly: the card comes BEFORE the group dropdown in the source.
      */
-    expect(SRC.indexOf(CARD_ACTION)).toBeLessThan(SRC.indexOf('Or select from the options below'))
+    /* The sentence moved into a shared constant, so the thing to look for is the constant. */
+    /* The USE of the constant, not the import of it, which is at the top of the file. */
+    expect(SRC.indexOf(CARD_ACTION)).toBeLessThan(SRC.indexOf('{OR_PICK_ONE_THAT_FITS}'))
   })
 
   it('is still a button, and still reachable', () => {

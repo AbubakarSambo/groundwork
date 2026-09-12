@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
+import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -884,7 +884,18 @@ export const THE_OPENING_QUESTION =
      themselves, which is a question about us, and left them guessing what picking one would do.
      What a situation actually does is set the context for what the people they invite will be
      asked about - so the sentence says that, and the choice becomes a means rather than a label. */
-  `What brings you here? ${HOW_A_SITUATION_IS_CHOSEN}`
+  /*
+   * AND IT NO LONGER ASKS A QUESTION, BECAUSE THE PAGE ALREADY ASKS ONE.
+   *
+   * Three asks were stacked on one screen: the header's "Tell us what is going on", this line's
+   * "What brings you here?", and then the card's "What are you trying to achieve with this
+   * check-in?" - which is the one that means something, because what somebody writes there becomes
+   * the purpose every conversation is held against. The other two were warm-up.
+   *
+   * So this says what the two routes ARE. The question is asked once, on the card that takes the
+   * answer.
+   */
+  HOW_A_SITUATION_IS_CHOSEN
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -2709,8 +2720,13 @@ export function EntryChatPage() {
                     <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
                   </button>
 
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 4 }}>
-                    Or select from the options below
+                  {/*
+                    THE SECOND ROUTE, DRAWN AS ONE. This was 11px in the muted grey - the size and
+                    colour used for captions - directly under a full-width bordered card, so two
+                    ways in read as one way in and a remark about it.
+                  */}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>
+                    {OR_PICK_ONE_THAT_FITS}
                   </div>
                   <select
                     className="gw-select"

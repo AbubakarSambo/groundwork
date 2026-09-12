@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { type GroundScenario, type GroundMoment } from '@/api/grounds'
 import { SituationCard } from '@/components/gw/SituationCard'
+import { OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
 import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
@@ -1178,7 +1179,8 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            <label className="gw-label" htmlFor="cg-group">Or select from the options below</label>
+            {/* The same second route, said the same way. See OR_PICK_ONE_THAT_FITS. */}
+            <label className="gw-label" htmlFor="cg-group">{OR_PICK_ONE_THAT_FITS}</label>
             <select
               id="cg-group"
               className="gw-select"

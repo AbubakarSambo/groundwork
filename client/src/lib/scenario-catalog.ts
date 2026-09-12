@@ -213,8 +213,6 @@ export const SCENARIO_GROUPS = [
    */
   { key: 'open', heading: 'Not sure yet',
     question: 'You cannot name it, so nothing below should be guessed on your behalf.' },
-  { key: 'starting', heading: 'Beginning something well',
-    question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
   /**
    * WAS "SETTING THE TARGET", AND TWO OF ITS FIVE CARDS DO NOT SET ONE.
    *
@@ -222,9 +220,15 @@ export const SCENARIO_GROUPS = [
    * the five have in common is getting people pointed the same way, which is what the group is
    * called now. The one that genuinely did not belong - a monthly read on an agreement already
    * running - moved to the reads, where it had always belonged.
+   *
+   * AND IT IS FIRST, WHICH IS WHY THE ORDER OF THIS ARRAY IS NOT COSMETIC. The dropdown is built
+   * from it and opens on its first pickable group, so the order decides what somebody lands on. It
+   * opened on "Beginning something well" while the list had been agreed the other way round.
    */
   { key: 'planning', heading: 'Getting people aligned',
     question: "You are deciding what the period is for, and you want each person's own answer before the room converges on one version." },
+  { key: 'starting', heading: 'Beginning something well',
+    question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
   { key: 'reading', heading: 'Get a read',
     question: 'Work is already running and you want to know what is actually happening in it. These sit close together, so each card says when not to pick it.' },
   { key: 'person', heading: 'A decision about someone',
