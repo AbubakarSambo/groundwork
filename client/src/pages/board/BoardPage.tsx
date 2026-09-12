@@ -316,17 +316,40 @@ export function BoardPage() {
           {has('phaseSpine') && b.phaseSpine && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {b.phaseSpine.sessions.map((s) => (
-                  <div key={s.n} style={{
+                {/*
+                  A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
+                  and this was the one list not keeping it: "a finished session opens the REPORT and
+                  not the transcript - that holds for every list there is". My record keeps it, the
+                  party's report keeps it, the Report tab keeps it. These were plain divs.
+                  A session that has not happened is not a link, because there is nothing behind it
+                  yet - so the ones that have are buttons and the rest stay as they were.
+                */}
+                {b.phaseSpine.sessions.map((s) => {
+                  const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
+                  const face = (
+                    <>
+                      {/* "now" on a check-in that has ended is a clock nobody is watching. */}
+                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
+                    </>
+                  )
+                  const skin = {
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
                     color: s.state === 'current' ? '#8BE0AE' : '#A8AFD6',
                     fontWeight: s.state === 'current' ? 700 : 500,
-                  }}>
-                    {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
-                  </div>
-                ))}
+                  } as const
+                  if (!been) return <div key={s.n} style={skin}>{face}</div>
+                  return (
+                    <button
+                      key={s.n}
+                      type="button"
+                      onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
+                      style={{ ...skin, border: '1px solid transparent', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    >
+                      {face}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

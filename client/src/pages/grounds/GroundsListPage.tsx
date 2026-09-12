@@ -247,6 +247,11 @@ export function GroundsListPage() {
   )
   /** What the list holds that the "In progress" tile above it does not count. */
   const closedCount = grounds.length - active.length
+  /*
+   * WHICH PILE IS ON SCREEN. Opens on what is live, because that is what somebody came for; the
+   * closed ones are a place you go on purpose.
+   */
+  const [showing, setShowing] = useState<'open' | 'closed'>('open')
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at
   // zero while every ground stayed ACTIVE.
@@ -273,6 +278,10 @@ export function GroundsListPage() {
       ((g as any).reportWaitingForMe || g.status === 'REPORT_READY') ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0
     return urgency(b) - urgency(a)
   })
+
+  /* The pile on screen. `active` is already the live set, so closed is what it leaves out. */
+  const openIds = new Set(active.map((g) => g.id))
+  const visibleGrounds = sortedGrounds.filter((g) => (showing === 'closed' ? !openIds.has(g.id) : openIds.has(g.id)))
 
   /**
    * WHAT IS WAITING ON AN ADMIN. W9-7.
@@ -630,14 +639,43 @@ export function GroundsListPage() {
               * that makes them agree, so the heading says what the list holds and the difference
               * stops being a contradiction.
               */}
+            {/*
+              AND IT IS A FILTER NOW, NOT A SENTENCE ABOUT ONE.
+              "The filter is not visible anywhere" - correct, and there was not one to see. This
+              line said "All 12 check-ins, including 3 closed" over a list with the closed ones
+              mixed through it, which explains the count and leaves somebody scrolling for the three
+              they wanted. It names the two piles and lets you stand in either.
+              Only drawn when something IS closed: two tabs where one is always empty is furniture.
+            */}
             {closedCount > 0 && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 2 }}>
-                All {sortedGrounds.length} check-ins, including {closedCount} closed
+              <div role="tablist" aria-label="Which check-ins to show" style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                {([['open', `In progress (${active.length})`], ['closed', `Closed (${closedCount})`]] as const).map(([key, text]) => (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={showing === key}
+                    onClick={() => setShowing(key)}
+                    style={{
+                      fontSize: 12.5, fontWeight: showing === key ? 700 : 500,
+                      padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `1px solid ${showing === key ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                      background: showing === key ? 'var(--gw-navy)' : 'white',
+                      color: showing === key ? 'white' : 'var(--gw-text)',
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              {visibleGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>
+            {visibleGrounds.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+                {showing === 'closed' ? 'Nothing closed yet.' : 'Nothing in progress. Your closed check-ins are under Closed.'}
+              </div>
+            )}
           </>
         ) : (
           <>
