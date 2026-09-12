@@ -171,10 +171,11 @@ export const SCENARIOS: ScenarioCard[] = [
     ] },
   { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: SCENARIO_LABELS.OKR_ALIGNMENT, tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
     desc: "Each person writes the two or three objectives they think matter most, before the room converges on one version. The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.",
-    moment: 'The quarter starts in two weeks and six people would name different priorities.',
+    moment: 'Set goals, targets or OKRs and keep track of how the work is going.',
     agreed: 'Each person writes the two or three objectives they think matter most, before the room converges on one version.',
     tests: 'The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.',
     examples: [
+      'The quarter starts in two weeks and six people would name different priorities.',
       'Planning season and you want to check everyone\'s goals actually connect before they lock.',
       'Two teams whose objectives depend on each other and you are not sure the handoff is agreed.',
     ] },
@@ -285,10 +286,11 @@ export const SCENARIOS: ScenarioCard[] = [
     ] },
   { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once', tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: "Several people starting the same role at once, each answering on their own against the same expectations. The check-ins test how each of them is settling against those, so you see early who is finding it and who is struggling, before the end of the period decides anything.",
-    moment: 'Six new managers, each running a different branch, all started this month.',
+    moment: 'Help several people starting the same role at once settle in, and see who is on track.',
     agreed: 'The same expectations for several people starting the same role together.',
     tests: 'The check-ins test how each of them is settling against those, so you see early who is finding it and who is struggling, before the end of the period decides anything.',
     examples: [
+      'Six new managers, each running a different branch, all started this month.',
       'Four new managers on a three month onboarding that is also their probation.',
       'A cohort of new starters where you need to know by month two, not month three, who needs help.',
       'Trainees in different locations who never work together but are all learning the same job.',
@@ -346,9 +348,14 @@ export const SCENARIOS: ScenarioCard[] = [
    */
   { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'In your own words', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
     desc: "Say what is happening in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
-    moment: 'You would rather describe it yourself than pick from a list.',
+    moment: "Give people a starting point when the situation doesn't fit a predefined scenario.",
     agreed: 'Nothing fixed: each person gives their own read first, privately, because the situation is not named yet.',
-    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.', },
+    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.',
+    /* The line this card used to lead with. Every other card keeps its concrete one here; this is
+       the only one that had nowhere to put it, so it got somewhere. */
+    examples: [
+      'You would rather describe it yourself than pick from a list.',
+    ], },
 ]
 
 /**
