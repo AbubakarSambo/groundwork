@@ -582,7 +582,15 @@ export const SITUATION_CARDS = [
     scenario: 'OKR_ALIGNMENT',
     label: SCENARIO_LABELS.OKR_ALIGNMENT,
     detail: 'Set goals, targets or OKRs for your team. Your team can get coaching and share updates on their progress, while you can see what is on track and where you need to support them.',
-    message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+    /* The sentence that routes and becomes the first turn, so the workplan has to be IN it - a
+       card that covers plans and an opening line that only mentions goals gets a conversation
+       about goals. "If they exist": the plan is asked about, never assumed.
+
+       "that goes with them" RATHER THAN "under those goals", deliberately. This same sentence is
+       read by SOUNDS_LIKE_A_CASCADE to tell the two goal cards apart, and while "under" does not
+       match it today ("sits under" and "underneath it" do), writing the word one edit away from
+       that pattern is how this card ends up labelled Connect Goals Across the Team. */
+    message: 'We are setting shared goals for this period and I want everyone aligned on what matters most, including any workplan that goes with them and who is responsible for which part.',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',

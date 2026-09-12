@@ -174,14 +174,27 @@ export const SCENARIOS: ScenarioCard[] = [
       'A capability concern where you want a fair record, not a he-said-she-said.',
     ] },
   { cardKey: 'OKR_ALIGNMENT', scenario: 'OKR_ALIGNMENT', label: SCENARIO_LABELS.OKR_ALIGNMENT,
-    desc: "Each person writes the two or three objectives they think matter most, before the room converges on one version. The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.",
-    moment: 'Set goals, targets or OKRs and keep track of how the work is going.',
-    agreed: 'Each person writes the two or three objectives they think matter most, before the room converges on one version.',
-    tests: 'The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.',
+    /*
+     * THE WORKPLAN BELONGS HERE TOO, AND IT IS NOT THE WORKPLAN CARD.
+     *
+     * "Sometimes workplans are attached to goals, and if they exist and who is responsible for
+     * what, we need to track it well." A goal with a plan under it is the ordinary case, not a
+     * second situation - the plan is how the goal is meant to happen and who is meant to do it.
+     * Build a Workplan and Budget stays its own card for the other job: the plan and the money ARE
+     * the thing being agreed, and each person's plan has to hold together with everybody else's.
+     *
+     * Here it is a thing that may or may not exist, and the check-in asks rather than assumes. A
+     * goal with no plan under it is a real answer and the card must not read as demanding one.
+     */
+    desc: "Each person writes the two or three objectives they think matter most, before the room converges on one version - and the plan under each one, where there is a plan: what is meant to happen and who is responsible for which part. The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.",
+    moment: 'Set goals, targets or OKRs and a workplan, and keep track of how the work is going.',
+    agreed: 'Each person writes the two or three objectives they think matter most, before the room converges on one version - and where a workplan sits under a goal, what it is and who is responsible for which part of it.',
+    tests: 'The check-ins across the quarter test what people are actually working on against those objectives and against what they said they would do, so effort aimed at the wrong thing shows up early and a part of the plan nobody owns shows up at all.',
     examples: [
       'The quarter starts in two weeks and six people would name different priorities.',
       'Planning season and you want to check everyone\'s goals actually connect before they lock.',
       'Two teams whose objectives depend on each other and you are not sure the handoff is agreed.',
+      'A goal with a workplan under it, and no one place saying who owns which part of the plan.',
     ] },
   /**
    * THE SECOND GOAL CARD, WHICH HAS NEVER BEEN IN A PICKER.

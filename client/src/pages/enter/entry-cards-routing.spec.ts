@@ -27,7 +27,20 @@ const PINNED_MESSAGES = [
   'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
   'We have a new working arrangement starting and want to make sure we are set up well.',
   // two new positive cards added in the rebalance
-  'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+  /*
+   * CHANGED ON PURPOSE, WHICH IS THE ONE THING THIS FILE IS SUSPICIOUS OF - so it says why.
+   *
+   * Not a copy pass. The card's SCOPE changed: "sometimes workplans are attached to goals, and if
+   * they exist and who is responsible for what, we need to track it well." A goal with a plan under
+   * it is the ordinary case rather than a second situation, so this card covers it - and a card
+   * that covers plans with an opening line that only mentions goals gets a conversation about
+   * goals, because this sentence IS the first turn.
+   *
+   * Routing re-checked rather than assumed: it still classifies as OKR_ALIGNMENT, and it avoids the
+   * words SOUNDS_LIKE_A_CASCADE looks for, which is why it says "that goes with them" rather than
+   * "under those goals". Build a Workplan and Budget keeps its own card and its own message.
+   */
+  'We are setting shared goals for this period and I want everyone aligned on what matters most, including any workplan that goes with them and who is responsible for which part.',
   /* Added with the second goal card. Its message is the whole reason it is a separate card: the
      scenario is the same engine, and this sentence is what tells the conversation there is
      something above this team rather than a team agreeing among themselves. */
