@@ -28,6 +28,7 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { aNameOrNothing } from './a-name-is-short';
 import { isThisACascade } from './is-this-a-cascade';
@@ -35,6 +36,7 @@ import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well'
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
@@ -97,6 +99,8 @@ export class BoardService {
   constructor(
     private prisma: PrismaService,
     private readonly anthropic: AnthropicService,
+    /* For `getSessionProgress` only - which round is open, and who has not answered it. */
+    private readonly grounds: GroundsService,
   ) {}
 
   /*
@@ -212,6 +216,32 @@ export class BoardService {
     const adminHere = adminsThisOrg(viewer, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
+    }
+
+    /*
+     * GATE 1b: AND YOU GIVE YOUR ACCOUNT BEFORE YOU READ EVERYBODY ELSE'S.
+     *
+     * See a-board-is-not-read-before-you-answer. The round comes from `getSessionProgress` rather
+     * than from anything worked out here, because WHICH round is the one people are answering has
+     * been got wrong before - it is the round people have answered, not the newest row opened, and
+     * that distinction has its own note on that method.
+     *
+     * `renders: true`, because the board exists and they will read it shortly. A false here would
+     * say this check-in has no board, which is a different and untrue thing.
+     */
+    const thisRound = await this.grounds.getSessionProgress(groundId).catch(() => null);
+    if (theyOweAnAccountFirst(
+      { participantId: me?.id ?? null, runsThisGround: isInitiator || isSetupAdmin || adminHere },
+      thisRound,
+    )) {
+      return {
+        groundId,
+        renders: true,
+        withheldUntilYouCheckIn: true,
+        mode: ground.mode,
+        family: familyFor(ground.scenario),
+        saying: BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
+      };
     }
 
     // Collapse duplicate handoffs before anything reads them, so existing

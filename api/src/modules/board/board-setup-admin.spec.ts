@@ -51,7 +51,7 @@ function serviceFor(ground: any = GROUND) {
     groundObjectiveSnapshot: none,
     groundParticipant: none,
   };
-  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any);
+  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any);
 }
 
 describe('the admin who set the ground up', () => {
