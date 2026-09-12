@@ -546,6 +546,28 @@ export class BoardService {
      * not something a colleague may have about a colleague. `own-reads-only` strips it for anybody
      * else; this is the narrower gate at the point it is built.
      */
+    /*
+     * WHAT PEOPLE WERE ASKED AND DID NOT ANSWER, which is where a let-go gap lands.
+     *
+     * The conversation asks twice and then stops, because a person who feels cornered gives
+     * compliant answers and those are worse than missing ones. The cost of that decision is that
+     * somebody has to see the gap, and this is where.
+     *
+     * NEVER A MARK AGAINST ANYBODY. Half the time the honest reason is that nobody could have
+     * answered it - a target that was never set, a dependency nobody owns. So it says what is
+     * missing and how long it has been, and says nothing at all about the person.
+     */
+    if (has('checkInGrid') && runsThisGround) {
+      const gapRows = await this.prisma.checkInGap?.findMany?.({
+        where: { groundId, answeredAt: null },
+        orderBy: [{ firstRound: 'asc' }],
+        select: { participantId: true, what: true, firstRound: true, asked: true },
+      })?.catch(() => [] as any[]) ?? [];
+      out.stillUnanswered = (gapRows as any[])
+        .filter((g) => g.asked >= 2)
+        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound }));
+    }
+
     if (has('checkInGrid') && runsThisGround) {
       /*
        * THE ROUND THAT IS OPEN IS THE ONE SOMEBODY HAS STARTED, not the newest row that exists.

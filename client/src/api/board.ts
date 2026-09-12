@@ -96,6 +96,15 @@ export type BoardPresent = {
   /** Lead-only: where per-person targets exist but some have no owner, so everybody can see them. */
   targetsNobodyOwns?: string | null
 
+  /**
+   * Lead-only: things a check-in asked for and did not get, after it stopped asking.
+   *
+   * Never a mark against anybody - half the time nobody could have answered it. What it tells a
+   * lead is which questions their check-ins are not managing to answer, which is as often a fact
+   * about the setup as about a person.
+   */
+  stillUnanswered?: { who: string; what: string; sinceRound: number }[]
+
   eachPerson?: {
     participantId: string
     who: string

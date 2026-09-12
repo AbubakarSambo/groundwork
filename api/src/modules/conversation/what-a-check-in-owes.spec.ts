@@ -88,11 +88,32 @@ describe('what a check-in owes', () => {
   it('hands the model gaps, never questions to read out', () => {
     const still = whatIsStillOwed(KEEP_THE_TEAM_ON_TRACK, 'member', 'middle', nothing);
     const said = sayWhatIsMissing(still, 'middle');
-    expect(said).toContain('understand what has changed');
-    expect(said).toContain('not a list to be read out');
+    expect(said).toContain('what has changed since the last time');
+    expect(said).toContain('never read them out');
     expect(said).toContain('in your own words');
     /* Slots are described as absences, never phrased as questions. */
     expect(said).not.toMatch(/\?/);
+  });
+
+  it('and uses the product’s words, because a model hands back the ones it is given', () => {
+    /*
+     * The first version said "WHAT THIS CHECK-IN STILL NEEDS ON THE RECORD. This is a middle
+     * round." Nobody would ever have seen it - it is an instruction, not a screen - but a
+     * conversation fed those words starts saying them, and "record" is a banned word in this
+     * product. The cheapest place to stop a phrase reaching somebody is before it is suggested.
+     */
+    for (const stage of ['first', 'middle', 'last'] as const) {
+      const said = sayWhatIsMissing(whatIsStillOwed(KEEP_THE_TEAM_ON_TRACK, 'member', stage, nothing), stage);
+      expect(said).not.toMatch(/\brecord\b/i);
+      expect(said).not.toMatch(/\b(middle|first|last) round\b/i);
+    }
+  });
+
+  it('and tells it never to announce the round or the fact that anything is outstanding', () => {
+    /* A person checking in has no idea they are in round six of twelve and does not need one. */
+    const said = sayWhatIsMissing(whatIsStillOwed(KEEP_THE_TEAM_ON_TRACK, 'member', 'middle', nothing), 'middle');
+    expect(said).toContain('Do not tell them which round this is');
+    expect(said).toContain('or that anything is outstanding');
   });
 
   it('says nothing at all when nothing is owed', () => {

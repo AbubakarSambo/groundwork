@@ -175,17 +175,29 @@ export function whatIsStillOwed(owed: Owed[], role: Role, stage: Stage, held: He
  */
 export function sayWhatIsMissing(still: Owed[], stage: Stage): string {
   if (!still.length) return '';
+  /*
+   * THE MODEL REPEATS THE WORDS IT IS GIVEN, SO THESE ARE THE PRODUCT'S WORDS.
+   *
+   * The first version of this block said "WHAT THIS CHECK-IN STILL NEEDS ON THE RECORD. This is a
+   * middle round." Nobody was ever going to see that - it is an instruction, not a screen - but a
+   * conversation fed "the record" and "middle round" starts handing them back, and "record" is a
+   * banned word in this product for a reason. The two most likely leaks are named and refused
+   * below, because the cheapest place to stop a phrase reaching somebody is before it is suggested.
+   *
+   * The stage tells the model what KIND of conversation this is. It is never a thing to announce:
+   * a person checking in has no idea they are in round six of twelve and does not need one.
+   */
   const framing: Record<Stage, string> = {
-    first: 'This is their first round, so the job is to understand the starting point.',
-    middle: 'This is a middle round, so the job is to understand what has changed since last time.',
-    last: 'This is the closing round, so the job is to understand where things landed.',
+    first: 'This is the first time they have done this, so the job is to understand where things stand for them right now.',
+    middle: 'They have done this before, so the job is to understand what has changed since the last time.',
+    last: 'This is the last one, so the job is to understand where things ended up.',
   };
   return (
-    `WHAT THIS CHECK-IN STILL NEEDS ON THE RECORD. ${framing[stage]}\n` +
+    `STILL TO COVER WITH THIS PERSON. ${framing[stage]}\n` +
     still.map((o) => `- ${o.what}`).join('\n') +
-    '\nAsk for these in your own words, one at a time, and only where the conversation has not ' +
-    'already covered them. They are gaps in the record, not a list to be read out. If somebody ' +
-    'will not or cannot answer one, leave it: it is recorded as unanswered and can be picked up ' +
-    'another time.'
+    '\nAsk in your own words, one at a time, and only where the conversation has not already ' +
+    'covered it. These are things nobody has said yet, not a list to work through - and never ' +
+    'read them out. Do not tell them which round this is or that anything is outstanding. If ' +
+    'somebody will not or cannot answer one, leave it and move on.'
   );
 }

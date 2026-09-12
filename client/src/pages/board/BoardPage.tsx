@@ -485,6 +485,34 @@ export function BoardPage() {
           </>
         )}
 
+        {/*
+          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
+
+          The conversation asks twice and then lets it go, rather than pressing somebody who has
+          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
+          against anybody: half the time the honest reason is that nobody could have answered -
+          a target nobody set, a dependency nobody owns.
+        */}
+        {!!b.stillUnanswered?.length && (
+          <>
+            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
+            <Card>
+              {b.stillUnanswered.map((g, i) => (
+                <Row key={`${g.who}-${g.what}`} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
+                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                      open since session {g.sinceRound}
+                    </span>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
+
         {shown.quickRead && b.quickRead && (
           <>
             <Sec title="The quick read" src="alignment and trust from the report" />
