@@ -14,7 +14,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
 import { endStatesFor } from '../resolution/end-states';
-import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
@@ -95,6 +94,11 @@ import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
+import {
+  whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
+  KEEP_THE_TEAM_ON_TRACK, CONNECT_GOALS_ACROSS, type Owed, type Role,
+} from './what-a-check-in-owes';
+import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
 /**
@@ -493,6 +497,41 @@ export class ConversationService {
    * party wrote about them, nothing from anybody else's account. A brief that leaked one
    * participant's words to another would break the promise that makes the answers worth having.
    */
+  /**
+   * WHICH LIST OF THINGS THIS CHECK-IN OWES, or none.
+   *
+   * Both goal cards run on OKR_ALIGNMENT, because a cascade is detected from what people say rather
+   * than declared at setup. What tells them apart is the sentence the person picked the card with,
+   * which is on the ground as its brief - the cascade card's says there is something above this
+   * team. Nothing is inferred beyond that: a check-in with neither shape gets no list at all, and
+   * the conversation runs exactly as it did.
+   */
+  private whichOwedListFor(scenario: string, brief: string | null): Owed[] | null {
+    if (scenario !== 'OKR_ALIGNMENT' && scenario !== 'BOARD_STRATEGY') return null;
+    const said = (brief ?? '').toLowerCase();
+    const cascade = /overarching|underneath it|sits under|main goal|cascad|across departments|connect to the/.test(said);
+    return cascade ? CONNECT_GOALS_ACROSS : KEEP_THE_TEAM_ON_TRACK;
+  }
+
+  /**
+   * WHICH OF THE THREE ROLES THIS PERSON IS ANSWERING AS.
+   *
+   * By answerability rather than rank. Whoever runs the check-in is the lead. Somebody whose role
+   * says they run or represent a team answers for work other people did, which is what makes the
+   * partner questions fair to put to them and the "what are you working on" ones not. Everybody
+   * else answers for their own work, which is the common case and the safe default.
+   */
+  private roleOfTheReaderFor(
+    ground: { initiatorId?: string | null } | null,
+    checkIn: { participant?: { userId?: string | null; roleAsDescribed?: string | null; partyType?: string | null } | null } | null,
+  ): Role {
+    const p = checkIn?.participant;
+    if (ground?.initiatorId && p?.userId && ground.initiatorId === p.userId) return 'lead';
+    const role = (p?.roleAsDescribed ?? '').toLowerCase();
+    if (/\b(lead|head of|manager|director|partner|agency|vendor|supplier|principal|chief)\b/.test(role)) return 'partner';
+    return 'member';
+  }
+
   /**
    * The reader, for the one part of the brief that is not a shared fact. Their participant row and
    * whether they run this check-in; both already on the objects in hand, so nothing is fetched.
@@ -1913,6 +1952,43 @@ export class ConversationService {
       now: new Date(),
     });
 
+    /*
+     * WHAT THIS CHECK-IN STILL OWES, worked out here rather than written into eighteen packs.
+     *
+     * The two goal scenarios want a different conversation from a lead, a team member and a partner,
+     * at the first round, a middle one and the last. Serving that as prose would be eighteen blocks
+     * competing with 273 imperatives. This is the same tables as data: what has to end up on the
+     * record, who owes it, when. What is missing gets asked for; what is answered never gets asked
+     * again; what somebody will not answer is recorded and let go.
+     */
+    const owedForThis = this.whichOwedListFor(ground.scenario as any, (ground as any).brief ?? null);
+    let owedBlock = '';
+    if (owedForThis) {
+      const [minePastAndPresent, gapRows] = await Promise.all([
+        this.prisma.recordEntry?.findMany?.({
+          where: { participantId: checkIn.participantId, disputedAt: null },
+          select: { type: true },
+        })?.catch(() => [] as any[]) ?? [],
+        this.prisma.checkInGap?.findMany?.({
+          where: { participantId: checkIn.participantId },
+          select: { slug: true, asked: true, answeredAt: true },
+        })?.catch(() => [] as any[]) ?? [],
+      ]);
+      const stage = stageOf(
+        checkIn.sessionNumber ?? 1,
+        /* An explicit count wins over anything derived, the same order the rest of the product
+           reads them in. */
+        (ground as any).totalSessions ?? totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+        !!(checkIn as any).isFinal,
+      );
+      const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
+        types: (minePastAndPresent as any[]).map((e) => e.type),
+        answered: (gapRows as any[]).filter((g) => g.answeredAt).map((g) => g.slug),
+        letGo: (gapRows as any[]).filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
+      });
+      owedBlock = sayWhatIsMissing(still, stage);
+    }
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       // A cohort at the START is an onboarding period whose end decides
@@ -2605,7 +2681,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -3401,6 +3477,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
     // the record is populated before the status change races past it. buildSoloArtifact
     // is still fire-and-forget. Both are best-effort.
+    /*
+     * AND THE GAPS ARE SETTLED FOR THIS ROUND: answered ones closed, unanswered ones recorded.
+     *
+     * After extraction, because whether a slot was answered is a question about the record and the
+     * record is what extraction writes. A gap closes permanently the moment it is answered, in this
+     * round or any later one - a fact does not stop being on the record because a new round began.
+     */
+    await this.settleTheGaps(checkIn).catch((err) =>
+      this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`));
+
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -3829,6 +3915,77 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * verifiability rating (HIGH/MEDIUM/LOW) for each entry so the synthesis can
    * weight evidence-backed claims appropriately.
    */
+  /**
+   * CLOSE WHAT WAS ANSWERED, RECORD WHAT WAS NOT, AND PRESS NOTHING.
+   *
+   * Run once at the end of a round. Everything still owed at that point is a gap: either it is
+   * newly recorded, or it has been asked again and its count goes up. Past the limit the
+   * conversation stops asking for it and the lead sees it on their own page instead.
+   *
+   * A gap is never a mark against anybody. It is a thing the record does not have, which is a fact
+   * about the record - and half the time the honest reason is that nobody could have answered it.
+   */
+  private async settleTheGaps(checkIn: any): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      select: { scenario: true, brief: true, initiatorId: true, totalSessions: true, timelineDays: true, cadence: true } as any,
+    });
+    const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
+    if (!owed) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: checkIn.participantId },
+      select: { userId: true, roleAsDescribed: true, partyType: true },
+    });
+    const [types, gapRows] = await Promise.all([
+      this.prisma.recordEntry.findMany({
+        where: { participantId: checkIn.participantId, disputedAt: null },
+        select: { type: true },
+      }),
+      this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId } }),
+    ]);
+
+    const stage = stageOf(
+      checkIn.sessionNumber ?? 1,
+      (ground as any)?.totalSessions ?? totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null,
+      !!checkIn.isFinal,
+    );
+    const role = this.roleOfTheReaderFor(ground as any, { participant } as any);
+    const held = {
+      types: types.map((t) => t.type),
+      answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
+      letGo: [] as string[],
+    };
+
+    /* Anything now satisfied that was open is answered, whichever round it was asked in. */
+    const stillOwedIds = new Set(whatIsStillOwed(owed, role, stage, held).map((o) => o.id));
+    const nowAnswered = gapRows.filter((g) => !g.answeredAt && !stillOwedIds.has(g.slug));
+    if (nowAnswered.length) {
+      await this.prisma.checkInGap.updateMany({
+        where: { id: { in: nowAnswered.map((g) => g.id) } },
+        data: { answeredAt: new Date() },
+      });
+    }
+
+    for (const o of owed.filter((x) => stillOwedIds.has(x.id))) {
+      const existing = gapRows.find((g) => g.slug === o.id);
+      if (existing?.answeredAt) continue;
+      if (existing) {
+        await this.prisma.checkInGap.update({ where: { id: existing.id }, data: { asked: existing.asked + 1 } });
+      } else {
+        await this.prisma.checkInGap.create({
+          data: {
+            groundId: checkIn.groundId,
+            participantId: checkIn.participantId,
+            slug: o.id,
+            what: o.what,
+            firstRound: checkIn.sessionNumber ?? 1,
+          },
+        });
+      }
+    }
+  }
+
   async extractRecordEntries(checkInId: string, participantId: string) {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;

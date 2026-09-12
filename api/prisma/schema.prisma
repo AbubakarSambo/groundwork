@@ -942,6 +942,7 @@ model Ground {
   reportActivations          ReportActivation[]
   roundCompletions           RoundCompletion[]
   objectives                 GroundObjective[]
+  gaps                       CheckInGap[]
   /// Whether people on this check-in see each other's numbers. Narrow unless somebody chose
   /// otherwise: a default that publishes is not a default.
   whoSeesTargets             WhoSeesTargets @default(THEIR_OWN) @map("who_sees_targets")
@@ -1071,6 +1072,8 @@ model CoachingState {
 }
 
 model GroundParticipant {
+  /// Things a check-in asked this person for and did not get. See CheckInGap.
+  gaps                       CheckInGap[]
   /// Board targets that are this person's own. See GroundObjective.ownerParticipantId.
   objectivesOwned            GroundObjective[] @relation("ObjectiveOwner")
   whatWorked                 WhatWorked[]
@@ -1465,6 +1468,38 @@ model PersonStyleProfile {
 enum WhoSeesTargets {
   THEIR_OWN
   EVERYBODY
+}
+
+/// SOMETHING A CHECK-IN ASKED FOR AND DID NOT GET.
+///
+/// The conversation asks for what the record is missing. Where somebody will not or cannot answer,
+/// it is recorded here and let go rather than pressed - decided, because a person who feels
+/// cornered gives compliant answers and those are worse than missing ones.
+///
+/// It stays open across rounds and closes the moment they answer it, in this round or a later one.
+/// The lead sees an open gap on their own page; nobody sees a gap as a mark against anybody.
+model CheckInGap {
+  id            String    @id @default(uuid())
+  groundId      String    @map("ground_id")
+  participantId String    @map("participant_id")
+  /// The slot's stable id, so a gap recorded in round one is the same gap in round six.
+  slug          String
+  /// What the record was missing, in the words the product uses about it. Never a question.
+  what          String    @db.Text
+  /// How many times it has been asked for. Past the limit the conversation stops asking.
+  asked         Int       @default(1)
+  /// The round it was first recorded in, so a lead can see how long it has been open.
+  firstRound    Int       @map("first_round")
+  answeredAt    DateTime? @map("answered_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, slug])
+  @@index([groundId, answeredAt])
+  @@map("check_in_gaps")
 }
 
 model GroundObjective {
