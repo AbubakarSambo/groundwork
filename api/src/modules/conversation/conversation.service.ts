@@ -49,7 +49,7 @@ import {
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { displayName } from '../reports/party-labels';
+import { displayName, labelsForParties } from '../reports/party-labels';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
@@ -93,6 +93,7 @@ import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
+import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1783,6 +1784,66 @@ export class ConversationService {
       )).join('\n\n')}`]
       : [];
 
+    /*
+     * WHAT THE BOARD ALREADY KNOWS, COMING BACK THE OTHER WAY.
+     *
+     * Everything below this line is already on this check-in's own record: the numbers the board
+     * is measuring against, the things this person has themselves said are in their way, and what
+     * they said last time. The conversation has never seen any of it, which is why it opens every
+     * week by asking somebody what they are aiming for while the board holds the answer.
+     *
+     * Facts, not instructions - see the module. A model that is told a blocker is three weeks old
+     * and nobody escalated it does not need a rule telling it to ask.
+     */
+    /* Optional-chained like `personObjective` above: a caller whose prisma double does not stub a
+       model must get an empty read, not a crash mid-prompt. */
+    const [objectivesOnRecord, inTheWayRows, lastTimeRows] = await Promise.all([
+      this.prisma.groundObjective?.findMany({
+        where: { groundId: ground.id },
+        orderBy: { sortOrder: 'asc' },
+        select: { name: true, target: true, count: true },
+      })?.catch(() => [] as any[]) ?? [],
+      /*
+       * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
+       *
+       * BOTH OPEN STATES, not just WAITING. The enum has three - BLOCKING, WAITING, CLEARED - and
+       * the live extractor writes BLOCKING for the shape this is most for: "I am waiting on finance
+       * and six units are sitting there". Filtering on WAITING alone read as working and returned
+       * nothing, which is the quietest way for a wired thing to be unwired.
+       */
+      this.prisma.groundDependency?.findMany({
+        where: { groundId: ground.id, fromParticipantId: checkIn.participantId, status: { in: ['BLOCKING', 'WAITING'] } },
+        orderBy: { createdAt: 'asc' },
+        select: { what: true, onLabel: true, onParticipantId: true, createdAt: true, escalatedAt: true, then: true },
+      })?.catch(() => [] as any[]) ?? [],
+      /* Their own words from the session before this one, so a promise can be followed up. */
+      this.prisma.recordEntry?.findMany({
+        where: {
+          participantId: checkIn.participantId,
+          disputedAt: null,
+          checkIn: { sessionNumber: { lt: checkIn.sessionNumber ?? 1 }, status: 'COMPLETED' },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        select: { text: true },
+      })?.catch(() => [] as any[]) ?? [],
+    ]);
+    /* A ground whose participants were not selected on this read has none to label, and an
+       undefined list is not an empty one as far as the labeller is concerned. */
+    const labelOf = labelsForParties((ground.participants ?? []) as any);
+    const recordAlreadyHolds = whatTheRecordAlreadyHolds({
+      targets: (objectivesOnRecord as any[]).map((o) => ({ name: o.name, target: o.target, count: o.count })),
+      inTheWay: (inTheWayRows as any[]).map((d) => ({
+        what: d.what,
+        on: d.onParticipantId ? (labelOf.get(d.onParticipantId) ?? d.onLabel ?? null) : (d.onLabel ?? null),
+        since: d.createdAt,
+        escalated: !!d.escalatedAt,
+        then: d.then,
+      })),
+      saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
+      now: new Date(),
+    });
+
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
       // A cohort at the START is an onboarding period whose end decides
@@ -2475,7 +2536,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
