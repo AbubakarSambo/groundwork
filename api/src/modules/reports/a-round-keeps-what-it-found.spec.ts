@@ -60,16 +60,32 @@ describe('and the list carries it', () => {
      * party to in somebody else's org. A card fed by the second would fall back to the brief for
      * ever while its twin showed the finding, and nothing on the screen would say why.
      */
-    const fetches = GROUNDS.match(/reportRounds: \{ select: \{ sessionNumber: true, finding: true \}/g) ?? [];
+    /*
+     * THE RULE, NOT THE SELECT AS IT WAS WRITTEN THAT DAY. This pinned the exact shape and broke
+     * the moment the card started carrying the round's summary as well as its finding - which is a
+     * test failing for being too literal, not a defect. Both queries must fetch the round, and both
+     * must fetch the two things the card reads off it.
+     */
+    const fetches = GROUNDS.match(/reportRounds: \{ select: \{[^}]*finding: true[^}]*\}/g) ?? [];
     expect(fetches.length).toBe(2);
+    for (const f of fetches) expect(f).toContain('sharedPicture: true');
   });
 
   it('newest round only, because the list is read constantly', () => {
     expect(GROUNDS).toMatch(/orderBy: \{ sessionNumber: 'desc' \}, take: 1/);
   });
 
-  it('and the card is given it by name', () => {
+  it('and the card is given both by name', () => {
+    /* The finding is one ranked line; the summary is how the round actually went, in plain
+       sentences. The card leads with the summary and the board switcher uses the finding. */
     expect(GROUNDS).toMatch(/const latestFinding = /);
-    expect(GROUNDS).toMatch(/reportWaitingForMe, otherOrgName, latestFinding \}/);
+    expect(GROUNDS).toMatch(/const latestSummary = /);
+    expect(GROUNDS).toMatch(/latestFinding, latestSummary,/);
+  });
+
+  it('and the summary is cut where sentences actually end', () => {
+    /* Not on the card: a card cannot tell where a sentence ends without a second copy of that rule,
+       and splitting on a full stop is how decimals and closing quotes go wrong. */
+    expect(GROUNDS).toMatch(/sentencesIn\(summary\)\.slice\(0, 3\)/);
   });
 });
