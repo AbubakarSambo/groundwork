@@ -451,6 +451,13 @@ export function placedNowhere(keys: string[]): string[] {
  * which is honest: a map that claims to cover a surface it does not is worse than one that says
  * where it stops.
  */
+/*
+ * THE TEMPLATE THESE BLOCKS ARE LAID OUT TO, re-exported here because this is the module the
+ * product imports and that is where somebody looks for it. It was written down after the file it
+ * lived in turned out to be gitignored and gone - see what-the-template-says.
+ */
+export { THE_TEMPLATE, NOT_THE_TEMPLATE } from './what-the-template-says';
+
 export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
   /* A - somebody's own half, one sitting. */
   whatThisIsFor: 'What this is for',
