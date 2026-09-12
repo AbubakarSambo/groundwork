@@ -98,6 +98,7 @@ import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
   whichCard, owedFor, type Owed, type Role,
 } from './what-a-check-in-owes';
+import { everythingOwedFor } from './what-every-check-in-owes';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -507,7 +508,21 @@ export class ConversationService {
    * the conversation runs exactly as it did.
    */
   private whichOwedListFor(scenario: string, brief: string | null): Owed[] | null {
-    return owedFor(whichCard(scenario, brief));
+    /*
+     * THE TWO GOAL CARDS KEEP THEIR OWN LISTS, and everything else gets the spine.
+     *
+     * Those two were written out slot by slot from copy given for them, so a spine underneath would
+     * double up - "what they understood they were meant to do" beside "what this is trying to
+     * achieve" is one question asked twice.
+     *
+     * The other twenty had NO list at all until now, which meant first, middle and last were shaped
+     * by whatever a model made of a session number in a sentence. See what-every-check-in-owes: a
+     * spine every situation shares, plus the one or two things each situation actually asks for
+     * that the spine does not.
+     */
+    const card = whichCard(scenario, brief);
+    if (card) return owedFor(card);
+    return everythingOwedFor(scenario);
   }
 
   /**
