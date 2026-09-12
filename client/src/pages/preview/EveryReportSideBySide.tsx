@@ -229,11 +229,23 @@ export default function EveryReportSideBySide() {
             n={2}
             name="The top half of a session's report — your own"
             cell="A · session"
-            note="Not rebuilt yet, and the surface with the real problem under it. It takes a report OBJECT rather than an id, and that object is only ever written when somebody comes through the entry chat — 10 of 495 finished sittings have one. Everything else computes its A · session live, in a different shape this component cannot read. One cell, two shapes, two fetches, depending on which door you came through."
+            note="Rebuilt. Where a report was stored it is shown exactly as it was read, because that object IS what the person read - only the entry chat stores one, ten of four hundred and ninety-five sittings. Everything else draws the same template as surface 04, from the same component. Its note read 'not rebuilt yet' for months, and the page carrying that note was deleted before the surface was done."
           >
+            {/*
+              THE SAME CONDITION THE REAL PAGE USES, so this shows what somebody actually gets.
+              It drew the stored report or a grey "nothing was kept" box, which was true of the
+              product and is no longer: SessionReportPage draws the stored one where there is one -
+              that object IS what the person read - and the rebuilt template where there is not,
+              which is the other 485 of 495 sittings.
+              Mirroring it matters more here than anywhere: this page is what the surfaces are
+              judged by, and a preview that lags the product is how a surface stays unrebuilt while
+              everybody believes it was done.
+            */}
             {report
               ? <TheReportYouSawAtTheEnd report={report} stands={stands} hideCompleteness={!!shape.data?.howClearThisWas?.level} onRecordLine="Built from what you said today." />
-              : <NothingStored what="this sitting" />}
+              : checkInId
+                ? <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
+                : <NothingStored what="this sitting" />}
           </Surface>
 
           <Surface

@@ -6,6 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
+import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
@@ -259,15 +260,61 @@ export default function SessionReportPage() {
             It goes above the record rather than below it, because it is the part you act on and
             the record is the part you refer back to.
           */}
-          <TheReportYouSawAtTheEnd
-            report={data.report}
-            stands={shape?.whereThingsStand ? { settled: shape.whereThingsStand.settled ?? [], open: shape.whereThingsStand.open ?? [] } : null}
-            /* The engine's own meter is above this. Two meters about one session, six lines apart,
-               said "Thin" and "Clear" about the same ten minutes. See hideCompleteness. */
-            hideCompleteness={!!shape?.howClearThisWas?.level}
-            /* "Account" is the login word. Here it meant what this person said, so it says that. */
-            onRecordLine="Built from what you said today."
-            stillNeeded={
+          {/*
+            THE REBUILT A-SESSION, WHICH IS WHAT THIS SURFACE WAS ALWAYS MEANT TO BE.
+            The preview page carried the note for months: "not rebuilt yet, and the surface with the
+            real problem under it - one cell, two shapes, two fetches, depending on which door you
+            came through." The other eight surfaces were rebuilt to the template and this one was
+            left, then the page that said so was deleted.
+            It has everything this page needs: a check-in, a ground and a session. So it draws the
+            same component the end of a signed-in check-in draws, which is the template - and gains
+            the coaching note, what you carry, and the way to correct the record, none of which the
+            old one had.
+            The entry chat keeps the old component, and that is not drift: at the end of the entry
+            chat there is no ground and no check-in to fetch, so the rebuilt one cannot run there.
+            Two shapes because two moments, rather than two shapes by accident.
+          */}
+          {data.report
+            ? (
+              /*
+               * A STORED REPORT IS SHOWN AS IT WAS READ, and that rule outranks the template.
+               * "I want the exact same forming report to be openable or seen." Only the entry chat
+               * stores one, and that object IS the thing the person read - ten of four hundred and
+               * ninety-five sittings have it. Re-rendering it in the new shape would be a different
+               * page about the same facts, which is the complaint this rule came from.
+               */
+              <TheReportYouSawAtTheEnd
+                report={data.report}
+                stands={shape?.whereThingsStand ? { settled: shape.whereThingsStand.settled ?? [], open: shape.whereThingsStand.open ?? [] } : null}
+                hideCompleteness={!!shape?.howClearThisWas?.level}
+                onRecordLine="Built from what you said today."
+              />
+            )
+            : (
+              /*
+               * AND EVERYTHING ELSE GETS THE TEMPLATE, which is what this surface was always meant
+               * to be. The preview page carried the note for months: "not rebuilt yet, and the
+               * surface with the real problem under it - one cell, two shapes, two fetches,
+               * depending on which door you came through." Eight surfaces were rebuilt and this one
+               * was left, then the page that said so was deleted.
+               * Nothing was stored for these sittings, so there is no exact thing to be faithful
+               * to - only rows to draw, which is what the rebuilt one does, and it brings the
+               * coaching note, what you carry and the way to correct the record with it.
+               */
+              <TheCheckInYouJustFinished
+                checkInId={checkInId!}
+                groundId={data.groundId as string}
+                sessionNumber={data.sessionNumber as number}
+              />
+            )}
+
+          {/*
+            AND WHAT THIS CHECK-IN STILL NEEDS, drawn by the page rather than handed to the report.
+            It was a prop on the old component, so a straight swap would have dropped it - the
+            cadence, the start date, the length and the standard, for the lead, on the page they
+            land on straight after finishing.
+          */}
+          {(() => {
               /*
                * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
                *
@@ -302,8 +349,9 @@ export default function SessionReportPage() {
                   onGoToSetup={() => navigate(`/grounds/${data.groundId}?tab=settings`)}
                 />
               ) : null
-            }
-          />
+          })()}
+
+
           {/*
             THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
 
