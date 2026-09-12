@@ -496,7 +496,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.ROLE_HANDOVER,
     detail: 'Help someone take over a role without losing important context or work.',
     message: 'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
-    timelineHint: 'typically 30 days',
     examples: [
       'Someone is leaving in four weeks and their replacement has already started.',
       'A role is moving between two people and nobody has written down what the first one was carrying.',
@@ -508,7 +507,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.CONTRACT_REVIEW,
     detail: 'Make sure the people involved understand and are comfortable with an agreement.',
     message: 'We are about to sign an agreement and I want both sides to say what they think it means before we do.',
-    timelineHint: 'typically 60 days',
     examples: [
       'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
       'A partnership you are about to sign with somebody you would rather not fall out with.',
@@ -521,7 +519,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
     detail: 'Understand how an agreement is working in practice.',
     message: 'We have an agreement that has been running for a while and nobody has checked whether what we are doing still matches it.',
-    timelineHint: 'typically a year',
     examples: [
       'A revenue share where the reported figure and the filed figure have never been put side by side.',
       'A relationship that is fine, where you would like to be able to prove it was fine.',
@@ -533,7 +530,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.NEW_HIRE,
     detail: 'Help a new team member settle in, understand their role, and surface what they need.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
-    timelineHint: 'typically 90 days',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
@@ -545,7 +541,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.NEW_PROJECT,
     detail: 'Get everyone clear on the work, their role, and what needs to happen.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
-    timelineHint: 'typically 90 days',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone starts.',
       'A cross-team project where each team quietly assumes a different owner.',
@@ -573,7 +568,6 @@ export const SITUATION_CARDS = [
       display change's clothes, and the guard caught exactly that.
     */
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',
       'Two founders dividing scope, each writing what they think the other owns.',
@@ -585,7 +579,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.OKR_ALIGNMENT,
     detail: 'Set goals, targets or OKRs for your team. Your team can get coaching and share updates on their progress, while you can see what is on track and where you need to support them.',
     message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',
@@ -610,7 +603,6 @@ export const SITUATION_CARDS = [
     label: 'Connect Goals Across the Team',
     detail: 'Set a main goal, then have team leads and partners set their own goals and targets. Make sure their goals connect to the main goal and make sense together.',
     message: 'We have one overarching goal and separate teams are setting their own goals and targets underneath it. I want to know whether they connect to the main goal and add up together.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A company target with three departments each writing their own results under it.',
       'Team goals that each look sensible on their own and may not add up to the thing at the top.',
@@ -622,7 +614,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.CRISIS_ALIGNMENT,
     detail: 'Bring different views together around an important decision.',
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
-    timelineHint: 'typically one check-in',
     examples: [
       'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
@@ -647,7 +638,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.PIP,
     detail: "Understand what is getting in the way when someone's work is off track.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
-    timelineHint: 'typically 90 days',
     examples: [
       "A senior hire's delivery is slipping and you both want the real picture before the conversation.",
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
@@ -671,7 +661,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.DRIFT,
     detail: 'Understand why a project is off track and what needs to change.',
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
       'What was agreed and what exists no longer match, and you want the gap named.',
@@ -683,7 +672,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.REALIGN_TEAM,
     detail: "Understand different views when people don't see a situation the same way.",
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
-    timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
       "You and your cofounder are quietly at odds over who's carrying more, and neither of you has said it.",
@@ -695,7 +683,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.NEW_MANAGER,
     detail: 'Help a new manager understand the team and how the work is going.',
     message: 'A new manager is taking over and I want to make sure the handover is clear.',
-    timelineHint: 'typically 90 days',
     examples: [
       'An interim leader stepping into an existing team and scope needs pinning down.',
       'A handover where the outgoing and incoming manager each describe what is being passed on.',
@@ -722,7 +709,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.NEW_ADVISOR,
     detail: 'Build a shared understanding of the role, expectations, and contribution.',
     message: 'We are bringing on a new advisor or board member and I want to pin down what they will actually contribute and on what terms.',
-    timelineHint: 'typically 90 days',
     examples: [
       'An advisor joined months ago and you still could not say what they have contributed.',
       'A board member you want to agree concrete terms with before the next quarter.',
@@ -734,7 +720,6 @@ export const SITUATION_CARDS = [
     label: 'Onboarding several people at once',
     detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
     message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
-    timelineHint: 'typically 90 days',
     examples: [
       // Visible slot first. A new starter opening this should not meet the word
       // "probation"; the leader running one still finds the card, and the
@@ -749,7 +734,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.WORKPLAN_BUDGET,
     detail: "Bring people's plans together so the work and budget line up.",
     message: 'We are setting a workplan and budget and I want each person to build their own and check it holds up against the resources we have.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A quarter where every team submits a plan and the numbers have to add up together.',
       'You suspect two teams have budgeted for the same thing.',
@@ -761,7 +745,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.BOARD_STRATEGY,
     detail: 'Understand how leaders see the direction and where their views differ.',
     message: 'Our leadership team needs to align on strategy and I want each person to give their own read before the room debates it.',
-    timelineHint: 'typically two check-ins',
     examples: [
       'An offsite where you want the real positions before the discussion converges.',
       'A leadership team that nods in the room and disagrees afterwards.',
@@ -777,7 +760,6 @@ export const SITUATION_CARDS = [
        a year, this should be the one, but it is not from the entry chat." Each check-in is quick; the
        run is not, and only one of those belongs in the sentence. */
     message: 'I want an ongoing read from my team on what is moving, what is stuck and what has changed, for as long as this runs.',
-    timelineHint: 'typically ongoing',
     examples: [
       'A weekly pulse across a delivery team instead of a status meeting.',
       'You want the same few questions answered honestly every week.',
@@ -792,7 +774,6 @@ export const SITUATION_CARDS = [
        as the whole extent of the thing, and it is the phrase that made this card and the recurring
        one hard to tell apart. */
     message: 'I want one honest read from everyone on my team about what is going well and what is stuck. Once only, not on a schedule.',
-    timelineHint: 'one check-in, no follow-up',
     examples: [
       'You want to know how people are actually doing this week, without booking a meeting.',
       'Something feels off and you want a read before deciding whether it needs watching over time.',
@@ -804,7 +785,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.COHORT_CHECK,
     detail: 'Understand how people doing similar work are experiencing it.',
     message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
-    timelineHint: 'typically ongoing',
     examples: [
       'Eight field officers doing the same job in different places.',
       'A cohort where you need to know who is struggling before it shows in the numbers.',
@@ -816,7 +796,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.RECOGNITION,
     detail: "Understand someone's contribution and experience before making a recognition decision.",
     message: 'Someone is asking for a raise or promotion and I want us both working from the same evidence before the conversation.',
-    timelineHint: 'typically one check-in',
     examples: [
       'Someone has asked for a raise and you want their case in writing first.',
       'You are deciding a promotion and want the record, not just your impression.',
@@ -828,7 +807,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.CONTRACT_RENEWAL,
     detail: 'Understand how a working relationship is going before deciding what happens next.',
     message: 'A contract is coming up for renewal and I want both sides to say honestly how the term went before we agree the next one.',
-    timelineHint: 'typically two weeks',
     examples: [
       'A contractor whose term is ending and both of you want an honest read of how it went.',
       'A renewal where you and they would describe the last year differently.',
@@ -840,7 +818,6 @@ export const SITUATION_CARDS = [
     label: SCENARIO_LABELS.ACUTE_SHOCK,
     detail: 'Give people a private way to explain what happened and what needs attention.',
     message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
-    timelineHint: 'typically daily for two weeks',
     examples: [
       'A client pulled out overnight and everyone has a different version of why.',
       'A sudden departure or loss where you need the real picture fast.',
