@@ -97,11 +97,25 @@ export const SCENARIO_KEYS = Object.keys(SCENARIO_LABELS) as ScenarioKey[]
  * shouting on their dashboard. A missing entry should look like an oversight, not like a database
  * value leaking through.
  */
-export function scenarioLabel(key: string): string {
+export function scenarioLabel(key: string, brief?: string | null): string {
+  /*
+   * TWO CARDS SHARE OKR_ALIGNMENT, SO A SCENARIO ALONE CANNOT NAME THE CHECK-IN.
+   *
+   * Watched live: a cascade check-in labelled "Set Goals and Keep the Team on Track" - the other
+   * card's name - because a label resolved from the scenario and the scenario now has two.
+   *
+   * What tells them apart is the sentence the person picked the card with, which is the check-in's
+   * brief. Same read as the server's, deliberately: the two must never disagree about which
+   * conversation this is, and a caller with no brief to hand gets the same answer as before.
+   */
+  if (key === 'OKR_ALIGNMENT' && SOUNDS_LIKE_A_CASCADE.test(brief ?? '')) return 'Connect Goals Across the Team'
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
 }
+
+/** Kept in step with whichCard() on the server. Two readers of one sentence, one answer. */
+const SOUNDS_LIKE_A_CASCADE = /overarching|underneath it|sits under|main goal|cascad|across departments|connect to the/i
 
 /**
  * A label back to its situation, for links that carry `?scenario=a+big+decision`.

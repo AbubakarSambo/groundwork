@@ -125,6 +125,39 @@ export const CONNECT_GOALS_ACROSS: Owed[] = [
 ];
 
 /**
+ * WHICH CARD OPENED THIS CHECK-IN, WHERE TWO CARDS SHARE ONE SCENARIO.
+ *
+ * Both goal cards run on OKR_ALIGNMENT, because a cascade is detected from what people say rather
+ * than declared at setup. The cost showed up immediately: a cascade check-in was labelled "Set
+ * Goals and Keep the Team on Track" - the other card's name - because a label resolves from the
+ * scenario and the scenario now has two.
+ *
+ * What tells them apart is the sentence the person picked the card with, which is on the ground as
+ * its brief. Read here, once, so the label and the list of things owed can never disagree about
+ * which conversation this is.
+ */
+export type WhichCard = 'keep-the-team-on-track' | 'connect-goals-across' | null;
+
+const SOUNDS_LIKE_A_CASCADE =
+  /overarching|underneath it|sits under|main goal|cascad|across departments|connect to the/i;
+
+export function whichCard(scenario: string, brief: string | null | undefined): WhichCard {
+  if (scenario !== 'OKR_ALIGNMENT' && scenario !== 'BOARD_STRATEGY') return null;
+  return SOUNDS_LIKE_A_CASCADE.test(brief ?? '') ? 'connect-goals-across' : 'keep-the-team-on-track';
+}
+
+/** What each card is called, which is what a person sees anywhere the check-in is named. */
+export const WHAT_THE_CARD_IS_CALLED: Record<Exclude<WhichCard, null>, string> = {
+  'keep-the-team-on-track': 'Set Goals and Keep the Team on Track',
+  'connect-goals-across': 'Connect Goals Across the Team',
+};
+
+export function owedFor(card: WhichCard): Owed[] | null {
+  if (!card) return null;
+  return card === 'connect-goals-across' ? CONNECT_GOALS_ACROSS : KEEP_THE_TEAM_ON_TRACK;
+}
+
+/**
  * WHICH STAGE A ROUND IS.
  *
  * Resolved here, from two numbers, rather than left to a model to work out from a session number in

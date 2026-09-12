@@ -96,7 +96,7 @@ import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
-  KEEP_THE_TEAM_ON_TRACK, CONNECT_GOALS_ACROSS, type Owed, type Role,
+  whichCard, owedFor, type Owed, type Role,
 } from './what-a-check-in-owes';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -507,10 +507,7 @@ export class ConversationService {
    * the conversation runs exactly as it did.
    */
   private whichOwedListFor(scenario: string, brief: string | null): Owed[] | null {
-    if (scenario !== 'OKR_ALIGNMENT' && scenario !== 'BOARD_STRATEGY') return null;
-    const said = (brief ?? '').toLowerCase();
-    const cascade = /overarching|underneath it|sits under|main goal|cascad|across departments|connect to the/.test(said);
-    return cascade ? CONNECT_GOALS_ACROSS : KEEP_THE_TEAM_ON_TRACK;
+    return owedFor(whichCard(scenario, brief));
   }
 
   /**

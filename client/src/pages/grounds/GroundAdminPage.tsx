@@ -1337,7 +1337,7 @@ export function GroundAdminPage() {
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
-              {scenarioLabel(ground.scenario)}
+              {scenarioLabel(ground.scenario, (ground as any).brief)}
             </span>
           )}
           {ground.resolutionState && (

@@ -3764,6 +3764,34 @@ happened, and what is in the way.`;
     );
   }
 
+  /**
+   * THE LINES TAKEN FROM WHAT THIS PERSON SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
+   *
+   * Theirs alone, so it is not gated on the shared report going out. It was: the pre-release branch
+   * of `get` returned a shape with no myRows at all, and a report is released by the lead after
+   * everybody has answered - so at the exact moment the close card exists for, somebody finishing
+   * their own check-in, its two main blocks were structurally empty. Watched on a live board: six
+   * extracted entries including a worry and an ask, and a card showing neither.
+   *
+   * Nothing here crosses a wall. These are the reader's own words, read back to the reader.
+   */
+  private async theirOwnRows(participantId: string | null | undefined) {
+    if (!participantId) return [];
+    /* Optional-chained like its neighbours: a caller whose prisma double stubs only what it needs
+       must get an empty list, not a crash inside a report it was not asking about. */
+    return (this.prisma.recordEntry?.findMany?.({
+        where: { participantId },
+        orderBy: [{ createdAt: 'asc' }],
+        select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
+      }) ?? Promise.resolve([] as any[]))
+      .then((rows: any[]) => rows.map((r) => ({
+        id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
+        documented: !r.recallBased, documentSays: r.documentSays ?? null,
+        checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
+      })))
+      .catch(() => [] as any[]);
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -3864,6 +3892,8 @@ happened, and what is in the way.`;
           saying:
             'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
           soloArtifact,
+          /* Their own rows, which do not wait on a release: see theirOwnRows. */
+          myRows: await this.theirOwnRows(participant?.id),
           sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         };
@@ -3875,6 +3905,7 @@ happened, and what is in the way.`;
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
+        myRows: await this.theirOwnRows(participant?.id),
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
         /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
@@ -4003,23 +4034,7 @@ happened, and what is in the way.`;
        * their own half, labelled as what it is. Disputed rows are returned too, so the page can show
        * the dispute; every read that COUNTS rows filters them out.
        */
-      myRows: participant
-        ? await Promise.resolve()
-            /* Started inside a promise, so a client without this table rejects instead of throwing
-               synchronously while the object is being built. Same shape as myOwnSoftSpots. */
-            .then(() => this.prisma.recordEntry.findMany({
-              where: { participantId: participant.id },
-              orderBy: [{ createdAt: 'asc' }],
-              select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
-            }))
-            .then((rows) => rows.map((r) => ({
-              id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
-              documented: !r.recallBased, documentSays: r.documentSays ?? null,
-              checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
-            })))
-            .catch(() => [])
-        : [],
-      /* The reader's own thin spots, with the fix for each. Never anybody else's. */
+      myRows: await this.theirOwnRows(participant?.id),
       mySoftSpots: participant
         ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
         : [],
