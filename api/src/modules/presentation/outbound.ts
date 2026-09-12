@@ -286,6 +286,43 @@ export function withoutTheMark(text: string): string {
   return kept.length ? kept.join(' ') : text;
 }
 
+/**
+ * "ACCOUNT" IS OUR WORD AND IT READS AS A LOGIN.
+ *
+ * Her rule, 8 September: never write "account" in copy a person reads. Say what the thing is -
+ * "what you said", "what they said", "their side of it". It is internal vocabulary that makes a
+ * simple screen need decoding.
+ *
+ * It was a line in the prompt, which is the weakest place a rule can live. A live report this week
+ * opened with "Your account describes a goal of hitting 270 units" - so the rule was stated, and
+ * broken, in the first sentence somebody reads.
+ *
+ * NARROW ON PURPOSE, for the reason `oneWordForTheThing` is narrow: this text quotes people, and a
+ * wrong replacement does not read oddly, it puts words in somebody's mouth inside their own record.
+ * So only the possessive forms, where the word is unambiguously ours. A bare "account" - "the
+ * account was settled", "account for the difference" - is ordinary English and is left alone.
+ */
+const OURS_NOT_THEIRS: [RegExp, string][] = [
+  [/\byour accounts\b/gi, 'what you said'],
+  [/\byour account\b/gi, 'what you said'],
+  [/\btheir accounts\b/gi, 'what they said'],
+  [/\btheir account\b/gi, 'what they said'],
+  [/\bhis account\b/gi, 'what he said'],
+  [/\bher account\b/gi, 'what she said'],
+  /* The plural with a determiner: "the accounts", "both accounts", "all three accounts". */
+  [/\b(?:the|both|all(?: \w+)?|these|those)\s+accounts\b/gi, 'what people said'],
+];
+
+export function saysWhatTheySaid(text: string): string {
+  let out = text;
+  for (const [re, to] of OURS_NOT_THEIRS) out = out.replace(re, (m, ...rest) => {
+    /* Keep the sentence's own capital where the phrase began one. */
+    const capital = /^[A-Z]/.test(m);
+    return capital ? to[0].toUpperCase() + to.slice(1) : to;
+  });
+  return out;
+}
+
 export function forHumans(text: string | null | undefined): string {
   if (!text) return '';
   let out = stripCloseMarker(text).text;
@@ -304,6 +341,8 @@ export function forHumans(text: string | null | undefined): string {
   out = houseStyle(out);
   /** After houseStyle, so a replaced word still gets the house's quotes and spacing. */
   out = oneWordForTheThing(out);
+  /* Beside the other word that is ours and reads as something else. */
+  out = saysWhatTheySaid(out);
   out = withoutQuotedQuestions(out);
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */
