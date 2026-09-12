@@ -2654,6 +2654,20 @@ export function EntryChatPage() {
               style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {onboardingHistory.map((m, i) => {
+                /*
+                 * THE OPENER IS NOT DRAWN WHILE THE PICKER IS, because the picker says it better.
+                 *
+                 * It read "Describe it in your own words, or choose a situation to set the context
+                 * for what you want people to check in on or provide updates about" - directly
+                 * above a card that asks what you are trying to achieve and a line that offers to
+                 * pick one that already fits. The same two routes, said twice, the first time in a
+                 * bubble that looks like somebody talking.
+                 *
+                 * It stays in the HISTORY rather than going: the picker is shown when the history
+                 * holds exactly one turn, and it is also the model's first turn once the
+                 * conversation starts. Only the bubble goes, and only while the picker is up.
+                 */
+                if (i === 0 && m.role === 'assistant' && onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding') return null
                 /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
                    user turn so the model has a situation; drawing it as a navy bubble put words in
                    their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */

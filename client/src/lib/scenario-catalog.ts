@@ -245,37 +245,6 @@ export const GROUPS_YOU_PICK_FROM = SCENARIO_GROUPS.filter((g) => g.key !== 'ope
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
 
-/**
- * THE TAG IS THE GROUP, SAID SHORT.
- *
- * Every card carried its own hand-written tag and they had become a third vocabulary next to the
- * headings and the labels: "Starting", "Planning", "Recurring" repeated their group, while
- * "Renewal", "Accountability", "Leadership", "Urgent", "Team" and "Deciding" named something else
- * entirely - so a card could sit under "A decision about someone" wearing a tag that said Renewal,
- * and a monthly read on a running agreement wore Planning while living in the reads.
- *
- * Four separate copies of the card NAMES turned up this week and every one of them had drifted.
- * This is the same shape, so it gets the same answer: derived, once, from the group the card is
- * actually in. A tag cannot contradict its heading if there is nothing left to contradict.
- */
-export const TAG_FOR_GROUP: Record<ScenarioGroupKey, string> = {
-  open: 'Not sure yet',
-  starting: 'Beginning',
-  planning: 'Aligning',
-  reading: 'A read',
-  person: 'A decision',
-  off: 'Something is off',
-}
-
-/** One colour per group, so the tag reads as the group at a glance rather than as decoration. */
-export const TAG_COLOURS: Record<ScenarioGroupKey, { bg: string; fg: string }> = {
-  open:     { bg: 'var(--gw-paper)',    fg: 'var(--gw-sub)' },
-  starting: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)' },
-  planning: { bg: 'var(--gw-blue-bg)',  fg: 'var(--gw-navy)' },
-  reading:  { bg: 'var(--gw-blue-bg)',  fg: 'var(--gw-navy)' },
-  person:   { bg: 'var(--gw-clay-bg)',  fg: 'var(--gw-clay)' },
-  off:      { bg: 'var(--gw-red-bg)',   fg: 'var(--gw-red-t)' },
-}
 
 
 /**

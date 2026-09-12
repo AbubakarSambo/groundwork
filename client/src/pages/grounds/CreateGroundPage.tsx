@@ -27,8 +27,8 @@ interface ScenarioCard {
   /*
    * NO TAG HERE. It was three fields per card and a third vocabulary beside the group headings and
    * the labels, and it had drifted from both - a monthly read on a running agreement wore
-   * "Planning" while living in the reads. It is derived from the card's group where it is drawn.
-   * See TAG_FOR_GROUP.
+   * "Planning" while living in the reads. Deriving it from the group fixed the drift and left the
+   * real problem: a chip repeating the heading above it, on every card under that heading.
    */
   // Recognizer lines ("e.g. ...") shown under the description so people can
   // self-select from concrete situations, not abstract labels.
