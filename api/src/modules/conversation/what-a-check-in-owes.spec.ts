@@ -137,7 +137,15 @@ describe('what a check-in owes', () => {
  */
 describe('the pack lookup falls back to a role-free key', () => {
   it('tries the moment, then the role, then the situation alone', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    /*
+     * COMMENTS OUT FIRST. My first version matched the raw file, and the comment I had just written
+     * beside the fallback names all three keys - so the assertion passed on the prose rather than
+     * on the code. That is the whole point of a-guard-that-a-comment-satisfies-is-not-a-guard, and
+     * it caught it.
+     */
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/.*$/gm, ' ');
     const at = src.indexOf('const scenarioPackOverride');
     const block = src.slice(at, at + 2200);
     const moment = block.indexOf('String(ground.moment).toLowerCase()');
