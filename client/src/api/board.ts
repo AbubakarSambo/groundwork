@@ -108,6 +108,8 @@ export type BoardPresent = {
   eachPerson?: {
     participantId: string
     who: string
+    /** True where `who` is their role standing in for a name nobody has given. */
+    nameIsTheirRole: boolean
     target: number | null
     count: number
     reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'

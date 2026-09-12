@@ -595,6 +595,9 @@ export class BoardService {
             /* A person whose name this reader may not resolve still has a row: the read is about
                what to do, and "a teammate" with a three-week blocker is still worth acting on. */
             who: nameOf(p.id) ?? 'A teammate',
+            /* Whether that label is a name or their role standing in for one. Asked of the name
+               itself: somebody can have an account and never have given a first name. */
+            nameIsTheirRole: ![p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim(),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,

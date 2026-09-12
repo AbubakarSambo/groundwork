@@ -5369,7 +5369,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const result = await this.anthropic.extract<{
-      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null }[];
+      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null }[];
     }>(DEPENDENCY_EXTRACTION_PROMPT, [{ role: 'user', content: transcript }], DEPENDENCY_EXTRACTION_SCHEMA);
 
     const valid = (result?.dependencies ?? []).filter((d) => d.what?.trim());
@@ -5434,6 +5434,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           data: {
             status,
             then: d.then?.trim() || undefined,
+            /* What they said they did, this time. Undefined leaves what an earlier round heard:
+               somebody who chased last week and says nothing this week still chased. */
+            triedSaid: d.triedSaid?.trim() || undefined,
             sourceCheckInId: checkInId,
             clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           },
@@ -5451,6 +5454,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           onLabel,
           what: d.what.trim(),
           then: d.then?.trim() || null,
+          /* Their own words for what they have already done about it. Null means they did not say,
+             which is what "nothing said yet" on the board honestly means. */
+          triedSaid: d.triedSaid?.trim() || null,
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,

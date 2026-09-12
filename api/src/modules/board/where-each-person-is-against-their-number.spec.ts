@@ -67,6 +67,16 @@ describe('where each person is against their number', () => {
     expect(out.map((r) => r.who)).toEqual(['Amina', 'Bala']);
   });
 
+  it('says when a name is really a role, because a role reads as a name on a list of people', () => {
+    /* Watched on a live board: two rows reading "Head of Sales, West Africa" and "Marketing
+       analyst" as though those were people's names. The fallback is right; the silence was not. */
+    const out = whereEachPersonIs([rep({ who: 'Head of Sales, West Africa', nameIsTheirRole: true })], 12);
+    expect(out[0].nameIsTheirRole).toBe(true);
+    /* And an account is not the question: both of the live ones had joined and simply never gave a
+       first name, so a flag about joining said "joined" while the row still showed a role. */
+    expect(whereEachPersonIs([rep()], 12)[0].nameIsTheirRole).toBe(false);
+  });
+
   it('never says what somebody is, only what has happened and what to ask for', () => {
     const r = rep({ inTheWay: [{ what: 'the lease', owner: null, days: 21, tried: 'asked-once' }] });
     const line = `${whyThisRow(r, 12)} ${whatToAskFor(r)}`;

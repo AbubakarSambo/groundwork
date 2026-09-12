@@ -22,6 +22,8 @@ export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the 
 export interface Row {
   participantId: string
   who: string
+  /** True where `who` is their role standing in for a name nobody has given. */
+  nameIsTheirRole?: boolean
   target: number | null
   count: number
   reason: Reason
@@ -52,7 +54,14 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
       {rows.map((r, i) => (
         <div key={r.participantId} style={{ padding: '13px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{r.who}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
+              {r.who}
+              {/* Nobody has given a name, so this is their role. Said plainly, because on a list
+                  of people a role reads as a name. */}
+              {r.nameIsTheirRole && (
+                <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--gw-sub)' }}> &middot; no name given</span>
+              )}
+            </span>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
               {/* The number, where they have one. A person with no target of their own still has a
                   row: what to do about them does not depend on somebody having set them a figure. */}

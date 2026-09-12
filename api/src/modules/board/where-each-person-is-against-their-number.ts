@@ -25,6 +25,18 @@ import { A_FORTNIGHT, HOW_HARD_THEY_TRIED, waysThrough, type Effort } from '../c
 export interface PersonRow {
   participantId: string;
   who: string;
+  /**
+   * WHETHER `who` IS A NAME OR A ROLE STANDING IN FOR ONE.
+   *
+   * Somebody with no name of their own falls back to their role, which is right and reads on a list
+   * of people as a person called "Head of Sales, West Africa". Watched on a live board with two.
+   *
+   * MY FIRST VERSION ASKED THE WRONG QUESTION. It tested whether they had an account, and both of
+   * them did - they had joined and simply never gave a first name, so the flag said "joined" while
+   * the row still showed a role. The condition is not about joining at all: it is whether the
+   * label is a name. Asked of the label, which is the only thing that can answer it.
+   */
+  nameIsTheirRole?: boolean;
   /** Their own target from the board, where one belongs to them. */
   target: number | null;
   count: number;
@@ -84,6 +96,8 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
 export interface Ranked {
   participantId: string;
   who: string;
+  /** True where `who` is a role standing in for a name nobody has given. */
+  nameIsTheirRole: boolean;
   target: number | null;
   count: number;
   reason: Reason;
@@ -108,6 +122,7 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
     .map((r) => ({
       participantId: r.participantId,
       who: r.who,
+      nameIsTheirRole: r.nameIsTheirRole === true,
       target: r.target,
       count: r.count,
       reason: whyThisRow(r, roundsPlanned),

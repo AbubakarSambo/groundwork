@@ -1575,6 +1575,7 @@ For each handoff give:
 - onLabel: when onName is null, a short description of what they are waiting on instead ("the client's legal team", "the pricing decision").
 - status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
 - then: what happens once it clears, if they said ("then I can close the three orgs"). Null if they did not say.
+- triedSaid: what they said they have already DONE about it, in their own words ("I emailed finance twice", "I called him on Tuesday", "I raised it with her manager"). This is what they DID, not what they intend to do. Null if they did not say.
 
 Be conservative. If it is not clearly a handoff this person is waiting on, do not extract it. An empty list is a correct answer.`;
 
@@ -1594,6 +1595,23 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
             onLabel: { type: ['string', 'null'], description: 'What they are waiting on when it is not a person.' },
             status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
             then: { type: ['string', 'null'], description: 'What happens once it clears.' },
+            /*
+             * WHAT THEY SAID THEY HAD ALREADY DONE ABOUT IT, in their own words.
+             *
+             * The column existed and nothing wrote to it, so every blocker on the board read as
+             * "nothing said yet" - including one where the person had told us they emailed finance
+             * twice, and another where they had asked the CFO once last month. That is the whole
+             * difference between somebody blocked and somebody stuck, and it was being thrown away
+             * one sentence after they said it.
+             *
+             * Their sentence, not a judgement about it: the tiering is read off this at the point
+             * of use, so the words stay the record.
+             */
+            triedSaid: {
+              type: ['string', 'null'],
+              description:
+                'What they said they have already DONE about this, in their own words - emailed, called, chased, escalated, went around it. Null if they did not say.',
+            },
           },
           required: ['what', 'status'],
         },
