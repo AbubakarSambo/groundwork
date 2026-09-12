@@ -10,7 +10,13 @@
 import * as fs from 'fs';
 
 export const API = 'http://localhost:3000/api/v1';
-const LOG = '/tmp/gw-api.log';
+/*
+ * WHERE THE API IS ACTUALLY WRITING. Hard-coded, this pointed at a log that had last been written
+ * to two days earlier, so every journey that waits for an email saw an empty mailbox and reported
+ * "nothing arrived" against invitations that had been sent perfectly well. The path is a property
+ * of how the server was started, not of the product, so it comes in the same way.
+ */
+const LOG = process.env.GW_API_LOG ?? '/tmp/gw-api.log';
 const ANSI = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
 
 export interface Step { did: string; got: string; friction?: string; failed?: boolean; ms?: number }

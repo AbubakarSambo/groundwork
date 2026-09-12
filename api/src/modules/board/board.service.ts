@@ -660,8 +660,16 @@ export class BoardService {
           participantId: p.id,
           name: nameOf(p.id),
           role: p.roleAsDescribed ?? null,
+          /*
+           * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
+           * carries the engine's own markers - a live board showed
+           * "[VERIFIABILITY:HIGH] We need to hit 270 units this year." under somebody's name.
+           * Everywhere else that renders an entry already strips them; this was the one that did
+           * not. `loadReadInput` below deliberately keeps the raw text, because the tiering in
+           * reads.ts is the thing that READS the marker - that one is not a surface.
+           */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
-            id: e.id, type: e.type, text: e.text,
+            id: e.id, type: e.type, text: cleanText(e.text),
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));
