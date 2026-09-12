@@ -2,6 +2,8 @@ import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
+import { BOARD_MUTED_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
@@ -266,6 +268,12 @@ export function BoardPage() {
         <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
+              {/*
+                THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
+                from one check-in and left the same way - read one, back to the list, find the next,
+                open it, open its board. See the component for why the server says which have one.
+              */}
+              <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>
               <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
               <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
@@ -308,7 +316,7 @@ export function BoardPage() {
                 ) : null}
               </div>
             </div>
-            <div style={{ fontSize: 10.5, color: '#A8AFD6', textAlign: 'right', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10.5, color: BOARD_MUTED_INK, textAlign: 'right', lineHeight: 1.5 }}>
               {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
             </div>
           </div>
@@ -335,7 +343,7 @@ export function BoardPage() {
                   const skin = {
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? '#8BE0AE' : '#A8AFD6',
+                    color: s.state === 'current' ? '#8BE0AE' : BOARD_MUTED_INK,
                     fontWeight: s.state === 'current' ? 700 : 500,
                   } as const
                   if (!been) return <div key={s.n} style={skin}>{face}</div>
@@ -371,7 +379,7 @@ export function BoardPage() {
           within one click.
         */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#A8AFD6', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>

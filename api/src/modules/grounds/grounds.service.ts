@@ -1170,7 +1170,17 @@ export class GroundsService {
          * still has to say what it is for.
          */
         const latestFinding = ((rest as any).reportRounds?.[0]?.finding as string | null) ?? null;
-        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding };
+        /*
+         * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
+         *
+         * Eight of the twenty-two situations have none - the sensing family and the one-off - and
+         * "no sections means no board" is worked out from a map that lives here. A switcher that
+         * let somebody pick a board and then told them there was not one would be offering a door
+         * into a wall, and the only way for the client to filter them itself is a second copy of
+         * that map. There are enough of those.
+         */
+        const hasBoard = boardRendersFor((rest as any).scenario);
+        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, hasBoard };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
