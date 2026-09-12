@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
+import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -28,7 +30,11 @@ export class WhatsAppForAnOrganisationController {
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsAppService,
     private readonly inbound: WhatsAppForAnOrganisationService,
+    private readonly config: ConfigService,
   ) {}
+
+  /* The three the product starts. Every other send is a reply, which needs no template. */
+  private static readonly THE_ONES_WE_START = [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name];
 
   /* ---------------- the admin half ---------------- */
 
@@ -41,10 +47,24 @@ export class WhatsAppForAnOrganisationController {
      * the setup page can say them rather than keeping its own copy, which is how a page ends up
      * promising a language nobody added.
      */
+    /*
+     * AND WHETHER WE CAN START A CONVERSATION AT ALL.
+     *
+     * WhatsApp only lets a business send free text within 24 hours of the person last writing.
+     * Outside that, only wording Meta has approved goes - so until our three are approved, every
+     * message the product STARTS is recorded as not sent rather than sent and refused.
+     *
+     * Which means an admin can set all of this up correctly and nothing will ever arrive, with no
+     * way to tell that from a broken connection. So the page is told, and it is told from the same
+     * setting the sender reads: the day somebody adds the approved names, the warning goes on its
+     * own rather than waiting for a person to notice the copy is stale.
+     */
+    const approved = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
     return {
       connection: await this.whatsapp.connectionFor(organizationId),
       webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}`,
       languages: Object.values(LANGUAGES_WE_CONVERSE_IN),
+      canStartAConversation: WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t)),
     };
   }
 

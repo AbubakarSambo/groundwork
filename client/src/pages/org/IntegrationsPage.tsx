@@ -491,11 +491,29 @@ export function IntegrationsPage() {
           question at a time, and the person can answer in their own language.
           The list comes from the server so this page cannot promise a language nobody added.
         */}
+        {/*
+          WHAT AN ADMIN CANNOT SEE FOR THEMSELVES. WhatsApp only lets a business send free text
+          within 24 hours of the person last writing. Outside that, only wording Meta has approved
+          goes - so until ours is approved, everything the product STARTS is recorded as not sent.
+          Somebody can set this all up correctly and have nothing arrive, with no way to tell that
+          from a broken connection. The server says which it is, from the same setting the sender
+          reads, so this goes on its own the day the wording is approved.
+        */}
+        {(whatsapp.data as any)?.canStartAConversation === false && (
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px', margin: '10px 0', fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-text)' }}>
+            <strong>Start by email for now.</strong> WhatsApp only lets us write first using wording
+            Meta has approved, and ours is still going through. So send the first check-in link by
+            email as usual. Once somebody replies on WhatsApp, everything works there: their
+            check-in, their reminders and their report. Nothing is lost in the meantime, and nothing
+            here needs changing when the wording is approved.
+          </div>
+        )}
         {(whatsapp.data as any)?.languages?.length > 0 && (
           <p style={S.body}>
             On WhatsApp the questions are short and in plain everyday words, one at a time, the way
             you would ask somebody in person. People can answer in {(whatsapp.data as any).languages.length} languages
             and the check-in carries on in whichever they use: {(whatsapp.data as any).languages.join(', ')}.
+            {' '}The first message we send is in English; it changes to their language as soon as they reply.
             What goes on the record is kept in English so everyone reads the same thing.
           </p>
         )}

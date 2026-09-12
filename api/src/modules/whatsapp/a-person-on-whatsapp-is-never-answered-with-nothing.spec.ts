@@ -118,7 +118,8 @@ describe('the organisation handler', () => {
 
   it('an inbound for an organisation we do not have is acknowledged and SAID, not dropped in silence', async () => {
     const prisma: any = { whatsAppConnection: { findUnique: jest.fn(async () => null) } };
-    const c = new WhatsAppForAnOrganisationController(prisma, {} as any, {} as any);
+    /* Fourth argument: config, for whether Meta has approved the wording we start with. */
+    const c = new WhatsAppForAnOrganisationController(prisma, {} as any, {} as any, { get: () => [] } as any);
     (c as any).logger = { warn: jest.fn(), error: jest.fn(), log: jest.fn() };
     const res = await c.receive('org-nobody', { rawBody: Buffer.from('{}'), headers: {}, body: {} } as any);
     expect(res).toEqual({ received: true });
