@@ -32,6 +32,10 @@ export interface TargetOnRecord {
 
 /** Something this person said is in their way, as the record holds it. */
 export interface InTheWay {
+  /** What they have said they did about it, where the record knows. See the blocker module. */
+  tried?: Effort;
+  /** A date they committed to chasing by, where they gave one. */
+  chaseBy?: Date | null;
   what: string;
   /** Who it is on - a person's label, or free text where it is outside the check-in. */
   on: string | null;
@@ -42,6 +46,8 @@ export interface InTheWay {
   /** What they said happens once it clears, where they said. */
   then?: string | null;
 }
+
+import { stillToAsk, waysThrough, type Effort } from './a-blocker-is-not-a-blocker-until-you-have-tried';
 
 export const A_DAY = 24 * 60 * 60 * 1000;
 
@@ -103,6 +109,17 @@ export function whatTheRecordAlreadyHolds(input: {
   }
 
   if (inTheWay.length > 0) {
+    /*
+     * WHAT IS STILL TO BE ASKED ABOUT EACH ONE, worked out here rather than left to the model.
+     *
+     * The three facts that separate a blocked person from a stuck one - is there a person who can
+     * move it, what has been tried, is there a date - are either on the record or they are not.
+     * Where one is missing the conversation asks for it, and the asking is written out so it
+     * cannot be crowded out by the other 273 things the prompt is asking for.
+     */
+    const owedQuestions = inTheWay.flatMap((r) => stillToAsk({
+      what: r.what, owner: r.on, days: daysSince(r.since, now), tried: r.tried ?? 'nothing', chaseBy: r.chaseBy ?? null,
+    })); 
     const stale = inTheWay.filter((r) => daysSince(r.since, now) >= WAITED_LONG_ENOUGH_TO_ASK);
     const unowned = inTheWay.filter((r) => !r.on?.trim());
     parts.push(
@@ -117,7 +134,16 @@ export function whatTheRecordAlreadyHolds(input: {
         ? `\n${unowned.length === 1 ? 'One of them names' : `${unowned.length} of them name`} no ` +
           'person, only a team or nothing at all. A team cannot answer an email. Find out who the ' +
           'person is.'
-        : ''),
+        : '') +
+      (owedQuestions.length
+        ? '\nStill unanswered about these, and worth more than anything new:\n' +
+          owedQuestions.map((q) => `- ${q}`).join('\n')
+        : '') +
+      '\nIf they are still only waiting, put the ways through to them as options rather than as a ' +
+      'telling-off: ' + waysThrough({
+        what: inTheWay[0].what, owner: inTheWay[0].on, days: daysSince(inTheWay[0].since, now),
+        tried: inTheWay[0].tried ?? 'nothing', chaseBy: inTheWay[0].chaseBy ?? null,
+      }).join(' / '),
     );
   }
 

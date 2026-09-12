@@ -58,6 +58,22 @@ describe('what the record already holds', () => {
     expect(out).toContain('Ask what has actually been done about them since');
   });
 
+  it('spells out what is still unanswered about a blocker, and the ways through', () => {
+    /* The three facts that separate blocked from stuck. Written out rather than left to a model
+       that is already carrying 273 other instructions. */
+    const out = whatTheRecordAlreadyHolds({
+      targets: [],
+      inTheWay: [{ what: 'the Sokoto lease', on: null, since: daysAgo(21), escalated: false, tried: 'asked-again' }],
+      saidLastTime: [], now: NOW,
+    });
+    expect(out).toContain('Still unanswered about these');
+    expect(out).toContain('A team is not a person');
+    expect(out).toContain('taken it above them');
+    expect(out).toContain('what do you do if you do not');
+    expect(out).toContain('options rather than as a telling-off');
+    expect(out).toContain('what can move without this');
+  });
+
   it('asks whether last time’s promise happened before anything new', () => {
     const out = whatTheRecordAlreadyHolds({
       targets: [], inTheWay: [],

@@ -93,6 +93,7 @@ import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
+import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 
 /**
@@ -1013,6 +1014,38 @@ export class ConversationService {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
         }
       }
+      /*
+       * AND A GUESS IS NOT ALLOWED TO HARDEN INTO A FACT ON THE WAY OUT.
+       *
+       * Same shape as the broken-sentence gate above, and the same second chance: read the reply
+       * against what the person actually said, and where it has taken the hedge off a number they
+       * hedged, ask for the turn again. See a-hedge-is-not-a-fact.ts for the live turn this was
+       * written from - "about a third of the way there I would say" came back as "You're a third of
+       * the way there", and that is what a lead then reads about somebody.
+       *
+       * If the second try hardens it too, the first stands and a warning is logged: a reply that
+       * overstates is still better than no reply, and a loop here would strand the person.
+       */
+      /* The turn this reply is answering, not the whole conversation: a hedge from three turns ago
+         does not make a number they have since counted into a guess. */
+      const theirLastTurn = theirWords[theirWords.length - 1] ?? '';
+      const hardened = screened.text ? hardenedAGuess(theirLastTurn, screened.text) : null;
+      if (hardened) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact; asking again.`);
+        const softer = await this.anthropic
+          .respond(`${fullSystem}\n\n${DO_NOT_HARDEN_IT(hardened)}`, history)
+          .catch(() => '');
+        const second = softer.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(softer), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !hardenedAGuess(theirLastTurn, second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try kept it as their estimate.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try hardened it too; the first stands.`);
+        }
+      }
+
       reply = screened.text || ASK_AGAIN;
 
       /*
