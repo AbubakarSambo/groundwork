@@ -34,10 +34,10 @@ const SERVICE = strip(
 
 describe('what this check-in is about', () => {
   it('travels on the transcript, which is what every later load reads', () => {
-    expect(SERVICE).toContain('brief: this.briefFor(ground)')
+    expect(SERVICE).toContain('brief: this.briefFor(ground,')
     const at = SERVICE.indexOf('async getTranscript(')
     const end = SERVICE.indexOf('async getDownload(')
-    expect(SERVICE.slice(at, end)).toContain('brief: this.briefFor(ground)')
+    expect(SERVICE.slice(at, end)).toContain('brief: this.briefFor(ground,')
   })
 
   it('and the transcript query loads the fields it needs to build one', () => {
@@ -45,7 +45,7 @@ describe('what this check-in is about', () => {
     const end = SERVICE.indexOf('async getDownload(')
     const body = SERVICE.slice(at, end)
     expect(body).toContain('brief: true')
-    expect(body).toMatch(/objectives: \{ select: \{ name: true, target: true \}/)
+    expect(body).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/)
   })
 
   it('is declared on the response the client reads', () => {

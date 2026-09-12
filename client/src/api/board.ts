@@ -93,6 +93,9 @@ export type BoardPresent = {
    * somebody to do is a manager's read of their own team, not something a colleague may hold about
    * a colleague. The order ranks situations and never people - see the server module.
    */
+  /** Lead-only: where per-person targets exist but some have no owner, so everybody can see them. */
+  targetsNobodyOwns?: string | null
+
   eachPerson?: {
     participantId: string
     who: string

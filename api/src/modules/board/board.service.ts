@@ -50,6 +50,7 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { whereEachPersonIs } from './where-each-person-is-against-their-number';
+import { whatTheLeadShouldKnow } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
@@ -410,6 +411,14 @@ export class BoardService {
           };
         }),
       };
+    }
+
+    /* Where the privacy setting is on and doing nothing, the person who can fix it is told. */
+    if (has('objectives') && runsThisGround) {
+      out.targetsNobodyOwns = whatTheLeadShouldKnow(
+        (ground.objectives ?? []) as any,
+        (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+      );
     }
 
     if (has('objectives')) {

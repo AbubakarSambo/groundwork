@@ -637,6 +637,13 @@ export function BoardPage() {
         {shown.objectives && b.objectives && (
           <>
             <Sec title="What we are aiming for" src="the lead sets these" />
+            {/* The privacy setting is on and some numbers still have nobody's name on them, so
+                everybody can read those. Said to the only person who can fix it. */}
+            {b.targetsNobodyOwns && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+                {b.targetsNobodyOwns}
+              </div>
+            )}
             {b.objectivesPrompt && (
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
                 {b.objectivesPrompt}

@@ -942,6 +942,9 @@ model Ground {
   reportActivations          ReportActivation[]
   roundCompletions           RoundCompletion[]
   objectives                 GroundObjective[]
+  /// Whether people on this check-in see each other's numbers. Narrow unless somebody chose
+  /// otherwise: a default that publishes is not a default.
+  whoSeesTargets             WhoSeesTargets @default(THEIR_OWN) @map("who_sees_targets")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   poll                       GroundPoll?
@@ -1438,6 +1441,17 @@ model PersonStyleProfile {
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@map("person_style_profiles")
+}
+
+/// WHETHER PEOPLE SEE EACH OTHER'S NUMBERS.
+///
+/// Ten salespeople each saw all ten targets on their own first screen, and nobody decided that: it
+/// fell out of the brief being a shared fact and a target being a board object. Both answers are
+/// defensible - plenty of sales floors put the whole board on the wall on purpose - and neither
+/// should be an accident of how the data is modelled. See whose-number-is-whose-business.ts.
+enum WhoSeesTargets {
+  THEIR_OWN
+  EVERYBODY
 }
 
 model GroundObjective {

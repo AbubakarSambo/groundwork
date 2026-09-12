@@ -95,6 +95,7 @@ import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
+import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -336,7 +337,7 @@ export class ConversationService {
          * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
          */
         brief: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -430,7 +431,7 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      brief: this.briefFor(ground),
+      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)),
       turns: turns.map(asRead),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
@@ -492,10 +493,42 @@ export class ConversationService {
    * party wrote about them, nothing from anybody else's account. A brief that leaked one
    * participant's words to another would break the promise that makes the answers worth having.
    */
+  /**
+   * The reader, for the one part of the brief that is not a shared fact. Their participant row and
+   * whether they run this check-in; both already on the objects in hand, so nothing is fetched.
+   */
+  private whoIsReadingIt(
+    ground: { initiatorId?: string | null } | null,
+    checkIn: { participantId?: string | null; participant?: { userId?: string | null } | null } | null,
+  ) {
+    return {
+      participantId: checkIn?.participantId ?? null,
+      isLead: !!ground?.initiatorId && !!checkIn?.participant?.userId && ground.initiatorId === checkIn.participant.userId,
+    };
+  }
+
   private briefFor(
-    ground: { label: string | null; brief?: string | null; objectives: { name: string; target: number | null }[] } | null,
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[] } | null {
+    ground: {
+      label: string | null; brief?: string | null;
+      objectives: { name: string; target: number | null; ownerParticipantId?: string | null }[];
+      whoSeesTargets?: 'THEIR_OWN' | 'EVERYBODY';
+    } | null,
+    /*
+     * WHO IS READING, because a target with somebody's name on it is not a shared fact.
+     *
+     * Everything else in this brief is: the subject, what the lead wrote, a target belonging to the
+     * whole check-in. A target belonging to one person is a different object, and ten of them on a
+     * colleague's screen is a decision nobody made. See whose-number-is-whose-business.
+     */
+    reader?: { participantId: string | null; isLead: boolean },
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
+    const maySee = targetsFor(
+      ground.objectives ?? [],
+      reader?.participantId ?? null,
+      ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
+      { isLead: !!reader?.isLead },
+    );
     return {
       subject: ground.label ?? null,
       /*
@@ -512,7 +545,8 @@ export class ConversationService {
        * one participant's ACCOUNT reaching another, which this is not.
        */
       says: ground.brief?.trim() || null,
-      objectives: ground.objectives ?? [],
+      objectives: maySee.shown,
+      alsoSay: maySee.alsoSay,
     };
   }
 
@@ -539,7 +573,7 @@ export class ConversationService {
         /* What the check-in is actually about, for the brief a participant reads first. */
         brief: true,
         scenario: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
@@ -551,7 +585,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
     }
     await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
       this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
@@ -748,7 +782,7 @@ export class ConversationService {
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
+    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
   }
 
   /**
@@ -1569,7 +1603,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
         /**
          * THE ROSTER, SO THE INTERVIEW CAN USE PEOPLE'S NAMES. GW-EXP-1.
          *
@@ -5698,7 +5732,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId, initiatorId: requestingUserId },
       select: {
         id: true, label: true, scenario: true, brief: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
         participants: {
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true,
