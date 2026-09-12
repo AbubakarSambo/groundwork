@@ -92,6 +92,9 @@ const SHEET = `
 
 .gw-close .gw-big   { font-size: 14px;   line-height: 1.5; font-weight: 600; }
 .gw-close .gw-p     { font-size: 13px;   line-height: var(--lead); }
+/* The ways through. Its own ground so it reads as offered rather than as part of the list above it,
+   and never grey ink on a grey field - the border carries the separation, the text stays full. */
+.gw-close .gw-try   { border-left: 2px solid var(--gw-border); padding-left: 12px; }
 .gw-close .gw-said  { font-size: 13px;   line-height: var(--lead); }
 .gw-close .gw-small { font-size: 12px;   line-height: 1.55; }
 .gw-close .gw-mini  { font-size: 11.5px; line-height: 1.5; }
@@ -315,6 +318,12 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
   const mine: MyRow[] = ((r?.myRows ?? []) as MyRow[]).filter(x => x.sessionNumber === sessionNumber)
   const open = mine.filter(x => STILL_OPEN.includes(x.type) && !x.disputedAt)
   const said = mine.filter(x => !AGAINST_IT.includes(x.type) && !STILL_OPEN.includes(x.type))
+  /*
+   * WHAT THEY COULD TRY, beside what is still in their way. Computed on the server - see
+   * what-you-could-try-next - because a recommendation that depends on the model remembering one
+   * line among two hundred and seventy-three is not a recommendation anybody reliably gets.
+   */
+  const couldTry: { id: string; what: string; couldTry: string[] }[] = ((r as any)?.couldTry ?? [])
   const carry = artifact.data?.artifact?.whatToCarry ?? null
   const note = r?.coaching ?? null
 
@@ -447,13 +456,36 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       )}
 
       {/* ── 04 · What is still open for you. See the header for what this cannot say yet. */}
-      {open.length > 0 && (
+      {(open.length > 0 || couldTry.length > 0) && (
         <Block n={next()} label="What is still open for you" note="what you asked for, and what you raised">
           <div style={{ display: 'grid', gap: 8 }}>
             {open.map(x => (
               <p key={x.id} className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
             ))}
           </div>
+
+          {/*
+            AND WHAT THEY COULD DO ABOUT IT. Options, in the order they are worth doing, for each
+            thing still in their way - never a count of days shouted back at them and nothing about
+            whether they should have moved sooner. Somebody who has already escalated or gone around
+            has no row here at all, because they have done the thing this would suggest.
+          */}
+          {couldTry.length > 0 && (
+            <div style={{ display: 'grid', gap: 12, marginTop: open.length > 0 ? 14 : 0 }}>
+              {couldTry.map(b => (
+                <div key={b.id} className="gw-try">
+                  <p className="gw-p" style={{ margin: '0 0 4px', color: 'var(--gw-text)', fontWeight: 600 }}>
+                    Ways through {'\u201C'}{b.what}{'\u201D'}
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>
+                    {b.couldTry.map((line, i) => (
+                      <li key={i} className="gw-p" style={{ color: 'var(--gw-text)', maxWidth: '64ch' }}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </Block>
       )}
 

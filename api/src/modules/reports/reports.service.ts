@@ -41,6 +41,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { whatTheyCouldTry } from './what-you-could-try-next';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -3775,6 +3776,52 @@ happened, and what is in the way.`;
    *
    * Nothing here crosses a wall. These are the reader's own words, read back to the reader.
    */
+  /**
+   * WHAT THEY COULD TRY, ON THEIR OWN HALF, BESIDE THE BLOCKER IT BELONGS TO.
+   *
+   * Sits next to `theirOwnRows` because it answers to the same rule: this is the person's own half
+   * and it does not wait on anybody else finishing. See what-you-could-try-next for why it is
+   * computed rather than asked of the model.
+   */
+  private async whatTheyCouldTryNext(groundId: string, participantId: string | null | undefined) {
+    if (!participantId) return [];
+    const ground = await (this.prisma.ground?.findUnique?.({
+      where: { id: groundId },
+      select: { expectThemToUnblock: true },
+    }) ?? Promise.resolve(null as any))?.catch?.(() => null) ?? null;
+    /* Default TRUE, matching the column: a check-in that cannot be read still coaches. */
+    const expects = ground?.expectThemToUnblock !== false;
+
+    const mine = await (this.prisma.groundDependency?.findMany?.({
+      where: { groundId, fromParticipantId: participantId, status: { in: ['BLOCKING', 'WAITING'] } },
+      /*
+       * `onLabel` is the name as the record captured it, which is what the person themselves said -
+       * "Amina", "finance". Where it names a team rather than a person, `waysThrough` opens with
+       * "find out who owns this by name", which is exactly the right first move.
+       */
+      select: { id: true, what: true, onLabel: true, createdAt: true, triedSaid: true, escalatedAt: true },
+    }) ?? Promise.resolve([] as any[]))?.catch?.(() => []) ?? [];
+
+    const day = 24 * 60 * 60 * 1000;
+    return whatTheyCouldTry(
+      (mine as any[]).map((d) => ({
+        id: d.id,
+        what: d.what,
+        /* Only a resolved person is somebody you can be waiting on - a team cannot answer an email. */
+        owner: d.onLabel ?? null,
+        days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / day)),
+        tried: (d.escalatedAt ? 'escalated' : (d.triedSaid ?? 'nothing')) as any,
+        /*
+         * Nothing stores a chase date on a dependency - `chaseBy` exists on Standing and on no
+         * column - so this is null and `waysThrough` keeps offering "put a date on it in writing",
+         * which is the right thing to offer somebody who has not got one.
+         */
+        chaseBy: null,
+      })),
+      expects,
+    );
+  }
+
   private async theirOwnRows(participantId: string | null | undefined) {
     if (!participantId) return [];
     /* Optional-chained like its neighbours: a caller whose prisma double stubs only what it needs
@@ -3894,6 +3941,7 @@ happened, and what is in the way.`;
           soloArtifact,
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),
+          couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
           sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         };
@@ -3906,6 +3954,7 @@ happened, and what is in the way.`;
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
+        couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
         /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
@@ -4035,6 +4084,7 @@ happened, and what is in the way.`;
        * the dispute; every read that COUNTS rows filters them out.
        */
       myRows: await this.theirOwnRows(participant?.id),
+      couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
       mySoftSpots: participant
         ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
         : [],
