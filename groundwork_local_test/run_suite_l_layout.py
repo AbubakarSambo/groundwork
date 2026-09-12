@@ -38,23 +38,24 @@ EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 # only after signing up, which is backwards: the person with no account has no
 # other way in.
 ENTRY_CARDS = [
-    "A new hire starting",
-    "A new project starting",
-    "A new co-founder or partner",
-    "A new advisor or board member",
+    # Renamed with the rest of the catalogue: every card names the job now, not the situation.
+    "Help a New Hire Get Started",
+    "Get a New Project Off to a Good Start",
+    "Start a New Partnership Well",
+    "Start a New Advisor or Board Relationship",
     "Onboarding several people at once",
     "Set Goals and Keep the Team on Track",
-    "A big decision",
-    "A workplan and budget",
-    "Board or leadership strategy",
-    "A regular read on live work",
-    "Several people in the same role",
-    "A raise, promotion, or recognition",
-    "A contract or renewal",
-    "Someone's work is off track",
-    "A project is off track",
-    "People see it differently",
-    "Something serious just happened",
+    "Work Through a Big Decision",
+    "Build a Workplan and Budget That Makes Sense",
+    "Align on Strategy",
+    "Keep a Read on Live Work",
+    "Check How the Same Role Is Going Across People",
+    "Support a Raise, Promotion, or Recognition",
+    "Check In Before a Contract or Renewal",
+    "Help Someone Get Back on Track",
+    "Get a Project Back on Track",
+    "Understand Where People See Things Differently",
+    "Make Sense of Something Serious That Happened",
 ]
 # The catch-all card's label, as /entry actually renders it.
 #

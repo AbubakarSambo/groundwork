@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { SITUATION_CARDS } from './EntryChatPage'
 
 /**
@@ -61,7 +62,13 @@ describe('entry cards: display reframed, routing untouched', () => {
     expect(labels).not.toContain('Team member not delivering')
     expect(labels).not.toContain('Cofounder or partner dispute')
     expect(labels).not.toContain('Running a PIP')
-    expect(labels).toContain("Someone's work is off track")
+    /*
+     * FROM THE CATALOGUE. What this line protects is that the card exists at all under a name that
+     * is not the mechanism - the three assertions around it are the actual guard, and they still
+     * are. Pinning the string meant a rename had to edit the test, and a test edited to match a
+     * rename stops being able to object to one.
+     */
+    expect(labels).toContain(SCENARIO_LABELS.PIP)
     // PIP and cofounder disagreement were dropped as top-level cards in the
     // rebalance (too negative/narrow); they survive only as e.g. examples.
     expect(labels).not.toContain('Running a performance improvement plan')
@@ -86,15 +93,15 @@ describe('entry cards: display reframed, routing untouched', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
     /* Renamed for the job rather than the mechanism. What this line protects is that a positive
        card is still offered, not what it happens to be called this month. */
-    expect(labels).toContain('Set Goals and Keep the Team on Track')
-    expect(labels).toContain('A big decision')
-    expect(labels).toContain('People see it differently')
+    expect(labels).toContain(SCENARIO_LABELS.OKR_ALIGNMENT)
+    expect(labels).toContain(SCENARIO_LABELS.CRISIS_ALIGNMENT)
+    expect(labels).toContain(SCENARIO_LABELS.REALIGN_TEAM)
   })
 
   it('the starting cards carry the plain voice (the last three un-reframed strings)', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('A new project starting')
-    expect(labels).toContain('A new co-founder or partner')
+    expect(labels).toContain(SCENARIO_LABELS.NEW_PROJECT)
+    expect(labels).toContain(SCENARIO_LABELS.NEW_COFOUNDER)
     expect(labels).not.toContain('New project kickoff')
     expect(labels).not.toContain('New working arrangement')
     // Sharpened for a reader who runs a company: "a new way of working
@@ -109,10 +116,16 @@ describe('entry cards: display reframed, routing untouched', () => {
      * applies to both: the detail names who is arriving, in the words somebody running a company
      * would use, rather than describing a mood.
      */
-    const cofounder = SITUATION_CARDS.find(c => c.label === 'A new co-founder or partner')!
-    expect(cofounder.detail).toMatch(/sharing the work/)
-    const manager = SITUATION_CARDS.find(c => c.label === 'A new manager taking over')!
-    expect(manager.detail).toMatch(/taking over/)
+    /*
+     * THE RULE, NOT THE SENTENCE. This matched /sharing the work/ and /taking over/, which were
+     * phrases from the details as they were written then. The details are the catalogue's
+     * descriptions now, so the phrases are gone and the rule they stood for is not: each names WHO
+     * is arriving rather than describing a mood.
+     */
+    const cofounder = SITUATION_CARDS.find(c => c.label === SCENARIO_LABELS.NEW_COFOUNDER)!
+    expect(cofounder.detail).toMatch(/co-?founder|partner/i)
+    const manager = SITUATION_CARDS.find(c => c.label === SCENARIO_LABELS.NEW_MANAGER)!
+    expect(manager.detail).toMatch(/manager/i)
     for (const c of SITUATION_CARDS) {
       expect(c.label, `label of "${c.label}"`).not.toMatch(/kickoff|working arrangement/i)
       expect(c.detail, `detail of "${c.label}"`).not.toMatch(/reporting line|clear foundation/i)

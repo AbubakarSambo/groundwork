@@ -55,27 +55,34 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 # count in this comment was never updated either.
 # The picker's labels, exactly as SCENARIO_LABELS in client/src/lib/scenario-catalog.ts holds them.
 #
-# EXACTLY, because the check below matches exactly and the previous list did not. It pinned "New
-# hire" where the product renders "A new hire starting" - and the client guard passed it, because
-# that guard lowercases and asks whether the label appears anywhere in the source, and "new hire"
-# is a substring of "a new hire starting". So the suite failed in the browser while the guard
+# EXACTLY, because the check below matches exactly and the previous list did not. It pinned a
+# fragment of a label where the product renders the whole thing - and the client guard passed it,
+# because that guard lowercases and asks whether the label appears anywhere in the source, so a
+# fragment was a substring of the real one. The suite failed in the browser while the guard
 # reported agreement, which is the same shape of hole the guard was written to close. It now
 # requires a complete label rather than a fragment of one.
+#
+# AND NO LABEL IS QUOTED IN A COMMENT HERE. The guard reads the quoted strings in this file, so an
+# old name quoted in prose reads to it as a card this suite still pins - which is what happened the
+# first time these were renamed.
 CREATE_CARDS = [
-    "A new hire starting", "A role changing hands", "A new project starting",
-    "A new advisor or board member", "A new co-founder or partner", "A new manager taking over",
-    "A contract or renewal", "A raise, promotion, or recognition", "Someone's work is off track",
-    "Set Goals and Keep the Team on Track", "A workplan and budget", "A regular read on live work",
-    "A project is off track", "A big decision", "Board or leadership strategy",
-    "Several people in the same role", "A pulse check", "Onboarding several people at once",
-    "Something serious just happened", "People see it differently",
+    # RENAMED, ALL OF THEM. Every card used to be named for the situation it describes; they are
+    # named for the job they do now, because two cards had already been written in that voice and a
+    # picker in two voices reads as two products. No old name is quoted here - see the note above.
+    "Help a New Hire Get Started", "Hand Over a Role Smoothly", "Get a New Project Off to a Good Start",
+    "Start a New Advisor or Board Relationship", "Start a New Partnership Well", "Help a New Manager Take Over",
+    "Check In Before a Contract or Renewal", "Support a Raise, Promotion, or Recognition", "Help Someone Get Back on Track",
+    "Set Goals and Keep the Team on Track", "Build a Workplan and Budget That Makes Sense", "Keep a Read on Live Work",
+    "Get a Project Back on Track", "Work Through a Big Decision", "Align on Strategy",
+    "Check How the Same Role Is Going Across People", "Take One Read, Today", "Onboarding several people at once",
+    "Make Sense of Something Serious That Happened", "Understand Where People See Things Differently",
     # ADDED LATE, AND NEVER PINNED. Both arrived with the branch that split the contract situations
     # in two, and this list was not part of that change - so the suite has been checking twenty of
     # the twenty-one named situations and reporting agreement. The client guard could not see it
     # either: it only asked whether every label HERE exists in the product, never whether every
     # situation the product offers is checked here. Both directions now.
-    "An agreement before it is signed", "An agreement that is running",
-    "Describe your own situation",
+    "Check an Agreement Before Signing", "Check How an Agreement Is Going",
+    "Work Through Something Else",
 ]
 
 VALID_ENUMS = {

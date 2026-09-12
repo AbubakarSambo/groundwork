@@ -27,18 +27,37 @@ import type { SubscriptionPlan } from '@/api/billing'
  * page is static HTML in a separate build. What has to agree is the NAME of the thing and the fact
  * that every situation is offered somewhere. That is what this holds.
  *
- * The labels are chosen for a person scanning them for their own situation, so they describe what is
- * happening rather than naming a process. "Someone's work is off track" rather than "Performance
- * improvement plan" - which also keeps the word "performance" out of the product, a decision already
- * taken for the participant-facing strings and quietly broken here.
+ * THE LABEL SAYS WHAT THE CHECK-IN IS FOR, NOT ONLY WHAT IS HAPPENING TO YOU.
+ *
+ * These used to describe the situation - "A new hire starting", "A workplan and budget" - chosen
+ * for somebody scanning the list for their own circumstances. That was right as far as it went, and
+ * it had stopped being true of the list: two cards had been written in a different voice, so a
+ * person scanning saw twenty cards saying what was happening to them and two saying what they would
+ * get. A picker in two voices reads as two products.
+ *
+ * So all of them now name the job: "Help a New Hire Get Started", "Get a Project Back on Track".
+ * The situation is still recognisable in every one - which was the point of the old rule and is not
+ * given up here - and the promise is added to it.
+ *
+ * WHAT THE OLD NOTE WAS REALLY GUARDING still holds, and is the reason none of these is called what
+ * its enum is called: never name the PROCESS. "Help Someone Get Back on Track" rather than
+ * "Performance improvement plan", which also keeps the word "performance" out of the product - a
+ * decision taken for the participant-facing strings and quietly broken here once already.
+ *
+ * ONE NAME IS NOT THE ONE HAFSAH WROTE. Her table gives SNAPSHOT "Take the Pulse of the Team". The
+ * two are a known collision - PULSE_CHECK is the recurring read and SNAPSHOT is the one-off, they
+ * were a single card once, and nobody could tell them apart, which is why the note below SNAPSHOT
+ * exists at all. Handing the word "pulse" to the one that is NOT PULSE_CHECK rebuilds exactly that.
+ * "Take One Read, Today" says the thing that actually separates them, which is that it happens once.
+ * One word to put back if she would rather have hers.
  */
 export const SCENARIO_LABELS = {
-  NEW_HIRE: 'A new hire starting',
-  ROLE_HANDOVER: 'A role changing hands',
-  NEW_PROJECT: 'A new project starting',
-  NEW_COFOUNDER: 'A new co-founder or partner',
-  NEW_MANAGER: 'A new manager taking over',
-  NEW_ADVISOR: 'A new advisor or board member',
+  NEW_HIRE: 'Help a New Hire Get Started',
+  ROLE_HANDOVER: 'Hand Over a Role Smoothly',
+  NEW_PROJECT: 'Get a New Project Off to a Good Start',
+  NEW_COFOUNDER: 'Start a New Partnership Well',
+  NEW_MANAGER: 'Help a New Manager Take Over',
+  NEW_ADVISOR: 'Start a New Advisor or Board Relationship',
   /**
    * NAMED FOR THE JOB, NOT THE MECHANISM.
    *
@@ -49,12 +68,12 @@ export const SCENARIO_LABELS = {
    * setup. See SITUATION_CARDS.
    */
   OKR_ALIGNMENT: 'Set Goals and Keep the Team on Track',
-  WORKPLAN_BUDGET: 'A workplan and budget',
-  BOARD_STRATEGY: 'Board or leadership strategy',
-  CRISIS_ALIGNMENT: 'A big decision',
-  PULSE_CHECK: 'A regular read on live work',
-  COHORT_CHECK: 'Several people in the same role',
-  CONTRACT_RENEWAL: 'A contract or renewal',
+  WORKPLAN_BUDGET: 'Build a Workplan and Budget That Makes Sense',
+  BOARD_STRATEGY: 'Align on Strategy',
+  CRISIS_ALIGNMENT: 'Work Through a Big Decision',
+  PULSE_CHECK: 'Keep a Read on Live Work',
+  COHORT_CHECK: 'Check How the Same Role Is Going Across People',
+  CONTRACT_RENEWAL: 'Check In Before a Contract or Renewal',
   /**
    * TWO CARDS, BECAUSE THESE ARE TWO MOMENTS — and neither is CONTRACT_RENEWAL above, which is one
    * person's engagement ending and sits beside a new hire and a performance plan.
@@ -62,14 +81,14 @@ export const SCENARIO_LABELS = {
    * The labels say when, because when is the only thing somebody needs to tell them apart:
    * before you sign, and after.
    */
-  CONTRACT_REVIEW: 'An agreement before it is signed',
-  IMPLEMENTATION_TRACKING: 'An agreement that is running',
-  RECOGNITION: 'A raise, promotion, or recognition',
-  PIP: "Someone's work is off track",
-  DRIFT: 'A project is off track',
-  REALIGN_TEAM: 'People see it differently',
-  ACUTE_SHOCK: 'Something serious just happened',
-  OPEN_READ: 'Describe your own situation',
+  CONTRACT_REVIEW: 'Check an Agreement Before Signing',
+  IMPLEMENTATION_TRACKING: 'Check How an Agreement Is Going',
+  RECOGNITION: 'Support a Raise, Promotion, or Recognition',
+  PIP: 'Help Someone Get Back on Track',
+  DRIFT: 'Get a Project Back on Track',
+  REALIGN_TEAM: 'Understand Where People See Things Differently',
+  ACUTE_SHOCK: 'Make Sense of Something Serious That Happened',
+  OPEN_READ: 'Work Through Something Else',
   /**
    * THE ONE-OFF, AND IT DOES RUN - the note here used to say it was "the only one that does not",
    * which stopped being true when it got a card, a group, a cadence and a place in both pickers.
@@ -80,7 +99,7 @@ export const SCENARIO_LABELS = {
    * today, no target and no second session. They were the same card once, which is why neither could
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
-  SNAPSHOT: 'A pulse check',
+  SNAPSHOT: 'Take One Read, Today',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS

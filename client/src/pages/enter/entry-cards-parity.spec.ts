@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { SITUATION_CARDS, SITUATION_GROUPS } from './EntryChatPage'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 
 /**
  * THE TWO PICKERS MUST OFFER THE SAME SITUATIONS.
@@ -34,47 +35,59 @@ import { SITUATION_CARDS, SITUATION_GROUPS } from './EntryChatPage'
  * to be distinguished is no longer true: they are two cards now, because they are two scenarios
  * with different cadences and different questions.
  */
+/*
+ * DERIVED FROM THE CATALOGUE, NOT COPIED FROM IT.
+ *
+ * This map used to spell the labels out, and it was a THIRD copy of them - the catalogue, the two
+ * pickers, and this. Renaming every card broke it, which is the test doing its job; hand-editing
+ * the strings back would have left the same trap set for the next rename. Keyed by the catalogue
+ * now, so the only way to break it is to add a card nobody mapped, which is the thing it exists to
+ * catch.
+ *
+ * The pairs that are not one to one stay written out, because they are decisions rather than
+ * lookups: two goal cards on one scenario, and the two cohort cards.
+ */
+const L = SCENARIO_LABELS
 const ENTRY_COVERS: Record<string, string[]> = {
-  'A new hire starting': ['NEW_HIRE'],
-  'An agreement before it is signed': ['CONTRACT_REVIEW'],
-  'An agreement that is running': ['IMPLEMENTATION_TRACKING'],
-  'A new project starting': ['NEW_PROJECT'],
-  'A new co-founder or partner': ['NEW_COFOUNDER'],
-  'A new manager taking over': ['NEW_MANAGER'],
+  [L.NEW_HIRE]: ['NEW_HIRE'],
+  [L.CONTRACT_REVIEW]: ['CONTRACT_REVIEW'],
+  [L.IMPLEMENTATION_TRACKING]: ['IMPLEMENTATION_TRACKING'],
+  [L.NEW_PROJECT]: ['NEW_PROJECT'],
+  [L.NEW_COFOUNDER]: ['NEW_COFOUNDER'],
+  [L.NEW_MANAGER]: ['NEW_MANAGER'],
   /* Two cards, one scenario: setting targets and keeping a team moving against them, and one goal
      at the top with other teams writing their own underneath. The map is keyed by label because a
      label is a job and a scenario is an engine, and they were never one to one. */
-  'Set Goals and Keep the Team on Track': ['OKR_ALIGNMENT'],
+  [L.OKR_ALIGNMENT]: ['OKR_ALIGNMENT'],
   'Connect Goals Across the Team': ['OKR_ALIGNMENT'],
   /**
    * WAS 'BOARD_STRATEGY', WHICH IS THE CARD BELOW THIS ONE.
    *
    * Two entry cards were documented as standing in for the same admin card, which is how
    * CRISIS_ALIGNMENT read as covered while having no card on either surface. The card's own copy
-   * says what it is - "a group making a real choice, each person's honest read before you commit" -
-   * and that is CRISIS_ALIGNMENT. BOARD_STRATEGY is the standing read on direction, and it is
-   * covered by 'Board and leadership strategy'.
+   * says what it is - a group making a real choice, each person's honest read before you commit -
+   * and that is CRISIS_ALIGNMENT. BOARD_STRATEGY is the standing read on direction.
    */
-  'A big decision': ['CRISIS_ALIGNMENT'],
-  "Someone's work is off track": ['PIP'],
-  'A project is off track': ['DRIFT'],
-  'People see it differently': ['REALIGN_TEAM'],
-  'A new advisor or board member': ['NEW_ADVISOR'],
+  [L.CRISIS_ALIGNMENT]: ['CRISIS_ALIGNMENT'],
+  [L.PIP]: ['PIP'],
+  [L.DRIFT]: ['DRIFT'],
+  [L.REALIGN_TEAM]: ['REALIGN_TEAM'],
+  [L.NEW_ADVISOR]: ['NEW_ADVISOR'],
   'Onboarding several people at once': ['COHORT_ONBOARDING'],
-  'A workplan and budget': ['WORKPLAN_BUDGET'],
-  'Board or leadership strategy': ['BOARD_STRATEGY'],
-  'A regular read on live work': ['PULSE_CHECK'],
+  [L.WORKPLAN_BUDGET]: ['WORKPLAN_BUDGET'],
+  [L.BOARD_STRATEGY]: ['BOARD_STRATEGY'],
+  [L.PULSE_CHECK]: ['PULSE_CHECK'],
   /**
    * The one-off read. It had no card on either surface, because until now it had no scenario: the
    * recurring card carried the label and the recurring interview behind it, so somebody wanting a
    * single temperature read opened that and abandoned it after one session.
    */
-  'A pulse check': ['SNAPSHOT'],
-  'Several people in the same role': ['COHORT_CHECK'],
-  'A raise, promotion, or recognition': ['RECOGNITION'],
-  'A contract or renewal': ['CONTRACT_RENEWAL'],
-  'Something serious just happened': ['ACUTE_SHOCK'],
-  'A role changing hands': ['ROLE_HANDOVER'],
+  [L.SNAPSHOT]: ['SNAPSHOT'],
+  [L.COHORT_CHECK]: ['COHORT_CHECK'],
+  [L.RECOGNITION]: ['RECOGNITION'],
+  [L.CONTRACT_RENEWAL]: ['CONTRACT_RENEWAL'],
+  [L.ACUTE_SHOCK]: ['ACUTE_SHOCK'],
+  [L.ROLE_HANDOVER]: ['ROLE_HANDOVER'],
 }
 
 /** The admin picker's cardKeys, read from source so it cannot go stale. */
@@ -111,7 +124,8 @@ describe('what a signed-out visitor is offered', () => {
 
   it('reaches the cohort situations, which used to need an account', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('Several people in the same role')
+    /* From the catalogue, so a rename cannot make this quietly assert a card nobody offers. */
+    expect(labels).toContain(SCENARIO_LABELS.COHORT_CHECK)
     expect(labels).toContain('Onboarding several people at once')
   })
 })

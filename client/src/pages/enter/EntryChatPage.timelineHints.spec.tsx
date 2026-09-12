@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { SITUATION_CARDS } from './EntryChatPage'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -13,26 +14,26 @@ import { dirname, join } from 'node:path'
  */
 
 const EXPECTED: Record<string, string> = {
-  'A new hire starting': 'typically 90 days',
-  'A new project starting': 'typically 90 days',
-  'A new co-founder or partner': 'typically 90 days',
-  'A new manager taking over': 'typically 90 days',
-  'Set Goals and Keep the Team on Track': 'typically 90 days',
-  'A big decision': 'typically one check-in',
-  "Someone's work is off track": 'typically 90 days',
-  'A project is off track': 'typically 90 days',
-  'People see it differently': 'typically 60 days',
+  [SCENARIO_LABELS.NEW_HIRE]: 'typically 90 days',
+  [SCENARIO_LABELS.NEW_PROJECT]: 'typically 90 days',
+  [SCENARIO_LABELS.NEW_COFOUNDER]: 'typically 90 days',
+  [SCENARIO_LABELS.NEW_MANAGER]: 'typically 90 days',
+  [SCENARIO_LABELS.OKR_ALIGNMENT]: 'typically 90 days',
+  [SCENARIO_LABELS.CRISIS_ALIGNMENT]: 'typically one check-in',
+  [SCENARIO_LABELS.PIP]: 'typically 90 days',
+  [SCENARIO_LABELS.DRIFT]: 'typically 90 days',
+  [SCENARIO_LABELS.REALIGN_TEAM]: 'typically 60 days',
   // The nine added when /start was brought up to the same scenario set as
   // /grounds/new. Same rule: "typically", never a bare fixed duration, so the
   // badge reads as a recommendation rather than a commitment.
-  'A new advisor or board member': 'typically 90 days',
+  [SCENARIO_LABELS.NEW_ADVISOR]: 'typically 90 days',
   'Onboarding several people at once': 'typically 90 days',
-  'A workplan and budget': 'typically 90 days',
-  'Board or leadership strategy': 'typically two check-ins',
-  'A regular read on live work': 'typically ongoing',
-  'Several people in the same role': 'typically ongoing',
-  'A raise, promotion, or recognition': 'typically one check-in',
-  'A contract or renewal': 'typically two weeks',
+  [SCENARIO_LABELS.WORKPLAN_BUDGET]: 'typically 90 days',
+  [SCENARIO_LABELS.BOARD_STRATEGY]: 'typically two check-ins',
+  [SCENARIO_LABELS.PULSE_CHECK]: 'typically ongoing',
+  [SCENARIO_LABELS.COHORT_CHECK]: 'typically ongoing',
+  [SCENARIO_LABELS.RECOGNITION]: 'typically one check-in',
+  [SCENARIO_LABELS.CONTRACT_RENEWAL]: 'typically two weeks',
   /**
    * WAS 'typically one check-in', WHICH THE CARD ITSELF HAD MADE UNTRUE.
    *
@@ -41,7 +42,7 @@ const EXPECTED: Record<string, string> = {
    * scenario really was one session, and it survived the change that gave it thirteen more, so the
    * first thing a person read about it was the one thing about it that was no longer true.
    */
-  'Something serious just happened': 'typically daily for two weeks',
+  [SCENARIO_LABELS.ACUTE_SHOCK]: 'typically daily for two weeks',
   /**
    * THE ONE HINT WITHOUT "TYPICALLY", and that is the point of it.
    *
@@ -50,16 +51,16 @@ const EXPECTED: Record<string, string> = {
    * one check-in" would suggest it sometimes is not, which is the thing this card exists to be clear
    * about - it is the only situation in the product that does not run.
    */
-  'A pulse check': 'one check-in, no follow-up',
+  [SCENARIO_LABELS.SNAPSHOT]: 'one check-in, no follow-up',
   /* Short, and deliberately shorter than onboarding: a handover still running in three months is
      not a handover, it is the leaver still doing the job. */
-  'A role changing hands': 'typically 30 days',
+  [SCENARIO_LABELS.ROLE_HANDOVER]: 'typically 30 days',
   /* It ends when the contract is signed, and 60 days is how long that takes when both sides mean
      to do it. A review still running at three months is two companies who have stopped. */
-  'An agreement before it is signed': 'typically 60 days',
+  [SCENARIO_LABELS.CONTRACT_REVIEW]: 'typically 60 days',
   /* A year, monthly, because the value of this one is entirely in the months where nothing
      happens. */
-  'An agreement that is running': 'typically a year',
+  [SCENARIO_LABELS.IMPLEMENTATION_TRACKING]: 'typically a year',
   /* The same quarter as the card beside it: a cascade is read across the same period, and giving
      the two goal cards different lengths would be a distinction with nothing behind it. */
   'Connect Goals Across the Team': 'typically 90 days',
@@ -105,7 +106,8 @@ describe('situation card timeline hints', () => {
      * thing that card exists to be clear about, and how it got confused with the recurring read in
      * the first place. It is exempt by name rather than by loosening the pattern until it fits.
      */
-    const NOTHING_TO_HEDGE = ['A pulse check']
+    /* The one-off. Its hint states a fact rather than hedging a length, because it has none. */
+    const NOTHING_TO_HEDGE = [SCENARIO_LABELS.SNAPSHOT]
     for (const [label, hint] of Object.entries(EXPECTED)) {
       if (NOTHING_TO_HEDGE.includes(label)) continue
       expect(hint).toMatch(/^typically /)
