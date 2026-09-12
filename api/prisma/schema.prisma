@@ -1488,6 +1488,17 @@ model CheckInGap {
   what          String    @db.Text
   /// How many times it has been asked for. Past the limit the conversation stops asking.
   asked         Int       @default(1)
+  /// WHETHER WE CAN ACTUALLY TELL THAT IT WAS NOT ANSWERED.
+  ///
+  /// Most slots are proved from the record: an entry of the right kind exists or it does not. A few
+  /// have no type yet - what a goal sits under, whether two teams overlap - so the conversation can
+  /// ask but nothing can confirm the answer, and they would otherwise sit open for ever against
+  /// somebody who answered in their first sentence. Watched happen to a lead who had just said the
+  /// group target was 120 million and why it mattered.
+  ///
+  /// False means: this was asked and we cannot tell. The lead is told that, rather than told they
+  /// did not answer.
+  certain       Boolean   @default(true)
   /// The round it was first recorded in, so a lead can see how long it has been open.
   firstRound    Int       @map("first_round")
   answeredAt    DateTime? @map("answered_at")

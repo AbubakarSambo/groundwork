@@ -504,7 +504,11 @@ export function BoardPage() {
                       <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-                      open since session {g.sinceRound}
+                      {/* Some of these cannot be confirmed either way - the check-in asked and
+                          nothing on the record can prove the answer. Saying "they did not answer"
+                          about somebody who answered in their first sentence would be worse than
+                          saying nothing. */}
+                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
                     </span>
                   </div>
                 </Row>

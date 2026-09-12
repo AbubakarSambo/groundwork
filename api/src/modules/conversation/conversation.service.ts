@@ -1976,9 +1976,8 @@ export class ConversationService {
       ]);
       const stage = stageOf(
         checkIn.sessionNumber ?? 1,
-        /* An explicit count wins over anything derived, the same order the rest of the product
-           reads them in. */
-        (ground as any).totalSessions ?? totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+        /* Derived from the timeline and the cadence, which is where a planned length lives. */
+        totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
         !!(checkIn as any).isFinal,
       );
       const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
@@ -3477,15 +3476,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
     // the record is populated before the status change races past it. buildSoloArtifact
     // is still fire-and-forget. Both are best-effort.
-    /*
-     * AND THE GAPS ARE SETTLED FOR THIS ROUND: answered ones closed, unanswered ones recorded.
-     *
-     * After extraction, because whether a slot was answered is a question about the record and the
-     * record is what extraction writes. A gap closes permanently the moment it is answered, in this
-     * round or any later one - a fact does not stop being on the record because a new round began.
-     */
-    await this.settleTheGaps(checkIn).catch((err) =>
-      this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`));
 
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
@@ -3506,6 +3496,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // every session because detection is continuous, not a tag set once.
     this.extractStatedFigures(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
+
+    /*
+     * AND THE GAPS ARE SETTLED FOR THIS ROUND: answered ones closed, unanswered ones recorded.
+     *
+     * AFTER EXTRACTION AND NOT BEFORE, which is where I first put it against my own comment saying
+     * otherwise. Whether a slot was answered is a question about the record, and extraction is what
+     * writes the record: run first, it reads a round that has not been extracted yet, so somebody
+     * who gave a clear goal in this very session has it recorded as a gap. Watched happen - "the
+     * goal or target that fits their own role", against a person who had just said 1,200 qualified
+     * leads against 1,000 last quarter.
+     *
+     * A gap closes permanently the moment it is answered, in this round or any later one: a fact
+     * does not stop being on the record because a new round began.
+     */
+    await this.settleTheGaps(checkIn).catch((err) =>
+      this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`));
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -3928,7 +3934,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async settleTheGaps(checkIn: any): Promise<void> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { scenario: true, brief: true, initiatorId: true, totalSessions: true, timelineDays: true, cadence: true } as any,
+      /* No totalSessions on a ground: the planned length is derived from the timeline and the
+         cadence, which is what session-count exists for. Selecting it threw the whole settle. */
+      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true } as any,
     });
     const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
     if (!owed) return;
@@ -3947,7 +3955,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const stage = stageOf(
       checkIn.sessionNumber ?? 1,
-      (ground as any)?.totalSessions ?? totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null,
+      totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null,
       !!checkIn.isFinal,
     );
     const role = this.roleOfTheReaderFor(ground as any, { participant } as any);
@@ -3979,6 +3987,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             participantId: checkIn.participantId,
             slug: o.id,
             what: o.what,
+            /* A slot nothing can prove is asked and then recorded as unconfirmable, not as
+               unanswered. See `certain` on the model. */
+            certain: !o.noTypeYet,
             firstRound: checkIn.sessionNumber ?? 1,
           },
         });

@@ -561,11 +561,11 @@ export class BoardService {
       const gapRows = await this.prisma.checkInGap?.findMany?.({
         where: { groundId, answeredAt: null },
         orderBy: [{ firstRound: 'asc' }],
-        select: { participantId: true, what: true, firstRound: true, asked: true },
+        select: { participantId: true, what: true, firstRound: true, asked: true, certain: true },
       })?.catch(() => [] as any[]) ?? [];
       out.stillUnanswered = (gapRows as any[])
         .filter((g) => g.asked >= 2)
-        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound }));
+        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
     }
 
     if (has('checkInGrid') && runsThisGround) {
