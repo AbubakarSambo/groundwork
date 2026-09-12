@@ -18,6 +18,7 @@ import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-canno
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
+import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 
 /**
  * The delivery board.
@@ -220,6 +221,9 @@ export function BoardPage() {
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
+    /* Lead-only and absent for everybody else, so there is nothing to gate on here beyond its
+       presence: the server does not send it to a reader who may not have it. */
+    eachPerson: !!b.eachPerson?.length,
     contribution: has('contribution') && !!b.contribution,
     coverage: has('coverage') && !!b.coverage,
     patterns: has('patterns') && !!b.patterns,
@@ -485,7 +489,22 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- at a glance */}
-        {(shown.quickRead || shown.startingState || shown.decisions) && <Zone label="At a glance" />}
+        {(shown.quickRead || shown.startingState || shown.decisions || shown.eachPerson) && <Zone label="At a glance" />}
+
+        {/*
+          ABOVE THE QUICK READ, BECAUSE IT IS WHAT THIS PAGE IS OPENED FOR.
+
+          The quick read is four facts about the check-in. This is ten rows about ten people, each
+          with the one thing to ask for, and a manager running a team against individual numbers
+          reads it first and often reads nothing else. Putting it under the tiles would be ordering
+          the page by how long each block has existed.
+        */}
+        {shown.eachPerson && (
+          <>
+            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
+            <WhereEachPersonIs rows={b.eachPerson!} />
+          </>
+        )}
 
         {shown.quickRead && b.quickRead && (
           <>

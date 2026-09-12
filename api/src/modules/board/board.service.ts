@@ -535,9 +535,25 @@ export class BoardService {
      * else; this is the narrower gate at the point it is built.
      */
     if (has('checkInGrid') && runsThisGround) {
-      const openRound = Math.max(0, ...checkIns.map((c) => c.sessionNumber));
+      /*
+       * THE ROUND THAT IS OPEN IS THE ONE SOMEBODY HAS STARTED, not the newest row that exists.
+       *
+       * Rows for the next round are written ahead of time, so taking the highest number meant the
+       * board opened a fresh week by telling a manager that all ten people had not answered - a
+       * page of red on the morning the round begins, about a round nobody was late for. A round
+       * nobody has touched is next week's.
+       */
+      const started = checkIns.filter((c) => c.status !== CheckInStatus.NOT_STARTED).map((c) => c.sessionNumber);
+      const openRound = started.length ? Math.max(...started) : Math.max(0, ...checkIns.map((c) => c.sessionNumber));
       out.eachPerson = whereEachPersonIs(
-        ground.participants.filter((p) => !p.managingOnly).map((p) => {
+        /*
+         * AND THE MANAGER IS NOT IN THEIR OWN LIST.
+         *
+         * The initiator checked in once to set the context and does not carry a number; ranked
+         * among the people she manages she came out top, "has not answered", about a round she is
+         * not running. This read is what to do about other people.
+         */
+        ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id).map((p) => {
           const theirs = (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
           const mine = checkIns.filter((c) => c.participantId === p.id);
           const thisRound = mine.find((c) => c.sessionNumber === openRound);

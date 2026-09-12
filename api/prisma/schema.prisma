@@ -1557,6 +1557,14 @@ model GroundDependency {
   /// The column is what makes the sweep fire once rather than every night for as long as the
   /// handoff stays open - a nightly repeat of the same alert is how a customer learns to filter
   /// the channel, which costs them the alert that mattered.
+  /// WHAT THEY SAID THEY HAD ACTUALLY DONE ABOUT IT, in their own words.
+  ///
+  /// A handoff knew who was waiting on whom and, later, what for. It never knew whether anybody had
+  /// tried. Watched live: "I emailed finance twice, no answer" - three weeks on a blocker, and
+  /// nothing in the record could tell that from somebody who had called, escalated and been
+  /// refused. Their sentence, kept as they said it; the tiering is read off it at the point of use
+  /// so the words stay the record and the judgement stays out of the column.
+  triedSaid         String?          @map("tried_said") @db.Text
   escalatedAt       DateTime?        @map("escalated_at")
   sourceCheckInId   String?          @map("source_check_in_id")
   clearedAt         DateTime?        @map("cleared_at")

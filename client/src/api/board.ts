@@ -85,6 +85,22 @@ export type BoardPresent = {
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
   dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
+
+  /**
+   * WHERE EACH PERSON IS AGAINST THEIR OWN NUMBER, ordered by what needs attention.
+   *
+   * Lead-only, and absent for everybody else rather than empty: a read that names what to ask
+   * somebody to do is a manager's read of their own team, not something a colleague may hold about
+   * a colleague. The order ranks situations and never people - see the server module.
+   */
+  eachPerson?: {
+    participantId: string
+    who: string
+    target: number | null
+    count: number
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    ask: string | null
+  }[]
   contribution?: {
     participantId: string; name: string | null; remit: string | null; remitDefined: boolean
     /** Always null. There is deliberately no on-track/below-track label - see board.service.ts. */
