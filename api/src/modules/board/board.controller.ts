@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
-import { IsString, IsInt, IsOptional, IsArray, MaxLength, Min, ArrayMaxSize } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsArray, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BoardService } from './board.service';
 import { CurrentUser } from '../../common';
@@ -25,6 +26,37 @@ class ObjectiveDto {
    */
   @IsOptional() @IsString() @MaxLength(64)
   ownerParticipantId?: string | null;
+}
+
+class ProposePersonDto {
+  @IsString() @MaxLength(120)
+  key!: string;
+
+  @IsInt() @Min(0)
+  lastPeriod!: number;
+
+  /** Months in the job. Absent is absent: nothing here guesses a tenure. */
+  @IsOptional() @IsInt() @Min(0)
+  months?: number;
+}
+
+class ProposeDto {
+  /** The number the whole team has to reach. */
+  @IsInt() @Min(1)
+  total!: number;
+
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ProposePersonDto)
+  people?: ProposePersonDto[];
+
+  /**
+   * OR THE EXPORT THEY ALREADY HAVE, AS ROWS.
+   *
+   * "I should be able to read the CRM. I am not an API user." The answer is the file every CRM
+   * already exports: first row the header, the rest the people. What the product read comes back
+   * with the proposal, so a wrong column is obvious in a second rather than buried in a number.
+   */
+  @IsOptional() @IsArray() @ArrayMaxSize(2000)
+  rows?: (string | number | null)[][];
 }
 
 class PollDto {
@@ -53,6 +85,20 @@ export class BoardController {
   ) {
     const variant: CoverageVariant = coverage === 'bar' ? 'bar' : coverage === 'text' ? 'text' : DEFAULT_COVERAGE_VARIANT;
     return this.board.get(id, userId, variant);
+  }
+
+  /**
+   * PROPOSE, NEVER WRITE.
+   *
+   * A chief of staff with a total and a team wants ten numbers, and asked four times before giving
+   * up. This does the arithmetic and hands back a proposal with the reason against each figure. It
+   * writes nothing: she argues with these in front of the people they belong to, so she changes
+   * them first and then sets them through the ordinary route, one target at a time.
+   */
+  @Post('objectives/propose')
+  @ApiOperation({ summary: 'Split a total across people, with the reason for each number. Proposes; writes nothing.' })
+  proposeObjectives(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ProposeDto) {
+    return this.board.proposeObjectives(id, userId, dto);
   }
 
   @Post('objectives')

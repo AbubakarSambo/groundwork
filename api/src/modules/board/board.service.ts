@@ -51,6 +51,8 @@ import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { whereEachPersonIs } from './where-each-person-is-against-their-number';
 import { whichRoundIsOpen } from './which-round-is-open';
+import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
+import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 
 /**
@@ -1148,6 +1150,41 @@ export class BoardService {
         addedAtSession,
       },
     });
+  }
+
+  /**
+   * SPLIT A TOTAL ACROSS PEOPLE, AND WRITE NOTHING.
+   *
+   * The arithmetic is deterministic and lives in its own module; this only checks who is asking and
+   * hands the proposal back. Nothing is saved on purpose: a chief of staff argues with these in
+   * front of the people they belong to, so she changes them first and then sets each one through
+   * the ordinary route, which is also what keeps every target something a person chose.
+   */
+  async proposeObjectives(
+    groundId: string,
+    requestingUserId: string,
+    dto: { total: number; people?: { key: string; lastPeriod: number; months?: number }[]; rows?: (string | number | null)[][] },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    /* A file if they dropped one, otherwise people they typed. The file wins where both arrive:
+       it is the thing they can see, and the one they will believe. */
+    const read = dto.rows?.length ? peopleFrom(dto.rows) : null;
+    const people = read ? read.people : (dto.people ?? []).map((p) => ({
+      key: p.key,
+      lastPeriod: p.lastPeriod,
+      /* No tenure given is read as a full year - the neutral reading, no part-year adjustment -
+         and `monthsKnown` tells the caller it was not theirs so nothing pretends otherwise. */
+      months: p.months ?? 12,
+      monthsKnown: p.months != null,
+    }));
+    const shares = splitTheTotal(people, dto.total);
+    return {
+      shares: shares.map((s) => ({ ...s, monthsKnown: people.find((p) => p.key === s.key)?.monthsKnown ?? false })),
+      saying: sayingWhatTheSplitDoes(shares, dto.total),
+      /* What the file turned out to hold, so a wrong column is visible beside the numbers it
+         produced rather than only in the numbers. */
+      readFromTheFile: read ? { missing: read.missing, skipped: read.skipped, people: read.people.length } : null,
+    };
   }
 
   /**
