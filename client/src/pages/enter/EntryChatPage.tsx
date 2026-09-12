@@ -2634,17 +2634,15 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Product intro - shown once before conversation starts */}
-            {onboardingHistory.length <= 1 && (
-              <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Tell us what is going on</h1>
-                  <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                    A few questions to work out what this is. You get something just for you now, and a shared picture once everybody else has checked in.
-                  </div>
-                </div>
-              </div>
-            )}
+            {/*
+              THE BLUE BLOCK IS GONE, AND IT WAS THE LAST OF THE THREE ASKS.
+              "Tell us what is going on" sat in a tinted full-width band above a step row that
+              already says "What is going on", above a card that asks what you are trying to achieve
+              - three headings for one question, the top one in the loudest treatment on the page.
+              What it added beyond the asking was the promise underneath: something for you now, a
+              shared picture once everybody has checked in. That is worth saying and it is said on
+              the step row and in the card, which is where somebody is looking when they act.
+            */}
             <div
               ref={msgsRef}
               aria-live="polite"
