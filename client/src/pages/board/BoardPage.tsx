@@ -4,6 +4,7 @@ import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
+import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
@@ -337,6 +338,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
             </div>
           </div>
+
+          {/*
+            HOW IT IS GOING, FIRST, WHICH IS WHY SOMEBODY OPENED THIS.
+
+            "When I come in as a manager, I want progress/status and blockers/risks." The board
+            opened on "where people differ": a manager had to read three zones to work out how far
+            through it was, and the screen that knew was the check-in list they had just left.
+
+            The same component the list and the boards page draw, on the dark ground. Not a second
+            read of the same week - the server computes it once (how-a-check-in-is-going.ts) and all
+            three are handed the answer.
+          */}
+          {(b as any).howItIsGoing && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
+              <HowItIsGoing
+                summary={(b as any).howItIsGoing.latestSummary}
+                glance={(b as any).howItIsGoing.glance}
+                tone="dark"
+              />
+            </div>
+          )}
 
           {has('phaseSpine') && b.phaseSpine && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>

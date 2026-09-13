@@ -25,7 +25,7 @@ import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageE
 import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
-import { atAGlance } from './what-a-manager-needs-at-a-glance';
+import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { totalSessionsFor } from './session-count';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -1165,12 +1165,21 @@ export class GroundsService {
          * the ground page uses. Counting check-in rows instead reads as double on a two-party
          * ground, which is the bug this file already carries a note about ("24 of 12").
          */
-        const roundsDone = (() => {
-          const numbers = [...new Set(sessions.map(ci => ci.sessionNumber))];
-          return numbers.filter(n =>
-            sessions.filter(ci => ci.sessionNumber === n).every(ci => ci.status === CheckInStatus.COMPLETED),
-          ).length;
-        })();
+        /*
+         * HOW IT IS GOING, FROM THE ONE PLACE THAT WORKS IT OUT. The board's header asks the same
+         * two questions under the same summary, and computing them twice is how two screens come to
+         * disagree about one week. See how-a-check-in-is-going.ts - the arithmetic there is this
+         * code, moved, not rewritten.
+         */
+        const going = howACheckInIsGoing({
+          checkIns: checkIns as any,
+          participants: (rest as any).participants ?? [],
+          dependencies: ((rest as any).dependencies ?? []) as any,
+          timelineDays: (rest as any).timelineDays ?? null,
+          cadence: (rest as any).cadence ?? null,
+          sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+        });
+        const roundsDone = going.glance.progress.roundsDone;
         /*
          * WHAT THE LAST ROUND FOUND, which is what the card leads with. The brief is the fallback
          * and is still on the payload: a check-in nobody has finished a round on has no finding and
@@ -1192,8 +1201,7 @@ export class GroundsService {
          * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
          * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
          */
-        const summary = ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null;
-        const latestSummary = summary ? sentencesIn(summary).slice(0, 3).join(' ').trim() || null : null;
+        const latestSummary = going.latestSummary;
         /*
          * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
          *
@@ -1208,14 +1216,7 @@ export class GroundsService {
          * WHAT A MANAGER WANTS OFF THE CARD: how far through, and what is in the way. See
          * what-a-manager-needs-at-a-glance for why the blockers are counted there rather than here.
          */
-        const openRound = Math.max(1, ...sessions.map((c: any) => c.sessionNumber ?? 1));
-        const glance = atAGlance({
-          roundsDone,
-          roundsPlanned: totalSessionsFor((rest as any).timelineDays, (rest as any).cadence) ?? null,
-          people: (rest as any).participants ?? [],
-          thisRound: sessions.filter((c: any) => (c.sessionNumber ?? 1) === openRound),
-          dependencies: ((rest as any).dependencies ?? []) as any,
-        });
+        const glance = going.glance;
         return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());

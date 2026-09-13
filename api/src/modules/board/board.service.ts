@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
+import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
 import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF } from './the-board-keeps-the-same-wall';
 import {
@@ -137,6 +138,9 @@ export class BoardService {
         report: true,
         objectives: { orderBy: { sortOrder: 'asc' } },
         dependencies: { orderBy: { createdAt: 'asc' } },
+        /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true } },
+        reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
@@ -396,6 +400,25 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /**
+       * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
+       *
+       * "When I come in as a manager, I want progress/status and blockers/risks." The board opened
+       * on "where people differ" and said nothing about either - a manager had to read three zones
+       * to work out how far through it was, and the one screen that knew was the check-in LIST,
+       * which they had just left.
+       *
+       * Computed by how-a-check-in-is-going.ts, the same function the list calls, so the two cannot
+       * disagree about one week. Not a new read: the same summary, the same two facts.
+       */
+      howItIsGoing: howACheckInIsGoing({
+        checkIns: (ground as any).checkIns ?? [],
+        participants: ground.participants ?? [],
+        dependencies: (ground as any).dependencies ?? [],
+        timelineDays: (ground as any).timelineDays ?? null,
+        cadence: (ground as any).cadence ?? null,
+        sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+      }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
       groundStatus: ground.status,
       endState: (ground as any).endState ?? null,
