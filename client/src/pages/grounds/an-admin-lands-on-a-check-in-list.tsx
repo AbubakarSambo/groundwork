@@ -80,7 +80,19 @@ function theRollout(f: RolloutFacts, nameStillGuessed: boolean): Step[] {
   return [
     { key: 'name', title: 'Name your workspace', body: 'It is called after whoever signed up, because nobody has said otherwise. Everyone here reads that name.', to: '/settings', done: !nameStillGuessed },
     { key: 'people', title: 'Get your people in', body: 'Paste your list. Nobody is emailed until you have seen what will happen.', to: '/org/members', done: f.people > 1 },
-    { key: 'pilot', title: 'Run one with somebody', body: 'Pick something real and small. You see what it produces before your team does.', to: '/grounds/new', done: f.checkIns > 0 },
+    /*
+      RUN ONE YOURSELF, BECAUSE THE OTHER HALF IS THE HALF YOU ARE ASKING YOUR TEAM TO DO.
+      This said "Run one with somebody... you see what it produces before your team does", which is
+      half true: a lead who does that sees their own report, and never sees the check-in itself from
+      the other side. They cannot - a participant's own check-in is private and the lead gets a 403,
+      which is right and stays.
+      So the only way to see both halves is to be both people, and nothing anywhere said so. For a
+      product whose pitch is that people can say what they actually think, asking somebody to put a
+      colleague through an unknown experience before they have seen it is the wrong way round.
+      A second address of your own works today, through the ordinary invite: no special mode, no
+      demo data, and the record it leaves is a real one you can delete.
+    */
+    { key: 'pilot', title: 'Run one yourself first', body: 'Pick something real and small. Put a second email of your own in as the other person, and you see both halves - the check-in your team gets, and the report you get - before anybody else is involved.', to: '/grounds/new', done: f.checkIns > 0 },
     { key: 'second-admin', title: 'Give somebody else the keys', body: 'A second admin approves check-ins and adds people when you are not there.', to: '/org/members', done: f.admins > 1 },
     { key: 'plan', title: 'Choose your plan', body: 'What it costs for the number of people you are putting on.', to: '/billing', done: f.paying },
     { key: 'connect', title: 'Connect your systems', body: 'Your CRM, your HR system, your own product. Your engineers will want this page.', to: '/org/integrations', done: f.connected, optional: true },
