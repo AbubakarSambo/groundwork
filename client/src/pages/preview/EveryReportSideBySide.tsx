@@ -4,11 +4,9 @@ import { useSearchParams } from 'react-router-dom'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
-import { MyRecord } from '@/components/gw/MyRecord'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { plannedSessionsFor } from '@/lib/sessionCount'
 
 /**
  * EVERY SURFACE THAT SHOWS A REPORT, ON ONE PAGE, ON REAL DATA.
@@ -157,24 +155,11 @@ export default function EveryReportSideBySide() {
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
     enabled: !!groundId && !!sessionNumber,
   })
-  const ground = useQuery({
-    queryKey: ['ground', groundId],
-    queryFn: () => groundsApi.get(groundId),
-    enabled: !!groundId,
-    retry: false,
-  })
-  const myRecord = useQuery({
-    queryKey: ['my-record', groundId],
-    queryFn: () => groundsApi.getMyRecord(groundId),
-    enabled: !!groundId,
-    retry: false,
-  })
 
   const report = close.data?.report ?? null
   const stands = shape.data?.whereThingsStand
     ? { settled: shape.data.whereThingsStand.settled ?? [], open: shape.data.whereThingsStand.open ?? [] }
     : null
-  const done = (myRecord.data?.sessions ?? []).filter(x => !!x.completedAt).length
 
   return (
     <div style={WRAP}>
@@ -274,17 +259,9 @@ export default function EveryReportSideBySide() {
             n={5}
             name="What you have shared, across the run"
             cell="A · run"
-            note="Your own half across every session, and the only place the specificity read has somewhere to stand. WHAT IS DRAWN HERE IS ONE COMPONENT OF IT. The real page assembles this surface from five - MyRecord, WhatYouAreCarryingForward, TheFiveThingsThatMakeItCheckable, WhatYourRecordCanSupport, MyParticipation - so what you see below is the close-out panel and little else, and the surface itself is fuller. That is the same problem THE_ORDER was written to end: a cell whose order lives in a page rather than in one place. Do not judge this surface from here until it is drawn whole."
+            note="Your own half across every session, and the only place the specificity read has somewhere to stand. Shown as the page itself, because it is assembled from five components - MyRecord, WhatYouAreCarryingForward, TheFiveThingsThatMakeItCheckable, WhatYourRecordCanSupport, MyParticipation - and this page drew only the first of them for months, under a note saying so that nobody acted on. A preview that rebuilds a surface is a preview that can be right about a screen nobody ships."
           >
-            {ground.data && myRecord.data
-              ? <MyRecord
-                  groundId={groundId}
-                  ground={ground.data}
-                  myRecord={myRecord.data}
-                  totalSessions={plannedSessionsFor((ground.data as any).timelineDays, (ground.data as any).cadence, (ground.data as any).totalSessions) ?? null}
-                  completedCount={done}
-                />
-              : <p style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>Loading, or you are not a party to this one.</p>}
+            <ThePageItself to={`/grounds/${groundId}?tab=record`} tall />
           </Surface>
 
           <Surface
