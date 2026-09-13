@@ -58,8 +58,20 @@ const dshort = (iso?: string | null) =>
  */
 const HOW_TO_READ_KEY = 'gw-board-how-to-read'
 
-export function BoardPage() {
-  const { id } = useParams<{ id: string }>()
+/**
+ * THE BOARD DRAWS FOR WHICHEVER CHECK-IN IT IS GIVEN.
+ *
+ * It read its id from the route and nothing else could ask it for one, so the boards page - which
+ * switches between them with tabs - would have had to rebuild the board to show more than one. A
+ * second board is how two screens come to disagree about one week, and this page is a thousand
+ * lines of reads that would have to be kept in step by hand.
+ *
+ * So the route is the DEFAULT and not the only source. `/grounds/:id/board` passes nothing and is
+ * byte-for-byte what it was; the boards page passes the tab somebody picked.
+ */
+export function BoardPage({ groundId }: { groundId?: string } = {}) {
+  const { id: idFromRoute } = useParams<{ id: string }>()
+  const id = groundId ?? idFromRoute
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
@@ -273,7 +285,12 @@ export function BoardPage() {
                 from one check-in and left the same way - read one, back to the list, find the next,
                 open it, open its board. See the component for why the server says which have one.
               */}
-              <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>
+              {/*
+                NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
+                job, and two switchers one above the other, both listing the same check-ins, is a
+                reader asking which of them is the real one.
+              */}
+              {!groundId && <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
               <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
               <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
