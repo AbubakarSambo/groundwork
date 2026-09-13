@@ -1534,14 +1534,24 @@ INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make
 
 Classify each entry as exactly one of:
 - SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not.
-- PROGRESS - a thing that has HAPPENED, as they reported it: work delivered, a number reached, a step completed, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "finance signed off on the 5th", "build shipped on the 12th". Not what they intend, not what they promised, not what good would look like - what is done. If the sentence would answer "what has happened since last time", it is this.
 - TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
-- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report it done, that is PROGRESS.
+- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report the work itself done, that is PROGRESS.
 - ASK - something they are requesting (a raise, equity, a resource, a decision)
 - INTENT - what they understood their role / the arrangement to be
 - TOLERANCE - what they are willing or unwilling to accept
 - WORRY - what they fear will happen
-- TENSION - a tension they predict / can already see coming`;
+- TENSION - a tension they predict / can already see coming
+- PROGRESS - THE WORK ITSELF MOVING FORWARD, as they reported it: something delivered, a number reached, a step finished, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "build shipped on the 12th", "finance signed off on the 5th".
+
+PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR. It is not "anything that has already happened" - almost every sentence is that. Check the others first, and only use PROGRESS when none of them fits:
+  "I cannot put it live because finance have not signed off" is being stuck. WORRY.
+  "Waiting on legal to clear the migration email" is being stuck. WORRY.
+  "I asked last Tuesday and have heard nothing" is chasing something they are stuck on. WORRY.
+  "I chased finance twice" is what they did about a blocker, not the work moving. WORRY.
+  "I will chase it on Monday" is a promise. COMMITMENT.
+  "Nobody else is waiting on me" and "no other blockers I can name" say nothing happened. Record nothing at all.
+  "The build is on track for the 14th" is a forecast, not a thing done. INTENT.
+Only where the work itself actually moved is it PROGRESS.`;
 
 /**
  * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs
