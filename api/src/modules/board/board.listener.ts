@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent } from '../../common/events';
 import {
@@ -57,9 +58,20 @@ export class BoardListener {
       });
       if (!said.length) return;
 
+      /*
+       * THE MARKERS COME OFF BEFORE ANYBODY READS THIS - the model, and then the lead.
+       *
+       * Extraction stores its verifiability marker inside the text column, so every line here
+       * arrives as "[VERIFIABILITY:HIGH] All forty migrated by Friday." Fed to the model it is
+       * noise in front of every sentence; carried into `suggestedSaid` it is our internal marker
+       * printed on the board under "The record shows 40 for this". Caught on a gate run, and it is
+       * the fifth time this session that something internal has reached a page by riding inside a
+       * text column. `cleanText` is the one that knows how to take it off.
+       */
+      const lines = said.map((s: { text: string }) => ({ text: cleanText(s.text), who: null }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
-        [{ role: 'user', content: theQuestion(targets, said.map((s: { text: string }) => ({ text: s.text, who: null }))) }],
+        [{ role: 'user', content: theQuestion(targets, lines) }],
         WHAT_THE_RECORD_SAYS_SCHEMA,
       );
 
@@ -67,7 +79,7 @@ export class BoardListener {
       for (const n of worth) {
         await this.prisma.groundObjective.update({
           where: { id: n.objectiveId },
-          data: { suggestedCount: n.count, suggestedSaid: n.said, suggestedAtSession: e.sessionNumber },
+          data: { suggestedCount: n.count, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
         }).catch(() => undefined);
       }
       if (worth.length) {

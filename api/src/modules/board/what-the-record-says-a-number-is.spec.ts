@@ -72,6 +72,23 @@ describe('what the record says a number is', () => {
     expect(WHAT_THE_RECORD_SAYS_PROMPT).toContain('does not have to repeat the target');
   });
 
+  it('nothing internal rides into what the lead is shown', () => {
+    /*
+     * Caught on a gate run: the board offered "The record shows 180 for this" with the line
+     * "[VERIFIABILITY:HIGH] We are at 180 teams through onboarding." Extraction keeps its marker
+     * inside the text column, so every line arrives wearing one - and it was going to the model as
+     * noise in front of every sentence as well as onto the page.
+     *
+     * Asserted on the listener because that is where the text is taken from the record and handed
+     * on, and it is the only place that can strip it for both.
+     */
+    const L = readFileSync(join(__dirname, 'board.listener.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* Off the lines the model reads, and off the line the lead is shown. */
+    expect(L).toMatch(/text: cleanText\(s\.text\)/);
+    expect(L).toMatch(/suggestedSaid: cleanText\(n\.said\)/);
+  });
+
   it("and its examples are not the sentences it is checked on", () => {
     /*
      * The first pass used the run's own lines as the prompt's examples, which made the check partly
