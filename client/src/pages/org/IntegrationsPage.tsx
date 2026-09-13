@@ -394,13 +394,29 @@ export function IntegrationsPage() {
       */}
       {access.data && !access.data.approved && (
         <div style={{ ...S.card, marginBottom: 20 }}>
+          {/*
+            NAMED FOR WHAT SOMEBODY WANTS, NOT FOR WHAT THE SYSTEM DOES ABOUT IT.
+            "Sending data in needs to be asked for" describes our permission model to a person who
+            came here to do a thing. Nobody arrives wanting to send data in; they arrive wanting
+            check-ins inside their own product. The asking is the second sentence, not the heading.
+          */}
           <div style={{ ...S.h3, marginBottom: 5 }}>
-            Sending data in needs to be asked for
+            Put check-ins inside your own product
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            {access.data.says}{' '}
-            {/* WhatsApp is not in this list any more: it is set up above without asking. */}
-            One request covers the API and the panel on your own pages. A person reads it. Once it is approved, the keys and the reference appear here.
+            {/*
+              AND IN OUR OWN WORDS, NOT THE 403's. `access.says` is written for a developer looking
+              at a refused request - "nothing else about the credential is wrong" is exactly right
+              there and means nothing to an admin who has no credential and is not debugging one.
+              That string stays where it belongs, in the refusal. This page says its own thing.
+              WhatsApp is not in this list: it is set up above without asking.
+            */}
+            Your people check in from inside your own system - a panel on your page, or your own
+            build against the API. It is asked for rather than bought: say what you want to build,
+            somebody here reads it, and the keys appear on this page once it is approved.
+            {access.data.status === 'PENDING' && <><br />You have asked and we have not answered yet.</>}
+            {access.data.status === 'DECLINED' && <><br />This was declined. Ask again, saying what has changed.</>}
+            {access.data.status === 'WITHDRAWN' && <><br />This was approved and has since been withdrawn.</>}
           </div>
 
           {access.data.status !== 'PENDING' && (
