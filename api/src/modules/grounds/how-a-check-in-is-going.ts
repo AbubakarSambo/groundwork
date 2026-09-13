@@ -2,6 +2,7 @@ import { CheckInStatus } from '@prisma/client';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
+import { notTheWordParty } from '../reports/not-the-word-party';
 
 /**
  * HOW A CHECK-IN IS GOING, COMPUTED ONCE, BECAUSE THREE SCREENS ASK IT.
@@ -54,8 +55,17 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
    * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
    */
+  /*
+   * AND THROUGH THE RULE, HERE, WHERE BOTH CALLERS GET IT WITHOUT REMEMBERING TO.
+   *
+   * This is report prose out of the database. Every path that serves it has to run the rewrite, and
+   * `every-path-that-serves-report-text.spec.ts` is the guard that says so - it caught the board's
+   * header the moment it started selecting sharedPicture, which is exactly the fourth instance that
+   * guard was written to stop being a surprise. Applying it in the shared function rather than in
+   * each caller means the next screen to ask this question cannot forget.
+   */
   const latestSummary = it.sharedPicture
-    ? sentencesIn(it.sharedPicture).slice(0, 3).join(' ').trim() || null
+    ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
     : null;
 
   const openRound = Math.max(1, ...sessions.map((c) => c.sessionNumber ?? 1));

@@ -794,6 +794,17 @@ model Ground {
   // that does not set it explicitly is private, never accidentally shared.
   mode           GroundMode     @default(PRIVATE)
 
+  /// WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP, WHEN THE ORGANISATION HAS A NUMBER.
+  ///
+  /// NULL means "whatever the organisation does", which is what every ground did before this
+  /// existed: connected and the person has a number, so the opening notice goes to their phone.
+  /// Nullable precisely so this column changes nothing that already runs - a boolean with a default
+  /// would have decided for every ground in the database on the day it was added.
+  ///
+  /// True sends it. False keeps this one in Groundwork even though the organisation has a number,
+  /// which is the case that had no way to be said at all: it was all of them or none of them.
+  overWhatsApp Boolean? @map("over_whatsapp")
+
   timelineDays     Int       @map("timeline_days")
   /// DID THE LEAD CHOOSE THIS, OR DID WE.
   ///

@@ -83,9 +83,16 @@ describe('and the list carries it', () => {
     expect(GROUNDS).toMatch(/latestFinding, latestSummary,/);
   });
 
-  it('and the summary is cut where sentences actually end', () => {
+  it('and the summary is cut where sentences actually end, wherever that now lives', () => {
     /* Not on the card: a card cannot tell where a sentence ends without a second copy of that rule,
-       and splitting on a full stop is how decimals and closing quotes go wrong. */
-    expect(GROUNDS).toMatch(/sentencesIn\(summary\)\.slice\(0, 3\)/);
+       and splitting on a full stop is how decimals and closing quotes go wrong.
+
+       THE CUT MOVED, AND THE RULE DID NOT. It was inline in grounds.service; the board's header
+       needed the same summary, so the arithmetic went to how-a-check-in-is-going.ts and the list
+       calls it. Asserted where it lives now, which is also the only place it can be broken. */
+    const GOING = read('..', 'grounds', 'how-a-check-in-is-going.ts');
+    expect(GOING).toMatch(/sentencesIn\(notTheWordParty\(it\.sharedPicture\)\)\.slice\(0, 3\)/);
+    /* And the list does not keep a second copy of the cut. */
+    expect(GROUNDS).not.toMatch(/sentencesIn\([^)]*\)\.slice\(0, 3\)/);
   });
 });

@@ -1239,8 +1239,10 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
-        /* For `guestIn`: whose workspace this check-in belongs to. */
-        organization: { select: { name: true } },
+        /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
+           number, which is what the "where people answer this" setting needs - riding along on a
+           read that already has the organisation in hand, rather than a second query. */
+        organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1286,8 +1288,10 @@ export class GroundsService {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
             /* Same as the primary read: this is the cross-org path, and it is the one where the
-               name is actually needed. */
-            organization: { select: { name: true } },
+               name is actually needed. The WhatsApp connection rides along for the same reason it
+               does above - and it has to be here too, or a cross-org lead is the one person who
+               cannot see the setting. */
+            organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -1485,6 +1489,9 @@ export class GroundsService {
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg(viewer, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
+
+    /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
+    const orgHasWhatsApp = !!(ground as any).organization?.whatsappConnection?.enabled;
 
     // CAN THE PARTIES SEE EACH OTHER AT ALL?
     //
@@ -1768,6 +1775,16 @@ export class GroundsService {
        */
       viewerIsInitiator,
       viewerRunsThisGround,
+      /*
+       * WHETHER THERE IS A WHATSAPP NUMBER TO ANSWER ON AT ALL.
+       *
+       * The setting on this ground is only answerable where the organisation has connected one, and
+       * the setup page cannot know that on its own - the connection is an ADMIN read, and the lead
+       * setting this up is often not an org admin. So the fact travels with the ground, and the
+       * control appears only where it means something. A toggle over nothing is a door into a wall,
+       * which is the pattern this codebase has caught three times.
+       */
+      orgHasWhatsApp,
       alignment,
       daysLeft,
       brief,
@@ -2393,6 +2410,31 @@ export class GroundsService {
       where: { id: groundId },
       data: { whoSeesTargets: everybody ? 'EVERYBODY' : 'THEIR_OWN' },
       select: { id: true, whoSeesTargets: true },
+    });
+  }
+
+  /**
+   * WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP.
+   *
+   * Only answerable where the organisation has a number of its own, because otherwise there is
+   * nothing to answer on - and a setting that can be turned on with nothing behind it is a door
+   * into a wall. Null puts it back to following the organisation.
+   */
+  async setOverWhatsApp(groundId: string, requestingUserId: string, over: boolean | null) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    if (over === true) {
+      const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+      const connected = ground
+        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } })
+        : null;
+      if (!connected?.enabled) {
+        throw new BadRequestException('This organisation has no WhatsApp number connected yet. Connect one on the Connect page first.');
+      }
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { overWhatsApp: over },
+      select: { id: true, overWhatsApp: true },
     });
   }
 

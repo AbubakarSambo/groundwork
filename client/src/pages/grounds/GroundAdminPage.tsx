@@ -744,6 +744,11 @@ export function GroundAdminPage() {
    * Exactly the state `peersVisibleToEachOther` was in above, which is the point: a column, a
    * reader and no writer compiles clean and passes every test.
    */
+  const setOverWhatsApp = useMutation({
+    mutationFn: (over: boolean | null) => groundsApi.setOverWhatsApp(id!, over),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
+  })
   const setWhoSeesTargets = useMutation({
     mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
@@ -3043,6 +3048,63 @@ export function GroundAdminPage() {
               </div>
             </div>
             </Fold>
+
+            {/*
+              WHERE PEOPLE ANSWER THIS ONE.
+
+              It was the organisation's connection and nothing else: connect a number and every
+              check-in in the organisation went to WhatsApp. A lead setting up a sensitive
+              conversation had no way to keep it off people's phones, and nowhere to look for one.
+
+              THREE STATES, NOT A TOGGLE. "Whatever this organisation does" is what every check-in
+              did before the question existed, so it stays the answer until somebody gives another -
+              a two-state switch would have decided for every ground in the database.
+
+              AND ONLY WHERE THERE IS A NUMBER. `orgHasWhatsApp` comes with the ground because the
+              connection is an admin read and a lead is often not an admin. A control over nothing
+              is a door into a wall.
+            */}
+            {(ground as any)?.orgHasWhatsApp && (
+              <Fold {...foldProps(setupBand())} title="Where people answer this" src="in Groundwork, or on your organisation's WhatsApp number" summary={
+                (ground as any).overWhatsApp === true ? 'On WhatsApp'
+                  : (ground as any).overWhatsApp === false ? 'In Groundwork'
+                    : 'Whatever this organisation does'
+              }>
+                <div style={{ display: 'grid', gap: 8, padding: '4px 0' }}>
+                  {([
+                    [null, 'Whatever this organisation does', 'The default. People who have a number on their profile get it on WhatsApp; everybody else answers here.'],
+                    [true, 'On WhatsApp', 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.'],
+                    [false, 'In Groundwork', 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody\u2019s phone.'],
+                  ] as [boolean | null, string, string][]).map(([value, title, why]) => {
+                    const on = ((ground as any).overWhatsApp ?? null) === value
+                    return (
+                      <label
+                        key={String(value)}
+                        style={{
+                          display: 'flex', gap: 10, alignItems: 'flex-start', cursor: setOverWhatsApp.isPending ? 'wait' : 'pointer',
+                          padding: '11px 13px', borderRadius: 8,
+                          border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                          background: on ? 'var(--gw-blue-bg)' : 'var(--gw-card)',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="where-people-answer"
+                          checked={on}
+                          disabled={setOverWhatsApp.isPending}
+                          onChange={() => setOverWhatsApp.mutate(value)}
+                          style={{ marginTop: 2 }}
+                        />
+                        <span>
+                          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{title}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 2 }}>{why}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </Fold>
+            )}
 
             {/*
               HOW THE CHECK-IN TREATS A BLOCKER. Its own card, because it is not about who sees

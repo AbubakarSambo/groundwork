@@ -49,10 +49,20 @@ describe('a guest in somebody else\'s check-in', () => {
     /* Comments are stripped, so the fallback is found by the query that defines it. */
     const at = SERVICE.indexOf('const link = await this.prisma.groundParticipant.findFirst');
     expect(at).toBeGreaterThan(-1);
-    expect(SERVICE.slice(at, at + 1200)).toContain('organization: { select: { name: true } }');
+    /*
+      MATCHED ON THE FIELD, NOT ON THE WHOLE SELECT.
+
+      This pinned the select verbatim, so adding a second field to it - the WhatsApp connection, for
+      "where people answer this" - failed a test whose subject is the NAME. The rule is that the
+      guest's read loads the organisation's name; what else travels with it is not this test's
+      business, and pinning it here means every future field has to come back and edit a test about
+      guests.
+    */
+    const selectsTheName = /organization: \{ select: \{[^}]*name: true/;
+    expect(SERVICE.slice(at, at + 1200)).toMatch(selectsTheName);
     /* And on the primary read too, so a member of the org gets a defined field rather than a
        crash-shaped undefined the moment anything else reads it. */
-    expect((SERVICE.match(/organization: \{ select: \{ name: true \} \}/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((SERVICE.match(new RegExp(selectsTheName, 'g')) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 
   it('and reading it never required switching organisation', () => {

@@ -121,6 +121,12 @@ export const groundsApi = {
       .patch<{ id: string; whoSeesTargets: 'THEIR_OWN' | 'EVERYBODY' }>(`/grounds/${id}/who-sees-targets`, { everybody })
       .then(r => r.data),
 
+  /* Three states: true on WhatsApp, false in Groundwork, null whatever the organisation does. */
+  setOverWhatsApp: (id: string, over: boolean | null) =>
+    apiClient
+      .patch<{ id: string; overWhatsApp: boolean | null }>(`/grounds/${id}/over-whatsapp`, { over })
+      .then(r => r.data),
+
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
       .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
