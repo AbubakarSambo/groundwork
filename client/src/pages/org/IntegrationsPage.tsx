@@ -151,6 +151,11 @@ export function IntegrationsPage() {
   const [wsKind, setWsKind] = useState<'slack' | 'teams'>('slack')
   const [wsUrl, setWsUrl] = useState('')
   const [wsChannel, setWsChannel] = useState('')
+  const saveTemplates = useMutation({
+    mutationFn: (approved: string[]) => integrationsApi.whatsappTemplates(approved),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Saved. Anything we start now goes as an approved message.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save.'),
+  })
   const connectWs = useMutation({
     mutationFn: () => integrationsApi.connectWorkspace(wsKind, wsUrl.trim(), wsChannel.trim() || undefined),
     onSuccess: () => { setWsUrl(''); setWsChannel(''); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }); toast.success('Connected, and switched off until you test it and turn it on.') },
@@ -529,6 +534,12 @@ export function IntegrationsPage() {
             Your team messages the number first. Share it with them, or send them the link to it, and
             ask them to say anything at all - hello will do. From that moment everything happens on
             WhatsApp: their check-in, their reminders and their report.
+            {' '}<WhatIfWeWantToWriteFirst
+              names={(whatsapp.data as any)?.theNamesToSubmit ?? []}
+              approved={(whatsapp.data as any)?.approvedHere ?? []}
+              onSave={(next) => saveTemplates.mutate(next)}
+              saving={saveTemplates.isPending}
+            />
           </p>
         )}
         {(whatsapp.data as any)?.languages?.length > 0 && (
@@ -1223,5 +1234,78 @@ function Step({ n, title, body, done, last }: { n: number; title: string; body: 
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 2 }}>{body}</div>
       </div>
     </div>
+  )
+}
+
+/**
+ * WRITING FIRST IS THEIRS TO UNLOCK, AND IT IS ONE LINE UNTIL SOMEBODY ASKS.
+ *
+ * WhatsApp only lets a business write first using wording Meta has approved. On an organisation's
+ * OWN number that approval is theirs to get - their Meta app, their submission - so this is a thing
+ * they can do rather than a thing they wait on us for, and nobody was telling them.
+ *
+ * Behind an (i) because it is the second question, not the first. The first is "how do I start",
+ * which the sentence beside this answers in full and needs nothing from anybody. Printed in the
+ * open it would double a short paragraph into a page about Meta's approval queue.
+ *
+ * THE NAMES COME FROM THE SERVER, from the one place that defines them. Meta matches a template
+ * name byte for byte, so a page that typed them out would be a copy that eventually differs from
+ * the one the sender uses - and the failure would appear in Meta's console, a long way from here.
+ */
+function WhatIfWeWantToWriteFirst({ names, approved, onSave, saving }: {
+  names: string[]
+  approved: string[]
+  onSave: (next: string[]) => void
+  saving: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [picked, setPicked] = useState<string[]>(approved)
+  if (names.length === 0) return null
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label="What if we want Groundwork to message first"
+        style={{
+          background: 'none', border: '1px solid var(--gw-border)', borderRadius: '50%',
+          width: 18, height: 18, lineHeight: '16px', padding: 0, fontSize: 11, fontWeight: 700,
+          fontFamily: 'inherit', color: 'var(--gw-navy)', cursor: 'pointer', verticalAlign: 'middle',
+        }}
+      >
+        i
+      </button>
+      {open && (
+        <span style={{ display: 'block', marginTop: 10, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)' }}>
+          <strong style={{ color: 'var(--gw-text)' }}>If you want Groundwork to message first.</strong>{' '}
+          You can. WhatsApp allows it with wording Meta has approved, and on your own number that
+          approval is yours to ask for - it is your Meta app. Submit these names in Meta Business
+          under Message Templates, say the message is for people your organisation has signed up to
+          this, and tick them here when they come back approved. Then a check-in can reach somebody
+          who has not written to you in a day.
+          <span style={{ display: 'block', marginTop: 8 }}>
+            {names.map((n) => (
+              <label key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 0', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(n)}
+                  onChange={(e) => setPicked(p => e.target.checked ? [...p, n] : p.filter(x => x !== n))}
+                />
+                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--gw-text)' }}>{n}</span>
+              </label>
+            ))}
+          </span>
+          <button
+            type="button"
+            onClick={() => onSave(picked)}
+            disabled={saving}
+            style={{ marginTop: 8, fontSize: 12.5, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {saving ? 'Saving...' : 'Save what Meta approved'}
+          </button>
+        </span>
+      )}
+    </>
   )
 }

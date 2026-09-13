@@ -314,8 +314,29 @@ export class WhatsAppService {
       .catch(() => null);
     if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
     if (insideTheServiceWindow(person?.whatsappLastInboundAt)) return { free: true };
-    const template = templateFor(context.kind, this.config.get<string[]>('whatsapp.approvedTemplates') ?? []);
-    return { free: false, template, because: OUTSIDE_THE_WINDOW };
+    return { free: false, template: templateFor(context.kind, await this.approvedFor(organizationId)), because: OUTSIDE_THE_WINDOW };
+  }
+
+  /**
+   * WHOSE APPROVAL COUNTS, WHICH IS WHOEVER OWNS THE META APP.
+   *
+   * On our own number that is us, and the names live in WHATSAPP_APPROVED_TEMPLATES. On an
+   * organisation's own number it is THEM: their app, their submission, their approval. This read
+   * was the env var either way, so a customer who connected their own number and got their own
+   * templates approved still had every business-initiated message recorded as not sent - and
+   * nothing anywhere said our environment was the reason.
+   *
+   * Falls back to ours only when there is no connection of their own, which is the case that IS
+   * our number.
+   */
+  private async approvedFor(organizationId: string | null): Promise<readonly string[]> {
+    if (organizationId) {
+      const own = await this.prisma.whatsAppConnection
+        .findUnique({ where: { organizationId }, select: { approvedTemplates: true } })
+        .catch(() => null);
+      if (own) return own.approvedTemplates;
+    }
+    return this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
   }
 
   /** Meta's template message. The plain text the caller composed rides as the body parameter. */
@@ -369,6 +390,7 @@ export class WhatsAppService {
       businessAccountId: c.businessAccountId,
       displayNumber: c.displayNumber,
       verifyToken: c.verifyToken,
+      approvedTemplates: c.approvedTemplates,
       enabled: c.enabled,
       connectedAt: c.connectedAt,
       lastInboundAt: c.lastInboundAt,

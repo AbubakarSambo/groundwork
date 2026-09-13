@@ -2060,6 +2060,17 @@ model WhatsAppConnection {
   /// What Meta's subscribe handshake must echo. Ours to generate, theirs to paste into Meta.
   verifyToken       String  @map("verify_token")
 
+  /// WHICH OF OUR TEMPLATE NAMES THIS ORGANISATION HAS HAD APPROVED, BY META, UNDER ITS OWN APP.
+  ///
+  /// Approval belongs to whoever owns the Meta app. On our own number that is us, and the names
+  /// live in WHATSAPP_APPROVED_TEMPLATES. On an organisation's own number it is THEM - and the send
+  /// path was reading our env var for their sends, so a customer who did everything right and got
+  /// their own templates approved still had every business-initiated message recorded as not sent.
+  ///
+  /// The names are ours (a-message-outside-the-window.ts) because the product composes the bodies;
+  /// what an organisation submits to Meta is those same names. This records which came back approved.
+  approvedTemplates String[] @default([]) @map("approved_templates")
+
   enabled        Boolean   @default(true)
   connectedAt    DateTime  @default(now()) @map("connected_at")
   lastInboundAt  DateTime? @map("last_inbound_at")
