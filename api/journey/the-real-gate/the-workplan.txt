@@ -1,0 +1,19 @@
+NORTHWIND — Q4 DELIVERY WORKPLAN
+Owner: Ada (Chief of Staff). Period: October to December.
+
+THE GOAL
+Ship the self-serve onboarding rewrite and have 200 teams through it by 31 December.
+
+THE PLAN, AND WHO HOLDS EACH PART
+1. Onboarding rewrite (build)            — Tomi, Engineering. Done by 14 November.
+2. Pricing page and checkout copy        — Zainab, Marketing. Draft by 31 October, live 7 November.
+3. Migration of the 40 existing teams    — Tomi, with Support. Starts once (1) is live.
+4. Launch email and in-product prompts   — Zainab. Depends on (2).
+5. Weekly number: teams completing onboarding without contacting support.
+
+WHAT WE ARE NOT DOING THIS QUARTER
+The mobile app. The partner API. Both were asked for and both are out.
+
+DEPENDENCIES WE KNOW ABOUT
+Finance must sign off the new price points before (2) can go live.
+Legal must clear the migration email before (3) starts.
