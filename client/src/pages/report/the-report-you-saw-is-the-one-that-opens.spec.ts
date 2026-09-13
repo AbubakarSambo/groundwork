@@ -45,7 +45,7 @@ describe('the report that opens is the report they read', () => {
      */
     expect(PAGE).toContain('<TheReportYouSawAtTheEnd')
     expect(PAGE).toContain('<TheCheckInYouJustFinished')
-    expect(PAGE).toMatch(/data\.report\s*\n?\s*\?/)
+    expect(PAGE).toMatch(/data\??\.report\s*\n?\s*\?/)
   })
 
   it('falls back to what that session privately produced, rather than to a second shared report', () => {
