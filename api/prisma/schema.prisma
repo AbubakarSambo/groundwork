@@ -1559,6 +1559,26 @@ model GroundObjective {
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
 
+  /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
+  ///
+  /// The board already had the screen for this - "The record shows 40 for this, not 0. Use 40" -
+  /// and a rule behind it that never once fired. It needed every word of the target's name to
+  /// appear in one sentence plus a verb from a list of nine, and then it suggested the NUMBER OF
+  /// MATCHING SENTENCES rather than the number somebody said. Run against a real quarter: the team
+  /// reported "nine of the forty teams are migrated" and then "all forty migrated by Friday", and
+  /// the board read 0 of 40 at the close. Zero of fourteen entries matched.
+  ///
+  /// So the reading is the model's - which sentence reports a number against which target, and what
+  /// the number is - written once when a round closes, and the lead still accepts it in one press.
+  /// Nothing here overwrites what a person set: this is a suggestion beside their number, and that
+  /// rule was right and stays.
+  suggestedCount     Int?    @map("suggested_count")
+  /// The sentence it was read from, so the lead can see what they are accepting rather than a bare
+  /// number from nowhere.
+  suggestedSaid      String? @map("suggested_said") @db.Text
+  /// The round it was read from, so a stale suggestion can be told from this week's.
+  suggestedAtSession Int?    @map("suggested_at_session")
+
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
   prevCount      Int      @default(0) @map("prev_count")

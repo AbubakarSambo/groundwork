@@ -489,27 +489,18 @@ export class BoardService {
       //
       // So the record SUGGESTS and the human DECIDES: count how many distinct
       // things in the record look like they belong to this target, show it only
-      // when it disagrees with the lead's number, and let them accept it in one
-      // click. The board never silently overwrites what a person set.
-      const objectiveEvidence = await this.prisma.recordEntry.findMany({
-        /* PROGRESS is the type this read wanted all along: a number reached is reported, not
-           promised. See the-record-can-say-a-thing-happened in the schema. */
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'PROGRESS'] as any } },
-        select: { text: true },
-      });
-      const suggestFor = (name: string): number | null => {
-        const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-        if (words.length === 0) return null;
-        const hits = objectiveEvidence.filter((e) => {
-          const t = e.text.toLowerCase();
-          // Every meaningful word of the target appears, and the entry says
-          // something happened rather than something is planned.
-          return words.every((w) => t.includes(w.replace(/s$/, ''))) &&
-            /\b(signed|closed|paying|live|onboarded|delivered|shipped|joined|confirmed)\b/.test(t);
-        }).length;
-        return hits > 0 ? hits : null;
-      };
-
+      /*
+       * WHAT THE RECORD SAYS THE NUMBER IS, READ WHEN THE ROUND CLOSED.
+       *
+       * This was worked out here, on every board read, by a rule that never once fired: every word
+       * of the target's name in one sentence plus a verb from a list of nine, and then it suggested
+       * the COUNT OF MATCHING SENTENCES rather than the number somebody said. A team who reported
+       * "nine of the forty teams are migrated" and then "all forty migrated by Friday" left the
+       * board reading 0 of 40 at the close.
+       *
+       * It is the model's reading now, written once when a round closes (board.listener.ts), and
+       * this is just the column. See what-the-record-says-a-number-is for why.
+       */
       /*
        * WHERE EACH ONE STARTED, WHICH IS WHAT TELLS US WHICH WAY IS GOOD.
        *
@@ -533,10 +524,10 @@ export class BoardService {
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never
         // applied automatically - it is a prompt, not a correction.
-        suggestedCount: (() => {
-          const sug = suggestFor(o.name);
-          return sug != null && sug !== o.count ? sug : null;
-        })(),
+        /* Only while it still disagrees: the lead may have accepted it, or typed their own. */
+        suggestedCount: o.suggestedCount != null && o.suggestedCount !== o.count ? o.suggestedCount : null,
+        /* And the line it was read from, so a lead sees what they are accepting. */
+        suggestedSaid: o.suggestedCount != null && o.suggestedCount !== o.count ? o.suggestedSaid : null,
         // A new dimension means nothing until people have checked in against it,
         // so the board shows who has been asked and who has not.
         // Only people who can actually be asked: a managing-only lead gives no

@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BoardService } from './board.service';
+import { BoardListener } from './board.listener';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { BoardController } from './board.controller';
 import { GroundsModule } from '../grounds/grounds.module';
@@ -16,7 +17,7 @@ import { GroundsModule } from '../grounds/grounds.module';
    */
   imports: [forwardRef(() => GroundsModule)],
   controllers: [BoardController],
-  providers: [BoardService, AnthropicService],
+  providers: [BoardService, BoardListener, AnthropicService],
   exports: [BoardService],
 })
 export class BoardModule {}

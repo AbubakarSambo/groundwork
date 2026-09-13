@@ -831,6 +831,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <span>
                           The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
                         </span>
+                        {/* THE LINE IT CAME FROM, because a number from nowhere is one a lead has no
+                            way to judge. Asking somebody to accept a figure without showing them
+                            what it was read from is asking them to trust rather than to check. */}
+                        {o.suggestedSaid && (
+                          <span style={{ display: 'block', width: '100%', color: 'var(--gw-sub)', fontStyle: 'italic' }}>
+                            &ldquo;{o.suggestedSaid}&rdquo;
+                          </span>
+                        )}
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
                           disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}

@@ -78,6 +78,8 @@ export type BoardPresent = {
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
     /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */
     suggestedCount: number | null
+    /* The line it was read from, so a lead sees what they are accepting rather than a bare number. */
+    suggestedSaid?: string | null
   }[]
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
