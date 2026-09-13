@@ -35,6 +35,7 @@ import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
+import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
@@ -409,6 +410,7 @@ export default function App() {
               Verifying that is a pre-merge requirement. This goes again once it is done.
             */}
             <Route path="/preview/reports" element={<RequireOrgSetup><EveryReportSideBySide /></RequireOrgSetup>} />
+            <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/*
               EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.

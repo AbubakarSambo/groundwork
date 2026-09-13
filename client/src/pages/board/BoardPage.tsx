@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
-import { BOARD_MUTED_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
+import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
@@ -299,7 +299,7 @@ export function BoardPage() {
                 */}
                 {/* Once it is over, what ended it is the header, not which session is open. */}
                 {endedSaying ? (
-                  <span style={{ color: '#8BE0AE', fontWeight: 700 }}>{endedSaying}</span>
+                  <span style={{ color: BOARD_ACCENT_INK, fontWeight: 700 }}>{endedSaying}</span>
                 ) : b.phaseSpine ? (
                   <span>
                     {b.phaseSpine.startsAt || b.phaseSpine.endsAt
@@ -343,7 +343,7 @@ export function BoardPage() {
                   const skin = {
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? '#8BE0AE' : BOARD_MUTED_INK,
+                    color: s.state === 'current' ? BOARD_ACCENT_INK : BOARD_MUTED_INK,
                     fontWeight: s.state === 'current' ? 700 : 500,
                   } as const
                   if (!been) return <div key={s.n} style={skin}>{face}</div>
@@ -382,29 +382,29 @@ export function BoardPage() {
           <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
+          <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK }}>
             Built from what each person shared in their private check-in.{' '}
-            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.</b>
+            <b style={{ color: BOARD_ACCENT_INK, fontWeight: 600 }}>Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.</b>
           </p>
           {howToRead && (
             <>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
                 If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
                 Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
                 This is the shared picture from this round of check-ins. It can change as the picture changes.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
                 Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
           )}
           <button
             onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: '#8BE0AE', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: BOARD_ACCENT_INK, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {howToRead ? 'Show less' : 'How to use it →'}
           </button>

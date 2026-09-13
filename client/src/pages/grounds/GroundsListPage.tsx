@@ -1,6 +1,7 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { useState } from 'react'
 import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -131,64 +132,14 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
         The brief is still the fallback, because a check-in nobody has finished a round on has no
         finding yet and still has to say what it is for.
       */}
-      {(g as any).latestSummary
-        ? (
-          <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, borderLeft: '2px solid var(--gw-amber-b)', paddingLeft: 10 }}>
-            {(g as any).latestSummary}
-          </div>
-        )
-        : g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
-
       {/*
-        WHAT A MANAGER CAME FOR: how far through, and what is in the way.
-        The finding above is one line and is whichever read ranked highest that round - a difference
-        if there was one, a blocker if not, a coverage read saying nothing is wrong otherwise. It is
-        worth having and it is not an answer to either question, and never to both.
-        These two are in the same place on every card, in the same words every time, so two rows can
-        be compared by eye rather than read.
+        THE SUMMARY AND THE TWO FACTS A MANAGER CAME FOR, FROM ONE COMPONENT.
+        The brief is the sentence somebody set this up with, so four goal check-ins read the same
+        line four times and the list says nothing about where any of them actually is. What draws
+        here is the last round's shared picture, plus how far through and what is stuck - the same
+        component the boards page and the board's own header draw, so the three cannot drift.
       */}
-      {(g as any).glance && (() => {
-        const q = (g as any).glance
-        const late = q.inTheWay.count > 0
-        return (
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10, fontSize: 11.5 }}>
-            <div>
-              <span style={{ color: 'var(--gw-muted)' }}>Progress </span>
-              <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>
-                {/*
-                  "8 OF 8 ROUNDS" BESIDE "1 OF 4 ANSWERED THIS ROUND" IS A CARD ARGUING WITH ITSELF.
-                  Seen on the live list: a run that met its planned eight and kept going, so a ninth
-                  was open with one answer in it. "8 of 8" reads as finished and the clause beside it
-                  says it plainly is not.
-                  Past the plan, the count drops the total: eight rounds are done, the run is still
-                  going, and how far through is no longer the useful fact.
-                */}
-                {q.progress.roundsPlanned && q.progress.roundsDone < q.progress.roundsPlanned
-                  ? `${q.progress.roundsDone} of ${q.progress.roundsPlanned} rounds`
-                  : `${q.progress.roundsDone} ${q.progress.roundsDone === 1 ? 'round' : 'rounds'} done`}
-              </span>
-              {q.progress.ofPeople > 0 && (
-                <span style={{ color: 'var(--gw-sub)' }}>
-                  {' · '}{q.progress.answeredThisRound} of {q.progress.ofPeople} answered this round
-                </span>
-              )}
-            </div>
-            <div>
-              <span style={{ color: 'var(--gw-muted)' }}>In the way </span>
-              {late
-                ? (
-                  <span style={{ color: 'var(--gw-amber-t)', fontWeight: 600 }}>
-                    {q.inTheWay.count}
-                    {q.inTheWay.oldest ? ` · ${q.inTheWay.oldest}` : ''}
-                    {q.inTheWay.daysWaiting != null ? ` (${q.inTheWay.daysWaiting}d)` : ''}
-                  </span>
-                )
-                /* Said, not left blank: "nothing" is an answer and an empty slot is a page that failed. */
-                : <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>Nothing</span>}
-            </div>
-          </div>
-        )
-      })()}
+      <HowItIsGoing summary={(g as any).latestSummary} brief={g.brief} glance={(g as any).glance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/*
           WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.

@@ -13,3 +13,9 @@
 
 /** Muted text on the dark ground: session chips, secondary lines, the quiet half of a pair. */
 export const BOARD_MUTED_INK = '#A8AFD6'
+
+/** Body text on the dark ground: the paragraphs in the header panels. */
+export const BOARD_BODY_INK = '#D6DAF0'
+
+/** The board's one accent: the load-bearing sentence, the live session, the way back. */
+export const BOARD_ACCENT_INK = '#8BE0AE'
