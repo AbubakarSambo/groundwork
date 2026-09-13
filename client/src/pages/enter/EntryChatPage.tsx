@@ -1500,6 +1500,9 @@ export function EntryChatPage() {
             return [...prev.slice(0, -1), { role: 'assistant', content: live }]
           })
         },
+        /* Everybody setup heard named. The check-in asked "who else is involved" after being told
+           three times, and the block that stops that needs the names to state. */
+        onboardingSelections.peopleNamed,
       )
     },
     onSuccess: (res, msgs) => {

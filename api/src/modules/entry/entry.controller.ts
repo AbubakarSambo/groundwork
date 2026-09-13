@@ -38,6 +38,19 @@ export class EntryChatDto {
   @IsOptional()
   @IsString()
   groundLabel?: string;
+
+  /**
+   * WHO SETUP ALREADY NAMED, so the check-in does not ask for them again.
+   *
+   * Watched in a browser: a lead named all three people, named them again two turns later, and was
+   * asked "who else is involved in this project?". The block that stops that on the signed-in side
+   * needs the names, and this endpoint never carried them.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(40)
+  peopleNamed?: string[];
 }
 
 class EntryOnboardDto {
@@ -394,7 +407,7 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }));
+      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed);
       write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
@@ -443,7 +456,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel);
+    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *
