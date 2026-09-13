@@ -274,7 +274,7 @@ export default function EveryReportSideBySide() {
             n={5}
             name="What you have shared, across the run"
             cell="A · run"
-            note="Your own half across every session. The only place the specificity read has somewhere to stand, because it needs more than one sitting to say anything."
+            note="Your own half across every session, and the only place the specificity read has somewhere to stand. WHAT IS DRAWN HERE IS ONE COMPONENT OF IT. The real page assembles this surface from five - MyRecord, WhatYouAreCarryingForward, TheFiveThingsThatMakeItCheckable, WhatYourRecordCanSupport, MyParticipation - so what you see below is the close-out panel and little else, and the surface itself is fuller. That is the same problem THE_ORDER was written to end: a cell whose order lives in a page rather than in one place. Do not judge this surface from here until it is drawn whole."
           >
             {ground.data && myRecord.data
               ? <MyRecord
