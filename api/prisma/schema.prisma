@@ -170,6 +170,16 @@ enum TurnRole {
 }
 
 // Structured data extracted from a check-in. Belongs to the person.
+/// HOW CHECKABLE A LINE IS, as the extraction read it.
+///
+/// HIGH: a document or a concrete fact. MEDIUM: a specific claim somebody could check.
+/// LOW: subjective, or from memory alone.
+enum Verifiability {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum RecordEntryType {
   SUCCESS_DEFINITION
   TIMEFRAME
@@ -1410,6 +1420,20 @@ model RecordEntry {
   participantId        String          @map("participant_id")
   checkInId            String?         @map("check_in_id")
   type                 RecordEntryType
+
+  /// HOW CHECKABLE THIS LINE IS. A COLUMN, BECAUSE IT WAS LIVING IN THE TEXT.
+  ///
+  /// It was stamped on the front of `text` as "[VERIFIABILITY:HIGH] ..." with a comment saying why:
+  /// "the RecordEntry schema does not yet have a dedicated column - this preserves the signal
+  /// without a migration." A reasonable IOU, and it came due twice: once under people's names on
+  /// the board, and once inside the line a lead is shown when accepting a number off the record -
+  /// in code written the same evening. Every reader had to remember to strip it, and the fifth
+  /// reader did not.
+  ///
+  /// Null on every row written before this column, and those still carry the marker in their text;
+  /// the readers parse it as a fallback. New rows keep the text clean, which is what actually ends
+  /// the leak: a marker that is not in the text cannot be printed by a reader who forgot.
+  verifiability        Verifiability?
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does

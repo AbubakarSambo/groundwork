@@ -4141,9 +4141,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
     if (valid.length === 0) return;
 
-    // Store entries. The verifiability field is kept in the text as a prefix
-    // tag ([VERIFIABILITY: HIGH]) because the RecordEntry schema does not yet
-    // have a dedicated column - this preserves the signal without a migration.
+    /*
+     * Store entries. Verifiability is its OWN COLUMN now.
+     *
+     * It used to be stamped on the front of the text - "[VERIFIABILITY:HIGH] ..." - with a comment
+     * here saying the schema had no column for it and this preserved the signal without a
+     * migration. It came due twice: once under people's names on the board, and once inside the
+     * line a lead is shown when accepting a number, in code written the same evening. Every reader
+     * had to remember to strip it and the fifth one did not.
+     *
+     * The text is stored clean, which is the part that ends the leak: a marker that is not in the
+     * text cannot be printed by a reader who forgot it was there.
+     */
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
@@ -4154,7 +4163,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           participantId,
           checkInId,
           type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
-          text: `[VERIFIABILITY:${v}] ${e.text.trim()}`,
+          verifiability: v as any,
+          text: e.text.trim(),
         };
       }),
     });

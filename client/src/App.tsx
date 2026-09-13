@@ -409,7 +409,14 @@ export default function App() {
               place that can be seen. One of its own notes says surface 02 was never rebuilt.
               Verifying that is a pre-merge requirement. This goes again once it is done.
             */}
-            <Route path="/preview/reports" element={<RequireOrgSetup><EveryReportSideBySide /></RequireOrgSetup>} />
+            {/*
+              OURS, NOT A CUSTOMER'S. It was behind RequireOrgSetup, which is every signed-in
+              customer - so anybody who guessed the address read a page of internal notes about our
+              own unfinished work ("its note read 'not rebuilt yet' for months"). It is the bench
+              where the eight report surfaces are compared on one check-in, and that is a Groundwork
+              tool, so it sits behind the same gate as the rest of the platform back office.
+            */}
+            <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/*

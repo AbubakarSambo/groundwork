@@ -49,6 +49,12 @@ export type ReadEntry = {
   /** Session the entry was recorded in; null when it is not tied to a check-in. */
   sessionNumber: number | null;
   text: string;
+  /**
+   * How checkable the line is, from its own column. Null on rows written before that column existed
+   * - those still carry the marker inside `text` and `rawTier` parses it. Optional so a caller that
+   * does not select it reads as "not known" rather than as LOW.
+   */
+  verifiability?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
 };
 
 export type ReadMention = {
@@ -321,7 +327,15 @@ const ADMITS_ABSENCE = new RegExp(
 const CARRIES_SOMETHING_TO_CHECK =
   /\b(\d)|\b(january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 
-const rawTier = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+/**
+ * HOW CHECKABLE THIS LINE IS: the column where there is one, the old prefix where there is not.
+ *
+ * The marker used to live on the front of the text. It is a column now, because it reached a page
+ * twice - but every row written before that still carries it inline, and reading those as LOW would
+ * quietly flatten the specificity read on all of them.
+ */
+const rawTier = (text: string, stored?: 'HIGH' | 'MEDIUM' | 'LOW' | null): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  if (stored) return stored;
   const m = /^\[VERIFIABILITY:(HIGH|MEDIUM|LOW)\]/.exec(text ?? '');
   return (m?.[1] as any) ?? 'LOW';
 };
@@ -332,10 +346,10 @@ const body = (text: string) =>
     .replace(/\[INFERRED:[^\]]*\]/g, '')
     .trim();
 
-const tierOf = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+const tierOf = (text: string, stored?: 'HIGH' | 'MEDIUM' | 'LOW' | null): 'HIGH' | 'MEDIUM' | 'LOW' => {
   const t = body(text);
-  if (CARRIES_SOMETHING_TO_CHECK.test(t)) return rawTier(text);
-  return ADMITS_ABSENCE.test(t) ? 'LOW' : rawTier(text);
+  if (CARRIES_SOMETHING_TO_CHECK.test(t)) return rawTier(text, stored);
+  return ADMITS_ABSENCE.test(t) ? 'LOW' : rawTier(text, stored);
 };
 
 /**
@@ -482,13 +496,13 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
       const myEntries = entries.filter((e) => e.participantId === p.id);
-      const high = myEntries.filter((e) => tierOf(e.text) === 'HIGH').length;
-      const medium = myEntries.filter((e) => tierOf(e.text) === 'MEDIUM').length;
+      const high = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'HIGH').length;
+      const medium = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'MEDIUM').length;
       const checkable = high + medium;
       const bySession = new Map<number, number>();
       for (const e of myEntries) {
         if (e.sessionNumber == null) continue;
-        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (tierOf(e.text) === 'LOW' ? 0 : 1));
+        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (tierOf(e.text, e.verifiability) === 'LOW' ? 0 : 1));
       }
 
       // CORROBORATION, not counting. (R1)
@@ -720,7 +734,7 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
     // read as an active session.
     const sessionsWithEntries = new Set<number>(
       myEntries
-        .filter((e) => tierOf(e.text) !== 'LOW')
+        .filter((e) => tierOf(e.text, e.verifiability) !== 'LOW')
         .map((e) => e.sessionNumber)
         .filter((n): n is number => n != null),
     );

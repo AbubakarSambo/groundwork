@@ -1020,7 +1020,9 @@ export class BoardService {
       }),
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId: ground.id } },
-        select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
+        /* `verifiability` too: it is a column now, and a read that does not select it falls back to
+           parsing the old inline marker, which new rows do not have. */
+        select: { participantId: true, text: true, verifiability: true, checkIn: { select: { sessionNumber: true } } },
       }),
       this.prisma.workMention.findMany({
         where: { groundId: ground.id },
@@ -1050,6 +1052,8 @@ export class BoardService {
         participantId: e.participantId,
         sessionNumber: e.checkIn?.sessionNumber ?? null,
         text: e.text,
+        /* From the column. Null on rows written before it, where reads.ts parses the old marker. */
+        verifiability: (e as any).verifiability ?? null,
       })),
       mentions,
       dependencies,
