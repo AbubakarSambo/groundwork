@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { Sec } from './kit'
 import type { EntryReport } from '@/api/entry'
+import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 
 /**
  * THE REPORT AS THE PERSON SAW IT AT THE END OF THEIR SESSION.
@@ -148,11 +148,16 @@ export function TheReportYouSawAtTheEnd({
   stands,
 }: TheReportYouSawAtTheEndProps) {
   const report = everySectionCanBeAbsent(given)
+  /* Numbered by what is DRAWN, the same rule the signed-in close follows: a block with nothing in
+     it is not shown, and fixed numbers would then skip. */
+  let step = 0
+  const next = () => (step += 1)
   return (
-    <div className="gw-entry-report">
+    <div className="gw-close gw-entry-report" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+        <style>{CLOSE_SHEET}</style>
         <style>{SIZES}</style>
         {/* What we heard from you */}
-        <div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)', marginBottom: 'var(--er-gap)' }}>
+        <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
             <div style={{ fontSize: 'var(--er-label)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>What we heard from you</div>
             {correctedNote && (
@@ -161,7 +166,7 @@ export function TheReportYouSawAtTheEnd({
           </div>
           <p style={{ margin: 0, fontSize: 'var(--er-lead)', lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.whatGroundworkSaw}</p>
           {correctionSlot}
-        </div>
+        </div></div>
 
         {/*
           THE LADDER IS GONE. "Just started" here, "Your record is specific" two lines above it, and
@@ -170,8 +175,7 @@ export function TheReportYouSawAtTheEnd({
         */}
         {/* What's still open */}
         {report.areasRequiringAlignment.length > 0 && (
-          <div style={{ marginBottom: 'var(--er-gap)' }}>
-            <Sec title={`What's still open`} />
+          <Block n={next()} label="What's still open" note="what we noticed, and what to do">
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
@@ -181,28 +185,26 @@ export function TheReportYouSawAtTheEnd({
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
             ))}
-          </div>
+          </Block>
         )}
 
         {/* Clear from what this person said - not mutual agreement, nobody else has checked in yet. Not
             "your side": this is a team getting a read on something far more often than it is two
             people arguing, and side language turns an update into a case. */}
         {report.alignmentReached.length > 0 && (
-          <div style={{ marginBottom: 'var(--er-gap)' }}>
-            <Sec title="Clear from what you said" />
+          <Block n={next()} label="Clear from what you said" note="nobody else has answered yet">
             {report.alignmentReached.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
                 <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
               </div>
             ))}
-          </div>
+          </Block>
         )}
 
         {/* Suggested parties */}
         {report.suggestedParties && report.suggestedParties.length > 0 && (
-          <div style={{ marginBottom: 'var(--er-gap)' }}>
-            <Sec title="Recommended additions" />
+          <Block n={next()} label="Recommended additions" note="who else this check-in needs">
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
@@ -220,13 +222,12 @@ export function TheReportYouSawAtTheEnd({
                 )
               })}
             </div>
-          </div>
+          </Block>
         )}
 
         {/* Mentioned people */}
         {report.mentionedPeople && report.mentionedPeople.length > 0 && (
-          <div style={{ marginBottom: 'var(--er-gap)' }}>
-            <Sec title="People mentioned" />
+          <Block n={next()} label="People mentioned" note="you named them while you were talking">
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 {/*
@@ -268,7 +269,7 @@ export function TheReportYouSawAtTheEnd({
                 )
               })}
             </div>
-          </div>
+          </Block>
         )}
 
         {/*
@@ -281,8 +282,7 @@ export function TheReportYouSawAtTheEnd({
           is dropped: both are still named and still described here.
         */}
         {report.alsoCameUp && report.alsoCameUp.length > 0 && (
-          <div style={{ marginBottom: 'var(--er-gap)' }}>
-            <Sec title="Also came up" />
+          <Block n={next()} label="Also came up" note="named, but not people to invite">
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               {report.alsoCameUpNote && (
                 <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -296,7 +296,7 @@ export function TheReportYouSawAtTheEnd({
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
 
         {/*
@@ -305,8 +305,7 @@ export function TheReportYouSawAtTheEnd({
           boxes while the shared report on the same page listed two open items. Settled and still open
           come from the session report now; with nothing in either, one line says so.
         */}
-        <div style={{ marginBottom: 'var(--er-gap)' }}>
-          <Sec title="Where this leaves you" />
+        <Block n={next()} label="Where this leaves you" note="settled, and still open">
           {(stands?.settled.length || stands?.open.length)
             ? <div style={{ display: 'grid', gap: 6 }}>
                 {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
@@ -316,10 +315,10 @@ export function TheReportYouSawAtTheEnd({
           <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>
-        </div>
+        </Block>
 
         {/* Last, because it is about the check-in rather than about the session just finished. */}
-        {stillNeeded}
+        {stillNeeded && <div className="gw-foot">{stillNeeded}</div>}
     </div>
   )
 }

@@ -69,8 +69,11 @@ export const THE_TEMPLATE = {
 export const NOT_THE_TEMPLATE: Record<string, string> = {
   theEndOfTheEntryChat:
     'It runs before the check-in is committed, so there is no ground and no sitting to fetch, and '
-    + 'the report is an object held in the page. The rebuilt surface reads rows and cannot run '
-    + 'there. Two moments, not two opinions.',
+    + 'the report is an object held in the page. It cannot be the same COMPONENT - that one reads '
+    + 'rows - but it is drawn in the same chrome and follows the same template: the finding first '
+    + 'and alone, numbered blocks each with a note, and nothing numbered that is not drawn. Only '
+    + 'the four states are absent, because they are computed at extraction and extraction has not '
+    + 'run yet. Two moments, one shape.',
   aStoredReport:
     'Where a report was stored, it is shown exactly as it was read, because that object IS what the '
     + 'person read. Re-rendering it in the new shape would be a different page about the same '

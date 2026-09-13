@@ -279,10 +279,13 @@ describe('one uppercase label, including on a dark ground', () => {
      * whole job is to promise what the real report will look like. They are the same component now.
      */
     /* The preview became its own component, so that the report somebody read at the end of a
-       session is the same screen when they open it again later. The heading still comes from the
-       kit; it is just one file further along. */
+       session is the same screen when they open it again later. The headings then moved on again,
+       from the kit to the chrome the signed-in close is drawn in, so the two reports a person
+       reads a week apart are numbered and labelled the same way. The rule is unchanged and only
+       the one place it lives has: the headings are not written here. */
     const ENTRY = strip(readFileSync(join(SRC, 'components/gw/TheReportYouSawAtTheEnd.tsx'), 'utf8'))
-    expect(ENTRY).toMatch(/import \{ Sec \} from '\.\/kit'/)
+    expect(ENTRY).toMatch(/from '\.\/the-shape-every-close-is-drawn-in'/)
+    expect(ENTRY).not.toMatch(/textTransform: 'uppercase'[\s\S]{0,80}letterSpacing/)
     expect(ENTRY).not.toMatch(/letterSpacing: '\.09em'/)
   })
 })
