@@ -64,6 +64,11 @@ export type ReadDependency = {
   onLabel: string | null;
   what: string;
   status: DependencyStatus;
+  /**
+   * Whether they named the thing, as the model read it. Null on every row written before the
+   * column existed, and on those the word-list rule stands in - see theyNamedWhatTheyAreWaitingOn.
+   */
+  namedTheThing?: boolean | null;
   /** Sort key only. A number is enough and keeps fixtures readable. */
   createdAt?: Date | number;
 };

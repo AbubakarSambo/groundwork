@@ -1559,7 +1559,8 @@ export const DEPENDENCY_EXTRACTION_PROMPT = `You are extracting HANDOFFS from ON
 Only extract a handoff when THIS PERSON said they need something. Do not extract a handoff because they mentioned someone else owes something to a third party, and do not invent one from a general complaint.
 
 For each handoff give:
-- what: the thing they are waiting for, short and concrete, in their words ("the sales deck", "paying-user pricing", "staging access").
+- what: the thing they are waiting for, short and concrete, in their words ("the sales deck", "paying-user pricing", "staging access"). IT MUST READ AFTER THE WORD "FOR": the product writes "Ada is waiting for <what>", so it is a thing, never a clause. "Nobody has told us how this connects to anything" gives "an explanation of how this connects", not "how this connects to anything". Where they never said what they were waiting on, say that plainly ("something they have not named") and set namedTheThing to false.
+- namedTheThing: true when they named the thing they are waiting on. False when they said they were waiting or stuck but never said on what. "I need the pricing from Sam" is true. "Waiting on someone else, been a few weeks" is false - it is a real handoff and they did not say what it was for.
 - onName: the name of the person they are waiting on, exactly as they said it, or null if it is not a person (a process, an external party, a decision nobody owns yet).
 - onLabel: when onName is null, a short description of what they are waiting on instead ("the client's legal team", "the pricing decision").
 - status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
@@ -1579,7 +1580,30 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            what: { type: 'string', description: 'The thing they are waiting for, in their words.' },
+            what: {
+              type: 'string',
+              description:
+                'The thing they are waiting for, in their words, as a noun phrase that reads after the word "for" - the product writes "Ada is waiting for <what>".',
+            },
+            /*
+             * DID THEY NAME IT, OR ONLY SAY THEY WERE STUCK?
+             *
+             * Read off a live run: "Marketing analyst is waiting for waiting on someone else, with
+             * no escalation on record." The row is right - that person IS blocked and never said on
+             * what - and the sentence is not English, because the template assumed `what` was a
+             * noun phrase and it was a clause.
+             *
+             * The product had a rule for this that reads `what` against two word lists, and it gets
+             * "how this connects to anything" wrong. Whether somebody named the thing is a reading
+             * of what they said; asking the model is the honest way to know it, and it costs one
+             * boolean. Code uses the answer for the sentence and the count - never to decide
+             * whether they are blocked, which they are either way.
+             */
+            namedTheThing: {
+              type: 'boolean',
+              description:
+                'True when they named the thing they are waiting on. False when they said they were waiting or blocked but never said on what.',
+            },
             onName: { type: ['string', 'null'], description: 'Name of the person they are waiting on, or null.' },
             onLabel: { type: ['string', 'null'], description: 'What they are waiting on when it is not a person.' },
             status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
@@ -1602,7 +1626,7 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
                 'What they said they have already DONE about this, in their own words - emailed, called, chased, escalated, went around it. Null if they did not say.',
             },
           },
-          required: ['what', 'status'],
+          required: ['what', 'status', 'namedTheThing'],
         },
       },
     },

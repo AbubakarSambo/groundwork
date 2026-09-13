@@ -1,6 +1,6 @@
 import { DependencyStatus } from '@prisma/client';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
-import { oneBlockerPerThingWaitedOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 
 /**
  * WHAT A MANAGER WANTS OFF A CARD WITHOUT OPENING IT.
@@ -57,9 +57,23 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
 
   /* The longest-standing one, because that is where waiting has cost the most - the same choice the
      board's `ask` column makes, for the same reason. */
-  const oldest = [...real].sort(
+  const byAge = [...real].sort(
     (a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0),
-  )[0];
+  );
+  /*
+   * AND THE HEADLINE QUOTES A THING SOMEBODY NAMED, OR IT QUOTES NOTHING.
+   *
+   * This line is four words on a card and at the top of the board - "In the way 2 · waiting on
+   * someone else (0d)" - and that is the whole read a manager gets at a glance. Where the oldest
+   * row is one nobody named, quoting it spends the one phrase on a non-answer. The COUNT still
+   * includes it, because the person is blocked either way and hiding that would be worse; the
+   * oldest NAMED one gets the words, and where none is named there are none to give.
+   *
+   * THE WORDS AND THE DAYS ARE ONE ROW. Split across two, the card reads "the finance number (12d)"
+   * where the twelve days belong to something else entirely - a number about a different blocker,
+   * printed next to this one's name. I wrote that bug into this function and caught it here.
+   */
+  const oldest = byAge.find(theyNamedWhatTheyAreWaitingOn) ?? null;
 
   return {
     progress: {

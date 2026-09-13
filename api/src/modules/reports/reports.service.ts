@@ -42,7 +42,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { whatTheyCouldTry } from './what-you-could-try-next';
-import { oneBlockerPerThingWaitedOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -2616,6 +2616,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
             on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
             onIsPerson: !!d.onParticipantId,
             what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
+            /* Whether they named the thing: the model's answer where we have it, the word-list rule
+               on the rows written before that column existed. The finding's sentence branches on it. */
+            named: theyNamedWhatTheyAreWaitingOn(d),
           })),
           settled: shape.whereThingsStand.settled,
           open: shape.whereThingsStand.open,

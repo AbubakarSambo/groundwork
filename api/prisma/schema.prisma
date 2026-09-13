@@ -1633,6 +1633,25 @@ model GroundDependency {
   onParticipantId   String?          @map("on_participant_id") // null = waiting on someone/something outside the ground
   onLabel           String?          @map("on_label") // free text when the blocker is not a participant
   what              String           @db.Text // "the sales deck", "paying-user pricing"
+
+  /// DID THIS PERSON NAME THE THING, OR ONLY SAY THEY WERE STUCK?
+  ///
+  /// Two different rows read the same in the database and mean opposite things to a reader.
+  /// "Waiting on someone else, been a few weeks" is a real handoff whose subject was never named -
+  /// the row belongs on the board, and the sentence "is waiting for waiting on someone else" does
+  /// not. "Nobody has told us how this connects to anything" is a complaint the extraction should
+  /// not have taken at all.
+  ///
+  /// WHY A COLUMN AND NOT A RULE OVER `what`. We had the rule: `namesWhatIsWaitedOn` reads the text
+  /// against two word lists. It answers "how this connects to anything" wrong, and the only way to
+  /// fix that is a longer list of words, then a longer one - an arms race against English. Whether
+  /// somebody named the thing they are waiting on is a reading of what they said, which is the
+  /// model's job, so the model is asked and the answer is kept. Code then uses it for shape and
+  /// counting, which is code's job.
+  ///
+  /// NULL IS UNKNOWN, not false: every row written before this column existed has one, and the
+  /// readers fall back to the word-list rule for those rather than calling them all unnamed.
+  namedTheThing     Boolean?         @map("named_the_thing")
   // What happens once this clears. The board shows this so a handoff reads as a
   // consequence, not just a status.
   then              String?          @db.Text

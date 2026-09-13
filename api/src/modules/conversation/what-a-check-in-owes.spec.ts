@@ -156,3 +156,33 @@ describe('the pack lookup falls back to a role-free key', () => {
     expect(bare).toBeGreaterThan(role);
   });
 });
+
+/**
+ * "WAITING FOR WAITING ON SOMEONE ELSE" - the sentence that sent me looking.
+ *
+ * The product writes "Ada is waiting for <what>", so `what` has to be a thing. The extraction asked
+ * for it "in their words", and somebody's words are a clause as often as a noun - which is how a
+ * live run produced 15 blocker findings out of 18 that were not sentences.
+ *
+ * Held on the prompt rather than on an output, because this is the instruction that decides it and
+ * because an output test here would need a model call. The behaviour it produces was checked by
+ * hand against the real sentences - see journey/named-the-thing-check.ts.
+ */
+describe('a handoff reads after the word "for"', () => {
+  const { readFileSync } = require('fs');
+  const { join } = require('path');
+  const PROMPTS = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8');
+  const at = PROMPTS.indexOf('DEPENDENCY_EXTRACTION_PROMPT');
+  const prompt = PROMPTS.slice(at, PROMPTS.indexOf('DEPENDENCY_EXTRACTION_SCHEMA', at));
+
+  it('says so, and says it with the sentence the product actually writes', () => {
+    expect(prompt).toContain('READ AFTER THE WORD "FOR"');
+    expect(prompt).toContain('is waiting for <what>');
+  });
+
+  it('and asks whether they named it at all, which is the other half', () => {
+    expect(prompt).toContain('namedTheThing');
+    /* Required, not optional: an absent answer reads as null and falls back to the word lists. */
+    expect(PROMPTS).toContain("required: ['what', 'status', 'namedTheThing']");
+  });
+});

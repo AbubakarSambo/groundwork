@@ -62,6 +62,22 @@ export function namesWhatIsWaitedOn(what: string, owner: string | null): boolean
   return words(what).some((w) => !ownerWords.has(w) && !CARRIES_NOTHING.has(w) && !A_WORD_FOR_BEING_STUCK.has(w));
 }
 
+/**
+ * DID THEY NAME IT - THE MODEL'S ANSWER WHERE WE HAVE IT, THE WORD LISTS WHERE WE DO NOT.
+ *
+ * `namesWhatIsWaitedOn` above reads the text against two lists, and that is as far as reading text
+ * can get: it answers "how this connects to anything" wrong, and the only repair is a longer list,
+ * and then a longer one. Whether somebody named the thing they are waiting on is a reading of what
+ * they SAID, so the extraction asks the model and keeps the answer on the row.
+ *
+ * The fallback is not a nicety. Every row written before that column existed has null in it, and
+ * treating null as "they did not name it" would silently empty half the board.
+ */
+export function theyNamedWhatTheyAreWaitingOn(d: { what: string; onLabel?: string | null; namedTheThing?: boolean | null }): boolean {
+  if (typeof d.namedTheThing === 'boolean') return d.namedTheThing;
+  return namesWhatIsWaitedOn(d.what, (d.onLabel ?? null) as string | null);
+}
+
 const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0));
 
 /**
@@ -76,7 +92,7 @@ export function oneBlockerPerThingWaitedOn<T extends ReadDependency>(deps: T[]):
   const emptyByKey = new Map<string, T>();
   const out: T[] = [];
   for (const d of [...deps].sort((a, b) => stamp(a.createdAt) - stamp(b.createdAt))) {
-    if (namesWhatIsWaitedOn(d.what, (d.onLabel ?? null) as string | null)) { out.push(d); continue; }
+    if (theyNamedWhatTheyAreWaitingOn(d as any)) { out.push(d); continue; }
     /* A placeholder. The newest one stands in for all of them. */
     emptyByKey.set(keyOf(d), d);
   }

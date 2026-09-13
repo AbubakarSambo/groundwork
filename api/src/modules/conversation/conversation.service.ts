@@ -5396,7 +5396,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const result = await this.anthropic.extract<{
-      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null }[];
+      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null; namedTheThing?: boolean }[];
     }>(DEPENDENCY_EXTRACTION_PROMPT, [{ role: 'user', content: transcript }], DEPENDENCY_EXTRACTION_SCHEMA);
 
     const valid = (result?.dependencies ?? []).filter((d) => d.what?.trim());
@@ -5465,6 +5465,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
                somebody who chased last week and says nothing this week still chased. */
             triedSaid: d.triedSaid?.trim() || undefined,
             sourceCheckInId: checkInId,
+            /* The newest account decides this too: somebody who names the thing this week has
+               named it, whatever they said the first time. Undefined leaves what we had. */
+            namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : undefined,
             clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           },
         });
@@ -5484,11 +5487,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           /* Their own words for what they have already done about it. Null means they did not say,
              which is what "nothing said yet" on the board honestly means. */
           triedSaid: d.triedSaid?.trim() || null,
+          /* Whether they named the thing, or only said they were stuck. Null where the model did
+             not answer, which reads as "we do not know" rather than as "they did not". */
+          namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
         },
-        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
+        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, namedTheThing: true },
       });
       // So a second mention within the SAME extraction also dedupes.
       openForThisPerson.push(created);

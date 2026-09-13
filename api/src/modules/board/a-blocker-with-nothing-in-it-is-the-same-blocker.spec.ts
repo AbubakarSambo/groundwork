@@ -77,3 +77,38 @@ describe('collapsing them', () => {
     expect(out).toHaveLength(2);
   });
 });
+
+/**
+ * AND WHO ANSWERS THE QUESTION: THE MODEL WHERE IT WAS ASKED, THE WORD LISTS WHERE IT WAS NOT.
+ *
+ * `namesWhatIsWaitedOn` reads the text against two lists, which is as far as reading text gets:
+ * it answers "how this connects to anything" TRUE, because "connects" and "anything" are in
+ * neither list, and the only repair is a longer list and then a longer one. Whether somebody named
+ * the thing they are waiting on is a reading of what they SAID, so the extraction asks the model.
+ *
+ * The fallback is load-bearing rather than tidy: every row written before that column existed has
+ * null in it, and treating null as "they did not name it" would empty half of every board.
+ */
+describe('who decides whether they named it', () => {
+  const { theyNamedWhatTheyAreWaitingOn } = require('./a-blocker-with-nothing-in-it-is-the-same-blocker');
+
+  it("the model's answer is used when there is one, either way", () => {
+    /* Text that the word lists would call named, which the person did not name. */
+    expect(theyNamedWhatTheyAreWaitingOn({ what: 'how this connects to anything', namedTheThing: false })).toBe(false);
+    /* And text the lists would refuse, which the person did name. */
+    expect(theyNamedWhatTheyAreWaitingOn({ what: 'the response', namedTheThing: true })).toBe(true);
+  });
+
+  it('a row from before the column falls back to the rule, not to false', () => {
+    expect(theyNamedWhatTheyAreWaitingOn({ what: 'the sales deck', namedTheThing: null })).toBe(true);
+    expect(theyNamedWhatTheyAreWaitingOn({ what: 'the finance dependency', onLabel: 'finance' })).toBe(false);
+  });
+
+  it('and this is exactly the case the word lists get wrong, which is why the model is asked', () => {
+    const { namesWhatIsWaitedOn } = require('./a-blocker-with-nothing-in-it-is-the-same-blocker');
+    /* Kept as a statement of the limitation rather than a complaint about it: the rule is right for
+       what it was built for and cannot reach this, and the column is the answer. */
+    expect(namesWhatIsWaitedOn('how this connects to anything', null)).toBe(true);
+    expect(theyNamedWhatTheyAreWaitingOn({ what: 'how this connects to anything', namedTheThing: false })).toBe(false);
+  });
+});
