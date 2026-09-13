@@ -379,9 +379,17 @@ export function IntegrationsPage() {
       {access.isError && (
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>We could not read whether your organisation has access. Reload, or email hello@myground.work.</div>
       )}
+      {/*
+          NOT A WARNING GROUND, BECAUSE NOTHING HERE HAS GONE WRONG.
+          The whole block sat on amber with an amber border - the colour this product uses for
+          something that needs attention - and it is only saying "this has to be asked for", which
+          is how the thing is meant to work. The cost was the form inside it: a textarea with no
+          fill of its own, on a tinted ground, which is what "the orange box makes it hard to see
+          the input field" is. It is an ordinary card now, like every other form on this page.
+      */}
       {access.data && !access.data.approved && (
-        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
+        <div style={{ ...S.card, marginBottom: 20 }}>
+          <div style={{ ...S.h3, marginBottom: 5 }}>
             Sending data in needs to be asked for
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
@@ -398,7 +406,9 @@ export function IntegrationsPage() {
                 placeholder="What do you want to build with it? Somebody reads this."
                 aria-label="What do you want to build with it?"
                 rows={3}
-                style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+                /* Its own white ground, named rather than inherited: a field that borrows whatever
+                   is behind it is a field somebody cannot find. */
+                style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' }}
               />
               {/* THE TERMS ARE READ HERE, NOT ON A PAGE OF THEIR OWN. Eight short points; the request
                   cannot be recorded until they are ticked, and the version ticked is written on it. */}
@@ -508,21 +518,18 @@ export function IntegrationsPage() {
           The list comes from the server so this page cannot promise a language nobody added.
         */}
         {/*
-          WHAT AN ADMIN CANNOT SEE FOR THEMSELVES. WhatsApp only lets a business send free text
-          within 24 hours of the person last writing. Outside that, only wording Meta has approved
-          goes - so until ours is approved, everything the product STARTS is recorded as not sent.
-          Somebody can set this all up correctly and have nothing arrive, with no way to tell that
-          from a broken connection. The server says which it is, from the same setting the sender
-          reads, so this goes on its own the day the wording is approved.
+          WHO SENDS THE FIRST MESSAGE, SAID AS A THING TO DO RATHER THAN AS A LIMIT.
+          This read "Start by email for now" and then explained Meta's approval queue - our problem,
+          in our words, on a page where somebody is trying to set something up. The fact underneath
+          is real and unchanged: the person has to write first. What an admin needs is the action,
+          which is one line: share the number, get them to say anything, it runs from there.
         */}
         {(whatsapp.data as any)?.canStartAConversation === false && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 12px', margin: '10px 0', fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-text)' }}>
-            <strong>Start by email for now.</strong> WhatsApp only lets us write first using wording
-            Meta has approved, and ours is still going through. So send the first check-in link by
-            email as usual. Once somebody replies on WhatsApp, everything works there: their
-            check-in, their reminders and their report. Nothing is lost in the meantime, and nothing
-            here needs changing when the wording is approved.
-          </div>
+          <p style={S.body}>
+            Your team messages the number first. Share it with them, or send them the link to it, and
+            ask them to say anything at all - hello will do. From that moment everything happens on
+            WhatsApp: their check-in, their reminders and their report.
+          </p>
         )}
         {(whatsapp.data as any)?.languages?.length > 0 && (
           <p style={S.body}>
