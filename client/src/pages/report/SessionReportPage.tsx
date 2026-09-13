@@ -245,6 +245,40 @@ export default function SessionReportPage() {
         </div>
       )}
 
+          {data?.report
+            ? (
+              /*
+               * A STORED REPORT IS SHOWN AS IT WAS READ, and that rule outranks the template.
+               * "I want the exact same forming report to be openable or seen." Only the entry chat
+               * stores one, and that object IS the thing the person read - ten of four hundred and
+               * ninety-five sittings have it. Re-rendering it in the new shape would be a different
+               * page about the same facts, which is the complaint this rule came from.
+               */
+              <TheReportYouSawAtTheEnd
+                report={data.report!}
+                stands={shape?.whereThingsStand ? { settled: shape.whereThingsStand.settled ?? [], open: shape.whereThingsStand.open ?? [] } : null}
+                hideCompleteness={!!shape?.howClearThisWas?.level}
+                onRecordLine="Built from what you said today."
+              />
+            )
+            : (
+              /*
+               * AND EVERYTHING ELSE GETS THE TEMPLATE, which is what this surface was always meant
+               * to be. The preview page carried the note for months: "not rebuilt yet, and the
+               * surface with the real problem under it - one cell, two shapes, two fetches,
+               * depending on which door you came through." Eight surfaces were rebuilt and this one
+               * was left, then the page that said so was deleted.
+               * Nothing was stored for these sittings, so there is no exact thing to be faithful
+               * to - only rows to draw, which is what the rebuilt one does, and it brings the
+               * coaching note, what you carry and the way to correct the record with it.
+               */
+              <TheCheckInYouJustFinished
+                checkInId={checkInId!}
+                groundId={data!.groundId as string}
+                sessionNumber={data!.sessionNumber as number}
+              />
+            )}
+
       {data?.report && (
         <>
           {/*
@@ -274,39 +308,7 @@ export default function SessionReportPage() {
             chat there is no ground and no check-in to fetch, so the rebuilt one cannot run there.
             Two shapes because two moments, rather than two shapes by accident.
           */}
-          {data.report
-            ? (
-              /*
-               * A STORED REPORT IS SHOWN AS IT WAS READ, and that rule outranks the template.
-               * "I want the exact same forming report to be openable or seen." Only the entry chat
-               * stores one, and that object IS the thing the person read - ten of four hundred and
-               * ninety-five sittings have it. Re-rendering it in the new shape would be a different
-               * page about the same facts, which is the complaint this rule came from.
-               */
-              <TheReportYouSawAtTheEnd
-                report={data.report}
-                stands={shape?.whereThingsStand ? { settled: shape.whereThingsStand.settled ?? [], open: shape.whereThingsStand.open ?? [] } : null}
-                hideCompleteness={!!shape?.howClearThisWas?.level}
-                onRecordLine="Built from what you said today."
-              />
-            )
-            : (
-              /*
-               * AND EVERYTHING ELSE GETS THE TEMPLATE, which is what this surface was always meant
-               * to be. The preview page carried the note for months: "not rebuilt yet, and the
-               * surface with the real problem under it - one cell, two shapes, two fetches,
-               * depending on which door you came through." Eight surfaces were rebuilt and this one
-               * was left, then the page that said so was deleted.
-               * Nothing was stored for these sittings, so there is no exact thing to be faithful
-               * to - only rows to draw, which is what the rebuilt one does, and it brings the
-               * coaching note, what you carry and the way to correct the record with it.
-               */
-              <TheCheckInYouJustFinished
-                checkInId={checkInId!}
-                groundId={data.groundId as string}
-                sessionNumber={data.sessionNumber as number}
-              />
-            )}
+
 
           {/*
             AND WHAT THIS CHECK-IN STILL NEEDS, drawn by the page rather than handed to the report.
