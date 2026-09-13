@@ -3963,7 +3963,24 @@ export const NEW_STARTING_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       successDefinitions: {
         type: 'array',
         items: {
@@ -4031,7 +4048,24 @@ export const RECOGNITION_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       askVsRecord: {
         type: 'object',
         properties: {
@@ -4097,7 +4131,24 @@ export const DRIFT_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       driftTrace: {
         type: 'object',
         properties: {

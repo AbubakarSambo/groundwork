@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { TwoAccountsSideBySide, Folded } from '@/components/gw/two-accounts-side-by-side'
 import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -1387,8 +1388,7 @@ export function ReportBody({
               */}
               {report.centralQuestion && (
                 <div style={{ marginBottom: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '12px 14px' }}>
-                  <SecH>The one thing to settle first</SecH>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{report.centralQuestion}</div>
+                  <WhatToSettleTogether question={report.centralQuestion} />
                 </div>
               )}
 

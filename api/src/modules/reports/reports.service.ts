@@ -42,6 +42,9 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { whatTheyCouldTry } from './what-you-could-try-next';
+import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
+import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
+import { totalSessionsFor } from '../grounds/session-count';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
@@ -831,7 +834,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // absent parties misrepresented, and actionable commitments buried.
     // The leadership-pattern block is generated FROM the role map, so adding or
     // changing a pattern changes what the synthesis looks for. Pinned by a test.
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE;
+    /* Which situation this is, and where in the run - a cue, from the same table the conversation
+       reads. See what-situation-this-report-is-about for why the questions were interchangeable. */
+    /* Optional-chained the way the rest of this codebase reaches a model a test double may not
+       carry: a synthesis must not fall over because a fixture has no checkIn.aggregate. Round one
+       is the safe default - it says "nothing earlier to compare against", which is true of any
+       round the product cannot place. */
+    const roundNow = await (this.prisma.checkIn?.aggregate?.({
+      where: { participant: { groundId }, isSetup: false },
+      _max: { sessionNumber: true },
+    }) ?? Promise.resolve(null))
+      .then((r: any) => r?._max?.sessionNumber ?? 1)
+      .catch(() => 1);
+    const theSituation = whatSituationThisIsAbout(
+      (ground as any).scenario,
+      roundNow,
+      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+    );
+    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "");
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -1818,7 +1838,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         sharedPicture: result.sharedPicture,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
-        centralQuestion: result.centralQuestion,
+        centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         /**
          * PRIVATE GUIDES SURVIVE A RE-SYNTHESIS.
          *
@@ -1851,7 +1871,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         sharedPicture: result.sharedPicture,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
-        centralQuestion: result.centralQuestion,
+        centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         // Carry the private guides across. See the note on the create branch:
         // this write is what destroyed them on every session after the first.
         engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
@@ -1884,7 +1904,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       sharedPicture: result.sharedPicture,
       agreements: result.agreements,
       divergences: result.divergences,
-      centralQuestion: result.centralQuestion,
+      centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
     }).catch((err: any) =>
       this.logger.warn(`Keeping the round for ground ${groundId} failed: ${err.message}`),
     );

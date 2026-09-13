@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
+import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
@@ -516,12 +517,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       </div>
                     </Row>
                   ))}
-                  {b.divergence.centralQuestion && (
-                    <Row>
-                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
-                    </Row>
-                  )}
                 </>
               )}
               {/*
@@ -535,6 +530,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               */}
             </Card>
           </>
+        )}
+
+        {/*
+          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
+
+          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
+          the difference above it - and on a round where nothing differed, that card says "nothing
+          cross-referenced yet" and then asked a question about nothing.
+
+          It is the same field the report and a party's shared picture draw, under one name now:
+          three places had two names between them, so somebody who read the board and then their
+          report saw what looked like two different things.
+        */}
+        {b.divergence?.centralQuestion && (
+          <Card>
+            <Row first>
+              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+            </Row>
+          </Card>
         )}
 
         {/* ---------------------------------------------- at a glance */}
