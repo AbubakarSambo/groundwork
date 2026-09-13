@@ -186,7 +186,7 @@ export function oneWordForTheThing(text: string): string {
  * the record to the person whose work it was; this had been catching the tidy ones.
  */
 const NARRATION_LEAD_IN =
-  /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
+  /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+(?:now\s+)?(?:in|on)\s+(?:your|the)\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
 
 /**
  * THE SAME NARRATION, ARRIVING AT THE END OF THE SENTENCE INSTEAD OF THE START.
@@ -232,8 +232,16 @@ export function withoutRecordNarration(text: string): string {
     if (cleaned.trim() === sentence.trim()) return sentence;
     /* Nothing but the narration: the sentence existed only to announce the write. */
     if (!/[a-z0-9]/i.test(cleaned)) return '';
+    /*
+     * AND THE COMMA THE NARRATION WAS HANGING OFF.
+     *
+     * "That's a specific action on your part, and it is in your record." leaves "...on your part, ."
+     * once the clause goes, because the comma belongs to the sentence and the lookbehind never
+     * consumed it. A stripper that leaves debris is a stripper somebody turns off.
+     */
+    const tidied = cleaned.replace(/[,;:\s]+([.!?])\s*$/, '$1').replace(/[,;:]\s*$/, '.');
     /* What followed the lead-in is the real content. It now starts the sentence. */
-    const t = cleaned.trimStart();
+    const t = tidied.trimStart();
     return t.charAt(0).toUpperCase() + t.slice(1);
   });
   return kept.filter((s) => s.trim() !== '').join(' ');

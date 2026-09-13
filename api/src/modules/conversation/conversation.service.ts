@@ -99,6 +99,7 @@ import {
   whichCard, owedFor, type Owed, type Role,
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
+import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1128,6 +1129,33 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try kept it as their estimate.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try hardened it too; the first stands.`);
+        }
+      }
+
+      /*
+       * AND A REPLY THAT ASKS NOTHING AND DOES NOT CLOSE LEAVES SOMEBODY HOLDING IT.
+       *
+       * Last of the three, because the two above can change the text and this reads the final one.
+       * Same shape as both: spot it, ask again with one instruction, keep the second only if it is
+       * actually better. If it is not, the first stands - a flat reply is better than no reply, and
+       * a loop here would strand the person it is trying to help.
+       */
+      /* `textHadCloseMarker`, not the local flag of the same name: that one is set further down,
+         after this runs. The alias exists for exactly this collision. */
+      const closingNow = textHadCloseMarker(rawReply);
+      if (isADeadEnd(screened.text, closingNow)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; asking again.`);
+        const withAQuestion = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASK_SOMETHING_OR_CLOSE}`, history)
+          .catch(() => '');
+        const second = withAQuestion.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withAQuestion), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isADeadEnd(second.text, textHadCloseMarker(withAQuestion))) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try left them something to answer.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was a dead end too; the first stands.`);
         }
       }
 
