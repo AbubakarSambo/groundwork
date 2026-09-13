@@ -24,11 +24,48 @@ const strip = (s: string) => s
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
   .replace(/^\s*\/\/.*$/gm, ' ');
 
+/*
+ * EMPTY IS NOT THE SAME AS DROPPED, AND THIS IS WHERE THAT IS DECIDED.
+ *
+ * Blocks hide when they have nothing, because a heading with nothing under it reads as a page that
+ * failed to load. So on screen a block that was deleted and a block whose data is thin look
+ * identical - and that is not theoretical: reading a screenshot of a real ground I reported two
+ * surfaces as broken, and both were correct. One had a person with zero rows in that sitting.
+ *
+ * This reads the SOURCE, not a render. A block hidden behind a condition still has its label in the
+ * file and passes; a block taken out of the file fails, however thin the data. That is the whole
+ * reason it is a source-assertion rather than a rendering test.
+ */
 const SURFACES: { cell: keyof typeof THE_ORDER; file: string; skip?: string[] }[] = [
   { cell: 'A_SESSION', file: join(CLIENT, 'components', 'gw', 'TheCheckInYouJustFinished.tsx') },
   /* 'whatThisSitsUnder' draws only on a cascade, so it is not always on the page. */
   { cell: 'B_SESSION', file: join(CLIENT, 'components', 'gw', 'TheSessionsReport.tsx'), skip: ['whatThisSitsUnder'] },
 ];
+
+/*
+ * AND WHAT IS NOT CHECKED, SAID PLAINLY.
+ *
+ * The two run cells are not here. A_RUN's surface carries no block labels at all, and B_RUN's board
+ * draws zones - "At a glance", "Against the plan", "The work" - which GROUP several blocks rather
+ * than matching one each. Checking them would mean inventing a mapping that does not exist, and a
+ * map claiming to cover a surface it does not is the fault this whole file is answering.
+ *
+ * They are covered by the journey run instead, which walks the board on every situation. That is
+ * shape rather than order, and the difference is worth knowing.
+ */
+const NOT_CHECKED_HERE = {
+  A_RUN: 'the surface carries no block labels, so there is nothing to match against',
+  B_RUN: 'the board draws zones that group several blocks, not one label per block',
+} as const;
+
+describe('what this file does not cover', () => {
+  it('names the two cells it cannot check, and why', () => {
+    for (const [cell, why] of Object.entries(NOT_CHECKED_HERE)) {
+      expect(`${cell}: ${why.length}`).toMatch(/: \d{2,}$/);
+      expect(SURFACES.some((s) => s.cell === cell)).toBe(false);
+    }
+  });
+});
 
 describe('the order on the page is the order that was declared', () => {
   for (const s of SURFACES) {
