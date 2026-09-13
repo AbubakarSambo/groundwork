@@ -44,6 +44,7 @@ export interface WeighableEntry {
   /** The kind of thing it is. Only these kinds are ever weighable. */
   kind:
     | 'SUCCESS_DEFINITION'
+    | 'PROGRESS'
     | 'COMMITMENT'
     | 'TIMEFRAME'
     | 'ASK'
@@ -62,7 +63,10 @@ export interface WeighableEntry {
  * themselves. Nothing here is the product's opinion of anybody.
  */
 export const WEIGHABLE: WeighableEntry['kind'][] = [
-  'SUCCESS_DEFINITION', 'COMMITMENT', 'TIMEFRAME', 'ASK',
+  /* PROGRESS is the person's own account of what they did. It earns its place by the same rule as
+     the rest of this list - somebody put it on the record themselves - and it is the kind a leader
+     most needs to weigh, which is why its absence was worth a migration. */
+  'SUCCESS_DEFINITION', 'PROGRESS', 'COMMITMENT', 'TIMEFRAME', 'ASK',
   'TOLERANCE', 'WORRY', 'TENSION', 'AGREEMENT', 'DIVERGENCE',
 ];
 

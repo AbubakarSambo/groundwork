@@ -67,7 +67,9 @@ const MIDDLE: Owed[] = [
   {
     id: 'since-then', what: 'what has happened since what they said last time',
     role: ['lead', 'member', 'partner'], stage: ['middle'],
-    satisfiedBy: [T.COMMITMENT, T.INTENT],
+    /* PROGRESS first: this slot is literally asking what happened, and until the record had a type
+       for that, somebody who said "all forty are migrated" still read as not having answered it. */
+    satisfiedBy: [T.PROGRESS, T.COMMITMENT, T.INTENT],
   },
   {
     id: 'in-the-way-now', what: 'what is getting in the way now',
@@ -86,7 +88,9 @@ const LAST: Owed[] = [
   {
     id: 'where-it-landed', what: 'where it actually landed',
     role: ['lead', 'member', 'partner'], stage: ['last'],
-    satisfiedBy: [T.COMMITMENT, T.SUCCESS_DEFINITION],
+    /* Where it LANDED is what happened, not what was promised or what good would have looked like.
+       Both of those stay: on a last round people restate the standard they are judging it by. */
+    satisfiedBy: [T.PROGRESS, T.COMMITMENT, T.SUCCESS_DEFINITION],
   },
   {
     id: 'left-open', what: 'what is still open or unresolved',

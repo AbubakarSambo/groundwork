@@ -109,7 +109,7 @@ export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   { id: 'contributes', what: 'how their work contributes to the goal', role: ['partner'], stage: ['first'], satisfiedBy: [T.SUCCESS_DEFINITION, T.INTENT] },
   { id: 'needs-others', what: 'what they need from other people', role: ['partner', 'member'], stage: ['first', 'middle'], satisfiedBy: [T.ASK] },
 
-  { id: 'moved', what: 'what has moved since last time', role: ['lead', 'member', 'partner'], stage: ['middle'], satisfiedBy: [T.COMMITMENT, T.INTENT] },
+  { id: 'moved', what: 'what has moved since last time', role: ['lead', 'member', 'partner'], stage: ['middle'], satisfiedBy: [T.PROGRESS, T.COMMITMENT, T.INTENT] },
   { id: 'off-track', what: 'what is off track', role: ['lead'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION] },
   { id: 'support', what: 'who needs support, and with what', role: ['lead'], stage: ['middle'], satisfiedBy: [T.ASK, T.WORRY] },
   { id: 'in-the-way', what: 'what is getting in the way', role: ['member', 'partner'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION, T.ASK] },

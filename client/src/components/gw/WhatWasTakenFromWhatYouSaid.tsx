@@ -30,6 +30,8 @@ export interface MyRow {
 
 const KIND: Record<string, string> = {
   INTENT: 'what you are working on', COMMITMENT: 'a commitment', ASK: 'something you asked for',
+  /* A thing that happened. Without it this row read as the raw enum. */
+  PROGRESS: 'something you got done',
   WORRY: 'a worry', TENSION: 'a tension', SUCCESS_DEFINITION: 'what good looks like',
   TIMEFRAME: 'a timeframe', TOLERANCE: 'a tolerance', OPERATING_DIFFERENCE: 'how this is actually done',
 }

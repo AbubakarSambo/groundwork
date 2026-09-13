@@ -1533,9 +1533,10 @@ export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record en
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
 Classify each entry as exactly one of:
-- SUCCESS_DEFINITION - what they said success / "done" looks like
+- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not.
+- PROGRESS - a thing that has HAPPENED, as they reported it: work delivered, a number reached, a step completed, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "finance signed off on the 5th", "build shipped on the 12th". Not what they intend, not what they promised, not what good would look like - what is done. If the sentence would answer "what has happened since last time", it is this.
 - TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
-- COMMITMENT - something they or the other party agreed to deliver
+- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report it done, that is PROGRESS.
 - ASK - something they are requesting (a raise, equity, a resource, a decision)
 - INTENT - what they understood their role / the arrangement to be
 - TOLERANCE - what they are willing or unwilling to accept

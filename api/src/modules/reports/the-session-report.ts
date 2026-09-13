@@ -270,8 +270,17 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
        *
        * One home, and it is the section named after the question.
        */
-      items: ofTypes(input.entries, [RecordEntryType.INTENT]),
-      saying: 'Nobody stated what they are working towards this session.',
+      /*
+       * AND WHAT ACTUALLY HAPPENED, which this section is named for and did not hold.
+       *
+       * It drew INTENT only - what somebody understood their role to be - so on the round where a
+       * team delivered a quarter's plan, "Progress and priorities" was empty and said nobody had
+       * stated what they were working towards. The delivery lines existed; there was no type for
+       * them and they had scattered into SUCCESS_DEFINITION. PROGRESS first, because what happened
+       * outranks what somebody means to do.
+       */
+      items: [...ofTypes(input.entries, [RecordEntryType.PROGRESS]), ...ofTypes(input.entries, [RecordEntryType.INTENT])],
+      saying: 'Nobody said what has moved, or what they are working towards, this session.',
     },
     {
       title: 'Commitments',
@@ -423,6 +432,10 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * Taken from the themes' own type list so the two views cannot drift apart again.
    */
   const IN_THE_THEMES: RecordEntryType[] = [
+    /* What happened, which is the first thing anybody wants from a check-in and had no type until
+       a lead's own run showed both people reading "nothing specific enough to record came out of
+       it" on the round they finished the work. */
+    RecordEntryType.PROGRESS,
     RecordEntryType.INTENT,
     RecordEntryType.COMMITMENT,
     RecordEntryType.WORRY,

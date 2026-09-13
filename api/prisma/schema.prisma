@@ -174,6 +174,23 @@ enum RecordEntryType {
   SUCCESS_DEFINITION
   TIMEFRAME
   COMMITMENT
+
+  /// A THING THAT HAPPENED. THE RECORD HAD NOWHERE TO PUT ONE.
+  ///
+  /// Found by running a lead's own path end to end. Three people delivered a quarter's plan and the
+  /// closing report told the lead "Answered, and nothing specific enough to record came out of it"
+  /// about both of them. The lines were in the record. They had been typed SUCCESS_DEFINITION - a
+  /// bucket the per-person view deliberately hides, because that type is what good would LOOK like
+  /// and printing it as though somebody had done it was an older bug.
+  ///
+  /// The model was not wrong so much as cornered. "All forty migrated by Friday" is not a
+  /// definition of success and not something they agreed to deliver; it is a report of work done,
+  /// and there was no type for that. So the same kind of sentence came back COMMITMENT in one round
+  /// and SUCCESS_DEFINITION in the next, and half of it vanished from the page.
+  ///
+  /// On a product whose job is tracking whether a plan is being followed, progress had nowhere to
+  /// live. It does now.
+  PROGRESS
   ASK
   INTENT
   TOLERANCE

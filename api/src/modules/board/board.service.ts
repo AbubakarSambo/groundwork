@@ -492,7 +492,9 @@ export class BoardService {
       // when it disagrees with the lead's number, and let them accept it in one
       // click. The board never silently overwrites what a person set.
       const objectiveEvidence = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
+        /* PROGRESS is the type this read wanted all along: a number reached is reported, not
+           promised. See the-record-can-say-a-thing-happened in the schema. */
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'PROGRESS'] as any } },
         select: { text: true },
       });
       const suggestFor = (name: string): number | null => {
@@ -709,7 +711,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       });

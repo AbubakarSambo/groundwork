@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { describe, it, expect } from 'vitest'
 
 const SRC = join(__dirname, '..', '..')
 const read = (p: string) => readFileSync(join(SRC, p), 'utf8')

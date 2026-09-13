@@ -96,6 +96,7 @@ const QUICK_ACTIONS = [
 
 const RECORD_ENTRY_LABELS: Record<string, string> = {
   SUCCESS_DEFINITION: 'What success looks like',
+  PROGRESS: 'What got done',
   TIMEFRAME: 'Timeframe',
   COMMITMENT: 'Commitment',
   ASK: 'Ask',
