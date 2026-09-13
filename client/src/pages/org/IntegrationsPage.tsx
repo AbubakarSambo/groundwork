@@ -29,6 +29,20 @@ const S = {
   lede: { fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 26px', maxWidth: '62ch' } as const,
   sec: { fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', margin: '32px 0 10px' } as const,
   card: { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 10 } as const,
+  /*
+    HAIRLINES, NOT CARDS, FOR A LIST THAT IS ONE THING SAID NINE WAYS.
+    "Why are these in cards, it makes the page seem bulky" - correct. Nine bordered white boxes,
+    each holding a heading and one sentence, is nine objects of equal weight where there is one
+    sequence: what this page does, in order. Every box costs a border, a fill, a radius and 34px of
+    padding to say nothing the heading was not already saying.
+    The rule is already written down on the marketing site, over the same kind of list: "Hairlines,
+    not cards. Three cards make three things of equal weight; this is one sequence and reads as
+    one." It applies here and this page had not been told.
+    A card still earns its box everywhere else on this page, because those hold controls - a form, a
+    key, a connection - and a control is a separate object.
+  */
+  rows: { border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '4px 18px' } as const,
+  line: { padding: '14px 0' } as const,
   h3: { fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 4px' } as const,
   body: { fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 } as const,
   btn: { fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' } as const,
@@ -433,41 +447,43 @@ export function IntegrationsPage() {
       <TheThingsYouCanConnect />
 
       <div style={S.sec}>What it does</div>
-      <div style={S.card}>
-        <div style={S.h3}>Your people come in</div>
-        <p style={S.body}>Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too, so you are not keeping a second list.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your goals come in</div>
-        <p style={S.body}>Goals, projects and decisions, from wherever you already keep them. Groundwork points at yours instead of holding a second copy that can go out of step.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your team checks in against them</div>
-        <p style={S.body}>Each person is asked about the goals you sent, as often as you choose, in their own words. The report shows where their answers agree and where they do not.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your numbers come in as evidence</div>
-        <p style={S.body}>Send a figure from your CRM, billing or support desk and it sits beside the goal it belongs to. Nothing extra to keep up to date.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Roles and handovers</div>
-        <p style={S.body}>Who holds which role and since when, so a handover leaves a written brief rather than a gap.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your handbook</div>
-        <p style={S.body}>Send the documents that say how things are done here. People can ask them questions and the answer quotes the page it came from.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>What a lead reads before a hard conversation</div>
-        <p style={S.body}>One page on one person: what they said they would do, what they are waiting on, and what they raised. Never a score.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Invitations go out</div>
-        <p style={S.body}>Groundwork gives you a link. You send it however you already reach people.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Results come back</div>
-        <p style={S.body}>When everyone has checked in, your systems are told what happened and where to look. Never what anybody said.</p>
+      <div style={S.rows}>
+        <div style={{ ...S.line }}>
+          <div style={S.h3}>Your people come in</div>
+          <p style={S.body}>Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too, so you are not keeping a second list.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your goals come in</div>
+          <p style={S.body}>Goals, projects and decisions, from wherever you already keep them. Groundwork points at yours instead of holding a second copy that can go out of step.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your team checks in against them</div>
+          <p style={S.body}>Each person is asked about the goals you sent, as often as you choose, in their own words. The report shows where their answers agree and where they do not.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your numbers come in as evidence</div>
+          <p style={S.body}>Send a figure from your CRM, billing or support desk and it sits beside the goal it belongs to. Nothing extra to keep up to date.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Roles and handovers</div>
+          <p style={S.body}>Who holds which role and since when, so a handover leaves a written brief rather than a gap.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your handbook</div>
+          <p style={S.body}>Send the documents that say how things are done here. People can ask them questions and the answer quotes the page it came from.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>What a lead reads before a hard conversation</div>
+          <p style={S.body}>One page on one person: what they said they would do, what they are waiting on, and what they raised. Never a score.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Invitations go out</div>
+          <p style={S.body}>Groundwork gives you a link. You send it however you already reach people.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Results come back</div>
+          <p style={S.body}>When everyone has checked in, your systems are told what happened and where to look. Never what anybody said.</p>
+        </div>
       </div>
 
       {/* ---------------------------------------------------------------- whatsapp
