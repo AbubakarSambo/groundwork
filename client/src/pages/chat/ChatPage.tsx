@@ -43,7 +43,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
       onCorrected(doc.assessment ?? corrected)
       setEditing(false)
     } catch {
-      toast.error('The correction did not save. What you wrote is still here — try again.')
+      toast.error('The correction did not save. What you wrote is still here, try again.')
     } finally {
       setSaving(false)
     }
@@ -382,7 +382,7 @@ export function ChatPage() {
       setPendingDoc(file)
       setDocContext(ctx)
       setDocContextMode(true)
-      toast.error('That did not upload. Nothing was added to the record — try again.')
+      toast.error('That did not upload. Nothing was added to the record, try again.')
     },
   })
 
@@ -573,12 +573,12 @@ export function ChatPage() {
            */
           setMsgs(v => v.filter(m => m.id !== localId))
           setInput(message)
-          toast.error('That did not send — your message is back in the box. Try again.')
+          toast.error('That did not send. Your message is back in the box, try again.')
         }
         setLoading(false)
       } else {
         setLoading(false)
-        toast.error('The reply was cut off. What you sent is on the record — send again to carry on.')
+        toast.error('The reply was cut off. What you sent is on the record, send again to carry on.')
       }
     }
   }
@@ -956,7 +956,7 @@ export function ChatPage() {
                   <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                   {waitedAWhile && (
                     <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Still reading what you wrote. Nothing was lost — you do not need to send it again.
+                      Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
                 </span>

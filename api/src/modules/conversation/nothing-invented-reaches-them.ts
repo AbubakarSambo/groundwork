@@ -340,3 +340,23 @@ export type HitOutcome = 'dropped live' | 'regenerated, clean' | 'regenerated, s
 export function hitLogLine(checkInId: string, hit: Hit, outcome: HitOutcome): string {
   return `invention-gate check-in=${checkInId} check=${JSON.stringify(hit.check)} offending=${JSON.stringify(hit.offending)} outcome=${JSON.stringify(outcome)} sentence=${JSON.stringify(hit.sentence.trim())}`;
 }
+
+/**
+ * DROPPING THE SECOND QUESTION IS THE WHOLE REPAIR. ASKING AGAIN IS NOT.
+ *
+ * Any hit at all sent the whole reply back to be written again. Measured on forty-one people
+ * answering at once, a quarter of turns hit "a second question" and every one of them paid for a
+ * second model call, doubling that person's wait for a fault the screen had already fixed.
+ *
+ * The two kinds of hit are not the same problem. An invented name or figure has to go, and taking
+ * the sentence out can leave the reply saying nothing, so it is worth asking again with the fault
+ * named. A second question is a sentence that should not have been there: the first question stands
+ * on its own, the reply still reads whole, and the person still has exactly one thing to answer.
+ * There is nothing a fresh ask can add.
+ *
+ * It also had a cost nobody was counting: a second reply that comes back worse is thrown away, so
+ * every one of those turns bought a slower answer and kept the first one anyway.
+ */
+export function needsAFreshAsk(hits: Hit[]): boolean {
+  return hits.some((h) => h.check !== 'a second question');
+}

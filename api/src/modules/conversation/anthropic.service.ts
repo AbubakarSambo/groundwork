@@ -42,7 +42,21 @@ export function worthWaitingOut(err: any): boolean {
   /* Space OR underscore: the provider sends the status as RESOURCE_EXHAUSTED and the human message
      as "Resource exhausted. Please try again later." - the underscore form alone missed the real
      one, which is the message this whole thing exists for. Caught by the spec, not by reading it. */
-  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable/i.test(said);
+  /*
+   * A CALL THAT RAN OUT OF TIME IS WORTH TRYING AGAIN, AND NEVER WAS.
+   *
+   * Every call already carried a ninety-second ceiling and not one of them was ever retried: the
+   * deadline threw a plain Error whose words matched nothing here, so it went straight past the
+   * retry and out to the person as "the conversation could not be reached".
+   *
+   * Measured on forty-one people answering at once: one of them waited seventy seconds for a reply
+   * while the other forty were done inside six. Nothing was broken. One call was slow, and there
+   * was no shorter ceiling to cut it off and no retry waiting to take it.
+   *
+   * A slow call and a busy one are the same fact from our side, and the same answer works for both:
+   * stop waiting, ask again. The retry is ours, not theirs - they typed once.
+   */
+  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled/i.test(said);
 }
 
 /** Short, and short enough that nobody is left staring at a composer. */
@@ -144,8 +158,21 @@ const THINKING_BUDGET = 2048;
 // deeper budget - a one-time spinner there is fine.
 const CONVERSATION_THINKING_BUDGET = 256;
 
+/**
+ * HOW LONG ANYBODY WAITS, AND IT IS SHORTER THAN IT WAS.
+ *
+ * These were ninety seconds for a plain call and forty-five for a stream to open, chosen when a
+ * missed deadline was a dead end. It is not one any more - a call that runs out of time is retried
+ * now, usually landing fast on the second go - so the ceiling can be what a person will actually
+ * sit through rather than the longest a call might conceivably take.
+ *
+ * Twenty seconds, three attempts at worst, and almost always one fast one.
+ */
+export const A_CALL_WAITS = 20_000;
+/** Background reads nobody is sitting in front of get longer: a report is a bigger piece of work. */
+export const A_BACKGROUND_CALL_WAITS = 60_000;
 /** How long the chat waits for a stream to open before saying it could not. */
-export const OPENING_A_STREAM_WAITS = 45_000;
+export const OPENING_A_STREAM_WAITS = 20_000;
 /** And how long it waits between chunks once one has opened. */
 export const A_CHUNK_WAITS = 30_000;
 
@@ -421,22 +448,21 @@ export class AnthropicService implements OnApplicationBootstrap {
       parts: [{ text: t.content }],
     }));
 
-    const TIMEOUT_MS = 90_000;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
-    /* A 429 under load is "not this second", not an outage - see tryAgainIfItIsJustBusy. */
+    /* A 429 under load is "not this second", not an outage - see tryAgainIfItIsJustBusy. The
+       deadline sits INSIDE the retry, so a slow call is cut off and asked again rather than
+       being waited out once and handed to the person as a failure. */
     try {
       res = await tryAgainIfItIsJustBusy(
-        () => {
-          const call = this.client.models.generateContent({
+        () => withADeadline(
+          this.client.models.generateContent({
             model: this.conversationModel,
             contents,
             config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
-          });
-          const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
-          );
-          return Promise.race([call, timeout]);
-        },
+          }),
+          A_CALL_WAITS,
+          'Gemini respond() timed out',
+        ),
         (n, err) => this.logger.warn(`respond() busy (${err?.message ?? err}); retry ${n}`),
       );
       this.noteSuccess();
@@ -460,24 +486,27 @@ export class AnthropicService implements OnApplicationBootstrap {
    * through separate OCR/parsing libraries.
    */
   async respondWithMedia(systemPrompt: string, prompt: string, media: { mimeType: string; base64: string }): Promise<string> {
-    const TIMEOUT_MS = 90_000;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
-      const call = this.client.models.generateContent({
-        model: this.model,
-        contents: [{
-          role: 'user',
-          parts: [
-            { inlineData: { mimeType: media.mimeType, data: media.base64 } },
-            { text: prompt },
-          ],
-        }],
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
-      });
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini respondWithMedia() timed out after 90s')), TIMEOUT_MS),
+      res = await tryAgainIfItIsJustBusy(
+        () => withADeadline(
+          this.client.models.generateContent({
+            model: this.model,
+            contents: [{
+              role: 'user',
+              parts: [
+                { inlineData: { mimeType: media.mimeType, data: media.base64 } },
+                { text: prompt },
+              ],
+            }],
+            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: THINKING_BUDGET } },
+          }),
+          /* A document read is bigger than a chat turn and nobody is watching a composer for it. */
+          A_BACKGROUND_CALL_WAITS,
+          'Gemini respondWithMedia() timed out',
+        ),
+        (n, err) => this.logger.warn(`respondWithMedia() busy (${err?.message ?? err}); retry ${n}`),
       );
-      res = await Promise.race([call, timeout]);
     } catch (err: any) {
       this.logger.error(`respondWithMedia() Gemini call failed: ${err.message}`);
       throw engineUnavailable(err);
@@ -507,7 +536,15 @@ export class AnthropicService implements OnApplicationBootstrap {
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
-      res = await tryAgainIfItIsJustBusy(() => this.client.models.generateContent({
+      /*
+       * THIS ONE HAD NO CEILING AT ALL. `respond` and `respondWithMedia` each carried ninety
+       * seconds and this carried nothing, so a hung extraction waited for as long as the socket
+       * held - and some extractions run while a person is mid-check-in, not in the background.
+       *
+       * `fast` is the live one, pulled out while somebody waits, so it gets the short ceiling the
+       * chat uses. Everything else is a report or a record read and gets the longer one.
+       */
+      res = await tryAgainIfItIsJustBusy(() => withADeadline(this.client.models.generateContent({
         model: options.fast ? this.conversationModel : this.model,
         contents,
         config: {
@@ -522,7 +559,7 @@ export class AnthropicService implements OnApplicationBootstrap {
             },
           },
         },
-      }), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
+      }), options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
     } catch (err: any) {
       this.logger.error(`extract() Gemini call failed: ${err.message}`);
       this.noteFailure('extract', err);

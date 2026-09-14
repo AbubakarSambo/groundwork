@@ -63,7 +63,7 @@ import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
-import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
+import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1065,7 +1065,9 @@ export class ConversationService {
       this.knownForThisTurn.delete(checkIn.id);
       const conversationSoFar = turns.map((t) => t.content ?? '');
       let screened = screen(stripped.text, known, readerName, conversationSoFar);
-      if (screened.hits.length) {
+      /* Only an invention is worth a second call: a second question is fixed by the drop that
+         already happened. See needsAFreshAsk. */
+      if (screened.hits.length && needsAFreshAsk(screened.hits)) {
         /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
            the hit named. One time. If the second try is clean it replaces the first; if not, the
            first stands minus its dropped sentences. */
