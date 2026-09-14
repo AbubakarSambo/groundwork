@@ -17,9 +17,32 @@ export type BoardAbsent = {
   reason: string
 }
 
+/**
+ * THE BOARD IS THERE AND IT IS NOT YOURS TO READ YET, which is a third answer and had no shape.
+ *
+ * The server sends `renders: true` together with `withheldUntilYouCheckIn` when the viewer owes
+ * their own check-in. The board exists, it is held back until they have said their piece, so
+ * `renders: false` would be untrue - that means this check-in has no board at all. But nothing
+ * else comes with it, no sections and no title, and the page read `sections.includes(...)` the
+ * moment `renders` was true.
+ *
+ * So the whole Boards page died on "Cannot read properties of undefined (reading 'includes')".
+ * Hit on a real account with three stalled check-ins, which is exactly who this reply is for.
+ */
+export type BoardWithheld = {
+  groundId: string
+  renders: true
+  withheldUntilYouCheckIn: true
+  mode: 'PRIVATE' | 'SHARED'
+  family: BoardFamily
+  /** Why it is held back, in the server's own words. */
+  saying: string
+}
+
 export type BoardPresent = {
   groundId: string
   renders: true
+  withheldUntilYouCheckIn?: false
   mode: 'SHARED'
   family: BoardFamily
   sections: BoardSection[]
@@ -164,7 +187,7 @@ export type BoardPresent = {
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 }
 
-export type BoardResponse = BoardAbsent | BoardPresent
+export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
 export const boardApi = {
   get: (groundId: string, coverage?: CoverageVariant) =>

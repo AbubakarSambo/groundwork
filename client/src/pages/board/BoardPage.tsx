@@ -193,6 +193,35 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
+  /**
+   * THE BOARD IS THERE AND IT IS NOT YOURS TO READ YET.
+   *
+   * The server answers `renders: true` with `withheldUntilYouCheckIn` when the viewer owes their
+   * own check-in, and sends nothing else with it - no sections, no title. The line below read
+   * `b.sections.includes(...)` the moment `renders` was true, so the page died on "Cannot read
+   * properties of undefined (reading 'includes')" and took the whole Boards page down with it.
+   *
+   * Hit on a real account with three stalled check-ins, which is exactly the person this answer is
+   * written for. They were told the page could not load when nothing had gone wrong: their own
+   * answer is simply what the board is waiting on, and the fix is one click away.
+   */
+  if ((data as any).withheldUntilYouCheckIn) {
+    return (
+      <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+            Your answer first
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{(data as any).saying}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => navigate(`/grounds/${id}`)} style={btn}>Do my check-in</button>
+            <button onClick={() => navigate('/grounds')} style={btnGhost}>Back to check-ins</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const b = data as BoardPresent
   /* Whether the check-in is over, so the board stops drawing a clock. See lib/a-ground-that-has-ended. */
   const groundEnded = hasEnded((b as any)?.groundStatus)

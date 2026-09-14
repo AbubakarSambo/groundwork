@@ -30,18 +30,21 @@ describe('the button is not shown to somebody it would refuse', () => {
 
   it('and on the list', () => {
     /*
-     * There is more than one way to reach /grounds/new from this page - the header action and
+     * There is more than one way to reach the setup chat from this page - the header action and
      * the empty-state action both need the guard. Checking only the first occurrence let the
      * second one through unnoticed.
+     *
+     * MATCHED ON WHERE IT GOES, NOT ON HOW IT IS SPELT. This looked for the exact string
+     * `navigate('/start')` and went green the day every one of those buttons started asking for a
+     * new setup - `navigate('/start?new=1')` - which is a change to the query and not to the guard
+     * this file is about. A spec that a rename can satisfy is not guarding anything, so it now
+     * matches any navigation to /start whatever it carries.
      */
     const near = strip(LIST)
-    const needle = "navigate('/start')"
-    let i = near.indexOf(needle)
     let count = 0
-    while (i !== -1) {
+    for (const m of near.matchAll(/navigate\(['\`]\/start[^'\`]*['\`]\)/g)) {
       count++
-      expect(near.slice(Math.max(0, i - 300), i)).toContain('user?.mayOpenCheckIns !== false')
-      i = near.indexOf(needle, i + needle.length)
+      expect(near.slice(Math.max(0, m.index! - 300), m.index!)).toContain('user?.mayOpenCheckIns !== false')
     }
     expect(count).toBeGreaterThan(0)
   })
