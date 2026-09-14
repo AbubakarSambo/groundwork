@@ -187,6 +187,28 @@ remove. This is the discipline that was missing: every past fix added instructio
 
 ---
 
+## THE TRAP THAT CAUGHT US THREE TIMES IN ONE EVENING
+
+**A fix lands on a path the person never takes.** Every one of these was written correctly and helped
+nobody:
+
+- `/start?new=1` made the page ask instead of silently restoring a stale setup. It worked. The three
+  "Start a check-in" buttons on the check-ins list never passed it.
+- The extraction that turns "500 contracts" into a target had run on the signed-in check-in since it
+  was written. The entry commit, the path every lead takes first, never called it.
+- Five shape guards, each built from a fault a lead hit on a real screen, all wired into
+  `conversation.service`. The entry chat ran the invention screen and nothing else.
+
+Each was found by running the product. Each could have been found by a test.
+
+**There are two conversations here and a person meets the entry one first.**
+`every-guard-reaches-every-conversation.spec.ts` asserts the guard list on both paths. Add a guard,
+add it to that list. The give-backs are named there as a deliberate exception, with the reason: the
+entry chat has no board to draw a fact from.
+
+**The general rule: pin the wiring, not only the unit.** A test proving an extraction works is worth
+nothing while nobody calls it, which is the whole of the second bullet above.
+
 ## Traps found the hard way this session. Do not relearn these.
 
 1. **An instruction-only rule fails.** Three times this week a prompt rule lost to another prompt
