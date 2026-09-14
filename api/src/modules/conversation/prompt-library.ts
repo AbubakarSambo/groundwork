@@ -1897,6 +1897,15 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
      is that he ships the onboarding rewrite" gives "Ship the onboarding rewrite", not "he ships the
      onboarding rewrite". No he, she or they, and do not name the person: this text is published to
      the person it is about and is read on their own page, under a heading that says "You".
+   - targetNumber: the NUMBER this particular person is aiming at, where the speaker said one for them.
+
+     "150 each" said about three people is 150 for each of those three, not one target of 150 for the
+     group. A lead said exactly that - "150 each and i have a target of 50" - and what was stored was
+     one aim with no numbers at all. Split it. Their own number goes on their own name.
+
+     Leave it out where no number was said for that person. A total for the whole group belongs in
+     groundAims, not here.
+
    - awareness: whether that person has been told, on the speaker's own account.
        TOLD - the speaker says they have told them, and can say roughly when or how.
        NOT_TOLD - the speaker says they have not, or that somebody else may have, or that they assumed it was covered.
@@ -2204,6 +2213,10 @@ export const EXPECTATION_SCHEMA = {
           type: 'object',
           properties: {
             personName: { type: 'string' },
+            /* `target` a few lines down is this schema's existing string field for a commitment's
+               target. This is the person's own NUMBER, which is a different thing and needs its own
+               name rather than a second meaning on one key. */
+            targetNumber: { type: 'number', description: "The number this person is aiming at, where one was said for them. Omit otherwise." },
             expectation: {
               type: 'string',
               /**

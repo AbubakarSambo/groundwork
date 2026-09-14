@@ -62,3 +62,47 @@ describe('the number she said is kept', () => {
     expect(write).toMatch(/> 0 \?/);
   });
 });
+
+/**
+ * "150 EACH" IS THREE TARGETS WITH THREE OWNERS, NOT ONE.
+ *
+ * She said "500 contracts, daaa. and the sales linked to them", then "150 each and i have a target
+ * of 50". Three people, three numbers, and what was stored was one aim with no figure on it at all.
+ *
+ * `ownerParticipantId` has been on the model the whole time, and
+ * where-each-person-is-against-their-number.ts already renders progress per person. Nothing was
+ * writing the rows.
+ */
+describe('a number said about one person is that person\'s', () => {
+  const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+  const owned = service.slice(service.indexOf('if (theirOwnNumbers.length)'));
+
+  it('asks for a number per person, and says to split "150 each"', () => {
+    expect(EXPECTATION_PROMPT).toMatch(/- targetNumber: the NUMBER this particular person is aiming at/);
+    expect(EXPECTATION_PROMPT).toMatch(/"150 each" said about three people is 150 for each of those three/);
+    expect(EXPECTATION_PROMPT).toMatch(/A total for the whole group belongs in\s+groundAims, not here/);
+  });
+
+  it('keeps it on a key of its own rather than a second meaning on an existing one', () => {
+    const ex = (EXPECTATION_SCHEMA as any).input_schema.properties.expectations.items.properties;
+    expect(ex).toHaveProperty('targetNumber');
+    /* The existing string `target` on this schema is a different field and keeps its meaning. */
+    expect(ex.target.type).toBe('string');
+    expect(ex.targetNumber.type).toBe('number');
+  });
+
+  it('writes it against the person who owns it', () => {
+    expect(owned).toMatch(/ownerParticipantId: t\.participantId/);
+    expect(owned).toMatch(/target: t\.target/);
+  });
+
+  it('does not duplicate one they restate, and never overwrites a number already on the board', () => {
+    expect(owned).toMatch(/held\.has\(`\$\{t\.participantId\}::\$\{t\.name\.toLowerCase\(\)\}`\)/);
+    expect(owned).toMatch(/data: freshOwned\.map/);
+  });
+
+  it('and a failure here never stops the check-in being recorded', () => {
+    expect(owned).toMatch(/\.catch\(/);
+  });
+});

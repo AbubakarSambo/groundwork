@@ -4986,6 +4986,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       groundAims: { name: string; target?: number | null; by?: string | null }[];
       expectations: {
         personName: string;
+        targetNumber?: number | null;
         expectation: string;
         awareness: string;
         awarenessDetail?: string;
@@ -5029,9 +5030,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
     const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
 
+    /* "150 each" said about three people is three owned targets, not one. Collected here where the
+       name is already resolved to a participant, written below beside the ground's own aims. */
+    const theirOwnNumbers: { participantId: string; name: string; target: number }[] = [];
     for (const e of result.expectations ?? []) {
       const target = resolve(e.personName);
       if (!target) continue;
+      if (Number.isFinite(e.targetNumber) && (e.targetNumber as number) > 0) {
+        const said = (e.expectation ?? '').trim();
+        if (said) theirOwnNumbers.push({ participantId: target, name: said, target: Math.round(e.targetNumber as number) });
+      }
       const text = (e.expectation ?? '').trim();
 
       const kind = KINDS.includes(e.kind ?? '') ? (e.kind as any) : null;
@@ -5237,6 +5245,38 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         });
         const withNumbers = fresh.filter((a) => a.target != null).length;
         this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
+      }
+    }
+
+    /*
+     * AND A NUMBER SAID ABOUT ONE PERSON IS THAT PERSON'S.
+     *
+     * "150 each" about three people is three targets with three owners, not one target of 150 sitting
+     * on the ground with nobody against it. `ownerParticipantId` has been on the model the whole time
+     * and `where-each-person-is-against-their-number.ts` already renders progress per person; nothing
+     * was writing the rows.
+     *
+     * Same rules as the aims above: matched by name and owner so restating does not duplicate, and a
+     * number already on the board is never overwritten from here.
+     */
+    if (theirOwnNumbers.length) {
+      const owned = await this.prisma.groundObjective.findMany({
+        where: { groundId, ownerParticipantId: { not: null } },
+        select: { name: true, ownerParticipantId: true },
+      });
+      const held = new Set(owned.map((o) => `${o.ownerParticipantId}::${o.name.trim().toLowerCase()}`));
+      const freshOwned = theirOwnNumbers.filter((t) => !held.has(`${t.participantId}::${t.name.toLowerCase()}`));
+      if (freshOwned.length) {
+        await this.prisma.groundObjective.createMany({
+          data: freshOwned.map((t, i) => ({
+            groundId,
+            name: t.name,
+            target: t.target,
+            ownerParticipantId: t.participantId,
+            sortOrder: 100 + i,
+          })),
+        }).catch((err: any) => this.logger.warn(`Could not write per-person targets on ${groundId}: ${err?.message}`));
+        this.logger.log(`Ground ${groundId}: kept ${freshOwned.length} target(s) against the person who owns them.`);
       }
     }
   }
