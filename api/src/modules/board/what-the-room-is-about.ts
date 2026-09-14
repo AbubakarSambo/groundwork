@@ -56,7 +56,9 @@ Give back three things.
 
 AIMS. Group the lines into what people are trying to achieve. Put lines that are the same aim in different words together: "get more farmers buying from us" and "grow our customer base among smallholders" are one aim. Keep aims that differ apart, even when they sound similar: "lend money and get it back" and "reach the places where hunger is worst" are two aims, not one. Name each aim in a short phrase in the group's own words, and list everybody who holds it. Expect a handful of aims across a large group, not one per person.
 
-PLACES. Every place named: a state, a city, a region, a market, a corridor. Use the name as it was said. List who named it. A place only counts when somebody is talking about working there, not when it is part of an organisation's name.
+PLACES. Every place named that somebody could point at on a map and go to: a state, a city, a local government area, a named market, a corridor. Use the name as it was said. List who named it.
+
+Leave out the whole country everybody is already in. On a board about Nigeria, "Nigeria" is not a place somebody chose, and it sits at the top of the list crowding out the states that are the answer. The same goes for a region that means the whole room, like "West Africa" in a West African group. A place only counts when somebody is talking about working there, not when it is part of an organisation's name.
 
 THINGS. Every crop, commodity, product or line of work named: rice, maize, poultry, fertiliser, cold storage, credit. Use the word as it was said, singular. List who named it.
 

@@ -305,17 +305,13 @@ export class BoardService {
        When a third person is added, the round goes back to session 1 while the lead's session 2 may
        already be in progress; the board said "session 2" and the header said "back to session 1".
        The round is the clock everywhere; a session ahead of it is upcoming, not current. */
+    /* ONE CLOCK, AND ONE PLACE THAT KNOWS WHAT IT READS. This had its own copy of the rule and
+       `which-round-is-open.ts` had another, and the two disagreed: this one took the lowest
+       unfinished session, which is next week's row written ahead of time, so every tile counted a
+       round with nothing in it. The rule now lives in one function and both callers ask it. */
     const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
-    /* A ROUND NOBODY HAS OPENED IS NOT THE OPEN ROUND. Next round's rows are written ahead of time,
-       all NOT_STARTED, so "the lowest unfinished session" was session 2 the moment session 1 closed.
-       Every tile then counted a session with nothing in it. Read live on a forty-person convening
-       where all forty had answered: thirty-six blockers on the record, and the board said "Blockers:
-       None, nobody named anything holding work up". So a session only counts as open once somebody
-       has touched it; until then the newest round somebody HAS touched is the one the board is about. */
-    const started = new Set(mine.filter((c) => c.status !== CheckInStatus.NOT_STARTED).map((c) => c.sessionNumber));
-    const unfinished = mine.filter((c) => c.status !== CheckInStatus.COMPLETED && started.has(c.sessionNumber)).map((c) => c.sessionNumber);
-    const openRound = unfinished.length ? Math.min(...unfinished) : (started.size ? Math.max(...started) : maxSession);
+    const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */

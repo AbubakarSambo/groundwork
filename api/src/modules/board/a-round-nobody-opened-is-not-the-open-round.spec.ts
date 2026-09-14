@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { whichRoundIsOpen } from './which-round-is-open';
 
 /**
  * A ROUND NOBODY HAS OPENED IS NOT THE ROUND THE BOARD IS ABOUT.
@@ -16,18 +17,41 @@ import { join } from 'path';
  * cannot be it while an earlier session has been.
  */
 describe('the open round is one somebody has touched', () => {
-  const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+  const row = (sessionNumber: number, status: string) => ({ sessionNumber, status });
 
-  it('the board only considers a session open once a row in it is no longer NOT_STARTED', () => {
-    const decides = src.slice(src.indexOf('const openRound ='), src.indexOf('const openRound =') + 400);
-    expect(decides).toContain('started');
-    /* The old rule read every unfinished row, untouched ones included. */
-    expect(src).toMatch(/started\.has\(c\.sessionNumber\)/);
+  it('is not next week\'s row, written ahead of time and untouched', () => {
+    const forty = Array.from({ length: 40 }, (_, i) => i);
+    const rows = [
+      ...forty.map(() => row(1, 'COMPLETED')),
+      ...forty.map(() => row(2, 'NOT_STARTED')),
+    ];
+    expect(whichRoundIsOpen(rows)).toBe(1);
   });
 
-  it('and falls back to the newest round somebody HAS touched, never to a row written ahead', () => {
-    expect(src).toMatch(/started\.size \? Math\.max\(\.\.\.started\)/);
+  it('stays on a started round while one person in it has still not answered', () => {
+    expect(whichRoundIsOpen([row(1, 'COMPLETED'), row(1, 'NOT_STARTED'), row(2, 'NOT_STARTED')])).toBe(1);
+  });
+
+  it('goes back for a person added mid-run, whose first round is genuinely open again', () => {
+    /* Two people are on session two; a third joins and has a session one nobody has answered for
+       them. The round is the clock everywhere, so it is session one until they answer it. */
+    const rows = [
+      row(1, 'COMPLETED'), row(1, 'COMPLETED'), row(1, 'IN_PROGRESS'),
+      row(2, 'IN_PROGRESS'), row(2, 'IN_PROGRESS'),
+    ];
+    expect(whichRoundIsOpen(rows)).toBe(1);
+  });
+
+  it('moves on once every started round is met', () => {
+    expect(whichRoundIsOpen([row(1, 'COMPLETED'), row(2, 'DECLINED'), row(3, 'NOT_STARTED')])).toBe(2);
+  });
+
+  it('the board asks that one function rather than keeping a second copy of the rule', () => {
+    const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    for (const assign of src.match(/const openRound =[^\n]*/g) ?? []) {
+      expect(assign).toContain('whichRoundIsOpen');
+    }
   });
 });
