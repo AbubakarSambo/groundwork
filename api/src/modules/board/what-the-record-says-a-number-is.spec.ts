@@ -93,13 +93,19 @@ describe('what the record says a number is', () => {
     /*
      * The first pass used the run's own lines as the prompt's examples, which made the check partly
      * a test of whether the model could copy the prompt back.
+     *
+     * THE SENTENCES ARE WRITTEN OUT HERE RATHER THAN READ OFF THE GATE FILE.
+     *
+     * This used to open journey/the-real-gate/does-it-read-the-number.ts and assert against its
+     * text. That put a product spec's pass or fail in the hands of a test harness, and the moment
+     * the product was taken out on its own the spec could not find the file and failed - not
+     * because anything was wrong with the prompt, which is the only thing it is here to guard.
+     *
+     * The rule it holds is about THIS prompt: these three sentences are what the gate checks the
+     * model on, so the prompt must not hand them to it. Keeping them written out here is what makes
+     * the guard stand on its own. If the gate's sentences ever change, change them here too.
      */
-    /* Comments stripped first: a guard a comment satisfies is not a guard, and that file's own
-       comments quote these very sentences to explain why they are in it. */
-    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const CHECK = strip(readFileSync(join(__dirname, '../../../journey/the-real-gate/does-it-read-the-number.ts'), 'utf8'));
     for (const line of ['All forty migrated by Friday.', 'Nine of the forty teams are migrated.', '200 teams through']) {
-      expect(CHECK).toContain(line);
       expect(WHAT_THE_RECORD_SAYS_PROMPT).not.toContain(line);
     }
   });
