@@ -36,7 +36,7 @@ import {
   buildScenarioPackForParty,
   buildRuntimeContext,
 } from '../conversation/prompt-library';
-import { withoutWhatTheyDeclined } from './what-they-declined-is-not-a-gap';
+import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
@@ -1204,6 +1204,15 @@ from finishing at all.`;
       report.areasRequiringAlignment = withoutWhatTheyDeclined(report.areasRequiringAlignment as any, messages as any) as any;
       const dropped = before - report.areasRequiringAlignment.length;
       if (dropped) this.logger.log(`Entry report: dropped ${dropped} open item(s) the person had declined.`);
+
+      /* "With a clear link, the team might hit its numbers but not contribute" means WITHOUT. One
+         dropped syllable, on the line whose job is to say why this matters. See the guard. */
+      for (const item of report.areasRequiringAlignment as any[]) {
+        if (item?.whyItMatters && saysTheOppositeOfWhatItMeans(item.whyItMatters)) {
+          item.whyItMatters = putTheMissingWordBack(item.whyItMatters);
+          this.logger.warn(`Entry report: a "why it matters" line said the opposite of its point; the missing word is back.`);
+        }
+      }
     }
 
     /**
