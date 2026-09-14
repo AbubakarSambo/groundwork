@@ -1148,7 +1148,7 @@ from finishing at all.`;
   }
 
 
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]): Promise<EntryReport | null> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const mapped = resolveScenario(scenario);
@@ -1158,6 +1158,21 @@ from finishing at all.`;
     const trimmed = [...messages];
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
     if (!trimmed.length) throw new BadRequestException('no user messages in history');
+
+    /*
+     * WHO SETUP ALREADY NAMED, PUT IN FRONT OF THE READ.
+     *
+     * The report reads the check-in's own turns and nothing else, so a lead who listed her team in
+     * setup got a report saying "team members not named here" and an open item telling her to go and
+     * name them. She had. The chat was given this list; the read was not.
+     */
+    const alreadyNamed = (peopleNamed ?? []).map((p) => (p ?? '').trim()).filter(Boolean);
+    if (alreadyNamed.length) {
+      trimmed.unshift({
+        role: 'user',
+        content: `Before this conversation started I already named who is involved: ${alreadyNamed.join(', ')}. Treat these as named. Do not ask for them again and do not report them as missing.`,
+      } as ChatTurn);
+    }
 
     const report = await this.anthropic.extract<EntryReport>(
       ENTRY_REPORT_PROMPT + '\n\n' + systemPrompt,

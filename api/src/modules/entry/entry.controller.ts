@@ -149,6 +149,13 @@ class EntryReportDto {
   @IsOptional()
   @IsString()
   groundLabel?: string;
+
+  /* Who setup already named. The chat has had these for a while; the report had not, so a lead who
+     listed her team in setup got a report telling her the team was not named. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  peopleNamed?: string[];
 }
 
 class ContributorDto {
@@ -487,7 +494,7 @@ export class EntryController {
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.peopleNamed);
     return { report };
   }
 }

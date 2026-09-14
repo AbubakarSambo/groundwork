@@ -206,8 +206,16 @@ export const entryApi = {
   faq: (question: string) =>
     apiClient.post<{ reply: string }>('/entry/faq', { question }).then(r => r.data),
 
-  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel }).then(r => r.data),
+  /*
+   * WHO WAS NAMED IN SETUP GOES TO THE REPORT TOO, and did not.
+   *
+   * The chat has been given `peopleNamed` for a while, so the conversation knows who setup named.
+   * The report was never given them, and it reads only the check-in's own turns. So a lead who
+   * listed her team in setup got a report saying "team members not named here", and a whole
+   * "what's still open" item telling her to go and name them.
+   */
+  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]) =>
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string

@@ -1543,7 +1543,7 @@ export function EntryChatPage() {
     setGeneratingReport(true)
     setReportTurnsForRetry(turns)
     try {
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined)
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed)
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
