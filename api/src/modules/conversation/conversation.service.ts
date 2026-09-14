@@ -100,6 +100,7 @@ import {
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1158,6 +1159,37 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try left them something to answer.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was a dead end too; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IF THEY JUST SAID THE QUESTIONS ARE WRONG, DO NOT ASK THE SAME ONE AGAIN.
+       *
+       * Fourth of the retries, and the same shape as the three above: spot it, ask again with one
+       * instruction, keep the second only if it is better. It runs last because it reads the final
+       * text, after the other three have had their say.
+       *
+       * The prompt was changed too, and had to be - it literally said "do not proceed until the gap
+       * is addressed". But the failure IS an instruction being followed, so a second instruction is
+       * not the fix on its own. This checks shape: they objected to the asking, and the reply is
+       * about the same thing as the question they objected to. See asked-twice-and-told-no-twice.
+       */
+      if (theyPushedBackOnTheQuestions(message)) {
+        const lastAsk = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
+        if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
+          this.logger.warn(`Check-in ${checkIn.id}: they said the questions were wrong and the reply asked it again; asking again.`);
+          const heard = await this.anthropic
+            .respond(`${fullSystem}\n\n${THEY_ALREADY_SAID_NO}`, history)
+            .catch(() => '');
+          const second = heard.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !asksTheSameThingAgain(lastAsk, second.text)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try let it go.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
+          }
         }
       }
 
