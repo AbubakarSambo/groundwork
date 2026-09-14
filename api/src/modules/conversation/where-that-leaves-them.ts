@@ -27,9 +27,29 @@ export interface ATargetOfTheirs {
   count: number;
 }
 
-/** Digits, or the words people actually use for round numbers when they are talking. */
-const SAYS_A_NUMBER =
-  /\b\d[\d,.]*\b|\b(?:none|zero|half|all of them|a dozen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b/i;
+/**
+ * DIGITS, OR THE WORDS PEOPLE ACTUALLY USE FOR NUMBERS.
+ *
+ * The first list went from twenty upwards and had "a dozen" in it. Run against a real participant
+ * check-in, Rita opened with "not great honestly, I have closed twelve" - against a target of 150
+ * sitting on the board - and the most useful give-back in the product stayed silent. The reply asked
+ * her what her target was. It was on the board.
+ *
+ * Small numbers are the ones people say in words. Nobody writes "we closed 3", they say "I closed
+ * three", and a sales quarter is full of single figures. Starting the list at twenty missed the half
+ * of this that matters.
+ */
+const SMALL_NUMBER_WORDS = [
+  'zero', 'none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen',
+  'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
+  'hundred', 'thousand', 'half', 'dozen',
+];
+
+const SAYS_A_NUMBER = new RegExp(
+  `\\b\\d[\\d,.]*\\b|\\b(?:${SMALL_NUMBER_WORDS.join('|')})\\b|\\ball of them\\b`,
+  'i',
+);
 
 export function theySaidANumber(text: string): boolean {
   const said = (text ?? '').trim();

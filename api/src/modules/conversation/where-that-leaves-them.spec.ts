@@ -32,6 +32,25 @@ describe('where that leaves them', () => {
     expect(whereThatLeavesThem('we are at sixty', [{ name: 'Sell trucks', target: null, count: 0 }])).toBe('');
   });
 
+  /**
+   * SHE SAID "I HAVE CLOSED TWELVE" AND IT ASKED HER WHAT HER TARGET WAS.
+   *
+   * Off a real participant check-in. Rita opened with "not great honestly, I have closed twelve",
+   * against a target of 150 sitting on the board, and the give-back stayed silent because the word
+   * list started at twenty. The reply asked her for the number the board already held.
+   *
+   * Small numbers are the ones people say in words. Nobody writes "we closed 3".
+   */
+  it('hears the small numbers people actually say out loud', () => {
+    for (const said of ['I have closed twelve', 'I closed three', 'we have eight left', 'nineteen so far', 'none yet']) {
+      expect(theySaidANumber(said)).toBe(true);
+    }
+  });
+
+  it('and puts her targets up when she says one of them', () => {
+    expect(whereThatLeavesThem('Not great honestly. I have closed twelve.', hers)).toContain('the board has 0 of 150');
+  });
+
   it('does not treat a date or a session number as a report of progress', () => {
     expect(theySaidANumber('we agreed 12/03 for the handover')).toBe(false);
     expect(theySaidANumber('that was session 2')).toBe(false);

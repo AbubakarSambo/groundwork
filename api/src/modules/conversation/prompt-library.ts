@@ -118,9 +118,29 @@ export const VOCABULARY_RULE = [
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
 
 /** Remove the close marker from a reply and report whether it was there. */
+/**
+ * THE MARKER, HOWEVER THE MODEL DECIDED TO BRACKET IT.
+ *
+ * This matched the exact string and nothing else. Read off a real participant check-in, the opening
+ * line a person sees the first time they ever use this product ended:
+ *
+ *   "...what are your top two or three objectives for this period, and why do they matter?<<SESSION_COMPLETE>>"
+ *
+ * Angle brackets, not square. One character different from the constant, so nothing stripped it and
+ * nothing read it as a close: the machinery reached her screen AND the session did not register as
+ * closing. Two faults from one near miss.
+ *
+ * It is the fifth time this session that something internal reached a page by being one character
+ * off what a check expected. The name is what matters and the brackets are decoration, so this
+ * accepts any of the ones a model reaches for and keeps the strict constant for what we WRITE.
+ */
+const ANY_BRACKETING_OF_THE_MARKER = /[[<({|]{1,2}\s*SESSION_COMPLETE\s*[\]>)}|]{1,2}/gi;
+
 export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
-  if (!reply.includes(SESSION_CLOSE_MARKER)) return { text: reply, hadMarker: false };
-  const text = reply.split(SESSION_CLOSE_MARKER).join('').replace(/\n{3,}/g, '\n\n').trim();
+  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) return { text: reply, hadMarker: false };
+  ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
+  const text = reply.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(/\n{3,}/g, '\n\n').trim();
+  ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
   return { text, hadMarker: true };
 }
 
