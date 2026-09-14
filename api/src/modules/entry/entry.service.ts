@@ -45,6 +45,7 @@ import { isADeadEnd } from '../conversation/a-reply-that-asks-nothing-is-a-dead-
 import {
   opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
 } from '../conversation/asked-twice-and-told-no-twice';
+import { isAVerdictAboutSomebodyElse } from '../conversation/a-verdict-is-not-a-question';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -1169,6 +1170,7 @@ from finishing at all.`;
     if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
       && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], restored)) faults.push('asked again after they said no');
     if (alreadyAskedTwice(restored, asksBefore)) faults.push('the same question a third time');
+    if (theirLast && isAVerdictAboutSomebodyElse(theirLast, restored)) faults.push('a verdict about somebody not in the room');
     if (faults.length) this.logger.warn(`entry chat: ${faults.join('; ')} - "${restored.slice(0, 90)}"`);
 
     return { reply: forHumans(restored), closed: hadCloseMarker(restored) };

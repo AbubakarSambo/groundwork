@@ -104,6 +104,7 @@ import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
+import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -1197,6 +1198,31 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
+       *
+       * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
+       * That stops being a communication problem somewhere around the second time." Nobody in
+       * Marketing is in that conversation, they cannot answer it, and they will read the board it
+       * feeds. The prompt carries three and a half thousand characters on exactly this and it did
+       * not hold. See a-verdict-is-not-a-question.
+       */
+      if (isAVerdictAboutSomebodyElse(message, screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
+        const hers = await this.anthropic
+          .respond(`${fullSystem}\n\n${HERS_TO_DRAW}`, history)
+          .catch(() => '');
+        const second = hers.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isAVerdictAboutSomebodyElse(message, second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try left the conclusion to them.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try reached a verdict too; the first stands.`);
         }
       }
 
