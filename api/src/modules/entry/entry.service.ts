@@ -41,6 +41,10 @@ import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWor
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
+import { isADeadEnd } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
+import {
+  opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
+} from '../conversation/asked-twice-and-told-no-twice';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -1141,6 +1145,32 @@ from finishing at all.`;
      * what the model actually said. Cleaning the text first would have them inspect a string the
      * model did not produce.
      */
+    /*
+     * AND THE FOUR SHAPE GUARDS THE SIGNED-IN CHECK-IN HAS HAD ALL EVENING.
+     *
+     * This path had only the invention screen. Every guard built tonight - a reply that asks nothing,
+     * a question asked after somebody refused it, a reply that opens by handing somebody their own
+     * message back, and the same question a third time - was wired into conversation.service and
+     * nowhere else. This is the conversation every lead meets FIRST, and none of them reached it.
+     *
+     * Third time in one evening that a fix sat on a path nobody takes: the start-a-check-in flag no
+     * button passed, the target extraction the entry commit never called, and now this.
+     *
+     * READ, NOT REWRITTEN. Nothing here writes a word or drops a sentence. Where a reply has one of
+     * these shapes it is logged and named, because on this path there is no second attempt to make -
+     * the stream has usually already left. What it buys is that the fault is visible in the log with
+     * the check-in that produced it, instead of being found again by a lead reading her screen.
+     */
+    const theirLast = personSaid[personSaid.length - 1] ?? '';
+    const asksBefore = messages.filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
+    const faults: string[] = [];
+    if (isADeadEnd(restored, hadCloseMarker(restored))) faults.push('asked nothing and did not close');
+    if (theirLast && opensByRepeatingThem(theirLast, restored)) faults.push('opened by repeating them');
+    if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
+      && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], restored)) faults.push('asked again after they said no');
+    if (alreadyAskedTwice(restored, asksBefore)) faults.push('the same question a third time');
+    if (faults.length) this.logger.warn(`entry chat: ${faults.join('; ')} - "${restored.slice(0, 90)}"`);
+
     return { reply: forHumans(restored), closed: hadCloseMarker(restored) };
   }
 

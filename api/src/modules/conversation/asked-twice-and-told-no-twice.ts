@@ -153,3 +153,39 @@ export function opensByRepeatingThem(theySaid: string, reply: string): boolean {
 export const DO_NOT_SAY_IT_BACK = `Your reply opens by repeating what they just told you before asking the next thing. They know what they said. Reading their own answer handed back is what makes a check-in feel like it is going in circles.
 
 Write it again without the restatement. Go straight to the next question. A two or three word acknowledgement is fine if something genuinely landed; a summary of their last message is not.`;
+
+/**
+ * ASKED TWICE ALREADY AND STILL ASKING. NOBODY HAS TO OBJECT FOR THIS TO BE WRONG.
+ *
+ * The guard above fires when somebody says the questions are wrong. Most people never say that. They
+ * answer something adjacent, or answer a different question, and a polite person will do that all
+ * day while the same question keeps coming back.
+ *
+ * Run through a first setup conversation, a lead was asked how her objective connects to the company
+ * direction in three consecutive turns:
+ *
+ *   "How does that objective of 500 contracts by year-end connect to the company direction?"
+ *   "How does that overall objective of 500 contracts by year-end connect to the company direction?"
+ *   "How does this objective connect to the company's overall direction?"
+ *
+ * She never complained. She answered "150 each and I have a target of 50 myself", then "finance
+ * confirms the numbers", both real answers to something, and got the same question back both times.
+ * From her side that is the product not listening. From the prompt's side it is a step that has not
+ * been satisfied. Neither half can see the other.
+ *
+ * TWICE IS THE LIMIT. Once is asking. Twice is checking you were heard. A third time is the thing a
+ * person remembers about the product, and whatever it was going to learn is worth less than that. If
+ * it matters and nobody has answered it, it belongs in the report as still open, which is what the
+ * report is for.
+ */
+export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
+  const asked = (earlierAsks ?? []).filter((a) => (a ?? '').trim());
+  if (asked.length < 2) return false;
+  /* The two most recent asks. Something raised once, several turns ago, is not this fault. */
+  const recent = asked.slice(-2);
+  return recent.every((a) => asksTheSameThingAgain(a, reply));
+}
+
+export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.
+
+Let it go and ask about something else that matters here. Do not rephrase it and do not explain why you wanted it. If it genuinely matters and nobody has answered it, it belongs in the report as still open, not in a fourth question.`;

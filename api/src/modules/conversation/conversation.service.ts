@@ -104,7 +104,7 @@ import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1178,6 +1178,28 @@ export class ConversationService {
        * not the fix on its own. This checks shape: they objected to the asking, and the reply is
        * about the same thing as the question they objected to. See asked-twice-and-told-no-twice.
        */
+      /*
+       * ASKED TWICE ALREADY, AND NOBODY HAD TO OBJECT. The guard below needs somebody to say the
+       * questions are wrong, and most people never do: they answer something adjacent and take the
+       * same question again. Seen in a first setup conversation, three turns running.
+       */
+      const earlierAsks = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
+      if (alreadyAskedTwice(screened.text, earlierAsks)) {
+        this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
+        const moved = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`, history)
+          .catch(() => '');
+        const second = moved.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !alreadyAskedTwice(second.text, earlierAsks)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the first stands.`);
+        }
+      }
+
       if (theyPushedBackOnTheQuestions(message)) {
         const lastAsk = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
         if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
