@@ -101,6 +101,7 @@ import {
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
+import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -2725,6 +2726,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const roomKnows = await this.whatTheRoomAlreadyKnows(checkIn, latestMessage ?? '');
 
     /*
+     * AND WHERE THEIR OWN NUMBER LEAVES THEM, when they have just said one. The safest trade in the
+     * product: her number against her target, nothing about anybody else. See where-that-leaves-them.
+     */
+    const againstTheirNumber = await this.whereTheirNumberLeavesThem(checkIn, latestMessage ?? '');
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2804,7 +2811,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, roomKnows, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, roomKnows, againstTheirNumber, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2868,6 +2875,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return whatIsWorthSaying({ shared: true, theyJustSaid: latestMessage, others });
     } catch (err: any) {
       this.logger.warn(`Could not read what the room knows for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * Their own targets in front of the model, but only in a turn where they said a number.
+   *
+   * Silent otherwise, deliberately: a conversation that recites somebody's targets back at them
+   * unprompted is the restating fault wearing a different coat, and that one is already on record.
+   */
+  private async whereTheirNumberLeavesThem(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!theySaidANumber(latestMessage)) return '';
+      const theirs = await this.prisma.groundObjective.findMany({
+        where: {
+          groundId: checkIn.groundId,
+          target: { not: null },
+          OR: [{ ownerParticipantId: checkIn.participantId }, { ownerParticipantId: null }],
+        },
+        select: { name: true, target: true, count: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 8,
+      });
+      return whereThatLeavesThem(latestMessage, theirs as any);
+    } catch (err: any) {
+      this.logger.warn(`Could not read their targets for ${checkIn.id}: ${err?.message}`);
       return '';
     }
   }
