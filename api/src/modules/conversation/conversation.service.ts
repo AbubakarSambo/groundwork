@@ -4983,7 +4983,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
 
     const result = await this.anthropic.extract<{
-      groundAims: string[];
+      groundAims: { name: string; target?: number | null; by?: string | null }[];
       expectations: {
         personName: string;
         expectation: string;
@@ -5200,13 +5200,43 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * yet: a lead restating the aim in session 4 should not silently duplicate the list, and merging
      * by text is the kind of guess this file avoids elsewhere.
      */
-    const aims = (result.groundAims ?? []).map((a) => a.trim()).filter(Boolean);
+    /*
+     * THE NUMBER THEY SAID IS KEPT. IT USED TO BE THROWN AWAY.
+     *
+     * This stored `target: null` on every aim, always. A lead said "500 contracts by the end of the
+     * year, 150 each, and I have a target of 50", and what was kept was three names and no figures.
+     * Her board then read "No targets set yet, so there is nothing for this board to measure
+     * progress against" and "Movement: not tracked", about the numbers she had just given it.
+     * Nothing was being tracked because nothing had been kept.
+     *
+     * AND IT RAN ONCE PER GROUND, EVER. `existing === 0` meant a lead naming a second objective in
+     * session four was dropped without a word. Aims are matched by name now and only what is new is
+     * added, so restating an aim does not duplicate it and adding one is not refused.
+     *
+     * A NUMBER A PERSON SET BY HAND IS NEVER OVERWRITTEN. Where an aim already exists, this leaves
+     * it alone. The board already has the honest shape for that case - "the record shows 40 for
+     * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
+     */
+    const aims = (result.groundAims ?? [])
+      .map((a) => ({
+        name: (a?.name ?? '').trim(),
+        /* A target is a whole count of something. A wrong number is worse than none. */
+        target: Number.isFinite(a?.target) && (a!.target as number) > 0 ? Math.round(a!.target as number) : null,
+      }))
+      .filter((a) => a.name);
     if (aims.length) {
-      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
-      if (existing === 0) {
+      const existing = await this.prisma.groundObjective.findMany({
+        where: { groundId },
+        select: { name: true },
+      });
+      const already = new Set(existing.map((o) => o.name.trim().toLowerCase()));
+      const fresh = aims.filter((a) => !already.has(a.name.toLowerCase()));
+      if (fresh.length) {
         await this.prisma.groundObjective.createMany({
-          data: aims.map((name, i) => ({ groundId, name, target: null, sortOrder: i })),
+          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i })),
         });
+        const withNumbers = fresh.filter((a) => a.target != null).length;
+        this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
       }
     }
   }

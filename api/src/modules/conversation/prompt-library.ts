@@ -1875,7 +1875,19 @@ export const ALIGNMENT_SCHEMA = {
  */
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
 
-1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. Short phrases, one per aim. Only what they actually said it is for. If they never said, return an empty list.
+1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
+
+   - name: the aim as a short phrase, in their words. "Sell 500 trucks", not "Sales objective".
+
+   - target: the NUMBER they are aiming at, where they said one. 500 for "sell 500 trucks by the end of the year". 150 for "150 each". Leave it out where no number was said: an aim without a number is a real aim and a wrong number is worse than none.
+
+     THE NUMBER IS THE WHOLE POINT AND IT USED TO BE THROWN AWAY. A lead said "500 contracts, 150 each, and I have a target of 50", and what was stored was a name with no figure. Her board then read "No targets set yet, so there is nothing for this board to measure progress against" and "Movement: not tracked", about the numbers she had just given. There was nothing to track because nothing had been kept.
+
+     Take the TOTAL they are aiming at, never what is done so far. "Nine of the forty are migrated" is a target of 40. "We are at 4,000 users and want 10,000" is 10000.
+
+   - by: when they said it should be true by, in their words, where they said. "the end of the year", "March", "by Friday". Leave it out where they did not say.
+
+   Only what they actually said it is for. If they never said, return an empty list.
 
 2. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
@@ -2174,7 +2186,18 @@ export const EXPECTATION_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      groundAims: { type: 'array', items: { type: 'string' } },
+      groundAims: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: "The aim as a short phrase, in their own words." },
+            target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
+            by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
+          },
+          required: ['name'],
+        },
+      },
       expectations: {
         type: 'array',
         items: {
