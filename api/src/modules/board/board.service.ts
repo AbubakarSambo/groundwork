@@ -521,22 +521,6 @@ export class BoardService {
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
 
-      /*
-       * WHERE EACH ONE STARTED, WHICH IS WHAT TELLS US WHICH WAY IS GOOD.
-       *
-       * The lowest session we have a snapshot for, per objective. A target added at session six
-       * starts at session six - nobody gets credit for distance covered before anybody was
-       * counting. See a-measure-that-goes-down-is-still-going-well.ts for why this is derived
-       * rather than asked: a direction column can be set wrong, and three numbers cannot.
-       */
-      const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
-        where: { groundId },
-        orderBy: { sessionNumber: 'asc' },
-        select: { objectiveId: true, count: true },
-      });
-      const startOf = new Map<string, number>();
-      for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
-
       out.objectives = ground.objectives.map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
