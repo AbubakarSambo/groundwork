@@ -37,6 +37,10 @@ export interface ContextGaps {
   timelineDays: number | null;
   /** No rhythm means the same. */
   cadence: string | null;
+  /** How many measures this ground counts by. Zero means the board shows movement against nothing. */
+  targetCount: number;
+  /** Which situation this is, because not every one counts anything. */
+  scenario: string;
   /**
    * WHAT DOING WELL LOOKS LIKE, AND IT WAS READING THE WRONG COLUMN.
    *
@@ -92,6 +96,20 @@ export interface ContextGap {
  * with no duration cannot count its own sessions - that is worse than having no
  * documents, so it goes first even though "send me the brief" is the easier question.
  */
+/**
+ * THE SITUATIONS THAT COUNT SOMETHING, AND THE ONES THAT DO NOT.
+ *
+ * A crisis, a one-off read, a drift and an open read hold a QUESTION rather than a target - asking
+ * those for measures is the product telling somebody their situation is a different shape than it
+ * is, on the day they are least able to argue with it. The rest have a number, a date or a count
+ * somewhere in them, whether or not anybody has written it down yet.
+ */
+const WORTH_COUNTING = new Set([
+  'NEW_PROJECT', 'ROLE_HANDOVER', 'NEW_COFOUNDER', 'OKR_ALIGNMENT', 'WORKPLAN_BUDGET',
+  'BOARD_STRATEGY', 'PULSE_CHECK', 'COHORT_CHECK', 'NEW_HIRE', 'NEW_MANAGER', 'NEW_ADVISOR',
+  'PIP', 'CONTRACT_RENEWAL', 'RECOGNITION', 'IMPLEMENTATION_TRACKING',
+]);
+
 export function contextGaps(g: ContextGaps): ContextGap[] {
   const gaps: ContextGap[] = [];
 
@@ -116,6 +134,25 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
       key: 'success',
       ask: 'What does doing well look like here? Not a target for one person - what would make you say, at the end, that this went the way it should have.',
       suggests: 'the plan, brief or terms this work was agreed against',
+    });
+  }
+
+  /**
+   * THE MEASURES, ASKED AFTER WHAT DOING WELL LOOKS LIKE AND BEFORE ANYTHING ABOUT PEOPLE.
+   *
+   * A board with no measures shows movement against nothing, and this was the one gap where the
+   * document a lead has already uploaded usually holds the answer - so the question says so
+   * plainly rather than making them retype a plan they attached ten minutes ago.
+   *
+   * Asked only where a measure is a thing the situation has. A crisis and a one-off read do not
+   * count anything, and asking them for targets is the product telling somebody their situation is
+   * a different shape than it is.
+   */
+  if (g.targetCount === 0 && WORTH_COUNTING.has(g.scenario)) {
+    gaps.push({
+      key: 'targets',
+      ask: 'What is this counted by? Name the two or three measures - and if they are already in something you have attached, say so and I will take them from there.',
+      suggests: 'the plan, budget or scorecard the numbers were set in',
     });
   }
 

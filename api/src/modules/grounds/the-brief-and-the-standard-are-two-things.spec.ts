@@ -28,7 +28,7 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 
 const base = {
   timelineDays: 90, cadence: 'WEEKLY', partyCount: 2,
-  perPersonObjectiveCount: 3, openDocumentCount: 2,
+  perPersonObjectiveCount: 3, openDocumentCount: 2, targetCount: 1, scenario: 'NEW_PROJECT',
 };
 
 describe('the success gap reads and writes the standard, never the brief', () => {

@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -388,7 +389,8 @@ export class GroundsService {
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        workingDays: workingDaysOf(dto.workingDays),
+        startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
         /**
          * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
@@ -496,7 +498,7 @@ export class GroundsService {
           /* Everyone does a first check-in, managing-only or not. What managingOnly changes is that no later
              session is created for them (see createNextIfAbsent). */
           isSetup: false,
-          availableFrom: dto.startsAt ? new Date(dto.startsAt) : null,
+          availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         },
       });
 
@@ -592,7 +594,8 @@ export class GroundsService {
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          workingDays: workingDaysOf(dto.workingDays),
+          startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
           endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           /* OPEN FROM THE START. There is no lead page any more (10 Sep 2026): nobody sets a check-in
              up for somebody else to confirm. A ground made through the API with people on it waits
@@ -616,7 +619,7 @@ export class GroundsService {
         },
       });
       await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays) },
       });
 
       // Pre-added participants (e.g. the whole cohort), created alongside the
@@ -1858,8 +1861,11 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
 
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2022,7 +2028,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
@@ -2040,7 +2046,10 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2113,6 +2122,28 @@ export class GroundsService {
     }
 
     /*
+     * THE MEASURES, WRITTEN ONLY ON A YES.
+     *
+     * A document does not have to set the bar, and it does not set it here either: the lead reads
+     * a proposal that names every measure it took and whether a number was found for each, and
+     * says yes. A target written without that is a bar nobody set, appearing on a board people are
+     * then read against - and unlike a wrong timeline it cannot be recognised as wrong by looking
+     * at it, because a plausible number looks exactly like an agreed one.
+     *
+     * `sortOrder` keeps the order they were named in: that is usually the order they matter in,
+     * and re-sorting reads as the product having an opinion about which comes first.
+     */
+    if (proposal.kind === 'targets') {
+      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
+      await this.prisma.groundObjective.createMany({
+        data: proposal.targets.map((t, i) => ({
+          groundId, name: t.name, target: t.target, sortOrder: existing + i,
+        })),
+      });
+      return { changed: 'targets', say: proposal.say };
+    }
+
+    /*
      * WHAT DOING WELL LOOKS LIKE GOES WHERE WHAT DOING WELL LOOKS LIKE LIVES.
      *
      * This wrote `ground.brief`. The chat says "I will record that as what doing well looks like"
@@ -2128,6 +2159,11 @@ export class GroundsService {
      * effort toward the old one stays real and nobody is retroactively behind. Conditions carry
      * forward untouched - restating the goal is not a claim about them.
      */
+    /* An explicit branch rather than the last thing the method falls through to. It was the only
+       kind left when there were four; with five it has to say which one it is. */
+    if (proposal.kind !== 'success') {
+      throw new BadRequestException('That one is not something this conversation changes on its own.');
+    }
     const latestBaseline = await this.prisma.groundBaseline.findFirst({
       where: { groundId },
       orderBy: { version: 'desc' },
@@ -3156,6 +3192,18 @@ export class GroundsService {
   }
 
   /** A user's department is on the Person linked to them, when there is one. Null for most of a roster, and that is normal. */
+  /**
+   * THE FIRST CHECK-IN LANDS ON A DAY THEY WORK, LIKE EVERY ONE AFTER IT.
+   *
+   * `startsAt` is the one date a person types rather than the product computing it, and a date
+   * picker will happily hand back a Sunday. Rolling it forward here means the rule holds for the
+   * first session as well as the recurring ones - otherwise a weekdays-only ground still opens on
+   * a weekend exactly once, on the day it matters most.
+   */
+  private theFirstDayTheyWork(startsAt: Date | null, workingDays: number[] | null | undefined): Date | null {
+    return startsAt ? theNextDayTheyWork(startsAt, workingDays ?? []) : null;
+  }
+
   private async departmentOf(userId: string, organizationId: string): Promise<string | null> {
     const person = await this.prisma.person.findFirst({ where: { linkedUserId: userId, organizationId }, select: { department: true } });
     return person?.department?.trim() || null;
@@ -3529,7 +3577,7 @@ export class GroundsService {
     if (dto.startsAt !== undefined) {
       await this.prisma.checkIn.updateMany({
         where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-        data: { availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, (ground as any)?.workingDays) },
       });
     }
 

@@ -3,9 +3,9 @@ import { apiClient } from './client'
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
-  | 'patterns' | 'decisions' | 'poll'
+  | 'cascade' | 'patterns' | 'decisions' | 'poll'
 
-export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING'
+export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
 export type CoverageVariant = 'text' | 'bar'
 
 /** A private-mode or sensing-family ground has no board, and says why. */
@@ -37,6 +37,18 @@ export type BoardPresent = {
   /** Whether the caller may set targets and the poll question (initiator only). */
   canEditFrame: boolean
   readOnlyNote: string
+  /**
+   * What this ground's objectives sit under, where anything sits above them. Present only on
+   * boards whose family opted in, and only where the record named something above - or where the
+   * situation said there should be one and nothing was named, which is the case worth showing.
+   */
+  cascade?: {
+    isCascade: boolean
+    basis: ('DECLARED' | 'A_PARENT_IS_RECORDED' | 'SAID_IN_THE_CHAT' | 'SEVERAL_TEAMS_NAMED')[]
+    parentNamed: string | null
+    teamsNamed: string[]
+    why: string
+  } | null
   participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
 
   phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null }[] }
@@ -44,6 +56,19 @@ export type BoardPresent = {
   startingState?: string | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
   objectives?: {
+    /**
+     * Where it started, where it is, and what was said. The direction is derived from those three
+     * rather than set anywhere: a ceiling like "under four hours" reads as distance covered coming
+     * down, not as a bar filling backwards.
+     */
+    journey?: {
+      direction: 'up' | 'down' | 'unknown'
+      start: number | null
+      now: number
+      target: number | null
+      say: string
+      covered: number | null
+    }
     id: string; name: string; count: number; prevCount: number; target: number | null; delta: number; isNew: boolean
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
     /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */

@@ -19,6 +19,8 @@ const FULL = {
   partyCount: 3,
   perPersonObjectiveCount: 3,
   openDocumentCount: 2,
+  targetCount: 2,
+  scenario: 'NEW_PROJECT',
 };
 
 describe('what is missing', () => {
@@ -32,8 +34,11 @@ describe('what is missing', () => {
     const gaps = contextGaps({
       timelineDays: null, cadence: null, successLooksLike: null,
       partyCount: 1, perPersonObjectiveCount: 0, openDocumentCount: 0,
+      targetCount: 0, scenario: 'NEW_PROJECT',
     });
-    expect(gaps.map(g => g.key)).toEqual(['timeline', 'cadence', 'success', 'parties', 'objectives', 'documents']);
+    /* `targets` sits after success and before anything about people: a board with no measures shows
+       movement against nothing, and the document that answers it is usually already attached. */
+    expect(gaps.map(g => g.key)).toEqual(['timeline', 'cadence', 'success', 'targets', 'parties', 'objectives', 'documents']);
   });
 
   it('duration and rhythm come first, because without them the ground cannot count itself', () => {
@@ -59,6 +64,7 @@ describe('what the chat is told it must not do', () => {
   const prompt = contextChatPrompt('Partner delivery', 'NEW_PROJECT', contextGaps({
     timelineDays: null, cadence: null, successLooksLike: null,
     partyCount: 1, perPersonObjectiveCount: 0, openDocumentCount: 0,
+    targetCount: 0, scenario: 'NEW_PROJECT',
   }));
 
   it('it is not a check-in, and does not reach the report', () => {

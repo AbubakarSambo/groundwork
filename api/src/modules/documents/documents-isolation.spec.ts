@@ -41,7 +41,10 @@ function makeService(opts: {
   };
   const anthropic: any = { extract: jest.fn(async () => ({ claims: [] })) };
   const config: any = { get: jest.fn(() => 'test-key') };
-  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any), prisma };
+  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any,
+      /* The agreement reader. Never reached here: these grounds are not agreement-family. */
+      { fromADocument: async () => ({ wrote: 0 }) } as any,
+    ), prisma };
 }
 
 // GW-PRI-DOC-01: non-participant cannot upload

@@ -181,6 +181,23 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           </Row>
         )}
 
+        {/*
+          AND THE HANDOFFS THAT WENT QUIET, WHICH THE READER WAS NEVER TOLD ABOUT.
+
+          The waiting list on this report is the STILL-RAISED one: a handoff nobody has mentioned
+          since is left out of it, correctly, because a four-session run should not still say it is
+          "waiting for introductions" about introductions that happened in week six.
+
+          But the reader was shown the shorter list with nothing to explain why it was shorter, and
+          read it as resolved. It may be. Nobody has said so, and that is what this says. The server
+          has produced the sentence since 11 September; nothing rendered it until now.
+        */}
+        {d.whatWentQuiet && (
+          <Row label="Not raised again">
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
+          </Row>
+        )}
+
         {/* What keeps showing up: the pattern engine's own sentences, with the span that makes them a pattern. */}
         {d.patterns?.length > 0 && (
           <Row label="What keeps showing up">
@@ -283,10 +300,36 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           the standard is said once above them: either what is set, or that nothing is. Not both as
           competing statements, and not the same four lines twice.
         */}
+        {/*
+          WHAT THIS SITS UNDER, ABOVE WHAT GOOD LOOKS LIKE.
+
+          Where a team's objectives serve a wider one, the wider one has to be on the page before
+          anything measured against it. The no case prints too, and only where the situation asked
+          for a cascade: "nothing above this has been named yet" is a finding on an alignment
+          check-in, not an empty state.
+        */}
+        {d.cascade && (
+          <Row label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+            {d.cascade.parentNamed && (
+              <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
+            )}
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', ...PROSE }}>{d.cascade.why}</p>
+          </Row>
+        )}
+
         {d.againstSuccess && (
           <Row label="Against what good looks like">
             {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
-            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} dense />
+            {/*
+              THE FULL BAND, NOT THE ONE-LINE VERSION.
+
+              `WhatSuccessLooksLike`'s own header says the full band renders "where there is room to
+              work in it: the board, and each session's report" - and this, the session's report,
+              was passing `dense`, which drops the per-condition standing and the counts and keeps a
+              single sentence. So the one read built to answer "where are we against what we said"
+              printed one line on the page most people actually open.
+            */}
+            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} />
             {definitions.length > 0 && (
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                 {definitions.map((def, i) => {

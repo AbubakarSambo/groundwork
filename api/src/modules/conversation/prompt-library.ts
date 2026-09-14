@@ -2604,7 +2604,7 @@ OPENING: Ask the person to name their top two or three objectives for this perio
 
 FOLLOW-UP: For each objective, ask what the key result looks like at the end of the period. What specific and observable thing will exist that would tell them, and anyone else who looks, that the objective was met?
 
-ALIGNMENT CHECK: Ask how this objective connects to the company direction as they understand it. If they cannot make the connection explicit, note it as a gap. Do not prompt them with the answer.
+ALIGNMENT CHECK: Ask how this objective connects to the company direction as they understand it. Ask them to NAME the wider objective this one sits under, in whatever words their organisation uses for it. If they cannot make the connection explicit, or cannot name what is above it, note it as a gap - do not prompt them with the answer and never supply a name yourself. An objective nobody can say what it serves is the finding, not a missing field.
 
 CROSS-TEAM QUESTION: Ask whether any of their objectives require something from another team that has not been formally agreed. If yes, name the team and what is needed.
 

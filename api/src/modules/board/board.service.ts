@@ -30,6 +30,8 @@ import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { aNameOrNothing } from './a-name-is-short';
+import { isThisACascade } from './is-this-a-cascade';
+import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -432,7 +434,24 @@ export class BoardService {
         return hits > 0 ? hits : null;
       };
 
+      /*
+       * WHERE EACH ONE STARTED, WHICH IS WHAT TELLS US WHICH WAY IS GOOD.
+       *
+       * The lowest session we have a snapshot for, per objective. A target added at session six
+       * starts at session six - nobody gets credit for distance covered before anybody was
+       * counting. See a-measure-that-goes-down-is-still-going-well.ts for why this is derived
+       * rather than asked: a direction column can be set wrong, and three numbers cannot.
+       */
+      const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
+        where: { groundId },
+        orderBy: { sessionNumber: 'asc' },
+        select: { objectiveId: true, count: true },
+      });
+      const startOf = new Map<string, number>();
+      for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
+
       out.objectives = ground.objectives.map((o) => ({
+        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
@@ -631,6 +650,30 @@ export class BoardService {
       } catch (err: any) {
         this.logger?.warn?.(`Wording the board reads failed, shipping the engine's words: ${err?.message}`);
       }
+    }
+
+    /*
+     * IS THERE SOMETHING ABOVE THIS? Asked of every board that opted in, answered from the record
+     * rather than from the dropdown. The section is emitted even when the answer is no, but only
+     * where the situation said it should be - a team that opened an alignment check-in and never
+     * named what it aligns to is the case this is most useful for, and dropping the section there
+     * would hide exactly that. Anywhere else, no evidence means no section at all.
+     */
+    if (has('cascade')) {
+      const [cascadeEntries, importedWithParents] = await Promise.all([
+        this.prisma.recordEntry.findMany({
+          where: { disputedAt: null, participant: { groundId } },
+          select: { participantId: true, text: true },
+        }),
+        this.cascadeParents(ground.organizationId, ground.objectives.map((o) => o.name)),
+      ]);
+      const read = isThisACascade({
+        scenario: ground.scenario,
+        objectiveNames: ground.objectives.map((o) => o.name),
+        importedWithParents,
+        entries: cascadeEntries.map((e) => ({ participantId: e.participantId, text: cleanText(e.text) })),
+      });
+      if (read.isCascade || read.basis.includes('DECLARED')) out.cascade = read;
     }
 
     if (has('contribution')) {
@@ -1119,6 +1162,40 @@ export class BoardService {
    * reliably share. A participant with no email cannot be resolved and is left out rather than
    * guessed at: attributing somebody's wait to the wrong person is worse than not showing it.
    */
+  /**
+   * THE IMPORTED HALF OF THE CASCADE READ.
+   *
+   * A customer's own system already knows which objective hangs under which; we store the parent id
+   * on the row and, until now, nothing but one detector ever read it. This resolves it to a title so
+   * the board can say what this sits under in the customer's own words.
+   *
+   * MATCHED BY TITLE, DELIBERATELY LOOSELY, AND ONLY TO NARROW. A ground has no foreign key to an
+   * imported objective - the link is that a lead typed roughly the same thing. So this returns rows
+   * whose title shares a meaningful word with a target on this board, and returns nothing at all
+   * when no target was set. A wrong match here would put somebody else's objective at the top of
+   * this board, which is worse than showing nothing.
+   */
+  private async cascadeParents(organizationId: string, objectiveNames: string[]) {
+    const words = new Set(
+      objectiveNames.flatMap((n) => n.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3)),
+    );
+    if (words.size === 0) return [];
+    const rows = await this.prisma.subject.findMany({
+      where: { organizationId, sourceDeletedAt: null, parentExternalId: { not: null } },
+      select: { title: true, parentExternalId: true, sourceSystem: true },
+      take: 200,
+    });
+    const near = rows.filter((r) =>
+      r.title.toLowerCase().split(/[^a-z0-9]+/).some((w) => w.length > 3 && words.has(w)));
+    if (near.length === 0) return [];
+    const parents = await this.prisma.subject.findMany({
+      where: { organizationId, externalId: { in: near.map((r) => r.parentExternalId!) } },
+      select: { externalId: true, title: true },
+    });
+    const titleOf = new Map(parents.map((p) => [p.externalId, p.title]));
+    return near.map((r) => ({ title: r.title, parentTitle: titleOf.get(r.parentExternalId!) ?? null }));
+  }
+
   async waitingAcrossTheOrg(organizationId: string, now = new Date()) {
     const rows = await this.prisma.groundDependency.findMany({
       where: {

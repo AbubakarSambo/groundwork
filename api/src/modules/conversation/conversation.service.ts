@@ -37,7 +37,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience, PatternStatus } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
@@ -55,6 +55,11 @@ import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
+import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
+import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
+import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
+import { familyFor, BoardFamily } from '../board/board-families';
+import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -86,6 +91,7 @@ import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 
 /**
@@ -219,7 +225,7 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person put on the record. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -382,7 +388,10 @@ export class ConversationService {
       const withEntries = await Promise.all(
         priorCheckIns.map(async (ci) => {
           const entries = await this.prisma.recordEntry.findMany({
-            where: { checkInId: ci.id, participantId: checkIn.participantId },
+            /* A line they unsaid is not replayed to them as their record. Low harm - it is their
+               own page - but a disputed line shown back with nothing marking it reads as still
+               standing, which is the whole thing "this is not what I said" exists to stop. */
+            where: { checkInId: ci.id, participantId: checkIn.participantId, disputedAt: null },
             orderBy: { createdAt: 'asc' },
             select: { type: true, text: true },
             take: 10,
@@ -2373,6 +2382,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
     /*
+     * WHAT KEEPS HAPPENING, AS A QUESTION.
+     *
+     * The pattern library has carried a `probe` on every code from the start - the ordinary
+     * question to ask about the work when that thing keeps coming up - and it reached exactly one
+     * caller: the board, as a suggestion to a LEAD. So the person it is about was never asked
+     * anything, and the one surface that could ask naturally, in the moment, with their own words
+     * still on the screen, was the one surface that never saw it.
+     *
+     * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
+     * anybody. Gated on SURFACED and two periods, one question at most, and never named.
+     */
+    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2446,13 +2469,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2469,6 +2492,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * which is most sessions: a coach that always has something to say is a product that always has
    * something to say about you.
    */
+  /**
+   * The one recurring thing worth a question this session, or nothing.
+   *
+   * SURFACED only, never CANDIDATE - see the module next door for why. Reads the detections for
+   * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
+   * exist for the alignment feed only, and picks at most one.
+   */
+  private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
+    try {
+      const rows = await this.prisma.patternDetection.findMany({
+        where: { participantId, status: PatternStatus.SURFACED },
+        select: { code: true, periodsObserved: true, accuracyRating: true },
+      });
+      return askAboutItBlockFor(theOneWorthAsking(rows));
+    } catch (err) {
+      // A probe must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the pattern probe for ${participantId}: ${(err as Error)?.message}`);
+      return '';
+    }
+  }
+
   private coachingEnabled(): boolean {
     return true;
   }
@@ -2598,17 +2642,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-    if (!map?.failureSignals?.length || !confident) {
-      /* A WRITER THAT RAN AND COULD NOT COACH STILL WRITES. 95 of the first 100 backfilled sessions
-         left no row here, which is the same dark shape as a writer that never ran. The row says why. */
-      await this.recordCoachingStep(participantId, sessionNumber, {
-        noticed: null, lookingLike: null, reason: null, hadSubstance: false,
-        observed: null,
-        observations: undefined,
-        why: !map?.failureSignals?.length ? `no role map for function ${participant?.detectedFunction ?? 'none'}` : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`,
-      } as any).catch(() => undefined);
-      return;
-    }
+    /**
+     * A ROLE NOBODY MAPPED IS STILL A PERSON.
+     *
+     * This returned here, before reading a word of the transcript, whenever there was no role map
+     * or the function sat below the confidence floor. Both exits are RIGHT about the role - a map
+     * chosen from a guess coaches somebody out of the wrong one - and both were wrong about the
+     * person: 477 people on record, 32 clearing this gate, so 93% could never be coached about
+     * anything, not because nothing was noticed but because nothing was ever looked at.
+     *
+     * So the role gate now selects WHICH behaviours are read rather than whether anybody is read at
+     * all. With a confident map, the function's own failure signals, as before. Without one, the
+     * universal floor - which is deliberately weaker and says so: every line of it is about the
+     * ACCOUNT, not about the work, because the work is the part that cannot be read without
+     * knowing the job.
+     */
+    const readFromTheAccount = !map?.failureSignals?.length || !confident;
+    const whyTheFloor = readFromTheAccount
+      ? (!map?.failureSignals?.length
+        ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
+        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`)
+      : null;
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2619,7 +2673,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
+    const behaviours = (readFromTheAccount ? theBehavioursAnybodyCanBeRead() : map!.failureSignals!)
+      .map((b, i) => `${i}. ${b}`).join('\n');
 
     /**
      * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
@@ -2712,7 +2767,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // signalRead applies the guards that matter - an index off the end, an empty
     // reason - and returns null rather than something to hand a person.
-    const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
+    const read = readFromTheAccount
+      ? universalSignalRead(observed?.index ?? -1, observed?.reason ?? '')
+      : signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
 
     /**
      * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
@@ -2774,6 +2831,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         reason: offerable ? read!.reason : null,
         observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
+        /* Which floor this step came off. A step read from the account rather than the role has to
+           be traceable as one - it is weaker by construction, and a row that does not say so would
+           be indistinguishable later from a role-mapped read. */
+        why: whyTheFloor ?? undefined,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
@@ -3227,6 +3288,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
+    this.extractStatedFigures(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -3391,7 +3454,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true },
     });
 
     /*
@@ -3425,7 +3488,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
-      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
+      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null, ground?.workingDays ?? []);
     // Respect the end date: do not schedule a next session past it.
     const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
     if (!pastEnd) {
@@ -3547,11 +3610,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Convert a cadence enum to the next available date from now.
    * anchorDay: weekly/fortnightly = weekday (0=Sun..6=Sat); monthly = day of month (1-31).
    */
-  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
+  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null, workingDays: number[] = []): Date {
+    /*
+     * EVERY BRANCH ENDS AT THE SAME ROLL-FORWARD, WHICH IS WHY IT IS WRAPPED RATHER THAN REPEATED.
+     *
+     * Daily was `+1 day` flat and landed on Saturdays. Fixing only that branch would have left a
+     * fortnightly anchor doing the same thing more quietly, and a check-in that opens on a day
+     * nobody works reads on the board as somebody who did not answer.
+     */
+    const onADayTheyWork = (date: Date) => theNextDayTheyWork(date, workingDays);
     const d = new Date();
     if (cadence === Cadence.DAILY) {
       d.setDate(d.getDate() + 1);
-      return d;
+      return onADayTheyWork(d);
     }
     if (cadence === Cadence.MONTHLY) {
       // Next month; if a day-of-month anchor is set, land on it (clamped to month length).
@@ -3560,7 +3631,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         d.setDate(Math.min(anchorDay, daysInMonth));
       }
-      return d;
+      return onADayTheyWork(d);
     }
     const days = cadence === Cadence.WEEKLY ? 7 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
@@ -3569,7 +3640,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if ((cadence === Cadence.WEEKLY || cadence === Cadence.FORTNIGHTLY) && anchorDay != null && anchorDay >= 0 && anchorDay <= 6) {
       while (d.getDay() !== anchorDay) d.setDate(d.getDate() + 1);
     }
-    return d;
+    return onADayTheyWork(d);
   }
 
   /**
@@ -3943,17 +4014,58 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (!p) return;
 
     const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId },
+      /*
+       * A LINE SOMEBODY UNSAID MUST NOT DECIDE WHAT KIND OF WORK THEY DO.
+       *
+       * This read the whole corpus, disputed lines included. "This is not what I said" sets
+       * `disputedAt` and every read filters on it - that is the rule the extraction wall rests on -
+       * and this one did not, so a wrongly extracted line could still be what picks the role map
+       * somebody is then coached and probed against for the rest of the run. The louder the
+       * misreading, the more it looked like a function.
+       */
+      where: { participantId, disputedAt: null },
       select: { text: true },
       orderBy: { createdAt: 'asc' },
       take: 200,
     });
 
-    const result = detectFunction(
+    let result = detectFunction(
       p.roleAsDescribed,
       entries.map((e) => e.text),
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
     );
+
+    /**
+     * WHEN THE KEYWORDS FIND NOTHING, READ IT.
+     *
+     * The matcher scores zero on all ten lists for 294 of the 298 people who have said anything at
+     * all - not a tuning problem, just that nobody writes the way the lists expect. So 92% had no
+     * job on record, the role map never loaded, and nobody was read in the terms of their own work.
+     *
+     * The matcher stays the fast path: free, deterministic, and usually right when it fires. This
+     * runs only when it did not, and only when there is something to read. It never overrides a
+     * read that already exists - a model call that can quietly replace a settled yardstick is a
+     * yardstick that moves.
+     */
+    if (!result.fn && entries.length) {
+      try {
+        const said = await this.anthropic.extract<{ fn?: string; certainty?: string; basis?: string }>(
+          WHAT_KIND_OF_WORK_PROMPT,
+          [{ role: 'user', content: entries.map((e) => e.text.replace(/^\[[^\]]*\]\s*/, '')).join('\n') }],
+          WHAT_KIND_OF_WORK_SCHEMA as any,
+          { fast: true },
+        );
+        const read = theJobTheyDescribed(said ?? null);
+        if (read) {
+          result = read;
+          this.logger.log(`Function read from the account for ${participantId}: ${read.fn} (${read.confidence}). ${read.basis}`);
+        }
+      } catch (err) {
+        /* The matcher's answer stands. Reading the job is an improvement on a silence, never a
+           reason a session cannot be completed. */
+        this.logger.warn(`Could not read the kind of work for ${participantId}: ${(err as Error)?.message}`);
+      }
+    }
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
@@ -4800,6 +4912,80 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: expectation.id },
       data: { alignment: verdict, alignmentNote: (result.note ?? '').trim() || null },
     }).catch(() => undefined);
+  }
+
+  /**
+   * THE FIGURES A TRACKING CHECK-IN IS FOR.
+   *
+   * The implementation-tracking pack presses harder on this than on anything else - the figures,
+   * the period each covers, and where it came from - and twelve contract check-ins have run with
+   * `ReportedFigure` empty, because nothing carried an answer out of the conversation. The chat
+   * asked the right question and the answer stayed prose.
+   *
+   * ONLY ON AN AGREEMENT GROUND. Every other situation has numbers in it too, and they are not
+   * figures reported under an arrangement - they are somebody describing their week. Writing those
+   * here would put a person's own account into a table built for reconciling two companies.
+   *
+   * EVERYTHING WRITTEN IS UNCONFIRMED. The schema's own rule, obeyed: a model's reading is not the
+   * figure until a person says so, and nothing compares an unconfirmed one to anything.
+   */
+  async extractStatedFigures(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, organizationId: true },
+    });
+    if (!ground || familyFor(ground.scenario) !== BoardFamily.AGREEMENT) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (!turns.length) return;
+    const transcript = turns
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
+      .join('\n');
+
+    /* The model does not know what year it is. Driven live, "the thirty-first of August" came back
+       dated 2024 on a check-in run in 2026 - see theDayThisWasSaid for why that is the worst error
+       this table can hold. */
+    const said = await this.anthropic.extract<{ figures?: unknown }>(
+      FIGURE_PROMPT + theDayThisWasSaid(new Date()),
+      [{ role: 'user', content: transcript }],
+      FIGURE_SCHEMA as any,
+    );
+    const figures = theFiguresTheyStated(said ?? null);
+    if (!figures.length) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    /* `from` is which side stated it and `statedBy` is who. Both are the customer's own handles
+       rather than row ids, because a figure has to stay readable after anybody leaves. */
+    const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
+      || participant?.email
+      || participantId;
+
+    for (const f of figures) {
+      await this.prisma.reportedFigure.create({
+        data: {
+          organizationId: ground.organizationId,
+          groundId,
+          says: f.says,
+          minorUnits: f.minorUnits,
+          currency: f.currency,
+          periodFrom: f.periodFrom,
+          periodTo: f.periodTo,
+          source: f.source,
+          statedBy: who,
+          from: who,
+          // Unconfirmed, always. See the module's header and the schema's.
+          confirmedAt: null,
+        },
+      }).catch((err: any) => this.logger.warn(`Could not keep a stated figure on ${checkInId}: ${err?.message}`));
+    }
+    this.logger.log(`Kept ${figures.length} stated figure(s) from ${checkInId}, unconfirmed.`);
   }
 
   async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
