@@ -85,3 +85,26 @@ describe('examples where a question is hard to answer cold', () => {
     expect(ENGINE_RULES).toMatch(/never as a menu they\s+are expected to pick from/i);
   });
 })
+
+/**
+ * THE LAST THING THEY READ IS WHAT THEY REMEMBER THE SESSION BY.
+ *
+ * A lead who had given three numbers and three names closed on "the finance team will confirm these
+ * sales. Your report is ready now, and nothing in it needs acting on today." True, and it hands her
+ * nothing she did not walk in with.
+ */
+describe('the close says what they now have', () => {
+  it('names the thing that exists, with the figures and the people', () => {
+    expect(ENGINE_RULES).toMatch(/SAY WHAT THEY NOW HAVE\. NOT WHAT YOU DISCUSSED/);
+    expect(ENGINE_RULES).toMatch(/That is on your board/);
+  });
+
+  it('says why, so nobody trims it back to a summary later', () => {
+    expect(ENGINE_RULES).toMatch(/A person who leaves with something comes back/);
+  });
+
+  it('and cannot invent one, which is the way this would go wrong', () => {
+    expect(ENGINE_RULES).toMatch(/Never a number nobody gave you and never a name nobody named/);
+    expect(ENGINE_RULES).toMatch(/say what is still open instead/);
+  });
+})

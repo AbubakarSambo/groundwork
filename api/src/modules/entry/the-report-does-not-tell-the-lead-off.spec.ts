@@ -42,3 +42,32 @@ describe('the report does not tell the lead off', () => {
     expect(src).toMatch(/withoutWhatTheyDeclined\(/);
   });
 });
+
+/**
+ * THE CLOSE ANSWERED THE SESSION, NOT THE PERSON.
+ *
+ * She opened with "we are setting shared goals for this period and I want everyone aligned on what
+ * matters most", gave three numbers and three names, and closed on "the finance team will confirm
+ * these sales. Your report is ready now, and nothing in it needs acting on today." True, and it
+ * gives her nothing she did not walk in with.
+ *
+ * The first message says what they came for. The close is where it is answered.
+ */
+describe('the close answers what they came for', () => {
+  const src = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('reads their opening line back and answers it', () => {
+    expect(src).toMatch(/THE SETTLED LINE ANSWERS THEIR FIRST MESSAGE/);
+    expect(src).toMatch(/Did they get it/);
+  });
+
+  it('names what exists, with the figures and the people, not what was discussed', () => {
+    expect(src).toMatch(/is an answer\./);
+    expect(src).toMatch(/is a description of a\s+conversation/);
+  });
+
+  it('and says plainly when they did not get it', () => {
+    expect(src).toMatch(/A lead who\s+wanted targets set and has none is owed that sentence/);
+  });
+});

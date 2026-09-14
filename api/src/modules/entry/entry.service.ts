@@ -225,6 +225,21 @@ Rules:
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
 - Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.
+
+- AND THE SETTLED LINE ANSWERS THEIR FIRST MESSAGE. They said what they came for in their opening line, in
+  their own words: "we are setting shared goals for this period and I want everyone aligned on what
+  matters most". Read it back and answer it. Did they get it.
+
+  Name what now exists, with the figures and the people, not what was discussed. "Five hundred
+  contracts by the end of the year, a hundred and fifty each for Rita, Kunle and Amir, and fifty for
+  you" is an answer. "The session established a clear sales objective" is a description of a
+  conversation.
+
+  Where they did NOT get what they came for, say that plainly and say what is missing. A lead who
+  wanted targets set and has none is owed that sentence, not a summary that reads as though the
+  session went well.
+
+  This is the whole test the report is measured by: did the lead get what they came for.
 - In areasRequiringAlignment, list a topic that genuinely came up and genuinely has not been settled. Do NOT pad it to reach a number, and do not add one because the list would otherwise be empty. A first session with nothing open is a real answer and a better one than an invented gap.
 
 - SOMETHING THEY CHOSE NOT TO DO IS NOT AN OPEN GAP. If the person was asked about a topic and declined it, said it was not what they needed, or steered away from it, that is a decision they made about their own check-in. Leave it out. It is theirs to make and it is not a finding.
@@ -305,7 +320,7 @@ const ENTRY_REPORT_SCHEMA = {
       honestClose: {
         type: 'object',
         properties: {
-          aligned: { type: 'string', description: 'What is settled in this account.' },
+          aligned: { type: 'string', description: "What they came for, answered. Name what now exists, with the figures and the people. Where they did not get it, say so plainly." },
           open: { type: 'string', description: 'What still needs to be resolved.' },
           revisit: { type: 'string', description: 'What to check again next session.' },
           risk: { type: 'string', description: 'What happens if the open items stay unresolved.' },
