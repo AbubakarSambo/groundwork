@@ -61,3 +61,27 @@ describe('the situation owns the shape', () => {
     expect(ENGINE_RULES).toMatch(/already told\s+you in the entry chat/i);
   });
 })
+
+/**
+ * A QUESTION THAT ASKS SOMEBODY TO INVENT A SHAPE SHOULD SHOW ONE.
+ *
+ * Setup does this for one question, built from what the person just said, and it works. The check-in
+ * did not do it at all, so "what would exist that does not exist today" arrives cold. Asked for
+ * directly: "example answers should be when it is asking questions, we had this before."
+ */
+describe('examples where a question is hard to answer cold', () => {
+  it('asks for them, on the questions that need them and not on the plain ones', () => {
+    expect(ENGINE_RULES).toMatch(/SHOW WHAT AN ANSWER LOOKS LIKE/i);
+    expect(ENGINE_RULES).toMatch(/Two short examples, at most/i);
+    expect(ENGINE_RULES).toMatch(/"How is it going" needs no example/);
+  });
+
+  it('and requires them to come from this person, which is the way this went wrong before', () => {
+    expect(ENGINE_RULES).toMatch(/BUILT FROM WHAT THEY HAVE ALREADY TOLD YOU, NEVER FROM THIS FILE/);
+    expect(ENGINE_RULES).toMatch(/not about probation or onboarding/);
+  });
+
+  it('and never as a menu', () => {
+    expect(ENGINE_RULES).toMatch(/never as a menu they\s+are expected to pick from/i);
+  });
+})
