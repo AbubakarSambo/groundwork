@@ -36,6 +36,7 @@ import {
   buildScenarioPackForParty,
   buildRuntimeContext,
 } from '../conversation/prompt-library';
+import { oneScriptOnly } from '../conversation/one-script-per-conversation';
 import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
@@ -427,7 +428,9 @@ export function buildEntrySystemPrompt(
     adminBrief: null,
     readerSetItUp: partyType === PartyType.INITIATOR,
   });
-  return [ENGINE_RULES, scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  /* ONE SCRIPT. Where the situation says how to open, the base prompt's own interview is not sent
+     alongside it. Nothing is deleted; see one-script-per-conversation.ts. */
+  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
