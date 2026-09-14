@@ -44,7 +44,7 @@ export function HomePage() {
       return
     }
 
-    navigate(`/start?initial=${encodeURIComponent(trimmed)}`)
+    navigate(`/start?new=1&initial=${encodeURIComponent(trimmed)}`)
   }
 
   useEffect(() => {

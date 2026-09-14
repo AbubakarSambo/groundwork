@@ -30,6 +30,18 @@ export interface TheReportYouSawAtTheEndProps {
   report: EntryReport
   /** The correction conversation, when this reader can still correct it. */
   correctionSlot?: ReactNode
+  /**
+   * SAYING ONE BLOCK IS WRONG, FROM THE BLOCK THAT IS WRONG.
+   *
+   * "This isn't right, correct it" existed in exactly one place: under the opening summary. Every
+   * other block on the page was read-only, including the open items, which is where the wrong thing
+   * actually was - a lead read "Team members not named here" about a team she had named and had
+   * nowhere to say so. Her words: "There's no place I know to correct the report that is wrong."
+   *
+   * A slot rather than a handler, because what correcting means differs by caller: the entry page
+   * runs it through the live engine, and a signed-in reader may not be able to correct at all.
+   */
+  renderCorrect?: (about: string) => ReactNode
   /** True to note that the reader has already corrected this once. */
   correctedNote?: boolean
   /** Renders the invite control against a suggested party or a mentioned person, when there is one. */
@@ -141,6 +153,7 @@ const SIZES = `
 export function TheReportYouSawAtTheEnd({
   report: given,
   correctionSlot,
+  renderCorrect,
   correctedNote,
   renderAdd,
   onRecordLine,
@@ -182,6 +195,7 @@ export function TheReportYouSawAtTheEnd({
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
                 <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
                 <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
+                {renderCorrect?.(a.title)}
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
             ))}

@@ -1,3 +1,4 @@
+import { whichRoundIsOpen } from '../board/which-round-is-open';
 import { CheckInStatus } from '@prisma/client';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
@@ -68,7 +69,21 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
     ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
     : null;
 
-  const openRound = Math.max(1, ...sessions.map((c) => c.sessionNumber ?? 1));
+  /*
+   * THE HIGHEST SESSION NUMBER IS NEXT WEEK'S ROW, NOT THE OPEN ROUND.
+   *
+   * Next round's check-ins are written ahead of time, all NOT_STARTED, so taking the highest number
+   * picked the untouched one the moment the real round closed. Everything below then counted a round
+   * with nothing in it.
+   *
+   * Read live, on a board opened straight after finishing session 1: "Progress 0 of 1 rounds, 0 of 1
+   * answered this round", "0 sessions done". She had just done the whole thing. The whole board read
+   * as empty.
+   *
+   * This is the fourth copy of this rule to get it wrong, and the third today. It is one function
+   * now and this asks it. See which-round-is-open.ts.
+   */
+  const openRound = sessions.length ? whichRoundIsOpen(sessions as any) : 1;
   const glance = atAGlance(
     {
       roundsDone,

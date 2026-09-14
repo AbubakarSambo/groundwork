@@ -36,6 +36,7 @@ import {
   buildScenarioPackForParty,
   buildRuntimeContext,
 } from '../conversation/prompt-library';
+import { withoutWhatTheyDeclined } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
@@ -223,7 +224,15 @@ Rules:
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
 - Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.
-- In areasRequiringAlignment, always include at least one entry for any significant topic raised in the conversation but not addressed directly - name it explicitly as an unaddressed area with observation "This topic came up but was not fully explored in this session."
+- In areasRequiringAlignment, list a topic that genuinely came up and genuinely has not been settled. Do NOT pad it to reach a number, and do not add one because the list would otherwise be empty. A first session with nothing open is a real answer and a better one than an invented gap.
+
+- SOMETHING THEY CHOSE NOT TO DO IS NOT AN OPEN GAP. If the person was asked about a topic and declined it, said it was not what they needed, or steered away from it, that is a decision they made about their own check-in. Leave it out. It is theirs to make and it is not a finding.
+
+  This is the fault that made a real report read as a telling-off. A lead came to set targets, was twice asked to connect them to company strategy, twice said that was not what she needed, and her report carried an open item headed "Link to company strategy" with a line under it telling her to go and do it in the next session. She had already answered that. Being handed it back as an outstanding task reads as not having listened, and then as being marked down for it.
+
+- AND NEVER SAY SOMETHING IS MISSING THAT YOU WERE GIVEN. If it was said in setup, or earlier in this conversation, or handed to you in the context above, it is not missing. Check before you write that anything was not named or not provided.
+
+- THE READER IS THE PERSON WHO JUST DID THIS, AND THEY ARE NOT BEING MARKED. Write what is open as something to bring to the next conversation, not as a fault they left behind. Describe the thing, not what they failed to do. No open item may be phrased as an instruction to correct their own behaviour.
 - In mentionedPeople, list any person named or meaningfully referenced in the conversation who is not the person checking in. If someone was already confirmed as a participant in this check-in earlier in the conversation, still include them - the admin needs to see the full cast. Omit only truly anonymous or generic references with no name or identifiable role.
 - In suggestedParties, name any role whose independent account would materially change or strengthen this check-in's picture, but who was not mentioned by the person checking in. Typical triggers: a regulated sector with a clinical or compliance lead whose sign-off affects decisions described; a multi-layer authority structure where a board or chair sits above the mandate-giver; a finance function that controls data the person says they need. Do not suggest roles already confirmed as participants. If nothing is missing, return an empty array.
 - Authorship backstop: scan the conversation for any language where the person describes work produced by others - "I guided", "I helped them", "we built", "I shaped", "I oversaw", "I developed with". If the authorship of any output was not explicitly anchored to a named person during the session, add an entry in areasRequiringAlignment with title "Authorship not anchored" and observation "This session contains claims about work involving others where it was not made clear who produced the output. What was shared cannot confirm who authored what."
@@ -1148,7 +1157,7 @@ from finishing at all.`;
   }
 
 
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]): Promise<EntryReport | null> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const mapped = resolveScenario(scenario);
@@ -1159,12 +1168,43 @@ from finishing at all.`;
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
     if (!trimmed.length) throw new BadRequestException('no user messages in history');
 
+    /*
+     * WHO SETUP ALREADY NAMED, PUT IN FRONT OF THE READ.
+     *
+     * The report reads the check-in's own turns and nothing else, so a lead who listed her team in
+     * setup got a report saying "team members not named here" and an open item telling her to go and
+     * name them. She had. The chat was given this list; the read was not.
+     */
+    const alreadyNamed = (peopleNamed ?? []).map((p) => (p ?? '').trim()).filter(Boolean);
+    if (alreadyNamed.length) {
+      trimmed.unshift({
+        role: 'user',
+        content: `Before this conversation started I already named who is involved: ${alreadyNamed.join(', ')}. Treat these as named. Do not ask for them again and do not report them as missing.`,
+      } as ChatTurn);
+    }
+
     const report = await this.anthropic.extract<EntryReport>(
       ENTRY_REPORT_PROMPT + '\n\n' + systemPrompt,
       trimmed,
       ENTRY_REPORT_SCHEMA,
     );
     if (!report) return report;
+
+    /*
+     * WHAT SHE SAID NO TO IS NOT AN OPEN ITEM IN HER OWN REPORT.
+     *
+     * She declined the strategy question twice and the report handed it back as an outstanding task
+     * with an instruction to go and do it. See what-they-declined-is-not-a-gap. The prompt is told
+     * as well; this is here because the prompt had already been told the adjacent rule and followed
+     * a different one, and because the person reading this is the lead deciding whether any of this
+     * is worth having.
+     */
+    if (Array.isArray(report.areasRequiringAlignment)) {
+      const before = report.areasRequiringAlignment.length;
+      report.areasRequiringAlignment = withoutWhatTheyDeclined(report.areasRequiringAlignment as any, messages as any) as any;
+      const dropped = before - report.areasRequiringAlignment.length;
+      if (dropped) this.logger.log(`Entry report: dropped ${dropped} open item(s) the person had declined.`);
+    }
 
     /**
      * W3. THE SPLIT HAPPENS AT THE READ, not in the prompt.

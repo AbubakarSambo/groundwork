@@ -510,7 +510,7 @@ export function GroundsListPage() {
               * used to fill in eight steps to be told no at the end.
               */}
             {user?.mayOpenCheckIns !== false && <button
-              onClick={() => navigate('/start')}
+              onClick={() => navigate('/start?new=1')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <span>Start a check-in</span>
@@ -738,7 +738,7 @@ export function GroundsListPage() {
                 belongs in the picker at /grounds/new.
               */}
               {user?.mayOpenCheckIns !== false && <button
-                onClick={() => navigate('/start')}
+                onClick={() => navigate('/start?new=1')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 + New check-in
@@ -758,7 +758,7 @@ export function GroundsListPage() {
                   You will see check-ins here when someone invites you, or when you open one yourself.
                 </div>
                 {user?.mayOpenCheckIns !== false && <button
-                  onClick={() => navigate('/start')}
+                  onClick={() => navigate('/start?new=1')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open a check-in

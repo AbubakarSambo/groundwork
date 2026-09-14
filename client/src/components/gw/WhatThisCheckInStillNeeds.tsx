@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { SELECTABLE_CADENCES } from '@/lib/cadence'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -35,6 +36,7 @@ export function WhatThisCheckInStillNeeds({
   standardUnset,
   onGoToSetup,
   startDateUnset = false,
+  renderStartDate,
   timelineUnset = false,
   timelineDays,
   briefStandard = null,
@@ -74,6 +76,17 @@ export function WhatThisCheckInStillNeeds({
    * this runs" - so these two rows send you there rather than growing a second date picker here.
    */
   startDateUnset?: boolean
+  /**
+   * A DATE PICKER HERE, WHERE THERE IS NOWHERE ELSE TO GO.
+   *
+   * The block offers "Set a start date on Setup" because a saved ground has a Setup page. On the
+   * entry flow there is no ground yet and no Setup to send anybody to, so the block was passed
+   * startDateUnset=false and simply never appeared. A lead finishing setup and picking a cadence saw
+   * no way to say when any of it begins. Her words: "There's no start date etc."
+   *
+   * A slot, because the two callers genuinely differ: one navigates, one sets a value in place.
+   */
+  renderStartDate?: ReactNode
   timelineUnset?: boolean
   timelineDays?: number | null
 }) {
@@ -123,12 +136,14 @@ export function WhatThisCheckInStillNeeds({
             decides two real things: session one stays shut until then, and anybody added before it
             is invited on the day rather than now.
           </div>
-          <button
-            onClick={onGoToSetup}
-            style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Set a start date on Setup &rarr;
-          </button>
+          {renderStartDate ?? (
+            <button
+              onClick={onGoToSetup}
+              style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Set a start date on Setup &rarr;
+            </button>
+          )}
         </div>
       )}
       {alreadyStarted && nextOpens && (
