@@ -68,7 +68,8 @@ describe('and it reaches the conversation, reading only what this person set', (
 
   it('is assembled into the prompt', () => {
     expect(src).toMatch(/const alreadySaidAboutThem = await this\.whatIsAlreadyOnSomebodyTheyNamed/);
-    expect(src).toMatch(/againstTheirNumber, alreadySaidAboutThem,/);
+    /* Chosen among the three by oneThingBack rather than joined alongside them. */
+    expect(src).toMatch(/oneThingBack\(\{[^}]*alreadySaidAboutThem[^}]*\}\)/);
   });
 
   it('never reads what is on the reader themselves back at them', () => {

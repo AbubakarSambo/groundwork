@@ -99,7 +99,10 @@ describe('the give-back reaches the conversation', () => {
 
   it('is assembled into the system prompt beside the other conditional blocks', () => {
     expect(src).toMatch(/const roomKnows = await this\.whatTheRoomAlreadyKnows\(checkIn, latestMessage \?\? ''\)/);
-    expect(src).toMatch(/patternProbeBlock, roomKnows,/);
+    /* It is chosen among the three by oneThingBack and only the winner is joined, so assert it
+       reaches that chooser rather than the join list it no longer appears in directly. */
+    expect(src).toMatch(/oneThingBack\(\{[^}]*roomKnows[^}]*\}\)/);
+    expect(src).toMatch(/patternProbeBlock, theOneThingBack,/);
   });
 
   it('only on a shared ground, and never from the reader’s own handoffs', () => {

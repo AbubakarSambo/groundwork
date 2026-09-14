@@ -114,20 +114,39 @@ If what they asked for is to set targets and track them, ask about the targets.`
 export function opensByRepeatingThem(theySaid: string, reply: string): boolean {
   const theirs = subjectWords(theySaid);
   if (theirs.size < 3) return false;
-  /* The first sentence, which is all a reader has before deciding whether this is going anywhere. */
-  const opening = (reply ?? '').split(/(?<=[.?!])\s/)[0] ?? '';
-  const opener = subjectWords(opening);
-  if (opener.size < 3) return false;
-  let shared = 0;
-  for (const w of opener) if (theirs.has(w)) shared += 1;
   /*
-   * Most of the opening being words they just used, rather than a word or two in common.
+   * THE OPENING, WHICH IS THE FIRST SENTENCE OR THE FIRST TWO.
    *
-   * Six tenths, not seven. Measured against the real pair above: "500 contracts and the sales linked
-   * to them by the end of the year" shares four of its six subject words with what she typed, and
-   * seven tenths let it through. A check tuned above the thing it was written for is not a check.
+   * One sentence was not enough. Once a give-back was added, the reply opened with a real fact and
+   * restated her in the sentence AFTER it, which is the same fault one place further along:
+   *
+   *   "Sixty of your hundred and fifty. That means the supply side is the bottleneck, and you're
+   *    worried about Rita. What's holding up the supply side specifically?"
+   *
+   * Sentence one earns its place. Sentence two is her own message handed back. Found by running a
+   * turn, and it passed the one-sentence version of this check.
+   *
+   * Two, not all of them: quoting somebody later in a turn is often right, and the product does it
+   * deliberately where a document contradicts them. What grates is leading with it.
    */
-  return shared / opener.size >= 0.6;
+  const sentences = (reply ?? '')
+    .split(/(?<=[.?!])\s/)
+    .filter((x) => x.trim() && !/\?\s*$/.test(x.trim()))
+    .slice(0, 2);
+
+  /*
+   * EACH OF THE FIRST TWO, SEPARATELY. Joining them and measuring the pair was the first attempt and
+   * it made the check weaker rather than wider: sentence two carries new words, they dilute sentence
+   * one's restatement, and the pair scores under the line while sentence one on its own is plainly
+   * her message handed back. One restating sentence at the top is the fault, whichever of the two.
+   */
+  return sentences.some((sentence) => {
+    const opener = subjectWords(sentence);
+    if (opener.size < 3) return false;
+    let shared = 0;
+    for (const w of opener) if (theirs.has(w)) shared += 1;
+    return shared / opener.size >= 0.6;
+  });
 }
 
 /** Named for the model, which then writes its own opening. */
