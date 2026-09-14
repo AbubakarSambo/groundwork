@@ -1,0 +1,72 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { isADeadEnd, asksSomething, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
+
+/**
+ * THE TWO REPLIES THAT STRANDED SOMEBODY, kept verbatim from a walked check-in.
+ *
+ * Both arrived right after the person had given exactly what was asked for, which is the worst
+ * moment to go quiet: they have done their part and what comes back acknowledges it and stops.
+ */
+const STRANDED = [
+  'You will go to their team lead directly on Monday.',
+  'That is clear: the reconciliation module by 1 September, and the Monday call for weekly priorities.',
+];
+
+const FINE = [
+  'You expect Zainab to escalate to the CFO. Does Zainab know that this is the expectation?',
+  'That is worth knowing. What about Tomi?',
+  /* A question without a question mark still asks. Sending these back would be a retry on good work. */
+  'Tell me what has changed since last time.',
+  'Say more about the finance hold-up.',
+];
+
+describe('a reply that asks nothing is a dead end', () => {
+  it.each(STRANDED)('catches the ones that stranded somebody: %s', (said) => {
+    expect(isADeadEnd(said, false)).toBe(true);
+  });
+
+  it.each(FINE)('and leaves a reply that asks alone: %s', (said) => {
+    expect(isADeadEnd(said, false)).toBe(false);
+  });
+
+  it('a closing turn is allowed to be a statement, because that is the wrap-up', () => {
+    for (const said of STRANDED) expect(isADeadEnd(said, true)).toBe(false);
+  });
+
+  it('and nothing at all is not a dead end, because there is another guard for that', () => {
+    expect(isADeadEnd('', false)).toBe(false);
+    expect(isADeadEnd(null, false)).toBe(false);
+  });
+
+  it('a question mark is enough, wherever it sits', () => {
+    expect(asksSomething('What about Tomi?')).toBe(true);
+    expect(asksSomething('Is that right, or have I got it backwards?')).toBe(true);
+    expect(asksSomething('You will go on Monday.')).toBe(false);
+  });
+
+  it('the instruction asks for a question and does not supply one', () => {
+    /*
+     * The whole point. A canned question here would be the product doing the model's job, and the
+     * question is the most valuable thing in a check-in because it comes from what THIS person just
+     * said. Code holds the shape; the model writes the words.
+     */
+    expect(ASK_SOMETHING_OR_CLOSE).toContain('in your own words');
+    expect(ASK_SOMETHING_OR_CLOSE).toContain('end the session instead');
+    expect(ASK_SOMETHING_OR_CLOSE).not.toMatch(/\?/);
+  });
+
+  it('and it is wired as a retry, not as a rewrite of the reply', () => {
+    /*
+     * The same shape as the two gates beside it: ask again with one instruction, and keep the
+     * second only if it is genuinely better. The product never writes the sentence itself.
+     */
+    const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const at = SERVICE.indexOf('isADeadEnd(screened.text');
+    expect(at).toBeGreaterThan(-1);
+    const block = SERVICE.slice(at, at + 900);
+    expect(block).toContain('ASK_SOMETHING_OR_CLOSE');
+    expect(block).toMatch(/the first stands/);
+  });
+});

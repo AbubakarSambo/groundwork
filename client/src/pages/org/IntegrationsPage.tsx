@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TheThingsYouCanConnect, WhatsAppMark } from '@/components/gw/TheThingsYouCanConnect'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
@@ -28,6 +29,20 @@ const S = {
   lede: { fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 26px', maxWidth: '62ch' } as const,
   sec: { fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--gw-muted)', margin: '32px 0 10px' } as const,
   card: { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 10 } as const,
+  /*
+    HAIRLINES, NOT CARDS, FOR A LIST THAT IS ONE THING SAID NINE WAYS.
+    "Why are these in cards, it makes the page seem bulky" - correct. Nine bordered white boxes,
+    each holding a heading and one sentence, is nine objects of equal weight where there is one
+    sequence: what this page does, in order. Every box costs a border, a fill, a radius and 34px of
+    padding to say nothing the heading was not already saying.
+    The rule is already written down on the marketing site, over the same kind of list: "Hairlines,
+    not cards. Three cards make three things of equal weight; this is one sequence and reads as
+    one." It applies here and this page had not been told.
+    A card still earns its box everywhere else on this page, because those hold controls - a form, a
+    key, a connection - and a control is a separate object.
+  */
+  rows: { border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '4px 18px' } as const,
+  line: { padding: '14px 0' } as const,
   h3: { fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 4px' } as const,
   body: { fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 } as const,
   btn: { fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' } as const,
@@ -136,6 +151,11 @@ export function IntegrationsPage() {
   const [wsKind, setWsKind] = useState<'slack' | 'teams'>('slack')
   const [wsUrl, setWsUrl] = useState('')
   const [wsChannel, setWsChannel] = useState('')
+  const saveTemplates = useMutation({
+    mutationFn: (approved: string[]) => integrationsApi.whatsappTemplates(approved),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Saved. Anything we start now goes as an approved message.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save.'),
+  })
   const connectWs = useMutation({
     mutationFn: () => integrationsApi.connectWorkspace(wsKind, wsUrl.trim(), wsChannel.trim() || undefined),
     onSuccess: () => { setWsUrl(''); setWsChannel(''); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }); toast.success('Connected, and switched off until you test it and turn it on.') },
@@ -342,45 +362,20 @@ export function IntegrationsPage() {
         * A reader who only saw the first half concluded this was somewhere to hand over data and
         * wait, which is neither what it is nor what it costs them.
         */}
+      {/*
+        SHORTER, AND IN THE WORDS SOMEBODY WOULD USE. This page was 1,083 words of prose before a
+        person got to anything they could do. Three paragraphs of introduction, then nine cards each
+        with a paragraph under it. "Too much prose, we want simple, no jargon, laymans terms, do not
+        write a book."
+        One short opening, then one line per thing. The detail an engineer needs is further down,
+        behind the approval, where an engineer is looking. This half is for whoever is deciding.
+      */}
       <p style={S.lede}>
-        <strong>Yes - this is the API page.</strong> Two separate things live here, and most teams
-        want both.
-      </p>
-      <p style={S.lede}>
-        <strong>Your data moves both ways.</strong> People and objectives come in from the tools you
-        already use, and what check-ins produce goes back out to them. You are not handing anything
-        over and waiting - you keep your systems as they are and Groundwork reads from them.
-      </p>
-      <p style={S.lede}>
-        <strong>And you can put the check-in inside your own product.</strong> An embedded panel your
-        users open without leaving your app, asking on behalf of the person already signed in to it.
-        Your engineers get a key here for both.
+        Connect Groundwork to the tools you already use. Your people and goals come in, what
+        check-ins produce goes back out, and you can put the check-in inside your own product.
+        One key covers all of it.
       </p>
 
-      {/*
-        * WHAT THE PLAN ALLOWS, BEFORE ANY OF THE WORK.
-        *
-        * On the free plan you can read this whole page, issue a key, copy the secret and register a
-        * webhook - and the first thing that fails is the token exchange, in your engineer's
-        * terminal, with a 403. Everything up to that point behaves as though it worked.
-        *
-        * The gate sits on one route (`oauth/token`; the file that once held a plan gate, the-api-is-a-paid-thing.ts, is gone - approval is the gate now) and nothing
-        * else, so this is precise about which half is affected: sending data IN needs a plan, being
-        * TOLD about things does not. Saying "the API needs a plan" flatly would be simpler and
-        * would be wrong about webhooks, which work either way.
-        *
-        * Nothing is disabled. Somebody evaluating this should be able to set it all up first and
-        * subscribe when they are ready - the key they issue today starts working the day they do.
-        */}
-      {/*
-        * SENDING DATA IN NEEDS TO BE ASKED FOR, and it used to need a plan.
-        *
-        * The banner is shown on the ACCESS REQUEST rather than on the
-        * subscription, because that is what the API now checks. Getting this
-        * wrong in the safe-looking direction — leaving the old plan warning up —
-        * would tell somebody to go and pay for something that is free, which is
-        * the worst version of a stale message.
-        */}
       {/* A failed read of access used to strand the customer with nothing: the request form is gated on
           access.data, so no data meant no form and no explanation. Say which it is. */}
       {access.isLoading && (
@@ -389,14 +384,39 @@ export function IntegrationsPage() {
       {access.isError && (
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>We could not read whether your organisation has access. Reload, or email hello@myground.work.</div>
       )}
+      {/*
+          NOT A WARNING GROUND, BECAUSE NOTHING HERE HAS GONE WRONG.
+          The whole block sat on amber with an amber border - the colour this product uses for
+          something that needs attention - and it is only saying "this has to be asked for", which
+          is how the thing is meant to work. The cost was the form inside it: a textarea with no
+          fill of its own, on a tinted ground, which is what "the orange box makes it hard to see
+          the input field" is. It is an ordinary card now, like every other form on this page.
+      */}
       {access.data && !access.data.approved && (
-        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
-            Sending data in needs to be asked for
+        <div style={{ ...S.card, marginBottom: 20 }}>
+          {/*
+            NAMED FOR WHAT SOMEBODY WANTS, NOT FOR WHAT THE SYSTEM DOES ABOUT IT.
+            "Sending data in needs to be asked for" describes our permission model to a person who
+            came here to do a thing. Nobody arrives wanting to send data in; they arrive wanting
+            check-ins inside their own product. The asking is the second sentence, not the heading.
+          */}
+          <div style={{ ...S.h3, marginBottom: 5 }}>
+            Put check-ins inside your own product
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            {access.data.says}{' '}
-            One request covers the API, the panel on your own pages and your WhatsApp number. Using the API needs approval, not a plan: it is asked for here and read by a person. Once it is approved, this page shows the keys, the calls and the reference.
+            {/*
+              AND IN OUR OWN WORDS, NOT THE 403's. `access.says` is written for a developer looking
+              at a refused request - "nothing else about the credential is wrong" is exactly right
+              there and means nothing to an admin who has no credential and is not debugging one.
+              That string stays where it belongs, in the refusal. This page says its own thing.
+              WhatsApp is not in this list: it is set up above without asking.
+            */}
+            Your people check in from inside your own system - a panel on your page, or your own
+            build against the API. It is asked for rather than bought: say what you want to build,
+            somebody here reads it, and the keys appear on this page once it is approved.
+            {access.data.status === 'PENDING' && <><br />You have asked and we have not answered yet.</>}
+            {access.data.status === 'DECLINED' && <><br />This was declined. Ask again, saying what has changed.</>}
+            {access.data.status === 'WITHDRAWN' && <><br />This was approved and has since been withdrawn.</>}
           </div>
 
           {access.data.status !== 'PENDING' && (
@@ -407,7 +427,9 @@ export function IntegrationsPage() {
                 placeholder="What do you want to build with it? Somebody reads this."
                 aria-label="What do you want to build with it?"
                 rows={3}
-                style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+                /* Its own white ground, named rather than inherited: a field that borrows whatever
+                   is behind it is a field somebody cannot find. */
+                style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' }}
               />
               {/* THE TERMS ARE READ HERE, NOT ON A PAGE OF THEIR OWN. Eight short points; the request
                   cannot be recorded until they are ticked, and the version ticked is written on it. */}
@@ -452,66 +474,144 @@ export function IntegrationsPage() {
 
       {/* THE PLAIN-LANGUAGE HALF, FIRST. An operations lead should be able to read this and decide
           whether to involve their engineer, without reading a single JSON payload. */}
-      <div style={S.sec}>What this does, in plain terms</div>
-      <div style={S.card}>
-        <div style={S.h3}>Your people and structure come in</div>
-        <p style={S.body}>Who works here, what they are called, who they report to. Sent from your HR or identity system so you are not keeping a second list. When somebody joins, moves team or leaves, that arrives too.</p>
+      {/* What we talk to, so somebody can see whether their tools are on the list. */}
+      <TheThingsYouCanConnect />
+
+      <div style={S.sec}>What it does</div>
+      <div style={S.rows}>
+        <div style={{ ...S.line }}>
+          <div style={S.h3}>Your people come in</div>
+          <p style={S.body}>Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too, so you are not keeping a second list.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your goals come in</div>
+          <p style={S.body}>Goals, projects and decisions, from wherever you already keep them. Groundwork points at yours instead of holding a second copy that can go out of step.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your team checks in against them</div>
+          <p style={S.body}>Each person is asked about the goals you sent, as often as you choose, in their own words. The report shows where their answers agree and where they do not.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your numbers come in as evidence</div>
+          <p style={S.body}>Send a figure from your CRM, billing or support desk and it sits beside the goal it belongs to. Nothing extra to keep up to date.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Roles and handovers</div>
+          <p style={S.body}>Who holds which role and since when, so a handover leaves a written brief rather than a gap.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Your handbook</div>
+          <p style={S.body}>Send the documents that say how things are done here. People can ask them questions and the answer quotes the page it came from.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>What a lead reads before a hard conversation</div>
+          <p style={S.body}>One page on one person: what they said they would do, what they are waiting on, and what they raised. Never a score.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Invitations go out</div>
+          <p style={S.body}>Groundwork gives you a link. You send it however you already reach people.</p>
+        </div>
+        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={S.h3}>Results come back</div>
+          <p style={S.body}>When everyone has checked in, your systems are told what happened and where to look. Never what anybody said.</p>
+        </div>
+      </div>
+
+      {/* ---------------------------------------------------------------- whatsapp
+        OUT FROM BEHIND THE API REQUEST. Setting up WhatsApp sat inside the block that only shows
+        once API access is approved, so somebody who only wanted their team to check in by message
+        had to ask for API keys and wait for a person to read the request.
+        Nothing here gives away how the API works: an address to paste into Meta and a token you
+        made up. So it stands on its own, above the part that does need approving.
+      */}
+      <div style={{ ...S.sec, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <WhatsAppMark size={20} /> Your WhatsApp number
       </div>
       <div style={S.card}>
+        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
+        <p style={S.body}>
+          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
+        </p>
         {/*
-          * IT SAID "OKR TOOL" AND THE API HAS NEVER BEEN OKR-SHAPED.
-          *
-          * Her reading: "you have okrs there but we are meant to be able to look at their crm etc
-          * and all the tools they use", and "this is a lot more than okrs". Both true of what is
-          * built - a subject is an objective, a project or a decision, with a measure, a target, an
-          * owner, contributors, a parent and dates - and the page named one tool and one shape.
-          *
-          * What follows is the whole list of what the API accepts, because the page described two
-          * of eight and the other six are the reason somebody would connect anything at all.
-          */}
-        <div style={S.h3}>What you are working towards comes in</div>
-        <p style={S.body}>Objectives, projects and decisions - from your OKR tool, your project tracker, your CRM, wherever the work actually lives. Each one can carry what it is measured by, the target, who owns it, who else is on it, and what it sits under. Groundwork holds a pointer and the wording as it stood when you last sent it - never a second editable copy, because two versions that must agree is the problem this product exists to end. If it goes out of date, it says so rather than pretending.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your people check in against it</div>
-        <p style={S.body}>This is the part that is not a dashboard. The objectives you send become what each person is asked about, on the cadence you set - their own account of the work, in their own words, against the thing you said mattered. The report shows where those accounts agree and where they do not.</p>
-      </div>
-      <div style={S.card}>
+          WHAT IT SOUNDS LIKE, AND IN WHICH LANGUAGES. Somebody deciding whether to put this in
+          front of a field team needs to know it will not read like a form. Short words, one
+          question at a time, and the person can answer in their own language.
+          The list comes from the server so this page cannot promise a language nobody added.
+        */}
         {/*
-          * THE CRM ANSWER, DECIDED AND THEN FOUND TO BE ALREADY BUILT.
-          *
-          * "I think the CRM is evidence against objectives" - and that is exactly the shape the API
-          * already had. A deal, a stage, an amount is not a thing to check in about; it is a number
-          * that says how the thing you ARE checking in about is going. So there is no `deal` type
-          * and there should not be: it arrives as evidence against an objective that already
-          * exists, and lands in the check-in that asks about that objective.
-          *
-          * The page had never mentioned evidence at all, which is why a customer with a CRM had no
-          * idea where it goes and reasonably concluded this was an OKR tool.
-          */}
-        <div style={S.h3}>Your numbers come in as evidence, not as more things to track</div>
-        <p style={S.body}>Your CRM, your billing, your support desk, your analytics - whatever holds the number. It arrives against an objective that already exists rather than as another item on a list, so the person checking in is asked about the work with the current figure in front of them. Counts and short labels, never prose: "committed: 1.1m, stage: negotiation" against the objective it belongs to. We hold the last figure you sent and when you observed it, so a stale one says it is stale rather than pretending.</p>
+          WHO SENDS THE FIRST MESSAGE, SAID AS A THING TO DO RATHER THAN AS A LIMIT.
+          This read "Start by email for now" and then explained Meta's approval queue - our problem,
+          in our words, on a page where somebody is trying to set something up. The fact underneath
+          is real and unchanged: the person has to write first. What an admin needs is the action,
+          which is one line: share the number, get them to say anything, it runs from there.
+        */}
+        {(whatsapp.data as any)?.canStartAConversation === false && (
+          <p style={S.body}>
+            Your team messages the number first. Share it with them, or send them the link to it, and
+            ask them to say anything at all - hello will do. From that moment everything happens on
+            WhatsApp: their check-in, their reminders and their report.
+            {' '}<WhatIfWeWantToWriteFirst
+              names={(whatsapp.data as any)?.theNamesToSubmit ?? []}
+              approved={(whatsapp.data as any)?.approvedHere ?? []}
+              onSave={(next) => saveTemplates.mutate(next)}
+              saving={saveTemplates.isPending}
+            />
+          </p>
+        )}
+        {(whatsapp.data as any)?.languages?.length > 0 && (
+          <p style={S.body}>
+            On WhatsApp the questions are short and in plain everyday words, one at a time, the way
+            you would ask somebody in person. People can answer in {(whatsapp.data as any).languages.length} languages
+            and the check-in carries on in whichever they use: {(whatsapp.data as any).languages.join(', ')}.
+            {' '}The first message we send is in English; it changes to their language as soon as they reply.
+            What goes on the record is kept in English so everyone reads the same thing.
+          </p>
+        )}
+        {whatsapp.data?.connection ? (
+          <>
+            <div style={{ ...S.row, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
+                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
+                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
+              </div>
+              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
+            </div>
+            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
+              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
+              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
+              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
+            </div>
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
+              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
+              </div>
+            </details>
+          </>
+        ) : (
+          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
+            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
+            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
+            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
+          </div>
+        )}
       </div>
-      <div style={S.card}>
-        <div style={S.h3}>Roles, handovers and what each role turns on</div>
-        <p style={S.body}>Who holds which role and since when, so a handover produces a brief rather than a gap. Each role can name the one action it lives or dies by and how often it is due - the visit, the review, the presentation - and Groundwork notices when somebody active has stopped doing it. Not before the period is half gone, and never as a verdict.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Your handbook and how you work</div>
-        <p style={S.body}>Send the documents that say how things are done here and people can ask them in plain words. Answers quote what is written rather than paraphrasing it, and a policy that changed in March still explains a finding from March.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>What a lead should read before a hard conversation</div>
-        <p style={S.body}>For one named person: what they said they would do and what carried a date, what other people are waiting on them for and what they are waiting on, what the record raised, and what they are carrying - including any objective with no measure on it, because there is nothing to be doing well or badly against. Every section says where it came from. It is never a score, it always says what it does not know, and nothing here decides anything about anybody.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Invitations go out</div>
-        <p style={S.body}>Groundwork gives you a link for a person to check in. Your system delivers it however it already reaches people. The link carries an invitation and nothing else.</p>
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>Results come back</div>
-        <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
-      </div>
+
 
       {approved && (<>
       {/* GUIDED SETUP, and each step reports whether it actually happened rather than whether it was
@@ -891,58 +991,6 @@ export function IntegrationsPage() {
         )}
       </div>
 
-      {/* ---------------------------------------------------------------- whatsapp */}
-      <div style={S.sec}>Your WhatsApp number</div>
-      <div style={S.card}>
-        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
-        <p style={S.body}>
-          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
-        </p>
-        {whatsapp.data?.connection ? (
-          <>
-            <div style={{ ...S.row, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
-                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
-                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
-                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
-              </div>
-              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
-            </div>
-            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
-              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
-              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
-              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
-            </div>
-            <details style={{ marginTop: 12 }}>
-              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
-              </div>
-            </details>
-          </>
-        ) : (
-          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
-            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
-            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
-            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
-            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
-          </div>
-        )}
-      </div>
-
       {/* ---------------------------------------------------------------- delivery log */}
       <div style={S.sec}>Every message we tried to send</div>
       {!(deliveries.data ?? []).length && (
@@ -1202,5 +1250,78 @@ function Step({ n, title, body, done, last }: { n: number; title: string; body: 
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 2 }}>{body}</div>
       </div>
     </div>
+  )
+}
+
+/**
+ * WRITING FIRST IS THEIRS TO UNLOCK, AND IT IS ONE LINE UNTIL SOMEBODY ASKS.
+ *
+ * WhatsApp only lets a business write first using wording Meta has approved. On an organisation's
+ * OWN number that approval is theirs to get - their Meta app, their submission - so this is a thing
+ * they can do rather than a thing they wait on us for, and nobody was telling them.
+ *
+ * Behind an (i) because it is the second question, not the first. The first is "how do I start",
+ * which the sentence beside this answers in full and needs nothing from anybody. Printed in the
+ * open it would double a short paragraph into a page about Meta's approval queue.
+ *
+ * THE NAMES COME FROM THE SERVER, from the one place that defines them. Meta matches a template
+ * name byte for byte, so a page that typed them out would be a copy that eventually differs from
+ * the one the sender uses - and the failure would appear in Meta's console, a long way from here.
+ */
+function WhatIfWeWantToWriteFirst({ names, approved, onSave, saving }: {
+  names: string[]
+  approved: string[]
+  onSave: (next: string[]) => void
+  saving: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [picked, setPicked] = useState<string[]>(approved)
+  if (names.length === 0) return null
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label="What if we want Groundwork to message first"
+        style={{
+          background: 'none', border: '1px solid var(--gw-border)', borderRadius: '50%',
+          width: 18, height: 18, lineHeight: '16px', padding: 0, fontSize: 11, fontWeight: 700,
+          fontFamily: 'inherit', color: 'var(--gw-navy)', cursor: 'pointer', verticalAlign: 'middle',
+        }}
+      >
+        i
+      </button>
+      {open && (
+        <span style={{ display: 'block', marginTop: 10, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)' }}>
+          <strong style={{ color: 'var(--gw-text)' }}>If you want Groundwork to message first.</strong>{' '}
+          You can. WhatsApp allows it with wording Meta has approved, and on your own number that
+          approval is yours to ask for - it is your Meta app. Submit these names in Meta Business
+          under Message Templates, say the message is for people your organisation has signed up to
+          this, and tick them here when they come back approved. Then a check-in can reach somebody
+          who has not written to you in a day.
+          <span style={{ display: 'block', marginTop: 8 }}>
+            {names.map((n) => (
+              <label key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 0', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(n)}
+                  onChange={(e) => setPicked(p => e.target.checked ? [...p, n] : p.filter(x => x !== n))}
+                />
+                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--gw-text)' }}>{n}</span>
+              </label>
+            ))}
+          </span>
+          <button
+            type="button"
+            onClick={() => onSave(picked)}
+            disabled={saving}
+            style={{ marginTop: 8, fontSize: 12.5, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {saving ? 'Saving...' : 'Save what Meta approved'}
+          </button>
+        </span>
+      )}
+    </>
   )
 }

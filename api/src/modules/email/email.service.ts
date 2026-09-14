@@ -822,7 +822,7 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
-        `<p>It shows where your accounts agree, where they differ, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
+        `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
       ),

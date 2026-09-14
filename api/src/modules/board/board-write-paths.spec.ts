@@ -59,7 +59,7 @@ function makeService(over: {
     groundPollOption: { deleteMany: optionDeleteMany, createMany: optionCreateMany },
   };
   return {
-    service: new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any),
+    service: new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any),
     objectiveCreate, objectiveUpdate, optionDeleteMany, optionCreateMany, pollCreate,
   };
 }

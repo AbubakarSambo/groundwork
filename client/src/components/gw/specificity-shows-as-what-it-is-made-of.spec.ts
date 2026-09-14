@@ -96,7 +96,12 @@ describe('what the record can support', () => {
      * prominent thing on a page about somebody's own work. The argument that it described the record
      * rather than the writer held right up until it was that big.
      */
-    expect(code(SUPPORT)).toContain('Where your record stands')
+    /* The heading said "Where your record stands" until the vocabulary pass: "record" is the
+       filing-cabinet word, and this card is about what somebody has said, not a file kept on
+       them. The rule here is the face, not the wording - but the heading has to be asserted as
+       something, or the card can lose its heading and still pass. */
+    expect(code(SUPPORT)).toContain('Where what you have shared stands')
+    expect(code(SUPPORT)).not.toContain('Where your record stands')
     expect(code(SUPPORT)).not.toMatch(/🙂|😐|🙁/)
     expect(code(SUPPORT)).not.toMatch(/\[1,2,3,4,5\]\.map/)
   })

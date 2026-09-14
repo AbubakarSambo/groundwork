@@ -16,6 +16,8 @@ interface OrgMember {
   isActive: boolean
   isEmailVerified: boolean
   createdAt: string
+  /** Their WhatsApp number, where anybody has put one in. Blank for most people. */
+  phoneNumber?: string | null
   /** Where this person actually got to. Computed server side - see users.service findAll. */
   state?: 'invited' | 'signed in' | 'checked in'
   /** How many check-ins they are on, and how many of those they have given an account on. */
@@ -220,6 +222,21 @@ export function OrgMembersPage() {
       toast.success('Handed over. They now own this organisation.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not hand that over.'),
+  })
+
+  /*
+   * AN ADMIN PUTS THE NUMBERS IN, because otherwise nobody does.
+   *
+   * A person can add their own under Settings and most will not. Whoever is rolling WhatsApp out to
+   * a field team already has the numbers, in the same list they used to invite everybody, and had
+   * no way to enter them: SCIM, POST /people, or ask each person to type their own. So the team
+   * that most needs checking in by message was the team least likely to have it.
+   */
+  const phoneMut = useMutation({
+    mutationFn: ({ id, number }: { id: string; number: string }) =>
+      apiClient.patch(`/users/${id}`, { phoneNumber: number }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-members'] }); toast.success('Saved.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That number did not save. Nothing else changed.'),
   })
 
   const roleMut = useMutation({
@@ -622,6 +639,29 @@ export function OrgMembersPage() {
                   {(m.firstName || m.lastName) && (
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
                   )}
+                  {/*
+                    THEIR WHATSAPP NUMBER, TYPED HERE, because whoever is rolling this out has the
+                    numbers and the person who needs one is not the person who will type it.
+                    Saves when the box loses focus or on Enter - no second button per row, on a page
+                    that already has a dropdown and two buttons on every line.
+                  */}
+                  <input
+                    defaultValue={m.phoneNumber ?? ''}
+                    placeholder="WhatsApp number"
+                    aria-label={`WhatsApp number for ${m.firstName || m.email}`}
+                    disabled={phoneMut.isPending}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    onBlur={(e) => {
+                      const next = e.target.value.trim()
+                      if (next === (m.phoneNumber ?? '')) return
+                      phoneMut.mutate({ id: m.id, number: next })
+                    }}
+                    style={{
+                      marginTop: 4, width: 190, maxWidth: '100%', padding: '4px 8px', fontSize: 11.5,
+                      fontFamily: 'inherit', borderRadius: 6, border: '1px solid var(--gw-border)',
+                      color: 'var(--gw-text)', background: 'white',
+                    }}
+                  />
                   {/* How they got here. Somebody who accepted one check-in's invitation looked identical
                       to somebody hired, on the page with the dropdown that can make them an admin. */}
                   {m.arrivedThroughACheckIn && (

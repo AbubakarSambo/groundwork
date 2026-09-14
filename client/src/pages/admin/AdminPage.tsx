@@ -792,8 +792,52 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
 
 // ── Orgs tab ──────────────────────────────────────────────────────────────────
 
+/**
+ * WHO IS ACTUALLY IN AN ORGANISATION.
+ *
+ * The row said "11 users" and could not say who one of them was, so support could not answer "did
+ * the invitation reach Musa" without asking the customer. Names, addresses and phone numbers - the
+ * phone because somebody who joined over WhatsApp may never have given an address, and an operator
+ * who cannot reach them is the reason this exists.
+ *
+ * NEVER THEIR WORK. No check-in, no record entry, no report, not a line anybody wrote. That wall is
+ * held by its own guard on the server and nothing here goes near it.
+ *
+ * Fetched when the row is opened rather than with the list: most of the time nobody is looking, and
+ * loading every organisation's roster to render a count is a lot of somebody's data moved for
+ * nothing.
+ */
+function PeopleInOrg({ organizationId }: { organizationId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['org-people', organizationId],
+    queryFn: () => promptsApi.peopleIn(organizationId),
+  })
+
+  if (isLoading) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
+  /* Said, not swallowed: an empty panel where a list should be reads as nobody being there. */
+  if (error) return <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
+  if (!data?.people.length) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
+
+  return (
+    <div style={{ display: 'grid', gap: 6, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      {data.people.map((p) => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12 }}>
+          <span style={{ fontWeight: 600, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
+          <a href={`mailto:${p.email}`} style={{ color: 'var(--gw-navy)' }}>{p.email}</a>
+          {p.phoneNumber && <span style={{ color: 'var(--gw-sub)' }}>{p.phoneNumber}</span>}
+          <span style={{ color: 'var(--gw-muted)', fontSize: 11 }}>{p.role.toLowerCase()}</span>
+          {p.isPlatformAdmin && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)' }}>platform</span>}
+          {/* Whether the address works is the first thing support needs and the easiest to miss. */}
+          {!p.isEmailVerified && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }}>email not verified</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
   const [search, setSearch] = useState('')
+  const [open, setOpen] = useState<string | null>(null)
   const filtered = orgs.filter(o =>
     !search || o.name.toLowerCase().includes(search.toLowerCase()) || o.slug.toLowerCase().includes(search.toLowerCase())
   )
@@ -808,12 +852,17 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(org => (
-          <div key={org.id} style={{ ...C, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div key={org.id} style={{ ...C }}>
+           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>
+              <button
+                onClick={() => setOpen(open === org.id ? null : org.id)}
+                aria-expanded={open === org.id}
+                style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left', fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}
+              >
                 {org.name}
                 {org.isInternal && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, padding: '1px 6px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>ours - not counted</span>}
-              </div>
+              </button>
               <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
                 {org.groundCount} check-in{org.groundCount !== 1 ? 's' : ''} · {org.userCount} user{org.userCount !== 1 ? 's' : ''}
                 {org.lastActivity ? ` · last active ${timeAgo(org.lastActivity)}` : ' · no activity yet'}
@@ -832,6 +881,8 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
                 {whenItWas(org.createdAt, 'day')}
               </span>
             </div>
+           </div>
+           {open === org.id && <PeopleInOrg organizationId={org.id} />}
           </div>
         ))}
         {filtered.length === 0 && (

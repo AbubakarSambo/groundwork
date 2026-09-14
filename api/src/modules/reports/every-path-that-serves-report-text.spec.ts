@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 
 /**
  * REPORT TEXT REACHES A READER BY FOUR PATHS, AND ONLY ONE OF THEM HAD THE RULES.
@@ -45,10 +45,31 @@ describe('every path that serves report text applies the rule', () => {
     expect(SERVES_REPORT_TEXT.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('and each of them runs the rewrite', () => {
+  it('and each of them runs the rewrite, itself or through something that does', () => {
+    /*
+      APPLYING IT IN A SHARED FUNCTION COUNTS, AND HAS TO.
+
+      The board's header serves the same three-sentence summary the check-in list does, so the cut
+      AND the rewrite live in one function both call - which is the whole reason neither can drift.
+      Read as "does this file contain the word", the board looked like a path that skipped the rule
+      when it is the path that cannot skip it: it has no access to the text except through that
+      function.
+
+      So a file passes if it rewrites the text itself, or if it gets the text from something in this
+      tree that does. The guard is unchanged in what it refuses - a file that selects report prose
+      and hands it on raw, by any route, still fails.
+    */
+    const APPLIES_IT = new Set(
+      tsFiles(MODULES)
+        .filter((f) => /notTheWordParty/.test(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ')))
+        .map((f) => basename(f, '.ts')),
+    );
     const missing = SERVES_REPORT_TEXT.filter((f) => {
       const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
-      return !/notTheWordParty/.test(src);
+      if (/notTheWordParty/.test(src)) return false;
+      /* Or it imports something that does. */
+      const imports = [...src.matchAll(/from '[^']*\/([a-z0-9-]+)'/g)].map((m) => m[1]);
+      return !imports.some((name) => APPLIES_IT.has(name));
     }).map((f) => f.replace(MODULES, ''));
     expect(missing).toEqual([]);
   });

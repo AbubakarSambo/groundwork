@@ -37,7 +37,28 @@ describe('a zone renders only when its content will', () => {
 
   it('the empty-data half of the condition is what shown holds', () => {
     /** If this ever stops checking length, an empty list becomes a heading again. */
-    expect(CODE).toMatch(/objectives: has\('objectives'\) && !!b\.objectives\?\.length/)
     expect(CODE).toMatch(/decisions: has\('decisions'\) && !!b\.decisions\?\.length/)
+  })
+
+  it('and objectives is the one exception, because empty is not empty there', () => {
+    /*
+     * THE RULE HELD AND MADE THE FEATURE UNREACHABLE.
+     *
+     * "No heading without content" is right for every other section: a heading over nothing reads
+     * as a screen that failed to load. Objectives is not like the others. When the list is empty it
+     * still has two things under it - the lead's "Add target" form, and the server's own prompt for
+     * the empty case: "No targets set yet, so there is nothing for this board to measure progress
+     * against." Gated on length, that sentence could never be read by the only person able to act
+     * on it, and the form to act with was hidden beside it.
+     *
+     * Found by running a real setup: a chief of staff with ten salespeople and a number for each,
+     * and nowhere in the product to put a single one of them. It is also why no objective in the
+     * database had ever carried a target.
+     *
+     * So the exception is exactly as wide as the reason: empty renders only for a reader who can
+     * add the first one. A party who cannot edit still gets no empty heading, which is the rule
+     * this file is here to protect.
+     */
+    expect(CODE).toMatch(/objectives: has\('objectives'\) && \(!!b\.objectives\?\.length \|\| !!b\.canEditFrame\)/)
   })
 })

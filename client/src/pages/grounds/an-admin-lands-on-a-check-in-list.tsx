@@ -80,7 +80,13 @@ function theRollout(f: RolloutFacts, nameStillGuessed: boolean): Step[] {
   return [
     { key: 'name', title: 'Name your workspace', body: 'It is called after whoever signed up, because nobody has said otherwise. Everyone here reads that name.', to: '/settings', done: !nameStillGuessed },
     { key: 'people', title: 'Get your people in', body: 'Paste your list. Nobody is emailed until you have seen what will happen.', to: '/org/members', done: f.people > 1 },
-    { key: 'pilot', title: 'Run one with somebody', body: 'Pick something real and small. You see what it produces before your team does.', to: '/grounds/new', done: f.checkIns > 0 },
+    /*
+      A LEAD CANNOT SEE THE OTHER HALF WITHOUT BEING IT.
+      A participant's own check-in is private, and a lead who asks for one gets a 403. That is
+      right and it stays. So the only way to see what you are asking your team to do is to be the
+      other person too, with a second email of your own, and nothing said so.
+    */
+    { key: 'pilot', title: 'Do a test run', body: 'Pick something real and small. Add a second email of your own as the other person, so you see what your team sees.', to: '/grounds/new', done: f.checkIns > 0 },
     { key: 'second-admin', title: 'Give somebody else the keys', body: 'A second admin approves check-ins and adds people when you are not there.', to: '/org/members', done: f.admins > 1 },
     { key: 'plan', title: 'Choose your plan', body: 'What it costs for the number of people you are putting on.', to: '/billing', done: f.paying },
     { key: 'connect', title: 'Connect your systems', body: 'Your CRM, your HR system, your own product. Your engineers will want this page.', to: '/org/integrations', done: f.connected, optional: true },

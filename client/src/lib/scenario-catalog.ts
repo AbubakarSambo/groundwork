@@ -27,25 +27,53 @@ import type { SubscriptionPlan } from '@/api/billing'
  * page is static HTML in a separate build. What has to agree is the NAME of the thing and the fact
  * that every situation is offered somewhere. That is what this holds.
  *
- * The labels are chosen for a person scanning them for their own situation, so they describe what is
- * happening rather than naming a process. "Someone's work is off track" rather than "Performance
- * improvement plan" - which also keeps the word "performance" out of the product, a decision already
- * taken for the participant-facing strings and quietly broken here.
+ * THE LABEL SAYS WHAT THE CHECK-IN IS FOR, NOT ONLY WHAT IS HAPPENING TO YOU.
+ *
+ * These used to describe the situation - "A new hire starting", "A workplan and budget" - chosen
+ * for somebody scanning the list for their own circumstances. That was right as far as it went, and
+ * it had stopped being true of the list: two cards had been written in a different voice, so a
+ * person scanning saw twenty cards saying what was happening to them and two saying what they would
+ * get. A picker in two voices reads as two products.
+ *
+ * So all of them now name the job: "Help a New Hire Get Started", "Get a Project Back on Track".
+ * The situation is still recognisable in every one - which was the point of the old rule and is not
+ * given up here - and the promise is added to it.
+ *
+ * WHAT THE OLD NOTE WAS REALLY GUARDING still holds, and is the reason none of these is called what
+ * its enum is called: never name the PROCESS. "Help Someone Get Back on Track" rather than
+ * "Performance improvement plan", which also keeps the word "performance" out of the product - a
+ * decision taken for the participant-facing strings and quietly broken here once already.
+ *
+ * ONE NAME IS NOT THE ONE HAFSAH WROTE. Her table gives SNAPSHOT "Take the Pulse of the Team". The
+ * two are a known collision - PULSE_CHECK is the recurring read and SNAPSHOT is the one-off, they
+ * were a single card once, and nobody could tell them apart, which is why the note below SNAPSHOT
+ * exists at all. Handing the word "pulse" to the one that is NOT PULSE_CHECK rebuilds exactly that.
+ * "Take One Read, Today" says the thing that actually separates them, which is that it happens once.
+ * One word to put back if she would rather have hers.
  */
 export const SCENARIO_LABELS = {
-  NEW_HIRE: 'A new hire starting',
-  ROLE_HANDOVER: 'A role changing hands',
-  NEW_PROJECT: 'A new project starting',
-  NEW_COFOUNDER: 'A new co-founder or partner',
-  NEW_MANAGER: 'A new manager taking over',
-  NEW_ADVISOR: 'A new advisor or board member',
-  OKR_ALIGNMENT: 'Setting shared goals',
-  WORKPLAN_BUDGET: 'A workplan and budget',
-  BOARD_STRATEGY: 'Board or leadership strategy',
-  CRISIS_ALIGNMENT: 'A big decision',
-  PULSE_CHECK: 'A regular read on live work',
-  COHORT_CHECK: 'Several people in the same role',
-  CONTRACT_RENEWAL: 'A contract or renewal',
+  NEW_HIRE: 'Help a New Hire Get Started',
+  ROLE_HANDOVER: 'Hand Over a Role Smoothly',
+  NEW_PROJECT: 'Get a New Project Off to a Good Start',
+  NEW_COFOUNDER: 'Start a New Partnership Well',
+  NEW_MANAGER: 'Help a New Manager Take Over',
+  NEW_ADVISOR: 'Start a New Advisor or Board Relationship',
+  /**
+   * NAMED FOR THE JOB, NOT THE MECHANISM.
+   *
+   * "Setting shared goals" describes what the product does. What somebody arrives wanting is to set
+   * targets and then keep a team moving against them. A second card sits beside this one for the
+   * other job - one goal at the top with other teams writing their own underneath - and it runs on
+   * this same scenario, because a cascade is detected from what people say rather than declared at
+   * setup. See SITUATION_CARDS.
+   */
+  OKR_ALIGNMENT: 'Set Goals and Keep the Team on Track',
+  WORKPLAN_BUDGET: 'Build a Workplan and Budget That Makes Sense',
+  BOARD_STRATEGY: 'Align on Strategy',
+  CRISIS_ALIGNMENT: 'Work Through a Big Decision',
+  PULSE_CHECK: 'Keep a Read on Live Work',
+  COHORT_CHECK: 'Check How the Same Role Is Going Across People',
+  CONTRACT_RENEWAL: 'Check In Before a Contract or Renewal',
   /**
    * TWO CARDS, BECAUSE THESE ARE TWO MOMENTS — and neither is CONTRACT_RENEWAL above, which is one
    * person's engagement ending and sits beside a new hire and a performance plan.
@@ -53,14 +81,14 @@ export const SCENARIO_LABELS = {
    * The labels say when, because when is the only thing somebody needs to tell them apart:
    * before you sign, and after.
    */
-  CONTRACT_REVIEW: 'An agreement before it is signed',
-  IMPLEMENTATION_TRACKING: 'An agreement that is running',
-  RECOGNITION: 'A raise, promotion, or recognition',
-  PIP: "Someone's work is off track",
-  DRIFT: 'A project is off track',
-  REALIGN_TEAM: 'People see it differently',
-  ACUTE_SHOCK: 'Something serious just happened',
-  OPEN_READ: 'Describe your own situation',
+  CONTRACT_REVIEW: 'Check an Agreement Before Signing',
+  IMPLEMENTATION_TRACKING: 'Check How an Agreement Is Going',
+  RECOGNITION: 'Support a Raise, Promotion, or Recognition',
+  PIP: 'Help Someone Get Back on Track',
+  DRIFT: 'Get a Project Back on Track',
+  REALIGN_TEAM: 'Understand Where People See Things Differently',
+  ACUTE_SHOCK: 'Make Sense of Something Serious That Happened',
+  OPEN_READ: 'Work Through Something Else',
   /**
    * THE ONE-OFF, AND IT DOES RUN - the note here used to say it was "the only one that does not",
    * which stopped being true when it got a card, a group, a cadence and a place in both pickers.
@@ -71,7 +99,7 @@ export const SCENARIO_LABELS = {
    * today, no target and no second session. They were the same card once, which is why neither could
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
-  SNAPSHOT: 'A pulse check',
+  SNAPSHOT: 'Take One Read, Today',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
@@ -88,11 +116,25 @@ export const SCENARIO_KEYS = Object.keys(SCENARIO_LABELS) as ScenarioKey[]
  * shouting on their dashboard. A missing entry should look like an oversight, not like a database
  * value leaking through.
  */
-export function scenarioLabel(key: string): string {
+export function scenarioLabel(key: string, brief?: string | null): string {
+  /*
+   * TWO CARDS SHARE OKR_ALIGNMENT, SO A SCENARIO ALONE CANNOT NAME THE CHECK-IN.
+   *
+   * Watched live: a cascade check-in labelled "Set Goals and Keep the Team on Track" - the other
+   * card's name - because a label resolved from the scenario and the scenario now has two.
+   *
+   * What tells them apart is the sentence the person picked the card with, which is the check-in's
+   * brief. Same read as the server's, deliberately: the two must never disagree about which
+   * conversation this is, and a caller with no brief to hand gets the same answer as before.
+   */
+  if (key === 'OKR_ALIGNMENT' && SOUNDS_LIKE_A_CASCADE.test(brief ?? '')) return 'Connect Goals Across the Team'
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
 }
+
+/** Kept in step with whichCard() on the server. Two readers of one sentence, one answer. */
+const SOUNDS_LIKE_A_CASCADE = /overarching|underneath it|sits under|main goal|cascad|across departments|connect to the/i
 
 /**
  * A label back to its situation, for links that carry `?scenario=a+big+decision`.
@@ -171,13 +213,25 @@ export const SCENARIO_GROUPS = [
    */
   { key: 'open', heading: 'Not sure yet',
     question: 'You cannot name it, so nothing below should be guessed on your behalf.' },
-  { key: 'starting', heading: 'Starting something',
-    question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
-  { key: 'planning', heading: 'Setting the target',
+  /**
+   * WAS "SETTING THE TARGET", AND TWO OF ITS FIVE CARDS DO NOT SET ONE.
+   *
+   * A big decision is not a target and neither is a strategy the room has not converged on. What
+   * the five have in common is getting people pointed the same way, which is what the group is
+   * called now. The one that genuinely did not belong - a monthly read on an agreement already
+   * running - moved to the reads, where it had always belonged.
+   *
+   * AND IT IS FIRST, WHICH IS WHY THE ORDER OF THIS ARRAY IS NOT COSMETIC. The dropdown is built
+   * from it and opens on its first pickable group, so the order decides what somebody lands on. It
+   * opened on "Beginning something well" while the list had been agreed the other way round.
+   */
+  { key: 'planning', heading: 'Getting people aligned',
     question: "You are deciding what the period is for, and you want each person's own answer before the room converges on one version." },
-  { key: 'reading', heading: 'A read on live work',
-    question: 'Work is already running and you want to know what is actually happening in it. These three sit close together, so each card says when not to pick it.' },
-  { key: 'person', heading: 'A decision about one person',
+  { key: 'starting', heading: 'Beginning something well',
+    question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
+  { key: 'reading', heading: 'Get a read',
+    question: 'Work is already running and you want to know what is actually happening in it. These sit close together, so each card says when not to pick it.' },
+  { key: 'person', heading: 'A decision about someone',
     question: 'Something is being decided about somebody, and both of you should be reading the same record when it is.' },
   { key: 'off', heading: 'Something is off',
     question: 'It has already happened. What separates these is whether the gap is against something agreed, between two people, or the result of one event.' },
@@ -190,6 +244,9 @@ export const SCENARIO_GROUPS = [
 export const GROUPS_YOU_PICK_FROM = SCENARIO_GROUPS.filter((g) => g.key !== 'open')
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
+
+
+
 /**
  * THE COACH CARD, WHICH IS A CHOICE RATHER THAN A LAST RESORT.
  *
@@ -280,7 +337,7 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   WORKPLAN_BUDGET:  { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   BOARD_STRATEGY:   { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   CRISIS_ALIGNMENT: { group: 'planning', cadence: 'Every 2 weeks', timelineDays: 60 },
-  IMPLEMENTATION_TRACKING: { group: 'planning', cadence: 'Monthly',  timelineDays: 365,
+  IMPLEMENTATION_TRACKING: { group: 'reading', cadence: 'Monthly',  timelineDays: 365,
                       notThisOneIf: 'Nothing is signed yet. Use "an agreement before it is signed" instead.' },
 
   /*

@@ -21,3 +21,16 @@ export const OR_CHOOSE_A_SITUATION =
 
 /** The whole invitation, for a surface that opens on it. */
 export const HOW_A_SITUATION_IS_CHOSEN = `${DESCRIBE_YOUR_OWN}, or ${OR_CHOOSE_A_SITUATION}.`
+
+/**
+ * THE LINE BETWEEN THE TWO ROUTES, AND IT IS A ROUTE RATHER THAN A FOOTNOTE.
+ *
+ * It was "Or select from the options below" at 11px in the muted grey - the size and colour this
+ * product uses for captions - sitting under a full-width bordered card. Two ways in, drawn as one
+ * way in and a remark about it. The words also pointed at furniture ("the options below") rather
+ * than saying what picking one gets you.
+ *
+ * Written here because both doors show it and they had drifted before: the setup step and the entry
+ * chat each had their own copy of this sentence.
+ */
+export const OR_PICK_ONE_THAT_FITS = 'Or pick a situation that already fits'

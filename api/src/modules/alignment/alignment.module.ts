@@ -11,7 +11,7 @@ import { WhatEachSideUnderstands } from './it-listens-for-a-check-in-and-writes-
 import { ConversationModule } from '../conversation';
 
 @Module({
-  imports: [PrismaModule, GroundsModule, forwardRef(() => ConversationModule)],
+  imports: [PrismaModule, forwardRef(() => GroundsModule), forwardRef(() => ConversationModule)],
   controllers: [AlignmentController],
   providers: [AlignmentService, AgreementsService, AssertionsService, PartiesService, ObligationsService, WhatEachSideUnderstands],
   exports: [AlignmentService, AgreementsService, AssertionsService, PartiesService, ObligationsService],

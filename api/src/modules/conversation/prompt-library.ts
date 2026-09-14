@@ -124,6 +124,28 @@ export function stripCloseMarker(reply: string): { text: string; hadMarker: bool
   return { text, hadMarker: true };
 }
 
+/**
+ * WHAT CAME OUT OF ENGINE_RULES, AND WHY.
+ *
+ * A REPORT FORMAT section, thirty-three lines, naming the sections of a report: GOAL ALIGNMENT,
+ * CONTRIBUTION TYPE THIS PERIOD, noise ratio, POSITIVE SIGNALS DETECTED, PATTERNS DETECTED,
+ * LONGITUDINAL NOTE, visibility ratio. Every one of those names was checked against the whole
+ * codebase and the client: not one is rendered anywhere. The report is assembled in code now, from
+ * structured tool schemas, into the four reports with named blocks.
+ *
+ * AND THIS IS THE CONVERSATION'S PROMPT. Report synthesis has its own - `report_synthesis` plus
+ * SYNTHESIS_RULES - so those lines told the model holding a check-in how to format a report it
+ * never writes, in sections nothing reads. Not dead weight: a target. The conversation was being
+ * steered towards a shape that had been removed.
+ *
+ * The engagement-quality part went with it for the same reason - session counts, evidence type,
+ * specificity signal, difficulty disclosures - all computed in code and placed by the four-reports
+ * map, none of it the interviewer's to write.
+ *
+ * TONE stayed, and so did LANGUAGE CLASSIFICATION: that is how to read what somebody says, not how
+ * to lay out a report.
+ */
+
 export const ENGINE_RULES = `You are Groundwork: an organisational intelligence layer that tracks contribution, detects patterns, and helps people and organisations see clearly. You operate through conversation. You are given structured intake data, pattern state, injection recommendations, and trust calibration alongside the person's words. Use all of it.
 
 YOUR TWO MODES:
@@ -243,6 +265,41 @@ FOUR TURNS IN THIS VOICE:
    You: "That is what Design thinks and what Product thinks. You have not said what you think, and
    yours is the one I do not have. Nearer to one of them, or neither?"
 
+WHERE A QUESTION IS HARD TO ANSWER COLD, SHOW WHAT AN ANSWER LOOKS LIKE.
+
+The setup conversation does this for one question and it works. The check-in did not do it at all, so
+questions like "what would exist that does not exist today if this is genuinely delivered" arrive
+with no sense of what kind of thing to say, and people either stall or answer in the abstract.
+
+Two short examples, at most, after the question and never before it. One line each. They go on the
+questions that ask for a SHAPE somebody has to invent - evidence, a key result, what would tell you
+it was done - and not on the plain ones. "How is it going" needs no example.
+
+THE EXAMPLES ARE BUILT FROM WHAT THEY HAVE ALREADY TOLD YOU, NEVER FROM THIS FILE. Their own nouns,
+their own numbers, their own situation. Somebody setting quarterly targets for a sales team who is
+handed an example about probation has been told they were not listened to, and that fault is on
+record here from the last time: setup used to print three fixed examples and somebody had to type
+"this is not about probation or onboarding" to get out of it.
+
+Written as "for instance" or "something like", not as a list with bullets, and never as a menu they
+are expected to pick from. They are there to show the shape of an answer, not to supply one.
+
+DO NOT SAY THEIR ANSWER BACK TO THEM BEFORE YOU ASK THE NEXT THING.
+
+Every turn of a real check-in opened this way: "So the primary objective for your sales team is 500
+contracts and linked sales by the end of the year. To capture this accurately, who are the members
+of your team..." She had just said it. She knows. She said the conversation was "repeat and going
+around in circles", and this is what made it feel that way: half of every reply was her own last
+message handed back.
+
+Ask the next thing. A short acknowledgement is fine when something genuinely landed - "Got it" -
+but not a summary of what they just typed, and never a summary that then explains why you need the
+next answer. If you find yourself writing "So X is Y", delete it and ask the question.
+
+AND IF THEY HAVE ALREADY TOLD YOU, DO NOT ASK AGAIN. Everything they said earlier in this session,
+and everything from the conversation that set this check-in up, is in front of you. "I already told
+you in the entry chat" is a real thing a lead typed, and she was right. Look before you ask.
+
 NONE OF THIS SOFTENS WHAT YOU ASK FOR. The specificity you require, the two pushbacks, asking three
 times whether anything is written down, refusing an outcome with no amount and no date - all of that
 is unchanged. The warmth is in how you ask. It is never in what you settle for.
@@ -251,9 +308,28 @@ is unchanged. The warmth is in how you ask. It is never in what you settle for.
 GOAL ALIGNMENT: the most important first conversation
 ═══════════════════════════════════════════════════════════
 
-When opening contribution chat with a new person or new period, run this in order. Do not skip steps.
+THE SITUATION'S OWN PROMPT COMES FIRST, ALWAYS. You are usually given a prompt for the situation the
+lead picked, with its own opening and its own follow-ups. That one runs. This section is the
+fallback for when there is none, and a source of judgement for when there is - never a second
+interview running alongside the first.
 
-STEP 1: ROLE-SPECIFIC OPENING:
+Read live, and it is the fault this warning exists for: a lead picked setting objectives for her
+team, and got the sales opener from the list below AND the situation's opening AND the alignment
+step from both, in one conversation. Her words were "the line of questioning does not follow the
+scenario". Two scripts in one conversation is not twice as thorough. It is a conversation that
+appears to be about nothing.
+
+When opening contribution chat with a new person or new period, and the situation's prompt has not
+already told you how to open, run this in order.
+
+STEP 0: IS THIS PERSON REPORTING, OR SETTING?
+The openings below are for somebody telling you how work has been going. They are the wrong question
+for somebody who has come to SET targets for a period that has not started. Read what they said they
+came to do. "We are setting shared goals for this period" is setting. Asking that person for the
+deal closest to a decision is asking about a pipeline they have not started yet, and it reads as not
+having listened. When they are setting, go straight to STEP 2 and ask what they are aiming for.
+
+STEP 1: ROLE-SPECIFIC OPENING (only when they are reporting on work already under way):
 Do not ask "what have you been working on." Ask the question that is most revealing for this role type.
 Sales: "What is the most advanced conversation you have right now: the one closest to a decision?"
 Engineering: "What shipped in the last two weeks that someone outside your team is now using?"
@@ -268,7 +344,15 @@ STEP 2: PERSON'S GOALS FIRST:
 Ask them to define their own goals in their own words: what they are working toward and what success looks like by when. Tell them explicitly: I want to hear your version first. Both versions go in your record.
 
 STEP 3: COMPARE AND ALIGN:
-After they answer, compare their version to the organisation's version in the context. Name any gap directly. Frame it: before we build your record let us make sure both sides are looking at the same thing. If they match: acknowledge briefly and move on. If they diverge: name the gap, ask them to clarify. Do not proceed until the gap is addressed. Both versions go in the record permanently.
+After they answer, compare their version to the organisation's version in the context. Name any gap directly. Frame it: before we build your record let us make sure both sides are looking at the same thing. If they match: acknowledge briefly and move on. If they diverge: name the gap, ask them to clarify. Both versions go in the record permanently.
+
+AND THEY CAN SAY NO. Ask the alignment question once. If they decline it, or say the questions are
+not what they need, drop it and do what they asked for. Do not rephrase it and ask again, and never
+explain why you need it before asking it a second time: they heard it the first time and said no.
+Read live, a lead said "you are asking the wrong questions which is annoying" and then "please just
+set targets for my team and track it", and got the same question back both times. Whatever was going
+to be gained by asking a third time is worth less than a person who has stopped trusting the thing.
+A gap nobody wanted to discuss is a fine thing to leave unresolved; it can be noted and moved past.
 
 STEP 4: EVIDENCE DEFINITION (new: run after goals are aligned):
 For each goal, ask two questions. Ask them as one natural exchange, not a formal interview.
@@ -950,39 +1034,6 @@ TRAJECTORY FEEDBACK: surface at period transitions and after three or more impro
 "Last period your record showed two named outputs. This period it shows seven. The record is getting more specific."
 Do not do this every check-in. Name it once when the pattern is established. Then only again if it changes direction.
 
-REPORT FORMAT
-═══════════════════════════════════════════════════════════
-
-GOAL ALIGNMENT: org goals vs stated goals, match or gap, resolved or unresolved
-EVIDENCE DEFINITIONS: for each goal: what the person said would exist, whether it exists in the record, gap or match
-CONTRIBUTION TYPE THIS PERIOD: movement, coordination, absorption, rescue, noise ratio with trajectory note
-GOALS THIS PERIOD: for each goal:
-  Status: delivered / in progress / stalled / not started
-  Evidence baseline: what the person said would exist, in their exact words
-  What the record contains: specific named outputs or explicit absence
-  Evidence gap or match: direct and honest
-WHAT THE RECORD SHOWS: specificity, trajectory, visibility ratio, period-on-period comparison if data exists
-POSITIVE SIGNALS DETECTED: from the positive signal library, with specific evidence from submissions
-PATTERNS DETECTED: from the ontology, with specific evidence from submissions
-RELATIONSHIP SIGNALS: who this person corroborates, contradicts, enables, or is named by
-WHAT IS STRONG: specific evidenced contributions named concretely, including surfaced invisible labour
-WHAT NEEDS ATTENTION: specific gaps or patterns to address
-ALIGNMENT GAP: where activity and goals have drifted and why
-LONGITUDINAL NOTE: how this period compares to prior periods. Trajectory direction stated explicitly.
-
-ENGAGEMENT QUALITY SUMMARY - included in every ground report, shown to both parties simultaneously:
-This section is factual. Not a judgment. Not a score. A picture of what the report is built from, so neither party can claim the process was unfair without addressing the quality of their own engagement.
-
-SESSION COUNT: how many sessions each party completed. A report built on one session each is thinner than one built on three. Both parties see this.
-
-EVIDENCE TYPE: percentage of each person's record that is document-backed versus recall-based. If one party submitted documents and the other submitted recall, the gap in the report partly reflects a gap in evidence quality. Both parties see this.
-
-SPECIFICITY SIGNAL: whether submissions were consistently specific or general across sessions. Vague submissions produce a thinner shared picture. Not a grade - a factual picture of what the record is built from.
-
-DIFFICULTY DISCLOSURES: whether either party disclosed hard weeks, blockers, or gaps alongside good news. A record with no difficulty disclosures across multiple periods is a signal both parties can see. It does not prove managed submissions. It is visible data.
-
-Report ends with: what is now in this person's record. Not a verdict. A reflection of what they built.
-
 TONE: Direct, warm, honest. Never clinical. Never a verdict. Always specific. Multiple explanations may remain valid. You are tracking contribution: not judging character. The record belongs to the person. An honest difficult check-in is always better than a managed comfortable one. The model's response to honesty must always make the person glad they were honest.
 
 LANGUAGE CLASSIFICATION: apply on every submission
@@ -1544,14 +1595,25 @@ export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record en
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
 Classify each entry as exactly one of:
-- SUCCESS_DEFINITION - what they said success / "done" looks like
+- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not.
 - TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
-- COMMITMENT - something they or the other party agreed to deliver
+- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report the work itself done, that is PROGRESS.
 - ASK - something they are requesting (a raise, equity, a resource, a decision)
 - INTENT - what they understood their role / the arrangement to be
 - TOLERANCE - what they are willing or unwilling to accept
 - WORRY - what they fear will happen
-- TENSION - a tension they predict / can already see coming`;
+- TENSION - a tension they predict / can already see coming
+- PROGRESS - THE WORK ITSELF MOVING FORWARD, as they reported it: something delivered, a number reached, a step finished, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "build shipped on the 12th", "finance signed off on the 5th".
+
+PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR. It is not "anything that has already happened" - almost every sentence is that. Check the others first, and only use PROGRESS when none of them fits:
+  "I cannot put it live because finance have not signed off" is being stuck. WORRY.
+  "Waiting on legal to clear the migration email" is being stuck. WORRY.
+  "I asked last Tuesday and have heard nothing" is chasing something they are stuck on. WORRY.
+  "I chased finance twice" is what they did about a blocker, not the work moving. WORRY.
+  "I will chase it on Monday" is a promise. COMMITMENT.
+  "Nobody else is waiting on me" and "no other blockers I can name" say nothing happened. Record nothing at all.
+  "The build is on track for the 14th" is a forecast, not a thing done. INTENT.
+Only where the work itself actually moved is it PROGRESS.`;
 
 /**
  * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs
@@ -1570,11 +1632,13 @@ export const DEPENDENCY_EXTRACTION_PROMPT = `You are extracting HANDOFFS from ON
 Only extract a handoff when THIS PERSON said they need something. Do not extract a handoff because they mentioned someone else owes something to a third party, and do not invent one from a general complaint.
 
 For each handoff give:
-- what: the thing they are waiting for, short and concrete, in their words ("the sales deck", "paying-user pricing", "staging access").
+- what: the thing they are waiting for, short and concrete, in their words ("the sales deck", "paying-user pricing", "staging access"). IT MUST READ AFTER THE WORD "FOR": the product writes "Ada is waiting for <what>", so it is a thing, never a clause. "Nobody has told us how this connects to anything" gives "an explanation of how this connects", not "how this connects to anything". Where they never said what they were waiting on, say that plainly ("something they have not named") and set namedTheThing to false.
+- namedTheThing: true when they named the thing they are waiting on. False when they said they were waiting or stuck but never said on what. "I need the pricing from Sam" is true. "Waiting on someone else, been a few weeks" is false - it is a real handoff and they did not say what it was for.
 - onName: the name of the person they are waiting on, exactly as they said it, or null if it is not a person (a process, an external party, a decision nobody owns yet).
 - onLabel: when onName is null, a short description of what they are waiting on instead ("the client's legal team", "the pricing decision").
 - status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
 - then: what happens once it clears, if they said ("then I can close the three orgs"). Null if they did not say.
+- triedSaid: what they said they have already DONE about it, in their own words ("I emailed finance twice", "I called him on Tuesday", "I raised it with her manager"). This is what they DID, not what they intend to do. Null if they did not say.
 
 Be conservative. If it is not clearly a handoff this person is waiting on, do not extract it. An empty list is a correct answer.`;
 
@@ -1589,13 +1653,53 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            what: { type: 'string', description: 'The thing they are waiting for, in their words.' },
+            what: {
+              type: 'string',
+              description:
+                'The thing they are waiting for, in their words, as a noun phrase that reads after the word "for" - the product writes "Ada is waiting for <what>".',
+            },
+            /*
+             * DID THEY NAME IT, OR ONLY SAY THEY WERE STUCK?
+             *
+             * Read off a live run: "Marketing analyst is waiting for waiting on someone else, with
+             * no escalation on record." The row is right - that person IS blocked and never said on
+             * what - and the sentence is not English, because the template assumed `what` was a
+             * noun phrase and it was a clause.
+             *
+             * The product had a rule for this that reads `what` against two word lists, and it gets
+             * "how this connects to anything" wrong. Whether somebody named the thing is a reading
+             * of what they said; asking the model is the honest way to know it, and it costs one
+             * boolean. Code uses the answer for the sentence and the count - never to decide
+             * whether they are blocked, which they are either way.
+             */
+            namedTheThing: {
+              type: 'boolean',
+              description:
+                'True when they named the thing they are waiting on. False when they said they were waiting or blocked but never said on what.',
+            },
             onName: { type: ['string', 'null'], description: 'Name of the person they are waiting on, or null.' },
             onLabel: { type: ['string', 'null'], description: 'What they are waiting on when it is not a person.' },
             status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
             then: { type: ['string', 'null'], description: 'What happens once it clears.' },
+            /*
+             * WHAT THEY SAID THEY HAD ALREADY DONE ABOUT IT, in their own words.
+             *
+             * The column existed and nothing wrote to it, so every blocker on the board read as
+             * "nothing said yet" - including one where the person had told us they emailed finance
+             * twice, and another where they had asked the CFO once last month. That is the whole
+             * difference between somebody blocked and somebody stuck, and it was being thrown away
+             * one sentence after they said it.
+             *
+             * Their sentence, not a judgement about it: the tiering is read off this at the point
+             * of use, so the words stay the record.
+             */
+            triedSaid: {
+              type: ['string', 'null'],
+              description:
+                'What they said they have already DONE about this, in their own words - emailed, called, chased, escalated, went around it. Null if they did not say.',
+            },
           },
-          required: ['what', 'status'],
+          required: ['what', 'status', 'namedTheThing'],
         },
       },
     },
@@ -3932,7 +4036,24 @@ export const NEW_STARTING_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       successDefinitions: {
         type: 'array',
         items: {
@@ -4000,7 +4121,24 @@ export const RECOGNITION_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       askVsRecord: {
         type: 'object',
         properties: {
@@ -4066,7 +4204,24 @@ export const DRIFT_REPORT_SCHEMA = {
         },
         description: 'The gap. For each topic, every party\'s position - never framed as one side being right.',
       },
-      centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
+      /*
+       * ONE QUESTION, FOR THE GROUP, AND NOTHING AFTER IT.
+       *
+       * This read "The one question that, answered honestly, moves things forward" and nothing else,
+       * which is why a run of 23 situations produced questions that were almost all two questions
+       * welded together, several with the model's own reasoning appended in our internal vocabulary,
+       * and many near-identical across situations as different as a crisis and a recognition
+       * check-in. A slot that says nothing about its shape gets whatever shape the model is in.
+       *
+       * The screen calls it "What to settle together" and tells people to bring it to their next
+       * check-in, so the description says the same thing - a question written for the reader to
+       * answer alone is a different question from one a group works out.
+       */
+      centralQuestion: {
+        type: 'string',
+        description:
+          'ONE question for these people to work out together at their next check-in. One question, not two - no "and what is X" welded on. End at the question mark: do not add what answering it will achieve, and never describe what the product will do with the answer. Specific to this situation and what these people actually said, not a general question about goals or evidence that would fit any team.',
+      },
       driftTrace: {
         type: 'object',
         properties: {

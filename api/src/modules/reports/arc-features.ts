@@ -56,7 +56,8 @@ export interface ArcSignals {
 }
 
 /** Progress-shaped entry types - what "delivery" looks like in the record. */
-const DELIVERY_TYPES = new Set(['COMMITMENT', 'SUCCESS_DEFINITION']);
+/* What somebody delivered is the clearest delivery signal there is, and it was missing. */
+const DELIVERY_TYPES = new Set(['COMMITMENT', 'SUCCESS_DEFINITION', 'PROGRESS']);
 
 export function computeArcSignals(input: ArcInput): ArcSignals {
   const closingMs = (input.closingWindowHours ?? 48) * 3600_000;

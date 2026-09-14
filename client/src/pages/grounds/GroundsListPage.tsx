@@ -1,6 +1,7 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { useState } from 'react'
 import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -44,6 +45,19 @@ const MODE_COLORS: Record<string, { bg: string; color: string }> = {
  * two jobs is fine.
  */
 function whatThisWants(g: Ground, myUserId: string | null | undefined) {
+  /*
+   * A REPORT WAITING FOR YOU IS THE MOST ACTIONABLE THING ON THE CARD, and it was the one thing
+   * this function did not answer - so it was said by a seventh chip in the footer instead, while
+   * the badge whose whole job is "what needs you" said "Waiting on 2 of 3".
+   *
+   * First, because it outranks the rest: a round you still owe is work to do, and a report already
+   * written for you is work already done that nobody has read. Across ten grounds and thirty-three
+   * people not one report was ever activated, and the release email was the only thing that ever
+   * said so.
+   */
+  if ((g as any).reportWaitingForMe) {
+    return { text: 'Your report is ready', bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
+  }
   const a = railAttention(g as any, myUserId)
   switch (a.kind) {
     case 'overdue':
@@ -107,7 +121,25 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
             : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No report yet</div>}
         </div>
       </div>
-      {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
+      {/*
+        HOW THINGS ARE GOING, IN TWO OR THREE SENTENCES, NOT THE BRIEF.
+        The brief is the sentence somebody set this up with, so four goal check-ins read "We are
+        setting shared goals for this period and I want everyone aligned on what matters most" four
+        times and the list says nothing about where any of them actually is.
+        This is the last round's shared picture, cut to three sentences on the server - plain
+        language, written for that round, about how it is actually going. The finding is one ranked
+        line and reads as a headline; a manager landing here wants the paragraph.
+        The brief is still the fallback, because a check-in nobody has finished a round on has no
+        finding yet and still has to say what it is for.
+      */}
+      {/*
+        THE SUMMARY AND THE TWO FACTS A MANAGER CAME FOR, FROM ONE COMPONENT.
+        The brief is the sentence somebody set this up with, so four goal check-ins read the same
+        line four times and the list says nothing about where any of them actually is. What draws
+        here is the last round's shared picture, plus how far through and what is stuck - the same
+        component the boards page and the board's own header draw, so the three cannot drift.
+      */}
+      <HowItIsGoing summary={(g as any).latestSummary} brief={g.brief} glance={(g as any).glance} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/*
           WHO LEADS IT, WHICH IS WHY /org/roster EXISTED. W9-5.
@@ -175,13 +207,18 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           {/* Visible without opening it: a check-in with one person on it will never produce a shared report (B17). */}
           {g.status === 'ACTIVE' && (g.participants as any[]).filter((p: any) => !p.managingOnly).length < 2 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>Needs a second person for a shared report</span>}
           {g.status === 'ACTIVE' && g.participants.length > 1 && !(g.checkIns ?? []).some(c => c.status === 'COMPLETED') && (g.overdue ?? 0) === 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>No check-ins yet</span>}
-          {/* A report was released to this person and they have not opened it.
-              Across ten grounds and thirty-three people, not one report was
-              ever activated - the release email was the only thing that ever
-              said so, and nothing in the product did. */}
-          {(g as any).reportWaitingForMe && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Your report is ready</span>}
+          {/*
+            "Your report is ready" MOVED UP, into the badge that answers what needs you - see
+            whatThisWants. Two places saying what a person should do next is how a card ends up with
+            a green chip down here and "Waiting on 2 of 3" at the top.
+          */}
           {(g.overdue ?? 0) > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 20, padding: '2px 8px' }}>{g.overdue} overdue</span>}
-          {g.status === 'REPORT_READY' && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 20, padding: '2px 8px' }}>Report ready</span>}
+          {/*
+            AND THE REPORT_READY CHIP IS GONE, because nothing writes that status. This file already
+            says so about the two lines that sort on it: "nothing has written that status". A chip
+            behind a dead condition is a chip that can never appear, sitting next to a live one that
+            says the same thing.
+          */}
           {g.daysLeft != null && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{g.daysLeft}d left</span>}
         </div>
       </div>
@@ -247,6 +284,11 @@ export function GroundsListPage() {
   )
   /** What the list holds that the "In progress" tile above it does not count. */
   const closedCount = grounds.length - active.length
+  /*
+   * WHICH PILE IS ON SCREEN. Opens on what is live, because that is what somebody came for; the
+   * closed ones are a place you go on purpose.
+   */
+  const [showing, setShowing] = useState<'open' | 'closed'>('open')
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at
   // zero while every ground stayed ACTIVE.
@@ -273,6 +315,10 @@ export function GroundsListPage() {
       ((g as any).reportWaitingForMe || g.status === 'REPORT_READY') ? 10 : (g.overdue ?? 0) > 0 ? 5 : 0
     return urgency(b) - urgency(a)
   })
+
+  /* The pile on screen. `active` is already the live set, so closed is what it leaves out. */
+  const openIds = new Set(active.map((g) => g.id))
+  const visibleGrounds = sortedGrounds.filter((g) => (showing === 'closed' ? !openIds.has(g.id) : openIds.has(g.id)))
 
   /**
    * WHAT IS WAITING ON AN ADMIN. W9-7.
@@ -464,7 +510,7 @@ export function GroundsListPage() {
               * used to fill in eight steps to be told no at the end.
               */}
             {user?.mayOpenCheckIns !== false && <button
-              onClick={() => navigate('/start')}
+              onClick={() => navigate('/start?new=1')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <span>Start a check-in</span>
@@ -630,14 +676,43 @@ export function GroundsListPage() {
               * that makes them agree, so the heading says what the list holds and the difference
               * stops being a contradiction.
               */}
+            {/*
+              AND IT IS A FILTER NOW, NOT A SENTENCE ABOUT ONE.
+              "The filter is not visible anywhere" - correct, and there was not one to see. This
+              line said "All 12 check-ins, including 3 closed" over a list with the closed ones
+              mixed through it, which explains the count and leaves somebody scrolling for the three
+              they wanted. It names the two piles and lets you stand in either.
+              Only drawn when something IS closed: two tabs where one is always empty is furniture.
+            */}
             {closedCount > 0 && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 2 }}>
-                All {sortedGrounds.length} check-ins, including {closedCount} closed
+              <div role="tablist" aria-label="Which check-ins to show" style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                {([['open', `In progress (${active.length})`], ['closed', `Closed (${closedCount})`]] as const).map(([key, text]) => (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={showing === key}
+                    onClick={() => setShowing(key)}
+                    style={{
+                      fontSize: 12.5, fontWeight: showing === key ? 700 : 500,
+                      padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `1px solid ${showing === key ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                      background: showing === key ? 'var(--gw-navy)' : 'white',
+                      color: showing === key ? 'white' : 'var(--gw-text)',
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              {visibleGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>
+            {visibleGrounds.length === 0 && (
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+                {showing === 'closed' ? 'Nothing closed yet.' : 'Nothing in progress. Your closed check-ins are under Closed.'}
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -663,7 +738,7 @@ export function GroundsListPage() {
                 belongs in the picker at /grounds/new.
               */}
               {user?.mayOpenCheckIns !== false && <button
-                onClick={() => navigate('/start')}
+                onClick={() => navigate('/start?new=1')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 + New check-in
@@ -683,7 +758,7 @@ export function GroundsListPage() {
                   You will see check-ins here when someone invites you, or when you open one yourself.
                 </div>
                 {user?.mayOpenCheckIns !== false && <button
-                  onClick={() => navigate('/start')}
+                  onClick={() => navigate('/start?new=1')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open a check-in

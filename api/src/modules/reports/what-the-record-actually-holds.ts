@@ -266,5 +266,5 @@ export function cleanText(text: string): string {
 
 /** The kinds G10 will weigh, as they are spelled in the database. */
 export const WEIGHABLE_TYPES = [
-  'SUCCESS_DEFINITION', 'COMMITMENT', 'TIMEFRAME', 'ASK', 'TOLERANCE', 'WORRY', 'TENSION',
+  'SUCCESS_DEFINITION', 'PROGRESS', 'COMMITMENT', 'TIMEFRAME', 'ASK', 'TOLERANCE', 'WORRY', 'TENSION',
 ];

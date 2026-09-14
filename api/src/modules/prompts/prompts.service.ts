@@ -391,6 +391,61 @@ export class PromptsService implements OnModuleInit {
     return this.prisma.promptVersion.findUnique({ where: { id } });
   }
 
+  /**
+   * WHO IS REGISTERED IN ONE ORGANISATION.
+   *
+   * The console could say an organisation had eleven people and could not say who any of them
+   * were. Support ran blind: "did the invitation reach Musa" needs an address, and the only one on
+   * the list was whoever signed up.
+   *
+   * WHAT THIS IS AND IS NOT. It is the account list - who has a login with us, how to reach them,
+   * and whether their email is verified. It is not their work: no check-in, no record entry, no
+   * report, not one word anybody wrote. That wall is held by its own guard
+   * (no-staff-surface-shows-a-persons-words.spec.ts) and nothing here goes near it.
+   *
+   * The phone number comes too, because it is the only way to reach somebody who joined by WhatsApp
+   * and never gave an address - and an operator who cannot reach them is the reason this exists.
+   */
+  async peopleIn(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!org) throw new NotFoundException('Organisation not found');
+
+    const users = await this.prisma.user.findMany({
+      where: { organizationId },
+      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        email: true,
+        phoneNumber: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isPlatformAdmin: true,
+        isEmailVerified: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      org,
+      people: users.map((u) => ({
+        id: u.id,
+        /* The name they gave, and nothing invented from the address when they gave none: an email
+           split at the @ is not what somebody is called, and this console has done that before. */
+        name: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
+        email: u.email,
+        phoneNumber: u.phoneNumber,
+        role: u.role,
+        isPlatformAdmin: u.isPlatformAdmin,
+        isEmailVerified: u.isEmailVerified,
+        joinedAt: u.createdAt,
+      })),
+    };
+  }
+
   async orgList() {
     /* Every organisation, ours included - the list is for finding one, not for counting them - with
        ours marked so the eye can skip them. The two dead queries that used to sit here (a ground

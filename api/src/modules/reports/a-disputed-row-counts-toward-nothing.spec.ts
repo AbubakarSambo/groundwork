@@ -25,6 +25,9 @@ describe('every read that counts rows leaves disputed ones out', () => {
         /* The one read that SHOWS a person their own rows has to include the disputed ones, so the
            dispute is visible. It is the exception the next test pins. */
         if (src.slice(Math.max(0, m.index - 400), m.index).includes('myRows:')) continue;
+        /* Same exception, now that the read lives in a method of its own rather than inline in the
+           report: it is the one place a disputed row must still be visible. */
+        if (src.slice(Math.max(0, m.index - 900), m.index).includes('theirOwnRows(')) continue;
         /*
          * AND THE SYNTHESIS READ, WHICH SHOWS RATHER THAN COUNTS.
          *
@@ -46,9 +49,23 @@ describe('every read that counts rows leaves disputed ones out', () => {
   }
 
   it('except the read that shows the person their own rows, which needs the disputed ones too', () => {
-    const at = REPORTS.indexOf('myRows: participant');
+    /*
+     * It used to be inline in the report and is now a method, because the pre-release branch of
+     * `get` returned no rows at all - so somebody finishing their own check-in saw none of what
+     * they had just said. The rule is unchanged and is what this pins: this read alone keeps the
+     * disputed rows, so the mark is visible to the person who made it.
+     */
+    const at = REPORTS.indexOf('private async theirOwnRows(');
     expect(at).toBeGreaterThan(-1);
-    expect(REPORTS.slice(at, at + 600)).toContain('disputedAt: true');
+    const body = REPORTS.slice(at, at + 900);
+    expect(body).toContain('disputedAt: true');
+    expect(body).not.toContain('disputedAt: null');
+  });
+
+  it('and both places that build a report use that one read', () => {
+    /* Pre-release and released. A person\'s own words are theirs either way, and the gap between
+       the two branches is exactly what hid them. */
+    expect((REPORTS.match(/this\.theirOwnRows\(/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 });
 

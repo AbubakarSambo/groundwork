@@ -91,15 +91,32 @@ describe('what the session showed', () => {
   });
 
   it('never runs on a guess about what somebody\'s job is', async () => {
-    // A step chosen from a low-confidence function reads as a stranger's advice.
-    // The same threshold already governs the role probes.
+    /*
+     * THE RULE IS UNCHANGED AND THE ASSERTION IS NOT. "A step chosen from a low-confidence function
+     * reads as a stranger's advice" - so no step may come from a guessed job, and that still holds
+     * exactly. What changed is that failing to read the job no longer means reading nothing at all:
+     * 477 people are on record and 32 clear this threshold, so the old early return meant 93% could
+     * never be coached about anything, not because nothing was noticed but because nothing was ever
+     * looked at.
+     *
+     * The old assertion was that the model is not called. That is the implementation, not the rule.
+     * The rule is that the behaviours it reads against are not this person's guessed function - so
+     * that is what is asserted now, along with the row recording which floor the step came off, so
+     * a weaker read can never be mistaken later for a role-mapped one.
+     */
     const { service, anthropic, upserts } = makeService({ confidence: 0.2 });
     await observe(service);
-    expect(anthropic.extract).not.toHaveBeenCalled();
-    /* It still writes a row, with no step and the reason it could not read: a writer that ran and
-       could not coach must not look like a writer that never ran. */
+
+    /* The behaviours are handed over as the user content, not the system prompt - that is where
+       the list lives, and it is the list that must not be this person's guessed function. */
+    const handed = (anthropic.extract as jest.Mock).mock.calls[0]?.[1]?.[0]?.content ?? '';
+    const map = roleMapFor(RoleFunction.MANAGEMENT)!;
+    for (const signal of map.failureSignals ?? []) expect(handed).not.toContain(signal);
+    /* The floor instead: read off the ACCOUNT, never off the work, because the work is the part
+       that cannot be read without knowing the job. */
+    expect(handed).toContain('did not come with a date, a number or a name attached');
+
     expect(upserts).toHaveLength(1);
-    expect(upserts[0].create.currentStep).toBeNull();
     expect(upserts[0].create.lastInput.why).toMatch(/below 0.5|no role map/);
   });
 

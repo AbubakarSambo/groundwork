@@ -86,7 +86,7 @@ export class WebhooksListener {
   @OnEvent(GroundworkEvents.CHECK_IN_OPENED)
   async onCheckInOpened(e: CheckInOpenedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true } });
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true, overWhatsApp: true } });
       if (!ground) return;
       /*
        * AND ON WHATSAPP, WHEN THE ORGANISATION HAS ITS OWN NUMBER. The person replies to this message
@@ -99,7 +99,18 @@ export class WebhooksListener {
           select: { phone: true },
         });
         const connected = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } }).catch(() => null);
-        if (person?.phone && connected?.enabled) {
+        /*
+         * AND WHETHER THIS CHECK-IN IS ONE THAT GOES TO A PHONE.
+         *
+         * It was the organisation's connection and nothing else: connect a number and every
+         * check-in in the organisation went to WhatsApp, with no way to say that this one should
+         * stay in the app. A lead setting up a sensitive conversation had no way to keep it off
+         * people's phones, and nowhere to look for one.
+         *
+         * Null is "whatever the organisation does", which is exactly the behaviour above, so a
+         * ground that has never answered the question is unaffected.
+         */
+        if (person?.phone && connected?.enabled && ground.overWhatsApp !== false) {
           const which = e.sessionNumber === 1 ? 'Your first check-in' : `Check-in ${e.sessionNumber}`;
           /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
           await this.whatsapp.sendFor(ground.organizationId, person.phone, `${which} on "${ground.label}" is open. Reply here to do it: about ten minutes, and what you say is released with everybody else's, not before.`, { checkInId: e.checkInId, kind: 'opening' })

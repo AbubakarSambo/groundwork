@@ -16,6 +16,8 @@ describe('the situation catalog', () => {
   it('renders a scenario it has never heard of as words, not as a database value', () => {
     // The admin page interpolates this straight onto the lead's own dashboard.
     expect(scenarioLabel('SOME_NEW_THING')).toBe('Some New Thing')
-    expect(scenarioLabel('PIP')).toBe("Someone's work is off track")
+    /* From the catalogue: what this asserts is that a known key resolves to its LABEL rather than
+       to the enum value, not what that label happens to be. */
+    expect(scenarioLabel('PIP')).toBe(SCENARIO_LABELS.PIP)
   })
 })

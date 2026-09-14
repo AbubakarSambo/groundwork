@@ -129,6 +129,30 @@ export const promptsApi = {
     apiClient.get<UsageFunnelData>('/prompts/platform-funnel', { params: { range } }).then((r) => r.data),
   orgList: () =>
     apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => r.data),
+
+  /**
+   * WHO IS REGISTERED IN ONE ORGANISATION. The account list, never their work.
+   *
+   * The console could say an org had eleven people and not say who any of them were, so support
+   * could not answer "did the invitation reach Musa". Names, addresses and phone numbers; no
+   * check-in, no record entry, no report.
+   */
+  peopleIn: (organizationId: string) =>
+    apiClient
+      .get<{
+        org: { id: string; name: string; slug: string }
+        people: {
+          id: string
+          name: string | null
+          email: string
+          phoneNumber: string | null
+          role: string
+          isPlatformAdmin: boolean
+          isEmailVerified: boolean
+          joinedAt: string
+        }[]
+      }>(`/prompts/org-list/${organizationId}/people`)
+      .then((r) => r.data),
   usageStats: (range: PanelRange = 'all') =>
     apiClient.get<UsageStatsData>('/prompts/usage-stats', { params: { range } }).then((r) => r.data),
   feedbackSummary: () =>

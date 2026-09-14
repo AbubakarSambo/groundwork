@@ -28,7 +28,6 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
-import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -733,6 +732,35 @@ export function GroundAdminPage() {
     onError: () => toast.error('Not saved. What you typed is still here — try again.'),
   })
 
+  /**
+   * TWO SETTINGS THAT WERE READ IN FOUR PLACES AND WRITTEN BY NOTHING.
+   *
+   * `whoSeesTargets` decides whether ten colleagues' numbers land on somebody's first screen, and
+   * the board and the check-in conversation both read it. `expectThemToUnblock` decides whether a
+   * check-in asks what somebody actually tried before recording a blocker, and the conversation
+   * reads it. Each had a default and a careful note on the column saying when the other value is
+   * right - describing a choice nobody in the product could make.
+   *
+   * Exactly the state `peersVisibleToEachOther` was in above, which is the point: a column, a
+   * reader and no writer compiles clean and passes every test.
+   */
+  const setOverWhatsApp = useMutation({
+    mutationFn: (over: boolean | null) => groundsApi.setOverWhatsApp(id!, over),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
+  })
+  const setWhoSeesTargets = useMutation({
+    mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+  })
+
+  const setExpectThemToUnblock = useMutation({
+    mutationFn: (expect: boolean) => groundsApi.setExpectThemToUnblock(id!, expect),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+  })
+
   const setContactVisibility = useMutation({
     mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
@@ -1192,6 +1220,10 @@ export function GroundAdminPage() {
   const peersDefaultHidden = (ground as any)?.peersDefaultVisible === false
 
   const contactHidden = ground.restrictExternalVisibility !== false
+  /* Narrow unless somebody chose otherwise: a default that publishes is not a default. */
+  const numbersShared = (ground as any)?.whoSeesTargets === 'EVERYBODY'
+  /* On unless somebody turned it off, matching the column. */
+  const expectsUnblocking = (ground as any)?.expectThemToUnblock !== false
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -1338,7 +1370,7 @@ export function GroundAdminPage() {
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
-              {scenarioLabel(ground.scenario)}
+              {scenarioLabel(ground.scenario, (ground as any).brief)}
             </span>
           )}
           {ground.resolutionState && (
@@ -2314,14 +2346,9 @@ export function GroundAdminPage() {
                 <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
               </div>
             )}
-            {/*
-              WHERE IT STANDS AGAINST WHAT WAS SAID, ABOVE THE SESSIONS.
-
-              Same read the participant's tab now carries, and the same reason: the objective is
-              what the product asks for at setup and what it showed nobody against. A list of
-              sessions with no statement of what they are for is a list.
-            */}
-            <div style={{ marginBottom: 12 }}><WhatSuccessLooksLikeFor groundId={ground.id} /></div>
+            {/* What success looks like is deliberately NOT here - see the note in
+                SharedReportForAParty, which carried the same block and lost it for the same
+                reason. This tab is an index; the band renders where it can say something. */}
             <TheReportIsAListOfSessions
               rows={sessionRows}
               boardRenders={!!(ground as any).boardRenders}
@@ -2990,6 +3017,119 @@ export function GroundAdminPage() {
                   style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setContactVisibility.isPending ? 'wait' : 'pointer', background: contactHidden ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setContactVisibility.isPending ? 0.5 : 1, padding: 0 }}
                 >
                   <span style={{ position: 'absolute', top: 2, left: contactHidden ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            </div>
+            {/*
+              AND THE THIRD ROW OF THE SAME QUESTION. Whether somebody's number is their own
+              business is who-sees-whom, not a separate subject, so it sits in this card rather
+              than starting another one.
+            */}
+            <div className="gw-fld" style={{ marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Show everyone each other{'\u2019'}s numbers</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {numbersShared
+                      ? 'Everyone sees every target on the board. On a team carrying one number between them, that is how people see where the gap is.'
+                      : 'Each person sees their own number. You see all of them. Ten colleagues\u2019 targets on somebody\u2019s first screen is a decision worth making on purpose.'}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={numbersShared}
+                  aria-label="Show everyone each other's numbers"
+                  disabled={setWhoSeesTargets.isPending}
+                  onClick={() => setWhoSeesTargets.mutate(!numbersShared)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setWhoSeesTargets.isPending ? 'wait' : 'pointer', background: numbersShared ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setWhoSeesTargets.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: numbersShared ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                </button>
+              </div>
+            </div>
+            </Fold>
+
+            {/*
+              WHERE PEOPLE ANSWER THIS ONE.
+
+              It was the organisation's connection and nothing else: connect a number and every
+              check-in in the organisation went to WhatsApp. A lead setting up a sensitive
+              conversation had no way to keep it off people's phones, and nowhere to look for one.
+
+              THREE STATES, NOT A TOGGLE. "Whatever this organisation does" is what every check-in
+              did before the question existed, so it stays the answer until somebody gives another -
+              a two-state switch would have decided for every ground in the database.
+
+              AND ONLY WHERE THERE IS A NUMBER. `orgHasWhatsApp` comes with the ground because the
+              connection is an admin read and a lead is often not an admin. A control over nothing
+              is a door into a wall.
+            */}
+            {(ground as any)?.orgHasWhatsApp && (
+              <Fold {...foldProps(setupBand())} title="Where people answer this" src="in Groundwork, or on your organisation's WhatsApp number" summary={
+                (ground as any).overWhatsApp === true ? 'On WhatsApp'
+                  : (ground as any).overWhatsApp === false ? 'In Groundwork'
+                    : 'Whatever this organisation does'
+              }>
+                <div style={{ display: 'grid', gap: 8, padding: '4px 0' }}>
+                  {([
+                    [null, 'Whatever this organisation does', 'The default. People who have a number on their profile get it on WhatsApp; everybody else answers here.'],
+                    [true, 'On WhatsApp', 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.'],
+                    [false, 'In Groundwork', 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody\u2019s phone.'],
+                  ] as [boolean | null, string, string][]).map(([value, title, why]) => {
+                    const on = ((ground as any).overWhatsApp ?? null) === value
+                    return (
+                      <label
+                        key={String(value)}
+                        style={{
+                          display: 'flex', gap: 10, alignItems: 'flex-start', cursor: setOverWhatsApp.isPending ? 'wait' : 'pointer',
+                          padding: '11px 13px', borderRadius: 8,
+                          border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                          background: on ? 'var(--gw-blue-bg)' : 'var(--gw-card)',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="where-people-answer"
+                          checked={on}
+                          disabled={setOverWhatsApp.isPending}
+                          onChange={() => setOverWhatsApp.mutate(value)}
+                          style={{ marginTop: 2 }}
+                        />
+                        <span>
+                          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{title}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 2 }}>{why}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </Fold>
+            )}
+
+            {/*
+              HOW THE CHECK-IN TREATS A BLOCKER. Its own card, because it is not about who sees
+              what - it changes what the conversation asks a person.
+            */}
+            <Fold {...foldProps(setupBand())} title="When somebody is blocked" src="what the check-in asks for" summary={expectsUnblocking ? 'It asks what they tried' : 'It records it and moves on'}>
+            <div className="gw-fld">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Ask what they tried, and offer ways through</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    {expectsUnblocking
+                      ? 'A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. Their lead sees the same thing as one thing to ask for.'
+                      : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody \u2014 a new cohort, somebody outside the company \u2014 or a check-in that is there to hear what happened.'}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={expectsUnblocking}
+                  aria-label="Ask what they tried, and offer ways through"
+                  disabled={setExpectThemToUnblock.isPending}
+                  onClick={() => setExpectThemToUnblock.mutate(!expectsUnblocking)}
+                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setExpectThemToUnblock.isPending ? 'wait' : 'pointer', background: expectsUnblocking ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setExpectThemToUnblock.isPending ? 0.5 : 1, padding: 0 }}
+                >
+                  <span style={{ position: 'absolute', top: 2, left: expectsUnblocking ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
                 </button>
               </div>
             </div>

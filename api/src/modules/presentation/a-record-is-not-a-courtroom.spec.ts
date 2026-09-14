@@ -110,3 +110,40 @@ describe('a mark is not a reply', () => {
     expect(withoutTheMark('That makes sense.')).toBe('That makes sense.');
   });
 })
+
+/**
+ * "AND IT IS IN YOUR RECORD" - THE SAME NARRATION, TWO WORDS OUTSIDE THE PATTERN.
+ *
+ * Walked the participant side in a browser and this came back after somebody said they had chased
+ * legal twice:
+ *
+ *   "That's a specific action on your part, and it is in your record."
+ *
+ * The stripper was already here, written after the same complaint. It matched "it is NOW in THE
+ * record" and this said "it is in YOUR record" - no "now", and "your" for "the". Missed by two
+ * words, and the banned word went out to a person.
+ *
+ * AND THE COMMA IT WAS HANGING OFF. Taking the clause away left "...on your part, ." because the
+ * comma belongs to the sentence, not to the narration. A stripper that leaves debris is one
+ * somebody turns off.
+ */
+describe('the narration goes, in whichever words it arrives', () => {
+  it('takes the tail clause and the comma with it', () => {
+    expect(withoutRecordNarration("That's a specific action on your part, and it is in your record."))
+      .toBe("That's a specific action on your part.");
+  });
+
+  it('with or without "now", and for "your" as well as "the"', () => {
+    for (const said of [
+      'It is in your record.',
+      "It's now on the record.",
+      'It is on your record.',
+    ]) expect(withoutRecordNarration(said)).toBe('');
+  });
+
+  it('and an ordinary sentence about the work is left alone', () => {
+    /* The risk of widening a pattern over text that quotes people: this must not move. */
+    const plain = 'The build ships on the 14th and the migration follows it.';
+    expect(withoutRecordNarration(plain)).toBe(plain);
+  });
+});

@@ -11,13 +11,17 @@
  * pronoun, which is not English and is what a dropped noun leaves behind. Anything it catches is
  * asked for again, once, through the machinery the invention gate already uses.
  */
+import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
+
 const A_WORD_IS_MISSING = /\b(?:the|a|an|every|each|this|that|these|those|some|any|another)\s+(?:i|we|you|he|she|they|it)\b/i;
 
 export function readsAsBroken(reply: string): boolean {
   if (!reply?.trim()) return false;
   /* "that I said" and "this I mentioned" are relative clauses and ordinary English; the shape only
      reads as broken at the start of a clause, so the test is run per sentence against its opening. */
-  for (const sentence of reply.split(/(?<=[.!?])\s+/)) {
+  /* Properly split: given a "sentence" that was really two, this tested the wrong opening - and
+     the shape it looks for only reads as broken at a clause opening. */
+  for (const sentence of sentencesIn(reply)) {
     const s = sentence.trim();
     if (!s) continue;
     const m = A_WORD_IS_MISSING.exec(s);

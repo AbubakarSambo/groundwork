@@ -26,8 +26,6 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, launch, mail_clear, new_page, provision_admin
-# UI copy the product owns - see the guard in client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
-from _ui_strings import CREATE_PROJECT_CARD
 
 rec = Recorder("suite_l")
 STAMP = str(int(time.time()))
@@ -38,23 +36,23 @@ EMAIL = f"l.layout+{STAMP}@example-test.invalid"
 # only after signing up, which is backwards: the person with no account has no
 # other way in.
 ENTRY_CARDS = [
-    "A new hire starting",
-    "A new project starting",
-    "A new co-founder or partner",
-    "A new advisor or board member",
+    "New hire starting",
+    "New project",
+    "A new partner, cofounder, or manager",
+    "New advisor or board member",
     "Onboarding several people at once",
     "Setting shared goals",
     "A big decision",
-    "A workplan and budget",
-    "Board or leadership strategy",
+    "Workplan and budget",
+    "Board and leadership strategy",
     "A regular read on live work",
-    "Several people in the same role",
-    "A raise, promotion, or recognition",
-    "A contract or renewal",
+    "Many people in the same role",
+    "Raise, promotion, or recognition",
+    "Contract or renewal",
     "Someone's work is off track",
     "A project is off track",
-    "People see it differently",
-    "Something serious just happened",
+    "You and someone see it differently",
+    "A shock just hit",
 ]
 # The catch-all card's label, as /entry actually renders it.
 #
@@ -200,11 +198,8 @@ async def main() -> int:
             ok, detail = await no_horizontal_overflow(page)
             rec.check(f"L/{label}", ok, f"/grounds/new zero horizontal overflow @ {label}", detail, hard=True)
 
-            # THE SITUATIONS ARE STEP ONE AGAIN, so there is nothing to answer before them. The
-            # click that was here got past "who is this check-in for", which is the LAST screen now.
-
-            # pick a card, then the Continue must be inside the viewport
-            card = page.get_by_text(CREATE_PROJECT_CARD, exact=True)
+            # step 1: pick a card, then the Continue must be inside the viewport
+            card = page.get_by_text("New project", exact=True)
             if await card.count():
                 await card.first.click()
                 await page.wait_for_timeout(400)

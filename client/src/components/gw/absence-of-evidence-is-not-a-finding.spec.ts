@@ -48,42 +48,36 @@ describe('absence of evidence is not a finding', () => {
   })
 })
 
-describe('and the card no longer decides this itself', () => {
-  const SRC = fs
-    .readFileSync(path.join(__dirname, 'SessionReportCard.tsx'), 'utf8')
+/**
+ * AND NO SIGNED-IN SURFACE SHOWS THE WORD AT ALL NOW, WHICH IS THIS RULE'S LAST STEP.
+ *
+ * The history, in three moves. A thin sitting rendered as "Mixed" - a word about whether people
+ * agree - when barely anything had been said, so `whatToCallIt` was written to refuse a status the
+ * evidence could not carry. Then the five-rung ladder went, because where somebody lands on it
+ * depends on whether a colleague has answered, so it was never progress they could make. Now the
+ * card itself is A - what one person said this time - and a status is a statement about the SHARED
+ * picture, which is a different report on a different surface.
+ *
+ * SO NOTHING CALLS `whatToCallIt`, AND THE FILE STAYS. The word still reaches somebody at the end
+ * of the entry chat, on a surface that is deliberately frozen: the first thing a stranger ever
+ * sees is not where to take a risk. The day that surface is rebuilt, the rule is here, with the
+ * corpus finding behind it, rather than having to be learned again from a support thread.
+ */
+describe('nothing on a signed-in close renders a status word', () => {
+  const CARD = fs
+    .readFileSync(path.join(__dirname, 'TheCheckInYouJustFinished.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/^\s*\/\/.*$/gm, '')
 
-  it('has no inline coverage ternary ending in Mixed', () => {
-    expect(SRC).not.toMatch(/coverage === 'moderate' \? 'Emerging' : 'Mixed'/)
+  it('has no ladder, no status heading and no coverage ternary', () => {
+    expect(CARD).not.toContain('<AlignmentLadder')
+    expect(CARD).not.toContain('LADDER_INDEX')
+    expect(CARD).not.toMatch(/Alignment status/i)
+    expect(CARD).not.toMatch(/coverage === 'moderate' \? 'Emerging' : 'Mixed'/)
   })
 
-  it('both views ask the same function', () => {
-    /* The participant view no longer calls a status at all: it shows what is settled and what is
-       still open, from the session report's engines. The admin view still asks the function. */
-    expect((SRC.match(/whatToCallIt\(engagement\?\.coverage, closed\)/g) ?? []).length).toBe(1)
-  })
-
-  it('and a thin record shows neither a count of agreements nor the alignment ladder', () => {
-    /* "1 agreed" reads as a finding drawn from a conversation; here it is one sentence somebody
-       typed. And the ladder places the round on a scale from unresolved to aligned, which this
-       round is not on yet. */
-    /*
-     * AND THEN THE LADDER WENT ENTIRELY, WHICH IS THIS RULE CARRIED THE REST OF THE WAY.
-     *
-     * It was hidden under a thin record because a round with one sentence in it is not on a scale
-     * from unresolved to aligned. Neither is a round with ten - where it lands depends on whether
-     * somebody else has answered, so it was never progress the reader could make. It is the last of
-     * the marks-on-an-invisible-scale that came off My record, and it was the worst of them: a
-     * five-rung ladder with a person standing on the second rung, on their own session's report.
-     *
-     * The word survives. "Emerging" is one word from the synthesis's own enum and it is still shown.
-     */
-    const at = SRC.indexOf('called.note ?')
-    expect(at).toBeGreaterThan(-1)
-    expect(SRC.slice(at, at + 900)).toContain('called.note')
-    expect(SRC).not.toContain('<AlignmentLadder')
-    expect(SRC).not.toContain('LADDER_INDEX')
+  it('and asks the rule for nothing, because it shows nothing the rule governs', () => {
+    expect(CARD).not.toContain('whatToCallIt(')
   })
 })

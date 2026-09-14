@@ -3,6 +3,7 @@ import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-i
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
 import { atAGlanceTiles, type AGlanceRead } from './what-this-session-holds';
+import { howSolid, MARK } from './a-figure-nobody-can-check-says-so';
 
 /**
  * THE PER-SESSION REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -44,6 +45,15 @@ export interface SaidThing {
   who: string | null;
   /** True when it was anchored to a document rather than recalled. */
   documented: boolean;
+  /**
+   * A CAVEAT ON A FIGURE, WHERE THE LINE CARRIES ONE THE READER CANNOT CHECK.
+   *
+   * "About a third of the way there I would say" and "Twelve tickets are over a day old" arrive on
+   * a manager's screen as two sentences with numbers in them, in a list beside lines that came off
+   * a system. One is a guess made in a chat. The mark says which; it never scores the person and
+   * never removes the line. Absent where the line holds no figure, so it does not become wallpaper.
+   */
+  figureIs?: 'their estimate' | 'from memory';
 }
 
 export interface SessionReportSection {
@@ -71,6 +81,8 @@ export interface WhatOnePersonSaid {
 
 export interface SessionReportShape {
   sessionNumber: number;
+  /** How many this run holds, so the header can say "check-in 3 of 6". Null when nobody set both. */
+  plannedSessions?: number | null;
   /** 'forming' while the round is open, 'final' once it closed and was snapshotted. */
   state: 'forming' | 'final';
   whereThingsStand: {
@@ -115,6 +127,8 @@ export interface SessionReportShape {
 
 export interface SessionReportInputs {
   sessionNumber: number;
+  /** From the length and the rhythm. Null where either is unset, so the header simply omits it. */
+  plannedSessions?: number | null;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
   /**
@@ -174,11 +188,15 @@ function titleOf(x: unknown): string | null {
   return null;
 }
 
-const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => ({
-  text: e.text,
-  who: e.who,
-  documented: !e.recallBased,
-});
+const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => {
+  const how = howSolid({ text: e.text, recallBased: e.recallBased });
+  return {
+    text: e.text,
+    who: e.who,
+    documented: !e.recallBased,
+    ...(how === 'estimated' || how === 'from-memory' ? { figureIs: MARK[how] as 'their estimate' | 'from memory' } : {}),
+  };
+};
 
 const ofTypes = (
   entries: SessionReportInputs['entries'],
@@ -252,8 +270,17 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
        *
        * One home, and it is the section named after the question.
        */
-      items: ofTypes(input.entries, [RecordEntryType.INTENT]),
-      saying: 'Nobody stated what they are working towards this session.',
+      /*
+       * AND WHAT ACTUALLY HAPPENED, which this section is named for and did not hold.
+       *
+       * It drew INTENT only - what somebody understood their role to be - so on the round where a
+       * team delivered a quarter's plan, "Progress and priorities" was empty and said nobody had
+       * stated what they were working towards. The delivery lines existed; there was no type for
+       * them and they had scattered into SUCCESS_DEFINITION. PROGRESS first, because what happened
+       * outranks what somebody means to do.
+       */
+      items: [...ofTypes(input.entries, [RecordEntryType.PROGRESS]), ...ofTypes(input.entries, [RecordEntryType.INTENT])],
+      saying: 'Nobody said what has moved, or what they are working towards, this session.',
     },
     {
       title: 'Commitments',
@@ -405,6 +432,10 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * Taken from the themes' own type list so the two views cannot drift apart again.
    */
   const IN_THE_THEMES: RecordEntryType[] = [
+    /* What happened, which is the first thing anybody wants from a check-in and had no type until
+       a lead's own run showed both people reading "nothing specific enough to record came out of
+       it" on the round they finished the work. */
+    RecordEntryType.PROGRESS,
     RecordEntryType.INTENT,
     RecordEntryType.COMMITMENT,
     RecordEntryType.WORRY,
@@ -448,6 +479,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
 
   return {
     sessionNumber: input.sessionNumber,
+    plannedSessions: input.plannedSessions ?? null,
     state: input.closed ? 'final' : 'forming',
     confidence,
     whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow },

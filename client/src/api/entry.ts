@@ -158,6 +158,8 @@ export const entryApi = {
     modeOrMessages: EntryMode | ChatTurn[],
     messagesOrScenario?: ChatTurn[] | string,
     groundLabel?: string,
+    /* Who setup already named. Without these the check-in asks who is involved after being told. */
+    peopleNamed?: string[],
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     typeof modeOrMessages === 'string'
       ? apiClient.post<{ reply: string; sessionComplete: boolean }>(
@@ -166,7 +168,7 @@ export const entryApi = {
         ).then(r => r.data)
       : apiClient.post<{ reply: string }>(
           '/entry/chat',
-          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel },
+          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, peopleNamed },
         ).then(r => r.data),
 
   onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<OnboardResult> =>
@@ -190,9 +192,12 @@ export const entryApi = {
     scenario: string | undefined,
     groundLabel: string | undefined,
     onDelta: (text: string) => void,
+    /* Who setup already named. This is the live path the check-in actually uses, so without it here
+       the block that stops "who else is involved" never reaches the conversation people have. */
+    peopleNamed?: string[],
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     /* No joinToken: the branch it reached served the organiser's brief to whoever supplied one (fix plan D10). */
-    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel }, onDelta),
+    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, peopleNamed }, onDelta),
 
   classifyIntent: (description: string, mode?: string) =>
     /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */
@@ -201,8 +206,16 @@ export const entryApi = {
   faq: (question: string) =>
     apiClient.post<{ reply: string }>('/entry/faq', { question }).then(r => r.data),
 
-  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel }).then(r => r.data),
+  /*
+   * WHO WAS NAMED IN SETUP GOES TO THE REPORT TOO, and did not.
+   *
+   * The chat has been given `peopleNamed` for a while, so the conversation knows who setup named.
+   * The report was never given them, and it reads only the check-in's own turns. So a lead who
+   * listed her team in setup got a report saying "team members not named here", and a whole
+   * "what's still open" item telling her to go and name them.
+   */
+  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]) =>
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string

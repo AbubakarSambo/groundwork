@@ -2,8 +2,8 @@ import { apiClient } from './client'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
-  | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
-  | 'cascade' | 'patterns' | 'decisions' | 'poll'
+  | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
+  | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
 export type CoverageVariant = 'text' | 'bar'
@@ -17,9 +17,32 @@ export type BoardAbsent = {
   reason: string
 }
 
+/**
+ * THE BOARD IS THERE AND IT IS NOT YOURS TO READ YET, which is a third answer and had no shape.
+ *
+ * The server sends `renders: true` together with `withheldUntilYouCheckIn` when the viewer owes
+ * their own check-in. The board exists, it is held back until they have said their piece, so
+ * `renders: false` would be untrue - that means this check-in has no board at all. But nothing
+ * else comes with it, no sections and no title, and the page read `sections.includes(...)` the
+ * moment `renders` was true.
+ *
+ * So the whole Boards page died on "Cannot read properties of undefined (reading 'includes')".
+ * Hit on a real account with three stalled check-ins, which is exactly who this reply is for.
+ */
+export type BoardWithheld = {
+  groundId: string
+  renders: true
+  withheldUntilYouCheckIn: true
+  mode: 'PRIVATE' | 'SHARED'
+  family: BoardFamily
+  /** Why it is held back, in the server's own words. */
+  saying: string
+}
+
 export type BoardPresent = {
   groundId: string
   renders: true
+  withheldUntilYouCheckIn?: false
   mode: 'SHARED'
   family: BoardFamily
   sections: BoardSection[]
@@ -37,6 +60,11 @@ export type BoardPresent = {
   /** Whether the caller may set targets and the poll question (initiator only). */
   canEditFrame: boolean
   readOnlyNote: string
+  /**
+   * Somebody named in an account as doing work here who has no account of their own. Guarded on
+   * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
+   */
+  hiddenContributors?: { rows: { label: string; evidence: string }[]; why: string } | null
   /**
    * What this ground's objectives sit under, where anything sits above them. Present only on
    * boards whose family opted in, and only where the record named something above - or where the
@@ -73,13 +101,53 @@ export type BoardPresent = {
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
     /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */
     suggestedCount: number | null
+    /* The line it was read from, so a lead sees what they are accepting rather than a bare number. */
+    suggestedSaid?: string | null
   }[]
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
   divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string }
+  /** The aims, the places and the things, added up across everybody. Null until a round has closed. */
+  whatTheRoomIsAbout?: {
+    aims: { aim: string; held: string[] }[]
+    places: { name: string; named: string[] }[]
+    things: { name: string; named: string[] }[]
+    readAtSession: number | null
+  } | null
+  whatTheRoomIsAboutNote?: string
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
   dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
+
+  /**
+   * WHERE EACH PERSON IS AGAINST THEIR OWN NUMBER, ordered by what needs attention.
+   *
+   * Lead-only, and absent for everybody else rather than empty: a read that names what to ask
+   * somebody to do is a manager's read of their own team, not something a colleague may hold about
+   * a colleague. The order ranks situations and never people - see the server module.
+   */
+  /** Lead-only: where per-person targets exist but some have no owner, so everybody can see them. */
+  targetsNobodyOwns?: string | null
+
+  /**
+   * Lead-only: things a check-in asked for and did not get, after it stopped asking.
+   *
+   * Never a mark against anybody - half the time nobody could have answered it. What it tells a
+   * lead is which questions their check-ins are not managing to answer, which is as often a fact
+   * about the setup as about a person.
+   */
+  stillUnanswered?: { who: string; what: string; sinceRound: number; certain: boolean }[]
+
+  eachPerson?: {
+    participantId: string
+    who: string
+    /** True where `who` is their role standing in for a name nobody has given. */
+    nameIsTheirRole: boolean
+    target: number | null
+    count: number
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    ask: string | null
+  }[]
   contribution?: {
     participantId: string; name: string | null; remit: string | null; remitDefined: boolean
     /** Always null. There is deliberately no on-track/below-track label - see board.service.ts. */
@@ -119,7 +187,7 @@ export type BoardPresent = {
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 }
 
-export type BoardResponse = BoardAbsent | BoardPresent
+export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
 export const boardApi = {
   get: (groundId: string, coverage?: CoverageVariant) =>
@@ -129,6 +197,19 @@ export const boardApi = {
         skipNotFoundToast: true,
       } as any)
       .then((r) => r.data),
+
+  /**
+   * PROPOSE A SPLIT OF ONE TOTAL ACROSS PEOPLE. Writes nothing.
+   *
+   * Either people typed in, or `rows` straight out of a CRM export - first row the header. What it
+   * read comes back beside the numbers, so a wrong column is obvious rather than buried in a figure.
+   */
+  proposeObjectives: (groundId: string, dto: { total: number; people?: { key: string; lastPeriod: number; months?: number }[]; rows?: (string | number | null)[][] }) =>
+    apiClient.post<{
+      shares: { key: string; target: number; runRate: number; upliftPct: number; because: string; monthsKnown: boolean }[]
+      saying: string
+      readFromTheFile: { missing: string[]; skipped: number; people: number } | null
+    }>(`/grounds/${groundId}/board/objectives/propose`, dto).then((r) => r.data),
 
   /** Initiator only: the lead's frame. A target, never an assessment of a person. */
   createObjective: (groundId: string, dto: { name: string; target?: number | null }) =>

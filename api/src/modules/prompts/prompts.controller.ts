@@ -68,6 +68,19 @@ export class PromptsController {
     return this.prompts.platformDashboard(range);
   }
 
+  /**
+   * WHO IS IN ONE ORGANISATION. The account list, never their work.
+   *
+   * The console could say an org had eleven people and not say who any of them were, so support
+   * could not answer "did the invitation reach Musa". Emails and phone numbers, because those are
+   * how you reach somebody; no check-in, no record entry, no report, not a word anybody wrote.
+   */
+  @Get('org-list/:organizationId/people')
+  @ApiOperation({ summary: "Everyone registered in one organisation: name, email, phone, role. Never their check-ins, records or reports." })
+  async peopleIn(@Param('organizationId') organizationId: string) {
+    return this.prompts.peopleIn(organizationId);
+  }
+
   @Get('org-list')
   @ApiOperation({ summary: 'All orgs with ground counts, billing status, and last activity' })
   async orgList() {

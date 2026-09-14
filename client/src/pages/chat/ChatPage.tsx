@@ -6,7 +6,7 @@ import { conversationApi, streamMessage, type CheckInBrief } from '@/api/convers
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
-import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
@@ -43,7 +43,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
       onCorrected(doc.assessment ?? corrected)
       setEditing(false)
     } catch {
-      toast.error('The correction did not save. What you wrote is still here — try again.')
+      toast.error('The correction did not save. What you wrote is still here, try again.')
     } finally {
       setSaving(false)
     }
@@ -96,6 +96,7 @@ const QUICK_ACTIONS = [
 
 const RECORD_ENTRY_LABELS: Record<string, string> = {
   SUCCESS_DEFINITION: 'What success looks like',
+  PROGRESS: 'What got done',
   TIMEFRAME: 'Timeframe',
   COMMITMENT: 'Commitment',
   ASK: 'Ask',
@@ -381,7 +382,7 @@ export function ChatPage() {
       setPendingDoc(file)
       setDocContext(ctx)
       setDocContextMode(true)
-      toast.error('That did not upload. Nothing was added to the record — try again.')
+      toast.error('That did not upload. Nothing was added to the record, try again.')
     },
   })
 
@@ -572,12 +573,12 @@ export function ChatPage() {
            */
           setMsgs(v => v.filter(m => m.id !== localId))
           setInput(message)
-          toast.error('That did not send — your message is back in the box. Try again.')
+          toast.error('That did not send. Your message is back in the box, try again.')
         }
         setLoading(false)
       } else {
         setLoading(false)
-        toast.error('The reply was cut off. What you sent is on the record — send again to carry on.')
+        toast.error('The reply was cut off. What you sent is on the record, send again to carry on.')
       }
     }
   }
@@ -955,7 +956,7 @@ export function ChatPage() {
                   <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                   {waitedAWhile && (
                     <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Still reading what you wrote. Nothing was lost — you do not need to send it again.
+                      Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
                 </span>
@@ -1119,7 +1120,7 @@ export function ChatPage() {
 
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
-              <SessionReportCard checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} isInitiator={isInitiator} />
+              <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}
               {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
               {/*

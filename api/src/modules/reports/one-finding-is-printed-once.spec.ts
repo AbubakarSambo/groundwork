@@ -27,7 +27,7 @@ import { aFieldNameIsNotAHeading, everyDivergenceReadable } from './a-field-name
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CARD = strip(
   readFileSync(
-    join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'SessionReportCard.tsx'),
+    join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'TheCheckInYouJustFinished.tsx'),
     'utf8',
   ),
 );
@@ -76,15 +76,16 @@ describe('the field name the model wrote into the field', () => {
 });
 
 describe('the session report', () => {
-  it('maps the divergences once, not three times', () => {
-    /* The participant's card only. The admin cross-reference next door maps them twice on purpose -
-       a one-line strip and the detail below it - and that is a summary of its own detail, not the
-       same finding reworded three ways at a person about their own account. */
-    const at = CARD.indexOf('function ParticipantCrossRef');
-    const end = CARD.indexOf('\nfunction ', at + 1);
-    const own = CARD.slice(at, end > at ? end : CARD.length);
-    const maps = own.match(/report\.divergences \?\? \[\]\)\.map/g) ?? [];
-    expect(maps.length).toBeLessThanOrEqual(1);
+  it('does not map the divergences at all now, which is the rule carried the rest of the way', () => {
+    /*
+     * THE ORIGINAL FAULT: three divergences printed three times under three headings on one card,
+     * so one finding read as nine. It was cut to once.
+     *
+     * The close is now A - what one person said this time - and a divergence is a statement about
+     * two accounts, which is B and lives on its own surface. So the count is zero, and zero is the
+     * end of the line this rule was walking down.
+     */
+    expect(CARD).not.toMatch(/report\.divergences/);
   });
 
   it('does not manufacture a criticism of the account for every divergence', () => {

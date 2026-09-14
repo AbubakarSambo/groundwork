@@ -160,6 +160,15 @@ export type BoardSection =
   | 'phaseSpine'
   | 'quickRead'
   | 'objectives'
+  /**
+   * THE AIMS, THE PLACES AND THE THINGS, ADDED UP ACROSS EVERYBODY. See what-the-room-is-about.ts.
+   *
+   * `objectives` is the targets a lead SET. This is what each person said they were trying to do,
+   * which on a board of forty people who set no targets between them is the whole picture and was
+   * showing nowhere. Families with `whoOwnsWhat` take it: a board that already says who holds what
+   * is a board where what they are each after is the next question.
+   */
+  | 'whatTheRoomIsAbout'
   | 'startingState'
   | 'divergence'
   | 'whoOwnsWhat'
@@ -172,6 +181,8 @@ export type BoardSection =
    * A family opting in means "a cascade may be shown here", never "show a tree".
    */
   | 'cascade'
+  /** Somebody named as doing work here who has no account. Rendered only when the guard keeps one. */
+  | 'hiddenContributors'
   | 'patterns'
   | 'decisions'
   | 'poll';
@@ -188,8 +199,8 @@ export type BoardSection =
 export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.DELIVERY]: [
     'phaseSpine', 'quickRead', 'objectives', 'startingState', 'divergence',
-    'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
-    'cascade', 'patterns', 'decisions', 'poll',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
+    'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
   /**
    * COHORT KEEPS ITS SECTIONS, and its board is simply not SHARED by default.
@@ -204,7 +215,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.COHORT]: [
     'phaseSpine', 'quickRead', 'objectives', 'divergence',
-    'checkInGrid', 'contribution', 'cascade', 'patterns',
+    'checkInGrid', 'contribution', 'cascade', 'hiddenContributors', 'patterns',
   ],
   [BoardFamily.ONBOARDING]: [
     /*
@@ -283,7 +294,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.AGREEMENT]: [
     'quickRead', 'objectives', 'startingState', 'divergence',
-    'whoOwnsWhat', 'dependencies', 'checkInGrid', 'decisions',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'decisions',
   ],
   [BoardFamily.SENSING]: [
     'quickRead',
@@ -295,7 +306,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'divergence',
     // Who owns each part of it, and who is waiting on whom to move. A recovery stalls on a person
     // far more often than on a plan.
-    'whoOwnsWhat',
+    'whatTheRoomIsAbout', 'whoOwnsWhat',
     'dependencies',
     'checkInGrid', 'contribution', 'patterns',
     // What got decided along the way, so a call made on day three is on the record on day ten.
@@ -326,8 +337,8 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
   [BoardFamily.RECURRING]: [
-    'quickRead', 'objectives', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
-    'divergence', 'contribution', 'cascade', 'patterns', 'decisions', 'poll',
+    'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
+    'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
 };
 
@@ -464,6 +475,20 @@ export const BOARD_WHITELIST = [
   // forbids quoting either side or naming who said what. Board-safe by
   // construction, which is why it may cross where the raw accounts may not.
   'leadershipGaps',
+  /**
+   * SOMEBODY CARRYING WORK WHO HAS NO ACCOUNT HERE.
+   *
+   * The one read that names a person OUTSIDE the check-in, which is why it crosses under its own
+   * guard rather than on the whitelist alone - see somebody-carrying-work-with-no-account.ts. Rows
+   * that quote anybody, name a party, or were worked out rather than referenced are dropped before
+   * this field is sent, on the same footing as a leadership gap containing a quotation.
+   *
+   * It belongs on the board rather than a report because it reads a run: who has been carrying
+   * work quietly is not visible in one sitting. And it belongs on a SHARED surface because the
+   * point of it is that the team is depending on somebody who cannot correct a record they are not
+   * in - which is not a thing to tell only the lead.
+   */
+  'hiddenContributors',
 ] as const;
 
 /** Report fields that must NEVER reach the board, asserted by the guard test. */

@@ -19,6 +19,17 @@ import { join } from 'path'
  * BOTH NUMBERS ARE RIGHT AND BOTH ARE WORTH SHOWING. What was missing is the sentence that makes
  * them agree. Removing the tile would have lost "how many are actually running", which the list
  * cannot answer at a glance.
+ *
+ * AND THE SENTENCE IS GONE, BECAUSE THE LIST STOPPED HOLDING BOTH PILES.
+ *
+ * "The filter is not visible anywhere" - correct, and there was not one: the line said "All 12
+ * check-ins, including 3 closed" over a list with the closed ones mixed through it, which explains
+ * the count and leaves somebody scrolling for the three they wanted. It is two tabs now, and the
+ * tile cannot disagree with a list that only ever shows the pile the tabs name.
+ *
+ * So what is asserted below is the RULE rather than the sentence that used to keep it: the list
+ * renders the filtered set, and the filter is drawn from the same `active` the tile counts. A
+ * second source for "which ones are running" is how these two came apart in the first place.
  */
 const CODE = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -33,9 +44,15 @@ describe('the tile and the list do not argue', () => {
     expect(CODE).toMatch(/const closedCount = grounds\.length - active\.length/)
   })
 
-  it('and the list says what it holds whenever they differ', () => {
-    expect(CODE).toMatch(/\{closedCount > 0 && \(/)
-    expect(CODE).toMatch(/All \{sortedGrounds\.length\} check-ins, including \{closedCount\} closed/)
+  it('and the list renders the filtered pile, never every row', () => {
+    expect(CODE).toMatch(/visibleGrounds\.map\(g => <GroundCard/)
+    expect(CODE).not.toMatch(/sortedGrounds\.map\(g => <GroundCard/)
+  })
+
+  it('and the filter is drawn from the same `active` the tile counts', () => {
+    /* A second source for "which ones are running" is how these two came apart the first time. */
+    expect(CODE).toMatch(/const openIds = new Set\(active\.map/)
+    expect(CODE).toMatch(/showing === 'closed' \? !openIds\.has\(g\.id\) : openIds\.has\(g\.id\)/)
   })
 
   it('the tile still counts what it says it counts', () => {
@@ -43,10 +60,9 @@ describe('the tile and the list do not argue', () => {
     expect(CODE).toMatch(/\{ val: active\.length,\s*label: 'In progress' \}/)
   })
 
-  it('and the line stays out of the way when there is nothing to reconcile', () => {
-    /* With nothing closed the two agree, and a sentence explaining a difference that does not
-       exist is its own kind of noise. */
+  it('and the tabs stay out of the way when there is nothing to reconcile', () => {
+    /* With nothing closed the two agree, and two tabs where one is always empty is furniture. */
     const guard = CODE.slice(CODE.indexOf('{closedCount > 0 && ('))
-    expect(guard.slice(0, 200)).toContain('All {sortedGrounds.length} check-ins')
+    expect(guard.slice(0, 300)).toContain("role=\"tablist\"")
   })
 })

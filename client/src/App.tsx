@@ -1,4 +1,5 @@
 import { PageCrash } from '@/components/gw/PageCrash'
+import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -34,6 +35,7 @@ import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
+import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
@@ -400,7 +402,30 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/*
+              BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
+              real home - which was checked, and was the wrong question. The question is whether
+              each surface MATCHES the template it was rebuilt against, and this page is the only
+              place that can be seen. One of its own notes says surface 02 was never rebuilt.
+              Verifying that is a pre-merge requirement. This goes again once it is done.
+            */}
+            {/*
+              OURS, NOT A CUSTOMER'S. It was behind RequireOrgSetup, which is every signed-in
+              customer - so anybody who guessed the address read a page of internal notes about our
+              own unfinished work ("its note read 'not rebuilt yet' for months"). It is the bench
+              where the eight report surfaces are compared on one check-in, and that is a Groundwork
+              tool, so it sits behind the same gate as the rest of the platform back office.
+            */}
+            <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/*
+              EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.
+              
+              Signed in like every other route, and it fetches nothing of its own: each surface
+              calls the endpoint it always calls with the reader's own token, so this adds no route
+              to any data. Nothing links to it. It goes when the last surface is ported.
+            */}
             {/* One round's report, for a lead or org admin with no session of their own on it. */}
             <Route path="/grounds/:id/session/:sessionNumber" element={<RequireOrgSetup><RoundReportPage /></RequireOrgSetup>} />
             {/*

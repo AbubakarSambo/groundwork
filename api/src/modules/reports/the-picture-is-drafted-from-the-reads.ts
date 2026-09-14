@@ -30,7 +30,7 @@ export interface PictureInput {
   coverage: { name: string; reasonText: string }[];
   /** Per person, from buildContribution: the engine's reason line, where it has one. */
   contribution: { name: string; reason: string }[];
-  blockers: { who: string | null; on: string | null; onIsPerson: boolean; what: string; kind: Kind | null; escalated: boolean }[];
+  blockers: { who: string | null; on: string | null; onIsPerson: boolean; what: string; kind: Kind | null; escalated: boolean; named?: boolean }[];
   /** The written report's own agreed and open items. Model-authored, and labelled as such. */
   settled: string[];
   open: string[];
@@ -97,8 +97,25 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       /* Five asks read out in one breath ("the rota, a clear list of what is mine, to be paid for
          the nights, a reply and...") is a list wearing a sentence. Past two, count them and name
          the first; the rows themselves sit in What people said. */
-      const things = bs.map((b) => theThing(b.what));
-      const items = things.length > 2 ? `${things.length} things, starting with ${lower(things[0])}` : andList(things.map(lower));
+      /*
+       * "MARKETING ANALYST IS WAITING FOR WAITING ON SOMEONE ELSE" - read off a live run, and not a
+       * sentence anybody would write.
+       *
+       * `what` is the person's own words, and where they never said what they were waiting ON it is
+       * a clause rather than a noun: "waiting on someone else", "something". The template put it
+       * after "for" and produced that. The row is RIGHT - they are blocked and did not say on what -
+       * so the fix is the sentence, not the row.
+       *
+       * The named ones fill the list. The rest are counted and said as what they are, which is the
+       * more useful thing for somebody reading it anyway: a manager who knows that two people are
+       * stuck on something they have not named knows exactly what to ask.
+       */
+      const named = bs.filter((b) => b.named !== false);
+      const unnamed = bs.length - named.length;
+      const things = named.map((b) => theThing(b.what));
+      const namedItems = things.length > 2 ? `${things.length} things, starting with ${lower(things[0])}` : andList(things.map(lower));
+      const notSaid = unnamed === 1 ? 'something they have not named' : `${unnamed} things they have not named`;
+      const items = things.length && unnamed ? `${namedItems}, and ${notSaid}` : things.length ? namedItems : notSaid;
       const who = [...new Set(bs.map((b) => b.who).filter(Boolean))] as string[];
       /*
        * "ON" IS PEOPLE ONLY. Driven live: "waiting on You, role definition, payment for on-call work
@@ -125,6 +142,8 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       out.push({
         key: `block-${kind || 'unkinded'}`,
         text: head + tail,
+        /* Only the things somebody actually named are held through the rewrite. "something they
+           have not named" is the product's own phrasing and does not need protecting. */
         mustKeep: [...(things.length > 2 ? [lower(things[0])] : things.map(lower)), ...(kind ? [WHAT_IT_MEANS[kind as Kind], WHO_CAN_MOVE_IT[kind as Kind]] : [])],
       });
     }

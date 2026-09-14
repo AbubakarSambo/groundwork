@@ -33,13 +33,22 @@ const SHELL = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
 
 const admin = { role: 'ADMIN' }
 const member = { role: 'MEMBER' }
+const lead = { role: 'LEAD' }
 const platform = { role: 'ADMIN', isPlatformAdmin: true }
 const labels = (u: any) => navItemsFor(u).map(i => i.label)
 
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
-    // Verified rendered: Grounds, then the org name, then People, Billing, Settings.
-    expect(labels(admin)).toEqual(['All check-ins', 'People', 'Connect', 'Billing', 'Settings'])
+    // Verified rendered: Grounds, then Boards, then the org name, then People, Billing, Settings.
+    expect(labels(admin)).toEqual(['All check-ins', 'Boards', 'People', 'Connect', 'Billing', 'Settings'])
+  })
+
+  it('a lead gets the boards door and nothing else that is the org\'s', () => {
+    /*
+      A lead oversees a department's check-ins, so the one page across several is theirs. People,
+      Connect and Billing are the organisation's and would bounce them.
+    */
+    expect(labels(lead)).toEqual(['All check-ins', 'Boards', 'Settings'])
   })
 
   it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {

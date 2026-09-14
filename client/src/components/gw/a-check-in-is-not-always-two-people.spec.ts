@@ -22,7 +22,7 @@ import { join } from 'path'
  * describe the mechanism rather than every file in the app.
  */
 const MECHANISM_FILES = [
-  '../../components/gw/SessionReportCard.tsx',
+  '../../components/gw/TheCheckInYouJustFinished.tsx',
   '../../components/gw/HelpModal.tsx',
   '../../pages/chat/ChatPage.tsx',
 ]
@@ -41,7 +41,7 @@ describe('nothing that describes the mechanism assumes two parties', () => {
   }
 
   it('and the report card says everyone, which is true at any size', () => {
-    const code = strip(readFileSync(join(__dirname, '../../components/gw/SessionReportCard.tsx'), 'utf8'))
+    const code = strip(readFileSync(join(__dirname, '../../components/gw/TheCheckInYouJustFinished.tsx'), 'utf8'))
     expect(code).toMatch(/everyone reads the same report/)
     /*
      * "once everyone has opened the report" went with the sentence around it, which said "You can
@@ -49,7 +49,10 @@ describe('nothing that describes the mechanism assumes two parties', () => {
      * what everybody had said. What this file protects is that the wording holds at any number of
      * people, and the replacement does: "everyone in this round has answered".
      */
-    expect(code).toMatch(/Everyone in this round has answered/)
+    /* The sentence changed again when the card became A · session: it no longer describes the
+       state of the comparison, because it no longer shows one. What it says instead is whose half
+       this is and when the other one opens - and that also holds at two people and at twelve. */
+    expect(code).toMatch(/The shared picture opens to everybody at the same moment/)
     expect(code).not.toMatch(/only see your own/)
   })
 
