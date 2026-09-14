@@ -106,3 +106,49 @@ describe('a number said about one person is that person\'s', () => {
     expect(owned).toMatch(/\.catch\(/);
   });
 });
+
+/**
+ * THE LEAD'S OWN NUMBER, AND ONE AIM PER THING SHE IS AFTER.
+ *
+ * Both of these were found by running her real transcript through the real extraction and reading
+ * the rows, not by reading the code. Neither would have failed a test.
+ *
+ * First run: the 500 landed, the three 150s landed on three people, and "i have a target of 50" went
+ * nowhere. Everything in that extraction is about OTHER people, so the lead - the person who set the
+ * whole thing up - was the one participant whose number had no home.
+ *
+ * Same run: three ground-level aims, two with no number. "selling trucks to customers", "a contract
+ * and money in the bank" and "500 contracts" are one objective getting sharper across three
+ * sentences, and all three were written down.
+ */
+describe('the lead is a participant too', () => {
+  it('asks for the number the speaker set for themselves', () => {
+    expect(EXPECTATION_PROMPT).toMatch(/theirOwnTarget: the number the SPEAKER said they themselves are aiming at/);
+    expect(EXPECTATION_PROMPT).toMatch(/"150 each and i have a target of 50" is 150 for each of the others and 50 for the speaker/);
+    const props = (EXPECTATION_SCHEMA as any).input_schema.properties;
+    expect(props.theirOwnTarget.required).toEqual(['name', 'target']);
+  });
+
+  it('and says a lead who sets none for themselves is normal, not a gap', () => {
+    expect(EXPECTATION_PROMPT).toMatch(/A lead who sets targets for a team\s+and none for themselves is a normal thing and not a gap/);
+  });
+
+  it('writes it against the speaker, not the ground', () => {
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+    const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+    expect(service).toMatch(/theirOwnNumbers\.push\(\{ participantId, name: own\.name\.trim\(\)/);
+  });
+});
+
+describe('one aim per thing they are after', () => {
+  it('is asked for, in the words it went wrong in', () => {
+    expect(EXPECTATION_PROMPT).toMatch(/ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE/);
+    expect(EXPECTATION_PROMPT).toMatch(/one aim getting sharper, not three aims/);
+  });
+
+  it('keeps the sharpest version rather than the first or the last', () => {
+    expect(EXPECTATION_PROMPT).toMatch(/Keep the sharpest version - the one with the number/);
+    /* And does not collapse things that are genuinely different, which would lose a real objective. */
+    expect(EXPECTATION_PROMPT).toMatch(/Two aims that\s+are genuinely different stay as two/);
+  });
+});

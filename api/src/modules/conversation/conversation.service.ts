@@ -4984,6 +4984,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const result = await this.anthropic.extract<{
       groundAims: { name: string; target?: number | null; by?: string | null }[];
+      theirOwnTarget?: { name: string; target: number } | null;
       expectations: {
         personName: string;
         targetNumber?: number | null;
@@ -5259,6 +5260,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Same rules as the aims above: matched by name and owner so restating does not duplicate, and a
      * number already on the board is never overwritten from here.
      */
+    /*
+     * AND THE SPEAKER'S OWN NUMBER, WHICH HAD NOWHERE TO GO.
+     *
+     * "150 each and i have a target of 50" was read live: the three 150s landed on the three people
+     * and the 50 did not land anywhere. Everything above this is about OTHER people, so a lead's own
+     * target was the one number on the board that went missing, and the lead is the person who set
+     * the whole thing up.
+     *
+     * Found by running her transcript through the real extraction and reading the rows, not by
+     * reading the code. Nothing in the tests would have caught it.
+     */
+    const own = result.theirOwnTarget;
+    if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
+      theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
+    }
+
     if (theirOwnNumbers.length) {
       const owned = await this.prisma.groundObjective.findMany({
         where: { groundId, ownerParticipantId: { not: null } },

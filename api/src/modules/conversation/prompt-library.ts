@@ -1887,9 +1887,31 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
 
    - by: when they said it should be true by, in their words, where they said. "the end of the year", "March", "by Friday". Leave it out where they did not say.
 
+   ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE. People circle the same objective three
+   times while they work out how to say it: "selling trucks to customers", then "a contract and money
+   in the bank", then "500 contracts". That is one aim getting sharper, not three aims. Read live, and
+   it put all three on the board, two of them with no number, so a lead who named one objective got a
+   list that looked like she had named several and could not track any of them.
+
+   Collapse them. Keep the sharpest version - the one with the number, or failing that the one that
+   says what would actually be true - and drop the rougher attempts at the same thing. Two aims that
+   are genuinely different stay as two.
+
    Only what they actually said it is for. If they never said, return an empty list.
 
-2. expectations: for each OTHER person they named, what they said they expect of that person.
+2. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
+
+   "150 each and i have a target of 50" is 150 for each of the others and 50 for the speaker. That
+   line was read live and the 50 was dropped: the whole of section 3 below is about other people, so
+   a lead's own number had nowhere to go and was the only one on the board that went missing.
+
+   - name: what the number is for, in their words. "Contracts", "Closed deals".
+   - target: the number.
+
+   Leave it out entirely where they did not give themselves one. A lead who sets targets for a team
+   and none for themselves is a normal thing and not a gap.
+
+3. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
    - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
      wording - concrete where they were concrete, and never paraphrased into something sharper than
@@ -2206,6 +2228,15 @@ export const EXPECTATION_SCHEMA = {
           },
           required: ['name'],
         },
+      },
+      theirOwnTarget: {
+        type: 'object',
+        description: "The number the speaker said they themselves are aiming at. Omit where they gave themselves none.",
+        properties: {
+          name: { type: 'string', description: "What the number is for, in their words." },
+          target: { type: 'number' },
+        },
+        required: ['name', 'target'],
       },
       expectations: {
         type: 'array',
