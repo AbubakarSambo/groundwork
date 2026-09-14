@@ -24,6 +24,28 @@ export type LabelParty = {
  * same participants. Two copies of this would drift, and a drifted label is a
  * name that silently stops resolving.
  */
+/**
+ * A LETTER FOR THE NTH PERSON, AND THE ALPHABET RUNS OUT.
+ *
+ * This was `String.fromCharCode(65 + n)`, which is A to Z and then whatever comes after Z in ASCII.
+ * The twenty-seventh person was "Participant [", the thirty-third was "Participant a" - and that
+ * one collides with "Participant A" case-insensitively, so the collision guard below threw and the
+ * whole ground lost its report. Found by running a convening of forty: the check-in could not even
+ * be opened, 500 on the first request anybody made.
+ *
+ * Spreadsheet columns: A to Z, then AA, AB, AC. The first twenty-six are unchanged, so every label
+ * already written into a stored report still resolves.
+ */
+export function aLetterFor(n: number): string {
+  let out = '';
+  let i = n;
+  while (i >= 0) {
+    out = String.fromCharCode(65 + (i % 26)) + out;
+    i = Math.floor(i / 26) - 1;
+  }
+  return out;
+}
+
 export function labelsForParties(parties: LabelParty[]): Map<string, string> {
   const labelById = new Map<string, string>();
   let participantIdx = 0;
@@ -65,7 +87,7 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
         /** Shared with somebody else, so it has to be distinguished like any other. */
         const n = roleSeen.get(role.toLowerCase()) ?? 0;
         roleSeen.set(role.toLowerCase(), n + 1);
-        labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
+        labelById.set(p.id, `${role} ${aLetterFor(n)}`);
       } else {
         /** Unshared roles keep their exact former label, so stored reports do not drift. */
         labelById.set(p.id, role || 'the initiator');
@@ -92,7 +114,7 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
          * Substitution back into prose is case-insensitive (see withNames), so labels already
          * written into stored report JSON keep resolving.
          */
-        const letter = String.fromCharCode(65 + participantIdx++);
+        const letter = aLetterFor(participantIdx++);
         labelById.set(p.id, `Participant ${letter}`);
       }
     }
