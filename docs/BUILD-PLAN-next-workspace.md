@@ -146,14 +146,18 @@ that fire on turns that went badly.
 
 ## 3.2 Move shape into code
 
-`ONE QUESTION RULE` is 19,081 characters, 16% of the base prompt, and is **already enforced** by
-`one-question-per-turn.ts` on both the streaming and non-streaming paths. Verify the code covers the
-whole rule, then remove the block.
+**Read the correction at the top of the Phase 0 doc first.** An earlier version of this plan said
+`ONE QUESTION RULE` was 19,081 characters and sixteen per cent of the base prompt. It is **968**. The
+heading-matcher used to build the first inventory ran one heading through eighteen unrelated rules.
 
-`BANNED WORDS AND PHRASES` is 17,780 and is **partly** enforced by `presentation/outbound.ts`.
-Establish the gap, close it in code, then remove.
+**There is no one big block to remove.** The base prompt is **136 named rules**, 54 of them under 500
+characters. That changes the work: it is not finding the fat, it is a hundred and thirty-six rules,
+each written for a real incident, each individually defensible, sent together on every turn to
+everybody.
 
-Those two are 32% of the base prompt.
+So this phase is slower than it looked and the saving comes in small pieces. `ONE QUESTION RULE` is
+genuinely already enforced by `one-question-per-turn.ts` and can go. Check each candidate the same
+way: open it, prove the guarantee, then remove.
 
 ## 3.3 Decompose the rest
 

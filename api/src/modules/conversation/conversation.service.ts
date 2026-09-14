@@ -104,6 +104,7 @@ import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
+import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
@@ -2875,6 +2876,29 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
+
+    /*
+     * WHAT ACTUALLY FIRED, NAMED AND SIZED. Logs and changes nothing: the prompt below is byte for
+     * byte what it was. Before a single block moves out of the base prompt, this says which blocks
+     * never fire, which fire every turn, and which are in play on a turn somebody complained about.
+     * You cannot tune what always fires. See which-blocks-actually-fire.ts.
+     */
+    const inThisTurn = [
+      ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
+      ['recordAlreadyHolds', recordAlreadyHolds], ['owedBlock', owedBlock], ['intakeBlock', intakeBlock],
+      ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
+      ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
+      ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
+      ['finalSessionContext', finalSessionContext], ['returningUserContext', returningUserContext],
+      ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
+      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack],
+      ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
+      ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
+      ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
+      ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
+      ['burden', burden], ['putThisToThem', putThisToThem],
+    ].map(([name, text]) => ({ name: String(name), text: text as any }));
+    this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
