@@ -3407,6 +3407,18 @@ export function EntryChatPage() {
                     cadence={cadence}
                     onPickCadence={(c) => { setCadence(c as typeof cadence); setCadenceChosen(true) }}
                     standardUnset={false}
+                    /* There is no ground and no Setup page yet on this path, so the date is set
+                       here or it is not set at all. See renderStartDate. */
+                    startDateUnset={!checkInBy}
+                    renderStartDate={
+                      <input
+                        type="date"
+                        value={checkInBy}
+                        min={new Date().toISOString().slice(0, 10)}
+                        onChange={(e) => setCheckInBy(e.target.value)}
+                        style={{ padding: '8px 11px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)', outline: 'none' }}
+                      />
+                    }
                     onGoToSetup={() => { /* no ground yet on this path */ }}
                   />
                 }
@@ -3551,12 +3563,65 @@ export function EntryChatPage() {
 
             {/* What happens next - shown after report is ready, before signup */}
             {(sessionReport || (!generatingReport && closed)) && !emailSent && (
+              <>
+              {/*
+                SENDING NOW WAS THE ONLY OPTION, AND SAVING WAS THE TRIGGER.
+                
+                Pressing Save mailed everybody named, immediately, and the only way to stop that was
+                to know that a future start date holds invites until the morning of the day - which
+                is true, the 6am job sends them, and nothing on this screen said so. A lead setting
+                up the night before a client meeting had no way to save her work without the whole
+                list being mailed there and then.
+                
+                So the choice is a choice, and it is the same mechanism underneath: hold means a
+                start date, and the date is what the invites wait for.
+              */}
+              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginBottom: 12 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7 }}>When should the invites go out?</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: checkInBy ? 0 : 8 }}>
+                  <button
+                    onClick={() => setCheckInBy('')}
+                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
+                      border: `1px solid ${!checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                      background: !checkInBy ? 'var(--gw-navy)' : 'white', color: !checkInBy ? 'white' : 'var(--gw-text)' }}
+                  >
+                    As soon as I save
+                  </button>
+                  <button
+                    onClick={() => { if (!checkInBy) { const d = new Date(); d.setDate(d.getDate() + 1); setCheckInBy(d.toISOString().slice(0, 10)) } }}
+                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
+                      border: `1px solid ${checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                      background: checkInBy ? 'var(--gw-navy)' : 'white', color: checkInBy ? 'white' : 'var(--gw-text)' }}
+                  >
+                    On the day it starts
+                  </button>
+                </div>
+                {checkInBy ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 9, flexWrap: 'wrap' }}>
+                    <input
+                      type="date"
+                      value={checkInBy}
+                      min={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setCheckInBy(e.target.value)}
+                      style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                      Your work is saved now. Nobody hears anything until that morning.
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                    Everyone named gets their invite the moment you press save.
+                  </div>
+                )}
+              </div>
+
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(user
                     ? [
-                      'Save this. Your invites go out straight away.',
+                      checkInBy ? `Save this. Your invites go out on ${checkInBy}, not before.` : 'Save this. Your invites go out straight away.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
@@ -3571,6 +3636,7 @@ export function EntryChatPage() {
                   ))}
                 </div>
               </div>
+              </>
             )}
 
             {/**
