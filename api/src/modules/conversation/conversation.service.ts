@@ -100,6 +100,7 @@ import {
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
+import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -2713,6 +2714,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
 
     /*
+     * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
+     *
+     * The conversation gives nothing back until the report, which is read afterwards and alone. This
+     * is the first block that trades: they name a thing in the way, and the reply can tell them
+     * somebody else is waiting on the same thing and nobody owns it. Drawn only from handoffs that
+     * already render on the shared board, so it reveals nothing, and only on a shared ground.
+     * See what-the-room-already-knows.ts.
+     */
+    const roomKnows = await this.whatTheRoomAlreadyKnows(checkIn, latestMessage ?? '');
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2792,7 +2804,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, roomKnows, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2816,6 +2828,50 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
    * exist for the alignment feed only, and picks at most one.
    */
+  /**
+   * One true thing off the shared board, worth saying back in the turn they said it.
+   *
+   * Best effort in the strictest sense: a give-back must never be the reason somebody cannot get a
+   * reply, so every failure here is a silent empty string and the conversation carries on.
+   */
+  private async whatTheRoomAlreadyKnows(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!latestMessage.trim()) return '';
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { mode: true },
+      });
+      if (ground?.mode !== 'SHARED') return '';
+      const rows = await this.prisma.groundDependency.findMany({
+        where: {
+          groundId: checkIn.groundId,
+          clearedAt: null,
+          status: { in: ['WAITING', 'BLOCKING'] as any },
+          fromParticipantId: { not: checkIn.participantId },
+        },
+        select: {
+          what: true,
+          onParticipantId: true,
+          fromParticipant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+        take: 40,
+      });
+      const others = rows.map((r: any) => ({
+        what: r.what ?? '',
+        raisedBy: [r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
+          || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null),
+        owned: !!r.onParticipantId,
+      }));
+      return whatIsWorthSaying({ shared: true, theyJustSaid: latestMessage, others });
+    } catch (err: any) {
+      this.logger.warn(`Could not read what the room knows for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
   private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
     try {
       const rows = await this.prisma.patternDetection.findMany({
