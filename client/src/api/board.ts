@@ -2,7 +2,7 @@ import { apiClient } from './client'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
-  | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
+  | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
   | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
@@ -84,6 +84,14 @@ export type BoardPresent = {
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
   divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string }
+  /** The aims, the places and the things, added up across everybody. Null until a round has closed. */
+  whatTheRoomIsAbout?: {
+    aims: { aim: string; held: string[] }[]
+    places: { name: string; named: string[] }[]
+    things: { name: string; named: string[] }[]
+    readAtSession: number | null
+  } | null
+  whatTheRoomIsAboutNote?: string
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
   dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }

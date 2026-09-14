@@ -832,6 +832,18 @@ model Ground {
   /// which is the case that had no way to be said at all: it was all of them or none of them.
   overWhatsApp Boolean? @map("over_whatsapp")
 
+  /// WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, READ ONCE WHEN A ROUND CLOSES.
+  ///
+  /// Forty people each said what they were trying to achieve, where, and about what crop. All of it
+  /// sat in single sentences and nothing on the board added it up, so the one question the convener
+  /// had - where is the weight - could not be answered from the page.
+  ///
+  /// It lives here rather than being read on every board open for the same reason the number read
+  /// does: a board is opened many times a round by everybody on it, and this is one answer per
+  /// round. Null means it has not been read yet, which the board says plainly rather than hiding.
+  whatTheRoomIsAbout        Json? @map("what_the_room_is_about")
+  whatTheRoomIsAboutSession Int?  @map("what_the_room_is_about_session")
+
   timelineDays     Int       @map("timeline_days")
   /// DID THE LEAD CHOOSE THIS, OR DID WE.
   ///

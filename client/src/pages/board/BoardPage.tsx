@@ -235,6 +235,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     cascade: has('cascade') && !!b.cascade,
     hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
     divergence: has('divergence') && !!b.divergence,
+    /* The note stands in for the block before a round has closed, so either one is enough to show. */
+    whatTheRoomIsAbout: has('whatTheRoomIsAbout')
+      && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
+        || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
@@ -892,6 +896,65 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/* ---------------------------------------------- the work */}
         {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
+
+        {shown.whatTheRoomIsAbout && (
+          <>
+            <Sec title="What people are after, and where" src="from what everybody said" />
+            {b.whatTheRoomIsAboutNote && (
+              <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
+            )}
+            {b.whatTheRoomIsAbout && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14 }}>
+                {/*
+                  THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
+                  target, what each person is trying to do is the only thing there is to align on,
+                  and it was showing nowhere. The count beside each aim is how many people hold it,
+                  which is the whole point: an aim one person holds and an aim twenty hold are not
+                  the same fact about a room.
+                */}
+                {/* The aims run the full width; Card takes no style, so the span lives on a wrapper. */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                <Card pad={false}>
+                  <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                    What people are trying to do
+                  </div>
+                  <div style={{ padding: '2px 15px 12px' }}>
+                    {b.whatTheRoomIsAbout.aims.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said what they are after yet.</div>
+                    ) : b.whatTheRoomIsAbout.aims.map((a, i) => (
+                      <div key={a.aim} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{a.aim}</div>
+                          <Pill>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Pill>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{a.held.join(', ')}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                </div>
+                {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
+                  <Card key={label} pad={false}>
+                    <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{label}</div>
+                    <div style={{ padding: '2px 15px 12px' }}>
+                      {rows.length === 0 ? (
+                        <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody named one.</div>
+                      ) : rows.map((r, i) => (
+                        <div key={r.name} style={{ padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{r.name}</div>
+                            <Pill>{r.named.length}</Pill>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.named.join(', ')}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { aNameOrNothing } from './a-name-is-short';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent } from '../../common/events';
 import {
@@ -11,6 +12,13 @@ import {
   onlyWhatIsWorthOffering,
   type AReadNumber,
 } from './what-the-record-says-a-number-is';
+import {
+  WHAT_THE_ROOM_IS_ABOUT_PROMPT,
+  WHAT_THE_ROOM_IS_ABOUT_SCHEMA,
+  theLines,
+  onlyWhatHolds,
+  type WhatTheRoomIsAbout,
+} from './what-the-room-is-about';
 
 /**
  * WHEN A ROUND CLOSES, READ WHAT THE RECORD SAYS THE NUMBERS ARE AT.
@@ -34,6 +42,7 @@ export class BoardListener {
 
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
   async onRoundCompleted(e: RoundCompletedEvent) {
+    await this.readWhatTheRoomIsAbout(e);
     try {
       const targets = await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
@@ -87,6 +96,61 @@ export class BoardListener {
       }
     } catch (err: any) {
       this.logger.warn(`Reading the numbers off the record for ${e.groundId} failed: ${err?.message}`);
+    }
+  }
+
+  /**
+   * WHAT THE ROOM IS ABOUT, READ ONCE A ROUND.
+   *
+   * Everything anybody has said they are trying to do, everywhere they said they are doing it, and
+   * everything they said it about. Read across the WHOLE ground, not one round: an aim somebody
+   * stated in round one is still their aim in round four, and a board that dropped it every week
+   * would tell a convener the room had changed its mind when nobody had.
+   *
+   * BEST EFFORT. If this fails the board shows the rest of itself and says this part has not been
+   * read yet.
+   */
+  private async readWhatTheRoomIsAbout(e: RoundCompletedEvent) {
+    try {
+      const said = await this.prisma.recordEntry.findMany({
+        where: {
+          disputedAt: null,
+          participant: { groundId: e.groundId },
+          type: { in: ['SUCCESS_DEFINITION', 'INTENT', 'WORRY', 'ASK'] as any },
+        },
+        select: {
+          text: true,
+          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+      });
+      const lines = said
+        .map((s: any) => ({
+          text: cleanText(s.text),
+          /* THE SAME NAME THE BOARD PRINTS. A model answer keyed on anything else cannot be matched
+             back to a person, and `onlyWhatHolds` drops every row it cannot match. */
+          who: [s.participant?.user?.firstName, s.participant?.user?.lastName].filter(Boolean).join(' ').trim()
+            || aNameOrNothing(s.participant?.roleAsDescribed ?? null) || '',
+        }))
+        .filter((s: { text: string; who: string }) => s.text && s.who);
+      if (lines.length < 2) return;
+
+      const answer = await this.anthropic.extract<Partial<WhatTheRoomIsAbout>>(
+        WHAT_THE_ROOM_IS_ABOUT_PROMPT,
+        [{ role: 'user', content: theLines(lines) }],
+        WHAT_THE_ROOM_IS_ABOUT_SCHEMA,
+      );
+      const held = onlyWhatHolds(answer ?? null, new Set(lines.map((l: { who: string }) => l.who)));
+      if (!held.aims.length && !held.places.length && !held.things.length) return;
+
+      await this.prisma.ground.update({
+        where: { id: e.groundId },
+        data: { whatTheRoomIsAbout: held as any, whatTheRoomIsAboutSession: e.sessionNumber },
+      }).catch(() => undefined);
+      this.logger.log(
+        `Read ${held.aims.length} aim(s), ${held.places.length} place(s) and ${held.things.length} thing(s) for ground ${e.groundId}.`,
+      );
+    } catch (err: any) {
+      this.logger.warn(`Reading what the room is about for ${e.groundId} failed: ${err?.message}`);
     }
   }
 }

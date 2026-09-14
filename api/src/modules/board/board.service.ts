@@ -306,8 +306,16 @@ export class BoardService {
        already be in progress; the board said "session 2" and the header said "back to session 1".
        The round is the clock everywhere; a session ahead of it is upcoming, not current. */
     const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
-    const unfinished = checkIns.filter((c) => givers.has(c.participantId) && c.status !== CheckInStatus.COMPLETED).map((c) => c.sessionNumber);
-    const openRound = unfinished.length ? Math.min(...unfinished) : maxSession;
+    const mine = checkIns.filter((c) => givers.has(c.participantId));
+    /* A ROUND NOBODY HAS OPENED IS NOT THE OPEN ROUND. Next round's rows are written ahead of time,
+       all NOT_STARTED, so "the lowest unfinished session" was session 2 the moment session 1 closed.
+       Every tile then counted a session with nothing in it. Read live on a forty-person convening
+       where all forty had answered: thirty-six blockers on the record, and the board said "Blockers:
+       None, nobody named anything holding work up". So a session only counts as open once somebody
+       has touched it; until then the newest round somebody HAS touched is the one the board is about. */
+    const started = new Set(mine.filter((c) => c.status !== CheckInStatus.NOT_STARTED).map((c) => c.sessionNumber));
+    const unfinished = mine.filter((c) => c.status !== CheckInStatus.COMPLETED && started.has(c.sessionNumber)).map((c) => c.sessionNumber);
+    const openRound = unfinished.length ? Math.min(...unfinished) : (started.size ? Math.max(...started) : maxSession);
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
@@ -763,6 +771,26 @@ export class BoardService {
     if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
       out.objectivesPrompt =
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
+    }
+
+    /*
+     * WHAT THE ROOM IS ABOUT. Read when a round closes (board.listener.ts), served here as it was
+     * stored. Null is said out loud rather than rendered as an empty heading: "not read yet" and
+     * "nobody named a place" are different facts and a blank block cannot tell them apart.
+     */
+    if (has('whatTheRoomIsAbout')) {
+      const room = (ground as any).whatTheRoomIsAbout as { aims?: any[]; places?: any[]; things?: any[] } | null;
+      out.whatTheRoomIsAbout = room
+        ? {
+            aims: Array.isArray(room.aims) ? room.aims : [],
+            places: Array.isArray(room.places) ? room.places : [],
+            things: Array.isArray(room.things) ? room.things : [],
+            readAtSession: (ground as any).whatTheRoomIsAboutSession ?? null,
+          }
+        : null;
+      if (!room) {
+        out.whatTheRoomIsAboutNote = 'This is read when a round closes. Nothing has closed yet, so there is nothing to add up.';
+      }
     }
 
     if (has('quickRead')) {

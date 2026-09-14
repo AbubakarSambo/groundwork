@@ -160,6 +160,15 @@ export type BoardSection =
   | 'phaseSpine'
   | 'quickRead'
   | 'objectives'
+  /**
+   * THE AIMS, THE PLACES AND THE THINGS, ADDED UP ACROSS EVERYBODY. See what-the-room-is-about.ts.
+   *
+   * `objectives` is the targets a lead SET. This is what each person said they were trying to do,
+   * which on a board of forty people who set no targets between them is the whole picture and was
+   * showing nowhere. Families with `whoOwnsWhat` take it: a board that already says who holds what
+   * is a board where what they are each after is the next question.
+   */
+  | 'whatTheRoomIsAbout'
   | 'startingState'
   | 'divergence'
   | 'whoOwnsWhat'
@@ -190,7 +199,7 @@ export type BoardSection =
 export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.DELIVERY]: [
     'phaseSpine', 'quickRead', 'objectives', 'startingState', 'divergence',
-    'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
     'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
   /**
@@ -285,7 +294,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.AGREEMENT]: [
     'quickRead', 'objectives', 'startingState', 'divergence',
-    'whoOwnsWhat', 'dependencies', 'checkInGrid', 'decisions',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'decisions',
   ],
   [BoardFamily.SENSING]: [
     'quickRead',
@@ -297,7 +306,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'divergence',
     // Who owns each part of it, and who is waiting on whom to move. A recovery stalls on a person
     // far more often than on a plan.
-    'whoOwnsWhat',
+    'whatTheRoomIsAbout', 'whoOwnsWhat',
     'dependencies',
     'checkInGrid', 'contribution', 'patterns',
     // What got decided along the way, so a call made on day three is on the record on day ten.
@@ -328,7 +337,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
   [BoardFamily.RECURRING]: [
-    'quickRead', 'objectives', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
+    'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
     'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
 };
