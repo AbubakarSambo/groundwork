@@ -102,6 +102,7 @@ import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
+import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -2732,6 +2733,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const againstTheirNumber = await this.whereTheirNumberLeavesThem(checkIn, latestMessage ?? '');
 
     /*
+     * AND WHAT THEY HAVE ALREADY SAID ABOUT SOMEBODY THEY JUST NAMED, including whether that person
+     * knows. Nothing here crosses the wall: an expectation is written for the person it is about and
+     * published to them. See you-have-already-said-this-about-them.ts.
+     */
+    const alreadySaidAboutThem = await this.whatIsAlreadyOnSomebodyTheyNamed(checkIn, latestMessage ?? '');
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2811,7 +2819,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, roomKnows, againstTheirNumber, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, roomKnows, againstTheirNumber, alreadySaidAboutThem, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2904,6 +2912,41 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return whereThatLeavesThem(latestMessage, theirs as any);
     } catch (err: any) {
       this.logger.warn(`Could not read their targets for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * What this person has already put on somebody they just named again.
+   *
+   * Only expectations THIS person set, so nothing another party wrote is read, and only on a ground
+   * where the named person is a participant. Best effort: a give-back never blocks a reply.
+   */
+  private async whatIsAlreadyOnSomebodyTheyNamed(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!latestMessage.trim()) return '';
+      const rows = await this.prisma.personObjective.findMany({
+        where: { groundId: checkIn.groundId, participantId: { not: checkIn.participantId } },
+        select: {
+          text: true,
+          awareness: true,
+          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      });
+      const onThem = rows.map((r: any) => ({
+        name: [r.participant?.user?.firstName, r.participant?.user?.lastName].filter(Boolean).join(' ').trim()
+          || aNameOrNothing(r.participant?.roleAsDescribed ?? null) || '',
+        text: r.text ?? '',
+        awareness: r.awareness ?? null,
+      })).filter((r: { name: string }) => r.name);
+      return whatIsAlreadyOnThem(latestMessage, onThem);
+    } catch (err: any) {
+      this.logger.warn(`Could not read what is already on them for ${checkIn.id}: ${err?.message}`);
       return '';
     }
   }
