@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { Sec } from './kit'
 import type { EntryReport } from '@/api/entry'
+import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
 
 /**
  * THE REPORT AS THE PERSON SAW IT AT THE END OF THEIR SESSION.
@@ -20,7 +20,7 @@ import type { EntryReport } from '@/api/entry'
  * passes none of them and gets the reading without the controls.
  */
 function CardTitle({ children, weight = 600 }: { children: ReactNode; weight?: 600 | 700 }) {
-  return <div style={{ fontSize: 13, fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
+  return <div style={{ fontSize: 'var(--er-lead)', fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
 }
 
 export interface TheReportYouSawAtTheEndProps {
@@ -105,6 +105,39 @@ function everySectionCanBeAbsent(report: EntryReport): EntryReport {
   }
 }
 
+
+/**
+ * THE SIZES ARE VARIABLES SO A PHONE CAN MOVE THEM, AND NOTHING ELSE HERE MOVED.
+ *
+ * This is the report somebody reads at the end of the entry chat - the first thing a stranger ever
+ * sees, ten minutes after meeting the product, often with no account to come back to. It is frozen
+ * for that reason: a break here costs the person least able to recover from it.
+ *
+ * So this change is the narrowest one that fixes what was wrong. Read on a phone it was a wall:
+ * 12px body over five stacked cards, each with a 9px uppercase label above every paragraph, in
+ * boxes with 13px of padding inside boxes. Every number below was already in the file; each one is
+ * now a variable with its old value as the default, so the desktop rendering is byte-for-byte what
+ * it was, and the media query is the only thing that changes anything.
+ *
+ * NO STRUCTURE, NO DATA, NO LOGIC. Nothing was added, removed, reordered or re-fetched.
+ */
+const SIZES = `
+.gw-entry-report {
+  --er-lead: 13px; --er-body: 12px; --er-label: 9px;
+  --er-box: 11px 13px; --er-box-lg: 14px 16px; --er-box-sm: 7px 9px;
+  --er-gap: 16px; --er-gap-sm: 8px;
+}
+@media (max-width: 640px) {
+  .gw-entry-report {
+    --er-lead: 15.5px; --er-body: 14.5px; --er-label: 11px;
+    --er-box: 14px 15px; --er-box-lg: 16px; --er-box-sm: 11px 12px;
+    --er-gap: 22px; --er-gap-sm: 12px;
+  }
+  /* The line has to open up with the size or the longer measure reads as one block of grey. */
+  .gw-entry-report p, .gw-entry-report div { line-height: 1.6; }
+}
+`
+
 export function TheReportYouSawAtTheEnd({
   report: given,
   correctionSlot,
@@ -115,19 +148,25 @@ export function TheReportYouSawAtTheEnd({
   stands,
 }: TheReportYouSawAtTheEndProps) {
   const report = everySectionCanBeAbsent(given)
+  /* Numbered by what is DRAWN, the same rule the signed-in close follows: a block with nothing in
+     it is not shown, and fixed numbers would then skip. */
+  let step = 0
+  const next = () => (step += 1)
   return (
-    <>
+    <div className="gw-close gw-entry-report" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+        <style>{CLOSE_SHEET}</style>
+        <style>{SIZES}</style>
         {/* What we heard from you */}
-        <div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>What we heard from you</div>
+        <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
+            <div style={{ fontSize: 'var(--er-label)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>What we heard from you</div>
             {correctedNote && (
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
+              <div style={{ fontSize: 'var(--er-label)', color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
             )}
           </div>
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.whatGroundworkSaw}</p>
+          <p style={{ margin: 0, fontSize: 'var(--er-lead)', lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.whatGroundworkSaw}</p>
           {correctionSlot}
-        </div>
+        </div></div>
 
         {/*
           THE LADDER IS GONE. "Just started" here, "Your record is specific" two lines above it, and
@@ -136,41 +175,38 @@ export function TheReportYouSawAtTheEnd({
         */}
         {/* What's still open */}
         {report.areasRequiringAlignment.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <Sec title={`What's still open`} />
+          <Block n={next()} label="What's still open" note="what we noticed, and what to do">
             {report.areasRequiringAlignment.map((a, i) => (
-              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
+              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
-                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
-                <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
-                <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
-                <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
+                {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
+                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
+                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
+                <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
             ))}
-          </div>
+          </Block>
         )}
 
         {/* Clear from what this person said - not mutual agreement, nobody else has checked in yet. Not
             "your side": this is a team getting a read on something far more often than it is two
             people arguing, and side language turns an update into a case. */}
         {report.alignmentReached.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <Sec title="Clear from what you said" />
+          <Block n={next()} label="Clear from what you said" note="nobody else has answered yet">
             {report.alignmentReached.map((a, i) => (
-              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
+              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
+                {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
+                <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
               </div>
             ))}
-          </div>
+          </Block>
         )}
 
         {/* Suggested parties */}
         {report.suggestedParties && report.suggestedParties.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <Sec title="Recommended additions" />
-            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+          <Block n={next()} label="Recommended additions" note="who else this check-in needs">
+            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
+              <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>
               {report.suggestedParties.map((p, i) => {
@@ -179,22 +215,21 @@ export function TheReportYouSawAtTheEnd({
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.role}</CardTitle>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
+                    <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
                     {renderAdd?.(key, p.reason)}
                   </div>
                 </div>
                 )
               })}
             </div>
-          </div>
+          </Block>
         )}
 
         {/* Mentioned people */}
         {report.mentionedPeople && report.mentionedPeople.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <Sec title="People mentioned" />
-            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-paper)' }}>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+          <Block n={next()} label="People mentioned" note="you named them while you were talking">
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
+              <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 {/*
                   W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
                   This list and the invite screen below are the same queue with two
@@ -227,14 +262,14 @@ export function TheReportYouSawAtTheEnd({
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.name}</CardTitle>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
+                    <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                     {renderAdd?.(key, `${p.name} - ${p.context}`)}
                   </div>
                 </div>
                 )
               })}
             </div>
-          </div>
+          </Block>
         )}
 
         {/*
@@ -247,22 +282,21 @@ export function TheReportYouSawAtTheEnd({
           is dropped: both are still named and still described here.
         */}
         {report.alsoCameUp && report.alsoCameUp.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <Sec title="Also came up" />
-            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-paper)' }}>
+          <Block n={next()} label="Also came up" note="named, but not people to invite">
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               {report.alsoCameUpNote && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                   {report.alsoCameUpNote}
                 </div>
               )}
               {report.alsoCameUp.map((p, i) => (
                 <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                   <CardTitle>{p.name}</CardTitle>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
+                  <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
 
         {/*
@@ -271,21 +305,20 @@ export function TheReportYouSawAtTheEnd({
           boxes while the shared report on the same page listed two open items. Settled and still open
           come from the session report now; with nothing in either, one line says so.
         */}
-        <div style={{ marginBottom: 16 }}>
-          <Sec title="Where this leaves you" />
+        <Block n={next()} label="Where this leaves you" note="settled, and still open">
           {(stands?.settled.length || stands?.open.length)
             ? <div style={{ display: 'grid', gap: 6 }}>
-                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
-                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
+                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
+                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
               </div>
-            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
-          <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 8 }}>
+            : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
+          <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>
-        </div>
+        </Block>
 
         {/* Last, because it is about the check-in rather than about the session just finished. */}
-        {stillNeeded}
-    </>
+        {stillNeeded && <div className="gw-foot">{stillNeeded}</div>}
+    </div>
   )
 }

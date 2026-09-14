@@ -21,8 +21,14 @@ export default function RoundReportPage() {
       >
         &larr; All sessions
       </button>
+      {/*
+        NO GREY TEXT ON A GREY GROUND. This sat on the page background - 12px of #6B6560 on
+        #EDECEA - which is the thing the marketing page is praised for not doing. The report's own
+        title is inside the card below and says what this is for; this line is the one sentence
+        about the page, so it takes the body colour rather than the muted one.
+      */}
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>Session {n}</div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginBottom: 18 }}>
         What everyone said, for this session. It never quotes anyone.
       </div>
       {!!id && Number.isFinite(n) && <TheSessionsReport groundId={id} sessionNumber={n} />}

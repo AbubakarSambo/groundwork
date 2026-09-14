@@ -60,6 +60,23 @@ api/journey/org-sim/out-verify/
 # Journey drivers written to run a whole setup end to end. Scratch, not product.
 api/journey/
 
+# EXCEPT THE TWO THAT DEFINE DONE, which are not scratch and were one `rm` from gone.
+#
+# `the-real-gate` drives a lead's actual path - entry chat, a workplan into Context, targets, three
+# rounds, the close - and prints what a person reads at each stage. It is the acceptance standard:
+# "the conversation has to be worthwhile and make sense from start to close, the reports have to
+# make sense, and the lead has to feel they are tracking what they need accurately." It found five
+# defects that 1,715 green structural checks could not see.
+#
+# `two-scenarios` is the regression net underneath it: every situation, every surface, after every
+# round.
+#
+# The last thing this repo lost to an ignore rule was the report templates - nine surfaces had been
+# built against a file nobody could open any more, and rebuilding it from memory took a night. A
+# thing the team's standard depends on does not live outside the repo.
+!api/journey/the-real-gate/
+!api/journey/two-scenarios/
+
 # Audit and fix-plan working notes. Written while reading the product, kept on disk, never in a PR:
 # they are how the work was decided, not the work. The product docs (api-terms, edge-protection)
 # stay tracked - those are things the product itself points at.

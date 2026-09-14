@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -24,6 +25,9 @@ import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageE
 import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
+import { howACheckInIsGoing } from './how-a-check-in-is-going';
+import { totalSessionsFor } from './session-count';
+import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
@@ -388,7 +392,8 @@ export class GroundsService {
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        workingDays: workingDaysOf(dto.workingDays),
+        startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
         /**
          * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
@@ -496,7 +501,7 @@ export class GroundsService {
           /* Everyone does a first check-in, managing-only or not. What managingOnly changes is that no later
              session is created for them (see createNextIfAbsent). */
           isSetup: false,
-          availableFrom: dto.startsAt ? new Date(dto.startsAt) : null,
+          availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         },
       });
 
@@ -592,7 +597,8 @@ export class GroundsService {
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          workingDays: workingDaysOf(dto.workingDays),
+          startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
           endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           /* OPEN FROM THE START. There is no lead page any more (10 Sep 2026): nobody sets a check-in
              up for somebody else to confirm. A ground made through the API with people on it waits
@@ -616,7 +622,7 @@ export class GroundsService {
         },
       });
       await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays) },
       });
 
       // Pre-added participants (e.g. the whole cohort), created alongside the
@@ -1031,6 +1037,13 @@ export class GroundsService {
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
         report: { select: { releasedAt: true, agreements: true, divergences: true } },
+        /*
+         * THE LATEST ROUND'S FINDING, for the card. One row per ground, newest first: the list is
+         * read often and a whole history here would be paid for on every load for a single line.
+         */
+        reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        /* For the at-a-glance read. Counted the way the board counts it - see the module. */
+        dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
         reportActivations: { select: { participantId: true, status: true } },
       },
     });
@@ -1087,6 +1100,11 @@ export class GroundsService {
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
             },
             report: { select: { releasedAt: true, agreements: true, divergences: true } },
+            /* Must match the sibling query above: both feed the same list, and a card fed by this
+               one would fall back to the brief for ever while its twin showed the finding. */
+            reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+            /* Same as the sibling query: both feed the same card. */
+            dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
             reportActivations: { select: { participantId: true, status: true } },
           },
         });
@@ -1147,13 +1165,59 @@ export class GroundsService {
          * the ground page uses. Counting check-in rows instead reads as double on a two-party
          * ground, which is the bug this file already carries a note about ("24 of 12").
          */
-        const roundsDone = (() => {
-          const numbers = [...new Set(sessions.map(ci => ci.sessionNumber))];
-          return numbers.filter(n =>
-            sessions.filter(ci => ci.sessionNumber === n).every(ci => ci.status === CheckInStatus.COMPLETED),
-          ).length;
-        })();
-        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName };
+        /*
+         * HOW IT IS GOING, FROM THE ONE PLACE THAT WORKS IT OUT. The board's header asks the same
+         * two questions under the same summary, and computing them twice is how two screens come to
+         * disagree about one week. See how-a-check-in-is-going.ts - the arithmetic there is this
+         * code, moved, not rewritten.
+         */
+        const going = howACheckInIsGoing({
+          checkIns: checkIns as any,
+          participants: (rest as any).participants ?? [],
+          dependencies: ((rest as any).dependencies ?? []) as any,
+          timelineDays: (rest as any).timelineDays ?? null,
+          cadence: (rest as any).cadence ?? null,
+          sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+        });
+        const roundsDone = going.glance.progress.roundsDone;
+        /*
+         * WHAT THE LAST ROUND FOUND, which is what the card leads with. The brief is the fallback
+         * and is still on the payload: a check-in nobody has finished a round on has no finding and
+         * still has to say what it is for.
+         */
+        const latestFinding = ((rest as any).reportRounds?.[0]?.finding as string | null) ?? null;
+        /*
+         * HOW THINGS ARE GOING, IN TWO OR THREE PLAIN SENTENCES.
+         *
+         * "This should be 2 sentences or 3 on how things are going, in clear laymans terms - it
+         * carries a simple summary of the session."
+         *
+         * It already exists: the shared picture is exactly that, written for the round and kept
+         * with it. The card was showing the BRIEF - the sentence somebody set the check-in up with -
+         * so every goal check-in read the same, and then one ranked line, which is a headline rather
+         * than a summary.
+         *
+         * Cut to three sentences here rather than on the card, because a card cannot tell where a
+         * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
+         * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
+         */
+        const latestSummary = going.latestSummary;
+        /*
+         * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
+         *
+         * Eight of the twenty-two situations have none - the sensing family and the one-off - and
+         * "no sections means no board" is worked out from a map that lives here. A switcher that
+         * let somebody pick a board and then told them there was not one would be offering a door
+         * into a wall, and the only way for the client to filter them itself is a second copy of
+         * that map. There are enough of those.
+         */
+        const hasBoard = boardRendersFor((rest as any).scenario);
+        /*
+         * WHAT A MANAGER WANTS OFF THE CARD: how far through, and what is in the way. See
+         * what-a-manager-needs-at-a-glance for why the blockers are counted there rather than here.
+         */
+        const glance = going.glance;
+        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -1175,8 +1239,10 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
-        /* For `guestIn`: whose workspace this check-in belongs to. */
-        organization: { select: { name: true } },
+        /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
+           number, which is what the "where people answer this" setting needs - riding along on a
+           read that already has the organisation in hand, rather than a second query. */
+        organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1222,8 +1288,10 @@ export class GroundsService {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
             /* Same as the primary read: this is the cross-org path, and it is the one where the
-               name is actually needed. */
-            organization: { select: { name: true } },
+               name is actually needed. The WhatsApp connection rides along for the same reason it
+               does above - and it has to be here too, or a cross-org lead is the one person who
+               cannot see the setting. */
+            organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -1421,6 +1489,9 @@ export class GroundsService {
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg(viewer, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
+
+    /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
+    const orgHasWhatsApp = !!(ground as any).organization?.whatsappConnection?.enabled;
 
     // CAN THE PARTIES SEE EACH OTHER AT ALL?
     //
@@ -1688,6 +1759,14 @@ export class GroundsService {
       peersVisibleEffective: peersVisible,
       peersDefaultVisible: !evaluative,
       /*
+       * AND THE TWO THAT HAD NO WAY IN. Both were read by the board and the conversation and
+       * travelled to nobody, so a control for either would have read its own default forever and
+       * silently shown "off" whatever was stored. Named rather than spread, like everything else
+       * on this payload.
+       */
+      whoSeesTargets: (ground as any).whoSeesTargets ?? 'THEIR_OWN',
+      expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
+      /*
        * WHO THE VIEWER IS TO THIS CHECK-IN, said by the side that enforces it. The client rebuilt
        * these two from initiatorId and role in three places and disagreed with the server on the
        * edges - an org admin offered a control only the initiator may use (fix plan A12). Two plain
@@ -1696,6 +1775,16 @@ export class GroundsService {
        */
       viewerIsInitiator,
       viewerRunsThisGround,
+      /*
+       * WHETHER THERE IS A WHATSAPP NUMBER TO ANSWER ON AT ALL.
+       *
+       * The setting on this ground is only answerable where the organisation has connected one, and
+       * the setup page cannot know that on its own - the connection is an ADMIN read, and the lead
+       * setting this up is often not an org admin. So the fact travels with the ground, and the
+       * control appears only where it means something. A toggle over nothing is a door into a wall,
+       * which is the pattern this codebase has caught three times.
+       */
+      orgHasWhatsApp,
       alignment,
       daysLeft,
       brief,
@@ -1858,8 +1947,11 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
 
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2022,7 +2114,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
@@ -2040,7 +2132,10 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2113,6 +2208,28 @@ export class GroundsService {
     }
 
     /*
+     * THE MEASURES, WRITTEN ONLY ON A YES.
+     *
+     * A document does not have to set the bar, and it does not set it here either: the lead reads
+     * a proposal that names every measure it took and whether a number was found for each, and
+     * says yes. A target written without that is a bar nobody set, appearing on a board people are
+     * then read against - and unlike a wrong timeline it cannot be recognised as wrong by looking
+     * at it, because a plausible number looks exactly like an agreed one.
+     *
+     * `sortOrder` keeps the order they were named in: that is usually the order they matter in,
+     * and re-sorting reads as the product having an opinion about which comes first.
+     */
+    if (proposal.kind === 'targets') {
+      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
+      await this.prisma.groundObjective.createMany({
+        data: proposal.targets.map((t, i) => ({
+          groundId, name: t.name, target: t.target, sortOrder: existing + i,
+        })),
+      });
+      return { changed: 'targets', say: proposal.say };
+    }
+
+    /*
      * WHAT DOING WELL LOOKS LIKE GOES WHERE WHAT DOING WELL LOOKS LIKE LIVES.
      *
      * This wrote `ground.brief`. The chat says "I will record that as what doing well looks like"
@@ -2128,6 +2245,11 @@ export class GroundsService {
      * effort toward the old one stays real and nobody is retroactively behind. Conditions carry
      * forward untouched - restating the goal is not a claim about them.
      */
+    /* An explicit branch rather than the last thing the method falls through to. It was the only
+       kind left when there were four; with five it has to say which one it is. */
+    if (proposal.kind !== 'success') {
+      throw new BadRequestException('That one is not something this conversation changes on its own.');
+    }
     const latestBaseline = await this.prisma.groundBaseline.findFirst({
       where: { groundId },
       orderBy: { version: 'desc' },
@@ -2248,6 +2370,90 @@ export class GroundsService {
    * do, the default is by kind of ground: hidden where the period decides
    * something about a person, shown where it does not.
    */
+  /**
+   * TWO SETTINGS THAT EXISTED, WERE READ, AND COULD NOT BE SET BY ANYBODY.
+   *
+   * `whoSeesTargets` is read by the board and by the conversation. `expectThemToUnblock` is read by
+   * the conversation and decides whether a check-in asks what somebody actually tried before
+   * recording a blocker. Both had a default, both had a careful note on the column explaining when
+   * the other value is right, and nothing in the product wrote either one - so the note described a
+   * choice nobody could make.
+   *
+   * It is the same shape as `peersVisibleToEachOther`, which sat in exactly this state until it was
+   * found, and the same shape as the target form that was hidden until a target existed. Three in
+   * one codebase means the gap is systematic rather than unlucky: a column, a reader, and no writer
+   * compiles clean and passes everything.
+   *
+   * Same permission as its neighbours: the lead of this check-in, or an admin in this organisation.
+   */
+  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException(
+        'Only the lead of this check-in, or an admin in this organisation, can change this.',
+      );
+    }
+  }
+
+  /** Whether people on this check-in see each other's numbers, or only their own. */
+  async setWhoSeesTargets(groundId: string, requestingUserId: string, everybody: boolean) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { whoSeesTargets: everybody ? 'EVERYBODY' : 'THEIR_OWN' },
+      select: { id: true, whoSeesTargets: true },
+    });
+  }
+
+  /**
+   * WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP.
+   *
+   * Only answerable where the organisation has a number of its own, because otherwise there is
+   * nothing to answer on - and a setting that can be turned on with nothing behind it is a door
+   * into a wall. Null puts it back to following the organisation.
+   */
+  async setOverWhatsApp(groundId: string, requestingUserId: string, over: boolean | null) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    if (over === true) {
+      const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+      const connected = ground
+        ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } })
+        : null;
+      if (!connected?.enabled) {
+        throw new BadRequestException('This organisation has no WhatsApp number connected yet. Connect one on the Connect page first.');
+      }
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { overWhatsApp: over },
+      select: { id: true, overWhatsApp: true },
+    });
+  }
+
+  /**
+   * Whether being blocked is expected to come with having tried.
+   *
+   * On by default and right most of the time. Off for the cases the column names: a cohort of new
+   * starters with no standing to chase anybody, an external party who cannot escalate inside
+   * somebody else's company, a crisis check-in where the point is to hear what happened.
+   */
+  async setExpectThemToUnblock(groundId: string, requestingUserId: string, expect: boolean) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { expectThemToUnblock: expect },
+      select: { id: true, expectThemToUnblock: true },
+    });
+  }
+
   async setPeerVisibility(groundId: string, requestingUserId: string, visible: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -3156,6 +3362,18 @@ export class GroundsService {
   }
 
   /** A user's department is on the Person linked to them, when there is one. Null for most of a roster, and that is normal. */
+  /**
+   * THE FIRST CHECK-IN LANDS ON A DAY THEY WORK, LIKE EVERY ONE AFTER IT.
+   *
+   * `startsAt` is the one date a person types rather than the product computing it, and a date
+   * picker will happily hand back a Sunday. Rolling it forward here means the rule holds for the
+   * first session as well as the recurring ones - otherwise a weekdays-only ground still opens on
+   * a weekend exactly once, on the day it matters most.
+   */
+  private theFirstDayTheyWork(startsAt: Date | null, workingDays: number[] | null | undefined): Date | null {
+    return startsAt ? theNextDayTheyWork(startsAt, workingDays ?? []) : null;
+  }
+
   private async departmentOf(userId: string, organizationId: string): Promise<string | null> {
     const person = await this.prisma.person.findFirst({ where: { linkedUserId: userId, organizationId }, select: { department: true } });
     return person?.department?.trim() || null;
@@ -3529,7 +3747,7 @@ export class GroundsService {
     if (dto.startsAt !== undefined) {
       await this.prisma.checkIn.updateMany({
         where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-        data: { availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, (ground as any)?.workingDays) },
       });
     }
 

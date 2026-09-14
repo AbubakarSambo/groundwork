@@ -12,6 +12,9 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
+import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
+import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
@@ -38,6 +41,11 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { whatTheyCouldTry } from './what-you-could-try-next';
+import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
+import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
+import { totalSessionsFor } from '../grounds/session-count';
+import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -344,7 +352,13 @@ Do not say "party" or "parties" in anything the reader sees. Say the person's la
 6. LABEL INFERENCES, AND THE TEST IS WHETHER SOMEBODY SAID IT. An inference is a claim YOU concluded that no participant stated in their own account: something you read across two accounts, filled in from context, or drew out as an implication. A claim somebody actually made is not an inference even when you have put it in your own words - rewording what a person said does not make it yours. List every inference in the inferences array with its id, text, participantLabel and reason, where text is the sentence as it appears in the report. Leave the array empty only if every claim in the report traces back to something a participant actually said.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
 8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
-9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
+9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is NOT themselves a party with their own account on this ground - name them in hiddenContributors with the evidence.
+
+NOBODY ON THE PARTY ROSTER IS EVER A HIDDEN CONTRIBUTOR. Not by name, and not as "the initiator", "the lead", "the manager", "party A" or "participant B". Run over every report this has ever produced, half of what came back named somebody sitting in the check-in - which is the read looking at the people in front of it and calling them absent. If the only person you can point at is on the roster, return nothing.
+
+NEVER QUOTE ANYBODY IN THE EVIDENCE. Say what they were referenced doing, in your own words, in one sentence. A quotation here is attached to a NAME, which is worse than one attached to a role, and it is dropped before anybody reads it.
+
+AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply, or what a handover suggests must exist, you are inventing a person. "Implying", "suggests" and "presumably" are the words that give it away. Nothing is the common and correct answer.
 10. FLAG CONCERN PATTERNS FACTUALLY, NEVER AS ACCUSATION. If the record shows one party's follow-through, commitments, or contribution is notably thinner than other parties' on the same ground, note it in concernFlags as a plain factual observation about the record - not a judgement of the person. Do not speculate about motive.
 11. NAME THE CAUSE OF LOW OR HIGH SPECIFICITY WHEN INFERABLE. If a party's specificity is notably low or high, use specificityCauses to say why if the record supports an inference: a behavioral pattern, a misunderstanding, an adversarial stance, "declined_by_choice" if the record shows an explicit, stated decline to answer (a refusal is a choice, never file it as adversarial or unclear), or "unclear" if the record does not support a specific cause.
 12. NEVER INVENT PARTY COUNTS OR ROLES. The PARTY ROSTER at the top of this corpus is the exhaustive, exact list of who is on this ground - use its exact count and exact labels only. Never state a number of parties, an "other parties" count, or a role/title/affiliation (e.g. "founder", "funders", "the board") that does not appear verbatim in the roster. If you are unsure how many parties are missing or who they are, use the roster's own wording rather than describing them yourself.
@@ -820,7 +834,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // absent parties misrepresented, and actionable commitments buried.
     // The leadership-pattern block is generated FROM the role map, so adding or
     // changing a pattern changes what the synthesis looks for. Pinned by a test.
-    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE;
+    /* Which situation this is, and where in the run - a cue, from the same table the conversation
+       reads. See what-situation-this-report-is-about for why the questions were interchangeable. */
+    /* Optional-chained the way the rest of this codebase reaches a model a test double may not
+       carry: a synthesis must not fall over because a fixture has no checkIn.aggregate. Round one
+       is the safe default - it says "nothing earlier to compare against", which is true of any
+       round the product cannot place. */
+    const roundNow = await (this.prisma.checkIn?.aggregate?.({
+      where: { participant: { groundId }, isSetup: false },
+      _max: { sessionNumber: true },
+    }) ?? Promise.resolve(null))
+      .then((r: any) => r?._max?.sessionNumber ?? 1)
+      .catch(() => 1);
+    const theSituation = whatSituationThisIsAbout(
+      (ground as any).scenario,
+      roundNow,
+      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+    );
+    const systemPrompt = synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "");
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -1807,7 +1838,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         sharedPicture: result.sharedPicture,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
-        centralQuestion: result.centralQuestion,
+        centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         /**
          * PRIVATE GUIDES SURVIVE A RE-SYNTHESIS.
          *
@@ -1840,7 +1871,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         sharedPicture: result.sharedPicture,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
-        centralQuestion: result.centralQuestion,
+        centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
         // Carry the private guides across. See the note on the create branch:
         // this write is what destroyed them on every session after the first.
         engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
@@ -1873,7 +1904,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       sharedPicture: result.sharedPicture,
       agreements: result.agreements,
       divergences: result.divergences,
-      centralQuestion: result.centralQuestion,
+      centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
     }).catch((err: any) =>
       this.logger.warn(`Keeping the round for ground ${groundId} failed: ${err.message}`),
     );
@@ -2201,6 +2232,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const shape = theSessionReport({
       sessionNumber,
+      /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
+         the rhythm. Null where either is unset, so the header omits the position rather than
+         inventing a denominator. */
+      plannedSessions: (() => {
+        const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
+        const days = (ground as any).timelineDays;
+        return step && days ? Math.max(1, Math.floor(days / step)) : null;
+      })(),
       closed: !!snapshot,
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
       divergences: (snapshot?.divergences ?? ground.report?.divergences ?? []) as unknown[],
@@ -2357,6 +2396,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })),
     });
 
+    /*
+     * WHAT THIS SITS UNDER, IF ANYTHING SITS ABOVE IT.
+     *
+     * The same read the board runs, on the same page as the objective it qualifies. A cascade is a
+     * fact about the objective rather than a section of its own, so it travels beside
+     * `againstSuccess` and renders above it: a reader who does not know what this work is FOR cannot
+     * read a single line of movement underneath it correctly.
+     *
+     * Evidence only - the situation picked at setup never carries this on its own. See
+     * is-this-a-cascade.ts for why, and for why the no answer is still worth printing.
+     */
+    /* Fetched rather than read off `ground`: this query selects neither the scenario nor the
+       targets, and reading an undefined off it would silently answer "no cascade" forever. */
+    const forCascade = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, objectives: { select: { name: true } } },
+    });
+    const cascade = forCascade
+      ? isThisACascade({
+        scenario: forCascade.scenario,
+        objectiveNames: forCascade.objectives.map((o) => o.name),
+        importedWithParents: [],
+        entries: everyEntrySoFar.map((e) => ({ participantId: e.participantId, text: cleanText(e.text) })),
+      })
+      : null;
+
     const window = await this.correctionWindowDays();
     const canCorrect = whetherItCanStillBeCorrected({
       releasedAt: (ground.report?.releasedAt as Date | null) ?? null,
@@ -2441,6 +2506,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     return {
       ...wordedShape,
       againstSuccess,
+      cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
       myTimeframe: me ? (entries.filter((e) => e.participantId === me.id && e.type === RecordEntryType.TIMEFRAME).map((e) => cleanText(e.text)).pop() ?? null) : null,
@@ -2570,6 +2636,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
             on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
             onIsPerson: !!d.onParticipantId,
             what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
+            /* Whether they named the thing: the model's answer where we have it, the word-list rule
+               on the rows written before that column existed. The finding's sentence branches on it. */
+            named: theyNamedWhatTheyAreWaitingOn(d),
           })),
           settled: shape.whereThingsStand.settled,
           open: shape.whereThingsStand.open,
@@ -2589,8 +2658,49 @@ Close the report by framing - neutrally, without recommending one - the choice n
            the settled-and-open section already carry. */
         const picture = drafts.map((d) => ({ key: d.key, text: worded[d.key] ?? d.text }));
         const findingKey = pickTheFinding(drafts.map((d) => d.key));
+        /**
+         * WHEN THIS WOULD HAVE COME UP ON ITS OWN.
+         *
+         * Under the finding and nowhere else: on its own it is a remark about a calendar, and under
+         * the thing it is about it is the reason that thing matters now rather than later.
+         *
+         * THE THREE SITUATIONS THAT GET NOTHING are not special cases bolted on here - they are one
+         * condition, `thereIsALater`, asked once. A one-off read has no next occasion by design. A
+         * run on its last session has none left. And a shock has already surfaced, which is why the
+         * check-in exists at all, so a sentence about when it would have surfaced is nonsense.
+         *
+         * The earliest stated due date across the measures, because the first one to fall due is
+         * the first time anybody looks. Never a date nobody stated.
+         */
+        const soonestDue = ((ground as any).objectives ?? [])
+          .map((o: any) => o.dueDate ?? null)
+          .filter((d: any): d is Date => !!d)
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
+        const wouldHaveSurfaced = whenThisWouldHaveSurfaced({
+          measure: (ground as any).objectives?.[0]?.name ?? null,
+          dueOn: soonestDue,
+          thisSession: sessionNumber,
+          /* How many this run holds, from the length and the rhythm - the same arithmetic the
+             chat composer does when it says "session 3 of 6". Null where either is unset, which
+             makes the read fall silent rather than guess at a last session. */
+          plannedSessions: (() => {
+            const step = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 }[(ground as any).cadence as string];
+            const days = (ground as any).timelineDays;
+            return step && days ? Math.max(1, Math.floor(days / step)) : null;
+          })(),
+          thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
+            ? false
+            : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
+              ? false
+              : true,
+        });
         const finding = findingKey
-          ? { key: findingKey, text: picture.find((l) => l.key === findingKey)!.text, basis: picture.find((l) => l.key === 'basis')?.text ?? null }
+          ? {
+            key: findingKey,
+            text: picture.find((l) => l.key === findingKey)!.text,
+            basis: picture.find((l) => l.key === 'basis')?.text ?? null,
+            wouldHaveSurfaced: wouldHaveSurfaced?.say ?? null,
+          }
           : null;
         return {
           /* One claim per line, kept as lines: joined into a paragraph it read as a wall of prose. */
@@ -3679,6 +3789,92 @@ happened, and what is in the way.`;
     );
   }
 
+  /**
+   * THE LINES TAKEN FROM WHAT THIS PERSON SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
+   *
+   * Theirs alone, so it is not gated on the shared report going out. It was: the pre-release branch
+   * of `get` returned a shape with no myRows at all, and a report is released by the lead after
+   * everybody has answered - so at the exact moment the close card exists for, somebody finishing
+   * their own check-in, its two main blocks were structurally empty. Watched on a live board: six
+   * extracted entries including a worry and an ask, and a card showing neither.
+   *
+   * Nothing here crosses a wall. These are the reader's own words, read back to the reader.
+   */
+  /**
+   * WHAT THEY COULD TRY, ON THEIR OWN HALF, BESIDE THE BLOCKER IT BELONGS TO.
+   *
+   * Sits next to `theirOwnRows` because it answers to the same rule: this is the person's own half
+   * and it does not wait on anybody else finishing. See what-you-could-try-next for why it is
+   * computed rather than asked of the model.
+   */
+  private async whatTheyCouldTryNext(groundId: string, participantId: string | null | undefined) {
+    if (!participantId) return [];
+    const ground = await (this.prisma.ground?.findUnique?.({
+      where: { id: groundId },
+      select: { expectThemToUnblock: true },
+    }) ?? Promise.resolve(null as any))?.catch?.(() => null) ?? null;
+    /* Default TRUE, matching the column: a check-in that cannot be read still coaches. */
+    const expects = ground?.expectThemToUnblock !== false;
+
+    const mine = await (this.prisma.groundDependency?.findMany?.({
+      where: { groundId, fromParticipantId: participantId, status: { in: ['BLOCKING', 'WAITING'] } },
+      /*
+       * `onLabel` is the name as the record captured it, which is what the person themselves said -
+       * "Amina", "finance". Where it names a team rather than a person, `waysThrough` opens with
+       * "find out who owns this by name", which is exactly the right first move.
+       */
+      select: { id: true, what: true, onLabel: true, createdAt: true, triedSaid: true, escalatedAt: true },
+    }) ?? Promise.resolve([] as any[]))?.catch?.(() => []) ?? [];
+
+    /*
+     * THE SAME COLLAPSE THE BOARD DOES, BECAUSE THE ADVICE QUOTED THE STALE ROW.
+     *
+     * One live run recorded "a specific request" and "the finance dependency" as two blockers on
+     * one person against one owner. The board showed two, and the ways through were drawn from the
+     * older - so somebody with one problem was handed two lists, the first about a row they would
+     * not recognise. The board deduped on read for exactly this reason and this path did not.
+     */
+    const theirs = oneBlockerPerThingWaitedOn(
+      (mine as any[]).map((d) => ({ ...d, fromParticipantId: participantId })) as any,
+    ) as any[];
+
+    const day = 24 * 60 * 60 * 1000;
+    return whatTheyCouldTry(
+      theirs.map((d) => ({
+        id: d.id,
+        what: d.what,
+        /* Only a resolved person is somebody you can be waiting on - a team cannot answer an email. */
+        owner: d.onLabel ?? null,
+        days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / day)),
+        tried: (d.escalatedAt ? 'escalated' : (d.triedSaid ?? 'nothing')) as any,
+        /*
+         * Nothing stores a chase date on a dependency - `chaseBy` exists on Standing and on no
+         * column - so this is null and `waysThrough` keeps offering "put a date on it in writing",
+         * which is the right thing to offer somebody who has not got one.
+         */
+        chaseBy: null,
+      })),
+      expects,
+    );
+  }
+
+  private async theirOwnRows(participantId: string | null | undefined) {
+    if (!participantId) return [];
+    /* Optional-chained like its neighbours: a caller whose prisma double stubs only what it needs
+       must get an empty list, not a crash inside a report it was not asking about. */
+    return (this.prisma.recordEntry?.findMany?.({
+        where: { participantId },
+        orderBy: [{ createdAt: 'asc' }],
+        select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
+      }) ?? Promise.resolve([] as any[]))
+      .then((rows: any[]) => rows.map((r) => ({
+        id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
+        documented: !r.recallBased, documentSays: r.documentSays ?? null,
+        checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
+      })))
+      .catch(() => [] as any[]);
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -3741,7 +3937,7 @@ happened, and what is in the way.`;
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
       );
-      // This party's own solo artifact ("Your private record shows:") is generated
+      // This party's own solo artifact ("What you shared:") is generated
       // as soon as their own check-in completes, but was only ever attached to the
       // response after the FINAL release - so a participant who finished before the
       // other party had no way to see their own private record at all in the
@@ -3779,6 +3975,9 @@ happened, and what is in the way.`;
           saying:
             'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
           soloArtifact,
+          /* Their own rows, which do not wait on a release: see theirOwnRows. */
+          myRows: await this.theirOwnRows(participant?.id),
+          couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
           sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         };
@@ -3790,6 +3989,8 @@ happened, and what is in the way.`;
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
+        myRows: await this.theirOwnRows(participant?.id),
+        couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
         /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
@@ -3918,23 +4119,8 @@ happened, and what is in the way.`;
        * their own half, labelled as what it is. Disputed rows are returned too, so the page can show
        * the dispute; every read that COUNTS rows filters them out.
        */
-      myRows: participant
-        ? await Promise.resolve()
-            /* Started inside a promise, so a client without this table rejects instead of throwing
-               synchronously while the object is being built. Same shape as myOwnSoftSpots. */
-            .then(() => this.prisma.recordEntry.findMany({
-              where: { participantId: participant.id },
-              orderBy: [{ createdAt: 'asc' }],
-              select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
-            }))
-            .then((rows) => rows.map((r) => ({
-              id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
-              documented: !r.recallBased, documentSays: r.documentSays ?? null,
-              checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
-            })))
-            .catch(() => [])
-        : [],
-      /* The reader's own thin spots, with the fix for each. Never anybody else's. */
+      myRows: await this.theirOwnRows(participant?.id),
+      couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
       mySoftSpots: participant
         ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
         : [],

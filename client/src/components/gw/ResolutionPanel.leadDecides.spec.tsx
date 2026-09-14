@@ -102,11 +102,11 @@ describe('what the lead sees on the same ground', () => {
     expect(await screen.findByText('This is my answer')).toBeTruthy()
   })
 
-  it('is told it is theirs to decide, and that the accounts stand either way', async () => {
+  it('is told it is theirs to decide, and that what people shared stands either way', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(state({ viewerIsLead: true }))
     renderPanel()
     expect(await screen.findByText(/yours to decide/i)).toBeTruthy()
-    expect(screen.getByText(/accounts stay on the record whichever way you go/i)).toBeTruthy()
+    expect(screen.getByText(/what each person shared stays whichever way you go/i)).toBeTruthy()
   })
 })
 

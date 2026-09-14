@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
+import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -10,6 +10,10 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
 import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
+import { theWordsForPickingASituation } from '@/pages/grounds/whose-situation-is-it'
+
+/* One pair of sentences for the freeform card, shared with the setup step. */
+const THE_WORDS = theWordsForPickingASituation()
 import { SituationCard } from '@/components/gw/SituationCard'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,6 +37,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, WEEKDAYS, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
@@ -493,9 +498,8 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'ROLE_HANDOVER',
     label: SCENARIO_LABELS.ROLE_HANDOVER,
-    detail: 'Get what is outstanding, what is fragile and who relies on the role written down while the person leaving is still here.',
+    detail: 'Help someone take over a role without losing important context or work.',
     message: 'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
-    timelineHint: 'typically 30 days',
     examples: [
       'Someone is leaving in four weeks and their replacement has already started.',
       'A role is moving between two people and nobody has written down what the first one was carrying.',
@@ -505,21 +509,20 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'CONTRACT_REVIEW',
     label: SCENARIO_LABELS.CONTRACT_REVIEW,
-    detail: 'Each side says on its own what it thinks the agreement means, before anybody signs it.',
+    detail: 'Make sure the people involved understand and are comfortable with an agreement.',
     message: 'We are about to sign an agreement and I want both sides to say what they think it means before we do.',
-    timelineHint: 'typically 60 days',
     examples: [
       'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
       'A partnership you are about to sign with somebody you would rather not fall out with.',
     ],
   },
   {
-    group: 'planning',
+    /* A monthly read on an agreement already signed and running is a read, not a plan. */
+    group: 'reading',
     scenario: 'IMPLEMENTATION_TRACKING',
     label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
-    detail: 'A quiet monthly read on an agreement that is running, that mostly says it is running fine.',
+    detail: 'Understand how an agreement is working in practice.',
     message: 'We have an agreement that has been running for a while and nobody has checked whether what we are doing still matches it.',
-    timelineHint: 'typically a year',
     examples: [
       'A revenue share where the reported figure and the filed figure have never been put side by side.',
       'A relationship that is fine, where you would like to be able to prove it was fine.',
@@ -529,9 +532,8 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'NEW_HIRE',
     label: SCENARIO_LABELS.NEW_HIRE,
-    detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
+    detail: 'Help a new team member settle in, understand their role, and surface what they need.',
     message: 'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
-    timelineHint: 'typically 90 days',
     examples: [
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
@@ -541,9 +543,8 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'NEW_PROJECT',
     label: SCENARIO_LABELS.NEW_PROJECT,
-    detail: 'Line everyone up on goals, roles, and what "done" means before the work starts.',
+    detail: 'Get everyone clear on the work, their role, and what needs to happen.',
     message: 'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
-    timelineHint: 'typically 90 days',
     examples: [
       'Kicking off a build and you want scope and "done" agreed before anyone starts.',
       'A cross-team project where each team quietly assumes a different owner.',
@@ -561,7 +562,7 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'NEW_COFOUNDER',
     label: SCENARIO_LABELS.NEW_COFOUNDER,
-    detail: 'Someone new is sharing the work as an equal. Each of you says what you expect before those assumptions harden.',
+    detail: 'Build a shared understanding of a new co-founder or partner relationship.',
     /*
       THE ORIGINAL ROUTING SENTENCE, KEPT WORD FOR WORD.
 
@@ -571,7 +572,6 @@ export const SITUATION_CARDS = [
       display change's clothes, and the guard caught exactly that.
     */
     message: 'We have a new working arrangement starting and want to make sure we are set up well.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A new equal partner joining and you want the assumptions said out loud first.',
       'Two founders dividing scope, each writing what they think the other owns.',
@@ -581,21 +581,51 @@ export const SITUATION_CARDS = [
     group: 'planning',
     scenario: 'OKR_ALIGNMENT',
     label: SCENARIO_LABELS.OKR_ALIGNMENT,
-    detail: "A team agreeing on what matters most this period, each person's own view, not just the room's consensus, so effort doesn't spread in different directions.",
-    message: 'We are setting shared goals for this period and I want everyone aligned on what matters most.',
-    timelineHint: 'typically 90 days',
+    detail: 'Set goals, targets or OKRs for your team. Your team can get coaching and share updates on their progress, while you can see what is on track and where you need to support them.',
+    /* The sentence that routes and becomes the first turn, so the workplan has to be IN it - a
+       card that covers plans and an opening line that only mentions goals gets a conversation
+       about goals. "If they exist": the plan is asked about, never assumed.
+
+       "that goes with them" RATHER THAN "under those goals", deliberately. This same sentence is
+       read by SOUNDS_LIKE_A_CASCADE to tell the two goal cards apart, and while "under" does not
+       match it today ("sits under" and "underneath it" do), writing the word one edit away from
+       that pattern is how this card ends up labelled Connect Goals Across the Team. */
+    message: 'We are setting shared goals for this period and I want everyone aligned on what matters most, including any workplan that goes with them and who is responsible for which part.',
     examples: [
       'A team agreeing on the two or three priorities that matter most before the quarter starts.',
       'Several people who each quietly think something different is the top priority right now.',
     ],
   },
   {
+    /*
+     * THE SECOND GOAL CARD, AND THE ONE PEOPLE ACTUALLY DESCRIBE MOST.
+     *
+     * "People are setting an overarching target and then having their teams - separate teams - set
+     * their KRs to align with that objective, and checking if teams align across them. This seems
+     * to be the main thing people want and they track it across departments and across quarters."
+     *
+     * It runs on OKR_ALIGNMENT because a cascade is detected from what people say rather than
+     * declared at setup - the scenario opens the shape, the record confirms it. What is different
+     * here is the MESSAGE, which is what routes and what the first question is built from: this one
+     * says there is something above, so the conversation asks what each team's goal sits under
+     * instead of asking a team to agree on priorities among themselves.
+     */
+    group: 'planning',
+    scenario: 'OKR_ALIGNMENT',
+    label: 'Connect Goals Across the Team',
+    detail: 'Set a main goal, then have team leads and partners set their own goals and targets. Make sure their goals connect to the main goal and make sense together.',
+    message: 'We have one overarching goal and separate teams are setting their own goals and targets underneath it. I want to know whether they connect to the main goal and add up together.',
+    examples: [
+      'A company target with three departments each writing their own results under it.',
+      'Team goals that each look sensible on their own and may not add up to the thing at the top.',
+    ],
+  },
+  {
     group: 'planning',
     scenario: 'CRISIS_ALIGNMENT',
     label: SCENARIO_LABELS.CRISIS_ALIGNMENT,
-    detail: "A group making a real choice, each person's honest read before you commit.",
+    detail: 'Bring different views together around an important decision.',
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
-    timelineHint: 'typically one check-in',
     examples: [
       'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
@@ -618,9 +648,8 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'PIP',
     label: SCENARIO_LABELS.PIP,
-    detail: "Deadlines or expectations are slipping. Both of you say honestly what is happening, so the conversation starts from the same facts, not one side's version.",
+    detail: "Understand what is getting in the way when someone's work is off track.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
-    timelineHint: 'typically 90 days',
     examples: [
       "A senior hire's delivery is slipping and you both want the real picture before the conversation.",
       'Deadlines keep slipping and you want the specific gap named before the conversation.',
@@ -642,9 +671,8 @@ export const SITUATION_CARDS = [
     group: 'off',
     scenario: 'DRIFT',
     label: SCENARIO_LABELS.DRIFT,
-    detail: "What was agreed and what exists no longer match. Get each person's honest read before the group talks.",
+    detail: 'Understand why a project is off track and what needs to change.',
     message: 'A project of mine has drifted from what we originally agreed and I want to realign the team on where things actually stand.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A project blew up or is badly behind and everyone has a different story about why.',
       'What was agreed and what exists no longer match, and you want the gap named.',
@@ -654,9 +682,8 @@ export const SITUATION_CARDS = [
     group: 'off',
     scenario: 'REALIGN_TEAM',
     label: SCENARIO_LABELS.REALIGN_TEAM,
-    detail: 'From working off different priorities to a real rift between partners. Each of you gives your honest read first, so you start from the same picture instead of resentment, and close the gap before it grows.',
+    detail: "Understand different views when people don't see a situation the same way.",
     message: 'I need to realign with a team member. I think we see the current situation differently and want to get both our accounts on record.',
-    timelineHint: 'typically 60 days',
     examples: [
       'Priorities shifted and you two are working off different ideas of what matters now.',
       "You and your cofounder are quietly at odds over who's carrying more, and neither of you has said it.",
@@ -666,9 +693,8 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'NEW_MANAGER',
     label: SCENARIO_LABELS.NEW_MANAGER,
-    detail: 'Somebody is taking over a team or a piece of work. What they think they are inheriting and what the team thinks they are handing over rarely match.',
+    detail: 'Help a new manager understand the team and how the work is going.',
     message: 'A new manager is taking over and I want to make sure the handover is clear.',
-    timelineHint: 'typically 90 days',
     examples: [
       'An interim leader stepping into an existing team and scope needs pinning down.',
       'A handover where the outgoing and incoming manager each describe what is being passed on.',
@@ -693,9 +719,8 @@ export const SITUATION_CARDS = [
     group: 'starting',
     scenario: 'NEW_ADVISOR',
     label: SCENARIO_LABELS.NEW_ADVISOR,
-    detail: 'Pin down what they will actually contribute, and on what terms, so "available" does not stand in for contributing.',
+    detail: 'Build a shared understanding of the role, expectations, and contribution.',
     message: 'We are bringing on a new advisor or board member and I want to pin down what they will actually contribute and on what terms.',
-    timelineHint: 'typically 90 days',
     examples: [
       'An advisor joined months ago and you still could not say what they have contributed.',
       'A board member you want to agree concrete terms with before the next quarter.',
@@ -707,7 +732,6 @@ export const SITUATION_CARDS = [
     label: 'Onboarding several people at once',
     detail: 'Several people starting the same role at once. Each answers on their own, so you see who is on track and who is stuck.',
     message: 'We are onboarding a group of people into the same role at the same time and I want to see how each of them is doing without them swaying each other.',
-    timelineHint: 'typically 90 days',
     examples: [
       // Visible slot first. A new starter opening this should not meet the word
       // "probation"; the leader running one still finds the card, and the
@@ -720,9 +744,8 @@ export const SITUATION_CARDS = [
     group: 'planning',
     scenario: 'WORKPLAN_BUDGET',
     label: SCENARIO_LABELS.WORKPLAN_BUDGET,
-    detail: 'Each person builds their own plan and budget, and you see whether it holds up against what is actually available.',
+    detail: "Bring people's plans together so the work and budget line up.",
     message: 'We are setting a workplan and budget and I want each person to build their own and check it holds up against the resources we have.',
-    timelineHint: 'typically 90 days',
     examples: [
       'A quarter where every team submits a plan and the numbers have to add up together.',
       'You suspect two teams have budgeted for the same thing.',
@@ -732,9 +755,8 @@ export const SITUATION_CARDS = [
     group: 'planning',
     scenario: 'BOARD_STRATEGY',
     label: SCENARIO_LABELS.BOARD_STRATEGY,
-    detail: 'Each leader gives their own read before the room debates it, so quiet disagreement shows up now and not after the decision.',
+    detail: 'Understand how leaders see the direction and where their views differ.',
     message: 'Our leadership team needs to align on strategy and I want each person to give their own read before the room debates it.',
-    timelineHint: 'typically two check-ins',
     examples: [
       'An offsite where you want the real positions before the discussion converges.',
       'A leadership team that nods in the room and disagrees afterwards.',
@@ -744,13 +766,12 @@ export const SITUATION_CARDS = [
     group: 'reading',
     scenario: 'PULSE_CHECK',
     label: SCENARIO_LABELS.PULSE_CHECK,
-    detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
+    detail: 'Regularly understand how work is going while it is happening.',
     /* "QUICK" AND NO LENGTH AT ALL. It read as a one-off favour rather than the thing you run over a
        team for as long as you are managing them - "I have a sales team and I want to monitor them for
        a year, this should be the one, but it is not from the entry chat." Each check-in is quick; the
        run is not, and only one of those belongs in the sentence. */
     message: 'I want an ongoing read from my team on what is moving, what is stuck and what has changed, for as long as this runs.',
-    timelineHint: 'typically ongoing',
     examples: [
       'A weekly pulse across a delivery team instead of a status meeting.',
       'You want the same few questions answered honestly every week.',
@@ -760,12 +781,11 @@ export const SITUATION_CARDS = [
     group: 'reading',
     scenario: 'SNAPSHOT',
     label: SCENARIO_LABELS.SNAPSHOT,
-    detail: 'One honest read from everyone, once. No setup, no target, and no follow-up: five minutes each on what is going well, what is stuck and what has changed.',
+    detail: 'Get a quick picture of how people are experiencing the work right now.',
     /* "This week" was doing the work of "once" and doing it badly: it reads as a deadline rather than
        as the whole extent of the thing, and it is the phrase that made this card and the recurring
        one hard to tell apart. */
     message: 'I want one honest read from everyone on my team about what is going well and what is stuck. Once only, not on a schedule.',
-    timelineHint: 'one check-in, no follow-up',
     examples: [
       'You want to know how people are actually doing this week, without booking a meeting.',
       'Something feels off and you want a read before deciding whether it needs watching over time.',
@@ -775,9 +795,8 @@ export const SITUATION_CARDS = [
     group: 'reading',
     scenario: 'COHORT_CHECK',
     label: SCENARIO_LABELS.COHORT_CHECK,
-    detail: 'Field officers, branch managers, franchisees. Each answers on their own, so you see the pattern rather than the loudest voice.',
+    detail: 'Understand how people doing similar work are experiencing it.',
     message: 'I have a group of people in the same role and I want an ongoing read from each of them separately so I can see the pattern of who is on track and who is stuck.',
-    timelineHint: 'typically ongoing',
     examples: [
       'Eight field officers doing the same job in different places.',
       'A cohort where you need to know who is struggling before it shows in the numbers.',
@@ -787,9 +806,8 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'RECOGNITION',
     label: SCENARIO_LABELS.RECOGNITION,
-    detail: 'The person builds the evidence behind the ask and the decision maker reads the same record, so both start from the same picture.',
+    detail: "Understand someone's contribution and experience before making a recognition decision.",
     message: 'Someone is asking for a raise or promotion and I want us both working from the same evidence before the conversation.',
-    timelineHint: 'typically one check-in',
     examples: [
       'Someone has asked for a raise and you want their case in writing first.',
       'You are deciding a promotion and want the record, not just your impression.',
@@ -799,9 +817,8 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'CONTRACT_RENEWAL',
     label: SCENARIO_LABELS.CONTRACT_RENEWAL,
-    detail: 'Both sides say honestly how the term actually went and what a fair next one looks like.',
+    detail: 'Understand how a working relationship is going before deciding what happens next.',
     message: 'A contract is coming up for renewal and I want both sides to say honestly how the term went before we agree the next one.',
-    timelineHint: 'typically two weeks',
     examples: [
       'A contractor whose term is ending and both of you want an honest read of how it went.',
       'A renewal where you and they would describe the last year differently.',
@@ -811,9 +828,8 @@ export const SITUATION_CARDS = [
     group: 'off',
     scenario: 'ACUTE_SHOCK',
     label: SCENARIO_LABELS.ACUTE_SHOCK,
-    detail: "Something jarring just happened. Get everyone's honest read of where things stand before anyone decides anything.",
+    detail: 'Give people a private way to explain what happened and what needs attention.',
     message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
-    timelineHint: 'typically daily for two weeks',
     examples: [
       'A client pulled out overnight and everyone has a different version of why.',
       'A sudden departure or loss where you need the real picture fast.',
@@ -876,7 +892,18 @@ export const THE_OPENING_QUESTION =
      themselves, which is a question about us, and left them guessing what picking one would do.
      What a situation actually does is set the context for what the people they invite will be
      asked about - so the sentence says that, and the choice becomes a means rather than a label. */
-  `What brings you here? ${HOW_A_SITUATION_IS_CHOSEN}`
+  /*
+   * AND IT NO LONGER ASKS A QUESTION, BECAUSE THE PAGE ALREADY ASKS ONE.
+   *
+   * Three asks were stacked on one screen: the header's "Tell us what is going on", this line's
+   * "What brings you here?", and then the card's "What are you trying to achieve with this
+   * check-in?" - which is the one that means something, because what somebody writes there becomes
+   * the purpose every conversation is held against. The other two were warm-up.
+   *
+   * So this says what the two routes ARE. The question is asked once, on the card that takes the
+   * answer.
+   */
+  HOW_A_SITUATION_IS_CHOSEN
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -1223,6 +1250,10 @@ export function EntryChatPage() {
     staleTime: 5 * 60 * 1000,
   })
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  /* Which days this team works. Empty means nobody said, which is not the same as every day - and
+     it is never pre-set to Monday-Friday, because that is one region's office week rather than a
+     fact about anybody's. */
+  const [workingDays, setWorkingDays] = useState<number[]>([])
   const [bulkInviteMode, setBulkInviteMode] = useState(false)
   const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
@@ -1469,6 +1500,9 @@ export function EntryChatPage() {
             return [...prev.slice(0, -1), { role: 'assistant', content: live }]
           })
         },
+        /* Everybody setup heard named. The check-in asked "who else is involved" after being told
+           three times, and the block that stops that needs the names to state. */
+        onboardingSelections.peopleNamed,
       )
     },
     onSuccess: (res, msgs) => {
@@ -1915,6 +1949,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
@@ -2197,6 +2232,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        workingDays: workingDays.length ? workingDays : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
@@ -2219,6 +2255,7 @@ export function EntryChatPage() {
           if (patch.orgName !== undefined) payload.orgName = patch.orgName
           if (patch.cadence !== undefined) payload.cadence = patch.cadence
           if (patch.cadenceAnchorDay !== undefined) payload.cadenceAnchorDay = patch.cadenceAnchorDay
+          if (patch.workingDays !== undefined) payload.workingDays = patch.workingDays
           if (patch.checkInBy !== undefined) payload.checkInBy = patch.checkInBy
           if (patch.lastCheckInBy !== undefined) payload.lastCheckInBy = patch.lastCheckInBy
           localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
@@ -2226,7 +2263,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -2608,17 +2645,15 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Product intro - shown once before conversation starts */}
-            {onboardingHistory.length <= 1 && (
-              <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Tell us what is going on</h1>
-                  <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                    A few questions to work out what this is. You get something just for you now, and a shared picture once everybody else has checked in.
-                  </div>
-                </div>
-              </div>
-            )}
+            {/*
+              THE BLUE BLOCK IS GONE, AND IT WAS THE LAST OF THE THREE ASKS.
+              "Tell us what is going on" sat in a tinted full-width band above a step row that
+              already says "What is going on", above a card that asks what you are trying to achieve
+              - three headings for one question, the top one in the loudest treatment on the page.
+              What it added beyond the asking was the promise underneath: something for you now, a
+              shared picture once everybody has checked in. That is worth saying and it is said on
+              the step row and in the card, which is where somebody is looking when they act.
+            */}
             <div
               ref={msgsRef}
               aria-live="polite"
@@ -2628,6 +2663,20 @@ export function EntryChatPage() {
               style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
               {onboardingHistory.map((m, i) => {
+                /*
+                 * THE OPENER IS NOT DRAWN WHILE THE PICKER IS, because the picker says it better.
+                 *
+                 * It read "Describe it in your own words, or choose a situation to set the context
+                 * for what you want people to check in on or provide updates about" - directly
+                 * above a card that asks what you are trying to achieve and a line that offers to
+                 * pick one that already fits. The same two routes, said twice, the first time in a
+                 * bubble that looks like somebody talking.
+                 *
+                 * It stays in the HISTORY rather than going: the picker is shown when the history
+                 * holds exactly one turn, and it is also the model's first turn once the
+                 * conversation starts. Only the bubble goes, and only while the picker is up.
+                 */
+                if (i === 0 && m.role === 'assistant' && onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding') return null
                 /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
                    user turn so the model has a situation; drawing it as a navy bubble put words in
                    their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */
@@ -2687,14 +2736,20 @@ export function EntryChatPage() {
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Describe your own situation</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                      {/* Her words, and the same pair the setup step asks with - see whose-situation-is-it. */}
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{THE_WORDS.describeOwnQuestion}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{THE_WORDS.describeOwnHelp}</div>
                     </div>
                     <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
                   </button>
 
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 4 }}>
-                    Or select from the options below
+                  {/*
+                    THE SECOND ROUTE, DRAWN AS ONE. This was 11px in the muted grey - the size and
+                    colour used for captions - directly under a full-width bordered card, so two
+                    ways in read as one way in and a remark about it.
+                  */}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>
+                    {OR_PICK_ONE_THAT_FITS}
                   </div>
                   <select
                     className="gw-select"
@@ -3722,6 +3777,42 @@ export function EntryChatPage() {
                   </div>
                 </div>
               )}
+              {/*
+                WHICH DAYS THIS TEAM WORKS.
+
+                A daily cadence was +1 day flat, so it landed on Saturdays and Sundays, and daily is
+                the one rhythm with no day picker - so "weekdays only" could not be said at all.
+                Offered for every rhythm rather than only daily, because a fortnightly anchor lands
+                on a weekend too, just more quietly.
+
+                Nothing is pre-selected. Monday to Friday is one region's office week, not a fact
+                about anybody's: field teams work Saturdays and the week starts on Sunday across
+                much of where this is used.
+              */}
+              {cadence !== 'ONE_TIME' && (
+                <div style={{ marginBottom: 8 }}>
+                  <FieldLabel>Which days does this team work? (optional)</FieldLabel>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
+                      const on = workingDays.includes(i)
+                      return (
+                        <button key={d} type="button"
+                          onClick={() => setWorkingDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b))}
+                          style={{
+                            flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                            background: on ? 'var(--gw-blue-bg)' : 'white', color: on ? 'var(--gw-navy)' : 'var(--gw-muted)',
+                          }}>{d}</button>
+                      )
+                    })}
+                  </div>
+                  <button type="button" onClick={() => setWorkingDays(workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? [] : [...WEEKDAYS])}
+                    style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
+                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear — any day is fine' : 'Weekdays only, skip weekends'}
+                  </button>
+                </div>
+              )}
+
               {/* Day-of-month anchor for monthly ("on the 1st") */}
               {cadence === 'MONTHLY' && (
                 <div style={{ marginBottom: 8 }}>
@@ -3775,6 +3866,43 @@ export function EntryChatPage() {
               {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
                 <div style={{ fontSize: 11.5, color: 'var(--gw-danger)', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
               )}
+
+              {/*
+                WHAT THE FOUR FIELDS ACTUALLY PRODUCE.
+
+                A rhythm, a day of the week, a start date and a set of working days are four
+                controls nobody can compose in their head, and the only way to find out what they
+                produced was to wait for the first check-in to open on the wrong day. It says
+                "would" rather than "will" because nothing is scheduled until the check-in exists.
+              */}
+              {(() => {
+                const dates = whenTheCheckInsLand({
+                  cadence: cadence as CadenceName,
+                  anchorDay: cadenceAnchorDay,
+                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                  workingDays,
+                  howMany: cadence === 'DAILY' ? 5 : 4,
+                })
+                return (
+                  <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
+                      {dates.length > 1 ? 'Check-ins would open on' : 'The check-in would open on'}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                      {dates.map(sayTheDate).join(' · ')}{dates.length > 1 ? ' · and on from there' : ''}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
+                      {whatIsSetAndWhatIsNot({
+                        name: groundName,
+                        cadenceChosen,
+                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                        workingDays,
+                        peopleAdded: inviteAdded.length,
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Invite contributors - before create account */}

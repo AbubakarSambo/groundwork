@@ -288,7 +288,9 @@ export class UsersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
+        /* phoneNumber so the members list can show who can be reached on WhatsApp and who cannot.
+           It is the org's own roster, read by an admin of it. */
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true },
       }),
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
@@ -480,6 +482,9 @@ export class UsersService {
           ...(dto.firstName && { firstName: dto.firstName }),
           ...(dto.lastName && { lastName: dto.lastName }),
           ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
+          /* A blank box means remove the number, so an empty string is stored as nothing rather
+             than as an empty string nobody can send a message to. */
+          ...(dto.phoneNumber !== undefined && { phoneNumber: dto.phoneNumber?.trim() || null }),
         },
         select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
       });

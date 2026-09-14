@@ -49,6 +49,12 @@ export type ReadEntry = {
   /** Session the entry was recorded in; null when it is not tied to a check-in. */
   sessionNumber: number | null;
   text: string;
+  /**
+   * How checkable the line is, from its own column. Null on rows written before that column existed
+   * - those still carry the marker inside `text` and `rawTier` parses it. Optional so a caller that
+   * does not select it reads as "not known" rather than as LOW.
+   */
+  verifiability?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
 };
 
 export type ReadMention = {
@@ -64,6 +70,11 @@ export type ReadDependency = {
   onLabel: string | null;
   what: string;
   status: DependencyStatus;
+  /**
+   * Whether they named the thing, as the model read it. Null on every row written before the
+   * column existed, and on those the word-list rule stands in - see theyNamedWhatTheyAreWaitingOn.
+   */
+  namedTheThing?: boolean | null;
   /** Sort key only. A number is enough and keeps fixtures readable. */
   createdAt?: Date | number;
 };
@@ -193,7 +204,20 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
     );
     if (hit) {
       (hit as any).status = d.status;
-      (hit as any).what = d.what;
+      /*
+       * THE NEWEST STATUS, THE FULLEST WORDS - and they are not the same choice.
+       *
+       * This took the newest text too, and the newest is often the shortest: somebody says "the
+       * finance sign-off" in one round and "finance sign-off" in the next. Two words instead of
+       * three, and `blockerHasSubstance` needs three - so merging a real blocker with a briefer
+       * restatement of itself pushed it under the bar and the board stopped showing it at all.
+       * Found by counting blockers for the check-in list and getting none where there was one.
+       *
+       * The note above is about STATUS, and it still holds: a handoff nobody is describing as
+       * blocking any more is no longer blocking. It was never an argument for forgetting the better
+       * description of the thing.
+       */
+      if ((d.what ?? '').trim().length > ((hit as any).what ?? '').trim().length) (hit as any).what = d.what;
       (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
       continue;
@@ -303,7 +327,15 @@ const ADMITS_ABSENCE = new RegExp(
 const CARRIES_SOMETHING_TO_CHECK =
   /\b(\d)|\b(january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 
-const rawTier = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+/**
+ * HOW CHECKABLE THIS LINE IS: the column where there is one, the old prefix where there is not.
+ *
+ * The marker used to live on the front of the text. It is a column now, because it reached a page
+ * twice - but every row written before that still carries it inline, and reading those as LOW would
+ * quietly flatten the specificity read on all of them.
+ */
+const rawTier = (text: string, stored?: 'HIGH' | 'MEDIUM' | 'LOW' | null): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  if (stored) return stored;
   const m = /^\[VERIFIABILITY:(HIGH|MEDIUM|LOW)\]/.exec(text ?? '');
   return (m?.[1] as any) ?? 'LOW';
 };
@@ -314,10 +346,10 @@ const body = (text: string) =>
     .replace(/\[INFERRED:[^\]]*\]/g, '')
     .trim();
 
-const tierOf = (text: string): 'HIGH' | 'MEDIUM' | 'LOW' => {
+const tierOf = (text: string, stored?: 'HIGH' | 'MEDIUM' | 'LOW' | null): 'HIGH' | 'MEDIUM' | 'LOW' => {
   const t = body(text);
-  if (CARRIES_SOMETHING_TO_CHECK.test(t)) return rawTier(text);
-  return ADMITS_ABSENCE.test(t) ? 'LOW' : rawTier(text);
+  if (CARRIES_SOMETHING_TO_CHECK.test(t)) return rawTier(text, stored);
+  return ADMITS_ABSENCE.test(t) ? 'LOW' : rawTier(text, stored);
 };
 
 /**
@@ -464,13 +496,13 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
       const myEntries = entries.filter((e) => e.participantId === p.id);
-      const high = myEntries.filter((e) => tierOf(e.text) === 'HIGH').length;
-      const medium = myEntries.filter((e) => tierOf(e.text) === 'MEDIUM').length;
+      const high = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'HIGH').length;
+      const medium = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'MEDIUM').length;
       const checkable = high + medium;
       const bySession = new Map<number, number>();
       for (const e of myEntries) {
         if (e.sessionNumber == null) continue;
-        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (tierOf(e.text) === 'LOW' ? 0 : 1));
+        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (tierOf(e.text, e.verifiability) === 'LOW' ? 0 : 1));
       }
 
       // CORROBORATION, not counting. (R1)
@@ -702,7 +734,7 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
     // read as an active session.
     const sessionsWithEntries = new Set<number>(
       myEntries
-        .filter((e) => tierOf(e.text) !== 'LOW')
+        .filter((e) => tierOf(e.text, e.verifiability) !== 'LOW')
         .map((e) => e.sessionNumber)
         .filter((n): n is number => n != null),
     );

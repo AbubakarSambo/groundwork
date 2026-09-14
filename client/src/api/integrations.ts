@@ -118,6 +118,11 @@ export const integrationsApi = {
     apiClient.post<{ connection: WhatsAppConnection }>('/integrations/whatsapp/enabled', { enabled }).then(r => r.data),
   testWhatsapp: (to: string) =>
     apiClient.post<{ sent: boolean }>('/integrations/whatsapp/test', { to }).then(r => r.data),
+
+  /* Which of our template names Meta approved under THIS organisation's own app. Their app, their
+     approval; the send path reads what is recorded here. */
+  whatsappTemplates: (approved: string[]) =>
+    apiClient.post<{ approved: string[] }>('/integrations/whatsapp/templates', { approved }).then(r => r.data),
   disconnectWhatsapp: () =>
     apiClient.delete<{ disconnected: boolean }>('/integrations/whatsapp').then(r => r.data),
   // credentials

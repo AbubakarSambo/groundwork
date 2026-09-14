@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
+import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
 import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF } from './the-board-keeps-the-same-wall';
 import {
@@ -28,14 +29,20 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { aNameOrNothing } from './a-name-is-short';
+import { isThisACascade } from './is-this-a-cascade';
+import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
+import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
+import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   OrgDependency,
   whatThePlaceIsWaitingOn,
@@ -46,6 +53,12 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { whereEachPersonIs } from './where-each-person-is-against-their-number';
+import { whatTheLeadShouldKnow } from './whose-number-is-whose-business';
+import { whichRoundIsOpen } from './which-round-is-open';
+import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
+import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
+import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -88,6 +101,8 @@ export class BoardService {
   constructor(
     private prisma: PrismaService,
     private readonly anthropic: AnthropicService,
+    /* For `getSessionProgress` only - which round is open, and who has not answered it. */
+    private readonly grounds: GroundsService,
   ) {}
 
   /*
@@ -123,6 +138,9 @@ export class BoardService {
         report: true,
         objectives: { orderBy: { sortOrder: 'asc' } },
         dependencies: { orderBy: { createdAt: 'asc' } },
+        /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true } },
+        reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
@@ -205,9 +223,40 @@ export class BoardService {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
+    /*
+     * GATE 1b: AND YOU GIVE YOUR ACCOUNT BEFORE YOU READ EVERYBODY ELSE'S.
+     *
+     * See a-board-is-not-read-before-you-answer. The round comes from `getSessionProgress` rather
+     * than from anything worked out here, because WHICH round is the one people are answering has
+     * been got wrong before - it is the round people have answered, not the newest row opened, and
+     * that distinction has its own note on that method.
+     *
+     * `renders: true`, because the board exists and they will read it shortly. A false here would
+     * say this check-in has no board, which is a different and untrue thing.
+     */
+    const thisRound = await this.grounds.getSessionProgress(groundId).catch(() => null);
+    if (theyOweAnAccountFirst(
+      { participantId: me?.id ?? null, runsThisGround: isInitiator || isSetupAdmin || adminHere },
+      thisRound,
+    )) {
+      return {
+        groundId,
+        renders: true,
+        withheldUntilYouCheckIn: true,
+        mode: ground.mode,
+        family: familyFor(ground.scenario),
+        saying: BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
+      };
+    }
+
     // Collapse duplicate handoffs before anything reads them, so existing
     // grounds get the same answer as new ones.
-    (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
+    /*
+     * Two passes, because they catch different things. `dedupeDependencies` joins two descriptions
+     * of one named thing; `oneBlockerPerThingWaitedOn` joins the times somebody said they were
+     * stuck without naming anything. See that file for why neither is a similarity threshold.
+     */
+    (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     const sections = sectionsFor(ground.scenario);
     const has = (s: BoardSection) => sections.includes(s);
@@ -256,9 +305,13 @@ export class BoardService {
        When a third person is added, the round goes back to session 1 while the lead's session 2 may
        already be in progress; the board said "session 2" and the header said "back to session 1".
        The round is the clock everywhere; a session ahead of it is upcoming, not current. */
+    /* ONE CLOCK, AND ONE PLACE THAT KNOWS WHAT IT READS. This had its own copy of the rule and
+       `which-round-is-open.ts` had another, and the two disagreed: this one took the lowest
+       unfinished session, which is next week's row written ahead of time, so every tile counted a
+       round with nothing in it. The rule now lives in one function and both callers ask it. */
     const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
-    const unfinished = checkIns.filter((c) => givers.has(c.participantId) && c.status !== CheckInStatus.COMPLETED).map((c) => c.sessionNumber);
-    const openRound = unfinished.length ? Math.min(...unfinished) : maxSession;
+    const mine = checkIns.filter((c) => givers.has(c.participantId));
+    const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
@@ -351,6 +404,25 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /**
+       * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
+       *
+       * "When I come in as a manager, I want progress/status and blockers/risks." The board opened
+       * on "where people differ" and said nothing about either - a manager had to read three zones
+       * to work out how far through it was, and the one screen that knew was the check-in LIST,
+       * which they had just left.
+       *
+       * Computed by how-a-check-in-is-going.ts, the same function the list calls, so the two cannot
+       * disagree about one week. Not a new read: the same summary, the same two facts.
+       */
+      howItIsGoing: howACheckInIsGoing({
+        checkIns: (ground as any).checkIns ?? [],
+        participants: ground.participants ?? [],
+        dependencies: (ground as any).dependencies ?? [],
+        timelineDays: (ground as any).timelineDays ?? null,
+        cadence: (ground as any).cadence ?? null,
+        sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+      }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
       groundStatus: ground.status,
       endState: (ground as any).endState ?? null,
@@ -404,6 +476,14 @@ export class BoardService {
       };
     }
 
+    /* Where the privacy setting is on and doing nothing, the person who can fix it is told. */
+    if (has('objectives') && runsThisGround) {
+      out.targetsNobodyOwns = whatTheLeadShouldKnow(
+        (ground.objectives ?? []) as any,
+        (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+      );
+    }
+
     if (has('objectives')) {
       // #19, the best version. The number stays the LEAD'S - deriving "how many
       // paying companies" from free text automatically is exactly the
@@ -413,35 +493,45 @@ export class BoardService {
       //
       // So the record SUGGESTS and the human DECIDES: count how many distinct
       // things in the record look like they belong to this target, show it only
-      // when it disagrees with the lead's number, and let them accept it in one
-      // click. The board never silently overwrites what a person set.
-      const objectiveEvidence = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
-        select: { text: true },
+      /*
+       * WHAT THE RECORD SAYS THE NUMBER IS, READ WHEN THE ROUND CLOSED.
+       *
+       * This was worked out here, on every board read, by a rule that never once fired: every word
+       * of the target's name in one sentence plus a verb from a list of nine, and then it suggested
+       * the COUNT OF MATCHING SENTENCES rather than the number somebody said. A team who reported
+       * "nine of the forty teams are migrated" and then "all forty migrated by Friday" left the
+       * board reading 0 of 40 at the close.
+       *
+       * It is the model's reading now, written once when a round closes (board.listener.ts), and
+       * this is just the column. See what-the-record-says-a-number-is for why.
+       */
+      /*
+       * WHERE EACH ONE STARTED, WHICH IS WHAT TELLS US WHICH WAY IS GOOD.
+       *
+       * The lowest session we have a snapshot for, per objective. A target added at session six
+       * starts at session six - nobody gets credit for distance covered before anybody was
+       * counting. See a-measure-that-goes-down-is-still-going-well.ts for why this is derived
+       * rather than asked: a direction column can be set wrong, and three numbers cannot.
+       */
+      const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
+        where: { groundId },
+        orderBy: { sessionNumber: 'asc' },
+        select: { objectiveId: true, count: true },
       });
-      const suggestFor = (name: string): number | null => {
-        const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-        if (words.length === 0) return null;
-        const hits = objectiveEvidence.filter((e) => {
-          const t = e.text.toLowerCase();
-          // Every meaningful word of the target appears, and the entry says
-          // something happened rather than something is planned.
-          return words.every((w) => t.includes(w.replace(/s$/, ''))) &&
-            /\b(signed|closed|paying|live|onboarded|delivered|shipped|joined|confirmed)\b/.test(t);
-        }).length;
-        return hits > 0 ? hits : null;
-      };
+      const startOf = new Map<string, number>();
+      for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
 
       out.objectives = ground.objectives.map((o) => ({
+        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never
         // applied automatically - it is a prompt, not a correction.
-        suggestedCount: (() => {
-          const sug = suggestFor(o.name);
-          return sug != null && sug !== o.count ? sug : null;
-        })(),
+        /* Only while it still disagrees: the lead may have accepted it, or typed their own. */
+        suggestedCount: o.suggestedCount != null && o.suggestedCount !== o.count ? o.suggestedCount : null,
+        /* And the line it was read from, so a lead sees what they are accepting. */
+        suggestedSaid: o.suggestedCount != null && o.suggestedCount !== o.count ? o.suggestedSaid : null,
         // A new dimension means nothing until people have checked in against it,
         // so the board shows who has been asked and who has not.
         // Only people who can actually be asked: a managing-only lead gives no
@@ -501,6 +591,94 @@ export class BoardService {
       };
     }
 
+    /*
+     * TEN ROWS, ONE PER PERSON, ORDERED BY WHAT NEEDS ATTENTION.
+     *
+     * The board answers "how is the team doing". A manager running ten people each against their
+     * own number is asking something else - "where is each person and what do I do with them" - and
+     * nothing here could answer it. See the module for why it ranks situations and never people.
+     *
+     * Lead-only: it names what to ask somebody to do, which is a manager's read of their own team,
+     * not something a colleague may have about a colleague. `own-reads-only` strips it for anybody
+     * else; this is the narrower gate at the point it is built.
+     */
+    /*
+     * WHAT PEOPLE WERE ASKED AND DID NOT ANSWER, which is where a let-go gap lands.
+     *
+     * The conversation asks twice and then stops, because a person who feels cornered gives
+     * compliant answers and those are worse than missing ones. The cost of that decision is that
+     * somebody has to see the gap, and this is where.
+     *
+     * NEVER A MARK AGAINST ANYBODY. Half the time the honest reason is that nobody could have
+     * answered it - a target that was never set, a dependency nobody owns. So it says what is
+     * missing and how long it has been, and says nothing at all about the person.
+     */
+    if (has('checkInGrid') && runsThisGround) {
+      const gapRows = await this.prisma.checkInGap?.findMany?.({
+        where: { groundId, answeredAt: null },
+        orderBy: [{ firstRound: 'asc' }],
+        select: { participantId: true, what: true, firstRound: true, asked: true, certain: true },
+      })?.catch(() => [] as any[]) ?? [];
+      out.stillUnanswered = (gapRows as any[])
+        .filter((g) => g.asked >= 2)
+        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
+    }
+
+    if (has('checkInGrid') && runsThisGround) {
+      /*
+       * THE ROUND THAT IS OPEN IS THE ONE SOMEBODY HAS STARTED, not the newest row that exists.
+       *
+       * Rows for the next round are written ahead of time, so taking the highest number meant the
+       * board opened a fresh week by telling a manager that all ten people had not answered - a
+       * page of red on the morning the round begins, about a round nobody was late for. A round
+       * nobody has touched is next week's.
+       */
+      const openRound = whichRoundIsOpen(checkIns as any);
+      out.eachPerson = whereEachPersonIs(
+        /*
+         * AND THE MANAGER IS NOT IN THEIR OWN LIST.
+         *
+         * The initiator checked in once to set the context and does not carry a number; ranked
+         * among the people she manages she came out top, "has not answered", about a round she is
+         * not running. This read is what to do about other people.
+         */
+        ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id).map((p) => {
+          const theirs = (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
+          const mine = checkIns.filter((c) => c.participantId === p.id);
+          const thisRound = mine.find((c) => c.sessionNumber === openRound);
+          return {
+            participantId: p.id,
+            /* A person whose name this reader may not resolve still has a row: the read is about
+               what to do, and "a teammate" with a three-week blocker is still worth acting on. */
+            who: nameOf(p.id) ?? 'A teammate',
+            /* Whether that label is a name or their role standing in for one. Asked of the name
+               itself: somebody can have an account and never have given a first name. */
+            nameIsTheirRole: ![p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim(),
+            target: theirs?.target ?? null,
+            count: theirs?.count ?? 0,
+            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
+            roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
+            inTheWay: (ground.dependencies ?? [])
+              .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
+              .map((d: any) => ({
+                what: d.what,
+                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
+                /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
+                tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
+              })),
+            /* A round with a date, a number or a document in it is one somebody else can check. */
+            saidAnythingCheckable: (thisRound as any)?.specificityLevel
+              ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
+              : false,
+          };
+        }),
+        /* The planned length, for the only honest read of pace. Without one it says nothing
+           rather than guessing the bar - see behindThePace. */
+        (ground as any).totalSessions ?? null,
+      );
+    }
+
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
@@ -528,7 +706,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       });
@@ -538,8 +716,16 @@ export class BoardService {
           participantId: p.id,
           name: nameOf(p.id),
           role: p.roleAsDescribed ?? null,
+          /*
+           * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
+           * carries the engine's own markers - a live board showed
+           * "[VERIFIABILITY:HIGH] We need to hit 270 units this year." under somebody's name.
+           * Everywhere else that renders an entry already strips them; this was the one that did
+           * not. `loadReadInput` below deliberately keeps the raw text, because the tiering in
+           * reads.ts is the thing that READS the marker - that one is not a surface.
+           */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
-            id: e.id, type: e.type, text: e.text,
+            id: e.id, type: e.type, text: cleanText(e.text),
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));
@@ -581,6 +767,26 @@ export class BoardService {
     if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
       out.objectivesPrompt =
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
+    }
+
+    /*
+     * WHAT THE ROOM IS ABOUT. Read when a round closes (board.listener.ts), served here as it was
+     * stored. Null is said out loud rather than rendered as an empty heading: "not read yet" and
+     * "nobody named a place" are different facts and a blank block cannot tell them apart.
+     */
+    if (has('whatTheRoomIsAbout')) {
+      const room = (ground as any).whatTheRoomIsAbout as { aims?: any[]; places?: any[]; things?: any[] } | null;
+      out.whatTheRoomIsAbout = room
+        ? {
+            aims: Array.isArray(room.aims) ? room.aims : [],
+            places: Array.isArray(room.places) ? room.places : [],
+            things: Array.isArray(room.things) ? room.things : [],
+            readAtSession: (ground as any).whatTheRoomIsAboutSession ?? null,
+          }
+        : null;
+      if (!room) {
+        out.whatTheRoomIsAboutNote = 'This is read when a round closes. Nothing has closed yet, so there is nothing to add up.';
+      }
     }
 
     if (has('quickRead')) {
@@ -631,6 +837,51 @@ export class BoardService {
       } catch (err: any) {
         this.logger?.warn?.(`Wording the board reads failed, shipping the engine's words: ${err?.message}`);
       }
+    }
+
+    /*
+     * IS THERE SOMETHING ABOVE THIS? Asked of every board that opted in, answered from the record
+     * rather than from the dropdown. The section is emitted even when the answer is no, but only
+     * where the situation said it should be - a team that opened an alignment check-in and never
+     * named what it aligns to is the case this is most useful for, and dropping the section there
+     * would hide exactly that. Anywhere else, no evidence means no section at all.
+     */
+    if (has('cascade')) {
+      const [cascadeEntries, importedWithParents] = await Promise.all([
+        this.prisma.recordEntry.findMany({
+          where: { disputedAt: null, participant: { groundId } },
+          select: { participantId: true, text: true },
+        }),
+        this.cascadeParents(ground.organizationId, ground.objectives.map((o) => o.name)),
+      ]);
+      const read = isThisACascade({
+        scenario: ground.scenario,
+        objectiveNames: ground.objectives.map((o) => o.name),
+        importedWithParents,
+        entries: cascadeEntries.map((e) => ({ participantId: e.participantId, text: cleanText(e.text) })),
+      });
+      if (read.isCascade || read.basis.includes('DECLARED')) out.cascade = read;
+    }
+
+    /*
+     * SOMEBODY CARRYING WORK WITH NO ACCOUNT HERE.
+     *
+     * The read has existed for a long time and reached one component that nothing imports. On a
+     * board it says the thing nobody had to notice on their own: the team is depending on somebody
+     * who has no voice in this.
+     *
+     * Every row goes through its own guard first - see the module for the three things that go
+     * wrong in the real data and why each is dropped rather than trimmed. What is dropped is
+     * logged by its reason and not by its content, like every other decision on this page.
+     */
+    if (has('hiddenContributors') && reportSafe) {
+      const rows = ((reportSafe as any)?.engagement?.hiddenContributors ?? []) as { label: string; evidence: string }[];
+      const { keep, dropped } = onlyWhoIsActuallyOutside(
+        Array.isArray(rows) ? rows : [],
+        ground.participants.map((p) => nameOf(p.id)).filter(Boolean) as string[],
+      );
+      for (const d of dropped) this.logger.warn(`Dropping a hidden contributor: it ${d.why}.`);
+      if (keep.length) out.hiddenContributors = { rows: keep, why: WHY_THIS_IS_HERE };
     }
 
     if (has('contribution')) {
@@ -793,7 +1044,9 @@ export class BoardService {
       }),
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId: ground.id } },
-        select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
+        /* `verifiability` too: it is a column now, and a read that does not select it falls back to
+           parsing the old inline marker, which new rows do not have. */
+        select: { participantId: true, text: true, verifiability: true, checkIn: { select: { sessionNumber: true } } },
       }),
       this.prisma.workMention.findMany({
         where: { groundId: ground.id },
@@ -823,6 +1076,8 @@ export class BoardService {
         participantId: e.participantId,
         sessionNumber: e.checkIn?.sessionNumber ?? null,
         text: e.text,
+        /* From the column. Null on rows written before it, where reads.ts parses the old marker. */
+        verifiability: (e as any).verifiability ?? null,
       })),
       mentions,
       dependencies,
@@ -986,26 +1241,89 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
-    const [count, maxSession] = await Promise.all([
+    const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
+    const [count, rounds] = await Promise.all([
       this.prisma.groundObjective.count({ where: { groundId } }),
-      this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }),
+      /* Optional-chained like the reads next door: a caller whose prisma double stubs only what it
+         needs must get an empty list, not a crash on a write that does not depend on it. */
+      this.prisma.checkIn?.findMany?.({ where: { groundId }, select: { sessionNumber: true, status: true } })?.catch(() => [] as any[]) ?? [],
     ]);
     // Stamp the session it was added in, so the board can flag it as new and show
     // who has been asked about it. A target means nothing until people have
     // checked in against it.
-    const addedAtSession = count === 0 ? null : (maxSession._max.sessionNumber ?? 1);
+    /*
+     * STAMPED AGAINST THE ROUND THAT IS RUNNING, not the row written ahead for next week.
+     *
+     * Taking the highest session number meant a target set this morning was stamped against next
+     * week, so the board reported "still to be asked" about people who could have been asked in the
+     * round that was actually open - and would keep reporting it for a week. See whichRoundIsOpen.
+     */
+    const addedAtSession = count === 0 ? null : (whichRoundIsOpen(rounds as any) || 1);
     return this.prisma.groundObjective.create({
       data: {
         groundId,
         name: dto.name.trim(),
         target: dto.target ?? null,
+        ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
       },
     });
+  }
+
+  /**
+   * SPLIT A TOTAL ACROSS PEOPLE, AND WRITE NOTHING.
+   *
+   * The arithmetic is deterministic and lives in its own module; this only checks who is asking and
+   * hands the proposal back. Nothing is saved on purpose: a chief of staff argues with these in
+   * front of the people they belong to, so she changes them first and then sets each one through
+   * the ordinary route, which is also what keeps every target something a person chose.
+   */
+  async proposeObjectives(
+    groundId: string,
+    requestingUserId: string,
+    dto: { total: number; people?: { key: string; lastPeriod: number; months?: number }[]; rows?: (string | number | null)[][] },
+  ) {
+    await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    /* A file if they dropped one, otherwise people they typed. The file wins where both arrive:
+       it is the thing they can see, and the one they will believe. */
+    const read = dto.rows?.length ? peopleFrom(dto.rows) : null;
+    const people = read ? read.people : (dto.people ?? []).map((p) => ({
+      key: p.key,
+      lastPeriod: p.lastPeriod,
+      /* No tenure given is read as a full year - the neutral reading, no part-year adjustment -
+         and `monthsKnown` tells the caller it was not theirs so nothing pretends otherwise. */
+      months: p.months ?? 12,
+      monthsKnown: p.months != null,
+    }));
+    const shares = splitTheTotal(people, dto.total);
+    return {
+      shares: shares.map((s) => ({ ...s, monthsKnown: people.find((p) => p.key === s.key)?.monthsKnown ?? false })),
+      saying: sayingWhatTheSplitDoes(shares, dto.total),
+      /* What the file turned out to hold, so a wrong column is visible beside the numbers it
+         produced rather than only in the numbers. */
+      readFromTheFile: read ? { missing: read.missing, skipped: read.skipped, people: read.people.length } : null,
+    };
+  }
+
+  /**
+   * A PARTICIPANT ID FROM SOMEWHERE ELSE IS NOT AN OWNER.
+   *
+   * Ids arrive from a form, and an id belonging to another check-in would hang one person's number
+   * off a check-in they are not on - visible to everybody on it, and invisible to them. Checked
+   * rather than trusted; anything that does not belong here becomes nobody's, which is the state
+   * every target was in before this existed.
+   */
+  private async whoOnThisGround(groundId: string, participantId?: string | null): Promise<string | null> {
+    if (!participantId?.trim()) return null;
+    const found = await this.prisma.groundParticipant.findFirst({
+      where: { id: participantId.trim(), groundId },
+      select: { id: true },
+    });
+    return found?.id ?? null;
   }
 
   /**
@@ -1119,6 +1437,40 @@ export class BoardService {
    * reliably share. A participant with no email cannot be resolved and is left out rather than
    * guessed at: attributing somebody's wait to the wrong person is worse than not showing it.
    */
+  /**
+   * THE IMPORTED HALF OF THE CASCADE READ.
+   *
+   * A customer's own system already knows which objective hangs under which; we store the parent id
+   * on the row and, until now, nothing but one detector ever read it. This resolves it to a title so
+   * the board can say what this sits under in the customer's own words.
+   *
+   * MATCHED BY TITLE, DELIBERATELY LOOSELY, AND ONLY TO NARROW. A ground has no foreign key to an
+   * imported objective - the link is that a lead typed roughly the same thing. So this returns rows
+   * whose title shares a meaningful word with a target on this board, and returns nothing at all
+   * when no target was set. A wrong match here would put somebody else's objective at the top of
+   * this board, which is worse than showing nothing.
+   */
+  private async cascadeParents(organizationId: string, objectiveNames: string[]) {
+    const words = new Set(
+      objectiveNames.flatMap((n) => n.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3)),
+    );
+    if (words.size === 0) return [];
+    const rows = await this.prisma.subject.findMany({
+      where: { organizationId, sourceDeletedAt: null, parentExternalId: { not: null } },
+      select: { title: true, parentExternalId: true, sourceSystem: true },
+      take: 200,
+    });
+    const near = rows.filter((r) =>
+      r.title.toLowerCase().split(/[^a-z0-9]+/).some((w) => w.length > 3 && words.has(w)));
+    if (near.length === 0) return [];
+    const parents = await this.prisma.subject.findMany({
+      where: { organizationId, externalId: { in: near.map((r) => r.parentExternalId!) } },
+      select: { externalId: true, title: true },
+    });
+    const titleOf = new Map(parents.map((p) => [p.externalId, p.title]));
+    return near.map((r) => ({ title: r.title, parentTitle: titleOf.get(r.parentExternalId!) ?? null }));
+  }
+
   async waitingAcrossTheOrg(organizationId: string, now = new Date()) {
     const rows = await this.prisma.groundDependency.findMany({
       where: {

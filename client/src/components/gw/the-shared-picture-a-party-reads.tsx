@@ -1,4 +1,5 @@
 import { TwoAccountsSideBySide, Folded } from './two-accounts-side-by-side'
+import { WhatToSettleTogether } from './what-to-settle-together'
 
 /**
  * THE SHARED REPORT, FOR THE PEOPLE IN IT.
@@ -74,8 +75,7 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
 
       {flat(report?.centralQuestion) && (
         <div style={{ padding: '16px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
-          <div style={LABEL}>The one thing to settle first</div>
-          <div style={PROSE}>{flat(report.centralQuestion)}</div>
+          <WhatToSettleTogether question={flat(report.centralQuestion)} />
         </div>
       )}
     </div>

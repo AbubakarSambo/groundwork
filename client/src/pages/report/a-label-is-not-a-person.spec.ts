@@ -20,28 +20,46 @@ import { join } from 'path'
  *
  * Comments stripped: this file names the label it protects against.
  */
-const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, ' ')
-  .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+/**
+ * WHERE THIS ASSERTS NOW, AND WHY IT IS A SWEEP RATHER THAN A POSITIVE.
+ *
+ * It read the ON RECORD table in `ReportPage.tsx`, which has had no importers for some time, and
+ * checked that the table resolved the label before printing it. No live surface renders
+ * `parties[].label` at all - so the positive assertion has nothing to point at.
+ *
+ * The rule is worth more as a sweep. `parties[].label` is an identifier: reports are stored with no
+ * names in them on purpose, `specificitySignal` is KEYED by those labels, and the key is
+ * deliberately left raw on the way out. So the hazard is not that one table got it wrong - it is
+ * that the next surface to render `parties` will reach for the field that is right there. This
+ * fails if any of them does.
+ */
+const SHARED: Record<string, string> = {
+  'the session report': readFileSync(join(__dirname, '../../components/gw/TheSessionsReport.tsx'), 'utf8'),
+  "a party's report": readFileSync(join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8'),
+  'the board': readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8'),
+  'my record': readFileSync(join(__dirname, '../../components/gw/MyRecord.tsx'), 'utf8'),
+}
 
 describe('a label is not a person', () => {
-  it('the ON RECORD row resolves the label instead of printing it', () => {
-    expect(SRC).toContain('{personFor(p.label)}')
-    expect(SRC).not.toContain('>{p.label}</div>')
+  it('no surface reads the parties array at all, which is the strongest form of it', () => {
+    /*
+     * Narrower and truer than matching on `.label`: the board renders `{p.label}` for a PATTERN,
+     * which is a different field on a different object and is not a person. What must not happen
+     * is a surface reaching into `parties[]` for a name that is not in there.
+     */
+    for (const [name, src] of Object.entries(SHARED)) {
+      const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+      expect(code, `${name} reads parties off the report`).not.toMatch(/\breport\.parties\b|\bd\.parties\b/)
+      expect(code, `${name} prints a party label`).not.toMatch(/\{\s*(party|person)\.label\s*\}/)
+    }
   })
 
-  it('the fallback labels map to the people they stand for', () => {
-    const i = SRC.indexOf('const personFor')
-    expect(i).toBeGreaterThan(-1)
-    const fn = SRC.slice(i, i + 500)
-    expect(fn).toContain("'the initiator'")
-    expect(fn).toContain('adminHandle')
-    expect(fn).toContain('partHandle')
-  })
-
-  it('and a role somebody described themselves as is left alone', () => {
-    /* "Renewals owner" is theirs. Only the schema's fallbacks are substituted. */
-    const i = SRC.indexOf('const personFor')
-    expect(SRC.slice(i, i + 500)).toContain('return label')
+  it('and the identifier is still an identifier, which is why this matters', () => {
+    /* If the label stopped being keyed by, the sweep above would be protecting nothing and should
+       be retired rather than left as decoration. */
+    const OWN_READS = readFileSync(
+      join(__dirname, '../../../../api/src/modules/reports/own-reads-only.ts'), 'utf8',
+    )
+    expect(OWN_READS).toMatch(/specificitySignal|keepOwnByLabel/)
   })
 })

@@ -14,7 +14,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
 import { endStatesFor } from '../resolution/end-states';
-import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
@@ -37,7 +36,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience, PatternStatus } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
@@ -49,17 +48,22 @@ import {
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { displayName } from '../reports/party-labels';
+import { displayName, labelsForParties } from '../reports/party-labels';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
+import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
+import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
+import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
+import { familyFor, BoardFamily } from '../board/board-families';
+import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
-import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
+import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -86,7 +90,18 @@ import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
+import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
+import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
+import {
+  whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
+  whichCard, owedFor, type Owed, type Role,
+} from './what-a-check-in-owes';
+import { everythingOwedFor } from './what-every-check-in-owes';
+import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
+import { totalSessionsFor } from '../grounds/session-count';
+import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -219,7 +234,7 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person put on the record. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "Your private record shows:" then summarise what they put on the record in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -328,7 +343,7 @@ export class ConversationService {
          * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
          */
         brief: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -382,7 +397,10 @@ export class ConversationService {
       const withEntries = await Promise.all(
         priorCheckIns.map(async (ci) => {
           const entries = await this.prisma.recordEntry.findMany({
-            where: { checkInId: ci.id, participantId: checkIn.participantId },
+            /* A line they unsaid is not replayed to them as their record. Low harm - it is their
+               own page - but a disputed line shown back with nothing marking it reads as still
+               standing, which is the whole thing "this is not what I said" exists to stop. */
+            where: { checkInId: ci.id, participantId: checkIn.participantId, disputedAt: null },
             orderBy: { createdAt: 'asc' },
             select: { type: true, text: true },
             take: 10,
@@ -419,7 +437,7 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      brief: this.briefFor(ground),
+      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)),
       turns: turns.map(asRead),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
@@ -481,10 +499,88 @@ export class ConversationService {
    * party wrote about them, nothing from anybody else's account. A brief that leaked one
    * participant's words to another would break the promise that makes the answers worth having.
    */
+  /**
+   * WHICH LIST OF THINGS THIS CHECK-IN OWES, or none.
+   *
+   * Both goal cards run on OKR_ALIGNMENT, because a cascade is detected from what people say rather
+   * than declared at setup. What tells them apart is the sentence the person picked the card with,
+   * which is on the ground as its brief - the cascade card's says there is something above this
+   * team. Nothing is inferred beyond that: a check-in with neither shape gets no list at all, and
+   * the conversation runs exactly as it did.
+   */
+  private whichOwedListFor(scenario: string, brief: string | null): Owed[] | null {
+    /*
+     * THE TWO GOAL CARDS KEEP THEIR OWN LISTS, and everything else gets the spine.
+     *
+     * Those two were written out slot by slot from copy given for them, so a spine underneath would
+     * double up - "what they understood they were meant to do" beside "what this is trying to
+     * achieve" is one question asked twice.
+     *
+     * The other twenty had NO list at all until now, which meant first, middle and last were shaped
+     * by whatever a model made of a session number in a sentence. See what-every-check-in-owes: a
+     * spine every situation shares, plus the one or two things each situation actually asks for
+     * that the spine does not.
+     */
+    const card = whichCard(scenario, brief);
+    if (card) return owedFor(card);
+    return everythingOwedFor(scenario);
+  }
+
+  /**
+   * WHICH OF THE THREE ROLES THIS PERSON IS ANSWERING AS.
+   *
+   * By answerability rather than rank. Whoever runs the check-in is the lead. Somebody whose role
+   * says they run or represent a team answers for work other people did, which is what makes the
+   * partner questions fair to put to them and the "what are you working on" ones not. Everybody
+   * else answers for their own work, which is the common case and the safe default.
+   */
+  private roleOfTheReaderFor(
+    ground: { initiatorId?: string | null } | null,
+    checkIn: { participant?: { userId?: string | null; roleAsDescribed?: string | null; partyType?: string | null } | null } | null,
+  ): Role {
+    const p = checkIn?.participant;
+    if (ground?.initiatorId && p?.userId && ground.initiatorId === p.userId) return 'lead';
+    const role = (p?.roleAsDescribed ?? '').toLowerCase();
+    if (/\b(lead|head of|manager|director|partner|agency|vendor|supplier|principal|chief)\b/.test(role)) return 'partner';
+    return 'member';
+  }
+
+  /**
+   * The reader, for the one part of the brief that is not a shared fact. Their participant row and
+   * whether they run this check-in; both already on the objects in hand, so nothing is fetched.
+   */
+  private whoIsReadingIt(
+    ground: { initiatorId?: string | null } | null,
+    checkIn: { participantId?: string | null; participant?: { userId?: string | null } | null } | null,
+  ) {
+    return {
+      participantId: checkIn?.participantId ?? null,
+      isLead: !!ground?.initiatorId && !!checkIn?.participant?.userId && ground.initiatorId === checkIn.participant.userId,
+    };
+  }
+
   private briefFor(
-    ground: { label: string | null; brief?: string | null; objectives: { name: string; target: number | null }[] } | null,
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[] } | null {
+    ground: {
+      label: string | null; brief?: string | null;
+      objectives: { name: string; target: number | null; ownerParticipantId?: string | null }[];
+      whoSeesTargets?: 'THEIR_OWN' | 'EVERYBODY';
+    } | null,
+    /*
+     * WHO IS READING, because a target with somebody's name on it is not a shared fact.
+     *
+     * Everything else in this brief is: the subject, what the lead wrote, a target belonging to the
+     * whole check-in. A target belonging to one person is a different object, and ten of them on a
+     * colleague's screen is a decision nobody made. See whose-number-is-whose-business.
+     */
+    reader?: { participantId: string | null; isLead: boolean },
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
+    const maySee = targetsFor(
+      ground.objectives ?? [],
+      reader?.participantId ?? null,
+      ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
+      { isLead: !!reader?.isLead },
+    );
     return {
       subject: ground.label ?? null,
       /*
@@ -501,7 +597,8 @@ export class ConversationService {
        * one participant's ACCOUNT reaching another, which this is not.
        */
       says: ground.brief?.trim() || null,
-      objectives: ground.objectives ?? [],
+      objectives: maySee.shown,
+      alsoSay: maySee.alsoSay,
     };
   }
 
@@ -528,7 +625,7 @@ export class ConversationService {
         /* What the check-in is actually about, for the brief a participant reads first. */
         brief: true,
         scenario: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
@@ -540,7 +637,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
     }
     await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
       this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
@@ -737,7 +834,7 @@ export class ConversationService {
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
+    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
   }
 
   /**
@@ -968,7 +1065,9 @@ export class ConversationService {
       this.knownForThisTurn.delete(checkIn.id);
       const conversationSoFar = turns.map((t) => t.content ?? '');
       let screened = screen(stripped.text, known, readerName, conversationSoFar);
-      if (screened.hits.length) {
+      /* Only an invention is worth a second call: a second question is fixed by the drop that
+         already happened. See needsAFreshAsk. */
+      if (screened.hits.length && needsAFreshAsk(screened.hits)) {
         /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
            the hit named. One time. If the second try is clean it replaces the first; if not, the
            first stands minus its dropped sentences. */
@@ -1003,6 +1102,65 @@ export class ConversationService {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
         }
       }
+      /*
+       * AND A GUESS IS NOT ALLOWED TO HARDEN INTO A FACT ON THE WAY OUT.
+       *
+       * Same shape as the broken-sentence gate above, and the same second chance: read the reply
+       * against what the person actually said, and where it has taken the hedge off a number they
+       * hedged, ask for the turn again. See a-hedge-is-not-a-fact.ts for the live turn this was
+       * written from - "about a third of the way there I would say" came back as "You're a third of
+       * the way there", and that is what a lead then reads about somebody.
+       *
+       * If the second try hardens it too, the first stands and a warning is logged: a reply that
+       * overstates is still better than no reply, and a loop here would strand the person.
+       */
+      /* The turn this reply is answering, not the whole conversation: a hedge from three turns ago
+         does not make a number they have since counted into a guess. */
+      const theirLastTurn = theirWords[theirWords.length - 1] ?? '';
+      const hardened = screened.text ? hardenedAGuess(theirLastTurn, screened.text) : null;
+      if (hardened) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact; asking again.`);
+        const softer = await this.anthropic
+          .respond(`${fullSystem}\n\n${DO_NOT_HARDEN_IT(hardened)}`, history)
+          .catch(() => '');
+        const second = softer.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(softer), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !hardenedAGuess(theirLastTurn, second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try kept it as their estimate.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try hardened it too; the first stands.`);
+        }
+      }
+
+      /*
+       * AND A REPLY THAT ASKS NOTHING AND DOES NOT CLOSE LEAVES SOMEBODY HOLDING IT.
+       *
+       * Last of the three, because the two above can change the text and this reads the final one.
+       * Same shape as both: spot it, ask again with one instruction, keep the second only if it is
+       * actually better. If it is not, the first stands - a flat reply is better than no reply, and
+       * a loop here would strand the person it is trying to help.
+       */
+      /* `textHadCloseMarker`, not the local flag of the same name: that one is set further down,
+         after this runs. The alias exists for exactly this collision. */
+      const closingNow = textHadCloseMarker(rawReply);
+      if (isADeadEnd(screened.text, closingNow)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; asking again.`);
+        const withAQuestion = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASK_SOMETHING_OR_CLOSE}`, history)
+          .catch(() => '');
+        const second = withAQuestion.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withAQuestion), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isADeadEnd(second.text, textHadCloseMarker(withAQuestion))) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try left them something to answer.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was a dead end too; the first stands.`);
+        }
+      }
+
       reply = screened.text || ASK_AGAIN;
 
       /*
@@ -1526,7 +1684,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
         /**
          * THE ROSTER, SO THE INTERVIEW CAN USE PEOPLE'S NAMES. GW-EXP-1.
          *
@@ -1703,9 +1861,24 @@ export class ConversationService {
                 .getActiveContent(`${packKeyBase}.${String(ground.moment).toLowerCase()}.${packParty}`)
                 .catch(() => null)
             : Promise.resolve(null)
-          ).then((momentSpecific) =>
+          ).then(async (momentSpecific) =>
             momentSpecific ??
-            this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null),
+            (await this.prompts.getActiveContent(`${packKeyBase}.${packParty}`).catch(() => null)) ??
+            /*
+             * AND A PACK WRITTEN ONCE FOR SITUATIONS THAT DO NOT DIFFER BY ROLE.
+             *
+             * Twelve of the twenty-three situations have byte-identical initiator and participant
+             * packs, because the pack describes the SITUATION and that situation reads the same to
+             * whoever is answering. What differs by role is what a person owes, and that lives in
+             * what-a-check-in-owes now, as slots per role and stage.
+             *
+             * Two identical rows are not a cost at runtime - only one is ever loaded - they are a
+             * trap: edit the lead's, forget the participant's, and the two roles diverge in a way
+             * nobody chose. This lets the next one be written once. The existing pairs are left
+             * alone, because they are still correct and rewriting live prompt rows to tidy them is
+             * a change with risk and no reader.
+             */
+            (await this.prompts.getActiveContent(packKeyBase).catch(() => null)),
           )
             // null (not '') throughout - buildActivePathway's `??` only falls
             // through to the in-code pack on null/undefined, so resolving to
@@ -1773,6 +1946,104 @@ export class ConversationService {
         new Date(),
       )).join('\n\n')}`]
       : [];
+
+    /*
+     * WHAT THE BOARD ALREADY KNOWS, COMING BACK THE OTHER WAY.
+     *
+     * Everything below this line is already on this check-in's own record: the numbers the board
+     * is measuring against, the things this person has themselves said are in their way, and what
+     * they said last time. The conversation has never seen any of it, which is why it opens every
+     * week by asking somebody what they are aiming for while the board holds the answer.
+     *
+     * Facts, not instructions - see the module. A model that is told a blocker is three weeks old
+     * and nobody escalated it does not need a rule telling it to ask.
+     */
+    /* Optional-chained like `personObjective` above: a caller whose prisma double does not stub a
+       model must get an empty read, not a crash mid-prompt. */
+    const [objectivesOnRecord, inTheWayRows, lastTimeRows] = await Promise.all([
+      this.prisma.groundObjective?.findMany({
+        where: { groundId: ground.id },
+        orderBy: { sortOrder: 'asc' },
+        select: { name: true, target: true, count: true, ownerParticipantId: true },
+      })?.catch(() => [] as any[]) ?? [],
+      /*
+       * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
+       *
+       * BOTH OPEN STATES, not just WAITING. The enum has three - BLOCKING, WAITING, CLEARED - and
+       * the live extractor writes BLOCKING for the shape this is most for: "I am waiting on finance
+       * and six units are sitting there". Filtering on WAITING alone read as working and returned
+       * nothing, which is the quietest way for a wired thing to be unwired.
+       */
+      this.prisma.groundDependency?.findMany({
+        where: { groundId: ground.id, fromParticipantId: checkIn.participantId, status: { in: ['BLOCKING', 'WAITING'] } },
+        orderBy: { createdAt: 'asc' },
+        select: { what: true, onLabel: true, onParticipantId: true, createdAt: true, escalatedAt: true, then: true },
+      })?.catch(() => [] as any[]) ?? [],
+      /* Their own words from the session before this one, so a promise can be followed up. */
+      this.prisma.recordEntry?.findMany({
+        where: {
+          participantId: checkIn.participantId,
+          disputedAt: null,
+          checkIn: { sessionNumber: { lt: checkIn.sessionNumber ?? 1 }, status: 'COMPLETED' },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        select: { text: true },
+      })?.catch(() => [] as any[]) ?? [],
+    ]);
+    /* A ground whose participants were not selected on this read has none to label, and an
+       undefined list is not an empty one as far as the labeller is concerned. */
+    const labelOf = labelsForParties((ground.participants ?? []) as any);
+    const recordAlreadyHolds = whatTheRecordAlreadyHolds({
+      targets: (objectivesOnRecord as any[]).map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId })),
+      inTheWay: (inTheWayRows as any[]).map((d) => ({
+        what: d.what,
+        on: d.onParticipantId ? (labelOf.get(d.onParticipantId) ?? d.onLabel ?? null) : (d.onLabel ?? null),
+        since: d.createdAt,
+        escalated: !!d.escalatedAt,
+        then: d.then,
+      })),
+      saidLastTime: (lastTimeRows as any[]).map((e) => String(e.text ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).reverse(),
+      /* The lead's call for this check-in, not a global rule. See the field on the ground. */
+      expectThemToUnblock: (ground as any).expectThemToUnblock !== false,
+      now: new Date(),
+    });
+
+    /*
+     * WHAT THIS CHECK-IN STILL OWES, worked out here rather than written into eighteen packs.
+     *
+     * The two goal scenarios want a different conversation from a lead, a team member and a partner,
+     * at the first round, a middle one and the last. Serving that as prose would be eighteen blocks
+     * competing with 273 imperatives. This is the same tables as data: what has to end up on the
+     * record, who owes it, when. What is missing gets asked for; what is answered never gets asked
+     * again; what somebody will not answer is recorded and let go.
+     */
+    const owedForThis = this.whichOwedListFor(ground.scenario as any, (ground as any).brief ?? null);
+    let owedBlock = '';
+    if (owedForThis) {
+      const [minePastAndPresent, gapRows] = await Promise.all([
+        this.prisma.recordEntry?.findMany?.({
+          where: { participantId: checkIn.participantId, disputedAt: null },
+          select: { type: true },
+        })?.catch(() => [] as any[]) ?? [],
+        this.prisma.checkInGap?.findMany?.({
+          where: { participantId: checkIn.participantId },
+          select: { slug: true, asked: true, answeredAt: true },
+        })?.catch(() => [] as any[]) ?? [],
+      ]);
+      const stage = stageOf(
+        checkIn.sessionNumber ?? 1,
+        /* Derived from the timeline and the cadence, which is where a planned length lives. */
+        totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+        !!(checkIn as any).isFinal,
+      );
+      const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
+        types: (minePastAndPresent as any[]).map((e) => e.type),
+        answered: (gapRows as any[]).filter((g) => g.answeredAt).map((g) => g.slug),
+        letGo: (gapRows as any[]).filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
+      });
+      owedBlock = sayWhatIsMissing(still, stage);
+    }
 
     const intakeBlock = buildIntakeBlock({
       scenario: ground.scenario,
@@ -2373,6 +2644,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
     /*
+     * WHAT KEEPS HAPPENING, AS A QUESTION.
+     *
+     * The pattern library has carried a `probe` on every code from the start - the ordinary
+     * question to ask about the work when that thing keeps coming up - and it reached exactly one
+     * caller: the board, as a suggestion to a LEAD. So the person it is about was never asked
+     * anything, and the one surface that could ask naturally, in the moment, with their own words
+     * still on the screen, was the one surface that never saw it.
+     *
+     * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
+     * anybody. Gated on SURFACED and two periods, one question at most, and never named.
+     */
+    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2446,13 +2731,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2469,6 +2754,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * which is most sessions: a coach that always has something to say is a product that always has
    * something to say about you.
    */
+  /**
+   * The one recurring thing worth a question this session, or nothing.
+   *
+   * SURFACED only, never CANDIDATE - see the module next door for why. Reads the detections for
+   * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
+   * exist for the alignment feed only, and picks at most one.
+   */
+  private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
+    try {
+      const rows = await this.prisma.patternDetection.findMany({
+        where: { participantId, status: PatternStatus.SURFACED },
+        select: { code: true, periodsObserved: true, accuracyRating: true },
+      });
+      return askAboutItBlockFor(theOneWorthAsking(rows));
+    } catch (err) {
+      // A probe must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the pattern probe for ${participantId}: ${(err as Error)?.message}`);
+      return '';
+    }
+  }
+
   private coachingEnabled(): boolean {
     return true;
   }
@@ -2598,17 +2904,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-    if (!map?.failureSignals?.length || !confident) {
-      /* A WRITER THAT RAN AND COULD NOT COACH STILL WRITES. 95 of the first 100 backfilled sessions
-         left no row here, which is the same dark shape as a writer that never ran. The row says why. */
-      await this.recordCoachingStep(participantId, sessionNumber, {
-        noticed: null, lookingLike: null, reason: null, hadSubstance: false,
-        observed: null,
-        observations: undefined,
-        why: !map?.failureSignals?.length ? `no role map for function ${participant?.detectedFunction ?? 'none'}` : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`,
-      } as any).catch(() => undefined);
-      return;
-    }
+    /**
+     * A ROLE NOBODY MAPPED IS STILL A PERSON.
+     *
+     * This returned here, before reading a word of the transcript, whenever there was no role map
+     * or the function sat below the confidence floor. Both exits are RIGHT about the role - a map
+     * chosen from a guess coaches somebody out of the wrong one - and both were wrong about the
+     * person: 477 people on record, 32 clearing this gate, so 93% could never be coached about
+     * anything, not because nothing was noticed but because nothing was ever looked at.
+     *
+     * So the role gate now selects WHICH behaviours are read rather than whether anybody is read at
+     * all. With a confident map, the function's own failure signals, as before. Without one, the
+     * universal floor - which is deliberately weaker and says so: every line of it is about the
+     * ACCOUNT, not about the work, because the work is the part that cannot be read without
+     * knowing the job.
+     */
+    const readFromTheAccount = !map?.failureSignals?.length || !confident;
+    const whyTheFloor = readFromTheAccount
+      ? (!map?.failureSignals?.length
+        ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
+        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`)
+      : null;
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2619,7 +2935,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    const behaviours = map.failureSignals.map((b, i) => `${i}. ${b}`).join('\n');
+    const behaviours = (readFromTheAccount ? theBehavioursAnybodyCanBeRead() : map!.failureSignals!)
+      .map((b, i) => `${i}. ${b}`).join('\n');
 
     /**
      * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
@@ -2712,7 +3029,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // signalRead applies the guards that matter - an index off the end, an empty
     // reason - and returns null rather than something to hand a person.
-    const read = signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
+    const read = readFromTheAccount
+      ? universalSignalRead(observed?.index ?? -1, observed?.reason ?? '')
+      : signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
 
     /**
      * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
@@ -2774,6 +3093,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         reason: offerable ? read!.reason : null,
         observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
+        /* Which floor this step came off. A step read from the account rather than the role has to
+           be traceable as one - it is weaker by construction, and a row that does not say so would
+           be indistinguishable later from a role-mapped read. */
+        why: whyTheFloor ?? undefined,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
@@ -3210,6 +3533,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
     // the record is populated before the status change races past it. buildSoloArtifact
     // is still fire-and-forget. Both are best-effort.
+
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -3227,6 +3551,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     // Re-read which function map fits this person, from their own account. Runs
     // every session because detection is continuous, not a tag set once.
+    this.extractStatedFigures(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
+
+    /*
+     * AND THE GAPS ARE SETTLED FOR THIS ROUND: answered ones closed, unanswered ones recorded.
+     *
+     * AFTER EXTRACTION AND NOT BEFORE, which is where I first put it against my own comment saying
+     * otherwise. Whether a slot was answered is a question about the record, and extraction is what
+     * writes the record: run first, it reads a round that has not been extracted yet, so somebody
+     * who gave a clear goal in this very session has it recorded as a gap. Watched happen - "the
+     * goal or target that fits their own role", against a person who had just said 1,200 qualified
+     * leads against 1,000 last quarter.
+     *
+     * A gap closes permanently the moment it is answered, in this round or any later one: a fact
+     * does not stop being on the record because a new round began.
+     */
+    await this.settleTheGaps(checkIn).catch((err) =>
+      this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`));
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -3391,7 +3733,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true },
     });
 
     /*
@@ -3425,7 +3767,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
-      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null);
+      cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null, ground?.workingDays ?? []);
     // Respect the end date: do not schedule a next session past it.
     const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
     if (!pastEnd) {
@@ -3547,11 +3889,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Convert a cadence enum to the next available date from now.
    * anchorDay: weekly/fortnightly = weekday (0=Sun..6=Sat); monthly = day of month (1-31).
    */
-  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null): Date {
+  private cadenceToDate(cadence: Cadence, anchorDay: number | null = null, workingDays: number[] = []): Date {
+    /*
+     * EVERY BRANCH ENDS AT THE SAME ROLL-FORWARD, WHICH IS WHY IT IS WRAPPED RATHER THAN REPEATED.
+     *
+     * Daily was `+1 day` flat and landed on Saturdays. Fixing only that branch would have left a
+     * fortnightly anchor doing the same thing more quietly, and a check-in that opens on a day
+     * nobody works reads on the board as somebody who did not answer.
+     */
+    const onADayTheyWork = (date: Date) => theNextDayTheyWork(date, workingDays);
     const d = new Date();
     if (cadence === Cadence.DAILY) {
       d.setDate(d.getDate() + 1);
-      return d;
+      return onADayTheyWork(d);
     }
     if (cadence === Cadence.MONTHLY) {
       // Next month; if a day-of-month anchor is set, land on it (clamped to month length).
@@ -3560,7 +3910,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         d.setDate(Math.min(anchorDay, daysInMonth));
       }
-      return d;
+      return onADayTheyWork(d);
     }
     const days = cadence === Cadence.WEEKLY ? 7 : 14; // FORTNIGHTLY = 14
     d.setDate(d.getDate() + days);
@@ -3569,7 +3919,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if ((cadence === Cadence.WEEKLY || cadence === Cadence.FORTNIGHTLY) && anchorDay != null && anchorDay >= 0 && anchorDay <= 6) {
       while (d.getDay() !== anchorDay) d.setDate(d.getDate() + 1);
     }
-    return d;
+    return onADayTheyWork(d);
   }
 
   /**
@@ -3628,6 +3978,82 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * verifiability rating (HIGH/MEDIUM/LOW) for each entry so the synthesis can
    * weight evidence-backed claims appropriately.
    */
+  /**
+   * CLOSE WHAT WAS ANSWERED, RECORD WHAT WAS NOT, AND PRESS NOTHING.
+   *
+   * Run once at the end of a round. Everything still owed at that point is a gap: either it is
+   * newly recorded, or it has been asked again and its count goes up. Past the limit the
+   * conversation stops asking for it and the lead sees it on their own page instead.
+   *
+   * A gap is never a mark against anybody. It is a thing the record does not have, which is a fact
+   * about the record - and half the time the honest reason is that nobody could have answered it.
+   */
+  private async settleTheGaps(checkIn: any): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      /* No totalSessions on a ground: the planned length is derived from the timeline and the
+         cadence, which is what session-count exists for. Selecting it threw the whole settle. */
+      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true } as any,
+    });
+    const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
+    if (!owed) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: checkIn.participantId },
+      select: { userId: true, roleAsDescribed: true, partyType: true },
+    });
+    const [types, gapRows] = await Promise.all([
+      this.prisma.recordEntry.findMany({
+        where: { participantId: checkIn.participantId, disputedAt: null },
+        select: { type: true },
+      }),
+      this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId } }),
+    ]);
+
+    const stage = stageOf(
+      checkIn.sessionNumber ?? 1,
+      totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null,
+      !!checkIn.isFinal,
+    );
+    const role = this.roleOfTheReaderFor(ground as any, { participant } as any);
+    const held = {
+      types: types.map((t) => t.type),
+      answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
+      letGo: [] as string[],
+    };
+
+    /* Anything now satisfied that was open is answered, whichever round it was asked in. */
+    const stillOwedIds = new Set(whatIsStillOwed(owed, role, stage, held).map((o) => o.id));
+    const nowAnswered = gapRows.filter((g) => !g.answeredAt && !stillOwedIds.has(g.slug));
+    if (nowAnswered.length) {
+      await this.prisma.checkInGap.updateMany({
+        where: { id: { in: nowAnswered.map((g) => g.id) } },
+        data: { answeredAt: new Date() },
+      });
+    }
+
+    for (const o of owed.filter((x) => stillOwedIds.has(x.id))) {
+      const existing = gapRows.find((g) => g.slug === o.id);
+      if (existing?.answeredAt) continue;
+      if (existing) {
+        await this.prisma.checkInGap.update({ where: { id: existing.id }, data: { asked: existing.asked + 1 } });
+      } else {
+        await this.prisma.checkInGap.create({
+          data: {
+            groundId: checkIn.groundId,
+            participantId: checkIn.participantId,
+            slug: o.id,
+            what: o.what,
+            /* A slot nothing can prove is asked and then recorded as unconfirmable, not as
+               unanswered. See `certain` on the model. */
+            certain: !o.noTypeYet,
+            firstRound: checkIn.sessionNumber ?? 1,
+          },
+        });
+      }
+    }
+  }
+
   async extractRecordEntries(checkInId: string, participantId: string) {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
@@ -3717,9 +4143,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
     if (valid.length === 0) return;
 
-    // Store entries. The verifiability field is kept in the text as a prefix
-    // tag ([VERIFIABILITY: HIGH]) because the RecordEntry schema does not yet
-    // have a dedicated column - this preserves the signal without a migration.
+    /*
+     * Store entries. Verifiability is its OWN COLUMN now.
+     *
+     * It used to be stamped on the front of the text - "[VERIFIABILITY:HIGH] ..." - with a comment
+     * here saying the schema had no column for it and this preserved the signal without a
+     * migration. It came due twice: once under people's names on the board, and once inside the
+     * line a lead is shown when accepting a number, in code written the same evening. Every reader
+     * had to remember to strip it and the fifth one did not.
+     *
+     * The text is stored clean, which is the part that ends the leak: a marker that is not in the
+     * text cannot be printed by a reader who forgot it was there.
+     */
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
@@ -3730,7 +4165,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           participantId,
           checkInId,
           type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
-          text: `[VERIFIABILITY:${v}] ${e.text.trim()}`,
+          verifiability: v as any,
+          text: e.text.trim(),
         };
       }),
     });
@@ -3943,17 +4379,58 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (!p) return;
 
     const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId },
+      /*
+       * A LINE SOMEBODY UNSAID MUST NOT DECIDE WHAT KIND OF WORK THEY DO.
+       *
+       * This read the whole corpus, disputed lines included. "This is not what I said" sets
+       * `disputedAt` and every read filters on it - that is the rule the extraction wall rests on -
+       * and this one did not, so a wrongly extracted line could still be what picks the role map
+       * somebody is then coached and probed against for the rest of the run. The louder the
+       * misreading, the more it looked like a function.
+       */
+      where: { participantId, disputedAt: null },
       select: { text: true },
       orderBy: { createdAt: 'asc' },
       take: 200,
     });
 
-    const result = detectFunction(
+    let result = detectFunction(
       p.roleAsDescribed,
       entries.map((e) => e.text),
       { fn: p.detectedFunction, confidence: p.detectedFunctionConfidence },
     );
+
+    /**
+     * WHEN THE KEYWORDS FIND NOTHING, READ IT.
+     *
+     * The matcher scores zero on all ten lists for 294 of the 298 people who have said anything at
+     * all - not a tuning problem, just that nobody writes the way the lists expect. So 92% had no
+     * job on record, the role map never loaded, and nobody was read in the terms of their own work.
+     *
+     * The matcher stays the fast path: free, deterministic, and usually right when it fires. This
+     * runs only when it did not, and only when there is something to read. It never overrides a
+     * read that already exists - a model call that can quietly replace a settled yardstick is a
+     * yardstick that moves.
+     */
+    if (!result.fn && entries.length) {
+      try {
+        const said = await this.anthropic.extract<{ fn?: string; certainty?: string; basis?: string }>(
+          WHAT_KIND_OF_WORK_PROMPT,
+          [{ role: 'user', content: entries.map((e) => e.text.replace(/^\[[^\]]*\]\s*/, '')).join('\n') }],
+          WHAT_KIND_OF_WORK_SCHEMA as any,
+          { fast: true },
+        );
+        const read = theJobTheyDescribed(said ?? null);
+        if (read) {
+          result = read;
+          this.logger.log(`Function read from the account for ${participantId}: ${read.fn} (${read.confidence}). ${read.basis}`);
+        }
+      } catch (err) {
+        /* The matcher's answer stands. Reading the job is an improvement on a silence, never a
+           reason a session cannot be completed. */
+        this.logger.warn(`Could not read the kind of work for ${participantId}: ${(err as Error)?.message}`);
+      }
+    }
 
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
@@ -4802,6 +5279,80 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }).catch(() => undefined);
   }
 
+  /**
+   * THE FIGURES A TRACKING CHECK-IN IS FOR.
+   *
+   * The implementation-tracking pack presses harder on this than on anything else - the figures,
+   * the period each covers, and where it came from - and twelve contract check-ins have run with
+   * `ReportedFigure` empty, because nothing carried an answer out of the conversation. The chat
+   * asked the right question and the answer stayed prose.
+   *
+   * ONLY ON AN AGREEMENT GROUND. Every other situation has numbers in it too, and they are not
+   * figures reported under an arrangement - they are somebody describing their week. Writing those
+   * here would put a person's own account into a table built for reconciling two companies.
+   *
+   * EVERYTHING WRITTEN IS UNCONFIRMED. The schema's own rule, obeyed: a model's reading is not the
+   * figure until a person says so, and nothing compares an unconfirmed one to anything.
+   */
+  async extractStatedFigures(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, organizationId: true },
+    });
+    if (!ground || familyFor(ground.scenario) !== BoardFamily.AGREEMENT) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
+    if (!turns.length) return;
+    const transcript = turns
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
+      .join('\n');
+
+    /* The model does not know what year it is. Driven live, "the thirty-first of August" came back
+       dated 2024 on a check-in run in 2026 - see theDayThisWasSaid for why that is the worst error
+       this table can hold. */
+    const said = await this.anthropic.extract<{ figures?: unknown }>(
+      FIGURE_PROMPT + theDayThisWasSaid(new Date()),
+      [{ role: 'user', content: transcript }],
+      FIGURE_SCHEMA as any,
+    );
+    const figures = theFiguresTheyStated(said ?? null);
+    if (!figures.length) return;
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    /* `from` is which side stated it and `statedBy` is who. Both are the customer's own handles
+       rather than row ids, because a figure has to stay readable after anybody leaves. */
+    const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
+      || participant?.email
+      || participantId;
+
+    for (const f of figures) {
+      await this.prisma.reportedFigure.create({
+        data: {
+          organizationId: ground.organizationId,
+          groundId,
+          says: f.says,
+          minorUnits: f.minorUnits,
+          currency: f.currency,
+          periodFrom: f.periodFrom,
+          periodTo: f.periodTo,
+          source: f.source,
+          statedBy: who,
+          from: who,
+          // Unconfirmed, always. See the module's header and the schema's.
+          confirmedAt: null,
+        },
+      }).catch((err: any) => this.logger.warn(`Could not keep a stated figure on ${checkInId}: ${err?.message}`));
+    }
+    this.logger.log(`Kept ${figures.length} stated figure(s) from ${checkInId}, unconfirmed.`);
+  }
+
   async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -4885,7 +5436,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const result = await this.anthropic.extract<{
-      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null }[];
+      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null; namedTheThing?: boolean }[];
     }>(DEPENDENCY_EXTRACTION_PROMPT, [{ role: 'user', content: transcript }], DEPENDENCY_EXTRACTION_SCHEMA);
 
     const valid = (result?.dependencies ?? []).filter((d) => d.what?.trim());
@@ -4950,7 +5501,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           data: {
             status,
             then: d.then?.trim() || undefined,
+            /* What they said they did, this time. Undefined leaves what an earlier round heard:
+               somebody who chased last week and says nothing this week still chased. */
+            triedSaid: d.triedSaid?.trim() || undefined,
             sourceCheckInId: checkInId,
+            /* The newest account decides this too: somebody who names the thing this week has
+               named it, whatever they said the first time. Undefined leaves what we had. */
+            namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : undefined,
             clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           },
         });
@@ -4967,11 +5524,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           onLabel,
           what: d.what.trim(),
           then: d.then?.trim() || null,
+          /* Their own words for what they have already done about it. Null means they did not say,
+             which is what "nothing said yet" on the board honestly means. */
+          triedSaid: d.triedSaid?.trim() || null,
+          /* Whether they named the thing, or only said they were stuck. Null where the model did
+             not answer, which reads as "we do not know" rather than as "they did not". */
+          namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
         },
-        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
+        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, namedTheThing: true },
       });
       // So a second mention within the SAME extraction also dedupes.
       openForThisPerson.push(created);
@@ -5418,7 +5981,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId, initiatorId: requestingUserId },
       select: {
         id: true, label: true, scenario: true, brief: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
         participants: {
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true,

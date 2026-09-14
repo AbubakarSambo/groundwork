@@ -361,8 +361,10 @@ export function SettingsPage() {
           <Card pad="block">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-              Add your number to get check-in links and reminders on WhatsApp as well as email. Your
-              emails keep coming either way. We match messages to you by this number.
+              Add your number and you can check in and get reminders on WhatsApp as well as email.
+              Your emails keep coming either way. We know it is you by this number.
+              {' '}This only works if your organisation has connected a WhatsApp number. If nothing
+              arrives, ask whoever manages Groundwork where you work.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input

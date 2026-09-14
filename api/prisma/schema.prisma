@@ -170,10 +170,37 @@ enum TurnRole {
 }
 
 // Structured data extracted from a check-in. Belongs to the person.
+/// HOW CHECKABLE A LINE IS, as the extraction read it.
+///
+/// HIGH: a document or a concrete fact. MEDIUM: a specific claim somebody could check.
+/// LOW: subjective, or from memory alone.
+enum Verifiability {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum RecordEntryType {
   SUCCESS_DEFINITION
   TIMEFRAME
   COMMITMENT
+
+  /// A THING THAT HAPPENED. THE RECORD HAD NOWHERE TO PUT ONE.
+  ///
+  /// Found by running a lead's own path end to end. Three people delivered a quarter's plan and the
+  /// closing report told the lead "Answered, and nothing specific enough to record came out of it"
+  /// about both of them. The lines were in the record. They had been typed SUCCESS_DEFINITION - a
+  /// bucket the per-person view deliberately hides, because that type is what good would LOOK like
+  /// and printing it as though somebody had done it was an older bug.
+  ///
+  /// The model was not wrong so much as cornered. "All forty migrated by Friday" is not a
+  /// definition of success and not something they agreed to deliver; it is a report of work done,
+  /// and there was no type for that. So the same kind of sentence came back COMMITMENT in one round
+  /// and SUCCESS_DEFINITION in the next, and half of it vanished from the page.
+  ///
+  /// On a product whose job is tracking whether a plan is being followed, progress had nowhere to
+  /// live. It does now.
+  PROGRESS
   ASK
   INTENT
   TOLERANCE
@@ -794,6 +821,29 @@ model Ground {
   // that does not set it explicitly is private, never accidentally shared.
   mode           GroundMode     @default(PRIVATE)
 
+  /// WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP, WHEN THE ORGANISATION HAS A NUMBER.
+  ///
+  /// NULL means "whatever the organisation does", which is what every ground did before this
+  /// existed: connected and the person has a number, so the opening notice goes to their phone.
+  /// Nullable precisely so this column changes nothing that already runs - a boolean with a default
+  /// would have decided for every ground in the database on the day it was added.
+  ///
+  /// True sends it. False keeps this one in Groundwork even though the organisation has a number,
+  /// which is the case that had no way to be said at all: it was all of them or none of them.
+  overWhatsApp Boolean? @map("over_whatsapp")
+
+  /// WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, READ ONCE WHEN A ROUND CLOSES.
+  ///
+  /// Forty people each said what they were trying to achieve, where, and about what crop. All of it
+  /// sat in single sentences and nothing on the board added it up, so the one question the convener
+  /// had - where is the weight - could not be answered from the page.
+  ///
+  /// It lives here rather than being read on every board open for the same reason the number read
+  /// does: a board is opened many times a round by everybody on it, and this is one answer per
+  /// round. Null means it has not been read yet, which the board says plainly rather than hiding.
+  whatTheRoomIsAbout        Json? @map("what_the_room_is_about")
+  whatTheRoomIsAboutSession Int?  @map("what_the_room_is_about_session")
+
   timelineDays     Int       @map("timeline_days")
   /// DID THE LEAD CHOOSE THIS, OR DID WE.
   ///
@@ -809,6 +859,19 @@ model Ground {
   timelineWeeks    Int?      @map("timeline_weeks")
   cadence          Cadence   @default(FORTNIGHTLY)
   cadenceAnchorDay Int?      @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+
+  /// WHICH DAYS THIS TEAM WORKS. 0=Sun..6=Sat. Empty means every day, which is the honest default
+  /// for a product that does not know whose week this is.
+  ///
+  /// A daily cadence was `+1 day`, flat, so it landed on Saturday and it landed on Sunday. Nothing
+  /// in the schema, the date maths or the form knew what a weekend was - and daily is the one
+  /// cadence with no day picker, so "weekdays only" could not be said at all.
+  ///
+  /// IT IS CHOSEN, NEVER ASSUMED. Monday to Friday is not a fact about the world: field teams work
+  /// Saturdays, and the week starts on Sunday in much of the region this is built for. So the form
+  /// offers it and the empty list means nobody said, which is different from somebody saying every
+  /// day - and both are rendered as what they are.
+  workingDays      Int[]     @default([]) @map("working_days")
   startsAt         DateTime? @map("starts_at") // when the first scheduled check-in opens (start date)
   endsAt           DateTime? @map("ends_at") // no new check-ins scheduled after this (end date)
   endState         String?   @map("end_state") // the decision the process worked toward
@@ -929,6 +992,23 @@ model Ground {
   reportActivations          ReportActivation[]
   roundCompletions           RoundCompletion[]
   objectives                 GroundObjective[]
+  gaps                       CheckInGap[]
+  /// Whether people on this check-in see each other's numbers. Narrow unless somebody chose
+  /// otherwise: a default that publishes is not a default.
+  whoSeesTargets             WhoSeesTargets @default(THEIR_OWN) @map("who_sees_targets")
+
+  /// WHETHER BEING BLOCKED IS EXPECTED TO COME WITH HAVING TRIED.
+  ///
+  /// "People get lazy, they don't nudge people to unblock them and they don't follow up." Stated by
+  /// a chief of staff, and true of most work most of the time - so this is on by default and the
+  /// conversation asks what was actually done before a blocker is recorded as one.
+  ///
+  /// It can be turned off, and the cases are real rather than theoretical: a cohort of new starters
+  /// with no standing to chase anybody, an external party who cannot escalate inside somebody
+  /// else's company, a crisis check-in where the point is to hear what happened and not to coach.
+  /// Asking somebody what they tried, when trying was never theirs to do, is the fastest way to
+  /// make a check-in feel like an interrogation.
+  expectThemToUnblock        Boolean        @default(true) @map("expect_them_to_unblock")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   poll                       GroundPoll?
@@ -1042,6 +1122,10 @@ model CoachingState {
 }
 
 model GroundParticipant {
+  /// Things a check-in asked this person for and did not get. See CheckInGap.
+  gaps                       CheckInGap[]
+  /// Board targets that are this person's own. See GroundObjective.ownerParticipantId.
+  objectivesOwned            GroundObjective[] @relation("ObjectiveOwner")
   whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
@@ -1348,6 +1432,20 @@ model RecordEntry {
   participantId        String          @map("participant_id")
   checkInId            String?         @map("check_in_id")
   type                 RecordEntryType
+
+  /// HOW CHECKABLE THIS LINE IS. A COLUMN, BECAUSE IT WAS LIVING IN THE TEXT.
+  ///
+  /// It was stamped on the front of `text` as "[VERIFIABILITY:HIGH] ..." with a comment saying why:
+  /// "the RecordEntry schema does not yet have a dedicated column - this preserves the signal
+  /// without a migration." A reasonable IOU, and it came due twice: once under people's names on
+  /// the board, and once inside the line a lead is shown when accepting a number off the record -
+  /// in code written the same evening. Every reader had to remember to strip it, and the fifth
+  /// reader did not.
+  ///
+  /// Null on every row written before this column, and those still carry the marker in their text;
+  /// the readers parse it as a fallback. New rows keep the text clean, which is what actually ends
+  /// the leak: a marker that is not in the text cannot be printed by a reader who forgot.
+  verifiability        Verifiability?
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
@@ -1425,11 +1523,97 @@ model PersonStyleProfile {
   @@map("person_style_profiles")
 }
 
+/// WHETHER PEOPLE SEE EACH OTHER'S NUMBERS.
+///
+/// Ten salespeople each saw all ten targets on their own first screen, and nobody decided that: it
+/// fell out of the brief being a shared fact and a target being a board object. Both answers are
+/// defensible - plenty of sales floors put the whole board on the wall on purpose - and neither
+/// should be an accident of how the data is modelled. See whose-number-is-whose-business.ts.
+enum WhoSeesTargets {
+  THEIR_OWN
+  EVERYBODY
+}
+
+/// SOMETHING A CHECK-IN ASKED FOR AND DID NOT GET.
+///
+/// The conversation asks for what the record is missing. Where somebody will not or cannot answer,
+/// it is recorded here and let go rather than pressed - decided, because a person who feels
+/// cornered gives compliant answers and those are worse than missing ones.
+///
+/// It stays open across rounds and closes the moment they answer it, in this round or a later one.
+/// The lead sees an open gap on their own page; nobody sees a gap as a mark against anybody.
+model CheckInGap {
+  id            String    @id @default(uuid())
+  groundId      String    @map("ground_id")
+  participantId String    @map("participant_id")
+  /// The slot's stable id, so a gap recorded in round one is the same gap in round six.
+  slug          String
+  /// What the record was missing, in the words the product uses about it. Never a question.
+  what          String    @db.Text
+  /// How many times it has been asked for. Past the limit the conversation stops asking.
+  asked         Int       @default(1)
+  /// WHETHER WE CAN ACTUALLY TELL THAT IT WAS NOT ANSWERED.
+  ///
+  /// Most slots are proved from the record: an entry of the right kind exists or it does not. A few
+  /// have no type yet - what a goal sits under, whether two teams overlap - so the conversation can
+  /// ask but nothing can confirm the answer, and they would otherwise sit open for ever against
+  /// somebody who answered in their first sentence. Watched happen to a lead who had just said the
+  /// group target was 120 million and why it mattered.
+  ///
+  /// False means: this was asked and we cannot tell. The lead is told that, rather than told they
+  /// did not answer.
+  certain       Boolean   @default(true)
+  /// The round it was first recorded in, so a lead can see how long it has been open.
+  firstRound    Int       @map("first_round")
+  answeredAt    DateTime? @map("answered_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  ground      Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, slug])
+  @@index([groundId, answeredAt])
+  @@map("check_in_gaps")
+}
+
 model GroundObjective {
   id       String @id @default(uuid())
   groundId String @map("ground_id")
   name     String
   target   Int? // null = a qualitative objective, tracked but not counted
+
+  /// WHOSE NUMBER THIS IS, WHERE IT IS SOMEBODY'S.
+  ///
+  /// A board target was the whole check-in's: "paying companies", "first response under four
+  /// hours". Watched with a real team, a chief of staff set ten of them - one per salesperson,
+  /// summing to the number committed to the board - and the product had nowhere to say which was
+  /// whose. So every rep saw all ten, the board could not say where any one person stood, and the
+  /// only read a manager wanted, ten rows against ten numbers, could not be built at all.
+  ///
+  /// Null keeps the original meaning and is still the common case: a target for the whole thing,
+  /// belonging to nobody in particular.
+  ownerParticipantId String? @map("owner_participant_id")
+
+  /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
+  ///
+  /// The board already had the screen for this - "The record shows 40 for this, not 0. Use 40" -
+  /// and a rule behind it that never once fired. It needed every word of the target's name to
+  /// appear in one sentence plus a verb from a list of nine, and then it suggested the NUMBER OF
+  /// MATCHING SENTENCES rather than the number somebody said. Run against a real quarter: the team
+  /// reported "nine of the forty teams are migrated" and then "all forty migrated by Friday", and
+  /// the board read 0 of 40 at the close. Zero of fourteen entries matched.
+  ///
+  /// So the reading is the model's - which sentence reports a number against which target, and what
+  /// the number is - written once when a round closes, and the lead still accepts it in one press.
+  /// Nothing here overwrites what a person set: this is a suggestion beside their number, and that
+  /// rule was right and stays.
+  suggestedCount     Int?    @map("suggested_count")
+  /// The sentence it was read from, so the lead can see what they are accepting rather than a bare
+  /// number from nowhere.
+  suggestedSaid      String? @map("suggested_said") @db.Text
+  /// The round it was read from, so a stale suggestion can be told from this week's.
+  suggestedAtSession Int?    @map("suggested_at_session")
 
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
@@ -1444,9 +1628,11 @@ model GroundObjective {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   ground    Ground                    @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  owner     GroundParticipant?        @relation("ObjectiveOwner", fields: [ownerParticipantId], references: [id], onDelete: SetNull)
   snapshots GroundObjectiveSnapshot[]
 
   @@index([groundId])
+  @@index([ownerParticipantId])
   @@map("ground_objectives")
 }
 
@@ -1520,6 +1706,25 @@ model GroundDependency {
   onParticipantId   String?          @map("on_participant_id") // null = waiting on someone/something outside the ground
   onLabel           String?          @map("on_label") // free text when the blocker is not a participant
   what              String           @db.Text // "the sales deck", "paying-user pricing"
+
+  /// DID THIS PERSON NAME THE THING, OR ONLY SAY THEY WERE STUCK?
+  ///
+  /// Two different rows read the same in the database and mean opposite things to a reader.
+  /// "Waiting on someone else, been a few weeks" is a real handoff whose subject was never named -
+  /// the row belongs on the board, and the sentence "is waiting for waiting on someone else" does
+  /// not. "Nobody has told us how this connects to anything" is a complaint the extraction should
+  /// not have taken at all.
+  ///
+  /// WHY A COLUMN AND NOT A RULE OVER `what`. We had the rule: `namesWhatIsWaitedOn` reads the text
+  /// against two word lists. It answers "how this connects to anything" wrong, and the only way to
+  /// fix that is a longer list of words, then a longer one - an arms race against English. Whether
+  /// somebody named the thing they are waiting on is a reading of what they said, which is the
+  /// model's job, so the model is asked and the answer is kept. Code then uses it for shape and
+  /// counting, which is code's job.
+  ///
+  /// NULL IS UNKNOWN, not false: every row written before this column existed has one, and the
+  /// readers fall back to the word-list rule for those rather than calling them all unnamed.
+  namedTheThing     Boolean?         @map("named_the_thing")
   // What happens once this clears. The board shows this so a handoff reads as a
   // consequence, not just a status.
   then              String?          @db.Text
@@ -1528,6 +1733,14 @@ model GroundDependency {
   /// The column is what makes the sweep fire once rather than every night for as long as the
   /// handoff stays open - a nightly repeat of the same alert is how a customer learns to filter
   /// the channel, which costs them the alert that mattered.
+  /// WHAT THEY SAID THEY HAD ACTUALLY DONE ABOUT IT, in their own words.
+  ///
+  /// A handoff knew who was waiting on whom and, later, what for. It never knew whether anybody had
+  /// tried. Watched live: "I emailed finance twice, no answer" - three weeks on a blocker, and
+  /// nothing in the record could tell that from somebody who had called, escalated and been
+  /// refused. Their sentence, kept as they said it; the tiering is read off it at the point of use
+  /// so the words stay the record and the judgement stays out of the column.
+  triedSaid         String?          @map("tried_said") @db.Text
   escalatedAt       DateTime?        @map("escalated_at")
   sourceCheckInId   String?          @map("source_check_in_id")
   clearedAt         DateTime?        @map("cleared_at")
@@ -1949,6 +2162,17 @@ model WhatsAppConnection {
   appSecret         String  @map("app_secret")
   /// What Meta's subscribe handshake must echo. Ours to generate, theirs to paste into Meta.
   verifyToken       String  @map("verify_token")
+
+  /// WHICH OF OUR TEMPLATE NAMES THIS ORGANISATION HAS HAD APPROVED, BY META, UNDER ITS OWN APP.
+  ///
+  /// Approval belongs to whoever owns the Meta app. On our own number that is us, and the names
+  /// live in WHATSAPP_APPROVED_TEMPLATES. On an organisation's own number it is THEM - and the send
+  /// path was reading our env var for their sends, so a customer who did everything right and got
+  /// their own templates approved still had every business-initiated message recorded as not sent.
+  ///
+  /// The names are ours (a-message-outside-the-window.ts) because the product composes the bodies;
+  /// what an organisation submits to Meta is those same names. This records which came back approved.
+  approvedTemplates String[] @default([]) @map("approved_templates")
 
   enabled        Boolean   @default(true)
   connectedAt    DateTime  @default(now()) @map("connected_at")
@@ -3861,7 +4085,23 @@ model AgreementTerm {
   /// Who has said the reading is right, by name. Never a count.
   checkedBy String[] @map("checked_by")
 
-  /// Where the two sides read it differently: [{ by, reads }]. The most useful thing this can find.
+  /// "THAT IS NOT WHAT I SAID", FOR A TERM.
+  ///
+  /// The record has had this press since nine model extractors started writing rows: a line is
+  /// marked, never deleted, and from that moment counts toward nothing. A term read out of a
+  /// document by a model, and an understanding taken off a transcript by one, are the same kind of
+  /// object and had no equivalent - so somebody shown a reading they never gave had nowhere to say
+  /// so, on the one surface where being held to words you did not say costs money.
+  ///
+  /// Marked, not deleted, for the same reason as everywhere else: the row is the evidence that the
+  /// read was made, and a table that quietly loses its mistakes cannot be audited for them.
+  disputedAt DateTime? @map("disputed_at")
+  /// Who said it was wrong, by the name a person reads. Never a user id.
+  disputedBy String?   @map("disputed_by")
+
+  /// Where the two sides read it differently: [{ by, reads, unsaidAt? }]. The most useful thing
+  /// this can find - and `unsaidAt` is how one side takes their own half back without erasing that
+  /// it was recorded, or touching anybody else's.
   readDifferently Json? @map("read_differently")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -4153,6 +4393,17 @@ model ReportRound {
   agreements      Json
   divergences     Json
   centralQuestion String @map("central_question") @db.Text
+
+  /// THE ONE LINE THIS ROUND FOUND, which is what sits at the top of its report.
+  ///
+  /// Kept because it is the only part of a round somebody wants at a glance, and it was computed
+  /// live and thrown away. The check-in list showed each ground's BRIEF instead - the sentence it
+  /// was set up with - so four goal check-ins read the same and the list said nothing about where
+  /// any of them was.
+  ///
+  /// Nullable: rounds kept before this existed have none, and a round can legitimately produce no
+  /// finding at all. The card falls back to the brief either way.
+  finding String? @db.Text
 
   /// When the round closed. Not when this row was written - a retry days later is still that round.
   takenAt DateTime @map("taken_at")

@@ -20,7 +20,14 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * itself what a given reader may see, which is why there was nothing to reconcile between them.
  */
 export interface SharedReportForAPartyProps {
-  /** The check-in's id. */
+  /**
+   * The check-in's id.
+   *
+   * NOTHING IN HERE READS IT, AND IT STAYS ON THE PROPS ANYWAY. It was read once, by the
+   * against-what-was-said band that came off this tab. Callers pass it and the two pages that
+   * mount this both have it to hand, so removing it from the interface buys nothing and costs the
+   * next person who needs an id a change at two call sites.
+   */
   groundId: string
   /** The report, or null when there is not one yet. */
   report: any
@@ -35,8 +42,6 @@ export interface SharedReportForAPartyProps {
 }
 
 export function SharedReportForAParty({
-  /* `groundId` stays on the props so callers do not change; nothing in here needs it any more,
-     which is what removing the reveal took out. */
   report,
   ground,
   onOpenBoard,
@@ -64,6 +69,23 @@ export function SharedReportForAParty({
 
   return (
     <>
+          {/*
+            AND WHAT SUCCESS LOOKS LIKE IS NOT ON THIS TAB, WHICH REVERSES A DECISION.
+
+            It was put here on the argument that the objective is what the product asks for at
+            setup and never shows anybody against. True, and this was still the wrong tab for it.
+
+            Read back on a real check-in with no standard set, the band degrades into the thing
+            Hafsah pointed at: a paragraph saying nobody has set the standard so nothing is being
+            read against it, then five near-identical sentences from the same person about what
+            they think success is. That is the raw material the report is built FROM, printed above
+            the report, on the screen whose whole job is to get somebody to the right session.
+
+            It still renders where it has something to say - the board, each session's report, and
+            Context, where the standard is actually set. Nothing was lost; it stopped being shown
+            somewhere it could only be noise.
+          */}
+
           {/*
             * THE BOARD IS THE FIRST DOOR ON THIS VIEW, AS IT IS ON THE LEAD'S.
             *

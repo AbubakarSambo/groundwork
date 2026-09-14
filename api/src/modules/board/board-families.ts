@@ -47,6 +47,25 @@ export enum BoardFamily {
   RECURRING = 'RECURRING',
   /** Pulse / misalignment / crisis. NO board, ever. Report only. */
   SENSING = 'SENSING',
+  /**
+   * TWO SIDES OF AN AGREEMENT. Its own family, split out of SENSING.
+   *
+   * Both contract cards were filed under SENSING with a reason written next to them: delivery was
+   * the tempting family - two sides, interlocking obligations, real handoffs - and was rejected
+   * because a delivery board shows each side who is blocked on whom, and between two COMPANIES
+   * that is a list of grievances rendered as a screen.
+   *
+   * SENSING was then expanded, correctly, so that a drift or a crisis could hold what the group
+   * decided to do about it - and it gained whoOwnsWhat, dependencies and CONTRIBUTION. The two
+   * contract scenarios were swept along with it. Peers are visible outside evaluation and cohort,
+   * so each side of a contract would have been shown a contribution read on the other side's
+   * people: the exact thing the original decision existed to prevent, arriving because the family
+   * changed underneath the scenarios filed in it.
+   *
+   * A scenario sharing a family with another one it merely resembles is a standing hazard. This
+   * family exists so the next reasonable change to SENSING cannot reach across a company boundary.
+   */
+  AGREEMENT = 'AGREEMENT',
 }
 
 /**
@@ -106,8 +125,8 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
    * answering independently and a report that says what the accounts have in common; a shared board
    * of who owes what would be read by somebody's lawyer.
    */
-  CONTRACT_REVIEW: BoardFamily.SENSING,
-  IMPLEMENTATION_TRACKING: BoardFamily.SENSING,
+  CONTRACT_REVIEW: BoardFamily.AGREEMENT,
+  IMPLEMENTATION_TRACKING: BoardFamily.AGREEMENT,
   REALIGN_TEAM: BoardFamily.SENSING,
   /**
    * SENSING, deliberately. OPEN_READ exists because nobody could say what the situation is, so the
@@ -141,6 +160,15 @@ export type BoardSection =
   | 'phaseSpine'
   | 'quickRead'
   | 'objectives'
+  /**
+   * THE AIMS, THE PLACES AND THE THINGS, ADDED UP ACROSS EVERYBODY. See what-the-room-is-about.ts.
+   *
+   * `objectives` is the targets a lead SET. This is what each person said they were trying to do,
+   * which on a board of forty people who set no targets between them is the whole picture and was
+   * showing nowhere. Families with `whoOwnsWhat` take it: a board that already says who holds what
+   * is a board where what they are each after is the next question.
+   */
+  | 'whatTheRoomIsAbout'
   | 'startingState'
   | 'divergence'
   | 'whoOwnsWhat'
@@ -148,6 +176,13 @@ export type BoardSection =
   | 'checkInGrid'
   | 'contribution'
   | 'coverage'
+  /**
+   * SOMETHING SITS ABOVE THIS. Rendered only when the record says so - see is-this-a-cascade.ts.
+   * A family opting in means "a cascade may be shown here", never "show a tree".
+   */
+  | 'cascade'
+  /** Somebody named as doing work here who has no account. Rendered only when the guard keeps one. */
+  | 'hiddenContributors'
   | 'patterns'
   | 'decisions'
   | 'poll';
@@ -164,8 +199,8 @@ export type BoardSection =
 export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.DELIVERY]: [
     'phaseSpine', 'quickRead', 'objectives', 'startingState', 'divergence',
-    'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
-    'patterns', 'decisions', 'poll',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
+    'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
   /**
    * COHORT KEEPS ITS SECTIONS, and its board is simply not SHARED by default.
@@ -180,7 +215,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.COHORT]: [
     'phaseSpine', 'quickRead', 'objectives', 'divergence',
-    'checkInGrid', 'contribution', 'patterns',
+    'checkInGrid', 'contribution', 'cascade', 'hiddenContributors', 'patterns',
   ],
   [BoardFamily.ONBOARDING]: [
     /*
@@ -243,6 +278,24 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    * `coverage`, which reads work against a scope that was scoped in advance. `poll`, which schedules
    * a standing rhythm - a 14-day daily recovery is not a standing rhythm.
    */
+  /**
+   * WHAT AN AGREEMENT HOLDS, AND WHAT IT MUST NEVER HOLD.
+   *
+   * The terms and what has been reported against them, where the two sides read a clause
+   * differently, who owes what by when, and how much of it is document-backed. That is the whole
+   * job of both contract cards.
+   *
+   * NO contribution and NO coverage, ever. Those read how work is distributed BETWEEN PEOPLE, and
+   * the people here work for two different companies. There is no shared role structure to read
+   * them against, nobody has standing to be measured against anybody on the other side, and a
+   * fairness read across a company boundary is a document somebody's lawyer reads.
+   *
+   * NO phase spine either: an agreement has versions and amendments, not phases.
+   */
+  [BoardFamily.AGREEMENT]: [
+    'quickRead', 'objectives', 'startingState', 'divergence',
+    'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid', 'decisions',
+  ],
   [BoardFamily.SENSING]: [
     'quickRead',
     // Where things actually stand. First of the three, and the one these situations spend most of
@@ -253,7 +306,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'divergence',
     // Who owns each part of it, and who is waiting on whom to move. A recovery stalls on a person
     // far more often than on a plan.
-    'whoOwnsWhat',
+    'whatTheRoomIsAbout', 'whoOwnsWhat',
     'dependencies',
     'checkInGrid', 'contribution', 'patterns',
     // What got decided along the way, so a call made on day three is on the record on day ten.
@@ -284,8 +337,8 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    */
   [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
   [BoardFamily.RECURRING]: [
-    'quickRead', 'objectives', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
-    'divergence', 'contribution', 'patterns', 'decisions', 'poll',
+    'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
+    'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
   ],
 };
 
@@ -422,6 +475,20 @@ export const BOARD_WHITELIST = [
   // forbids quoting either side or naming who said what. Board-safe by
   // construction, which is why it may cross where the raw accounts may not.
   'leadershipGaps',
+  /**
+   * SOMEBODY CARRYING WORK WHO HAS NO ACCOUNT HERE.
+   *
+   * The one read that names a person OUTSIDE the check-in, which is why it crosses under its own
+   * guard rather than on the whitelist alone - see somebody-carrying-work-with-no-account.ts. Rows
+   * that quote anybody, name a party, or were worked out rather than referenced are dropped before
+   * this field is sent, on the same footing as a leadership gap containing a quotation.
+   *
+   * It belongs on the board rather than a report because it reads a run: who has been carrying
+   * work quietly is not visible in one sitting. And it belongs on a SHARED surface because the
+   * point of it is that the team is depending on somebody who cannot correct a record they are not
+   * in - which is not a thing to tell only the lead.
+   */
+  'hiddenContributors',
 ] as const;
 
 /** Report fields that must NEVER reach the board, asserted by the guard test. */

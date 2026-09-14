@@ -143,7 +143,7 @@ export function TheFiveThingsThatMakeItCheckable({
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 800,
                 background: r.there ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)',
-                color: r.there ? 'var(--gw-green-t)' : 'var(--gw-muted)',
+                color: r.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)',
                 border: '1px solid ' + (r.there ? 'var(--gw-green-b)' : 'var(--gw-border)'),
               }}
             >

@@ -16,7 +16,7 @@ import { join } from 'path'
  * A report you cannot argue with is a report you stop trusting, and this product's whole input is
  * people being candid with it.
  */
-const CARD = readFileSync(join(__dirname, 'SessionReportCard.tsx'), 'utf8')
+const CARD = readFileSync(join(__dirname, 'TheCheckInYouJustFinished.tsx'), 'utf8')
   /* A guard a comment satisfies is not a guard, and the note beside this control says all of it. */
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
@@ -41,6 +41,6 @@ describe('a report you cannot argue with', () => {
   it('but never on a closed check-in', () => {
     /* The resolution record is the end of the argument. A control that exists to be refused is
        worse than no control. */
-    expect(CARD).toMatch(/\{state !== 'closed' && \(/)
+    expect(CARD).toMatch(/\{!closed && \(/)
   })
 })

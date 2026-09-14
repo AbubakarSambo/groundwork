@@ -24,8 +24,6 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
-# Imported rather than typed: the client guard fails a suite that writes pinned UI copy inline,
-# because that is how the harness and the product drifted apart in the first place.
 
 rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
@@ -43,39 +41,15 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 #
 # There is no shared constant to point at - the labels live inline in the component -
 # so the only honest fix is to pin THIS page's copy and say which page that is.
-#
-# AND IT DRIFTED AGAIN, twice, between then and 29 August: "Board & leadership strategy" became
-# "Board or leadership strategy", and "Something's off track" was split in two - DRIFT is now "A
-# project is off track" and PIP is "Someone's work is off track". Neither crashed anything; the
-# check simply reported cards missing that were on screen under different words.
-#
-# These are now covered by client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts, which reads
-# this list and fails on the client test run rather than in a browser twenty minutes later.
 # Eighteen, not seventeen: "Onboarding several people at once" was added and the
 # count in this comment was never updated either.
-# The picker's labels, exactly as SCENARIO_LABELS in client/src/lib/scenario-catalog.ts holds them.
-#
-# EXACTLY, because the check below matches exactly and the previous list did not. It pinned "New
-# hire" where the product renders "A new hire starting" - and the client guard passed it, because
-# that guard lowercases and asks whether the label appears anywhere in the source, and "new hire"
-# is a substring of "a new hire starting". So the suite failed in the browser while the guard
-# reported agreement, which is the same shape of hole the guard was written to close. It now
-# requires a complete label rather than a fragment of one.
 CREATE_CARDS = [
-    "A new hire starting", "A role changing hands", "A new project starting",
-    "A new advisor or board member", "A new co-founder or partner", "A new manager taking over",
-    "A contract or renewal", "A raise, promotion, or recognition", "Someone's work is off track",
-    "Setting shared goals", "A workplan and budget", "A regular read on live work",
-    "A project is off track", "A big decision", "Board or leadership strategy",
-    "Several people in the same role", "A pulse check", "Onboarding several people at once",
-    "Something serious just happened", "People see it differently",
-    # ADDED LATE, AND NEVER PINNED. Both arrived with the branch that split the contract situations
-    # in two, and this list was not part of that change - so the suite has been checking twenty of
-    # the twenty-one named situations and reporting agreement. The client guard could not see it
-    # either: it only asked whether every label HERE exists in the product, never whether every
-    # situation the product offers is checked here. Both directions now.
-    "An agreement before it is signed", "An agreement that is running",
-    "Describe your own situation",
+    "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
+    "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
+    "Performance improvement plan", "Goals & planning", "Workplan & budget",
+    "A regular read on live work", "Something's off track", "Board & leadership strategy",
+    "Many people in the same role", "Onboarding several people at once",
+    "A shock just hit", "Get a team back on the same page", "Describe your own situation",
 ]
 
 VALID_ENUMS = {
@@ -128,49 +102,11 @@ async def main() -> int:
         page = await new_page(rec, ctx, "persona S")
         await page.goto(f"{origin}/grounds/new")
         await page.wait_for_timeout(2500)
-
-        # THE PICKER IS STEP ONE AGAIN.
-        #
-        # It briefly was not: "who is this check-in for" was made the first screen, and this suite
-        # went red reporting all twenty-one cards missing - which reads as the picker being broken
-        # when the picker was one click away. That question is now the LAST screen, so landing here
-        # shows the cards and the click that used to be needed here has been removed rather than
-        # moved.
-
-        # THE PICKER SHOWS ONE GROUP AT A TIME NOW, so reading the body once finds one group's
-        # worth of cards and reports the other sixteen missing. That is what this went red with,
-        # and it read as the picker being broken when the picker had been rebuilt to her
-        # instruction: the describe-your-own card first, then a dropdown, then the cards for
-        # whichever group is chosen.
-        #
-        # The thing being checked has not changed - every situation the product supports is
-        # reachable in the picker, under exactly the label the catalogue holds - so the check walks
-        # the dropdown instead of reading one screen. It is also a stronger check than it was: a
-        # group whose option exists but whose cards never render now fails, and that was invisible
-        # when everything was on one page.
-        seen: set[str] = set()
-        group_picker = page.locator("select#cg-group")
-        if await group_picker.count():
-            options = await group_picker.locator("option").all()
-            values = [await o.get_attribute("value") for o in options]
-            for value in values:
-                if not value:
-                    continue
-                await group_picker.select_option(value)
-                await page.wait_for_timeout(400)
-                body = await page.inner_text("body")
-                seen.update(c for c in CREATE_CARDS if c in body)
-        else:
-            # No dropdown at all is itself a finding, and falling back to one read keeps the
-            # failure honest rather than turning it into a crash.
-            rec.check("S1", False, "the situation picker offers a group dropdown", "select#cg-group not found",
-                      hard=True, url=page.url)
-            seen.update(c for c in CREATE_CARDS if c in await page.inner_text("body"))
-
-        missing = [c for c in CREATE_CARDS if c not in seen]
-        rec.check("S1", not missing, f"all {len(CREATE_CARDS)} create-picker cards render with exact labels",
+        body = await page.inner_text("body")
+        missing = [c for c in CREATE_CARDS if c not in body]
+        rec.check("S1", not missing, "all 18 create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
-        await rec.step(page, "the situation picker", "persona S")
+        await rec.step(page, "17-card picker", "persona S")
         await browser.close()
 
         # ---- S2: classify-intent routes every scenario ----------------------

@@ -125,6 +125,29 @@ export class AlignmentController {
     return this.agreements.readTerm(organizationId, groundId, versionId, dto);
   }
 
+  /**
+   * "THAT IS NOT WHAT I SAID", for a term.
+   *
+   * The press the record has had all along, pointed at the one table where being held to words you
+   * did not say costs money. `what: 'term'` takes the whole row off - it is not a clause, or not
+   * what the clause says. `what: 'reading'` takes back only your own half of a difference and
+   * leaves everybody else's exactly as it was.
+   */
+  @Post('terms/:termId/not-what-i-said')
+  @ApiOperation({ summary: 'Say a term was misread, or take back your own reading of one' })
+  notWhatISaid(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Param('groundId') groundId: string,
+    @Param('termId') termId: string,
+    @Body() dto: { who: string; what?: 'term' | 'reading' },
+  ) {
+    return this.agreements.notWhatISaid(
+      organizationId, groundId, termId, dto?.who, dto?.what === 'reading' ? 'reading' : 'term', { userId, role },
+    );
+  }
+
   @Post('terms/:termId/checked')
   @ApiOperation({ summary: 'Somebody who would know says the reading is right' })
   checked(

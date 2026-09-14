@@ -1,4 +1,7 @@
-import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
+import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -27,7 +30,11 @@ export class WhatsAppForAnOrganisationController {
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsAppService,
     private readonly inbound: WhatsAppForAnOrganisationService,
+    private readonly config: ConfigService,
   ) {}
+
+  /* The three the product starts. Every other send is a reply, which needs no template. */
+  private static readonly THE_ONES_WE_START = [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name];
 
   /* ---------------- the admin half ---------------- */
 
@@ -35,7 +42,42 @@ export class WhatsAppForAnOrganisationController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: "The organisation's WhatsApp connection, secrets withheld" })
   async connection(@CurrentUser('organizationId') organizationId: string) {
-    return { connection: await this.whatsapp.connectionFor(organizationId), webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}` };
+    /*
+     * The languages the check-in can be held in, from the one list that decides it. Named here so
+     * the setup page can say them rather than keeping its own copy, which is how a page ends up
+     * promising a language nobody added.
+     */
+    /*
+     * AND WHETHER WE CAN START A CONVERSATION AT ALL.
+     *
+     * WhatsApp only lets a business send free text within 24 hours of the person last writing.
+     * Outside that, only wording Meta has approved goes - so until our three are approved, every
+     * message the product STARTS is recorded as not sent rather than sent and refused.
+     *
+     * Which means an admin can set all of this up correctly and nothing will ever arrive, with no
+     * way to tell that from a broken connection. So the page is told, and it is told from the same
+     * setting the sender reads: the day somebody adds the approved names, the warning goes on its
+     * own rather than waiting for a person to notice the copy is stale.
+     */
+    /*
+      AND WHOSE APPROVAL IT IS. On their own number it is theirs to get: their Meta app, their
+      submission. So this answers from THEIR list where they have a connection, and only falls back
+      to ours for the case that is our number. It read the env var either way, which told a customer
+      who had done everything right that they still could not start a conversation.
+    */
+    const connection = await this.whatsapp.connectionFor(organizationId);
+    const ours = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
+    const approved = connection ? connection.approvedTemplates : ours;
+    return {
+      connection,
+      webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}`,
+      languages: Object.values(LANGUAGES_WE_CONVERSE_IN),
+      canStartAConversation: WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t)),
+      /* The exact names to submit to Meta, from the one place that defines them. A page that typed
+         them out would be a fourth copy of a name Meta matches byte for byte. */
+      theNamesToSubmit: WhatsAppForAnOrganisationController.THE_ONES_WE_START,
+      approvedHere: approved,
+    };
   }
 
   @Put('integrations/whatsapp')
@@ -46,6 +88,36 @@ export class WhatsAppForAnOrganisationController {
     @Body() dto: { phoneNumberId?: string; businessAccountId?: string; displayNumber?: string; accessToken?: string; appSecret?: string },
   ) {
     return { connection: await this.whatsapp.connect(organizationId, dto ?? {}), webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}` };
+  }
+
+  /**
+   * WHICH TEMPLATES META APPROVED FOR THIS ORGANISATION.
+   *
+   * Recorded by the admin because only they can see their own Meta app. Nothing here submits
+   * anything to Meta - we could not, it is their app - so this is a statement of fact about the
+   * world, and the send path believes it. A name that is not one of ours is refused rather than
+   * stored, because a typo here reads as "approved" and then every send is refused by Meta with
+   * the reason a long way from this page.
+   */
+  @Post('integrations/whatsapp/templates')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Record which of our template names Meta has approved for this organisation' })
+  async templates(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() dto: { approved?: string[] },
+  ) {
+    const asked = Array.isArray(dto?.approved) ? dto.approved : [];
+    const unknown = asked.filter((n) => !WhatsAppForAnOrganisationController.THE_ONES_WE_START.includes(n));
+    if (unknown.length) {
+      throw new BadRequestException(`Not one of ours: ${unknown.join(', ')}. The names are ${WhatsAppForAnOrganisationController.THE_ONES_WE_START.join(', ')}.`);
+    }
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
+    if (!own) throw new BadRequestException('Connect your WhatsApp number first.');
+    await this.prisma.whatsAppConnection.update({
+      where: { organizationId },
+      data: { approvedTemplates: [...new Set(asked)] },
+    });
+    return { approved: [...new Set(asked)] };
   }
 
   @Post('integrations/whatsapp/enabled')

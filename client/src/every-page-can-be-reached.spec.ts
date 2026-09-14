@@ -25,6 +25,19 @@ import { describe, it, expect } from 'vitest'
 
 /** Routes nothing links to on purpose, each with the thing that opens it. */
 const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
+  /*
+   * THE REPORT REBUILD'S REVIEW PAGE, and it has no door on purpose.
+   *
+   * Every report surface for one check-in, on one page, so the rebuild can be judged against what
+   * it replaces without navigating between four pages and losing the comparison. It is opened by
+   * pasting its address, by the person doing the review, and it is temporary - it goes when the
+   * last surface is ported.
+   *
+   * Nothing in the app links to it because nothing in the app should: it is a workbench rather than
+   * a place, and a door to it would be a door nobody reading the product needs. It fetches nothing
+   * of its own, so it adds no route to any data - every surface on it calls the endpoint it always
+   * calls, with the reader's own token.
+   */
   '/verify-email': 'the link in the sign-up email',
   '/set-password': 'the link in the invite and add-a-password emails',
   '/reset-password': 'the link in the password-reset email',
@@ -40,6 +53,7 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
      checks the mail really points here. */
   '/unsubscribe/:token': 'the unsubscribe link on every round digest',
   '/stop-reminders/:token': 'the stop-the-reminders link on an invitation and every reminder',
+  '/preview/reports': 'pasted by whoever is checking the reports against the templates; goes when that is done',
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
   '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**

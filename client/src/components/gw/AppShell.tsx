@@ -53,6 +53,29 @@ const NAV_ITEMS = [
     ),
   },
   {
+    /*
+      THE BOARDS, WHICH HAD NO ADDRESS OF THEIR OWN.
+      A board lived inside one check-in: to read three you opened three check-ins. Asked for
+      plainly - "where do I go to see the archive and all team boards" - and there was nowhere to
+      send anybody. It sits beside People because it is the same kind of thing: a view across the
+      organisation rather than into one piece of work.
+      WHO GETS THE DOOR. Anybody overseeing more than one check-in: an admin, who sees the
+      organisation's, and a LEAD, who sees their department's. A participant reads the board of the
+      check-in they are on and reaches it from that check-in, so a second address across several
+      would be a page holding one row - and the member's rail is deliberately two items.
+    */
+    label: 'Boards',
+    to: '/boards',
+    oversightOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M2 7.5h16" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M6 11h3M6 14h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     // "Team" and "Teams" sat side by side, one letter apart, pointing at
     // different pages - a coin-flip for anyone looking for the list of people in
     // their org. Named for what each one actually is. GW-011.
@@ -184,11 +207,19 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
   return NAV_ITEMS.filter(item => {
     if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
     if ((item as any).adminOnly) return user?.role === 'ADMIN'
+    /* Whoever oversees more than one check-in: the org's, or a department's. */
+    if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
     return true
   })
 }
 
-/** The organisation's own pages, as opposed to the grounds inside it. */
+/**
+ * The organisation's own pages, as opposed to the grounds inside it.
+ *
+ * /boards is deliberately NOT one. It sits beside People in the rail, but it is a view of the WORK
+ * - every check-in's shared picture - not a setting of the organisation. Listing it here would put
+ * the company's name as a heading over a lead's two items, one of which is their own settings.
+ */
 export const ORG_ROUTES = ['/org/members', '/org/integrations', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'

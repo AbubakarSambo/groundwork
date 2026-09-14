@@ -641,6 +641,38 @@ export class GroundsController {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
   }
 
+  @Patch(':id/who-sees-targets')
+  @ApiOperation({ summary: "Whether people on this check-in see each other's numbers, or only their own" })
+  async setWhoSeesTargets(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { everybody: boolean },
+  ) {
+    return this.grounds.setWhoSeesTargets(id, userId, !!body.everybody);
+  }
+
+  @Patch(':id/over-whatsapp')
+  @ApiOperation({ summary: 'Whether people answer this check-in on WhatsApp, in the app, or whatever the organisation does' })
+  async setOverWhatsApp(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { over: boolean | null },
+  ) {
+    /* Three states, not two: null is "follow the organisation", which is what every ground did
+       before the question existed. `?? null` so an absent field is that rather than false. */
+    return this.grounds.setOverWhatsApp(id, userId, body.over ?? null);
+  }
+
+  @Patch(':id/expect-them-to-unblock')
+  @ApiOperation({ summary: 'Whether this check-in asks what somebody tried before recording a blocker' })
+  async setExpectThemToUnblock(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { expect: boolean },
+  ) {
+    return this.grounds.setExpectThemToUnblock(id, userId, !!body.expect);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update timeline weeks and/or cadence; change is audit-logged on the ground' })
   async updateTimeline(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: UpdateTimelineDto) {

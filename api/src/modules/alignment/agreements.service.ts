@@ -1,5 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  readingsThatStand, takeBackTheirReading, theStateAfterwards, sayItIsTakenBack,
+} from './that-is-not-what-i-said';
 import { theGroundIsHere } from './the-ground-is-here';
 import {
   AgreementVersion,
@@ -88,6 +91,63 @@ export class AgreementsService {
    * The version it replaces is closed the day before, so no day has two answers
    * and no day has none.
    */
+  /**
+   * THE AGREEMENT THEY UPLOADED BECOMES TERMS.
+   *
+   * Nobody types their contract into a form. They upload it, paste it into the context, or describe
+   * the offer in the conversation - and `AgreementTerm.state` has defaulted to the string
+   * 'read from the document' since the day it was written, a state nothing in the product could
+   * produce. This produces it.
+   *
+   * IDEMPOTENT BY THE VERSION IT WRITES INTO. Re-uploading the same file must not double every
+   * clause, and a second DIFFERENT document on the same ground is an amendment rather than a new
+   * agreement - so this only ever fills a version that has no terms yet, and says so when it
+   * declines. Amending is a person's act and stays one; what changed is not ours to infer.
+   *
+   * IT NEVER SIGNS ANYTHING. A version arrives unagreed, every term arrives checked by nobody, and
+   * the readings are still missing - which is correct, because the reading belongs to the people
+   * and the disagreement between two of them is the whole finding.
+   */
+  async fromADocument(
+    organizationId: string,
+    groundId: string,
+    says: string,
+    terms: { says: string; reads: string; clause: string | null }[],
+    inForceFrom = new Date(),
+  ) {
+    if (!terms.length) return { wrote: 0, why: 'no terms found in the document' };
+
+    const existing = await this.prisma.agreement.findFirst({
+      where: { organizationId, groundId },
+      include: { versions: { orderBy: { number: 'desc' }, take: 1, include: { terms: { where: { disputedAt: null }, select: { id: true }, take: 1 } } } },
+    });
+
+    if (existing) {
+      const latest = existing.versions[0];
+      if (latest?.terms.length) {
+        /* Already read. A different document is an amendment somebody makes deliberately. */
+        return { wrote: 0, why: 'this agreement already has terms; amending is a person\'s act' };
+      }
+      if (latest) {
+        await this.prisma.agreementTerm.createMany({
+          data: terms.map((t) => ({ versionId: latest.id, says: t.says, reads: t.reads, clause: t.clause, checkedBy: [] })),
+        });
+        return { wrote: terms.length, agreementId: existing.id, versionId: latest.id };
+      }
+    }
+
+    const started = existing
+      ? { id: existing.id }
+      : await this.prisma.agreement.create({ data: { organizationId, groundId, says } });
+    const version = await this.prisma.agreementVersion.create({
+      data: { agreementId: started.id, number: 1, inForceFrom, agreedBy: [] },
+    });
+    await this.prisma.agreementTerm.createMany({
+      data: terms.map((t) => ({ versionId: version.id, says: t.says, reads: t.reads, clause: t.clause, checkedBy: [] })),
+    });
+    return { wrote: terms.length, agreementId: started.id, versionId: version.id };
+  }
+
   async amend(organizationId: string, groundId: string, agreementId: string, inForceFrom: Date) {
     const agreement = await this.prisma.agreement.findFirst({
       where: { id: agreementId, organizationId, groundId },
@@ -202,7 +262,9 @@ export class AgreementsService {
   async inForceOn(organizationId: string, groundId: string, agreementId: string, on: Date) {
     const agreement = await this.prisma.agreement.findFirst({
       where: { id: agreementId, organizationId, groundId },
-      include: { versions: { include: { terms: true } } },
+      /* A term somebody has said was misread counts toward nothing, the same as a disputed record
+         line. It stays in the table; it stops being in the answer. */
+      include: { versions: { include: { terms: { where: { disputedAt: null } } } } },
     });
     if (!agreement) throw new NotFoundException('No such agreement.');
 
@@ -241,6 +303,125 @@ export class AgreementsService {
       data: { versionId, says: t.says, reads: t.reads, clause: t.clause ?? null, checkedBy: [] },
       select: { id: true, says: true, state: true },
     });
+  }
+
+  /**
+   * WHAT SOMEBODY SAID THE ARRANGEMENT IS, RECORDED BESIDE WHAT IS WRITTEN.
+   *
+   * The point of the whole surface: not to arm anybody for a conversation, but to get the basis
+   * everybody is working from onto one page, early, so that nothing later turns on two people
+   * having read one sentence two ways.
+   *
+   * Two shapes, one discovery. A different understanding of a clause that exists goes onto the term
+   * as both readings side by side. Something described that no clause covers becomes its own row
+   * with no clause reference, because there is nothing to go and look at - and that absence is the
+   * information.
+   *
+   * NOTHING HERE IS AGREED BY ANYBODY. A reading arrives as a reading whoever said it, and
+   * `whatItMayBeUsedFor` still refuses to let either shape say that something did or did not
+   * happen. This records understandings; people settle them.
+   */
+  async whatTheyUnderstandItToBe(
+    organizationId: string,
+    groundId: string,
+    versionId: string,
+    who: string,
+    said: {
+      differences: { about: string; reads: string; termId: string }[];
+      notInTheDocument: { about: string; reads: string }[];
+    },
+  ) {
+    const version = await this.prisma.agreementVersion.findFirst({
+      where: { id: versionId, agreement: { organizationId, groundId } },
+      select: { id: true },
+    });
+    if (!version) return { recorded: 0 };
+    let recorded = 0;
+
+    for (const d of said.differences) {
+      const term = await this.prisma.agreementTerm.findFirst({ where: { id: d.termId, versionId: version.id } });
+      if (!term) continue;
+      const existing = (term.readDifferently as { by: string; reads: string }[] | null) ?? [];
+      /* Said twice by the same person is one understanding, not two. */
+      if (existing.some((e) => e.by === who)) continue;
+      const both = [
+        ...(existing.length ? existing : [{ by: 'the document', reads: term.reads }]),
+        { by: who, reads: d.reads },
+      ];
+      await this.prisma.agreementTerm.update({
+        where: { id: term.id },
+        data: { state: 'read differently by each side', readDifferently: both },
+      });
+      recorded += 1;
+    }
+
+    for (const n of said.notInTheDocument) {
+      const already = await this.prisma.agreementTerm.findFirst({
+        where: { versionId: version.id, says: n.about, state: 'said, and not in the document' },
+        select: { id: true },
+      });
+      if (already) continue;
+      await this.prisma.agreementTerm.create({
+        data: {
+          versionId: version.id,
+          says: n.about,
+          reads: n.reads,
+          clause: null,
+          state: 'said, and not in the document',
+          /* Who described it, so the row is never anonymous. It is not a check - nobody has
+             confirmed a clause here, because there is no clause. */
+          checkedBy: [who],
+        },
+      });
+      recorded += 1;
+    }
+    return { recorded };
+  }
+
+  /**
+   * "THAT IS NOT WHAT I SAID." The press the record has always had, pointed at a term.
+   *
+   * Marked, never deleted. The row is the evidence that the read was made, and a table that
+   * quietly loses its mistakes cannot be audited for them - which on a contract is the question
+   * somebody eventually asks.
+   *
+   * WHO MAY. The same gate as checking a term and as reading one differently: somebody who can
+   * speak for a side. Saying a clause was misread is a statement about the contract, and it
+   * belongs to the same people the other statements do.
+   */
+  async notWhatISaid(
+    organizationId: string,
+    groundId: string,
+    termId: string,
+    who: string,
+    what: 'term' | 'reading',
+    by: { userId: string; role: string },
+  ) {
+    await this.mustBeAbleToSpeakForThisSide(organizationId, groundId, by);
+    const term = await this.prisma.agreementTerm.findFirst({
+      where: { id: termId, version: { agreement: { organizationId, groundId } } },
+    });
+    if (!term) throw new NotFoundException('No such term.');
+
+    if (what === 'term') {
+      if (term.disputedAt) return { id: term.id, disputedAt: term.disputedAt, say: sayItIsTakenBack('term') };
+      const updated = await this.prisma.agreementTerm.update({
+        where: { id: term.id },
+        data: { disputedAt: new Date(), disputedBy: who },
+        select: { id: true, disputedAt: true },
+      });
+      return { ...updated, say: sayItIsTakenBack('term') };
+    }
+
+    const taken = takeBackTheirReading(term.readDifferently, who);
+    if (!taken) throw new BadRequestException('There is no reading of yours on that term to take back.');
+    const standing = readingsThatStand(taken);
+    const updated = await this.prisma.agreementTerm.update({
+      where: { id: term.id },
+      data: { readDifferently: taken as any, state: theStateAfterwards(standing, term.checkedBy) },
+      select: { id: true, state: true, readDifferently: true },
+    });
+    return { ...updated, say: sayItIsTakenBack('reading') };
   }
 
   /** Somebody who would know says the reading is right. Two sides, and it is agreed. */

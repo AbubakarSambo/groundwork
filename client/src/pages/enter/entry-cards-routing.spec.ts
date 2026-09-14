@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { SITUATION_CARDS } from './EntryChatPage'
 
 /**
@@ -26,7 +27,24 @@ const PINNED_MESSAGES = [
   'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
   'We have a new working arrangement starting and want to make sure we are set up well.',
   // two new positive cards added in the rebalance
-  'We are setting shared goals for this period and I want everyone aligned on what matters most.',
+  /*
+   * CHANGED ON PURPOSE, WHICH IS THE ONE THING THIS FILE IS SUSPICIOUS OF - so it says why.
+   *
+   * Not a copy pass. The card's SCOPE changed: "sometimes workplans are attached to goals, and if
+   * they exist and who is responsible for what, we need to track it well." A goal with a plan under
+   * it is the ordinary case rather than a second situation, so this card covers it - and a card
+   * that covers plans with an opening line that only mentions goals gets a conversation about
+   * goals, because this sentence IS the first turn.
+   *
+   * Routing re-checked rather than assumed: it still classifies as OKR_ALIGNMENT, and it avoids the
+   * words SOUNDS_LIKE_A_CASCADE looks for, which is why it says "that goes with them" rather than
+   * "under those goals". Build a Workplan and Budget keeps its own card and its own message.
+   */
+  'We are setting shared goals for this period and I want everyone aligned on what matters most, including any workplan that goes with them and who is responsible for which part.',
+  /* Added with the second goal card. Its message is the whole reason it is a separate card: the
+     scenario is the same engine, and this sentence is what tells the conversation there is
+     something above this team rather than a team agreeing among themselves. */
+  'We have one overarching goal and separate teams are setting their own goals and targets underneath it. I want to know whether they connect to the main goal and add up together.',
   'We are making a big decision and I want each person\'s honest read before we commit.',
   // retained addressing cards - messages byte-identical
   'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
@@ -57,7 +75,13 @@ describe('entry cards: display reframed, routing untouched', () => {
     expect(labels).not.toContain('Team member not delivering')
     expect(labels).not.toContain('Cofounder or partner dispute')
     expect(labels).not.toContain('Running a PIP')
-    expect(labels).toContain("Someone's work is off track")
+    /*
+     * FROM THE CATALOGUE. What this line protects is that the card exists at all under a name that
+     * is not the mechanism - the three assertions around it are the actual guard, and they still
+     * are. Pinning the string meant a rename had to edit the test, and a test edited to match a
+     * rename stops being able to object to one.
+     */
+    expect(labels).toContain(SCENARIO_LABELS.PIP)
     // PIP and cofounder disagreement were dropped as top-level cards in the
     // rebalance (too negative/narrow); they survive only as e.g. examples.
     expect(labels).not.toContain('Running a performance improvement plan')
@@ -80,15 +104,17 @@ describe('entry cards: display reframed, routing untouched', () => {
     const negative = SITUATION_CARDS.filter(c => c.group === 'off').length
     expect(positive).toBeGreaterThan(negative)
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('Setting shared goals')
-    expect(labels).toContain('A big decision')
-    expect(labels).toContain('People see it differently')
+    /* Renamed for the job rather than the mechanism. What this line protects is that a positive
+       card is still offered, not what it happens to be called this month. */
+    expect(labels).toContain(SCENARIO_LABELS.OKR_ALIGNMENT)
+    expect(labels).toContain(SCENARIO_LABELS.CRISIS_ALIGNMENT)
+    expect(labels).toContain(SCENARIO_LABELS.REALIGN_TEAM)
   })
 
   it('the starting cards carry the plain voice (the last three un-reframed strings)', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('A new project starting')
-    expect(labels).toContain('A new co-founder or partner')
+    expect(labels).toContain(SCENARIO_LABELS.NEW_PROJECT)
+    expect(labels).toContain(SCENARIO_LABELS.NEW_COFOUNDER)
     expect(labels).not.toContain('New project kickoff')
     expect(labels).not.toContain('New working arrangement')
     // Sharpened for a reader who runs a company: "a new way of working
@@ -103,10 +129,16 @@ describe('entry cards: display reframed, routing untouched', () => {
      * applies to both: the detail names who is arriving, in the words somebody running a company
      * would use, rather than describing a mood.
      */
-    const cofounder = SITUATION_CARDS.find(c => c.label === 'A new co-founder or partner')!
-    expect(cofounder.detail).toMatch(/sharing the work/)
-    const manager = SITUATION_CARDS.find(c => c.label === 'A new manager taking over')!
-    expect(manager.detail).toMatch(/taking over/)
+    /*
+     * THE RULE, NOT THE SENTENCE. This matched /sharing the work/ and /taking over/, which were
+     * phrases from the details as they were written then. The details are the catalogue's
+     * descriptions now, so the phrases are gone and the rule they stood for is not: each names WHO
+     * is arriving rather than describing a mood.
+     */
+    const cofounder = SITUATION_CARDS.find(c => c.label === SCENARIO_LABELS.NEW_COFOUNDER)!
+    expect(cofounder.detail).toMatch(/co-?founder|partner/i)
+    const manager = SITUATION_CARDS.find(c => c.label === SCENARIO_LABELS.NEW_MANAGER)!
+    expect(manager.detail).toMatch(/manager/i)
     for (const c of SITUATION_CARDS) {
       expect(c.label, `label of "${c.label}"`).not.toMatch(/kickoff|working arrangement/i)
       expect(c.detail, `detail of "${c.label}"`).not.toMatch(/reporting line|clear foundation/i)

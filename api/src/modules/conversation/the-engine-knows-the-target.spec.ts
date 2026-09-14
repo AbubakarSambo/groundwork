@@ -93,7 +93,7 @@ describe('and the service actually fetches them', () => {
      * prompt-feeding query fetches the objectives at all - not the order of the keys beside them.
      */
     expect(CODE).toMatch(
-      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true \}/,
+      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/,
     );
   });
 

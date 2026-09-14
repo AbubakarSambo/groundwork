@@ -28,13 +28,19 @@ describe('the summary uses the report\'s own words', () => {
     }
   })
 
-  it('and neither does the card that carries the same count', () => {
-    const CARD = readFileSync(path.join(__dirname, '../components/gw/SessionReportCard.tsx'), 'utf8')
-    /* The word survives in `openAreas` / `reachedAreas` / `AreaBlock`, which are names in the code
-       and not text on the screen. Only what renders is checked: a JSX text run, not an identifier. */
-    const rendered = CARD.match(/^\s*\{report\.agreements[\s\S]*?\}\.$/m)?.[0] ?? ''
-    expect(rendered).not.toBe('')
-    expect(rendered).not.toMatch(/\barea/i)
+  it('and the card that carried the count no longer carries one at all', () => {
+    /*
+      IT USED TO PRINT "3 agreed, 1 still open" UNDER A STATUS WORD, and the rule here was that
+      neither said "area" - an undefined noun that was a heading nowhere on the screen.
+
+      The card is now A - what one person said this time - and a count of what everybody agreed is
+      a statement about the shared picture, which is a different report. So there is no count to
+      keep the word out of. Asserted rather than deleted: a count is exactly the thing somebody
+      adds back to a close card, and this is where they find out it belongs on the other one.
+    */
+    const CARD = readFileSync(path.join(__dirname, '../components/gw/TheCheckInYouJustFinished.tsx'), 'utf8')
+    expect(CARD).not.toMatch(/report\.agreements/)
+    expect(CARD).not.toMatch(/\barea/i)
   })
 
   it('says nothing at all when the report holds nothing', () => {

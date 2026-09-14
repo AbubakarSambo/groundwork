@@ -107,11 +107,11 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
               longer asked to agree to his own exit. */}
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
             {!leadDecides ? (
-              <>Each person picks the outcome they think the record supports. The check-in closes only when
-              everyone picks the same one, and nobody closes it alone.</>
+              <>Each person picks the outcome they think what everybody shared supports. The check-in closes
+              only when everyone picks the same one, and nobody closes it alone.</>
             ) : viewerIsLead ? (
               <>This one is yours to decide. Everyone in the check-in can see the possible outcomes and
-              where things stand, and their accounts stay on the record whichever way you go.</>
+              where things stand, and what each person shared stays whichever way you go.</>
             ) : (
               <>These are the outcomes this check-in can reach. Your lead decides which one it is. Your
               account stays on the record either way, and you can still correct or add to it.</>
@@ -152,10 +152,15 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
             onClick={() => picked && setConfirming(true)}
             disabled={!picked || proposeMut.isPending}
             style={{
-              padding: '10px 18px', borderRadius: 7, border: 'none', fontFamily: 'inherit',
+              padding: '10px 18px', borderRadius: 7, fontFamily: 'inherit',
               fontSize: 13, fontWeight: 700,
-              background: picked ? 'var(--gw-dark)' : 'var(--gw-border)',
-              color: picked ? 'white' : 'var(--gw-muted)',
+              /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
+                 Grey ink on the border grey measured 4.04:1 - the one contrast failure on this
+                 whole page. Paper with a line round it says "not yet" just as clearly and the
+                 words stay legible. */
+              background: picked ? 'var(--gw-dark)' : 'var(--gw-card)',
+              border: picked ? '1px solid var(--gw-dark)' : '1px solid var(--gw-border)',
+              color: picked ? 'white' : 'var(--gw-sub-d)',
               cursor: picked && !proposeMut.isPending ? 'pointer' : 'default',
             }}
           >

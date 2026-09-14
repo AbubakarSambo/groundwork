@@ -72,6 +72,14 @@ export function WhatSuccessLooksLike({
   /** Whose page this is, which changes only the label on the reader's own line. */
   yourName,
   dense,
+  /**
+   * ONE HEADING PER BLOCK.
+   *
+   * On the session report this sits inside a numbered block already labelled "Against what good
+   * looks like", so its own "What success looks like" was a second heading for the same thing, two
+   * lines apart. The caller that supplies a heading says so; everywhere else is unchanged.
+   */
+  headingIsTheCallers,
 }: {
   data: AgainstSuccess | null | undefined
   yourName?: string | null
@@ -87,6 +95,7 @@ export function WhatSuccessLooksLike({
    * renders where there is room to work in it: the board, and each session's report.
    */
   dense?: boolean
+  headingIsTheCallers?: boolean
 }) {
   if (!data) return null
 
@@ -107,7 +116,7 @@ export function WhatSuccessLooksLike({
   if (data.sides === 'nobody') {
     return (
       <div>
-        <Heading>What success looks like</Heading>
+        {!headingIsTheCallers && <Heading>What success looks like</Heading>}
         <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.65 }}>{data.saying}</div>
       </div>
     )
@@ -117,9 +126,19 @@ export function WhatSuccessLooksLike({
 
   return (
     <div>
-      <Heading note={of > 0 ? `${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}` : null}>
-        What success looks like
-      </Heading>
+      {/* The caller's block label stands in for this one where there is one; the count still has
+          to reach the reader either way, so it moves onto its own line rather than going with it. */}
+      {headingIsTheCallers
+        ? (of > 0 && (
+          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 8 }}>
+            {`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}
+          </div>
+        ))
+        : (
+          <Heading note={of > 0 ? `${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}` : null}>
+            What success looks like
+          </Heading>
+        )}
 
       {data.stated ? (
         <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65 }}>

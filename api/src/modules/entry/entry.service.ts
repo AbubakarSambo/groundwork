@@ -36,6 +36,7 @@ import {
   buildScenarioPackForParty,
   buildRuntimeContext,
 } from '../conversation/prompt-library';
+import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -378,6 +379,20 @@ export function buildEntrySystemPrompt(
   // each person, not a repeatable pulse. Optional here because the pre-account
   // walkthrough often has not established the moment yet.
   moment?: GroundMoment | null,
+  /**
+   * WHO SETUP ALREADY NAMED.
+   *
+   * Walked in a browser: a lead said "three of us, me running it, Tomi on engineering, Zainab on
+   * marketing", said it again two turns later, and was asked "who else is involved in this
+   * project?". The entry prompt has a rule against that - "if that person has already been named,
+   * do not ask again" - and it was not enough.
+   *
+   * The signed-in check-in does not have this fault, and the difference is `alreadyEstablished`:
+   * a block that STATES what setup settled and says not to ask for it, high in the prompt. It was
+   * written for exactly this bug and the entry chat never got it, because this function only ever
+   * knew the situation and the label. So the names travel now.
+   */
+  peopleNamed?: string[],
 ): string {
   // partyType drives the opener + framing. INITIATOR (default) is the person
   // opening the ground ("what are you starting"); PARTICIPANT is an invitee
@@ -393,7 +408,17 @@ export function buildEntrySystemPrompt(
     groundLabel: groundLabel || 'Entry session',
     trustLevel: 'building',
   });
-  return [ENGINE_RULES, scenarioPack, runtimeCtx, ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  const settled = alreadyEstablished({
+    scenario,
+    groundLabel: groundLabel || null,
+    otherParties: (peopleNamed ?? []).filter((p) => p?.trim()).map((label) => ({ label })),
+    /* The entry chat has no participant row and no admin brief yet - the situation and the people
+       are what it knows, and the people are what it was asking for twice. */
+    roleAsDescribed: null,
+    adminBrief: null,
+    readerSetItUp: partyType === PartyType.INITIATOR,
+  });
+  return [ENGINE_RULES, scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
@@ -996,7 +1021,7 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[]): Promise<{ reply: string; closed: boolean }> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -1008,7 +1033,11 @@ from finishing at all.`;
     }
 
     const mapped = resolveScenario(scenario);
-    return this.guardedReplyWithClose(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages, onDelta);
+    return this.guardedReplyWithClose(
+      buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed),
+      messages,
+      onDelta,
+    );
   }
 
 
@@ -1234,6 +1263,7 @@ from finishing at all.`;
       cadence?: string;
       cadenceChosen?: boolean;
       cadenceAnchorDay?: number;
+      workingDays?: number[];
       checkInBy?: string;
       lastCheckInBy?: string;
       // Coordinator/lead path: the onboarding context (used as the brief) and
@@ -1458,6 +1488,7 @@ from finishing at all.`;
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
         // collected on the client and silently dropped here; the lead ended
@@ -1538,6 +1569,7 @@ from finishing at all.`;
         moment: RECOMMENDED_MOMENT[scenario],
       cadence: chosenCadence,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: dto.lastCheckInBy || undefined,
       brief,

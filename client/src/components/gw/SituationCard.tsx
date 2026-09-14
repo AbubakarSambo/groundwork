@@ -29,10 +29,13 @@ export type SituationCardData = {
   cardKey: string
   scenario: string
   label: string
-  tag: string
-  tagBg: string
-  tagColor: string
-  /** The one line on the face: the moment you would open the app, not a description. */
+  /**
+   * NO TAG, NO COLOURS. They were three fields per card and a third vocabulary beside the headings
+   * and the labels; then, briefly, one derived from the group - which was correct and still said
+   * the name of the heading the card was already sitting under, in caps, on every card in it. A
+   * screen shows one group at a time, so it was the same word down the page.
+   */
+  /** The one line on the face. Her table's description, and the concrete moment moved to examples. */
   moment: string
   agreed: string
   tests: string
@@ -78,8 +81,13 @@ export function SituationCard({
       className={`cg-sit-card${selected ? ' selected' : ''}`}
       onClick={onPick}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
+      {/*
+        NO TAG. It said the name of the group the card was already sitting under, in caps, above
+        every card in that group - so on a screen showing one group at a time it was the same word
+        repeated down the page, and the first thing the eye hit on each card was the one thing on it
+        that carried no information.
+      */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         <div className="cg-sit-check" />
       </div>
       <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{label}</div>
@@ -103,7 +111,7 @@ export function SituationCard({
       >
         {expanded ? 'How it runs ‹' : 'How it runs ›'}
       </button>
-      {expanded && (
+      {expanded && (<>
         <dl className="cg-arc">
           <div>
             <dt>Agreed at the start</dt>
@@ -126,27 +134,33 @@ export function SituationCard({
             </div>
           )}
         </dl>
-      )}
 
-      <dl className="cg-meta">
-        <div><dt>Recommended cadence</dt><dd>{facts?.cadence}</dd></div>
-        {/* "USUALLY", BECAUSE THE LEAD SETS THE TIMEFRAME AND THIS CARD DOES NOT.
-            The entry chat's own card hedged every one of these - "typically 90 days" - and a guard
-            held it, on the grounds that a bare duration reads as a commitment the product has not
-            made. This card said "Runs for 90 days" flatly. Now that one card serves both doors the
-            stricter of the two rules is the one that survives; it costs a word. */}
-        <div>
-          <dt>Usually runs for</dt>
-          <dd>
-            {facts?.ongoing
-              ? 'As long as you need'
-              : facts?.timelineDays === 1
-                ? 'One check-in'
-                : `${facts?.timelineDays} days`}
-          </dd>
-        </div>
-        <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
-      </dl>
+        {/*
+          THE THREE NUMBERS FOLD WITH IT, and that is what "How it runs" was always a promise
+          about. Cadence, length and a count sat open on every card in a grid of twenty-three -
+          sixty-nine facts on one screen before anybody had chosen anything - under a disclosure
+          called How it runs, while the running was already showing.
+        */}
+        <dl className="cg-meta">
+          <div><dt>Recommended cadence</dt><dd>{facts?.cadence}</dd></div>
+          {/* "USUALLY", BECAUSE THE LEAD SETS THE TIMEFRAME AND THIS CARD DOES NOT.
+              The entry chat's own card hedged every one of these - "typically 90 days" - and a
+              guard held it, on the grounds that a bare duration reads as a commitment the product
+              has not made. This card said "Runs for 90 days" flatly. Now that one card serves both
+              doors the stricter of the two rules is the one that survives; it costs a word. */}
+          <div>
+            <dt>Usually runs for</dt>
+            <dd>
+              {facts?.ongoing
+                ? 'As long as you need'
+                : facts?.timelineDays === 1
+                  ? 'One check-in'
+                  : `${facts?.timelineDays} days`}
+            </dd>
+          </div>
+          <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
+        </dl>
+      </>)}
     </div>
   )
 }

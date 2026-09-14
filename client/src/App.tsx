@@ -1,5 +1,6 @@
 import { PageCrash } from '@/components/gw/PageCrash'
-import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
+import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
@@ -18,6 +19,13 @@ import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
+
+/** A redirect that carries the query string with it. See the /login route. */
+function KeepTheQuery({ to }: { to: string }) {
+  const { search, hash } = useLocation()
+  return <Navigate to={`${to}${search}${hash}`} replace />
+}
+
 function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
@@ -27,6 +35,7 @@ import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
+import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
 import { PaymentPage } from '@/pages/billing/PaymentPage'
@@ -326,7 +335,15 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
+            {/*
+              * THE QUERY STRING SURVIVES THIS REDIRECT NOW.
+              *
+              * `<Navigate to="/auth">` drops it, and the Google callback's failure path sent people
+              * to `/login?error=...`. The reason was thrown away in the hop, so a failed Google
+              * sign-in put somebody back on an ordinary sign-in form with nothing said - which
+              * reads as the button having done nothing at all.
+              */}
+            <Route path="/login" element={<KeepTheQuery to="/auth" />} />
             <Route path="/auth" element={<AuthPage />} />
             {/* The link-sent state of /auth, not a page of its own. W8-49. */}
             <Route path="/auth/sent" element={<AuthPage />} />
@@ -385,7 +402,30 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/*
+              BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
+              real home - which was checked, and was the wrong question. The question is whether
+              each surface MATCHES the template it was rebuilt against, and this page is the only
+              place that can be seen. One of its own notes says surface 02 was never rebuilt.
+              Verifying that is a pre-merge requirement. This goes again once it is done.
+            */}
+            {/*
+              OURS, NOT A CUSTOMER'S. It was behind RequireOrgSetup, which is every signed-in
+              customer - so anybody who guessed the address read a page of internal notes about our
+              own unfinished work ("its note read 'not rebuilt yet' for months"). It is the bench
+              where the eight report surfaces are compared on one check-in, and that is a Groundwork
+              tool, so it sits behind the same gate as the rest of the platform back office.
+            */}
+            <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/*
+              EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.
+              
+              Signed in like every other route, and it fetches nothing of its own: each surface
+              calls the endpoint it always calls with the reader's own token, so this adds no route
+              to any data. Nothing links to it. It goes when the last surface is ported.
+            */}
             {/* One round's report, for a lead or org admin with no session of their own on it. */}
             <Route path="/grounds/:id/session/:sessionNumber" element={<RequireOrgSetup><RoundReportPage /></RequireOrgSetup>} />
             {/*

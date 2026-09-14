@@ -31,7 +31,21 @@ export type TermState =
   /** Both sides have. */
   | 'agreed by both'
   /** They read the same clause differently. The most useful thing here.  */
-  | 'read differently by each side';
+  | 'read differently by each side'
+  /**
+   * SOMEBODY SAID IT IS PART OF THE DEAL AND NO CLAUSE SAYS IT.
+   *
+   * The other half of the same finding, and until now it had nowhere to be. Somebody describing a
+   * commitment the document does not contain is exactly what setting the basis is for: everybody
+   * remembers agreeing it, nothing in the file carries it, and whether it happens then depends on
+   * who remembers. Saying so early costs one sentence.
+   *
+   * It is a TERM STATE rather than a note, because it has to sit in the same list as the clauses
+   * to be seen at all - an understanding filed somewhere else is an understanding nobody compares.
+   * And it carries no clause reference, because there is nothing to go and look at, which is the
+   * whole point of it.
+   */
+  | 'said, and not in the document';
 
 export interface Term {
   /** What it is about, in the words people use: "revenue share", "payment terms". */
@@ -76,6 +90,12 @@ export function whatItMayBeUsedFor(state: TermState): WhatFor[] {
       /* Both readings shown, and the disagreement is the thing to ask about. It is
          emphatically not a basis for judging anybody. */
       return ['shown as a reading', 'used to ask a question'];
+    case 'said, and not in the document':
+      /* Shown, because this is the thing worth finding, and asked about, because the answer is
+         usually either "it is in clause 7 and we both missed it" or "you are right, that is not
+         written down anywhere". It can never judge anything: there is no clause, so there is
+         nothing to have been met. */
+      return ['shown as a reading', 'used to ask a question'];
   }
 }
 
@@ -93,6 +113,11 @@ export function howItReads(t: Term): string {
       return `${t.says}${where}: “${t.reads}” — as ${t.checkedBy.join(' and ')} reads it. The other side has not said.`;
     case 'agreed by both':
       return `${t.says}${where}: “${t.reads}” — both sides say that is what it says.`;
+    case 'said, and not in the document':
+      return (
+        `${t.says}: “${t.reads}” — ${t.checkedBy[0] ?? 'one side'} described this as part of the arrangement, `
+        + 'and no clause in the document says it. Worth saying which it is, so everybody works from the same one.'
+      );
     case 'read differently by each side':
       return (
         `${t.says}${where} is read differently by each side. `

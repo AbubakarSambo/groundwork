@@ -23,7 +23,15 @@ import { join } from 'path'
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 const ADMIN = strip(readFileSync(join(__dirname, '..', 'grounds', 'GroundAdminPage.tsx'), 'utf8'))
-const REPORT = strip(readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8'))
+/**
+ * THE SHARED PAGES PEOPLE OPEN. This read `ReportPage.tsx` - the body with no importers - for the
+ * two assertions below. The first `it` had already moved to the live files; these follow it.
+ */
+const SHARED: Record<string, string> = {
+  'the session report': strip(readFileSync(join(__dirname, '../../components/gw/TheSessionsReport.tsx'), 'utf8')),
+  "a party's report": strip(readFileSync(join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8')),
+  'the board': strip(readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8')),
+}
 
 describe('a report that exists', () => {
   it('is never announced as absent', () => {
@@ -43,11 +51,18 @@ describe('a report that exists', () => {
   })
 
   it('and is never described as having nothing in it', () => {
-    expect(REPORT).not.toContain("'Nothing to report on yet.'")
+    for (const [name, src] of Object.entries(SHARED)) {
+      expect(src, `${name} says a report has nothing in it`).not.toContain('Nothing to report on yet')
+    }
   })
 
-  it('while a one-sided report still says what it cannot do', () => {
-    /* The outstanding count is said as a number now (a-number-is-a-measurement.spec.ts); the sentence still says what it cannot do. */
-    expect(REPORT).toContain('is what makes it a comparison.')
-  })
+  /*
+   * THE THIRD ASSERTION, RETIRED RATHER THAN TRANSLATED, with where it went.
+   *
+   * "While a one-sided report still says what it cannot do" read a sentence in the dead body about
+   * one person having checked in so far. The live version of that promise is asserted in
+   * `a-shared-report-needs-two-people-and-the-page-says-so`, on three surfaces rather than one: the
+   * party page, the lead page, and the list row - and against the same rule the server releases by.
+   * Checking it here as well is how two copies drift apart.
+   */
 })

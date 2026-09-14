@@ -20,8 +20,15 @@ import { SCENARIO_KEYS, SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-
  */
 const labels = SITUATION_CARDS.map((c) => c.label)
 
-/** COHORT_CHECK is deliberately offered twice: as an ongoing read and as onboarding a group. */
-const EXTRA_NAMES_ALLOWED = ['Onboarding several people at once']
+/**
+ * Situations deliberately offered under a second name, because they are two jobs on one engine.
+ *
+ * COHORT_CHECK is an ongoing read and onboarding a group. OKR_ALIGNMENT is setting targets and
+ * keeping a team moving against them, and setting one goal at the top for other teams to write
+ * their own underneath - the cascade, which is detected from what people say rather than declared,
+ * so it has no scenario of its own and should not get one just to earn a card.
+ */
+const EXTRA_NAMES_ALLOWED = ['Onboarding several people at once', 'Connect Goals Across the Team']
 
 describe('the entry picker and the catalog', () => {
   it('found the cards, or this test proves nothing', () => {

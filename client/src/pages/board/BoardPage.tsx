@@ -2,6 +2,10 @@ import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
+import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
+import { HowItIsGoing } from '@/components/gw/how-it-is-going'
+import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
@@ -16,6 +20,10 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
+import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
+import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
+import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 
 /**
  * The delivery board.
@@ -52,8 +60,20 @@ const dshort = (iso?: string | null) =>
  */
 const HOW_TO_READ_KEY = 'gw-board-how-to-read'
 
-export function BoardPage() {
-  const { id } = useParams<{ id: string }>()
+/**
+ * THE BOARD DRAWS FOR WHICHEVER CHECK-IN IT IS GIVEN.
+ *
+ * It read its id from the route and nothing else could ask it for one, so the boards page - which
+ * switches between them with tabs - would have had to rebuild the board to show more than one. A
+ * second board is how two screens come to disagree about one week, and this page is a thousand
+ * lines of reads that would have to be kept in step by hand.
+ *
+ * So the route is the DEFAULT and not the only source. `/grounds/:id/board` passes nothing and is
+ * byte-for-byte what it was; the boards page passes the tab somebody picked.
+ */
+export function BoardPage({ groundId }: { groundId?: string } = {}) {
+  const { id: idFromRoute } = useParams<{ id: string }>()
+  const id = groundId ?? idFromRoute
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
@@ -72,6 +92,8 @@ export function BoardPage() {
     enabled: !!id,
   })
   const user = useAuthStore((st) => st.user)
+  /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
+  const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -192,11 +214,37 @@ export function BoardPage() {
     quickRead: has('quickRead') && !!b.quickRead,
     startingState: has('startingState') && !!b.startingState,
     decisions: has('decisions') && !!b.decisions?.length,
-    objectives: has('objectives') && !!b.objectives?.length,
+    /*
+     * THE ONLY WAY TO SET A TARGET WAS INSIDE A SECTION THAT ONLY APPEARED ONCE A TARGET EXISTED.
+     *
+     * Every other section here hides when it is empty, which is right: a heading with nothing under
+     * it reads as a screen that failed to load. This one is not like the others. It holds the
+     * lead's "Add target" form AND the server's own prompt for the empty case - "No targets set
+     * yet, so there is nothing for this board to measure progress against. Add two or three things
+     * this ground is aiming for." Gated on `b.objectives.length`, that sentence could never be
+     * read by the only person able to act on it, and the form to act with was hidden beside it.
+     *
+     * Found by setting one up as a customer would: ten salespeople, a number for each, and nowhere
+     * in the product to put a single one of them. It is also why no objective in the database has
+     * ever carried a target - not neglect, unreachable by construction.
+     *
+     * So it shows when there is something to show, OR when the reader is the person who can add
+     * the first one. A party who cannot edit still sees nothing rather than an empty heading.
+     */
+    objectives: has('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
+    cascade: has('cascade') && !!b.cascade,
+    hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
     divergence: has('divergence') && !!b.divergence,
+    /* The note stands in for the block before a round has closed, so either one is enough to show. */
+    whatTheRoomIsAbout: has('whatTheRoomIsAbout')
+      && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
+        || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
+    /* Lead-only and absent for everybody else, so there is nothing to gate on here beyond its
+       presence: the server does not send it to a reader who may not have it. */
+    eachPerson: !!b.eachPerson?.length,
     contribution: has('contribution') && !!b.contribution,
     coverage: has('coverage') && !!b.coverage,
     patterns: has('patterns') && !!b.patterns,
@@ -238,6 +286,17 @@ export function BoardPage() {
         <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
+              {/*
+                THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
+                from one check-in and left the same way - read one, back to the list, find the next,
+                open it, open its board. See the component for why the server says which have one.
+              */}
+              {/*
+                NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
+                job, and two switchers one above the other, both listing the same check-ins, is a
+                reader asking which of them is the real one.
+              */}
+              {!groundId && <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
               <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
               <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
@@ -263,7 +322,7 @@ export function BoardPage() {
                 */}
                 {/* Once it is over, what ended it is the header, not which session is open. */}
                 {endedSaying ? (
-                  <span style={{ color: '#8BE0AE', fontWeight: 700 }}>{endedSaying}</span>
+                  <span style={{ color: BOARD_ACCENT_INK, fontWeight: 700 }}>{endedSaying}</span>
                 ) : b.phaseSpine ? (
                   <span>
                     {b.phaseSpine.startsAt || b.phaseSpine.endsAt
@@ -280,25 +339,69 @@ export function BoardPage() {
                 ) : null}
               </div>
             </div>
-            <div style={{ fontSize: 10.5, color: '#A8AFD6', textAlign: 'right', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10.5, color: BOARD_MUTED_INK, textAlign: 'right', lineHeight: 1.5 }}>
               {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
             </div>
           </div>
 
+          {/*
+            HOW IT IS GOING, FIRST, WHICH IS WHY SOMEBODY OPENED THIS.
+
+            "When I come in as a manager, I want progress/status and blockers/risks." The board
+            opened on "where people differ": a manager had to read three zones to work out how far
+            through it was, and the screen that knew was the check-in list they had just left.
+
+            The same component the list and the boards page draw, on the dark ground. Not a second
+            read of the same week - the server computes it once (how-a-check-in-is-going.ts) and all
+            three are handed the answer.
+          */}
+          {(b as any).howItIsGoing && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
+              <HowItIsGoing
+                summary={(b as any).howItIsGoing.latestSummary}
+                glance={(b as any).howItIsGoing.glance}
+                tone="dark"
+              />
+            </div>
+          )}
+
           {has('phaseSpine') && b.phaseSpine && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {b.phaseSpine.sessions.map((s) => (
-                  <div key={s.n} style={{
+                {/*
+                  A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
+                  and this was the one list not keeping it: "a finished session opens the REPORT and
+                  not the transcript - that holds for every list there is". My record keeps it, the
+                  party's report keeps it, the Report tab keeps it. These were plain divs.
+                  A session that has not happened is not a link, because there is nothing behind it
+                  yet - so the ones that have are buttons and the rest stay as they were.
+                */}
+                {b.phaseSpine.sessions.map((s) => {
+                  const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
+                  const face = (
+                    <>
+                      {/* "now" on a check-in that has ended is a clock nobody is watching. */}
+                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
+                    </>
+                  )
+                  const skin = {
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? '#8BE0AE' : '#A8AFD6',
+                    color: s.state === 'current' ? BOARD_ACCENT_INK : BOARD_MUTED_INK,
                     fontWeight: s.state === 'current' ? 700 : 500,
-                  }}>
-                    {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
-                  </div>
-                ))}
+                  } as const
+                  if (!been) return <div key={s.n} style={skin}>{face}</div>
+                  return (
+                    <button
+                      key={s.n}
+                      type="button"
+                      onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
+                      style={{ ...skin, border: '1px solid transparent', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    >
+                      {face}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -320,54 +423,32 @@ export function BoardPage() {
           within one click.
         */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: '#A8AFD6', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
-            Built from what each person said, given privately, on the record.{' '}
-            <b style={{ color: '#8BE0AE', fontWeight: 600 }}>It is not decided by who speaks the loudest or argues best.</b>
+          <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK }}>
+            Built from what each person shared in their private check-in.{' '}
+            <b style={{ color: BOARD_ACCENT_INK, fontWeight: 600 }}>Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.</b>
           </p>
           {howToRead && (
             <>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                Use it as the basis of the conversation, not something to be talked down in the moment.
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                If someone disagrees with what the record shows about them, they{' '}
-                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>put it in their next check-in</b>, not debate the board until it gives way.
-                It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+                Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              {/*
-                * THERE IS NO LONGER A SECOND DOCUMENT TO BE POINTED AT.
-                *
-                * This paragraph existed to settle which of two shared pictures to trust: "the board
-                * is the report arranged for running the work... where it points at a difference, the
-                * report is where that is set out in full. If the two ever read differently, the
-                * report is the record."
-                *
-                * True when it was written, and untrue as of tonight. The report body a participant
-                * could open has gone - it was a fourth place to read the same three findings - and
-                * each disagreement on this board now carries both accounts and what is at stake,
-                * directly under it. So the sentence sends a reader looking for a page that is not
-                * there, which is worse than the ambiguity it was written to remove.
-                *
-                * What replaces it is not a shorter version of the same explanation. Two documents
-                * needed a rule about precedence; one does not. What a reader still needs to know is
-                * where the words came from and what this is not - and the paragraph above already
-                * says that. So this says the one thing left that is not obvious: it is built per
-                * session, and it moves.
-                */}
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                This is the whole shared picture, not a summary of one held somewhere else. It is
-                rebuilt each session from the accounts given that session, so{' '}
-                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>it changes as people check in</b>.
-                What each person said about a difference sits under that difference.
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+                This is the shared picture from this round of check-ins. It can change as the picture changes.
+              </p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+                Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
           )}
           <button
             onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: '#8BE0AE', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: BOARD_ACCENT_INK, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {howToRead ? 'Show less' : 'How to use it →'}
           </button>
@@ -440,12 +521,6 @@ export function BoardPage() {
                       </div>
                     </Row>
                   ))}
-                  {b.divergence.centralQuestion && (
-                    <Row>
-                      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 3 }}>The question this turns on</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>{b.divergence.centralQuestion}</div>
-                    </Row>
-                  )}
                 </>
               )}
               {/*
@@ -461,23 +536,111 @@ export function BoardPage() {
           </>
         )}
 
+        {/*
+          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
+
+          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
+          the difference above it - and on a round where nothing differed, that card says "nothing
+          cross-referenced yet" and then asked a question about nothing.
+
+          It is the same field the report and a party's shared picture draw, under one name now:
+          three places had two names between them, so somebody who read the board and then their
+          report saw what looked like two different things.
+        */}
+        {b.divergence?.centralQuestion && (
+          <Card>
+            <Row first>
+              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+            </Row>
+          </Card>
+        )}
+
         {/* ---------------------------------------------- at a glance */}
-        {(shown.quickRead || shown.startingState || shown.decisions) && <Zone label="At a glance" />}
+        {(shown.quickRead || shown.startingState || shown.decisions || shown.eachPerson) && <Zone label="At a glance" />}
+
+        {/*
+          ABOVE THE QUICK READ, BECAUSE IT IS WHAT THIS PAGE IS OPENED FOR.
+
+          The quick read is four facts about the check-in. This is ten rows about ten people, each
+          with the one thing to ask for, and a manager running a team against individual numbers
+          reads it first and often reads nothing else. Putting it under the tiles would be ordering
+          the page by how long each block has existed.
+        */}
+        {shown.eachPerson && (
+          <>
+            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
+            <WhereEachPersonIs rows={b.eachPerson!} />
+          </>
+        )}
+
+        {/*
+          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
+
+          The conversation asks twice and then lets it go, rather than pressing somebody who has
+          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
+          against anybody: half the time the honest reason is that nobody could have answered -
+          a target nobody set, a dependency nobody owns.
+        */}
+        {!!b.stillUnanswered?.length && (
+          <>
+            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
+            <Card>
+              {b.stillUnanswered.map((g, i) => (
+                <Row key={`${g.who}-${g.what}`} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
+                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                      {/* Some of these cannot be confirmed either way - the check-in asked and
+                          nothing on the record can prove the answer. Saying "they did not answer"
+                          about somebody who answered in their first sentence would be worse than
+                          saying nothing. */}
+                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
+                    </span>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
 
         {shown.quickRead && b.quickRead && (
           <>
             <Sec title="The quick read" src="alignment and trust from the report" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
-              {b.quickRead.map((q) => (
-                <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1,
-                    color: q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)',
-                  }}>{q.value}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
-                </div>
-              ))}
+            {/*
+              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
+
+              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
+              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
+              clause under it - about a phone screen and a half to read four short facts.
+
+              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
+              is the thing that stops it being one. What goes is the packaging. On a phone these
+              are four rows of one card, the value beside its label rather than under it at display
+              size, and the clause underneath in body text.
+            */}
+            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
+              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
+              : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+              {b.quickRead.map((q, i) => {
+                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
+                return onAPhone ? (
+                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
+                  </div>
+                ) : (
+                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -519,7 +682,39 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- against the plan */}
-        {(shown.objectives || shown.divergence) && <Zone label="Against the plan" />}
+        {(shown.objectives || shown.divergence || shown.cascade) && <Zone label="Against the plan" />}
+
+        {/*
+          WHAT THIS SITS UNDER, ABOVE EVERYTHING IT QUALIFIES.
+
+          A team writing results underneath a wider objective cannot be read at all without the
+          wider objective on the page - every line of movement below means something different
+          depending on what it was in service of. So this goes at the very top of the zone, above
+          the definition of success, and it renders its own no: a group that opened an alignment
+          check-in and never named what it aligns to is told so plainly rather than shown a gap.
+        */}
+        {shown.cascade && b.cascade && (
+          <Card>
+            <Row first>
+              <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 6 }}>
+                {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
+              </div>
+              {b.cascade.parentNamed && (
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.35 }}>
+                  {b.cascade.parentNamed}
+                </div>
+              )}
+              <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{b.cascade.why}</p>
+              {b.cascade.teamsNamed.length > 1 && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {b.cascade.teamsNamed.map((t: string) => (
+                    <span key={t} style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)' }}>{t}</span>
+                  ))}
+                </div>
+              )}
+            </Row>
+          </Card>
+        )}
 
         {/*
           THE PLAN'S OWN TOP LINE, WHICH THIS ZONE WAS MISSING.
@@ -541,6 +736,16 @@ export function BoardPage() {
         {shown.objectives && b.objectives && (
           <>
             <Sec title="What we are aiming for" src="the lead sets these" />
+            {/* The privacy setting is on and some numbers still have nobody's name on them, so
+                everybody can read those. Said to the only person who can fix it. */}
+            {/* One total, ten people, from the export they already have. Above the form, because
+                somebody with a team and a committed number reaches for this before typing. */}
+            {b.canEditFrame && <SplitOneTotalAcrossPeople groundId={id!} />}
+            {b.targetsNobodyOwns && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+                {b.targetsNobodyOwns}
+              </div>
+            )}
             {b.objectivesPrompt && (
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
                 {b.objectivesPrompt}
@@ -548,7 +753,16 @@ export function BoardPage() {
             )}
             <Card>
               {b.objectives.map((o, i) => {
-                const pct = o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0
+                /*
+                  A MEASURE THAT GOES DOWN IS STILL GOING WELL.
+
+                  This was count/target, so a ceiling - "first response under four hours", "no more
+                  than two stock-outs" - filled backwards: a team getting faster watched their bar
+                  shrink. The server now sends the journey, worked out from where it started rather
+                  than from a column anybody has to set. The old arithmetic is the fallback for a
+                  board whose rounds predate any snapshot.
+                */
+                const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
                   <Row key={o.id} first={i === 0}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -567,8 +781,12 @@ export function BoardPage() {
                           <div style={{ width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
-                            <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}
+                          {/* Three numbers a person can check, rather than a share of a target that
+                              means the opposite thing on a ceiling. */}
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
+                            {o.journey?.start != null
+                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` · from ${o.journey.start}, said ${o.target}`}</>)
+                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}</>)}
                           </div>
                           <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                             {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
@@ -617,6 +835,14 @@ export function BoardPage() {
                         <span>
                           The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
                         </span>
+                        {/* THE LINE IT CAME FROM, because a number from nowhere is one a lead has no
+                            way to judge. Asking somebody to accept a figure without showing them
+                            what it was read from is asking them to trust rather than to check. */}
+                        {o.suggestedSaid && (
+                          <span style={{ display: 'block', width: '100%', color: 'var(--gw-sub)', fontStyle: 'italic' }}>
+                            &ldquo;{o.suggestedSaid}&rdquo;
+                          </span>
+                        )}
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
                           disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
@@ -670,6 +896,65 @@ export function BoardPage() {
 
         {/* ---------------------------------------------- the work */}
         {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
+
+        {shown.whatTheRoomIsAbout && (
+          <>
+            <Sec title="What people are after, and where" src="from what everybody said" />
+            {b.whatTheRoomIsAboutNote && (
+              <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
+            )}
+            {b.whatTheRoomIsAbout && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14 }}>
+                {/*
+                  THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
+                  target, what each person is trying to do is the only thing there is to align on,
+                  and it was showing nowhere. The count beside each aim is how many people hold it,
+                  which is the whole point: an aim one person holds and an aim twenty hold are not
+                  the same fact about a room.
+                */}
+                {/* The aims run the full width; Card takes no style, so the span lives on a wrapper. */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                <Card pad={false}>
+                  <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                    What people are trying to do
+                  </div>
+                  <div style={{ padding: '2px 15px 12px' }}>
+                    {b.whatTheRoomIsAbout.aims.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said what they are after yet.</div>
+                    ) : b.whatTheRoomIsAbout.aims.map((a, i) => (
+                      <div key={a.aim} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{a.aim}</div>
+                          <Pill>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Pill>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{a.held.join(', ')}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                </div>
+                {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
+                  <Card key={label} pad={false}>
+                    <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{label}</div>
+                    <div style={{ padding: '2px 15px 12px' }}>
+                      {rows.length === 0 ? (
+                        <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody named one.</div>
+                      ) : rows.map((r, i) => (
+                        <div key={r.name} style={{ padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{r.name}</div>
+                            <Pill>{r.named.length}</Pill>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.named.join(', ')}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>
@@ -745,6 +1030,15 @@ export function BoardPage() {
           <>
             <Sec title="Sessions this phase" src="from sessions" />
             <Card>
+              {/*
+                A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
+                IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
+                nine pills behind a scrollbar, names wrapping to two lines to make room for it.
+                The phone gets the same facts down the page instead - see the component.
+              */}
+              {onAPhone ? (
+                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows as any} sessions={b.checkInGrid.sessions} />
+              ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
                   <thead>
@@ -794,6 +1088,7 @@ export function BoardPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </Card>
           </>
           )
@@ -1015,6 +1310,33 @@ export function BoardPage() {
         )}
 
         {/* ---------------------------------------------- the record over time */}
+        {/*
+          SOMEBODY CARRYING WORK WITH NO ACCOUNT HERE.
+
+          Above the record-over-time zone, because it is about who is in this rather than about
+          what has happened in it - and because a reader who is about to decide something should
+          know first that somebody it touches cannot answer back.
+
+          The server sends nothing unless a row survived the guard, so there is no empty state
+          here and no branch for one.
+        */}
+        {shown.hiddenContributors && b.hiddenContributors && (
+          <>
+            <Sec title="Named here, and not in this check-in" src="from what people said" />
+            <Card>
+              {b.hiddenContributors.rows.map((r, i) => (
+                <Row key={r.label + i} first={i === 0}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>{r.label}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.evidence}</div>
+                </Row>
+              ))}
+              <Row>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{b.hiddenContributors.why}</div>
+              </Row>
+            </Card>
+          </>
+        )}
+
         {shown.patterns && <Zone label="The record over time" />}
 
         {shown.patterns && b.patterns && (

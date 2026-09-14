@@ -1,6 +1,7 @@
 import { stripCloseMarker } from '../conversation/prompt-library';
 import { withoutDashes } from '../reports/forensic-voice';
 import { houseStyle } from '../conversation/anthropic.service';
+import { sentencesIn } from './where-a-sentence-actually-ends';
 
 /**
  * THE ONE PLACE ANYTHING CROSSES FROM THE SYSTEM TO A PERSON.
@@ -185,7 +186,7 @@ export function oneWordForTheThing(text: string): string {
  * the record to the person whose work it was; this had been catching the tidy ones.
  */
 const NARRATION_LEAD_IN =
-  /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
+  /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+(?:now\s+)?(?:in|on)\s+(?:your|the)\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
 
 /**
  * THE SAME NARRATION, ARRIVING AT THE END OF THE SENTENCE INSTEAD OF THE START.
@@ -221,7 +222,7 @@ export function unwrapRecordNarration(sentence: string): string | null {
 }
 
 export function withoutRecordNarration(text: string): string {
-  const sentences = text.split(/(?<=[.!?])\s+/);
+  const sentences = sentencesIn(text);
   const kept = sentences.map((sentence) => {
     /* The tail form first: it rewrites the whole sentence, so a lead-in pass over it would be
        looking at a string this is about to replace. */
@@ -231,8 +232,16 @@ export function withoutRecordNarration(text: string): string {
     if (cleaned.trim() === sentence.trim()) return sentence;
     /* Nothing but the narration: the sentence existed only to announce the write. */
     if (!/[a-z0-9]/i.test(cleaned)) return '';
+    /*
+     * AND THE COMMA THE NARRATION WAS HANGING OFF.
+     *
+     * "That's a specific action on your part, and it is in your record." leaves "...on your part, ."
+     * once the clause goes, because the comma belongs to the sentence and the lookbehind never
+     * consumed it. A stripper that leaves debris is a stripper somebody turns off.
+     */
+    const tidied = cleaned.replace(/[,;:\s]+([.!?])\s*$/, '$1').replace(/[,;:]\s*$/, '.');
     /* What followed the lead-in is the real content. It now starts the sentence. */
-    const t = cleaned.trimStart();
+    const t = tidied.trimStart();
     return t.charAt(0).toUpperCase() + t.slice(1);
   });
   return kept.filter((s) => s.trim() !== '').join(' ');
@@ -271,16 +280,107 @@ export function withoutRecordNarration(text: string): string {
  * The adjective list stays alongside it, because "that's helpful" has no noun to anchor to.
  */
 const A_MARK_AND_NOTHING_ELSE =
-  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:good|great|clear|strong|helpful|useful|important|solid)\s+(?:start|place to start|outcome|goal|sign|basis|foundation)(?:[\s,]+\w+){0,4}|that\s+sense of(?:[\s,]+\w+){0,10}|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
 
 export function withoutTheMark(text: string): string {
-  const sentences = text.split(/(?<=[.!?])\s+/);
+  /* Split properly: a mark riding on the end of a quotation was the reason this stripper was
+     letting "That's a good start." through. See where-a-sentence-actually-ends.ts. */
+  const sentences = sentencesIn(text);
   const kept = sentences.filter((sentence) => {
     const bare = sentence.trim().replace(/^["']|["']$/g, '');
     return !A_MARK_AND_NOTHING_ELSE.test(bare);
   });
   /* If every sentence was a mark, the turn said nothing - keep it rather than send an empty one. */
   return kept.length ? kept.join(' ') : text;
+}
+
+/**
+ * "ACCOUNT" IS OUR WORD AND IT READS AS A LOGIN.
+ *
+ * Her rule, 8 September: never write "account" in copy a person reads. Say what the thing is -
+ * "what you said", "what they said", "their side of it". It is internal vocabulary that makes a
+ * simple screen need decoding.
+ *
+ * It was a line in the prompt, which is the weakest place a rule can live. A live report this week
+ * opened with "Your account describes a goal of hitting 270 units" - so the rule was stated, and
+ * broken, in the first sentence somebody reads.
+ *
+ * NARROW ON PURPOSE, for the reason `oneWordForTheThing` is narrow: this text quotes people, and a
+ * wrong replacement does not read oddly, it puts words in somebody's mouth inside their own record.
+ * So only the possessive forms, where the word is unambiguously ours. A bare "account" - "the
+ * account was settled", "account for the difference" - is ordinary English and is left alone.
+ */
+const OURS_NOT_THEIRS: [RegExp, string][] = [
+  [/\byour accounts\b/gi, 'what you said'],
+  [/\byour account\b/gi, 'what you said'],
+  [/\btheir accounts\b/gi, 'what they said'],
+  [/\btheir account\b/gi, 'what they said'],
+  [/\bhis account\b/gi, 'what he said'],
+  [/\bher account\b/gi, 'what she said'],
+  /* The plural with a determiner: "the accounts", "both accounts", "all three accounts". */
+  [/\b(?:the|both|all(?: \w+)?|these|those)\s+accounts\b/gi, 'what people said'],
+];
+
+/**
+ * PERFORMED EMPATHY AND FILLER, TAKEN OUT RATHER THAN ASKED FOR.
+ *
+ * The prompt bans these by listing them: "I understand", "I hear you", "That is a really important
+ * insight", "It takes courage to name that". They perform empathy, they add nothing to the record,
+ * and they delay the question. The list has been in the prompt for eighteen versions.
+ *
+ * A list of exact phrases is the one kind of rule that does not need a model to remember it. What
+ * cannot move is the judgement around it - when to press, when to offer a reading, whose version
+ * goes first - and none of that is touched here.
+ *
+ * WHOLE SENTENCES ONLY. "It sounds like the finance sign-off is stuck" carries a fact; deleting the
+ * clause would take the fact with it. So a sentence goes only when the filler is all it is, and the
+ * openers are cut from the front of a sentence that continues without them.
+ */
+const NOTHING_BUT_FILLER = [
+  /^that (?:is|was) a really (?:important|valuable|useful) (?:insight|point)\.?$/i,
+  /^i can see (?:this|that) has been weighing on you\.?$/i,
+  /^you are clearly someone who cares deeply about (?:this|it)\.?$/i,
+  /^that (?:is|was) a really (?:complex|difficult|tough) situation\.?$/i,
+  /^it takes courage to name that\.?$/i,
+  /^i understand\.?$/i,
+  /^i hear you\.?$/i,
+  /^i(?:'| a)m here to listen\.?$/i,
+];
+
+/** Openers that prefix a real sentence. The sentence stays; the performance goes. */
+/*
+ * THE COMMA IS NOT OPTIONAL, and leaving it optional deleted a verb. "I understand the contract
+ * runs to June" is somebody understanding a contract; "I understand, the contract runs to June" is
+ * the performance this rule is for. Without the comma required, the first became "The contract runs
+ * to June" - a fact kept and a meaning quietly changed, inside a record somebody is read against.
+ */
+const AN_OPENER = /^(?:i understand|i hear you|i can see that|that makes sense|thank you for sharing that)\s*,\s+/i;
+
+export function withoutPerformedEmpathy(text: string): string {
+  const out: string[] = [];
+  for (const sentence of sentencesIn(text)) {
+    const bare = sentence.trim();
+    if (!bare) continue;
+    if (NOTHING_BUT_FILLER.some((re) => re.test(bare))) continue;
+    const cut = bare.replace(AN_OPENER, '');
+    /*
+     * A CAPITAL ONLY WHERE ONE WAS TAKEN AWAY. The first version capitalised every sentence it
+     * passed through, which is not this function's business: it turned "bold and italic" into "Bold
+     * and italic" in text that had every right to start lowercase.
+     */
+    out.push(cut === bare ? bare : (cut ? cut[0].toUpperCase() + cut.slice(1) : bare));
+  }
+  return out.join(' ');
+}
+
+export function saysWhatTheySaid(text: string): string {
+  let out = text;
+  for (const [re, to] of OURS_NOT_THEIRS) out = out.replace(re, (m, ...rest) => {
+    /* Keep the sentence's own capital where the phrase began one. */
+    const capital = /^[A-Z]/.test(m);
+    return capital ? to[0].toUpperCase() + to.slice(1) : to;
+  });
+  return out;
 }
 
 export function forHumans(text: string | null | undefined): string {
@@ -301,6 +401,10 @@ export function forHumans(text: string | null | undefined): string {
   out = houseStyle(out);
   /** After houseStyle, so a replaced word still gets the house's quotes and spacing. */
   out = oneWordForTheThing(out);
+  /* Beside the other word that is ours and reads as something else. */
+  out = saysWhatTheySaid(out);
+  /* Last of the word rules: the phrases that perform rather than say. */
+  out = withoutPerformedEmpathy(out);
   out = withoutQuotedQuestions(out);
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */

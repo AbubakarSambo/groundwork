@@ -16,9 +16,9 @@ import { join } from 'path';
  * never be counted as one. So it is MARKED (`isSetup`) rather than inferred, because the arithmetic
  * it has to stay out of lives in several places and a flag is checkable where a convention is not.
  */
-const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '');
+/* Comments stripped first: a guard a comment satisfies is not a guard. */
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const SERVICE = strip(readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8'));
 
 describe('GW-EXP-6: the conversation exists either way', () => {
   it('create() no longer skips the row for a managing-only lead', () => {
@@ -60,13 +60,21 @@ describe('GW-EXP-6: but it is not a session', () => {
     expect(list).toMatch(/const sessions = checkIns\.filter\(ci => !\(ci as any\)\.isSetup\)/);
     expect(list).toMatch(/const overdue = sessions\.filter/);
     expect(list).toMatch(/const checkInsToday = sessions\.filter/);
-    /** `roundsDone` sits past that end anchor, so it is asserted on its own block. */
-    const roundsAt = SERVICE.indexOf('const roundsDone');
-    const rounds = SERVICE.slice(roundsAt, roundsAt + 420);
-    expect(rounds).toMatch(/const numbers = \[\.\.\.new Set\(sessions\.map/);
-    expect(rounds).toMatch(/sessions\.filter\(ci => ci\.sessionNumber === n\)/);
+    /*
+      AND THE ROUND COUNT, WHICH LIVES IN ITS OWN FILE NOW.
+
+      This read `const roundsDone` out of THIS service, so it failed the moment the arithmetic moved
+      to how-a-check-in-is-going.ts - where the board and the boards page now read it from too. The
+      rule never changed: a setup row is not a session, and a round is done only when every party's
+      row for it is completed. It is asserted where the rule lives, which is also the only place it
+      can now be broken.
+    */
+    const GOING = strip(readFileSync(join(__dirname, 'how-a-check-in-is-going.ts'), 'utf8'));
+    expect(GOING).toMatch(/\.filter\(\(ci\) => !\(ci as any\)\.isSetup\)/);
+    expect(GOING).toMatch(/const numbers = \[\.\.\.new Set\(sessions\.map/);
+    expect(GOING).toMatch(/sessions\.filter\(\(ci\) => ci\.sessionNumber === n\)/);
     /** And the old form, which counted every row including a setup one, is gone. */
-    expect(rounds).not.toMatch(/new Set\(checkIns\.map/);
+    expect(GOING).not.toMatch(/new Set\(checkIns\.map/);
   });
 
   it('and both list queries select the flag, or the filter is silently false', () => {

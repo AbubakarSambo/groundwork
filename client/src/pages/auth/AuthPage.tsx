@@ -129,6 +129,19 @@ export function AuthPage() {
    * the difference between "sign in again" and "what just happened".
    */
   const sessionExpired = searchParams.get('why') === 'session-expired'
+  /**
+   * AND THE GOOGLE ROUND TRIP THAT CAME BACK WITH NOTHING TO SAY.
+   *
+   * Reported as "I cannot even log in with Google": the button goes to Google, Google accepts the
+   * app, and the person lands back on this form with no indication that anything happened. The
+   * callback's failure path sent them to `/login?error=google_auth_failed`, and that route dropped
+   * the query string on its way here - so the page never knew.
+   *
+   * The reason reaches it now, and this is the sentence. It says what to do rather than what broke,
+   * because the person cannot fix what broke: the password form on this same page is the way in,
+   * and the cause is in the server log where we can read it.
+   */
+  const googleFailed = searchParams.get('why') === 'google-signin-failed'
 
   const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
@@ -387,6 +400,11 @@ export function AuthPage() {
               <button className="gw-btn" type="submit" disabled={signIn.isPending}>
                 {signIn.isPending ? 'Signing in…' : 'Sign in'}
               </button>
+              {googleFailed && !error && (
+                <div role="alert" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
+                  Google sent you back but we could not finish signing you in. Your email and password still work below. We have a note of what went wrong at our end.
+                </div>
+              )}
               {sessionExpired && !error && (
                 <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
                   You were signed out because you had been away a while. Sign in and we will take you back to where you were — nothing you wrote has been lost.

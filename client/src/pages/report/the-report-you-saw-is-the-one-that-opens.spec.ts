@@ -27,8 +27,25 @@ describe('the report that opens is the report they read', () => {
     expect(ENTRY).toContain('<TheReportYouSawAtTheEnd')
   })
 
-  it('and the page that opens one later draws the same component', () => {
+  it('and the page that opens one later draws the same component, where one was stored', () => {
+    /*
+     * TWO COMPONENTS, AND THE CONDITION IS WHICH DOOR THE SITTING CAME THROUGH.
+     *
+     * Only the entry chat stores a report, and that object IS what the person read. So when there
+     * is one, the page draws it in the shape they read it - this rule outranks the template,
+     * because re-rendering it in a new shape is a different page about the same facts, which is the
+     * complaint this file exists for.
+     *
+     * When there is none - the other 485 of 495 sittings - there is no exact thing to be faithful
+     * to, only rows, and those are drawn in the rebuilt template. That is surface 02 finally
+     * matching what the other eight were built against.
+     *
+     * They cannot be one component: the entry chat's report is made BEFORE the check-in is
+     * committed, so there is no ground and no sitting to fetch. Two moments, not two opinions.
+     */
     expect(PAGE).toContain('<TheReportYouSawAtTheEnd')
+    expect(PAGE).toContain('<TheCheckInYouJustFinished')
+    expect(PAGE).toMatch(/data\??\.report\s*\n?\s*\?/)
   })
 
   it('falls back to what that session privately produced, rather than to a second shared report', () => {

@@ -163,7 +163,19 @@ async function assembledPrompt(
   (service as any).prisma.checkIn.findUnique = jest.fn(async () => checkIn);
 
   await service.sendMessage('ci1', 'user-1', 'hello');
-  expect(capturedSystemPrompts).toHaveLength(1);
+  /*
+   * THE FIRST PROMPT, NOT THE ONLY ONE.
+   *
+   * This asserted exactly one call. There are three gates that can ask the model a second time when
+   * the first reply is wrong in a specific way - it read as broken, it hardened a guess into a fact,
+   * or it asked nothing and did not close - and the test double's canned reply trips the last of
+   * those every time, because it has no question in it.
+   *
+   * A second call is the product working. What this test is about is whether the scenario's pack
+   * reaches the ASSEMBLED prompt, which is the first one; the retries append an instruction to that
+   * same prompt. So it takes the first and checks there was at least one.
+   */
+  expect(capturedSystemPrompts.length).toBeGreaterThanOrEqual(1);
   return capturedSystemPrompts[0];
 }
 

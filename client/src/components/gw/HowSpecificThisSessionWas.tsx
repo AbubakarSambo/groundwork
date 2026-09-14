@@ -57,8 +57,13 @@ export function HowSpecificThisSessionWas({ level, spots }: {
             style={{
               flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase',
               padding: '5px 2px', borderRadius: 5, fontWeight: 700,
-              background: i <= at ? 'var(--gw-navy)' : 'var(--gw-bg)',
-              color: i <= at ? 'white' : 'var(--gw-muted)',
+              /* AN UNFILLED STEP IS NOT GREY TEXT ON A GREY BLOCK. It was --gw-muted on --gw-bg,
+                 which is 4.5:1 at 9px uppercase - passing on a calculator and unreadable on a
+                 phone in daylight. The unfilled step is paper with a line round it now, and its
+                 word is the darker of the two secondary inks. */
+              background: i <= at ? 'var(--gw-navy)' : 'var(--gw-card)',
+              border: i <= at ? '1px solid var(--gw-navy)' : '1px solid var(--gw-border)',
+              color: i <= at ? 'white' : 'var(--gw-sub-d)',
             }}
           >
             {s}

@@ -23,7 +23,7 @@ describe('opening a check-in returns what it is about', () => {
   it('the ground lookup asks for the subject and the objectives', () => {
     /** The same query that already ran for the status gate, so this costs no extra round trip. */
     expect(OPEN).toMatch(/label: true/);
-    expect(OPEN).toMatch(/objectives: \{ select: \{ name: true, target: true \}/);
+    expect(OPEN).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/);
   });
 
   it('BOTH return paths carry the brief, not just a first open', () => {
@@ -35,12 +35,14 @@ describe('opening a check-in returns what it is about', () => {
      */
     const returns = OPEN.match(/return \{ reply:[^;]*;/g) ?? [];
     expect(returns.length).toBe(2);
-    for (const r of returns) expect(r).toContain('brief: this.briefFor(ground)');
+    for (const r of returns) expect(r).toContain('brief: this.briefFor(ground,');
   });
 
   it('the brief carries the subject and the objectives', () => {
     expect(CODE).toMatch(/subject: ground\.label \?\? null/);
-    expect(CODE).toMatch(/objectives: ground\.objectives \?\? \[\]/);
+    /* The objectives the reader may see, which is all of them unless a target has somebody's name
+       on it. See whose-number-is-whose-business. */
+    expect(CODE).toMatch(/objectives: maySee\.shown/);
   });
 });
 
@@ -57,9 +59,29 @@ describe('and it carries NOTHING anybody else said', () => {
      * Word-bounded. My first version tested `.toLowerCase().includes('turn')` and failed on the
      * word `return`, which is a test finding its own scaffolding rather than a defect.
      */
-    for (const forbidden of ['recordEntry', 'conversationTurn', 'participant', 'report', 'answer']) {
+    for (const forbidden of ['recordEntry', 'conversationTurn', 'report', 'answer']) {
       expect(brief).not.toMatch(new RegExp(`\\b${forbidden}`, 'i'));
     }
+  });
+
+  it('and knowing WHICH participant is reading is allowed, because it is used to withhold', () => {
+    /*
+     * "participant" was on the forbidden list and had to come off, which is worth being careful
+     * about: the rule it was serving is the most important one in this file.
+     *
+     * The rule is that the brief never draws on somebody's ACCOUNT - their entries, their turns,
+     * their report. That still holds and is still asserted above. What changed is that a target can
+     * now belong to one person, and ten of those on a colleague's first screen is a decision nobody
+     * made. Narrowing that needs to know who is reading. It is the same word doing the opposite
+     * job: not to fetch somebody's words, but to leave somebody else's number out.
+     *
+     * So the narrower assertion: the brief may take a reader, and may not query anything of theirs.
+     */
+    const brief = CODE.slice(CODE.indexOf('private briefFor('), CODE.indexOf('async open(checkInId'));
+    expect(brief).toContain('targetsFor(');
+    /* No database reach of any kind: everything it needs is already in hand. */
+    expect(brief).not.toMatch(/this\.prisma/);
+    expect(brief).not.toMatch(/findMany|findFirst|findUnique/);
   });
 
   it('and returns null rather than inventing a brief for a ground it could not read', () => {

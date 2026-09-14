@@ -24,9 +24,19 @@ import { join } from 'path';
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 /* The tiles live with their counts now, in one builder both surfaces call (what-this-session-holds.ts). */
 const SERVICE = strip(readFileSync(join(__dirname, '..', 'reports', 'what-this-session-holds.ts'), 'utf8'));
+/*
+ * THE CARD THIS USED TO READ NO LONGER EXISTS, AND THE RULE OUTLIVED IT.
+ *
+ * `SessionReportCard` opened with the shared picture in a dark band, which is what the band-with-
+ * nothing-to-show rule below was written about. The end of a signed-in check-in is now A - what
+ * one person said this time - and the shared picture is a different report on a different surface,
+ * so there is no band here to be empty.
+ *
+ * The rule is kept as its stronger form: the card must not draw the shared picture at all.
+ */
 const CARD = strip(
   readFileSync(
-    join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'SessionReportCard.tsx'),
+    join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'TheCheckInYouJustFinished.tsx'),
     'utf8',
   ),
 );
@@ -59,19 +69,17 @@ describe('the quick read', () => {
 });
 
 describe('and the band that had nothing to show', () => {
-  it('says why rather than leaving the space blank', () => {
-    expect(CARD).toContain('Not enough has been said yet to draw one');
-  });
-
-  it('in one component both bands use', () => {
-    /* Both bands render <ThePicture>, which carries the sentence once. */
-    const hits = CARD.match(/Not enough has been said yet to draw one/g) ?? [];
-    expect(hits.length).toBe(1);
-    expect((CARD.match(/<ThePicture picture=\{picture\} dark \/>/g) ?? []).length).toBe(2);
+  it('is gone, because the close no longer draws the shared picture', () => {
+    /* The band cannot be empty if it is not there. A - what you said this time - is the whole
+       card; the shared picture has its own surface and is a door at the foot, not a copy. */
+    expect(CARD).not.toContain('ThePicture');
+    expect(CARD).not.toContain('sharedPicture');
+    expect(CARD).toContain('See the shared picture for this session');
   });
 
   it('and never renders an empty paragraph', () => {
-    /* The exact shape of the fault: a bare `{report.sharedPicture}` with no fallback. */
-    expect(CARD).not.toMatch(/>\{report\.sharedPicture\}</);
+    /* The exact shape of the original fault: a bare value with no fallback. Kept because it is the
+       shape, not the field, that mattered. */
+    expect(CARD).not.toMatch(/>\{report\.\w+\}</);
   });
 });

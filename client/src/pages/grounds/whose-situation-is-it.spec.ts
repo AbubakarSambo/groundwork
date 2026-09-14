@@ -21,7 +21,9 @@ const words = theWordsForPickingASituation()
 describe('the words on the situation step', () => {
   it('speak in the second person, because everybody here writes their own context now', () => {
     expect(words.intro).toContain('the question you are actually asking')
-    expect(words.describeOwnLabel).toBe('Describe your own situation')
+    /* Renamed with the rest of the catalogue: every card names the job now rather than the
+       situation, and this one told somebody what they would have to DO to use it. */
+    expect(words.describeOwnLabel).toBe('Work Through Something Else')
   })
 
   it('say what a situation actually runs like, which is the part people get wrong', () => {
