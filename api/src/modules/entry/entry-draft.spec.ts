@@ -76,6 +76,7 @@ function makeService(opts: { draft?: any; failAllInvites?: boolean; pendingSignu
   };
   const conversation: any = {
     extractRecordEntries: jest.fn(async () => []),
+    extractExpectations: jest.fn(async () => undefined),
     /* And writes the private summary afterwards, un-awaited. The commit used to chain it off the
        extraction with `.then`, so this double never needed it. */
     buildSoloArtifact: jest.fn(async () => undefined),
