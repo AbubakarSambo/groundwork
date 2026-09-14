@@ -52,9 +52,16 @@ const CARRIES_NO_SUBJECT = new Set([
   'so', 'if', 'then', 'now', 'else', 'able', 'name', 'tell', 'say', 'about',
 ]);
 
+/**
+ * NUMBERS ARE SUBJECT WORDS, and leaving them out is what let the worst example through.
+ *
+ * "500 contracts, daaa. and the sales linked to them" came back as "500 contracts and the sales
+ * linked to them by the end of the year." Reading only letters, the figure at the front of both -
+ * the most obviously repeated thing in the pair - counted for nothing.
+ */
 function subjectWords(text: string): Set<string> {
   return new Set(
-    (text ?? '').toLowerCase().match(/[a-z']{3,}/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)) ?? [],
+    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)) ?? [],
   );
 }
 
@@ -88,3 +95,42 @@ export const THEY_ALREADY_SAID_NO = `The person has told you the questions are n
 Drop it. Do not ask it a third time, do not rephrase it, and do not explain why you wanted it. Say in one short sentence that you will leave it, and then ask for the thing they actually came for, in their own words, or help them with it directly.
 
 If what they asked for is to set targets and track them, ask about the targets.`;
+
+/**
+ * A REPLY THAT OPENS BY SAYING THEIR OWN ANSWER BACK TO THEM.
+ *
+ * Every turn of a real check-in opened this way. She said "500 contracts, daaa. and the sales linked
+ * to them", and got back "500 contracts and the sales linked to them by the end of the year. Got it.
+ * To make sure this objective is aligned..." She said "150 each and i have a target of 50", and got
+ * "This makes up the 500 total." Her words for the whole conversation were "repeat and going around
+ * in circles".
+ *
+ * It is not a wrong answer, which is why no guard caught it. It is the same words twice, and half of
+ * every reply being your own last message is what makes a conversation feel like it is not moving.
+ *
+ * ONLY THE OPENING IS CHECKED. Quoting somebody later in a turn is often the right thing - the
+ * product does it deliberately when a document contradicts them. What grates is leading with it.
+ */
+export function opensByRepeatingThem(theySaid: string, reply: string): boolean {
+  const theirs = subjectWords(theySaid);
+  if (theirs.size < 3) return false;
+  /* The first sentence, which is all a reader has before deciding whether this is going anywhere. */
+  const opening = (reply ?? '').split(/(?<=[.?!])\s/)[0] ?? '';
+  const opener = subjectWords(opening);
+  if (opener.size < 3) return false;
+  let shared = 0;
+  for (const w of opener) if (theirs.has(w)) shared += 1;
+  /*
+   * Most of the opening being words they just used, rather than a word or two in common.
+   *
+   * Six tenths, not seven. Measured against the real pair above: "500 contracts and the sales linked
+   * to them by the end of the year" shares four of its six subject words with what she typed, and
+   * seven tenths let it through. A check tuned above the thing it was written for is not a check.
+   */
+  return shared / opener.size >= 0.6;
+}
+
+/** Named for the model, which then writes its own opening. */
+export const DO_NOT_SAY_IT_BACK = `Your reply opens by repeating what they just told you before asking the next thing. They know what they said. Reading their own answer handed back is what makes a check-in feel like it is going in circles.
+
+Write it again without the restatement. Go straight to the next question. A two or three word acknowledgement is fine if something genuinely landed; a summary of their last message is not.`;

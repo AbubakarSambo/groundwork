@@ -100,7 +100,7 @@ import {
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO } from './asked-twice-and-told-no-twice';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1190,6 +1190,29 @@ export class ConversationService {
           } else {
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
           }
+        }
+      }
+
+      /*
+       * AND IT DOES NOT OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM.
+       *
+       * Fifth retry, same shape as the four above. This is the one that made a real check-in read as
+       * "repeat and going around in circles": nothing was wrong with any single reply, and half of
+       * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
+       */
+      if (opensByRepeatingThem(message, screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply opened by repeating them; asking again.`);
+        const straight = await this.anthropic
+          .respond(`${fullSystem}\n\n${DO_NOT_SAY_IT_BACK}`, history)
+          .catch(() => '');
+        const second = straight.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !opensByRepeatingThem(message, second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try got on with it.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try repeated them too; the first stands.`);
         }
       }
 

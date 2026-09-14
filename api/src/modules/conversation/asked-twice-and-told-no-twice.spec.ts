@@ -49,3 +49,35 @@ describe('they said the questions were wrong', () => {
     expect(asksTheSameThingAgain('Why?', 'How?')).toBe(false);
   });
 });
+
+/**
+ * THE REPLIES SHE ACTUALLY GOT, LINE FOR LINE.
+ *
+ * Her verdict on the whole check-in: "It is repeat and going around in circles."
+ */
+describe('a reply that opens by saying it back', () => {
+  const { opensByRepeatingThem } = require('./asked-twice-and-told-no-twice');
+
+  it.each([
+    ['500 contracts, daaa. and the sales linked to them',
+     '500 contracts and the sales linked to them by the end of the year. Got it. To make sure this objective is aligned, who else in the organization would be able to confirm that reaching 500 contracts means your team has successfully achieved this objective?'],
+    ['a contract and money in the bank',
+     'A contract and money in the bank. That is concrete. What is the target for that: how many contracts, and how much money in the bank by when?'],
+    ['I just want to set objectives for my sales team',
+     'You want to set objectives for your sales team. We have identified one clear objective: "500 contracts and linked sales by the end of the year," with the finance team as the verifier. Is there a second key objective your sales team is focusing on for this period?'],
+  ])('catches it: %s', (said, reply) => {
+    expect(opensByRepeatingThem(said, reply)).toBe(true);
+  });
+
+  it('leaves a reply that just gets on and asks', () => {
+    expect(opensByRepeatingThem(
+      '500 contracts, daaa. and the sales linked to them',
+      'Who on the team owns each of those, and by when?',
+    )).toBe(false);
+  });
+
+  it('and does not fire on a short answer there is nothing to repeat of', () => {
+    expect(opensByRepeatingThem('yes', 'Okay. What specific targets will each of them have?')).toBe(false);
+    expect(opensByRepeatingThem('finance team', 'Who else would need to confirm it?')).toBe(false);
+  });
+});

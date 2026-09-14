@@ -35,3 +35,29 @@ describe('the opener fits what they came to do', () => {
     expect(ENGINE_RULES).toMatch(/Do not rephrase it and ask again/);
   });
 });
+
+/**
+ * TWO SCRIPTS IN ONE CONVERSATION IS NOT TWICE AS THOROUGH.
+ *
+ * ENGINE_RULES is the base prompt for every conversation and carries a full goal-alignment
+ * interview. The situation the lead picks carries its own opening and follow-ups. Both reached the
+ * model, so a check-in about setting objectives ran the sales opener from one, the opening from the
+ * other, and the alignment step from both. Her words: "the line of questioning does not follow the
+ * scenario. It is not aligned with the scenario."
+ */
+describe('the situation owns the shape', () => {
+  it('says the situation prompt runs, and this one is the fallback', () => {
+    expect(ENGINE_RULES).toMatch(/SITUATION'S OWN PROMPT COMES FIRST/i);
+    expect(ENGINE_RULES).toMatch(/never a second\s+interview running alongside/i);
+  });
+
+  it('does not open by handing somebody their own last message back', () => {
+    expect(ENGINE_RULES).toMatch(/DO NOT SAY THEIR ANSWER BACK TO THEM/i);
+    expect(ENGINE_RULES).toMatch(/repeat and going\s+around in circles/i);
+  });
+
+  it('and looks at what they already said before asking for it again', () => {
+    expect(ENGINE_RULES).toMatch(/IF THEY HAVE ALREADY TOLD YOU, DO NOT ASK AGAIN/i);
+    expect(ENGINE_RULES).toMatch(/already told\s+you in the entry chat/i);
+  });
+})
