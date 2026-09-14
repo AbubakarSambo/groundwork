@@ -3450,6 +3450,17 @@ export function EntryChatPage() {
                     </button>
                   )
                 }
+                /* Every open item can say it is wrong, from where it is wrong. It opens the same
+                   correction conversation as the summary does; nothing separate to maintain. */
+                renderCorrect={(about) => (!showCorrection ? (
+                  <button
+                    onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
+                    disabled={generatingReport}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    This isn't right - correct it
+                  </button>
+                ) : null)}
                 correctionSlot={
                   <>
                           {/* Anonymous correction: routed through the live engine (/entry/chat),
