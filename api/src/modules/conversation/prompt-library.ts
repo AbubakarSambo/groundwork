@@ -1,5 +1,5 @@
 import { alreadyEstablished } from './setup-already-asked-this';
-import { whatThisCheckInIsFor, whichStage, type Stage } from './the-scenario-table';
+import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
@@ -2581,6 +2581,27 @@ AUTHORITY CLARITY: If the mandate comes from more than one person - a board, inv
  * one. Three colleagues having already agreed she is wrong is not two independent accounts, it is a
  * verdict with a witness list - which is the one thing this product says it is not.
  */
+/**
+ * NOBODY COLLECTS AGREEMENT ABOUT SOMEBODY WHO HAS NOT BEEN ASKED.
+ *
+ * This lived inside THE_STANDARD_BEFORE_THE_GAP, which is right for the scenarios where something
+ * genuinely fell short of something. It was removed from REALIGN_TEAM with that block, because that
+ * card is about people SEEING a situation differently and asking each of them what they are "falling
+ * short of" manufactures a fault to explain a difference.
+ *
+ * Taking the whole block took this with it, and this is the protection that scenario needs MOST. On
+ * a check-in whose entire subject is that people disagree, "does anyone else see it your way?" does
+ * not gather evidence, it builds factions - and the people named have not been asked.
+ *
+ * So it stands on its own now and every one of the three uses it, while the standard-and-shortfall
+ * framing stays where a shortfall is actually in question.
+ */
+const NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON = `NEVER ASK WHO ELSE AGREES. "Does anyone else share your view?" collects corroboration, and the
+people it names have not been asked. The other party gives their own account after this one and it
+has to be worth something when they do - three colleagues already on record agreeing with one side
+is a verdict with a witness list, not two independent accounts. If somebody volunteers that others
+agree, take it as one person's impression and do not build on it.`;
+
 const THE_STANDARD_BEFORE_THE_GAP = `THE STANDARD COMES FIRST, BEFORE ANY QUESTION ABOUT WHAT SOMEBODY IS NOT DOING.
 
 Ask, in this order, and do not move past it:
@@ -2597,11 +2618,9 @@ carry on collecting evidence about the person as though the standard existed. Th
 point is about an expectation that was never set, not about work that fell short of one. Say it in
 one sentence and keep going from there.
 
-NEVER ASK WHO ELSE AGREES. "Does anyone else share your view?" collects corroboration, and the
-people it names have not been asked. The other party gives their own account after this one and it
-has to be worth something when they do - three colleagues already on record agreeing with one side
-is a verdict with a witness list, not two independent accounts. If somebody volunteers that others
-agree, take it as one person's impression and do not build on it.`;
+${NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON}`;
+
+
 
 /**
  * THE ONE QUESTION THE RECORD KEPT LEAVING OUT: what the person giving it did.
@@ -2716,20 +2735,46 @@ OPENING QUESTIONS - promotion or role change:
 "What evidence exists that you are already operating at that level?"
 "What is the one thing missing from your current record that you know the decision-maker will look for?"`;
 
-const RECOGNITION_PARTICIPANT = `PERSON RESPONDING - to the person who will receive the ask:
-"Someone is about to make a case to you. Before they do, I want your honest read of the same decision. Not your final decision. What the record shows you."
-"If your read and their read describe different pictures - that is the conversation that needs to happen first."
+/**
+ * BOTH HALVES OF THIS SCENARIO WERE WRITTEN FOR THE WRONG PEOPLE.
+ *
+ * The initiator's half asked "what are you asking for? Name the specific ask" - questions for
+ * somebody seeking a raise. The participant's half opened "PERSON RESPONDING - to the person who
+ * will receive the ask" - questions for the manager who decides. So the person who sets the check-in
+ * up was treated as the applicant and the person invited into it as the decider, which is the
+ * opposite of every other scenario in the product and the opposite of what the card says.
+ *
+ * The card: "understand someone's contribution and experience before making a recognition decision."
+ * The table's participant cell: "share what they have been working on and how they see their
+ * contribution." That is the person being recognised, not the one deciding.
+ *
+ * It was built for a shape that does exist - somebody asks their manager, the manager answers - and
+ * that shape is not this card. Both halves now match the table.
+ */
+const RECOGNITION_PARTICIPANT = `PERSON RESPONDING - the person this check-in is about:
 
-For raise / equity:
-"What is your honest read of this person's contribution relative to what they are likely to ask for? Not a decision. What does the record show you?"
+"Someone is putting together the picture of your work. This is where you say what you have been doing, in your own words, before anybody decides anything."
 
-For promotion:
-"What would need to be true about this person's record for this to be a clear yes? Is that visible in what you have seen from them?"
+WHAT THEY HAVE BEEN DOING:
+"What have you been working on over this period? The things themselves, not how they went."
+"What is the one you would point to first?"
 
-IF THE TWO READS DIVERGE:
-"You are working from different pictures of the same record."
-"The conversation that needs to happen first is about the record, not the ask."
-"What specifically do you each see differently? That is where the conversation needs to start."`;
+WHAT EXISTS BECAUSE OF IT:
+"What exists now that did not before? Something delivered, a number that moved, a thing somebody else is using."
+Ask once more if the answer is about effort rather than outcome. Do not ask a third time: somebody describing their own work modestly is not somebody with nothing to show.
+
+HOW THEY SEE IT:
+"How do you think this period has gone for you?"
+"Is there anything you want understood that you do not think is obvious from the outside?"
+
+WHO ELSE SAW IT:
+"Who else has seen this work closely enough to speak to it?"
+
+WHAT THEY WANT NEXT, ASKED PLAINLY AND ONCE:
+"Is there something you are hoping for out of this - money, title, scope, something else?"
+If they would rather not say, take that and move on. They are not obliged to ask for anything in order to have their work recorded.
+
+NEVER: do not tell them what their chances are, do not hint at what the decision will be, and do not compare them to anybody else. The decision is not yours and it is not made here.`;
 
 const CRISIS_SCOPE_BOUNDARY = `SCOPE BOUNDARY: Keep every question focused on the current situation (numbers, runway, deadlines), what decisions need to be made and by when, what resources or commitments are at stake, and any conditions the person places on their cooperation. Do not ask about how working relationships have changed over time, relationship history, or personal dynamics unless the person explicitly raises them. This is a decision session, not a relationship assessment.`;
 
@@ -2959,13 +3004,35 @@ WHAT NOT TO DO:
 
 CLOSING: The record is what each side says happened, the figures with their sources, and anything the two accounts do not reconcile. A period where the numbers line up and nothing is outstanding should close as running as agreed, in one short paragraph.`;
 
-const REALIGN_TEAM_PACK = `MOMENT: Team realignment.
+/**
+ * PEOPLE SEEING IT DIFFERENTLY IS NOT PEOPLE FALLING SHORT.
+ *
+ * This pack opened on drift - "something has shifted, a priority has moved, or the team has
+ * drifted" - and then ran THE_STANDARD_BEFORE_THE_GAP: "what was agreed that this is falling short
+ * of? Where is that written down?"
+ *
+ * The card says "understand different views when people don't see a situation the same way." There
+ * is no shortfall in that. Two people can both be doing exactly what they agreed and still describe
+ * the situation differently, which is the whole reason this scenario exists. Asking each of them
+ * what they are falling short of manufactures a fault to explain a difference, and it is the same
+ * move as a report inventing an open item because the list would otherwise be empty.
+ *
+ * The standard block stays where it belongs, on DRIFT and PIP, where something genuinely is off.
+ * Here the question is what each person sees, and nothing is assumed to be wrong.
+ */
+const REALIGN_TEAM_PACK = `MOMENT: Understand Where People See Things Differently.
 
-PURPOSE: Something has shifted - a direction has changed, a priority has moved, or the team has drifted. Each person gives their own account of where they think things stand before the group discusses it.
+PURPOSE: People are describing the same situation in different ways. Each person gives their own account, on their own, before anybody tries to reconcile them. Nothing here assumes somebody is wrong: two people can both be doing what they agreed and still see it differently, and finding out where and why is the point.
 
-OPENING: Ask the person what they believe the team is currently trying to achieve. Not what was agreed six months ago - what they believe is true today.
+OPENING: Ask what they believe the team is currently trying to achieve. Not what was agreed months ago - what they believe is true today.
 
-${THE_STANDARD_BEFORE_THE_GAP}
+WHAT THEY THINK EVERYBODY ELSE THINKS: ask what they believe the others would say to that same question. Where somebody expects agreement and there is none, that gap is worth more than either account on its own.
+
+WHERE THE DIFFERENCE CAME FROM: ask what they think has changed, if anything. A priority that moved, a decision nobody heard about, or simply that it was never as settled as it looked. All three are real answers and the third is common.
+
+DO NOT ASK THEM TO AGREE, and do not ask them to justify their view against anybody else's. They are giving an account, not defending a position. The report shows where the accounts differ; the conversation about it happens between people, later.
+
+${NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON}
 
 ${YOUR_OWN_PART_IN_IT}
 
@@ -2982,9 +3049,24 @@ LATER SESSIONS - READ AGAINST WHAT WAS AGREED: open from the agreed version, not
 
 RECORD: The record should show: each person's current understanding of team direction, named changes from original plan, any named tensions not formally addressed, and what each person says would have to be true for this to be working, with the part they own. Across sessions, whether the agreed version is being worked to or has quietly been dropped.`;
 
-const PIP_PACK = `MOMENT: Performance improvement.
+/**
+ * HELP SOMEONE GET BACK ON TRACK. NOT A PERFORMANCE PLAN.
+ *
+ * This pack opened "MOMENT: Performance improvement. PURPOSE: A structured record of what
+ * improvement is REQUIRED." The card says "Understand what is getting in the way when someone's work
+ * is off track", and the table's first cell for the lead says "understand what is happening without
+ * jumping to conclusions."
+ *
+ * Understand, against required. On the most sensitive scenario in the product, and the one where
+ * being told off by a piece of software would land hardest, the pack opened as an instrument of
+ * process. Everything below it is careful - the standard comes first, the gap is not assumed, both
+ * sides give their own account - and the frame around it was not.
+ *
+ * The rest is untouched. Only what this is FOR has changed, to what the card promises.
+ */
+const PIP_PACK = `MOMENT: Helping somebody get back on track.
 
-PURPOSE: A structured record of what improvement is required, what support is available, and what success looks like. Both the person on the plan and the person setting it give their own account independently. The record shows where they agree and where they differ.
+PURPOSE: Understand what is actually getting in the way, without jumping to conclusions about it. Both the person whose work is off track and the person who raised it give their own account independently, and the record shows where they agree and where they differ. What improvement looks like, and what support would help, comes out of that rather than being set before it.
 
 OPENING: Ask the person to describe, in their own words, what they understand the performance concern to be. Do not lead. If their account differs significantly from the concern as set out, note the gap.
 
@@ -3259,9 +3341,22 @@ function theScenariosOwnPack(
      */
     case GroundScenario.ROLE_HANDOVER: {
       const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      /*
+       * SEVEN CARDS, SEVEN PROMISES, AND ONE LINE THAT ANSWERED NONE OF THEM.
+       *
+       * These all shared `MOMENT: Something new is starting.` A person who clicked "Help a New Hire
+       * Get Started" and a person who clicked "Hand Over a Role Smoothly" were told the same thing
+       * about what this is, and neither was told what they had chosen. The role questions below do
+       * differ; the frame they sit in did not.
+       *
+       * The table has a line per scenario and it is the line on the card, so it is the one to use.
+       * See the-scenario-table.ts.
+       */
+      const row = THE_SCENARIO_TABLE[scenario];
+      const moment = row ? `MOMENT: ${row.name}. ${row.description}` : `MOMENT: Something new is starting.`;
       if (isInitiator) {
         return [
-          `MOMENT: Something new is starting.`,
+          moment,
           STARTING_VALIDATION,
           /*
            * ORDER IS THE FIX. Who it is speaking to, then the question that establishes who this is
@@ -3283,7 +3378,7 @@ function theScenariosOwnPack(
         ].join('\n\n');
       }
       return [
-        `MOMENT: Something new is starting.`,
+        moment,
         PARTICIPANT_PREAMBLE,
         `ROLE-SPECIFIC QUESTIONS - participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
       ].join('\n\n');
@@ -3292,7 +3387,9 @@ function theScenariosOwnPack(
     case GroundScenario.DRIFT: {
       if (isInitiator) {
         return [
-          `MOMENT: Something has drifted.`,
+          /* The card says "understand why a project is off track and what needs to change", and
+             "something has drifted" named neither the project nor the change. */
+          `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
           DRIFT_VALIDATION,
           /* First, and the ordering is the whole correction - see the note on this block. */
           THE_STANDARD_BEFORE_THE_GAP,
@@ -3303,7 +3400,7 @@ function theScenariosOwnPack(
         ].join('\n\n');
       }
       return [
-        `MOMENT: Something has drifted.`,
+        `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
         PARTICIPANT_PREAMBLE,
         DRIFT_PARTICIPANT_VARIANTS,
         DRIFT_WORRY_TENSION,
@@ -3311,11 +3408,29 @@ function theScenariosOwnPack(
     }
 
     case GroundScenario.RECOGNITION: {
+      /*
+       * IT ASKED THE DECIDER WHAT THEY WERE ASKING FOR.
+       *
+       * The initiator's pack opened "MOMENT: Someone wants recognition" and then "What are you
+       * asking for? Name the specific ask. Why do you believe the record supports this?" Those are
+       * questions for the person seeking a raise. The lead running this check-in is the one who has
+       * to DECIDE, and the card says so: "understand someone's contribution and experience before
+       * making a recognition decision." The table's first cell for the lead is "understand their
+       * role, contribution, and progress."
+       *
+       * So the whole pack was written for one party and handed to both. The participant's half was
+       * right all along and is untouched below; the lead gets the questions a person deciding this
+       * actually needs.
+       */
       if (isInitiator) {
         return [
-          `MOMENT: Someone wants recognition.`,
-          RECOGNITION_VALIDATION,
-          RECOGNITION_INITIATOR,
+          `MOMENT: Support a Raise, Promotion, or Recognition. Understand someone's contribution and experience before making a recognition decision.`,
+          `PURPOSE: Build an honest picture of what this person has actually done and how they experience the work, so a decision rests on the record rather than on who asked loudest or most recently.`,
+          `OPENING: Ask what this person has been responsible for over the period, in the lead's own words. Not a verdict, not a rating: what the work was.`,
+          `WHAT IS ON RECORD: ask what they can point to. Something delivered, something moved, a number, a thing that exists now that did not. Ask once more if the first answer is a judgement rather than a thing.`,
+          `WHO ELSE WOULD KNOW: ask who else has seen this person's work closely enough to say. A picture from one person is one person's picture, and this is a decision that outlives the conversation.`,
+          `WHAT IS BEING WEIGHED: ask what the decision actually is - money, title, scope - and what would have to be true for it to be a yes. Do not push them to a verdict here. The point of the check-in is that they have the picture before they decide, not that they decide in it.`,
+          `THE OTHER SIDE IS COMING: the person this is about gives their own account separately, and the report shows where the two agree and where they differ. Do not ask the lead to guess what that person will say.`,
         ].join('\n\n');
       }
       return [
@@ -3332,7 +3447,9 @@ function theScenariosOwnPack(
       // parties need the same boundary.
       if (isInitiator) {
         return [
-          `MOMENT: The situation requires everyone to see the same thing.`,
+          /* The card is about a DECISION - "bring different views together around an important
+           decision" - and this named only the seeing-the-same-thing half of it. */
+        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
           CRISIS_SCOPE_BOUNDARY,
           CRISIS_VALIDATION,
           CRISIS_OPENING,
@@ -3341,7 +3458,9 @@ function theScenariosOwnPack(
         ].join('\n\n');
       }
       return [
-        `MOMENT: The situation requires everyone to see the same thing.`,
+        /* The card is about a DECISION - "bring different views together around an important
+           decision" - and this named only the seeing-the-same-thing half of it. */
+        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
         CRISIS_SCOPE_BOUNDARY,
         PARTICIPANT_PREAMBLE,
         CRISIS_PARTICIPANT_VARIANTS,
