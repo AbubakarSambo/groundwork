@@ -1,3 +1,5 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
 /**
  * THE DATE A DEADLINE'S WORDS MEAN, WHERE THEY UNAMBIGUOUSLY MEAN ONE.
  *
@@ -170,4 +172,58 @@ export function askWhenTheyMean(said: string): string {
   return `They said "${said.trim()}", which does not carry a date. Ask which day that is, in their `
     + 'own terms - and accept "there is not a date yet" as an answer rather than pressing for one. '
     + 'Ask once, and only where the promise is one somebody else is waiting on.';
+}
+
+/**
+ * A PERIOD IS NOT A DAY, AND THE PRODUCT MUST NOT QUIETLY PICK ONE.
+ *
+ * Hafsah, on reading a live check-in where she had said "by the end of the year": "If i say end of
+ * year it should rrespond with december? what date?"
+ *
+ * Both halves of her earlier instruction - "yes infer a date but be sure to probe for details in
+ * the engine" - are in this file now. `whenTheyMeant` reads "end of the year" as the thirty-first
+ * of December so the product has something machine-readable. This says the reading out loud and
+ * asks her to confirm it, because thirty-first of December is our reading of her words and not her
+ * words, and a deadline nobody agreed to is the thing a later check-in asks somebody why they
+ * missed.
+ *
+ * A DAY SOMEBODY NAMES IS NOT ASKED ABOUT. "December 1 2026" and "15 May 2027" are dates. Reading
+ * those back as a question is the product checking whether somebody meant what they typed.
+ */
+const A_PERIOD_NOT_A_DAY = [
+  /\bend of (?:the |this )?(?:year|month|quarter|week)\b/i,
+  /\bend of \d{4}\b/i,
+  /\byear[- ]end\b/i,
+  /\bend of (?:january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
+  /\b(?:this|next) (?:month|quarter|year|week)\b/i,
+  /\bby (?:the )?(?:summer|winter|spring|autumn|fall)\b/i,
+];
+
+/** The period phrase they used, where they gave one rather than a day. */
+export function thePeriodTheyNamed(said: string | null | undefined): string | null {
+  const t = (said ?? '').trim();
+  if (!t) return null;
+  for (const rx of A_PERIOD_NOT_A_DAY) {
+    const m = rx.exec(t);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+/**
+ * What to tell the interview when somebody has given a period. It carries the date we read it as,
+ * so the question is a specific one - "so the 31st of December?" - rather than "when exactly?",
+ * which is the question that makes people feel interrogated about something they already answered.
+ */
+export function sayTheDateAndCheckIt(period: string, meansThisDay: Date): string {
+  /* One formatter for the whole product. A hand-rolled toLocaleDateString here is how "12 September
+     2026" and "September 12, 2026" end up on two screens of the same check-in. */
+  const day = whenItWas(meansThisDay, 'full', 'UTC');
+  return `They said "${period}", which is a period rather than a day. The product reads that as ${day}.
+
+YOUR NEXT REPLY IS THAT QUESTION AND NOTHING ELSE: "${period} - so ${day}?" Or the same question in your own words, as long as the DATE is in it.
+
+THIS IS NOT SAYING THEIR ANSWER BACK TO THEM, and the rule against that does not apply here. You are giving them something they did not say: ${day} is the product's reading of their words, not their words, and they have never seen it. Driven live, this instruction and that rule pulled against each other and what reached the person was "Is that the date you mean?" - a question about a date that had been left out of the message asking it.
+
+Ask once. If they confirm it, or give a different day, take it and move on. If they say it is not settled yet, that is a real answer - record it and never press again. Do not explain why you are asking, and do not add a second question to the same turn.`;
 }

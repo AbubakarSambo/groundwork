@@ -18,6 +18,8 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
+import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
@@ -1008,7 +1010,20 @@ export class ConversationService {
       throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
-    const fullSystem = await this.composeSystemPrompt(checkIn, message);
+    const composed = await this.composeSystemPrompt(checkIn, message);
+    /*
+     * AND WHAT TO DO ABOUT THE DEADLINE THEY JUST GAVE, WHICH NOTHING WAS DOING.
+     *
+     * "If i say end of year it should respond with december? what date?" A period gets its reading
+     * said back and checked; something genuinely vague gets the open question. Appended to the
+     * prompt for THIS reply rather than run as a retry afterwards: it is about what the person said,
+     * not about what the product wrote. See a-period-is-not-a-day.
+     */
+    const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date());
+    if (aboutTheirDeadline) {
+      this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
+    }
+    const fullSystem = aboutTheirDeadline ? `${composed}\n\n${aboutTheirDeadline}` : composed;
 
     // Persist the person's turn.
     const personTurn = await this.prisma.conversationTurn.create({
@@ -1361,6 +1376,38 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IT SAID THE DATE, WHICH THE INSTRUCTION ALONE DID NOT ACHIEVE.
+       *
+       * Where they named a period, the prompt was told to come back with the date it reads as. Run
+       * live twice, it asked something else both times - reasonable questions with no date in them.
+       * The same shape as every other rule that lost today, and there is already a note here saying
+       * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
+       */
+      const dateItHadToSay = theDateItHadToSay(message, new Date());
+      if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
+        const period = thePeriodTheyNamed(message)!;
+        this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
+        const withTheDate = await this.anthropic
+          .respond(`${fullSystem}\n\n${SAY_THE_DATE(period, dateItHadToSay)}`, history)
+          .catch(() => '');
+        const second = withTheDate.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay) && !isADeadEnd(second.text, closingNow)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try said the date.`);
+        } else {
+          /*
+           * THE PRODUCT ASKS IT. Two attempts and no date, which is where the decision on quoting
+           * dates already points: the product writes the line, the model asks the questions.
+           */
+          const ours = theQuestionTheProductAsks(period, dateItHadToSay);
+          screened = { ...screened, text: ours };
+          this.logger.warn(`Check-in ${checkIn.id}: it would not say the date; the product asked instead.`);
         }
       }
 

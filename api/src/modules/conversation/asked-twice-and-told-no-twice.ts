@@ -242,6 +242,24 @@ export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string
   if (sentences.length < 2) return null;
   if (!opensByRepeatingThem(theySaid, sentences[0])) return null;
 
+  /*
+   * UNLESS THE SENTENCE CARRIES A FIGURE THEY NEVER SAID, WHICH IS THE WHOLE JUSTIFICATION GONE.
+   *
+   * The comment above says this is allowed because the sentence being removed carries nothing the
+   * person did not just say. Driven live the day it was written, that turned out to have an
+   * exception: she said "closed by the end of the year", the interview came back "the end of the
+   * year - so 31 December 2026?", and this cut the opening as a restatement. What reached her was
+   * "Is that the date you mean?" - a question about a date the product had just deleted.
+   *
+   * A number, a date or a name in the opening that is NOT in what they said is the product giving
+   * something back, which is the opposite of handing their own words over. The guard above may
+   * still ask for a better reply; this stops the surgery.
+   */
+  const theirs = (theySaid ?? '').toLowerCase();
+  const newFigures = (sentences[0].match(/\b\d[\d,.]*\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b/gi) ?? [])
+    .filter((f) => !theirs.includes(f.toLowerCase().replace(/[.,]$/, '')));
+  if (newFigures.length) return null;
+
   const rest = sentences.slice(1).join(' ').trim();
   if (rest.split(/\s+/).length < 5) return null;
   if (!/\?/.test(rest)) return null;

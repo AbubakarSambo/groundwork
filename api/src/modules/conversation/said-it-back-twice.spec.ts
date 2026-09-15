@@ -52,3 +52,33 @@ describe('when it says it back twice', () => {
     expect(withoutTheSentenceThatSaysItBack(theySaid, clean)).toBeNull();
   });
 });
+
+/*
+ * DRIVEN LIVE THE DAY THE TRIM WAS WRITTEN, AND IT CUT THE WRONG SENTENCE ONCE.
+ *
+ * She said "I want them all closed by the end of the year". The interview did what it had just
+ * been told to do and came back "The end of the year - so 31 December 2026?" - and the trim read
+ * that opening as her own words handed back and removed it. What reached her was "Is that the date
+ * you mean, or is there an earlier date you're working towards?" - a question about a date that
+ * had been deleted from the message asking it.
+ */
+describe('and it keeps a sentence that gives them something they did not say', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { withoutTheSentenceThatSaysItBack: trim } = require('./asked-twice-and-told-no-twice');
+  const theySaid = 'I am carrying 150 contracts and I want them all closed by the end of the year.';
+
+  it('leaves the opening alone when it carries a date they never said', () => {
+    const reply = 'You want the 150 contracts closed by the end of the year - so 31 December 2026? Is that the date you mean?';
+    expect(trim(theySaid, reply)).toBeNull();
+  });
+
+  it('and when it carries a number they never said', () => {
+    const reply = 'You are carrying 150 of the 500 on this check-in. What is in the way?';
+    expect(trim(theySaid, reply)).toBeNull();
+  });
+
+  it('but still cuts a pure restatement, which is the case it was written for', () => {
+    const reply = 'You are carrying 150 contracts and want them all closed by the end of the year. What is in the way?';
+    expect(trim(theySaid, reply)).toBe('What is in the way?');
+  });
+});
