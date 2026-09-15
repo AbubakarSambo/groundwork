@@ -113,3 +113,31 @@ describe('the card and the pack are one product', () => {
     });
   });
 });
+
+/*
+ * A second version of a pack, wrong, reaching nobody. The per-party builder was corrected in
+ * Wave 0 and the legacy record was not, so the file held both and only one was right - which is
+ * how it sat there being wrong for as long as nothing read it.
+ */
+describe('there is one recognition pack, not two', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const lib = require('./prompt-library');
+
+  it('nothing anywhere still asks the person deciding what they are asking for', () => {
+    const source = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(source).not.toMatch(/OPENING QUESTIONS - raise or equity/);
+    expect(source).not.toMatch(/What are you asking for\? Name the specific ask/);
+  });
+
+  it('the legacy record composes from the same builder as everything else', () => {
+    const { SCENARIO_PACKS, buildScenarioPackForParty } = lib;
+    expect(SCENARIO_PACKS[GroundScenario.RECOGNITION])
+      .toContain(buildScenarioPackForParty(GroundScenario.RECOGNITION, PartyType.INITIATOR));
+  });
+
+  it('and it reads as the decision it is', () => {
+    expect(lib.SCENARIO_PACKS[GroundScenario.RECOGNITION]).toMatch(/WHAT IS BEING WEIGHED/);
+  });
+});

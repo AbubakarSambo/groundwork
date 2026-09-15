@@ -12,6 +12,7 @@ import {
   PATTERN_DETECTION_SCHEMA,
   BAD_FAITH_CODES,
   isBadFaithCode,
+  isPositiveCode,
   detectR3,
   checkF1Conditions,
   DetectionInput,
@@ -119,7 +120,28 @@ export class PatternsService {
       );
 
       for (const d of result?.detections ?? []) {
-        if (!d.observation?.trim() || !isBadFaithCode(d.code)) continue;
+        if (!d.observation?.trim()) continue;
+
+        /*
+         * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.
+         *
+         * "Positive patterns do not require three periods. Surface them immediately when seen" -
+         * the conversation prompt has said that for the product's whole life, and observePositive
+         * has existed to do it. Nothing reached it but R3, because the line below dropped every
+         * code that was not bad faith, so the seven good ones were extracted and thrown away.
+         *
+         * No confirmation pass either. That gate exists because a false positive on a bad-faith
+         * code is an accusation, and asking a second model to confirm is worth the call. A false
+         * positive here is a compliment somebody did not quite earn, on a board that says where it
+         * came from. The costs are not the same and the gate should not be either.
+         */
+        if (isPositiveCode(d.code)) {
+          await this.observePositive(
+            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
+          );
+          continue;
+        }
+        if (!isBadFaithCode(d.code)) continue;
         // AI confirmation gate: each candidate pattern is confirmed by a
         // second AI call before being written to the record. This prevents
         // false positives from the batch extraction step.

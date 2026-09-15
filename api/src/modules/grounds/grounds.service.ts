@@ -4815,10 +4815,17 @@ export class GroundsService {
         ? 'Your record is taking shape. Each session adds depth and specificity to the picture.'
         : 'Your record is just beginning. One more session will start to show the full picture.';
 
-    // Diplomatic pattern observations - never name the code, never frame as a verdict
-    const POSITIVE_CODES = new Set(['R3']);
+    /*
+     * Diplomatic pattern observations - never name the code, never frame as a verdict.
+     *
+     * This held its own `new Set(['R3'])`, shadowing the imported POSITIVE_CODES, so it was a
+     * second answer to "which codes are good news" that could not follow the first. It did not
+     * matter while R3 was the only one; the moment seven more arrived it would have run every one
+     * of them through the softening meant for bad news, which is how a compliment ends up
+     * phrased as a concern.
+     */
     const patterns = (participant.patternDetections ?? []).map(d => ({
-      observation: POSITIVE_CODES.has(d.code)
+      observation: isPositiveCode(d.code)
         ? d.observationText ?? ''
         : diplomaticObservation(d.observationText ?? ''),
       sessionNumber: d.lastPeriodNumber,

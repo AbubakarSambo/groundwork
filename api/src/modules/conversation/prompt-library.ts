@@ -2670,16 +2670,6 @@ Then in the next exchange:
 const RECOGNITION_VALIDATION = `VALIDATION:
 "The hardest thing about this conversation is that you are asking someone to confirm something you already know is true. Let us look at what the record actually shows before you walk into the room."`;
 
-const RECOGNITION_INITIATOR = `OPENING QUESTIONS - raise or equity:
-"What are you asking for? Name the specific ask."
-"Why do you believe the record supports this?"
-"Share anything that shows your contribution over time: KPIs, goals, past work, check-ins, messages."
-
-OPENING QUESTIONS - promotion or role change:
-"What role or change are you asking for?"
-"What evidence exists that you are already operating at that level?"
-"What is the one thing missing from your current record that you know the decision-maker will look for?"`;
-
 /**
  * BOTH HALVES OF THIS SCENARIO WERE WRITTEN FOR THE WRONG PEOPLE.
  *
@@ -2770,11 +2760,20 @@ const DRIFT_PACK = [
   DRIFT_WORRY_TENSION,
 ].join('\n\n');
 
+/*
+ * AND THE LEGACY PACK NO LONGER CARRIES THE VERSION THAT WAS WRONG.
+ *
+ * RECOGNITION_INITIATOR is gone. It asked the person running the check-in "what are you asking
+ * for? Name the specific ask" - questions for somebody seeking a raise, handed to the manager who
+ * has to decide. The per-party builder was fixed in Wave 0 and this record was not, so the file
+ * held two versions of the same pack and only one of them was right. Nothing read this one, which
+ * is exactly why it could sit there being wrong: a trap for whoever opened the file next.
+ *
+ * It now composes from the same builder every other caller uses, so there is one version.
+ */
 const RECOGNITION_PACK = [
-  `MOMENT: Someone wants recognition.`,
   RECOGNITION_VALIDATION,
-  RECOGNITION_INITIATOR,
-  RECOGNITION_PARTICIPANT,
+  buildScenarioPackForParty(GroundScenario.RECOGNITION, PartyType.INITIATOR),
 ].join('\n\n');
 
 // ---------------------------------------------------------------------------

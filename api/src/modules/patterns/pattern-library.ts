@@ -30,6 +30,80 @@ export const POSITIVE_CODES: PatternCode[] = [
   },
 ];
 
+
+/*
+ * AND THE SEVEN THAT WERE ONLY EVER SAID OUT LOUD. Asked for by Hafsah, 15 September 2026.
+ *
+ * The product detected thirty-eight ways work goes wrong and one way it goes right. The good ones
+ * were not missing from the product's idea of itself - the conversation prompt has carried them
+ * for the product's whole life, under MOVEMENT PATTERNS and COORDINATION PATTERNS, with the
+ * instruction "name explicitly when seen". So they were said in the moment and then gone: nothing
+ * stored, nothing accumulating, nothing reaching a report or a board. After six months a person's
+ * record could hold every wobble and none of the reasons anybody wants to keep them.
+ *
+ * Her words: "this is not the case, we need the positive things tracked as well."
+ *
+ * The definitions below are copied from the conversation prompt rather than written fresh, because
+ * the wording is already the product's and a second, subtly different version of M4 would be the
+ * pattern-code drift this audit just finished measuring.
+ *
+ * WHAT IS DELIBERATELY NOT HERE. The absorption family (A1 Coordination Debt Absorber, A2
+ * Execution Rescuer, A3 Contributor Suppression) reads as credit to the person and is a warning
+ * about the organisation - somebody carrying other people's failures, or a strong contributor
+ * being weakened by a structural change. The boards label anything in this list "Good sign", and
+ * "Good sign: this person is absorbing everybody else's coordination debt" is the wrong sentence.
+ * They need their own family and their own label, which is a decision rather than a build.
+ */
+const THE_GOOD_ONES: PatternCode[] = [
+  {
+    code: 'M1',
+    name: 'Directional Executor',
+    signal: 'Delivers specific outputs against stated goals, with verifiable evidence.',
+    probe: 'What did they set out to do this period, and what exists now because of it?',
+  },
+  {
+    code: 'M2',
+    name: 'Velocity Multiplier',
+    signal: 'Their work consistently lets other people move faster.',
+    probe: 'Whose work got easier because of this, and do they know it?',
+  },
+  {
+    code: 'M3',
+    name: 'Catalyst',
+    signal: 'Introduced a change that accelerated several pieces of work at once.',
+    probe: 'What changed after this, across the things it touched?',
+  },
+  {
+    code: 'M4',
+    name: 'Invisible Backbone',
+    signal: 'Work only noticed when it is absent; quietly carries a function of the organisation.',
+    /* The one most likely to go unsaid, because nothing breaks while they are doing it. */
+    probe: 'What would stop working if this person were away for a fortnight?',
+  },
+  {
+    code: 'C1',
+    name: 'Alignment Creator',
+    signal: 'Makes shared understanding possible; removes ambiguity for other people.',
+    probe: 'What was unclear before this and is not now?',
+  },
+  {
+    code: 'C2',
+    name: 'Dependency Manager',
+    signal: 'Actively manages what their work needs and what other people need from them.',
+    probe: 'What did they chase or hand over before it became somebody else\'s problem?',
+  },
+  {
+    code: 'C3',
+    name: 'Synthesis Contributor',
+    signal: 'Takes scattered information and turns it into something clear enough to act on.',
+    /* The conversation prompt's own warning, kept with the code: a coordinator drifting into an
+       absorber is a burnout signal, and the trajectory is the thing worth watching. */
+    probe: 'Is this still coordination, or has it become them carrying it?',
+  },
+];
+
+POSITIVE_CODES.push(...THE_GOOD_ONES);
+
 export const POSITIVE_CODE_SET = new Set(POSITIVE_CODES.map((c) => c.code));
 export const isPositiveCode = (code: string) => POSITIVE_CODE_SET.has(code);
 
@@ -213,10 +287,12 @@ export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
 );
 
 // The prompt that drives detection over one party's period (transcript + record).
-export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person.
+export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person. Some of these signals are good news and some are not, and both matter equally.
 
 Hard rules:
-- Emit a code ONLY when its signal is genuinely present in this period's evidence. When the work is genuine and verified, emit NOTHING - recognising real work matters as much as detecting managed submissions.
+- Emit a code ONLY when its signal is genuinely present in this period's evidence, and quote nothing you cannot point to in the text in front of you. A code with an observation you had to invent is worse than no code.
+- When the work is genuine and verified, emit NO BAD-FAITH CODE. Recognising real work matters as much as detecting managed submissions - and where that real work matches one of the good codes below, that code is the right answer, not silence.
+- A period with nothing remarkable either way gets no codes at all. That is a normal period and the commonest outcome.
 - Each observation must be written at the PATTERN level, in plain language, and must NEVER be a verdict, never "this person is X". Never name the person.
 - SAY THE THING, DO NOT ANNOUNCE THAT THE RECORD SAYS IT. Opening every observation with "The record shows", "The record describes", "The record contains" reads like disclosure in a court case, which is the opposite of what this is - a shared picture of work, not evidence assembled against somebody. Ten observations in a row all opening that way was the state of it.
   Write: "Work marked finished without anyone downstream confirming it."
@@ -228,11 +304,23 @@ Hard rules:
 The pattern codes and their signals:
 ${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
 
-Return the codes whose signal is present this period, each with a one-sentence plain-language observation. Say what happened, plainly, without prefacing it.`;
+AND THE ONES THAT ARE GOOD NEWS. Look for these with the same care, and emit them on the same
+terms: only where the signal is genuinely present in this period's evidence. These are not
+consolation prizes for a period with nothing wrong in it, and a person who did steady ordinary
+work gets no code at all, which is a perfectly good period.
+${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+
+M4 is the one most often missed, because nothing visibly breaks while somebody is doing it. Work
+that is only noticed when it stops is still work.
+
+Return the codes whose signal is present this period, each with a one-sentence plain-language
+observation. Say what happened, plainly, without prefacing it. A good one is written the same way
+as any other: "Rewrote the onboarding brief, and two teams stopped asking the same question", not
+"This person is a strong contributor."`;
 
 export const PATTERN_DETECTION_SCHEMA = {
   name: 'emit_pattern_signals',
-  description: 'Emit the behavioural pattern signals present in this period (empty if the work looks genuine).',
+  description: 'Emit the behavioural pattern signals present in this period, good and bad. Empty is a normal period and the commonest answer.',
   input_schema: {
     type: 'object',
     properties: {
@@ -241,7 +329,24 @@ export const PATTERN_DETECTION_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            code: { type: 'string', enum: BAD_FAITH_CODES.map((c) => c.code), description: 'The pattern code.' },
+            /*
+             * BOTH FAMILIES, OR THE MODEL CANNOT SAY THE GOOD ONE.
+             *
+             * This enumerated the bad-faith codes alone. Run live against a plainly positive record
+             * - somebody rewrote a brief three teams kept asking about, and picked up an unowned
+             * release checklist - it came back with R1 (named as a blocker by others), R2 (creates
+             * confusion downstream) and R4 (two people stopped corroborating). Not because it read
+             * the record that way: the observations underneath were accurate and warm. It had to
+             * choose a code and these were the only codes it was allowed.
+             *
+             * A schema that offers only one kind of answer gets one kind of answer, however the
+             * prompt is worded. Found by running it, after the prompt alone had been fixed twice.
+             */
+            code: {
+              type: 'string',
+              enum: [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => c.code),
+              description: 'The pattern code. M and C codes and R3 are good news; the rest are not.',
+            },
             observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened. Do NOT open with "The record shows/describes/contains" - say the thing directly. Never names the person; never a verdict.' },
           },
           required: ['code', 'observation'],
