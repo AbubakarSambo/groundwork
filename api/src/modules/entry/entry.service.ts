@@ -39,7 +39,7 @@ import {
 import { oneScriptOnly } from '../conversation/one-script-per-conversation';
 import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
-import { VOCABULARY_RULE } from '../conversation/prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
@@ -48,6 +48,7 @@ import {
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER } from '../conversation/a-reply-is-not-an-essay';
+import { stillAsking } from '../conversation/one-question-per-turn';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -645,7 +646,15 @@ export class EntryService {
      * FAQ_PROMPT and ENTRY_REPORT_PROMPT do carry it: those speak to somebody who has already
      * been through setup, where "check-in" is the honest name for the thing.
      */
-    const ONBOARD_SYSTEM = `You are Groundwork, helping someone set up a record for a situation involving more than one person.
+    /*
+     * THIS ONE DOES CARRY IT, unlike VOCABULARY_RULE above: it names no word this prompt bans, and
+     * the fault it stops was read in a SETUP conversation first. She said "500 contracts, daaa. and
+     * the sales linked to them" and got back "500 contracts and the sales linked to them by the end
+     * of the year. Got it." See OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE.
+     */
+    const ONBOARD_SYSTEM = `${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
+
+You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
 Your job is to gather these things through natural conversation:
 1. THE SITUATION ITSELF, STARTING WITH THE QUESTION THAT SITUATION DESERVES.
@@ -1218,7 +1227,9 @@ from finishing at all.`;
         return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
       }
       /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
-      if (isAnEssay(text, hadCloseMarker(text))) {
+      /* A reply that carries the marker and still asks is not the closing turn, so it does not get
+         the closing turn's room. See a-turn-still-asking-is-not-a-close. */
+      if (isAnEssay(text, hadCloseMarker(text) && !stillAsking(text))) {
         /* A count, never the words. See no-log-line-carries-what-somebody-wrote. */
         const wasThisLong = howManyWords(text);
         return { fault: `${wasThisLong} words`, instruction: SAY_IT_SHORTER };

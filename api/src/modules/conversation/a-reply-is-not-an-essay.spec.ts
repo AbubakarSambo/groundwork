@@ -46,8 +46,14 @@ describe('a reply is not an essay', () => {
     const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '');
     const checkIn = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     const entry = strip(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
-    expect(checkIn).toMatch(/isAnEssay\(screened\.text, closingNow\)/);
-    expect(entry).toMatch(/isAnEssay\(text, hadCloseMarker\(text\)\)/);
+    /*
+     * Both paths, and both now pass the close-AND-not-asking reading rather than the bare marker.
+     * A reply that carries the marker and then asks one more thing is not the closing turn, so it
+     * does not get the closing turn's hundred and forty words. Read live at a hundred and twenty
+     * seven. See a-turn-still-asking-is-not-a-close.
+     */
+    expect(checkIn).toMatch(/isAnEssay\(screened\.text, thisIsTheClosingTurn\)/);
+    expect(entry).toMatch(/isAnEssay\(text, hadCloseMarker\(text\) && !stillAsking\(text\)\)/);
   });
 
   it('is checked last on the entry path, so a real fault is fixed for the fault not the length', () => {

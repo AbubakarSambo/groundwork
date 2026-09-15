@@ -72,6 +72,38 @@ This produces: (a) a nameable artefact, (b) a named verifier. These are the evid
  * So the instruction is explicit and it ships in code rather than in the database prompt row: a row
  * edited by hand reaches one environment and appears in no diff.
  */
+/**
+ * "IT IS REPEAT AND GOING AROUND IN CIRCLES."
+ *
+ * A guard for this already exists and it is a retry: the product spots a reply that opens with the
+ * person's own last message and asks for it again without the restatement. Run against a live third
+ * check-in it caught one turn in three, and the retry on that one restated her as well.
+ *
+ * It catches one in three because it compares words, and a paraphrase shares few of them. She said
+ * "Amir is not really up to it and I have been covering for him" and got back "You've been covering
+ * for Amir because you feel he's not up to it, and you've held back from saying that directly" -
+ * her own sentence, in different words, which is the same fault and a quarter of the overlap.
+ *
+ * Telling a restatement from a real give-back needs judgement, and judgement is the model's. What
+ * was missing is that nothing ever asked it: the instruction existed only as a retry, so it reached
+ * a conversation only after the reply had already gone wrong. This is the standing version, in code
+ * rather than in the database prompt row, where it reaches every turn of every check-in.
+ *
+ * NOT A BAN ON SAYING ANYTHING BACK. The product gives things back deliberately - a figure, what
+ * the room already knows, where that leaves them - and those are facts it holds and the person does
+ * not. What grates is the person's own sentence, handed to them as the opening.
+ */
+export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
+  'NEVER OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM. They know what they just said. A reply that',
+  'starts by summarising their last message - in their words or in yours - is what makes a check-in',
+  'feel like it is going in circles, and it is the single most common complaint about this product.',
+  '',
+  'Open with something they do not already have: a figure from the record, what this changes, what',
+  'it means for the thing they are working towards, or simply the next question. Two or three words',
+  'of acknowledgement are fine where something genuinely landed. A sentence that restates them is',
+  'not, and neither is the same sentence reworded.',
+].join('\n');
+
 export const VOCABULARY_RULE = [
   'VOCABULARY. Never use the words "ground" or "grounds" for the thing being discussed. It is a',
   'check-in. If somebody else calls it a ground, answer them without repeating the word. "Groundwork"',

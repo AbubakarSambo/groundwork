@@ -20,7 +20,7 @@ import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
-import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -107,7 +107,7 @@ import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
-import { isAnEssay, howManyWords, SAY_IT_SHORTER } from './a-reply-is-not-an-essay';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -1231,7 +1231,22 @@ export class ConversationService {
        * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
        * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
        */
-      if (isAnEssay(screened.text, closingNow)) {
+      /*
+       * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
+       *
+       * The hundred and forty words a close may run to are for the one turn that names what now
+       * exists, with the figures and the people in it. A reply that carries the marker AND ends on
+       * a question is not that turn: the product already knows this and refuses to complete the
+       * session on it, a few hundred lines down, because marking it complete put a finish button
+       * under a question nobody had answered.
+       *
+       * Both readings were using the same flag, so a turn that asked one more thing inherited the
+       * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
+       * hundred and twenty seven words of restating, a compliment about her flexibility, then the
+       * question. Sixty is the bar for anything still asking.
+       */
+      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
+      if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
         /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
            interpolation and not what it evaluates to, and it is right to: a guard that has to
            reason about what a call returns is a guard that will miss the next one. */
@@ -1243,13 +1258,29 @@ export class ConversationService {
         const second = shorter.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
           : null;
-        if (second?.text && !second.hits.length && !isAnEssay(second.text, closingNow) && !isADeadEnd(second.text, closingNow)) {
+        if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
           screened = second;
           const nowThisLong = howManyWords(second.text);
           this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
         }
+      }
+
+      /*
+       * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
+       *
+       * A hundred and twenty seven word reply reached somebody and the log could not say which of
+       * two things had happened: the guard never fired because a close marker had lifted the bar,
+       * or it fired twice and the second try was no better. Different faults, different fixes, and
+       * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
+       * answers that question by itself.
+       */
+      const shipping = howManyWords(screened.text);
+      if (shipping > A_REPLY_IS_ABOUT) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: shipping ${shipping} words (closing turn: ${thisIsTheClosingTurn}).`,
+        );
       }
 
       if (isAVerdictAboutSomebodyElse(message, screened.text)) {
@@ -2926,6 +2957,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const inThisTurn = [
       ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
+      ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
       ['recordAlreadyHolds', recordAlreadyHolds], ['owedBlock', owedBlock], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
@@ -2941,7 +2973,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
