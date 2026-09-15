@@ -24,9 +24,19 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * list - which is the point of checking the list: a file that STOPS writing is as much a change as
  * one that starts.
  */
+/*
+ * ENTRY LEFT THIS LIST ON 15 SEPTEMBER 2026, AND THAT IS THE LIST WORKING.
+ *
+ * Commit used to mark the lead's session 1 COMPLETED from the setup transcript. It does not any
+ * more - "the setup does not count as a leads first checkin. lead has to always do a first
+ * checkin" - so there is no completion there to close a round for, and the file dropping off is
+ * exactly what the comment above says to expect when a file stops writing.
+ *
+ * It goes back on the moment anything in entry writes a COMPLETED again, which is what the guard
+ * below the list is for: a completion site missing from here fails.
+ */
 const COMPLETION_SITES = [
   '../conversation/conversation.service.ts',
-  '../entry/entry.service.ts',
 ];
 
 describe('every way a check-in completes closes its round', () => {

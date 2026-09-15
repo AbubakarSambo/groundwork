@@ -5301,7 +5301,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
   }
 
-  async extractExpectations(checkInId: string, participantId: string, groundId: string) {
+  /**
+   * @param spokenElsewhere the conversation to read, where it is not on the check-in's own record.
+   *
+   * SETUP IS NOT A CHECK-IN ANY MORE, AND ITS WORDS STILL SET THE TARGETS.
+   *
+   * The lead's setup conversation used to be copied onto session 1, which is how this found it.
+   * Since setup stopped counting as her account - she does her own first check-in now - session 1
+   * is empty at commit and this would have returned at `turns.length === 0`, silently taking the
+   * five targets back out of the product the same day they were put in.
+   *
+   * The targets were never her ACCOUNT of the work. They are what she said the check-in is for,
+   * which is exactly what setup is, so they still come from there.
+   */
+  async extractExpectations(checkInId: string, participantId: string, groundId: string, spokenElsewhere?: { role: string; content: string }[]) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -5343,10 +5356,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* The day this was said, which every relative deadline is read against. */
     const saidOn = new Date();
 
-    const turns = await this.prisma.conversationTurn.findMany({
-      where: { checkInId },
-      orderBy: { createdAt: 'asc' },
-    });
+    const turns = spokenElsewhere?.length
+      ? spokenElsewhere.map((t) => ({ role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI, content: t.content }))
+      : await this.prisma.conversationTurn.findMany({
+          where: { checkInId },
+          orderBy: { createdAt: 'asc' },
+        });
     if (turns.length === 0) return;
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)

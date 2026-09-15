@@ -43,6 +43,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
@@ -745,6 +746,34 @@ export class ReportsService {
     if ((ground as any).brief) {
       groundContextLines.push(`INITIATOR'S OPENING BRIEF: ${(ground as any).brief}`);
     }
+
+    /*
+     * THE ARITHMETIC, DONE HERE, BECAUSE THE REPORT WAS NOT DOING IT.
+     *
+     * Read off a real shared report: the objective was ten thousand units of tea, the three people
+     * in it described two thousand units, a hundred and fifty bags and fifty bags each, and the
+     * report's finding was that the role was never clearly defined. True of almost every check-in,
+     * and it told her nothing. Her words: "doesnt tell us to go work out individual targets and
+     * also the fact that all of us are listing goals too low to meet the objective."
+     *
+     * The service already says how this works a few lines down - "deterministic features are
+     * computed here (never by the model); the model narrates them" - and nothing was computing the
+     * one thing anybody could have checked on a napkin.
+     *
+     * See do-the-parts-add-up-to-the-whole: it refuses more often than it answers, because two
+     * thousand units and a hundred and fifty bags cannot be added together and a total would be a
+     * number nobody said.
+     */
+    /* Optional-chained: a property access on a client without this model throws before any
+       `.catch` can see it, and a report must never fail because the arithmetic could not run. */
+    const objectivesForTheSums = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId },
+      select: { name: true, target: true, ownerParticipantId: true },
+    }) ?? Promise.resolve([]))
+      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null }[]);
+    const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
+    const numbers = howTheNumbersSit(objectivesForTheSums, answering);
+    if (numbers.says) groundContextLines.push(numbers.says);
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);

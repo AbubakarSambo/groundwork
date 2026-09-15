@@ -1392,6 +1392,24 @@ Name them as facts, not as claims. "Both described the role as owning product an
 
 If there is very little shared picture - say so. An absence of shared ground is itself significant information.
 
+WHERE YOU ARE GIVEN A LINE BEGINNING "THE NUMBERS:", IT IS ARITHMETIC AND IT LEADS.
+
+The product worked it out, not you: how much the objective is, what the individual numbers on
+record add up to, and the difference. Do not recalculate it, do not soften it, and do not bury it
+under a finding about roles or clarity. A report that says the role was never clearly defined,
+when the numbers on the page do not reach the objective, has skipped the thing anybody could have
+checked on a napkin.
+
+Say it plainly in the shared picture AND make it the first gap. It is arithmetic about the work,
+never a judgement about a person: nobody is behind, nobody is at fault, and a number nobody is
+carrying is a gap in the plan rather than in anybody's effort. Where the line says the numbers
+cannot be added up because people counted different things, say that - not being able to tell is
+itself the finding, and agreeing one way of counting is what to do about it.
+
+And say what to do next, in the words the line gives you: agree who carries the part nobody is
+carrying, or agree how it is being counted. "Go and work out the individual targets" is a real
+instruction and a report that leaves it out has described a problem and stopped.
+
 SECTION 2 - THE GAP
 LEAD WITH THE ONE THAT MATTERS MOST. Order the gaps so the most significant is
 first, and give each one an atStake line. A reader who stops after the first gap

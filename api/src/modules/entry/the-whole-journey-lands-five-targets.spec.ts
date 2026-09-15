@@ -34,12 +34,17 @@ describe('the whole journey lands every target', () => {
   });
 
   it('and still runs it at all, which is the half that was missing before', () => {
-    expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id\)/);
+    /* Now with the setup transcript passed in: since setup stopped counting as the lead's own
+       check-in, session 1 is empty at commit and reading the turns off it would have taken these
+       five targets straight back out. They are what she said the check-in is FOR, so they still
+       come from setup - they were never her account of the work. */
+    expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id, dto\.history\)/);
   });
 
   it('waits for it, so the report and the board are not built before the targets exist', () => {
-    const at = src.indexOf('extractExpectations(');
-    expect(src.slice(Math.max(0, at - 120), at)).toMatch(/await this\.conversation\s*\./s);
+    const at = src.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/await this\.conversation/s);
   });
 
   it('and a failure there never loses the session', () => {

@@ -1823,25 +1823,31 @@ from finishing at all.`;
     });
     if (!checkIn) throw new BadRequestException('Session 1 check-in not found');
 
-    // Bulk-insert the conversation turns from the anonymous session.
+    /*
+     * SETUP IS NOT THE LEAD'S CHECK-IN. Decided by Hafsah, 15 September 2026: "the setup does not
+     * count as a leads first checkin. lead has to always do a first checkin."
+     *
+     * It used to be. The setup transcript was copied into session 1 and the session was marked
+     * COMPLETED, so a lead finished setup and had already given their account without ever being
+     * asked how anything was going. The setup conversation says "then you go into your own
+     * check-in, where you set the context and say how it is going" - and that sentence was false
+     * for the person reading it, in their own completed transcript.
+     *
+     * The two are different conversations. Setup works out what kind of situation this is and who
+     * is in it; the check-in asks how it is actually going. The answers to the first are not an
+     * account of the second, and treating them as one is why a lead's record held four lines about
+     * the shape of the thing and nothing about the work.
+     *
+     * WHAT STILL TRAVELS. Everything the setup produced: the brief in their own words, the
+     * objectives and targets, the people, the cadence. None of that came from the transcript - it
+     * is extracted at commit - so the context is unchanged. What changes is that the lead now has
+     * a session 1 to do, like everybody else.
+     */
     if (dto.history.length > 0) {
-      await this.prisma.conversationTurn.createMany({
-        data: dto.history.map(t => ({
-          checkInId: checkIn.id,
-          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
-          content: t.content,
-        })),
-      });
+      this.logger.log(
+        `Ground ${ground.id}: setup produced ${dto.history.length} turns; session 1 stays open for the lead to answer.`,
+      );
     }
-
-    // Mark session 1 complete.
-    await this.prisma.checkIn.update({
-      where: { id: checkIn.id },
-      data: {
-        status: CheckInStatus.COMPLETED,
-        completedAt: new Date(),
-      },
-    });
 
     /**
      * KEEP THE DOCUMENTS THE PERSON ATTACHED.
@@ -1886,20 +1892,16 @@ from finishing at all.`;
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
     /*
-     * Extract structured record entries for the initiator so report synthesis can read them.
-     * AWAITED, because the synthesis two dozen lines down reads exactly these rows - the normal
-     * completion path awaits it for the same reason. The summary it builds afterwards is not
-     * awaited: nothing downstream reads that, and a model failure there must not fail a commit.
+     * NOTHING IS EXTRACTED FROM SETUP AS THOUGH IT WERE THEIR ACCOUNT.
+     *
+     * This read the setup transcript and wrote record entries against session 1 - "I am their
+     * manager, I set the target", "I want to see what is on track" - which are answers about the
+     * SHAPE of the check-in, filed as though they were an account of the work. Read live in a
+     * report: a lead's "what you said this time" held two lines, both about who she is.
+     *
+     * The session she is about to do produces her record, on the normal completion path, like
+     * everybody else's.
      */
-    if (dto.history.length > 0) {
-      await this.conversation
-        .extractRecordEntries(checkIn.id, participant.id)
-        .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
-
-      this.conversation
-        .buildSoloArtifact(participant.id, ground.id)
-        .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
-    }
 
     /*
      * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
@@ -2047,7 +2049,10 @@ from finishing at all.`;
      */
     if (dto.history.length > 0) {
       await this.conversation
-        .extractExpectations(checkIn.id, participant.id, ground.id)
+        /* From the setup conversation, which is no longer copied onto her session. See
+           extractExpectations: the targets are what she said the check-in is FOR, not her account
+           of the work, so setup is still the right place to read them from. */
+        .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
         .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
     }
 
