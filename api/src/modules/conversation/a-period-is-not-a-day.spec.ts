@@ -47,7 +47,10 @@ describe('a period is not a day', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const aboutTheirDeadline = whatToDoAboutTheirDeadline\(message, new Date\(\)\)/);
-    expect(src).toMatch(/const fullSystem = aboutTheirDeadline \? `\$\{composed\}/);
+    /* The prompt is now assembled from the composed blocks plus whatever this turn owes them - the
+       deadline question and, since the same day, the numbers question. Both are about what the
+       PERSON said, which is why they are appended here rather than run as retries afterwards. */
+    expect(src).toMatch(/const fullSystem = \[composed, aboutTheirDeadline/);
   });
 
   it('and the probe that had two specs and no callers now has one', () => {

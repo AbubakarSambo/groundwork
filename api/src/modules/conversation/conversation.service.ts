@@ -18,7 +18,9 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
+import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
@@ -1023,7 +1025,30 @@ export class ConversationService {
     if (aboutTheirDeadline) {
       this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
     }
-    const fullSystem = aboutTheirDeadline ? `${composed}\n\n${aboutTheirDeadline}` : composed;
+
+    /*
+     * AND WHETHER WHAT THEY JUST SAID MEETS THE OBJECTIVE ON THIS CHECK-IN.
+     *
+     * The gap was on the screen and nothing mentioned it: a check-in aiming at 10,000 units, a
+     * person saying "my target is 150 bags", and the next question about the pricing sheet. It
+     * compares their words against a number they have already been shown, never against anybody
+     * else's account. See the-numbers-do-not-meet.
+     */
+    const theirNumbers = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId: checkIn.groundId },
+      select: { name: true, target: true, ownerParticipantId: true },
+    }) ?? Promise.resolve([])).catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null }[]);
+    const alreadyTheirs = theirNumbers
+      .filter((o) => o.ownerParticipantId === checkIn.participantId && typeof o.target === 'number')
+      .map((o) => o.target as number);
+    const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs);
+    if (numbersGap) {
+      this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
+    }
+
+    const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
+      .filter(Boolean)
+      .join('\n\n');
 
     // Persist the person's turn.
     const personTurn = await this.prisma.conversationTurn.create({
@@ -1408,6 +1433,29 @@ export class ConversationService {
           const ours = theQuestionTheProductAsks(period, dateItHadToSay);
           screened = { ...screened, text: ours };
           this.logger.warn(`Check-in ${checkIn.id}: it would not say the date; the product asked instead.`);
+        }
+      }
+
+      /*
+       * AND IT PUT BOTH NUMBERS IN FRONT OF THEM.
+       *
+       * Same shape as the date: the instruction is checkable, so it is checked, and where two goes
+       * fail the product asks the question itself rather than letting the gap pass a second time.
+       */
+      if (numbersGap && !saidBothNumbers(screened.text, numbersGap)) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply left the numbers out; asking again.`);
+        const withBoth = await this.anthropic
+          .respond(`${fullSystem}\n\n${askWhichItIs(numbersGap)}`, history)
+          .catch(() => '');
+        const second = withBoth.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withBoth), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && saidBothNumbers(second.text, numbersGap) && !isADeadEnd(second.text, closingNow)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try named both numbers.`);
+        } else {
+          screened = { ...screened, text: theQuestionAboutTheNumbers(numbersGap) };
+          this.logger.warn(`Check-in ${checkIn.id}: it would not name them; the product asked instead.`);
         }
       }
 
@@ -3028,6 +3076,50 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const theOneThingBack = oneThingBack({ againstTheirNumber, alreadySaidAboutThem, roomKnows });
 
     /*
+     * AND THE ONE THING THIS CHECK-IN IS MISSING, SAID BEFORE SESSION 1 CLOSES.
+     *
+     * "I want the chat and the first session to give me an insight into something i need to do
+     * better in the conversation like setting the targets per person and telling them." Nothing
+     * did, and the reason was exact: the coach only speaks where a step is already outstanding from
+     * an EARLIER session, so session 1 could never say anything. That guard is right; what was
+     * missing is a source for the session that has no history yet.
+     *
+     * Only the person who runs the check-in gets it - a participant is not the one who divides the
+     * objective up - and only where something is genuinely missing. See what-this-session-is-missing.
+     */
+    const oneThingToDoBetter = checkIn.sessionNumber === 1
+      ? theOneThingToDoBetter({
+          /*
+           * The board's objectives carry the numbers; the dates live on the per-person
+           * expectations, which is a different table. Both are needed: a number with no date is one
+           * of the four things this looks for.
+           */
+          objectives: await (async () => {
+            /* Optional-chained: a property access on a client without the model throws before any
+               `.catch` can see it, and none of this may be the reason a check-in cannot start. */
+            const [board, expectations] = await Promise.all([
+              (this.prisma.groundObjective?.findMany?.({
+                where: { groundId: checkIn.groundId },
+                select: { name: true, target: true, ownerParticipantId: true },
+              }) ?? Promise.resolve([])).catch(() => [] as any[]),
+              (this.prisma.personObjective?.findMany?.({
+                where: { groundId: checkIn.groundId }, select: { participantId: true, dueDate: true },
+              }) ?? Promise.resolve([])).catch(() => [] as any[]),
+            ]);
+            const dated = new Map(expectations.map((e: any) => [e.participantId, e.dueDate]));
+            return board.map((o: any) => ({ ...o, dueDate: dated.get(o.ownerParticipantId) ?? null }));
+          })(),
+          peopleInIt: await (this.prisma.groundParticipant?.count?.({
+            where: { groundId: checkIn.groundId, managingOnly: false },
+          }) ?? Promise.resolve(0)).catch(() => 0),
+          theyRunIt: !!ground?.initiatorId && ground.initiatorId === (checkIn as any)?.participant?.userId,
+          anythingDocumented: await (this.prisma.groundDocument?.count?.({
+            where: { participantId: checkIn.participantId },
+          }) ?? Promise.resolve(0)).then((n: number) => n > 0).catch(() => false),
+        })
+      : null;
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -3122,7 +3214,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['returningUserContext', returningUserContext],
       ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
-      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack],
+      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack], ['oneThingToDoBetter', oneThingToDoBetter],
       ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
@@ -3131,7 +3223,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**

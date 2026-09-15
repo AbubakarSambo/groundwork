@@ -209,6 +209,24 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
   const settled: string[] = d.whereThingsStand?.settled ?? []
   const open: string[] = d.whereThingsStand?.open ?? []
+  /*
+   * AND WHY EACH OPEN ONE IS OPEN.
+   *
+   * This section rendered the titles and nothing else: a live three-person report showed "Where
+   * things stand" holding the single line "The definition of success". Her verdict was that the
+   * report had no reasoning in it at all, and she was right - the reasoning was in the data and
+   * this drew the headline.
+   *
+   * Falls back to the plain strings, so a report generated before the reasoning existed still
+   * renders exactly as it did.
+   */
+  const openReasoned: {
+    topic: string
+    positions: { who: string; view: string }[]
+    restsOn: string[]
+    atStake: string | null
+    settledBy: string | null
+  }[] = d.whereThingsStand?.openWithReasons ?? []
   const definitions: { who: string | null; text: string }[] = d.againstSuccess?.definitions ?? []
   const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
   const picture: { key: string; text: string }[] = d.picture ?? (d.pictureLines ?? []).map((t: string, i: number) => ({ key: `l${i}`, text: t }))
@@ -320,14 +338,51 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {(settled.length > 0 || open.length > 0) && (
         <Row n={next()} note="what is not settled, and what is" label="Where things stand">
           <div style={{ display: 'grid', gap: 8 }}>
-            {open.length
-              ? open.map((t, i) => (
+            {openReasoned.length
+              ? openReasoned.map((o, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
                   <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
-                  <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', ...PROSE }}>{o.topic}</p>
+                    {o.positions.length > 0 && (
+                      <div style={{ display: 'grid', gap: 3 }}>
+                        {o.positions.map((p, j) => (
+                          <p key={j} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+                            <span style={{ color: 'var(--gw-sub)' }}>{p.who}: </span>{p.view}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {o.atStake && (
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+                        <span style={{ color: 'var(--gw-sub)' }}>Why it matters: </span>{o.atStake}
+                      </p>
+                    )}
+                    {o.settledBy && (
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+                        <span style={{ color: 'var(--gw-sub)' }}>What settles it: </span>{o.settledBy}
+                      </p>
+                    )}
+                    {o.restsOn.length > 0 && (
+                      <Folded summary="The lines this comes from">
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {o.restsOn.map((r, j) => (
+                            <p key={j} style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', fontStyle: 'italic', ...PROSE }}>{r}</p>
+                          ))}
+                        </div>
+                      </Folded>
+                    )}
+                  </div>
                 </div>
               ))
-              : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)' }}>Nothing is open. Everything anybody raised has been settled.</p>}
+              : open.length
+                ? open.map((t, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
+                    <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
+                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>
+                  </div>
+                ))
+                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)' }}>Nothing is open. Everything anybody raised has been settled.</p>}
           </div>
           {settled.length > 0 && (
             <div style={{ marginTop: 12 }}>

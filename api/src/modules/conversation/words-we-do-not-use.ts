@@ -28,7 +28,58 @@
  * back as a fact, and it opened a quarter of the turns in the one conversation that was read line
  * by line.
  */
+/**
+ * AND THE SENTENCES THAT SOUND LIKE A MACHINE EXPLAINING A CATEGORY.
+ *
+ * Read off a live report, in full: "Because silence is usually a stage, not a rejection, it is
+ * important to know that this kind of sales and expansion work often faces unfair reading, which
+ * you should consider before making assumptions about your current standing."
+ *
+ * Her verdict on it was blunt and correct. Nobody speaks like that. It is about a CATEGORY rather
+ * than about the person, it survives being deleted, and it is the reason a report with the right
+ * facts in it still does not get read.
+ *
+ * Every one of these openers introduces a sentence about nothing. They are banned outright, the
+ * same way the performed-empathy phrases are, because the fix for each is the same: say the thing
+ * about this person instead.
+ */
+export const SAYS_NOTHING_ABOUT_ANYBODY = [
+  'this kind of work',
+  'this kind of sales',
+  'this type of work',
+  'it is important to know',
+  'it is worth noting',
+  'you should consider',
+  'before making assumptions',
+  'your current standing',
+  'often faces unfair',
+  'is usually a stage',
+  'what decides whether',
+  'tends to be misread',
+  'is often misunderstood',
+  'in situations like this',
+  'generally speaking',
+];
+
+/**
+ * WORDS THE PRODUCT USES ABOUT ITSELF, WHICH NOBODY SAYS OUT LOUD.
+ *
+ * "Checkable", "rests on", "read against", "anchored", "surface" as a verb. Every one of them is
+ * the product describing its own machinery to somebody who only wants to know what is going on.
+ */
+export const OUR_WORDS_NOT_THEIRS = [
+  'checkable',
+  'rests on',
+  'read against',
+  'anchored to',
+  'unfair reading',
+  'the record shows over time',
+  'surfaced to',
+];
+
 export const PHRASES_WE_NEVER_WRITE = [
+  ...SAYS_NOTHING_ABOUT_ANYBODY,
+  ...OUR_WORDS_NOT_THEIRS,
   'it sounds like',
   'it seems like',
   'I understand',

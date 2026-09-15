@@ -15,7 +15,7 @@ import {
   pickBoardSafeReportFields,
   sectionsFor,
 } from './board-families';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames , eachSideGetsSomebody } from '../reports/party-labels';
 import {
   CoverageKind,
   CoverageRead,
@@ -577,10 +577,14 @@ export class BoardService {
                 ...side,
                 participantLabel: visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel,
               });
+              /* A label the model invented - "Person", twice, on a live three-person report - is
+                 matched to somebody by position before any name is looked up. See
+                 eachSideGetsSomebody. */
+              const real = (sides: any[]) => eachSideGetsSomebody(sides, visibleNames.keys()).map(named);
               return {
                 ...d,
-                ...(Array.isArray(d?.positions) ? { positions: d.positions.map(named) } : {}),
-                ...(Array.isArray(d?.perspectives) ? { perspectives: d.perspectives.map(named) } : {}),
+                ...(Array.isArray(d?.positions) ? { positions: real(d.positions) } : {}),
+                ...(Array.isArray(d?.perspectives) ? { perspectives: real(d.perspectives) } : {}),
               };
             })
           : [],

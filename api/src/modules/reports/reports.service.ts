@@ -55,7 +55,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -217,6 +217,11 @@ export const REPORT_SCHEMA = {
               items: { type: 'string' },
               description: "1-2 short supporting references for this gap, taken from what people actually said (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
             },
+            settledBy: {
+              type: 'string',
+              description:
+                "What would settle this, in one short sentence a person could act on today. \"Agree one unit and who carries how much\" or \"put a date on the pricing sheet and tell the two people waiting on it\". Never advice about how to communicate, never \"have a conversation about it\" - name the decision or the thing that has to exist. Read off a live report: a difference was printed as the words \"The definition of success\" and nothing else, which told a reader what the subject was and nothing about what to do. Return an empty string only where the record genuinely points at nothing.",
+            },
             atStake: {
               type: 'string',
               description:
@@ -236,7 +241,9 @@ export const REPORT_SCHEMA = {
           // rather than as absence, so declining is a thing the model does on
           // purpose rather than by omission, and the renderer treats '' exactly
           // as it treated a missing field.
-          required: ['topic', 'positions', 'atStake'],
+          /* settledBy is required for the same reason atStake is: an optional field is one the
+             model skips without ever weighing whether it should. '' is how it declines. */
+          required: ['topic', 'positions', 'atStake', 'settledBy'],
         },
         description:
           "The gap. For each topic, where each person stands - never framed as one side being right.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
@@ -955,7 +962,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
         charsSaid: saidByLabel.get(label) ?? 0,
       });
     });
-    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
+    /*
+     * AND THE LABELS ARE THE ONLY ONES ALLOWED, WHICH THE ROSTER NEVER SAID OUTRIGHT.
+     *
+     * The schema asks for "their role if they have one, otherwise the initiator or participant A".
+     * Run live on a three-person check-in, the model wrote "Person" for both participants - not one
+     * of the labels on the roster, so the substitution that turns a label into a name had nothing
+     * to match, and a report about three people named two of them "Person".
+     *
+     * The roster already lists the labels. What was missing was the sentence saying those are the
+     * only strings that may appear in participantLabel.
+     */
+    const theOnlyLabels = `USE THESE LABELS AND NO OTHERS. Every participantLabel you write must be one of these strings, copied exactly: ${parties
+      .map((p: any) => `"${labelById.get(p.id)}"`)
+      .join(', ')}. Never "Person", never "the participant", never a name, and never a label you have invented - each reader's own copy swaps these for the real names they are allowed to see, and a label that is not on this list is swapped for nothing.\n\n`;
+
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n${theOnlyLabels}`;
 
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
@@ -2656,6 +2678,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
               topic: String(d.topic),
               sides: (d.perspectives as any[]).slice(0, 3).map((p) => ({ who: nameByLabel.get(String(p.participantLabel ?? '')) ?? String(p.participantLabel ?? 'somebody'), says: String(p.view ?? '') })),
             })),
+          /*
+           * THE ARITHMETIC, COMPUTED HERE AND NARRATED THERE. Same rule this service already
+           * follows for every other deterministic feature, and the reason the finding could read
+           * "the role was never clearly defined" while three people's numbers sat four lines below
+           * it, in three different units. See do-the-parts-add-up-to-the-whole.
+           */
+          numbers: howTheNumbersSit(
+            (await (this.prisma.groundObjective?.findMany?.({
+              where: { groundId },
+              select: { name: true, target: true, ownerParticipantId: true },
+            }) ?? Promise.resolve([])).catch(() => [] as any[])) as any[],
+            whoAnswered.expected,
+          ).says,
           answered: whoAnswered.answered,
           ofPeople: whoAnswered.expected,
           confidence: shape.confidence,
@@ -3310,7 +3345,7 @@ happened, and what is in the way.`;
    * an instruction to a model.
    */
   private applyNames<T extends Record<string, any>>(
-    report: T,
+    reportIn: T,
     parties: any[],
     viewerParticipantId: string | null,
     viewerIsLead: boolean,
@@ -3341,6 +3376,33 @@ happened, and what is in the way.`;
     // Every party's label, so the bare-label tidy-up can tell "unambiguous" from "the only
     // one I am allowed to see". W8-73.
     const allLabels = [...labelsForParties(parties).values()];
+
+    /*
+     * A LABEL THE MODEL INVENTED, GIVEN TO SOMEBODY REAL, BEFORE ANY NAME GOES BACK.
+     *
+     * Run live on a three-person check-in: the corpus listed the labels, the schema said to use
+     * them, an instruction was added saying they were the only strings allowed - and it wrote
+     * "Person" for both participants twice. A report about three people named two of them Person.
+     *
+     * The substitution below can only replace labels it knows, so an invented one survives to the
+     * screen. This hands each side of a difference somebody who is actually on the check-in, by
+     * position, before the names are looked up. See eachSideGetsSomebody.
+     */
+    const withSomebodyOnEachSide = (d: any) => {
+      if (!d || typeof d !== 'object') return d;
+      const fix = (sides: any[]) => eachSideGetsSomebody(sides, allLabels);
+      return {
+        ...d,
+        ...(Array.isArray(d.positions) ? { positions: fix(d.positions) } : {}),
+        ...(Array.isArray(d.perspectives) ? { perspectives: fix(d.perspectives) } : {}),
+      };
+    };
+    const report = {
+      ...(reportIn as any),
+      ...(Array.isArray((reportIn as any)?.divergences)
+        ? { divergences: (reportIn as any).divergences.map(withSomebodyOnEachSide) }
+        : {}),
+    };
     /**
      * The reader's own label, so the report addresses them rather than describing them. A person
      * opened their private report and read "Hafsah Jumare described their role" about themselves.
