@@ -21,9 +21,19 @@ const OPEN = CODE.slice(CODE.indexOf('async open(checkInId'), CODE.indexOf('asyn
 
 describe('opening a check-in returns what it is about', () => {
   it('the ground lookup asks for the subject and the objectives', () => {
-    /** The same query that already ran for the status gate, so this costs no extra round trip. */
-    expect(OPEN).toMatch(/label: true/);
-    expect(OPEN).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/);
+    /**
+     * The same query that already ran for the status gate, so this costs no extra round trip.
+     *
+     * The field list moved into WHAT_THE_BRIEF_IS_READ_FROM and is spread in here. It moved because
+     * this select and the transcript's had drifted apart: both fed briefFor, neither fetched
+     * initiatorId, and briefFor reads it through `as any`, so a lead opening her own check-in came
+     * back as not-the-lead and was shown the narrowed view of targets she set herself. One shape
+     * now, so the two cannot disagree again. See the-lead-is-not-a-stranger-to-their-own-targets.
+     */
+    expect(OPEN).toMatch(/\.\.\.WHAT_THE_BRIEF_IS_READ_FROM/);
+    const shape = CODE.split('const WHAT_THE_BRIEF_IS_READ_FROM = {')[1]?.split('} as const;')[0] ?? '';
+    expect(shape).toMatch(/label: true/);
+    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/);
   });
 
   it('BOTH return paths carry the brief, not just a first open', () => {

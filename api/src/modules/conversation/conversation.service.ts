@@ -185,6 +185,27 @@ export function countCheckableSpecifics(text: string): number {
 }
 
 
+/**
+ * EVERYTHING briefFor NEEDS, IN ONE PLACE, BECAUSE IT WAS IN TWO AND THEY DISAGREED.
+ *
+ * `whoIsReadingIt` is handed the ground through `as any`, so a field a query forgot to select is
+ * not a compile error - it arrives undefined, and undefined is falsy. `initiatorId` was missing
+ * here, so every lead opening their own check-in read as isLead false and was handed the narrowed
+ * participant view of targets they set themselves, with "everybody's own number is their own" said
+ * back to the person who set them. `whoSeesTargets` was missing the same way, so a check-in set so
+ * everybody sees every number was still read under the narrow rule.
+ *
+ * One constant, so the next read cannot be half right.
+ */
+const WHAT_THE_BRIEF_IS_READ_FROM = {
+  label: true,
+  brief: true,
+  scenario: true,
+  initiatorId: true,
+  whoSeesTargets: true,
+  objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' as const } },
+} as const;
+
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
   description: 'Emit the structured record entries extracted from this party\'s transcript.',
@@ -331,8 +352,6 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       select: {
-        label: true,
-        scenario: true,
         /*
          * WHAT THE CHECK-IN IS ABOUT, WHICH ONLY EVER ARRIVED ONCE.
          *
@@ -350,8 +369,7 @@ export class ConversationService {
          * The transcript is what every later load reads, so the brief travels on it too. Same
          * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
          */
-        brief: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        ...WHAT_THE_BRIEF_IS_READ_FROM,
       },
     });
 
@@ -629,11 +647,7 @@ export class ConversationService {
       select: {
         status: true,
         organizationId: true,
-        label: true,
-        /* What the check-in is actually about, for the brief a participant reads first. */
-        brief: true,
-        scenario: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        ...WHAT_THE_BRIEF_IS_READ_FROM,
       },
     });
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
