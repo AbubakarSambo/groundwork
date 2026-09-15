@@ -3116,6 +3116,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           anythingDocumented: await (this.prisma.groundDocument?.count?.({
             where: { participantId: checkIn.participantId },
           }) ?? Promise.resolve(0)).then((n: number) => n > 0).catch(() => false),
+          /*
+           * AND WHEN, WHICH IS THE HALF THAT WAS MISSING. The note went into every turn of session
+           * 1 and came out twice in a row, mid-interview. It is due only once the session could
+           * close, and only if no turn is already carrying it.
+           */
+          ...(await (this.prisma.conversationTurn?.findMany?.({
+            where: { checkInId: checkIn.id },
+            orderBy: { createdAt: 'asc' },
+            select: { role: true, content: true },
+          }) ?? Promise.resolve([] as any[]))
+            .catch(() => [] as any[])
+            .then((rows: any[]) => ({
+              answersSoFar: rows.filter((r) => r.role === TurnRole.PERSON).length,
+              alreadySaidThisSession: rows.filter((r) => r.role === TurnRole.AI).map((r) => r.content ?? ''),
+            }))),
         })
       : null;
 
