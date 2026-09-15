@@ -87,7 +87,7 @@ before any of it ships. It is your product's voice and I am not guessing at it.
 
 # PART 3 - THE CHAT
 
-## 2.1 It must notice the gap DURING session 1, not after it
+## 3.1 It must notice the gap DURING session 1, not after it
 
 **The most important item on this page.** Your session had everything needed to see the problem and
 said nothing.
@@ -112,7 +112,7 @@ ask, the product asks. It is checkable: did the reply contain both numbers.
 **Risk:** a person whose number genuinely is a part of a bigger whole ("I carry 150 of the 10,000")
 must not be interrogated. The check is for a gap that is not explained, and it asks ONCE.
 
-## 2.2 Who is doing what, when nobody has said
+## 3.2 Who is doing what, when nobody has said
 
 Your chat had three people named and no statement of who owns which part. That is the
 `whoInvolved` answer sitting next to objectives with no owners. The chat never asked.
@@ -120,32 +120,65 @@ Your chat had three people named and no statement of who owns which part. That i
 **What it should do:** where the objective has no owners and people have been named, ask who carries
 what. Once, early, in the lead's session, because it is the lead's to answer.
 
-## 2.3 A number said in passing must become a target
+## 3.3 A number said in passing must become a target
 
 "we've sold 10000 units of tea in abuja" is a target, a place and a unit. It stayed a sentence.
 Setup extracts numbers properly; the check-in does not.
 
 **What it should do:** the same extraction the setup path runs, on check-in answers.
 
-## 2.4 Once a number exists, press for the baseline
+## 3.4 Once a number exists, press for the baseline
 
 "10,000 units" was accepted with no follow-up: what is it now, who confirms it, by when. A number
 with no baseline cannot be checked next session, which is what makes session 2 worth anything.
 
-## 2.5 The periods still unread
+## 3.5 The periods still unread
 
 "This quarter", "end of Q4", "H1" need a financial year the product does not have. It must ask
 which day rather than guess, using the same question the date work now uses.
 
-## 2.6 Coaching starts in session 1
+## 3.6 The first session tells her one thing she could do better - and coaching cannot speak there today
 
-Your words: "maybe we should start coaching from the session 1 chat?" Today the coaching block only
-has something to say once there is a pattern across periods, so session 1 gets nothing. But session
-1 is where somebody is most reachable and where a gap like 2.1 is cheapest to fix.
+Her words: "i want to chat and the first session gives me an insight into something i need to do
+better in the conversation like setting the targets per person and telling them etc. This is now
+gone somehow." And earlier: "maybe we should start coaching from the session 1 chat?"
 
-**What it should do:** session 1 coaching is not a pattern read - it is what THIS conversation has
-shown in the last ten minutes: a number with no owner, a goal with no date, a target that does not
-reach the objective. Say one of those, once, before the session closes.
+**It is not gone. It was never in session 1**, and being exact about that changes what has to be
+built.
+
+The coaching machinery is live - the setting is on, 83 of 536 people carry a step - and the block
+reaches a live conversation only where a step is ALREADY OUTSTANDING from an earlier session.
+`nextMove` can choose a step at the end of session 1, it is written to the state, and the first
+time anybody hears it is session 2. There is a deliberate guard: a step given in this session is not
+asked about in this session, because that would be the coach asking about something it has not yet
+said.
+
+That guard is right and it is not the problem. The problem is that nothing else speaks in session 1,
+so the first conversation - where somebody is most reachable and a gap costs least to fix - offers
+nothing.
+
+**What it should do.** Before session 1 closes, say ONE thing she could do better, from what this
+conversation has just shown. Her own example is the case: she named an objective of 10,000 units and
+three people, and gave nobody a number of their own. "Nobody here has a number of their own yet.
+Deciding who carries how much, and telling them, is the thing to do before the next one."
+
+**Where it comes from.** Not a pattern - there is no history in session 1 - but from what is missing
+in the session in front of it, all of which is checkable in code:
+
+- an objective with no owners, and people named
+- individual numbers that do not reach the objective (the arithmetic from 4.1)
+- a target with no date
+- a commitment with nobody waiting on it
+- nothing said that anybody else could open
+
+**How.** The coaching read already runs at the end of every session. What is missing is a session-1
+source for what to offer, drawn from the shape of THIS session rather than a history that does not
+exist yet, and permission for the block to speak in the session that chose the step where there is
+no earlier one to ask about first.
+
+**Risk.** A first session that ends in a lecture. One line, at the close, about the check-in rather
+than about the person, and only where something is genuinely missing. Where she has set the targets
+and told people, it says nothing at all.
 
 ---
 
@@ -153,7 +186,7 @@ reach the objective. Say one of those, once, before the session closes.
 
 The plan has three layers, because "no reasoning" is three different absences.
 
-## 3.1 The finding must be the finding
+## 4.1 The finding must be the finding
 
 Now: *"For everybody here: the role was never clearly defined, so there is no boundary to measure
 work against."* That sentence fits every check-in ever run.
@@ -166,7 +199,7 @@ have named numbers in three different units. Nobody here can tell whether they a
 this check-in is aiming at." The arithmetic is already built and handed to the report; this is about
 making it the headline instead of a line in the middle.
 
-## 3.2 Every difference carries its reasoning
+## 4.2 Every difference carries its reasoning
 
 Now: `03 WHERE THINGS STAND` contains one bullet, *"The definition of success"*. A topic. No reason,
 no stake, no next step.
@@ -186,7 +219,7 @@ before they can act, and today the report gives one of them.
 **How:** the synthesis schema requires all four per difference. A difference that cannot fill them
 is not a difference the report should be printing.
 
-## 3.3 The intelligence layer - what only a reader of everything can see
+## 4.3 The intelligence layer - what only a reader of everything can see
 
 Three things a person cannot see from inside their own session, which is the entire justification
 for this product, and none of them are in the report:
@@ -196,7 +229,7 @@ for this product, and none of them are in the report:
 - **What changed since last time.** Session 1 has nothing to compare, but from session 2 the report
   should open on movement, not on a fresh read.
 
-## 3.4 The individual report must be about you and worth reading
+## 4.4 The individual report must be about you and worth reading
 
 Now: *"Because silence is usually a stage, not a rejection, it is important to know that this kind
 of sales and expansion work often faces unfair reading, which you should consider before making
@@ -211,16 +244,16 @@ closing gets done. Three sentences, each pointing at something on your own recor
 **How:** the individual report is generated per person from their own lines plus the arithmetic.
 Same rule as 3.2 - a sentence that could be said to somebody else is cut.
 
-## 3.5 Names, not "Participant A"
+## 4.5 Names, not "Participant A"
 
 And a commitment goes under commitments, not under "what everybody agrees".
 
-## 3.6 The conversation worth having comes from their words
+## 4.6 The conversation worth having comes from their words
 
 Now: *"What did that turn into - pipeline, conversion, sign-ups?"* in a conversation about tea in
 Abuja.
 
-## 4.7 The copy pass - see PART 2, which this is now part of
+## 4.7 The copy pass - moved to PART 2, which is now the whole language question
 
 `NOTHING ABOVE THIS`, `WHAT THIS RESTS ON`, `AGAINST WHAT GOOD LOOKS LIKE` are cryptic. The generated
 sentences are worse. This is a rewrite of the report's own language into plain words.
@@ -269,6 +302,6 @@ said earlier in this same conversation.
 | | Question |
 |---|---|
 | 7.1 | Deploy the ten commits |
-| 7.2 | Order. My recommendation: PART 2 (the language) and 3.1 (the chat noticing the gap) first, then 4.1 and 4.2 together. The language pass makes everything after it legible |
+| 7.2 | Order. My recommendation: PART 2 (the language), then 3.1 and 3.6 together (the chat noticing the gap, and saying one thing she could do better before session 1 closes), then 4.1 and 4.2. The language pass makes everything after it legible |
 | 7.3 | Whether to spend an extra model call on 6.4 |
 | 7.4 | The language drafts in PART 2 - I write them, you approve before they ship |
