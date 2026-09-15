@@ -25,6 +25,29 @@ describe('a verdict is not a question', () => {
     expect(isAVerdictAboutSomebodyElse(hers, reply)).toBe(true);
   });
 
+  /**
+   * AND THE ONE THAT SLIPPED PAST THE FIRST LIST.
+   *
+   * Session two, off a real run. She said the aggregation point was still slowing things down and
+   * got back "that is the kind of thing that shows up as a sales problem when it's a systems one."
+   * Same move as everything above and none of the phrasings covered it, which is what a list of
+   * phrasings does. Found by running a session, not by reading the list.
+   */
+  it.each([
+    "Eighteen of fifty for you. That is the kind of thing that shows up as a sales problem when it's a systems one. What has that meant?",
+    'What you are actually dealing with is a process problem in sales. What would move it?',
+    'That is the kind of issue marketing usually causes. What have you tried?',
+  ])('catches the shapes the first list missed: %s', (reply) => {
+    expect(isAVerdictAboutSomebodyElse(hers, reply)).toBe(true);
+  });
+
+  it('and still leaves a reply that just names her number and asks', () => {
+    expect(isAVerdictAboutSomebodyElse(
+      'We are at 18 of my 50. The aggregation point is still slowing everything down.',
+      'Eighteen of fifty, and the aggregation point is still in the way. What would move it?',
+    )).toBe(false);
+  });
+
   it('leaves a plain reflection of what she said, which is the job', () => {
     expect(isAVerdictAboutSomebodyElse(hers, 'You raised it with Marketing twice and nothing changed. What has that cost you this quarter?')).toBe(false);
   });

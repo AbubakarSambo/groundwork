@@ -35,6 +35,19 @@ const RE_LABELS_WHAT_THEY_SAID = [
   /\bthe real (?:problem|issue|question) (?:here )?is\b/i,
   /\bwhat (?:this|that) really is\b/i,
   /\bat (?:that|this) point (?:it|this|that) (?:is|becomes)\b/i,
+  /*
+   * "THAT IS THE KIND OF THING THAT SHOWS UP AS A SALES PROBLEM WHEN IT'S A SYSTEMS ONE."
+   *
+   * Read off a session-two reply and it went straight past the list above. She said the aggregation
+   * point was slowing things down; the product told her what sort of problem that really is. Same
+   * move as the ones already here and not one of the phrasings they cover.
+   *
+   * These three are the shapes that slipped: naming a category of thing, reading one thing as
+   * another, and telling somebody what their situation actually is.
+   */
+  /\b(?:that|this|it)(?:'s| is) the kind of (?:thing|problem|issue)\b/i,
+  /\bshows up as (?:a|an) [a-z ]{3,24} (?:problem|issue|thing)\b/i,
+  /\b(?:what|that) (?:you(?:'re| are) )?(?:actually|really) (?:have|describing|dealing with) (?:is|here is)\b/i,
 ];
 
 /**
