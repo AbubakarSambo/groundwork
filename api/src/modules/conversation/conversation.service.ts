@@ -1228,65 +1228,6 @@ export class ConversationService {
        * feeds. The prompt carries three and a half thousand characters on exactly this and it did
        * not hold. See a-verdict-is-not-a-question.
        */
-      /*
-       * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
-       * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
-       */
-      /*
-       * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
-       *
-       * The hundred and forty words a close may run to are for the one turn that names what now
-       * exists, with the figures and the people in it. A reply that carries the marker AND ends on
-       * a question is not that turn: the product already knows this and refuses to complete the
-       * session on it, a few hundred lines down, because marking it complete put a finish button
-       * under a question nobody had answered.
-       *
-       * Both readings were using the same flag, so a turn that asked one more thing inherited the
-       * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
-       * hundred and twenty seven words of restating, a compliment about her flexibility, then the
-       * question. Sixty is the bar for anything still asking.
-       */
-      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
-      if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
-        /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
-           interpolation and not what it evaluates to, and it is right to: a guard that has to
-           reason about what a call returns is a guard that will miss the next one. */
-        const wasThisLong = howManyWords(screened.text);
-        this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
-        /* A close that ran long is not a long reply, it is a close that read the record back. Ask
-           for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
-        const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
-        const shorter = await this.anthropic
-          .respond(`${fullSystem}\n\n${askFor}`, history)
-          .catch(() => '');
-        const second = shorter.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
-          screened = second;
-          const nowThisLong = howManyWords(second.text);
-          this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
-        }
-      }
-
-      /*
-       * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
-       *
-       * A hundred and twenty seven word reply reached somebody and the log could not say which of
-       * two things had happened: the guard never fired because a close marker had lifted the bar,
-       * or it fired twice and the second try was no better. Different faults, different fixes, and
-       * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
-       * answers that question by itself.
-       */
-      const shipping = howManyWords(screened.text);
-      if (shipping > A_REPLY_IS_ABOUT) {
-        this.logger.warn(
-          `Check-in ${checkIn.id}: shipping ${shipping} words (closing turn: ${thisIsTheClosingTurn}).`,
-        );
-      }
-
       if (isAVerdictAboutSomebodyElse(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
         const hers = await this.anthropic
@@ -1367,6 +1308,62 @@ export class ConversationService {
       }
 
       /*
+       * LENGTH IS JUDGED AFTER THE RESTATEMENT HAS GONE, NOT BEFORE.
+       *
+       * This ran three guards earlier. Reading every reply that shipped over the bar in nineteen
+       * live check-ins: all of them were long for the same reason, which is that they summarised
+       * the person back before asking. Three in four were flagged as restating outright and the
+       * fourth was a paraphrase close enough to slip that check.
+       *
+       * So length was being measured on text that was about to lose its opening sentence anyway. A
+       * 66-word reply whose first sentence is their own answer handed back is a 25-word reply once
+       * the guard above has finished with it, and asking the model for "shorter" in between was
+       * asking it to fix the symptom while the cause was still sitting in the text.
+       */
+      /*
+       * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
+       * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
+       */
+      /*
+       * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
+       *
+       * The hundred and forty words a close may run to are for the one turn that names what now
+       * exists, with the figures and the people in it. A reply that carries the marker AND ends on
+       * a question is not that turn: the product already knows this and refuses to complete the
+       * session on it, a few hundred lines down, because marking it complete put a finish button
+       * under a question nobody had answered.
+       *
+       * Both readings were using the same flag, so a turn that asked one more thing inherited the
+       * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
+       * hundred and twenty seven words of restating, a compliment about her flexibility, then the
+       * question. Sixty is the bar for anything still asking.
+       */
+      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
+      if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
+        /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
+           interpolation and not what it evaluates to, and it is right to: a guard that has to
+           reason about what a call returns is a guard that will miss the next one. */
+        const wasThisLong = howManyWords(screened.text);
+        this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
+        /* A close that ran long is not a long reply, it is a close that read the record back. Ask
+           for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
+        const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
+        const shorter = await this.anthropic
+          .respond(`${fullSystem}\n\n${askFor}`, history)
+          .catch(() => '');
+        const second = shorter.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
+          screened = second;
+          const nowThisLong = howManyWords(second.text);
+          this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
+      /*
        * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
        *
        * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
@@ -1401,6 +1398,22 @@ export class ConversationService {
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
         }
+      }
+
+      /*
+       * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
+       *
+       * A hundred and twenty seven word reply reached somebody and the log could not say which of
+       * two things had happened: the guard never fired because a close marker had lifted the bar,
+       * or it fired twice and the second try was no better. Different faults, different fixes, and
+       * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
+       * answers that question by itself.
+       */
+      const shipping = howManyWords(screened.text);
+      if (shipping > A_REPLY_IS_ABOUT) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: shipping ${shipping} words (closing turn: ${thisIsTheClosingTurn}).`,
+        );
       }
 
       reply = screened.text || ASK_AGAIN;

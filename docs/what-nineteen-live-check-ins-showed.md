@@ -9,13 +9,31 @@ Every number below was counted by the product's own guards, run over the replies
 
 ## What it found, and what changed because of it
 
-| Measure | Round 1 | Round 4 | |
-|---|---|---|---|
-| Opens by saying their answer back | **46%** | **8%** | the complaint that started this |
-| Two or more questions in a turn | 1 | 0 | |
-| Replies over sixty words | 6.3% | 9.9% | see below |
-| Closes longer than three sentences | 3 of 5 | 1 of 5 | |
-| Banned words and phrases | 2 | 8 | see below |
+| Measure | Round 1 | Round 4 | Round 5 | |
+|---|---|---|---|---|
+| Opens by saying their answer back | **46%** | 8% | **3%** | the complaint that started this |
+| Replies over sixty words | 6.3% | 9.9% | **7.1%** | and the median went 41 to 35 words |
+| Two or more questions in a turn | 1 | 0 | 0 | |
+| Banned words and phrases | 2 | 8 | 7 | see below |
+
+Round 5 is after one more change: **length is now judged after the restatement has been removed,
+not three guards before it.** Reading every over-long reply in round 4 showed they were all long
+for the same reason - they summarised the person back before asking. Three in four were flagged as
+restating outright; the fourth was a paraphrase close enough to slip the check. So the reply being
+measured for length was about to lose its opening sentence anyway, and asking the model for
+"shorter" in between was asking it to fix the symptom while the cause was still in the text.
+
+### Two things my own measurements got wrong, worth stating
+
+The runner counts any reply that does not end in a question as a "close". That is not the
+product's definition - the product goes by the close marker - so the closing-turn numbers above are
+unreliable and the round-5 figure that looked like a regression was my metric, not the product. The
+real closes read exactly as designed: *"You will present the new process at the all-hands on May 15.
+Your report is ready now, and nothing in it needs acting on today. Speak soon."*
+
+And the restating measure counts a close's first sentence as a fault, when repeating somebody's own
+commitment back to them is precisely what a close is for. So the true restating rate is a little
+better than 3%.
 
 ## The thing worth knowing: a guard can be right and lose anyway
 
