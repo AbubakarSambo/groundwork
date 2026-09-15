@@ -29,8 +29,8 @@ export function openingAbout(
 ): { line: string; source: string; suggestions: string[] } {
   const kind = (subject.kind ?? 'this').toLowerCase();
   const line = waitingOnThem > 0
-    ? `${firstName} — you are on ${subject.title}. There ${waitingOnThem === 1 ? 'is one thing' : `are ${waitingOnThem} things`} waiting on you here.`
-    : `${firstName} — you are on ${subject.title}. Ask me anything about it.`;
+    ? `${firstName} - you are on ${subject.title}. There ${waitingOnThem === 1 ? 'is one thing' : `are ${waitingOnThem} things`} waiting on you here.`
+    : `${firstName} - you are on ${subject.title}. Ask me anything about it.`;
   return {
     line,
     source: 'what_they_are_looking_at',

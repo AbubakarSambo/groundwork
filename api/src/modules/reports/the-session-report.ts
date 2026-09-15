@@ -598,7 +598,7 @@ function whatChanged(input: SessionReportInputs): SaidThing[] {
     if (!e.threadKey) continue;
     const was = before.get(e.threadKey);
     if (was && was.trim() !== e.text.trim()) {
-      out.push({ text: `Was: ${was} — now: ${e.text}`, who: e.who, documented: !e.recallBased });
+      out.push({ text: `Was: ${was} - now: ${e.text}`, who: e.who, documented: !e.recallBased });
     }
   }
   return out;
@@ -612,7 +612,7 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
   for (const e of nowSuccess) {
     if (input.baselineSuccess && input.baselineSuccess.trim() !== e.text.trim()) {
       out.push({
-        text: `At the start: ${input.baselineSuccess} — this session: ${e.text}`,
+        text: `At the start: ${input.baselineSuccess} - this session: ${e.text}`,
         who: e.who,
         documented: !e.recallBased,
       });

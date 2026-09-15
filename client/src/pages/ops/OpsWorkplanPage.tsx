@@ -39,7 +39,7 @@ export function OpsWorkplanPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>
             <strong style={{ fontSize: 16 }}>{p.name}</strong>
             <span style={{ ...LABEL, fontSize: 10 }}>
-              {asADate(p.startsOn)} – {asADate(p.endsOn)}
+              {asADate(p.startsOn)} - {asADate(p.endsOn)}
             </span>
             {p.running && <span style={{ ...LABEL, fontSize: 10 }}>running now</span>}
           </div>
@@ -66,8 +66,8 @@ export function OpsWorkplanPage() {
 
           {p.permitsOperability && (
             <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '10px 0 0', lineHeight: 1.55 }}>
-              While this phase is running, work that makes the company able to operate — hiring,
-              onboarding, writing down how we work — counts as a contribution on its own. Outside it,
+              While this phase is running, work that makes the company able to operate - hiring,
+              onboarding, writing down how we work - counts as a contribution on its own. Outside it,
               that work says what it unblocks instead.
             </p>
           )}

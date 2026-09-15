@@ -16,7 +16,7 @@ import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
  */
 
 const money = (n: number | null | undefined) =>
-  n === null || n === undefined ? '—' : `$${Number(n).toLocaleString()}`
+  n === null || n === undefined ? ' - ' : `$${Number(n).toLocaleString()}`
 
 const WINDOWS = [
   { key: 'all', label: 'All time', from: undefined, to: undefined },
@@ -129,7 +129,7 @@ export default function OpsOverviewPage() {
               <Figure value={money(d.performance.newMrr)} label="new monthly" />
               <Figure value={money(d.performance.newArr)} label="new annual" />
               <Figure
-                value={d.performance.conversion === null ? '—' : `${d.performance.conversion}%`}
+                value={d.performance.conversion === null ? ' - ' : `${d.performance.conversion}%`}
                 label="conversion"
               />
             </div>

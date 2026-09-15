@@ -784,7 +784,7 @@ export class AssistantService {
         return rules(
           'add_a_document',
           text(
-            `"${title}" was readable, so I have read it and kept the text — ${attempt.text.length.toLocaleString()} characters from ${attempt.from}. `
+            `"${title}" was readable, so I have read it and kept the text - ${attempt.text.length.toLocaleString()} characters from ${attempt.from}. `
             + `I will use it the way I use anything else on this check-in.\n\n${askWhoItIsFor(title)}`,
           ),
         );
@@ -822,7 +822,7 @@ export class AssistantService {
     }
 
     const also = rest.length
-      ? ` You have ${rest.length === 1 ? 'one other check-in' : `${rest.length} other check-ins`} open — say which if it belongs somewhere else.`
+      ? ` You have ${rest.length === 1 ? 'one other check-in' : `${rest.length} other check-ins`} open - say which if it belongs somewhere else.`
       : '';
 
     return rules(
@@ -1057,7 +1057,7 @@ export class AssistantService {
     if (!workingTitle) {
       return rules(
         'set_an_objective',
-        text('What is it about? A few words is enough to start — the title can change.'),
+        text('What is it about? A few words is enough to start - the title can change.'),
       );
     }
 
@@ -1289,7 +1289,7 @@ export class AssistantService {
     if (!me?.linkedUserId) {
       return rules(
         'start_a_check_in',
-        text('I could not open it in your name — your account is not linked yet, and a check-in has to belong to somebody. Nothing was sent.'),
+        text('I could not open it in your name - your account is not linked yet, and a check-in has to belong to somebody. Nothing was sent.'),
       );
     }
 

@@ -669,7 +669,7 @@ export class EmailService implements OnModuleInit {
       subject: 'Groundwork could not reach your webhook endpoint',
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one — a <code>${eventType}</code> — was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
+        `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one - a <code>${eventType}</code> - was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
         `<p>We have switched this endpoint off, so nothing more queues against a receiver we know we cannot reach. Nothing has been lost on our side: every attempt and its response is in your delivery log. Once it is reachable again, switch it back on from your integrations page and new events flow to it.</p>` +
         `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
         `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,

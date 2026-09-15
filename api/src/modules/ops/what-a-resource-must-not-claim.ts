@@ -162,7 +162,7 @@ export function whyThisResourceIsNotReady(input: {
 
   const risks = (input.risks ?? []).map((r) => r.trim()).filter((r) => r.length > 0);
   if (risks.length < 3) {
-    return `Name three things most likely to go wrong with this piece. ${risks.length} so far — one is a formality, and the third is usually the real one.`;
+    return `Name three things most likely to go wrong with this piece. ${risks.length} so far - one is a formality, and the third is usually the real one.`;
   }
 
   return null;

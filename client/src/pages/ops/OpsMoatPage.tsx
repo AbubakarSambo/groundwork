@@ -34,7 +34,7 @@ function WhatWeDependOn() {
     <section style={{ ...CARD, marginTop: 20 }}>
       <p style={LABEL}>What we have taken on a dependency for</p>
       <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 10px', maxWidth: '62ch', lineHeight: 1.6 }}>
-        Declared against the work that added it. Only what somebody wrote down — the lockfile is the
+        Declared against the work that added it. Only what somebody wrote down - the lockfile is the
         witness that does not have to be trusted.
       </p>
       {rows.map((r) => (

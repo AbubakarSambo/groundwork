@@ -184,7 +184,7 @@ const SIGNAL_EXTRACTION_SCHEMA = {
 
 // Outcome learning - weekly prompt-version resolution-rate summary (#100).
 const OUTCOME_LEARNING_PROMPT =
-  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
+  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3 to 5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
 
 export const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -3734,7 +3734,29 @@ happened, and what is in the way.`;
       /* Written FROM the map, never quoting it. See Drafted.context. */
       { key: 'whyItMatters', text: note.whyItMatters, context: mapContext },
       ...(note.role ? [
-        { key: 'protectAgainst', text: `This kind of work is often read unfairly, and that is worth knowing before you read anything into where you stand.`, context: `How ${note.role.label.toLowerCase()} work gets read unfairly: ${note.role.protectAgainst}` },
+        /*
+         * THE SEED SENTENCE SAID NOTHING, SO THE MODEL WROTE FILLER AROUND IT.
+         *
+         * It was "This kind of work is often read unfairly, and that is worth knowing before you
+         * read anything into where you stand." - a preamble with no content in it. Read live on the
+         * tea ground under the heading "Where this kind of work gets misread":
+         *
+         *   "The buyer-side process takes weeks, and most of it is invisible to you, so silence is
+         *    just a stage. It is worth knowing how unfairly this kind of work can be read before
+         *    you draw any conclusions about where you stand."
+         *
+         * The first sentence is the map earning its place. The second is the empty seed coming back
+         * out, and it is the exact voice she has flagged twice: "this kind of work often faces
+         * unfair reading". A wording pass cannot add substance to a draft that has none, so the
+         * draft is the map's own claim now and the pass does what it is for - putting it in plain
+         * words for this reader rather than quoting a manual at them.
+         */
+        {
+          key: 'protectAgainst',
+          text: note.role.protectAgainst,
+          context: `This is about ${note.role.label.toLowerCase()} work. Say the thing itself, plainly, as one sentence to the person doing it. `
+            + 'Never open with a preamble about what is worth knowing, and never use the words "this kind of work".',
+        },
       ] : []),
       ...note.beforeNextTime.map((t, n) => ({
         key: `a${n}`,

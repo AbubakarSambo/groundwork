@@ -77,7 +77,7 @@ export function whyTheseCannotBeCompared(a: Figure, b: Figure): string | null {
     return `One is in ${a.currency} and the other in ${b.currency}. Converting them here would invent a rate nobody agreed.`;
   }
   if (!sameDay(a.period.from, b.period.from) || !sameDay(a.period.to, b.period.to)) {
-    return `They cover different periods — ${said(a.period)} and ${said(b.period)}. A difference between them would be arithmetic about two different things.`;
+    return `They cover different periods - ${said(a.period)} and ${said(b.period)}. A difference between them would be arithmetic about two different things.`;
   }
   return null;
 }
@@ -98,7 +98,7 @@ export function money(minorUnits: number, currency: string): string {
 
 /** How a figure reads with its provenance attached, because it never travels without it. */
 export function howItReads(f: Figure): string {
-  return `${f.says}: ${money(f.minorUnits, f.currency)} for ${said(f.period)}, ${f.source} — ${f.from}, stated by ${f.statedBy}.`;
+  return `${f.says}: ${money(f.minorUnits, f.currency)} for ${said(f.period)}, ${f.source} - ${f.from}, stated by ${f.statedBy}.`;
 }
 
 /**

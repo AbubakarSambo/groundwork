@@ -443,10 +443,22 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
+          /*
+            AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
+
+            This line lived inside the turns check below, so a session with no turns yet - which is
+            every session at the moment somebody opens it - kept the default of 1 that navigation
+            state carries. Walked in a browser as a participant on session 2: the header said
+            "Session 1" and so did the composer, on a page whose opening line was about what they
+            said last time.
+
+            Which session this is is a fact about the check-in, not about whether its turns have
+            arrived, so it is read from the check-in. Same fix, same paragraph, as the brief.
+          */
+          if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
+          if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
-            if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
-            if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
             if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }

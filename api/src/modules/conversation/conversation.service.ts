@@ -19,6 +19,7 @@ import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
+import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -853,18 +854,81 @@ export class ConversationService {
           { role: 'user', content: beginMessage },
         ]);
 
+    /*
+     * AND THE OPENER IS HELD TO THE SAME BAR AS EVERY OTHER TURN, WHICH IT NEVER WAS.
+     *
+     * Every reply in `send` passes nine guards. The opener passed none: it went through `forHumans`
+     * and straight to the screen. Swept across all twenty-two scenarios, two answers each: six
+     * openers were over the length bar (61 to 92 words, against a limit of 60) and three asked
+     * nothing at all, which leaves somebody looking at a paragraph with no question in it as the
+     * first thing this product ever says to them.
+     *
+     * The three cheapest and most visible of the guards, one retry, and the second is kept only if
+     * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
+     */
+    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
+
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
     const aiTurn = await this.prisma.conversationTurn.create({
       data: {
-        checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply),
+        checkInId: checkIn.id, role: TurnRole.AI, content: opening,
         /* Stamped as it is written, so the two-party balance can be counted without ever reading
            one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
-        askedFor: stampWhatItAskedFor(forHumans(reply)),
+        askedFor: stampWhatItAskedFor(opening),
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
+  }
+
+  /**
+   * THE FIRST THING THIS PRODUCT EVER SAYS, CHECKED THE WAY EVERYTHING AFTER IT IS.
+   *
+   * `send` puts every reply through nine guards. `open` put its reply through none - `forHumans`
+   * and out. Nobody had looked, because a fault in an opener reads as the scenario pack being
+   * wordy rather than as a guard being absent.
+   *
+   * Swept live across all twenty-two scenarios: six openers over the length bar, three that asked
+   * nothing. Three guards run here, chosen because they are the ones somebody would notice in the
+   * first two seconds: too long, asks nothing, uses a word we do not use.
+   *
+   * ONE RETRY, AND ONLY IF IT IS BETTER. Same rule as everywhere else in this file: the second try
+   * has to clear the bar the first one missed AND not fail the other two, or the first stands. An
+   * opener is not worth losing over a guard.
+   */
+  private async theOpenerIsHeldToTheSameBar(
+    checkInId: string,
+    fullSystem: string,
+    beginMessage: string,
+    opener: string,
+  ): Promise<string> {
+    const faults = (text: string) => {
+      const out: { why: string; instruction: string }[] = [];
+      if (isAnEssay(text, false)) out.push({ why: `${howManyWords(text)} words`, instruction: SAY_IT_SHORTER });
+      if (isADeadEnd(text, false)) out.push({ why: 'asks nothing', instruction: ASK_SOMETHING_OR_CLOSE });
+      const banned = wordsWeDoNotUse(text, []);
+      if (banned.length) out.push({ why: `words we do not use: ${banned.join(', ')}`, instruction: sayItWithoutThose(banned, text) });
+      /* An opener is the one question asked completely cold, so it is the question that most needs
+         to show what an answer looks like. Measured in the sweep: one scenario in twenty-two. */
+      if (asksForAShapeWithoutShowingOne(text)) out.push({ why: 'asks for a shape without showing one', instruction: SHOW_WHAT_ONE_LOOKS_LIKE });
+      return out;
+    };
+
+    const wrong = faults(opener);
+    if (!wrong.length) return opener;
+    this.logger.warn(`Check-in ${checkInId}: the opener ${wrong.map((w) => w.why).join(' and ')}; asking again.`);
+
+    const second = await this.anthropic
+      .respond(`${fullSystem}\n\n${wrong.map((w) => w.instruction).join('\n\n')}`, [{ role: 'user', content: beginMessage }])
+      .then((t) => forHumans(t))
+      .catch(() => '');
+    if (second.trim() && faults(second).length === 0) {
+      this.logger.log(`Check-in ${checkInId}: the second opener cleared it.`);
+      return second;
+    }
+    this.logger.warn(`Check-in ${checkInId}: the second opener did not clear it either; the first stands.`);
+    return opener;
   }
 
   /**
@@ -5836,10 +5900,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (aims.length) {
       const existing = await this.prisma.groundObjective.findMany({
         where: { groundId },
-        select: { name: true },
+        select: { name: true, target: true },
       });
-      const already = new Set(existing.map((o) => o.name.trim().toLowerCase()));
-      const fresh = aims.filter((a) => !already.has(a.name.toLowerCase()));
+      /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units
+         (10,000)" on the same board, as two objectives. See an-aim-said-twice-is-one-aim. */
+      const fresh = theAimsThatAreNew(aims, existing as any);
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
           data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i })),
@@ -6426,7 +6491,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const saying =
         checkIn.status !== CheckInStatus.COMPLETED
           ? 'Your summary is written when you finish this check-in.'
-          : 'Your summary is being written from what you said. It takes up to a minute — this page will show it as soon as it is there.';
+          : 'Your summary is being written from what you said. It takes up to a minute - this page will show it as soon as it is there.';
       return { artifact: null, saying, finished: checkIn.status === CheckInStatus.COMPLETED };
     }
     return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };

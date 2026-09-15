@@ -48,12 +48,18 @@ describe('the number she said is kept', () => {
 
   it('no longer refuses everything after the first aim', () => {
     expect(write).not.toMatch(/existing === 0/);
-    expect(write).toMatch(/already\.has\(a\.name\.toLowerCase\(\)\)/);
   });
 
   it('never overwrites an aim that already exists, because that number may be theirs', () => {
-    /* Only what is new is written. A conflict belongs on the board's accept-this prompt. */
-    expect(write).toMatch(/const fresh = aims\.filter\(\(a\) => !already\.has/);
+    /*
+     * Only what is new is written. A conflict belongs on the board's accept-this prompt.
+     *
+     * THE MATCH MOVED OUT OF THIS FILE AND THE RULE DID NOT. Matching on the name alone put
+     * "units of tea sold in Abuja (10,000)" and "10,000 units (10,000)" on one board, as two
+     * objectives, read off a participant's own screen. The same-name case it always handled is
+     * still handled; `theAimsThatAreNew` owns both and has its own spec.
+     */
+    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any\)/);
     expect(write).toMatch(/data: fresh\.map/);
   });
 

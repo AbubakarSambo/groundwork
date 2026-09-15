@@ -1027,7 +1027,7 @@ export function CreateGroundPage() {
             justifyContent: 'center',
           }}
         >
-          <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          <span>Picked up where you left off {howLongAgo(restored)} - on this device.</span>
           {/* "Start fresh" was `gw-btn-ghost`, which no stylesheet defines - so it rendered as a
               raw browser button inside a styled banner. Same silent failure as the seven `gw-in`
               fields; found by the guard written for those. `gw-btn-sm` is the small muted control
@@ -1620,7 +1620,7 @@ export function CreateGroundPage() {
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We could not check your plan just then</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                  This is our side, not yours — nothing about your plan has changed. Try again, and if it
+                  This is our side, not yours - nothing about your plan has changed. Try again, and if it
                   keeps failing you can carry on setting this up and create it in a moment.
                 </div>
                 <button

@@ -156,7 +156,7 @@ export function OrgMembersPage() {
       qc.invalidateQueries({ queryKey: ['who-is-waiting'] })
       qc.invalidateQueries({ queryKey: ['org-members'] })
     },
-    onError: () => toast.error('That did not go through. Nothing has changed — try again.'),
+    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
   })
 
   const inviteMut = useMutation({
@@ -166,7 +166,7 @@ export function OrgMembersPage() {
       setInviteEmail('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
     },
-    onError: () => toast.error('The invite did not send. Nobody has been emailed — try again.'),
+    onError: () => toast.error('The invite did not send. Nobody has been emailed - try again.'),
   })
 
   /*
@@ -187,7 +187,7 @@ export function OrgMembersPage() {
       qc.invalidateQueries({ queryKey: ['org-members'] })
       toast.success(a.summary)
     },
-    onError: () => toast.error('None of those invitations sent. Nobody has been emailed — try again.'),
+    onError: () => toast.error('None of those invitations sent. Nobody has been emailed - try again.'),
   })
 
   /*

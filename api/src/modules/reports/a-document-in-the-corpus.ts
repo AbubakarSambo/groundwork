@@ -43,7 +43,7 @@ export function documentsSection(docs: readonly AnOpenDocument[]): string {
   return (
     'DOCUMENTS EVERYBODY ON THIS CHECK-IN CAN SEE (evidence the parties supplied, NOT their own ' +
     'words. You may refer to a document by name where it bears on what somebody said. Never quote ' +
-    'it as a party speaking, and never treat what a document asserts as established fact — a ' +
+    'it as a party speaking, and never treat what a document asserts as established fact - a ' +
     'document is what somebody wrote down, which is exactly what the accounts are being weighed ' +
     "against):\n" +
     lines.join('\n') +

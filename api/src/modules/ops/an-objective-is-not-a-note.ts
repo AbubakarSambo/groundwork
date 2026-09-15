@@ -55,7 +55,7 @@ export function whyThisIsNotAnObjective(input: WhatIsBeingSet): string | null {
   }
 
   if ((input.instead?.trim().length ?? 0) < SHORTEST_USEFUL_INSTEAD) {
-    return 'Say what this is instead of. "Why is this the best use of time" cannot be answered in the abstract — only against the thing not being done.';
+    return 'Say what this is instead of. "Why is this the best use of time" cannot be answered in the abstract - only against the thing not being done.';
   }
 
   /*
@@ -108,7 +108,7 @@ export function doesThePipelineAgree(input: {
   }
   if (parts.length === 0) return null;
 
-  return `The pipeline does not hold this yet: ${parts.join(', ')}. That may be the target rather than a mistake — it should be said out loud either way.`;
+  return `The pipeline does not hold this yet: ${parts.join(', ')}. That may be the target rather than a mistake - it should be said out loud either way.`;
 }
 
 /**

@@ -58,7 +58,7 @@ export function whyTheApiIsRefused(request: AccessFacts | null | undefined): str
     case ApiAccessStatus.PENDING:
       return (
         'This organisation has asked for API access and it has not been decided yet. '
-        + 'Nothing is wrong with the credential — it will work as soon as the request is approved.'
+        + 'Nothing is wrong with the credential - it will work as soon as the request is approved.'
       );
 
     case ApiAccessStatus.DECLINED:

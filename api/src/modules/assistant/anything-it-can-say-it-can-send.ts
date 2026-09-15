@@ -46,7 +46,7 @@ export function whyThisCannotBeSent(
   to: WhoItGoesTo,
 ): string | null {
   if (!latest) {
-    return 'There is nothing to send yet — ask me something first and then say "email me that".';
+    return 'There is nothing to send yet - ask me something first and then say "email me that".';
   }
   if (!to.email) {
     return 'Your organisation has not given us an email address for you, so there is nowhere to send it. Whoever set Groundwork up can add one.';
@@ -68,7 +68,7 @@ export function askBeforeSending(latest: SomethingToSend, to: WhoItGoesTo): stri
  */
 export function theMail(latest: SomethingToSend, to: WhoItGoesTo): { subject: string; text: string } {
   return {
-    subject: `Groundwork — ${shorten(latest.about)}`,
+    subject: `Groundwork - ${shorten(latest.about)}`,
     text: [
       to.displayName ? `${to.displayName},` : 'Hello,',
       '',

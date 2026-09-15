@@ -87,7 +87,7 @@ export function howItStands(standing: Standing, from: Date): string {
   const day = from.toISOString().slice(0, 10);
   switch (standing) {
     case 'discussed':
-      return `Discussed, and written down. Not agreed and not signed — it would start on ${day} if it were.`;
+      return `Discussed, and written down. Not agreed and not signed - it would start on ${day} if it were.`;
     case 'agreed, not signed':
       return `Both sides say this is what they want. Not signed, so the agreement is still the one that was. It would start on ${day}.`;
     case 'signed':
@@ -105,4 +105,4 @@ export const A_NOTE_IS_NOT_AN_AMENDMENT =
   + 'clearly both sides seemed to agree it, is discussed and nothing more. Never write that the '
   + 'agreement now permits, requires or covers something on the strength of what somebody said or '
   + 'wrote down. Say what was discussed, say what is in force, and where they differ say that the '
-  + 'two have not been brought into line — which is a thing worth doing rather than a fault.';
+  + 'two have not been brought into line - which is a thing worth doing rather than a fault.';

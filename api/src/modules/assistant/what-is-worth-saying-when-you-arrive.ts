@@ -51,7 +51,7 @@ export function whatIsWorthSayingWhenYouArrive(
       /* First, because until this happens nothing on it exists for anybody. It
          is the only item here that is holding other people up. */
       line:
-        `${firstName} — "${toStart[0].label}" was set up for you and has not begun. `
+        `${firstName} - "${toStart[0].label}" was set up for you and has not begun. `
         + 'Nothing is asked of anybody on it until you start it.',
       source: 'session_to_start',
     };
@@ -61,7 +61,7 @@ export function whatIsWorthSayingWhenYouArrive(
   if (open.length > 0) {
     return {
       line:
-        `${firstName} — your check-in on "${open[0].label}" is open. `
+        `${firstName} - your check-in on "${open[0].label}" is open. `
         + 'About ten minutes, and what you say is released with everybody else\'s, not before.',
       source: 'session_open',
     };
@@ -85,8 +85,8 @@ export function whatIsWorthSayingWhenYouArrive(
       line:
         firstName
         + (owned.length === 1
-          ? ' — you own an objective, and it does not record why its number is the number.'
-          : ` — you own ${owned.length} objectives, and none of them records why its number is the number.`)
+          ? ' - you own an objective, and it does not record why its number is the number.'
+          : ` - you own ${owned.length} objectives, and none of them records why its number is the number.`)
         + ' Worth having before the check-in where it is missed.',
       source: 'target_unexplained',
     };

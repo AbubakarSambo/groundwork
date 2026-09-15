@@ -432,7 +432,7 @@ export function GroundAdminPage() {
       qc.invalidateQueries({ queryKey: ['report', id] })
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('The report was not released. Nobody has been sent anything — try again.'),
+    onError: () => toast.error('The report was not released. Nobody has been sent anything - try again.'),
   })
 
 
@@ -626,7 +626,7 @@ export function GroundAdminPage() {
       setConfirmClosing(false)
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('The closing session did not open. Nothing has changed for anyone — try again.'),
+    onError: () => toast.error('The closing session did not open. Nothing has changed for anyone - try again.'),
   })
 
   const remind = useMutation({
@@ -672,7 +672,7 @@ export function GroundAdminPage() {
   const resendInvite = useMutation({
     mutationFn: (participantId: string) => groundsApi.resendParticipantInvite(id!, participantId),
     onSuccess: () => toast.success('Invite sent again.'),
-    onError: () => toast.error('It did not send again. The original invite still works — try again in a moment.'),
+    onError: () => toast.error('It did not send again. The original invite still works - try again in a moment.'),
   })
 
   const copyInviteLink = useMutation({
@@ -714,7 +714,7 @@ export function GroundAdminPage() {
       setEditingRoleValue('')
       toast.success('Role updated')
     },
-    onError: () => toast.error('Their role did not change. Nothing else was altered — try again.'),
+    onError: () => toast.error('Their role did not change. Nothing else was altered - try again.'),
   })
 
   // Contact visibility toggle. restrict=true hides peers' emails from each other (default).
@@ -729,7 +729,7 @@ export function GroundAdminPage() {
   const setPeerVisibility = useMutation({
     mutationFn: (visible: boolean) => groundsApi.setPeerVisibility(id!, visible),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
-    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
+    onError: () => toast.error('Not saved. What you typed is still here - try again.'),
   })
 
   /**
@@ -752,19 +752,19 @@ export function GroundAdminPage() {
   const setWhoSeesTargets = useMutation({
     mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
-    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+    onError: () => toast.error('Not saved. The setting is unchanged - try again.'),
   })
 
   const setExpectThemToUnblock = useMutation({
     mutationFn: (expect: boolean) => groundsApi.setExpectThemToUnblock(id!, expect),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
-    onError: () => toast.error('Not saved. The setting is unchanged — try again.'),
+    onError: () => toast.error('Not saved. The setting is unchanged - try again.'),
   })
 
   const setContactVisibility = useMutation({
     mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: () => toast.error('That setting did not change — try again.'),
+    onError: () => toast.error('That setting did not change - try again.'),
   })
 
 
@@ -885,7 +885,7 @@ export function GroundAdminPage() {
   const setWorkTogether = useMutation({
     mutationFn: (v: boolean) => groundsApi.setPeopleWorkTogether(id!, v),
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
+    onError: () => toast.error('Not saved. What you typed is still here - try again.'),
   })
 
   const addParticipantMut = useMutation({
@@ -1359,7 +1359,7 @@ export function GroundAdminPage() {
         {(() => {
           const a = attention
           const say =
-            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn — 1 day late' : `Your turn — ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
+            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn - 1 day late' : `Your turn - ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
             : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
             : a.kind === 'waiting' ? { t: `Waiting on ${a.total - a.done} of ${a.total}`, c: 'var(--gw-sub)' }
             : null
@@ -1560,7 +1560,7 @@ export function GroundAdminPage() {
             </div>
             <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
               {notInvited.map(f => (
-                <li key={f.email}><span style={{ color: 'var(--gw-text)' }}>{f.email}</span> — {f.because}</li>
+                <li key={f.email}><span style={{ color: 'var(--gw-text)' }}>{f.email}</span> - {f.because}</li>
               ))}
             </ul>
             <button

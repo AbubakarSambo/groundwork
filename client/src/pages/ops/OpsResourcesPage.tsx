@@ -45,7 +45,7 @@ function Checks({ checks }: { checks: OpsResourceCheck[] }) {
             {c.kind === 'IS_NOT' ? 'We are not: ' : 'We are: '}
             {c.claim}
           </span>
-          <span style={{ color: 'var(--gw-sub)' }}> — {VERDICT_SAID[c.verdict]}</span>
+          <span style={{ color: 'var(--gw-sub)' }}> - {VERDICT_SAID[c.verdict]}</span>
           <div style={{ color: 'var(--gw-sub)', fontSize: 12.5, marginTop: 2, lineHeight: 1.5 }}>
             {c.says}
           </div>
@@ -206,7 +206,7 @@ export function OpsResourcesPage() {
       {register.data && register.data.resources.length === 0 && (
         <div style={CARD}>
           Nothing in the register yet. The deck, the site copy and the last campaign are the ones
-          worth entering first — they are the ones already in front of people.
+          worth entering first - they are the ones already in front of people.
         </div>
       )}
     </section>

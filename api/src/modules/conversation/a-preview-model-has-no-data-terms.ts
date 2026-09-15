@@ -37,7 +37,7 @@ export function whyThisModelIsNotAllowed(model: string): string | null {
   return (
     `"${named}" is not in MODELS_WE_HAVE_TERMS_FOR. Preview and experimental models are Pre-GA ` +
     `Offerings, and Google's Service Specific Terms exclude Pre-GA Offerings from the Cloud Data ` +
-    `Processing Addendum — so pointing the product at one moves every check-in outside the data ` +
+    `Processing Addendum - so pointing the product at one moves every check-in outside the data ` +
     `processing terms the privacy page relies on. Add it here only after reading the terms for it.`
   );
 }

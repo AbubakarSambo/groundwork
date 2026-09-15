@@ -67,12 +67,12 @@ beforeEach(() => {
 describe('the create-account door', () => {
   it('is on the sign-in page, and says what it is', async () => {
     renderAuth()
-    await waitFor(() => expect(screen.getByText(/New here\? Create an account/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/New here\? Sign up/)).toBeTruthy())
   })
 
   it('and opens a view whose heading is only about creating an account', async () => {
     renderAuth()
-    fireEvent.click(await waitFor(() => screen.getByText(/New here\? Create an account/)))
+    fireEvent.click(await waitFor(() => screen.getByText(/New here\? Sign up/)))
     expect(screen.getByText('Create your account')).toBeTruthy()
     // Not "Sign in or create account" - a heading that hedges is the thing she read as
     // "it just says sign-in".

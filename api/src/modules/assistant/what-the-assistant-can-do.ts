@@ -79,7 +79,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'add_a_document',
-    does: 'Put a document into a check-in — a file, or a link to where it already lives — and say who it is for',
+    does: 'Put a document into a check-in - a file, or a link to where it already lives - and say who it is for',
     writes: 'after you confirm it',
     ordered:
       'Above the sending lane: "send me the handbook" and "add the handbook" are opposite directions, and that lane owns the word "send".',
@@ -100,7 +100,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'Start a check-in that is waiting, or open a new one and invite the people in it',
     writes: 'after you confirm it',
     ordered:
-      'Before the objective lane. "Set up a check-in about our objectives" is a request to start a session and reads to that lane as a request to write an objective. Starting one that exists and opening one that does not are the SAME capability on purpose — nobody should have to know which they want, and a second lane claiming these words would be another collision.',
+      'Before the objective lane. "Set up a check-in about our objectives" is a request to start a session and reads to that lane as a request to write an objective. Starting one that exists and opening one that does not are the SAME capability on purpose - nobody should have to know which they want, and a second lane claiming these words would be another collision.',
     owns: ['start my check-in', 'can I start my check-in', 'set up a check-in', 'open the session'],
     refuses: ['how do I run a check-in', 'when is the next session', 'what is my check-in about'],
   },
@@ -168,7 +168,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'What is waiting on this person, across the organisation',
     writes: 'nothing',
     ordered:
-      'Below the specific ones, and above nothing in particular — it is the broad "is anybody blocked on me" question.',
+      'Below the specific ones, and above nothing in particular - it is the broad "is anybody blocked on me" question.',
     owns: ['where am I needed'],
     /* "Who is waiting on me" is a HANDOFF question, not a directory lookup, and
        two existing guards pin it to what_is_stuck. I declared it here and was
@@ -201,10 +201,10 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'how_we_work',
-    does: 'What the organisation has written down — its decisions, its process, how a thing works',
+    does: 'What the organisation has written down - its decisions, its process, how a thing works',
     writes: 'nothing',
     ordered:
-      'Last of the answering lanes, because it is the broadest. It owns "how does the X work", which is a question about a thing rather than about doing something — and deliberately not a bare "how", which would take "how am I doing".',
+      'Last of the answering lanes, because it is the broadest. It owns "how does the X work", which is a question about a thing rather than about doing something - and deliberately not a bare "how", which would take "how am I doing".',
     owns: ['how do we handle expenses', 'how does the freeze work', 'how do the phases work'],
     refuses: ['how am I doing', 'what am I on'],
   },

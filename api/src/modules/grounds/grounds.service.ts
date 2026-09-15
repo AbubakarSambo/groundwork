@@ -2872,7 +2872,7 @@ export class GroundsService {
         inviteToken: undefined,
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
-        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again — it uses the same link.`,
+        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
       };
     }
 

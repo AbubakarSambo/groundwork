@@ -127,7 +127,7 @@ export class OpsGroundworkEventsService {
       })),
       says:
         rows.length === 0
-          ? 'Nothing has arrived. Either nothing has happened, or nobody has registered where to send it — and those are different problems.'
+          ? 'Nothing has arrived. Either nothing has happened, or nobody has registered where to send it - and those are different problems.'
           : `${rows.length} received${rows.some((e) => !e.verified) ? ', some of which did not verify' : ''}.`,
     };
   }

@@ -97,7 +97,7 @@ export function askWhichSituation(candidates?: WhichSituation[]): string {
   if (candidates?.length) {
     return (
       'That could be ' + candidates.map((c) => c.says).join(' or ')
-      + ' — they are different conversations, so which is it?'
+      + ' - they are different conversations, so which is it?'
     );
   }
   return 'What is it about? Somebody joining, something new starting, the quarter\'s objectives, work that has gone off track, people seeing it differently, a regular read, or a role changing hands.';
@@ -137,13 +137,13 @@ export function askBeforeOpeningIt(input: {
 
   if (names.length === 0) {
     return (
-      `I can open a check-in about ${input.says} — "${input.label}". `
+      `I can open a check-in about ${input.says} - "${input.label}". `
       + 'Nobody reports to you on the roster, so tell me who should be in it and I will name them back before anything is sent.'
     );
   }
 
   return (
-    `I can open a check-in about ${input.says} — "${input.label}" — and ask `
+    `I can open a check-in about ${input.says} - "${input.label}" - and ask `
     + saidAsAList(names)
     + `. ${names.length === 1 ? 'That is who reports' : 'They are who report'} to you on the roster; say if it should be somebody else. `
     + `${names.length === 1 ? 'They will be emailed' : 'They will each be emailed'} an invitation. Open it?`
@@ -159,7 +159,7 @@ export function saidAsAList(names: string[]): string {
 /** Why one cannot be opened at all. */
 export function whyItCannotBeOpened(input: { label: string | null; people: number }): string | null {
   if (!input.label || input.label.trim().length < 3) {
-    return 'Give it a name somebody would recognise in a list — a few words about what it is.';
+    return 'Give it a name somebody would recognise in a list - a few words about what it is.';
   }
   if (input.people === 0) {
     return 'A check-in needs somebody in it other than you. Name who should be asked.';

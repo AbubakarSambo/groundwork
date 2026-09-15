@@ -68,7 +68,7 @@ export function whatItTakesToStart(waiting: WaitingOnThem): WhatToSay {
     return {
       line:
         `There is a check-in for you on "${waiting.notAccepted[0].label}", and the invitation has not been accepted yet. `
-        + 'Accepting is how somebody agrees to take part, so it is not something I can do for you — it is in the email you were sent.',
+        + 'Accepting is how somebody agrees to take part, so it is not something I can do for you - it is in the email you were sent.',
       act: null,
     };
   }

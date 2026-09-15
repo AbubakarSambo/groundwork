@@ -2,6 +2,7 @@ import { stripCloseMarker } from '../conversation/prompt-library';
 import { withoutDashes } from '../reports/forensic-voice';
 import { houseStyle } from '../conversation/anthropic.service';
 import { sentencesIn } from './where-a-sentence-actually-ends';
+import { notTheWordParty } from '../reports/not-the-word-party';
 
 /**
  * THE ONE PLACE ANYTHING CROSSES FROM THE SYSTEM TO A PERSON.
@@ -403,6 +404,22 @@ export function forHumans(text: string | null | undefined): string {
   out = oneWordForTheThing(out);
   /* Beside the other word that is ours and reads as something else. */
   out = saysWhatTheySaid(out);
+  /*
+   * AND THE WORD THAT WAS ONLY EVER FIXED ON THE REPORT.
+   *
+   * `notTheWordParty` has run at the report's read since the day the instruction was found dead
+   * there. The conversation was never given it, and the conversation is where most of the words
+   * are. Read on screen in a participant's session 2, in the opening line:
+   *
+   *   "Since then, all three parties involved in this goal have submitted what they said."
+   *
+   * Somebody told they are a party to a goal, by a product whose whole point is that these are
+   * colleagues. Same rule, same module, applied where the text is read rather than asked for in a
+   * prompt - which is the module's own argument for existing.
+   *
+   * It leaves the three label keys alone by construction; see not-the-word-party.
+   */
+  out = notTheWordParty(out);
   /* Last of the word rules: the phrases that perform rather than say. */
   out = withoutPerformedEmpathy(out);
   out = withoutQuotedQuestions(out);

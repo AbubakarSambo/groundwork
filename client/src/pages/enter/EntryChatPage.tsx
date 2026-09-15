@@ -1595,7 +1595,7 @@ export function EntryChatPage() {
          otherwise. The turn stays in the history — the server may have taken it — and the words go
          back where they were typed. */
       setCorrectionText(text)
-      toast.error('That did not send — what you wrote is back in the box. Try again.')
+      toast.error('That did not send - what you wrote is back in the box. Try again.')
     } finally {
       setCorrectionLoading(false)
     }
@@ -1774,7 +1774,7 @@ export function EntryChatPage() {
        */
       setOnboardingHistory(onboardingHistory)
       setInput(text.trim())
-      toast.error('That did not send — your message is back in the box. Try again.')
+      toast.error('That did not send - your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
@@ -2048,7 +2048,7 @@ export function EntryChatPage() {
        */
       toast.error(
         'Nothing has been lost. This browser will not let us hold your conversation while you sign '
-        + 'in with Google — use the email option below and it will be waiting for you.',
+        + 'in with Google - use the email option below and it will be waiting for you.',
       )
       return
     }
@@ -3888,7 +3888,7 @@ export function EntryChatPage() {
                   </div>
                   <button type="button" onClick={() => setWorkingDays(workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? [] : [...WEEKDAYS])}
                     style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
-                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear — any day is fine' : 'Weekdays only, skip weekends'}
+                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear - any day is fine' : 'Weekdays only, skip weekends'}
                   </button>
                 </div>
               )}

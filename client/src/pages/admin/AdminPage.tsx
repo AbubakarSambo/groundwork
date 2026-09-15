@@ -46,7 +46,7 @@ function Stat({ val, label, accent, of }: { val: string | number; label: string;
 
 /** A rate as text: "62%" with its "of N" beside it, or "–" over nothing. */
 function rateText(r: Rate): string {
-  return r.pct == null ? '–' : `${r.pct}%`
+  return r.pct == null ? ' - ' : `${r.pct}%`
 }
 
 function Bar({ pct, color = 'var(--gw-navy)' }: { pct: number; color?: string }) {
@@ -284,7 +284,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
       /* The public pricing page is built from fixed figures and is frozen; the table and the page disagree until it is rebuilt (A15). */
       toast.success(`${row.label} updated. Existing subscribers keep their current price until they change plans. The public pricing page still shows the figure it was built with until the site is rebuilt.`)
     },
-    onError: () => toast.error('The price did not change — try again.'),
+    onError: () => toast.error('The price did not change - try again.'),
   })
 
   function submit() {
@@ -312,7 +312,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
       setEditingCap(false)
       toast.success(`${row.label} now seats ${capValue.trim() === '' ? 'an unlimited number of' : capValue.trim()} people.`)
     },
-    onError: () => toast.error('The seat cap did not change — try again.'),
+    onError: () => toast.error('The seat cap did not change - try again.'),
   })
 
   function submitCap() {
@@ -706,7 +706,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
               <Bar pct={s1 > 0 ? (row.completed / s1) * 100 : 0} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 60, textAlign: 'right', flexShrink: 0 }}>
-                {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}% of ${row.of}` : '–'}
+                {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}% of ${row.of}` : ' - '}
               </div>
             </div>
           ))}
@@ -725,7 +725,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
       <section>
         <div style={SL}>Avg days to first check-in</div>
         <div style={{ ...C, display: 'inline-block' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? '–'}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? ' - '}</div>
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days, over {data.avgDaysToFirstCheckin.n} first sessions</div>
         </div>
       </section>
@@ -746,7 +746,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
                 {data.avgSessionMinutes.map(row => (
                   <tr key={row.session}>
                     <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? '–'}</td>
+                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
                     <td style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.n}</td>
                   </tr>
                 ))}
@@ -974,7 +974,7 @@ function InAppFeedback() {
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => feedbackApi.updateStatus(id, status),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['in-app-feedback'] }) },
-    onError: () => toast.error('That did not change — try again.'),
+    onError: () => toast.error('That did not change - try again.'),
   })
   if (isLoading) return null
   if (error) return <SectionFailed what="Feedback" error={error} retry={() => refetch()} />
@@ -1030,7 +1030,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Stat val={data.total} label="Fairness responses" />
-        <Stat val={data.fairRate != null ? `${data.fairRate}%` : '–'} label="Felt fair" accent={!!data.fairRate && data.fairRate >= 70} />
+        <Stat val={data.fairRate != null ? `${data.fairRate}%` : ' - '} label="Felt fair" accent={!!data.fairRate && data.fairRate >= 70} />
       </div>
 
       {data.recent.length === 0 ? (

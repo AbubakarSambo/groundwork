@@ -525,7 +525,7 @@ export const METRICS: MetricDefinition[] = [
     label: 'Money actually in',
     shape: 'sum',
     capability: 'fundraise:read',
-    counts: 'Closed amounts. Not what was committed — what arrived.',
+    counts: 'Closed amounts. Not what was committed - what arrived.',
     async compute(prisma) {
       const rows = await prisma.opsFundingOpportunity.findMany({ where: { closedAmount: { not: null } } });
       return {

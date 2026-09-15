@@ -49,7 +49,7 @@ import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-acros
 
 
 const dshort = (iso?: string | null) =>
-  iso ? whenItWas(iso, 'dayAndMonth') : '—'
+  iso ? whenItWas(iso, 'dayAndMonth') : ' - '
 
 // ---------------------------------------------------------------- page
 
@@ -135,14 +135,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       target: newObjTarget.trim() ? Number(newObjTarget) : null,
     }),
     onSuccess: () => { setNewObjName(''); setNewObjTarget(''); invalidate() },
-    onError: () => toast.error('The target was not added. What you typed is still here — try again.'),
+    onError: () => toast.error('The target was not added. What you typed is still here - try again.'),
   })
 
   const bumpObjective = useMutation({
     mutationFn: (v: { objectiveId: string; count: number }) =>
       boardApi.updateObjective(id!, v.objectiveId, { count: v.count }),
     onSuccess: invalidate,
-    onError: () => toast.error('That count did not change — try again.'),
+    onError: () => toast.error('That count did not change - try again.'),
   })
 
   /* A second press before a target is gone. See a-second-press-before-it-is-gone.tsx. */
@@ -150,7 +150,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
-    onError: () => toast.error('The target was not removed. Nothing has changed — try again.'),
+    onError: () => toast.error('The target was not removed. Nothing has changed - try again.'),
   })
 
   const savePoll = useMutation({
@@ -159,13 +159,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
     }),
     onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
-    onError: () => toast.error('The poll did not save. Your answers are still here — try again.'),
+    onError: () => toast.error('The poll did not save. Your answers are still here - try again.'),
   })
 
   const togglePoll = useMutation({
     mutationFn: (optionId: string) => boardApi.togglePoll(id!, optionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', id] }),
-    onError: () => toast.error('Your availability did not change — try again.'),
+    onError: () => toast.error('Your availability did not change - try again.'),
   })
 
   if (isLoading) {
@@ -1115,14 +1115,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{r.name ?? 'A teammate'}</span></td>
                         {anyRoleToShow && (
                           <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? r.role : r.managingOnly ? 'Managing only' : '—'}
+                            {r.role && r.role !== r.name ? r.role : r.managingOnly ? 'Managing only' : ' - '}
                           </td>
                         )}
                         {b.checkInGrid!.sessions.map((s) => {
                           const v = r.cells[String(s)] ?? 'na'
                           return (
                             <td key={s} style={td}>
-                              {v === 'na' ? <span style={{ color: 'var(--gw-muted)' }}>—</span>
+                              {v === 'na' ? <span style={{ color: 'var(--gw-muted)' }}> - </span>
                                 : <Pill tone={v === 'done' ? 'good' : v === 'in-progress' ? 'info' : v === 'declined' ? 'bad' : 'flat'}>
                                     {v === 'done' ? 'Checked in' : v === 'in-progress' ? 'In progress' : v === 'declined' ? 'Declined' : 'Not started'}
                                   </Pill>}

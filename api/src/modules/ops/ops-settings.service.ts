@@ -34,7 +34,7 @@ export const OPS_SETTINGS = {
 export const SETTING_DEFAULTS: Record<string, { value: string; note: string }> = {
   [OPS_SETTINGS.contributorQualifyingStatus]: {
     value: 'READY',
-    note: "Where a contributor's introduction starts counting. INTRODUCED counts a name; READY counts a company that is willing and a fit; QUALIFIED counts one that is live. Awaiting a decision — READY is the placeholder, and every contributor number moves if it changes.",
+    note: "Where a contributor's introduction starts counting. INTRODUCED counts a name; READY counts a company that is willing and a fit; QUALIFIED counts one that is live. Awaiting a decision - READY is the placeholder, and every contributor number moves if it changes.",
   },
   [OPS_SETTINGS.defaultCurrency]: {
     value: 'USD',

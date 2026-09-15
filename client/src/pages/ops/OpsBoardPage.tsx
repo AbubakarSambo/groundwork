@@ -38,7 +38,7 @@ function readable(number: OpsNumber): string {
 function Rows({ rows }: { rows: Array<Record<string, unknown>> }) {
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))]
   const show = (value: unknown) => {
-    if (value === null || value === undefined) return '—'
+    if (value === null || value === undefined) return ' - '
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
       return whenItWas(value, 'day')
     }

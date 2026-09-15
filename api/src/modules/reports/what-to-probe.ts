@@ -160,7 +160,9 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   }
 
   if (i.concrete.length) {
-    encourage.push(`Put something checkable on record: ${andList(i.concrete.slice(0, 2).map(theThing))}.`);
+    /* "Checkable" is the product's own word for this and it does not belong in front of a person -
+       it is on the list of words we do not use, and it was printed three times on one report. */
+    encourage.push(`Worth getting on record, where anyone could check it later: ${andList(i.concrete.slice(0, 2).map(theThing))}.`);
   }
   if (i.documentsAttached > 0) {
     encourage.push(
