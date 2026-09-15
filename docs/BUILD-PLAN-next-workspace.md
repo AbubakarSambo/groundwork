@@ -32,6 +32,42 @@ Almost everything needed for that **already exists and is pointed at reports ins
 
 ---
 
+# WAVE 0 - the card and the pack must be the same product
+
+**THIS COMES BEFORE EVERYTHING, including the prompt rebalance.** Added 15 September after watching a
+whole setup conversation in a browser.
+
+`docs/THE-SCENARIO-TABLE.md` is the source of truth, written by Hafsah, verbatim. Where a pack
+disagrees with the table, **the table wins.**
+
+**The fault.** The card for `OKR_ALIGNMENT` promises "set goals, targets or OKRs for your team... you
+can see what is on track". The pack behind it says "MOMENT: OKR alignment across teams. PURPOSE: Each
+person submits their own OKRs and shows how they connect to the company OKRs... before the planning
+cycle locks in." Two different products. So a lead who came to set targets was asked three times how
+her objective connected to company direction and could not get away from it.
+
+**The conversation was not malfunctioning. It was faithfully running a scenario nobody picked.**
+
+**Why this is before Wave 3, not after.** The rebalance makes the pack speak louder. Making a
+mis-specified pack louder makes this worse. Fix what the packs say, then make them heard.
+
+## The work
+
+1. **Read card and pack side by side, all 22.** Card copy is in `client/src/pages/enter/EntryChatPage.tsx`
+   (the `detail` lines) and `scenario-catalog.ts`. Packs are DB rows, `scenario.*`, seeded from
+   `buildScenarioPackForParty` in `prompt-library.ts`.
+2. **Rewrite each pack to its row in the table.** `OKR_ALIGNMENT` becomes about setting and tracking;
+   the alignment check demotes from PURPOSE to one optional question.
+3. **Six cells per scenario, not one.** Lead first/second/last and participant first/second/last.
+   A pack that does not distinguish them runs the same interview in session 4 as in session 1.
+   The spine: first = understand, second = what changed, last = where it landed.
+4. **Question order.** `1b. yourPart` in `entry.service.ts` is hardcoded to be asked immediately after
+   the first question. On a scenario called "set goals and track them" that asks about the person
+   before the thing they came to do. It has a real reason (237 of 239 people had no role recorded) so
+   do not delete it - move it after the thing they came for.
+5. **A length ceiling, held in code.** Replies run 60 to 100 words where 15 would do. "The responses
+   are soo long its insane... this sounds zero like a human." Nothing constrains length today.
+
 # WAVE 1 - make it work
 
 The lead came to set targets and track them. Today the number she says is discarded. This wave is
