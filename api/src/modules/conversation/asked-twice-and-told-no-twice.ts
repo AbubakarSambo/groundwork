@@ -150,9 +150,39 @@ export function opensByRepeatingThem(theySaid: string, reply: string): boolean {
 }
 
 /** Named for the model, which then writes its own opening. */
-export const DO_NOT_SAY_IT_BACK = `Your reply opens by repeating what they just told you before asking the next thing. They know what they said. Reading their own answer handed back is what makes a check-in feel like it is going in circles.
+/*
+ * THE INSTRUCTION THAT LOST FOUR TIMES OUT OF FIVE.
+ *
+ * Measured across 19 live check-ins on 15 September 2026: the guard fired 75 times, the second try
+ * fixed it 12 times, and 58 times the model restated them again and the first reply stood. As a
+ * detector this works. As an instruction it did not.
+ *
+ * Why it lost, reading the failures: it said what NOT to do and left the model to find the opening
+ * on its own, and the easiest opening in the world is the sentence you were just given. So it now
+ * names the offending sentence back, gives the rule as a positive - the first sentence must carry
+ * something they do not already have - and shows the move.
+ */
+export function doNotSayItBack(theirLast: string, reply: string): string {
+  const theOpener = (reply ?? '').split(/(?<=[.?!])\s/)[0]?.trim() ?? '';
+  return `Your reply opens by handing them back what they just said. They know what they said. Reading their own answer back is the single most common complaint about this product, in those words: "it is repeat and going around in circles".
 
-Write it again without the restatement. Go straight to the next question. A two or three word acknowledgement is fine if something genuinely landed; a summary of their last message is not.`;
+This is the sentence that does it:
+"${theOpener}"
+
+Write the reply again with that sentence GONE. Not reworded, not shortened, not moved: gone.
+
+The first sentence of the new reply must carry something they do not already have. Any of these:
+- a figure or a fact from the record they have not been shown
+- what their answer changes, or what it means for the thing they are working towards
+- the question itself, asked straight
+
+Two or three words of acknowledgement are fine ("Understood." "That is a lot."). A sentence that
+summarises their message is not, however different the words are. Their content in your phrasing is
+still their content.`;
+}
+
+/** Kept for the callers that have no access to what was said - the standing form of the same rule. */
+export const DO_NOT_SAY_IT_BACK = doNotSayItBack('', '');
 
 /**
  * ASKED TWICE ALREADY AND STILL ASKING. NOBODY HAS TO OBJECT FOR THIS TO BE WRONG.
@@ -189,3 +219,32 @@ export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean
 export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.
 
 Let it go and ask about something else that matters here. Do not rephrase it and do not explain why you wanted it. If it genuinely matters and nobody has answered it, it belongs in the report as still open, not in a fourth question.`;
+
+/**
+ * THE OPENING SENTENCE, REMOVED, WHEN ASKING TWICE HAS NOT WORKED.
+ *
+ * Every other guard in this codebase keeps the first reply when the retry fails: a flat reply beats
+ * no reply, and cutting text usually takes something real with it. The warning against text surgery
+ * elsewhere in this file is about stripping a trailing question, which takes out the probe.
+ *
+ * This fault is the exception, because of what the fault IS. The sentence being removed carries
+ * nothing the person did not just say - that is the definition of the thing the guard caught. What
+ * is left is the part of the reply that was doing work.
+ *
+ * Narrow deliberately. Returns null - meaning leave it alone - unless all of this holds:
+ *  - the restatement really is the first sentence, not something further in
+ *  - there is more than one sentence
+ *  - what remains still asks them something, so this cannot create a dead end
+ *  - what remains is long enough to be a reply at all
+ */
+export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string): string | null {
+  const sentences = (reply ?? '').split(/(?<=[.?!])\s+/).filter((s) => s.trim());
+  if (sentences.length < 2) return null;
+  if (!opensByRepeatingThem(theySaid, sentences[0])) return null;
+
+  const rest = sentences.slice(1).join(' ').trim();
+  if (rest.split(/\s+/).length < 5) return null;
+  if (!/\?/.test(rest)) return null;
+  if (opensByRepeatingThem(theySaid, rest)) return null;
+  return rest;
+}

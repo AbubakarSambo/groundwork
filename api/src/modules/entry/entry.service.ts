@@ -44,7 +44,7 @@ import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbo
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
   opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
-  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
+  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, doNotSayItBack,
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES } from '../conversation/a-reply-is-not-an-essay';
@@ -1225,13 +1225,13 @@ from finishing at all.`;
         return { fault: 'a verdict about somebody not in the room', instruction: HERS_TO_DRAW };
       }
       if (theirLast && opensByRepeatingThem(theirLast, text)) {
-        return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+        return { fault: 'opened by repeating them', instruction: doNotSayItBack(theirLast, text) };
       }
       /* The words this product does not use, same list and same reason as the check-in path. Their
          own word back is not the fault; the product reaching for it is. See words-we-do-not-use. */
       const notOurWords = wordsWeDoNotUse(text, personSaid);
       if (notOurWords.length) {
-        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords) };
+        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords, text) };
       }
       /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
       /* A reply that carries the marker and still asks is not the closing turn, so it does not get

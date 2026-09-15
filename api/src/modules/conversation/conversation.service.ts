@@ -109,7 +109,7 @@ import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1272,35 +1272,6 @@ export class ConversationService {
       }
 
       /*
-       * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
-       *
-       * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
-       * turns. A literal string is a shape, so it is checked here. Their own word handed back to
-       * them is not the fault - the fault is the product reaching for it - so what they have said
-       * so far is passed in. See words-we-do-not-use.
-       */
-      const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
-      if (notOurWords.length) {
-        this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
-        const ours = await this.anthropic
-          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords)}`, history)
-          .catch(() => '');
-        const second = ours.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (
-          second?.text && !second.hits.length &&
-          !wordsWeDoNotUse(second.text, theirWords).length &&
-          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
-        }
-      }
-
-      /*
        * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
        *
        * A hundred and twenty seven word reply reached somebody and the log could not say which of
@@ -1360,8 +1331,10 @@ export class ConversationService {
        */
       if (opensByRepeatingThem(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply opened by repeating them; asking again.`);
+        /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
+           abstract lost 58 times out of 75 across nineteen live check-ins. */
         const straight = await this.anthropic
-          .respond(`${fullSystem}\n\n${DO_NOT_SAY_IT_BACK}`, history)
+          .respond(`${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`, history)
           .catch(() => '');
         const second = straight.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
@@ -1370,7 +1343,63 @@ export class ConversationService {
           screened = second;
           this.logger.log(`Check-in ${checkIn.id}: the second try got on with it.`);
         } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try repeated them too; the first stands.`);
+          /*
+           * AND IF IT SAYS IT BACK TWICE, THE SENTENCE COMES OFF.
+           *
+           * Everything else here keeps the first reply when the retry fails, because a flat reply
+           * beats no reply and text surgery usually takes something real with it. This one fault is
+           * the exception, and it is the exception because of what it is: an opening sentence that
+           * carries NOTHING the person did not just say. Removing it removes nothing.
+           *
+           * Narrow on purpose. Only when there is another sentence behind it, only when what is
+           * left still asks them something, and only after the model has been asked and failed.
+           * Otherwise the first reply stands exactly as before.
+           */
+          const better = second?.text && !second.hits.length ? second : screened;
+          const trimmed = withoutTheSentenceThatSaysItBack(message, better.text);
+          if (trimmed) {
+            screened = { ...better, text: trimmed };
+            this.logger.warn(`Check-in ${checkIn.id}: said it back twice; the opening sentence was dropped.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try repeated them too; the first stands.`);
+          }
+        }
+      }
+
+      /*
+       * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
+       *
+       * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
+       * turns. A literal string is a shape, so it is checked here. Their own word handed back to
+       * them is not the fault - the fault is the product reaching for it - so what they have said
+       * so far is passed in. See words-we-do-not-use.
+       *
+       * LAST OF THE GUARDS, AND IT USED TO BE FOURTH. Three guards below it can REPLACE the reply,
+       * and a replacement was never checked against this list. Measured across nineteen live
+       * check-ins: banned phrases went from two to eight the moment the restating guard started
+       * succeeding more often, because its rewrites were reaching people unchecked. Running last
+       * means whatever actually ships is what got read.
+       */
+      const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
+      if (notOurWords.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
+        const ours = await this.anthropic
+          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`, history)
+          .catch(() => '');
+        const second = ours.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !wordsWeDoNotUse(second.text, theirWords).length &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+          /* Running last means this one can undo the guard above it, so it checks that too. */
+          !opensByRepeatingThem(message, second.text)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
         }
       }
 

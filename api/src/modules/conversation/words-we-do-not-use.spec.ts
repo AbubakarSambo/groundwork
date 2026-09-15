@@ -45,10 +45,16 @@ describe('the words this product does not use', () => {
   });
 
   it('names what it found, so the retry fixes that and not something else', () => {
-    const ask = sayItWithoutThose(['it sounds like', 'performance']);
+    const ask = sayItWithoutThose(['it sounds like'], 'It sounds like Rita is ahead. What is holding up supply?');
     expect(ask).toContain('"it sounds like"');
-    expect(ask).toContain('"performance"');
-    expect(ask).toMatch(/Do not replace a banned word with a longer way of saying the same word/);
+    /*
+     * The offending SENTENCE goes back too. Naming the word alone left the guard clean twice out of
+     * ten across nineteen live check-ins - the same failure the restating guard had, fixed the same
+     * way.
+     */
+    expect(ask).toContain('"It sounds like Rita is ahead."');
+    expect(ask).toMatch(/do not reach for a longer way of saying the same thing/);
+    expect(ask).toMatch(/ask the question straight/);
   });
 
   it('is clean on an ordinary reply, because a guard that fires on everything is noise', () => {
@@ -67,10 +73,46 @@ describe('and it reaches both conversations', () => {
   it('the check-in path asks again when it finds one', () => {
     const src = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     expect(src).toMatch(/const notOurWords = wordsWeDoNotUse\(screened\.text, theirWords\)/);
-    expect(src).toMatch(/sayItWithoutThose\(notOurWords\)/);
+    expect(src).toMatch(/sayItWithoutThose\(notOurWords, screened\.text\)/);
   });
   it('and so does the setup path, where a person meets the product first', () => {
     const src = strip(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
     expect(src).toMatch(/const notOurWords = wordsWeDoNotUse\(text, personSaid\)/);
+  });
+});
+
+/*
+ * Nineteen live check-ins, twice. Banned phrases went from two to eight the moment the restating
+ * guard started succeeding more often - because that guard REPLACES the reply, and the replacement
+ * was never checked against this list. The ban check sat fourth of seven.
+ */
+describe('and it is the last guard, so it reads what actually ships', () => {
+  const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('runs after every guard that can replace the reply', () => {
+    const banAt = src.indexOf('const notOurWords = wordsWeDoNotUse(screened.text');
+    expect(banAt).toBeGreaterThan(-1);
+    for (const earlier of [
+      'if (isADeadEnd(screened.text',
+      'if (alreadyAskedTwice(screened.text',
+      'if (isAnEssay(screened.text',
+      'if (isAVerdictAboutSomebodyElse(message',
+      'if (opensByRepeatingThem(message, screened.text))',
+    ]) {
+      expect(src.indexOf(earlier)).toBeLessThan(banAt);
+    }
+  });
+
+  it('and nothing reads the reply after it except the line that sends it', () => {
+    const banAt = src.indexOf('const notOurWords = wordsWeDoNotUse(screened.text');
+    const shipsAt = src.indexOf('reply = screened.text || ASK_AGAIN;');
+    expect(shipsAt).toBeGreaterThan(banAt);
+    const between = src.slice(banAt, shipsAt);
+    expect(between).not.toMatch(/screened = second;[\s\S]*screened = second;[\s\S]*screened = second;/);
+  });
+
+  it('its own retry cannot undo the guard it now runs after', () => {
+    expect(src).toMatch(/!opensByRepeatingThem\(message, second\.text\)/);
   });
 });

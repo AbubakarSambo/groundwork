@@ -54,7 +54,13 @@ describe('the first conversation has the same guards', () => {
   });
 
   it('names a different instruction for each fault, not one scolding for all of them', () => {
-    for (const named of ['ASK_SOMETHING_OR_CLOSE', 'THEY_ALREADY_SAID_NO', 'ASKED_IT_TWICE_ALREADY', 'HERS_TO_DRAW', 'DO_NOT_SAY_IT_BACK']) {
+    /*
+     * DO_NOT_SAY_IT_BACK became doNotSayItBack(theirLast, text): the instruction now quotes the
+     * offending sentence back, because asking for "no restatement" in the abstract lost 58 times
+     * out of 75 across nineteen live check-ins. Still one named instruction per fault, which is
+     * what this spec is for - it is a function rather than a constant now.
+     */
+    for (const named of ['ASK_SOMETHING_OR_CLOSE', 'THEY_ALREADY_SAID_NO', 'ASKED_IT_TWICE_ALREADY', 'HERS_TO_DRAW', 'doNotSayItBack(']) {
       expect(guarded).toContain(named);
     }
   });
