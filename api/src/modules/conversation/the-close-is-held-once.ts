@@ -54,3 +54,34 @@ export function lastSubstantiveTurn(personSaid: string[]): string {
   }
   return personSaid[personSaid.length - 1] ?? '';
 }
+
+/**
+ * A GOODBYE THAT WAS REFUSED HAS TO COME OUT.
+ *
+ * Live, the last thing a lead read in session 2 was both endings at once:
+ *
+ *   "Your report is ready now, and nothing in it needs acting on today. Speak soon.
+ *
+ *    One more before this closes. Put a date or a number on that, or name where it is written down."
+ *
+ * The product held the close and appended its question to a reply that had already said goodbye,
+ * handed the report over and wished her well. It reads as the product changing its mind mid
+ * sentence, and it is worse than either half alone: somebody who reads the first paragraph and
+ * stops has been told the session is over when it is not.
+ *
+ * The hold was right. The goodbye is what is wrong, and it is wrong because the model wrote it
+ * before the product had ruled - the model cannot know, and should not have to. So the farewell
+ * comes out here, at the moment the close is refused, and only then. What the goodbye was wrapped
+ * around - anything they actually said - is left where it is.
+ */
+const A_FAREWELL =
+  /(\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
+
+export function withoutTheGoodbye(reply: string): string {
+  const kept = (reply.match(/[^.!?\n]+[.!?]*|\n+/g) ?? [])
+    .filter((piece) => !A_FAREWELL.test(piece));
+  const out = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  /* Never hand back nothing. A reply that was ALL farewell is a close that the product refused, and
+     the question it is about to append stands on its own better than an empty turn does. */
+  return out;
+}

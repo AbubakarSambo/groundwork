@@ -290,3 +290,33 @@ export function extractionToolFor(gap: string) {
     input_schema: { type: 'object', properties: props },
   };
 }
+
+/**
+ * WHO "HER" IS, WHICH ONE SENTENCE CANNOT SAY.
+ *
+ * Read live. The lead named Amina, was asked whether to set her a target, and answered "Yes, give
+ * her 3,000 units by December." The extractor was handed that sentence alone, returned "her" as
+ * the person, and the matcher answered honestly that nobody on the check-in is called her - so the
+ * one target the product had just asked her for went nowhere, and the reply cheerfully said it had
+ * been recorded.
+ *
+ * The earlier turns go in as CONTEXT, and the instruction is explicit that only the last sentence
+ * is being read. It is the difference between reading a sentence and reading a conversation, and
+ * every pronoun anybody uses needs the second.
+ */
+export const WHO_AND_WHAT_THEY_EXPECT =
+  'The last message is the only one you are reading. The earlier messages are there for one purpose: '
+  + 'to say who a name or a word like "her", "him" or "them" in that last message refers to. '
+  + 'If the last message names a person on this check-in and what they are expected to DO or REACH - a number, a date, a piece of work to own - return it, with the person\'s actual name rather than the pronoun. '
+  + 'If it does not, return nothing. Never infer a sensible default. '
+  + 'What somebody IS - struggling, difficult, doing well - is never an expectation; return nothing for it.';
+
+/** The conversation as context, with the sentence being read last and on its own. */
+export function asContextThenTheSentence(
+  history: { role: 'user' | 'assistant'; content: string }[] | undefined,
+  said: string,
+): { role: 'user' | 'assistant'; content: string }[] {
+  const recent = (history ?? []).slice(-6).filter((h) => (h.content ?? '').trim());
+  const already = recent.length && recent[recent.length - 1]?.content?.trim() === said.trim();
+  return [...(already ? recent.slice(0, -1) : recent), { role: 'user' as const, content: said }];
+}

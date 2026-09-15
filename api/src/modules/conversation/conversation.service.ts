@@ -71,7 +71,8 @@ import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
+import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
+import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
@@ -1540,6 +1541,22 @@ export class ConversationService {
        * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
        * answers that question by itself.
        */
+      /*
+       * AND IT DOES NOT TELL THEM THEY PROMISED SOMETHING THEY NEVER MENTIONED.
+       *
+       * "You said you would send the rota by Friday" - to somebody selling tea, whose check-in has
+       * never contained the word rota. It came from the engine's own worked example of a closing
+       * turn, copied whole. Last of the guards and the only one that CUTS rather than asking again:
+       * a model that has just invented a commitment is not the thing to ask for a better one. See
+       * a-promise-they-never-made.
+       */
+      const promiseNobodyMade = aPromiseTheyNeverMade(screened.text, [...theirWords, ...known]);
+      if (promiseNobodyMade) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut an attribution nothing supports: ${JSON.stringify(promiseNobodyMade)}`);
+        const cut = withoutThePromise(screened.text, promiseNobodyMade);
+        if (cut.trim()) screened = { ...screened, text: cut };
+      }
+
       const shipping = howManyWords(screened.text);
       if (shipping > A_REPLY_IS_ABOUT) {
         this.logger.warn(
@@ -1619,7 +1636,13 @@ export class ConversationService {
     const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
     const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
     if (close.ask) {
-      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${aiTurn.content}\n\n${close.ask}` } });
+      /* The goodbye goes first. It was written before the product ruled on the close, and appending
+         a question underneath it told a lead the session was over and then that it was not. */
+      const stillOpen = withoutTheGoodbye(aiTurn.content ?? '');
+      aiTurn = await this.prisma.conversationTurn.update({
+        where: { id: aiTurn.id },
+        data: { content: stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask },
+      });
     }
     /*
      * NOT WHILE IT IS STILL ASKING. A reply can carry the close marker and end in a question - the
@@ -1921,8 +1944,14 @@ export class ConversationService {
       const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
       const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
       if (close.ask) {
-        reply = `${reply}\n\n${close.ask}`;
+        /* Same as the turn path: a refused close may not keep its goodbye. The stream has already
+           put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
+        const stillOpen = withoutTheGoodbye(reply);
+        reply = stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask;
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
+        /* The farewell is already on the screen by now, and `done` carries the whole corrected
+           reply - ChatPage replaces the streamed text with it. So the delta only has to add the
+           question; no second event type is invented for something the page already does. */
         yield { type: 'delta', text: `\n\n${close.ask}` };
       }
       yield { type: 'done', reply, sessionComplete: close.ready };

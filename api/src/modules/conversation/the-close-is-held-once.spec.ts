@@ -75,3 +75,39 @@ describe('the role map is there from turn one, provisionally', () => {
     expect(withWords.basis).toMatch(/does not bear out/);
   });
 });
+
+/*
+ * BOTH ENDINGS IN ONE MESSAGE, READ LIVE:
+ *
+ *   "Your report is ready now, and nothing in it needs acting on today. Speak soon.
+ *
+ *    One more before this closes. Put a date or a number on that, or name where it is written down."
+ */
+describe('a refused close does not keep its goodbye', () => {
+  const { withoutTheGoodbye } = require('./the-close-is-held-once');
+
+  it('takes the farewell out and leaves what they said', () => {
+    const out = withoutTheGoodbye(
+      'That is 1,200 units toward the goal. Your report is ready now, and nothing in it needs acting on today. Speak soon.',
+    );
+    expect(out).toBe('That is 1,200 units toward the goal.');
+  });
+
+  it('and hands back nothing rather than half a farewell when that is all there was', () => {
+    expect(withoutTheGoodbye('Your report is ready now. Speak soon.')).toBe('');
+  });
+
+  it('and leaves an ordinary turn exactly as it was', () => {
+    const asked = 'What specifically is making it slower, and what had you expected by now?';
+    expect(withoutTheGoodbye(asked)).toBe(asked);
+  });
+
+  it('is applied at both close sites, not only the one that was read', () => {
+    const src = require('fs')
+      .readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* The turn path and the stream path append the held question separately; fixing one leaves the
+       other reading exactly as it did before. */
+    expect((src.match(/withoutTheGoodbye\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+});

@@ -33,7 +33,7 @@ import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
-import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
+import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -2038,7 +2038,17 @@ export class GroundsService {
      * WHAT RECORDING AN EXPECTATION MEANS, SAID WHERE IT IS ABOUT TO HAPPEN. Only when that gap is
      * open, because a rule about a thing nobody is doing is noise.
      */
-    const expectationRule = gaps.some((g) => g.key === 'objectives') ? `\n\n${WHAT_RECORDING_IT_MEANS}` : '';
+    /*
+     * WHAT RECORDING AN EXPECTATION MEANS, WHEREVER THE CONVERSATION IS.
+     *
+     * This was attached only while the objectives gap was open, so on a check-in whose people
+     * already had objectives the rule was absent and the model filled the space by refusing: "this
+     * setup conversation isn't the right place to set individual targets". Setting what you expect
+     * of somebody is available for as long as there is somebody to expect it of.
+     */
+    const expectationRule = ground.participants.filter((p) => !p.managingOnly).length > 1
+      ? `\n\n${WHAT_RECORDING_IT_MEANS}`
+      : '';
     const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps)}${expectationRule}\n\n${documentBlock}`;
     const raw = await this.anthropic.respond(
       systemPrompt,
@@ -2099,6 +2109,34 @@ export class GroundsService {
       } catch {
         /* no proposal; the conversation carries on and the lead can use the form */
       }
+
+      /*
+       * AND A TARGET FOR A NAMED PERSON IS HEARD WHATEVER QUESTION WAS ON THE TABLE.
+       *
+       * Only `gaps[0]` was ever extracted, so everything the lead said that was not an answer to
+       * the one open question fell on the floor. Live: "give her 3,000 units by December" was read
+       * by the timeline extractor, came back as "I will set this to run for 90 days", and the
+       * target for Amina was never heard by anything.
+       *
+       * It WINS over the open gap's own reading when both fire. A sentence naming a person and a
+       * number is about that person - reading it as how long the check-in runs is the failure that
+       * was observed, not a tie to be broken gently.
+       */
+      if (openGap !== 'objectives') {
+        try {
+          const alsoHeard = await this.anthropic.extract<Heard>(
+            WHO_AND_WHAT_THEY_EXPECT,
+            asContextThenTheSentence(history, lastFromLead),
+            extractionToolFor('objectives'),
+          );
+          if (alsoHeard) {
+            const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId));
+            if (forSomebody.kind === 'expectation') proposal = forSomebody;
+          }
+        } catch {
+          /* the open gap's proposal, or none, stands */
+        }
+      }
     }
 
     /**
@@ -2143,7 +2181,14 @@ export class GroundsService {
   async applyContextProposal(
     groundId: string,
     requestingUserId: string,
-    dto: { said: string },
+    /*
+     * `history` is context for WHO, never for what. "Yes, give her 3,000 units by December" cannot
+     * be resolved from one sentence: the extractor returned "her" and the matcher found nobody on
+     * the check-in by that name, so a target the lead had just been asked for was silently lost.
+     * The change is still re-derived from their own words here - the client sends sentences, never
+     * a participantId or a value - so the guarantee that made this a confirmation is unchanged.
+     */
+    dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
   ) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2201,7 +2246,30 @@ export class GroundsService {
       [{ role: 'user' as const, content: dto.said }],
       extractionToolFor(openGap),
     );
-    const proposal = proposalFrom(openGap, heard ?? {}, await this.partiesForMatching(groundId));
+    const parties = await this.partiesForMatching(groundId);
+    let proposal = proposalFrom(openGap, heard ?? {}, parties);
+
+    /*
+     * AND THE SAME SECOND READING THE CHAT DOES, BECAUSE THIS IS WHERE THE YES LANDS.
+     *
+     * The chat can now hear "give her 3,000 units by December" whatever question was open. If this
+     * half still only read `gaps[0]`, the lead would be shown that proposal, say yes, and be told
+     * there was nothing in what they said - or worse, have the length of the check-in changed
+     * instead. The two halves have to read the same sentence the same way.
+     */
+    if (openGap !== 'objectives') {
+      const alsoHeard = await this.anthropic
+        .extract<Heard>(
+          WHO_AND_WHAT_THEY_EXPECT,
+          asContextThenTheSentence(dto.history, dto.said),
+          extractionToolFor('objectives'),
+        )
+        .catch(() => null);
+      if (alsoHeard) {
+        const forSomebody = proposalFrom('objectives', alsoHeard, parties);
+        if (forSomebody.kind === 'expectation') proposal = forSomebody;
+      }
+    }
     if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
 
     /**

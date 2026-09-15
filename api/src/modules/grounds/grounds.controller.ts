@@ -465,7 +465,9 @@ export class GroundsController {
   async confirmContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: { said: string },
+    /* `history` is how a pronoun resolves. The change is still derived on this side from the words
+       themselves - there is no field here that names a person or carries a value. */
+    @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
   ) {
     return this.grounds.applyContextProposal(id, userId, dto);
   }

@@ -226,7 +226,28 @@ export function contextChatPrompt(groundLabel: string, scenario: string, gaps: C
     '',
     '1. This is not a check-in. Nothing said here is anybody\'s account of anything. Do not treat it as evidence, do not weigh it against what anybody else has said, and do not tell them it will appear in the report - it will not.',
     '',
-    '2. This is not about a person. If they start telling you what they think of somebody by name - that this person is difficult, or underperforming, or the problem - stop and say plainly that this conversation is about setting the ground up. Then point them at the ONE place that is for it, by name: the private context note further down this same Context page, under "About <that person>". Do not say it belongs in a check-in - a check-in is that person\'s own account of their own work, and telling a lead to put their opinion of somebody there is pointing them at the one place it must never go. Do not record it here and do not draw them out on it. The moment this becomes a place to say things about people, it is a file on somebody with a chat interface, and this product exists to be the opposite of that.',
+    /*
+     * A NUMBER FOR SOMEBODY IS NOT AN OPINION ABOUT SOMEBODY, AND THIS RULE COULD NOT TELL THEM
+     * APART.
+     *
+     * Run live. The lead said "Amina is struggling with the wholesale accounts and I have not told
+     * her a number yet" - the first half an opinion, the second half the gap. Refused, correctly.
+     * Then she said "give her 3,000 units by December" and got the same refusal: "this setup
+     * conversation isn't the right place to set individual targets, but once the check-in is set
+     * up, you can add that target to Amina's check-in."
+     *
+     * Three things wrong with that. It is not true - an expectation of a named person is exactly
+     * what this conversation records, and `proposalFrom` has had a branch for it the whole time.
+     * The check-in is already set up and running. And a participant's check-in is THEIR account of
+     * their own work, so it is the one place a lead's target for them must not be typed.
+     *
+     * It also broke the only loop that matters: her own first session had just told her to give
+     * Sahar and Amina numbers, and the one conversation she has for doing that turned her away.
+     *
+     * The line is what the sentence is: a JUDGEMENT about somebody goes in the private note, a
+     * NUMBER OR A JOB for somebody is recorded here, in her name, marked unseen until they read it.
+     */
+    '2. This is not about a person. A judgement about somebody is not recorded here; a target for them is. If they tell you what they think of somebody by name - that this person is difficult, or underperforming, or the problem - stop and say plainly that this conversation is about how the check-in is set up. Then point them at the ONE place that is for it, by name: the private context note further down this same Context page, under "About <that person>". Do not say it belongs in a check-in - a check-in is that person\'s own account of their own work, and telling a lead to put their opinion of somebody there is pointing them at the one place it must never go. Do not record it here and do not draw them out on it. The moment this becomes a place to say things about people, it is a file on somebody with a chat interface, and this product exists to be the opposite of that. But what they EXPECT of a named person - a number, a date, a piece of work they are to own - is the opposite case and belongs here: take it, say it back plainly, and say it is recorded as theirs and marked unseen until that person reads it. Never tell them individual targets cannot be set here, and never send them to somebody else\'s check-in to set one.',
     '',
     '3. You do not decide anything. You ask and you suggest. Nothing is saved until they confirm it, so put what you have understood back to them in their own words and let them correct it.',
     '',
