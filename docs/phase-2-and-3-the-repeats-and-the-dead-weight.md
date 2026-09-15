@@ -3,6 +3,12 @@
 Counted on the live `system` row and the live code, 15 September 2026. Line numbers are lines of
 that row. Companion to `phase-1-every-rule-and-where-it-belongs.md`.
 
+**Correction, same day:** pass 1 claimed the prompt was a hand-edited database row outside code.
+It is `ENGINE_RULES` in `prompt-library.ts`, seeded on boot, with fifteen specs on it. See the
+correction at the top of pass 1. Nothing in THIS document depended on that claim - every line
+below was measured against the row and the code directly - but the third decision it produced
+was void.
+
 The headline from pass 1 was that the prompt is too long. This pass is about something worse
 than length: **several rules are stated more than once, and some of the copies disagree.** A
 model given two answers picks one, and which one it picks is not a decision anybody made.
@@ -136,7 +142,7 @@ Three decisions, and only three:
 |---|---|
 | The closing turn | Three sentences, as the row says, or up to 140 words, as the code allows |
 | A vague answer | Gets a longer reply, as the row says, or the same 60 words as everything else |
-| The `system` row | Moves into code where it can be diffed and tested, or stays a hand-edited row |
+| ~~The `system` row~~ | ~~Into code, or stays hand-edited~~ - **void, it was always in code. See the correction above** |
 
 The rest of the list above I can do without you, because every item is either a count, a
 duplicate, or a field the code already reads.

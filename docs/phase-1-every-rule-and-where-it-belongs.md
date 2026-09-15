@@ -9,21 +9,36 @@ is it shipped when it applies or shipped always.
 
 ---
 
-## The one number that decides the shape of this work
+## CORRECTION, 15 September 2026, before anybody acts on this
 
-| What ships on every turn | Size | Where it lives | In a diff |
-|---|---|---|---|
-| The `system` row | 121,866 characters, 19,739 words | One database row | No |
-| All 33 code blocks together | about 14,000 characters | `prompt-library.ts` | Yes |
+**The first version of this section was wrong. What it said, and what is true, are both below.**
 
-Ninety percent of every prompt is one hand-edited row. There are 12 inactive versions of it
-behind the active one, so it has been edited at least twelve times, and not one of those edits
-shows in a diff, has a test, or reached more than one environment at a time.
+It said the system prompt was a hand-edited database row that appeared in no diff, had no tests
+and reached one environment at a time. All four are false. The prompt is `ENGINE_RULES` in
+`prompt-library.ts`, 121,866 characters, byte for byte identical to the active database row. It
+is seeded on every boot, it is in the repository, it shows in diffs, and fifteen specs assert on
+it. A hand edit made at Admin then Prompts does not even survive a restart: the seed reactivates
+the code version.
 
-**That is the first decision, and it is yours: that row moves into code, or the audit is undone
-by the next hand-edit.** Everything below assumes it moves.
+What I should have done is `grep ENGINE_RULES` before writing that it had no home in code. The
+comment at `prompt-library.ts` line 17 says `system prompt = ENGINE_RULES (DB key "system")`.
+
+**What this changes:** there is nothing to migrate, and the third decision put to Hafsah - move
+the row into code or leave it hand-edited - was void. Every other finding in this document and
+in pass 2 was measured directly and stands unchanged.
 
 ---
+
+## The one number that still decides the shape of this work
+
+| What ships on every turn | Size | Where it lives |
+|---|---|---|
+| `ENGINE_RULES`, seeded to the `system` row | 121,866 characters, 19,739 words | `prompt-library.ts` |
+| All 33 other code blocks together | about 14,000 characters | `prompt-library.ts` |
+
+Ninety percent of every prompt is one constant. That is still the finding: not that it is
+unreviewable, but that it is enormous, says several things twice, and contradicts itself and the
+code in three places.
 
 ## The test used here
 
