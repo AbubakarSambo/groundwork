@@ -1,5 +1,5 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
-import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
+import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
@@ -1366,7 +1366,7 @@ export class GroundsService {
        individual" reached a shared board. It prints the pattern library's fixed sentence for the code,
        the same words every time the same pattern appears, plus how many sessions it was seen across,
        which is the fact that makes it a pattern. The model's sentence stays on the row for admin. */
-    const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
+    const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
     const signals = (ground.patternDetections ?? [])
       .filter((pd) => !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE' && catalogue.has(pd.code))
       .map((pd) => ({
@@ -1375,7 +1375,16 @@ export class GroundsService {
         code: pd.code,
         sessionNum: pd.periodsObserved,
         periodsObserved: pd.periodsObserved,
-        type: (isPositiveCode(pd.code) ? 'Good sign' : 'Pattern') as 'Good sign' | 'Pattern',
+        /*
+         * THREE ANSWERS, BECAUSE THERE ARE THREE KINDS. A code saying somebody is carrying what
+         * nobody else picked up is not a good sign and is not a pattern in them; badged as either
+         * it says something untrue. See WHAT_A_CARRYING_CODE_IS_CALLED.
+         */
+        type: (isPositiveCode(pd.code)
+          ? 'Good sign'
+          : isCarryingCode(pd.code)
+            ? WHAT_A_CARRYING_CODE_IS_CALLED
+            : 'Pattern') as 'Good sign' | 'Pattern' | 'Carrying',
         text: catalogue.get(pd.code)!.signal,
         confidenceDelta: null,
         createdAt: pd.createdAt.toISOString(),
@@ -4825,7 +4834,8 @@ export class GroundsService {
      * phrased as a concern.
      */
     const patterns = (participant.patternDetections ?? []).map(d => ({
-      observation: isPositiveCode(d.code)
+      /* Carrying is not bad news about them either, so it is not softened as though it were. */
+      observation: isPositiveCode(d.code) || isCarryingCode(d.code)
         ? d.observationText ?? ''
         : diplomaticObservation(d.observationText ?? ''),
       sessionNumber: d.lastPeriodNumber,

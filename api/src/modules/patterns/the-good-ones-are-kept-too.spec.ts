@@ -92,3 +92,63 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
     for (const c of ['A1', 'A2', 'A3']) expect(isPositiveCode(c)).toBe(false);
   });
 });
+
+/*
+ * The third family. Left out of the positives on purpose - every code in that list is badged
+ * "Good sign", and "Good sign: this person is absorbing everybody else's coordination debt" is the
+ * wrong sentence. Put in with the bad-faith codes it would have been worse: softened as though the
+ * person had done something wrong, when what they have done is hold something together.
+ */
+describe('carrying is its own thing, neither a good sign nor a fault', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const lib = require('./pattern-library');
+
+  it('the absorption codes exist and are in neither of the other two families', () => {
+    for (const c of ['A1', 'A2', 'A3']) {
+      expect(lib.isCarryingCode(c)).toBe(true);
+      expect(lib.isPositiveCode(c)).toBe(false);
+      expect(lib.isBadFaithCode(c)).toBe(false);
+    }
+  });
+
+  it('the model can actually answer with one', () => {
+    const codes = lib.PATTERN_DETECTION_SCHEMA.input_schema.properties.detections.items.properties.code.enum;
+    for (const c of lib.CARRYING_CODES) expect(codes).toContain(c.code);
+    expect(lib.PATTERN_DETECTION_PROMPT).toMatch(/AND THE ONES THAT ARE NEITHER/);
+  });
+
+  it('and is told to write it about the situation, never about the person', () => {
+    expect(lib.PATTERN_DETECTION_PROMPT).toMatch(/never a fault in the person/);
+    expect(lib.PATTERN_DETECTION_PROMPT).toMatch(/usually a fault around them/);
+  });
+
+  it('it takes the three-period rule, because one hard week is not carrying the place', () => {
+    const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).toMatch(/if \(isCarryingCode\(d\.code\)\) \{[\s\S]{0,200}this\.observe\(/);
+  });
+
+  it('but skips the confirming call, which is there to slow an accusation down', () => {
+    const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const branch = src.slice(src.indexOf('if (isCarryingCode(d.code))'), src.indexOf('if (!isBadFaithCode(d.code)) continue;'));
+    expect(branch).not.toMatch(/confirmDetection/);
+  });
+
+  it('the board gives it its own word, not one of the other two', () => {
+    expect(lib.WHAT_A_CARRYING_CODE_IS_CALLED).toBe('Carrying');
+    const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8');
+    expect(grounds).toMatch(/isCarryingCode\(pd\.code\)\s*\?\s*WHAT_A_CARRYING_CODE_IS_CALLED/);
+  });
+
+  it('and nobody softens it as bad news about them', () => {
+    const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(grounds).toMatch(/isPositiveCode\(d\.code\) \|\| isCarryingCode\(d\.code\)/);
+  });
+
+  it('every reader of the code catalogue knows about it, or the report dies on a missing code', () => {
+    const reports = readFileSync(join(__dirname, '..', 'reports', 'reports.service.ts'), 'utf8');
+    expect(reports).toMatch(/\.\.\.BAD_FAITH_CODES, \.\.\.POSITIVE_CODES, \.\.\.CARRYING_CODES/);
+  });
+});

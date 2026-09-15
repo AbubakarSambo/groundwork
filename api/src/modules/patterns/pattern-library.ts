@@ -104,6 +104,52 @@ const THE_GOOD_ONES: PatternCode[] = [
 
 POSITIVE_CODES.push(...THE_GOOD_ONES);
 
+/*
+ * AND THE THIRD FAMILY, WHICH IS NEITHER GOOD NEWS NOR BAD BEHAVIOUR.
+ *
+ * These were left out when the good ones went in, and the reason was the label: every code in
+ * POSITIVE_CODES is badged "Good sign" on a board, and "Good sign: this person is absorbing
+ * everybody else's coordination debt" is the wrong sentence. Put in with the bad-faith codes they
+ * would have been worse - softened as though the person had done something wrong, when what they
+ * have done is hold something together.
+ *
+ * So they get their own family and their own word. The conversation prompt has carried them under
+ * ABSORPTION PATTERNS with the instruction "surface without blame: often caused by structural
+ * failure", and that instruction is the whole design: this is a signal about the ORGANISATION,
+ * surfaced on behalf of the person carrying it, and it is never something they are doing wrong.
+ *
+ * They are longitudinal like the bad-faith codes and take the three-period rule with them - one
+ * hard week is not somebody carrying the place - but no confirmation call, because that gate
+ * exists to slow down an accusation and this is not one.
+ */
+export const CARRYING_CODES: PatternCode[] = [
+  {
+    code: 'A1',
+    name: 'Coordination Debt Absorber',
+    signal: 'Takes on the coordination other people have not done, which lets them look more effective than they are.',
+    probe: 'Whose coordination is this, and what happens to it if they stop doing it?',
+  },
+  {
+    code: 'A2',
+    name: 'Execution Rescuer',
+    signal: 'Steps in to stop failures that should not have reached them.',
+    probe: 'What was the rescue, and what should have caught it before it got here?',
+  },
+  {
+    code: 'A3',
+    name: 'Contributor Suppression',
+    signal: 'A strong contributor working below what they were doing, after a management or structural change.',
+    /* The one that reads like a fault in the person and is usually a fault around them. */
+    probe: 'What changed around them, and when did the work start looking different?',
+  },
+];
+
+export const CARRYING_CODE_SET = new Set(CARRYING_CODES.map((c) => c.code));
+export const isCarryingCode = (code: string) => CARRYING_CODE_SET.has(code);
+
+/** The word a person reads on a board. Not "Good sign", not "Pattern". */
+export const WHAT_A_CARRYING_CODE_IS_CALLED = 'Carrying';
+
 export const POSITIVE_CODE_SET = new Set(POSITIVE_CODES.map((c) => c.code));
 export const isPositiveCode = (code: string) => POSITIVE_CODE_SET.has(code);
 
@@ -313,6 +359,11 @@ ${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
 M4 is the one most often missed, because nothing visibly breaks while somebody is doing it. Work
 that is only noticed when it stops is still work.
 
+AND THE ONES THAT ARE NEITHER. These say somebody is holding something together that should not
+have needed holding. They are never a fault in the person - they are usually a fault around them -
+so write the observation about the situation and never about their choices.
+${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+
 Return the codes whose signal is present this period, each with a one-sentence plain-language
 observation. Say what happened, plainly, without prefacing it. A good one is written the same way
 as any other: "Rewrote the onboarding brief, and two teams stopped asking the same question", not
@@ -344,8 +395,8 @@ export const PATTERN_DETECTION_SCHEMA = {
              */
             code: {
               type: 'string',
-              enum: [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => c.code),
-              description: 'The pattern code. M and C codes and R3 are good news; the rest are not.',
+              enum: [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => c.code),
+              description: 'The pattern code. M, C and R3 are good news; A codes say somebody is carrying something; the rest are not.',
             },
             observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened. Do NOT open with "The record shows/describes/contains" - say the thing directly. Never names the person; never a verdict.' },
           },

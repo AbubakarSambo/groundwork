@@ -13,6 +13,7 @@ import {
   BAD_FAITH_CODES,
   isBadFaithCode,
   isPositiveCode,
+  isCarryingCode,
   detectR3,
   checkF1Conditions,
   DetectionInput,
@@ -137,6 +138,20 @@ export class PatternsService {
          */
         if (isPositiveCode(d.code)) {
           await this.observePositive(
+            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
+          );
+          continue;
+        }
+        /*
+         * CARRYING TAKES THE LONG ROAD AND SKIPS THE GATE.
+         *
+         * Longitudinal like the bad-faith codes, so it goes through observe() and the three-period
+         * rule: one hard week is not somebody holding the place together. But no confirmation
+         * call - that gate is there to slow an accusation down, and saying somebody is carrying
+         * too much is not an accusation of them.
+         */
+        if (isCarryingCode(d.code)) {
+          await this.observe(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
           );
           continue;
