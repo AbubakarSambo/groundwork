@@ -31,7 +31,13 @@ const RE_LABELS_WHAT_THEY_SAID = [
   /\bthat stops being\b/i,
   /\bthat(?:'s| is) no longer\b/i,
   /\bwhich suggests\b/i,
-  /\bthat (?:means|tells us|says) (?:there|this|that|it)\b/i,
+  /*
+   * "THAT MEANS YOU'RE SEEING A PROBLEM THAT'S IMPACTING YOUR ABILITY TO CLOSE DEALS."
+   *
+   * Off the end-to-end run. The pattern required "that means there/this/that/it" and this said
+   * "that means you're", so it went straight through. Same sentence doing the same job.
+   */
+  /\bthat (?:means|tells us|says) (?:there|this|that|it|you|we|they)\b/i,
   /\bthe real (?:problem|issue|question) (?:here )?is\b/i,
   /\bwhat (?:this|that) really is\b/i,
   /\bat (?:that|this) point (?:it|this|that) (?:is|becomes)\b/i,

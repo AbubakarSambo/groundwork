@@ -48,6 +48,16 @@ describe('a verdict is not a question', () => {
     )).toBe(false);
   });
 
+  it('catches "that means you", which the end-to-end run walked straight through', () => {
+    /* The pattern required "that means there/this/that/it". Rita said Marketing had not changed
+       anything twice, and got "That means you're seeing a problem that's impacting your ability to
+       close deals, and it's not being addressed." Same sentence, doing the same job. */
+    expect(isAVerdictAboutSomebodyElse(
+      'Marketing. I have said it twice and nothing changed.',
+      "You've raised this with Marketing twice and nothing has changed. That means you're seeing a problem that's impacting your ability to close deals. What would need to change?",
+    )).toBe(true);
+  });
+
   it('leaves a plain reflection of what she said, which is the job', () => {
     expect(isAVerdictAboutSomebodyElse(hers, 'You raised it with Marketing twice and nothing changed. What has that cost you this quarter?')).toBe(false);
   });

@@ -1867,22 +1867,7 @@ from finishing at all.`;
       await this.conversation
         .extractRecordEntries(checkIn.id, participant.id)
         .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
-      /*
-       * AND WHAT THEY SAID THEY ARE AIMING AT BECOMES A TARGET ON THE BOARD.
-       *
-       * The signed-in check-in has run this since it was written. This path, which is the one every
-       * lead meets first, never called it. So a lead who said "500 contracts by the end of the year,
-       * 150 each, and I have a target of 50" finished setup with a record of having said it and a
-       * board that read "No targets set yet, so there is nothing for this board to measure progress
-       * against". She came to set targets and track them, and nothing was set.
-       *
-       * Awaited rather than left to run on: the report is built moments later and reads the board,
-       * and an objective that arrives after it is an objective the lead does not see on the screen
-       * where they would check it. Its own failures are already caught inside.
-       */
-      await this.conversation
-        .extractExpectations(checkIn.id, participant.id, ground.id)
-        .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
+
       this.conversation
         .buildSoloArtifact(participant.id, ground.id)
         .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
@@ -2011,6 +1996,31 @@ from finishing at all.`;
     // with a resend path, instead of silently rebranding it a solo ground.
     if (dto.contributors.length === 0) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { status: 'ACTIVE' as any } });
+    }
+
+    /*
+     * AND WHAT THEY SAID THEY ARE AIMING AT BECOMES TARGETS ON THE BOARD, AFTER THE PEOPLE EXIST.
+     *
+     * The signed-in check-in has run this since it was written. This path, the one every lead meets
+     * first, never called it - so a lead who said "500 contracts, 150 each, 50 for me" finished with
+     * a record of having said it and a board reading "no targets set yet".
+     *
+     * IT WAS CALLED TOO EARLY THE FIRST TIME AND HALF OF IT SILENTLY DID NOTHING. Placed straight
+     * after the record extraction, it ran before the contributors were invited, so the ground had
+     * nobody on it but the lead. The model returned Rita, Kunle and Amir at 150 each; the resolver
+     * had an empty list to match them against and dropped all three without a word. The ground's own
+     * 500 and her own 50 landed, which is exactly the kind of partial success that reads as working.
+     *
+     * Found by running the whole journey and counting the rows: two objectives where there should
+     * have been five. So it runs here, after addParticipant, where the people it needs are real.
+     *
+     * Awaited: the report is built moments later and reads the board, and a target that arrives
+     * after it is a target the lead does not see where she would look for it.
+     */
+    if (dto.history.length > 0) {
+      await this.conversation
+        .extractExpectations(checkIn.id, participant.id, ground.id)
+        .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
