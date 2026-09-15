@@ -119,6 +119,18 @@ while the code already holds the switch.
 
 ---
 
+## What happened to each zone, once it was read rather than counted
+
+| Zone | Words | Verdict after reading |
+|---|---|---|
+| ALIGNMENT FEED MODE | ~130 | **Rewritten.** The prompt opened by telling the model it had two jobs, the second being to read across the whole organisation. `ENGINE_RULES` has exactly one consumer - the check-in - so that job never happens here. The opening now says who it is talking to, and says plainly that a rule mentioning the alignment feed means *not for this person* |
+| Conversation triggers, feed briefing, prep card | 611 | **Moved to `docs/what-the-founder-feed-would-say.md`**, word for word. They describe output for the founder's surface, and there is no trigger table, no trigger entity and no generator anywhere in the codebase. A specification, not a prompt |
+| The positives lists | 1,282 | **Kept, all of it.** These are recognition responses with the words to say - "This is delivered and confirmed. Your record shows it clearly." That is conversational craft and it is the RATIO RULE that makes the check-in balanced: something acknowledged specifically and something examined specifically, every time. The "(additional)" headings are not duplicates either; they are continuations of the same list with different codes |
+| The intake documentation | 1,326 | **Kept, and it is accurate.** I checked every documented field against what the code actually emits. One appeared missing - EXISTING_EXPECTATIONS - and it is emitted, only when there is something to compare against. No drift, unlike the pattern codes |
+| The pattern codes | 937 | **Kept, and the thirteen "orphans" were the finding.** M, C, A and N existed only here because the product detected 38 problems and one good thing. They are now detected and stored: seven positives, three carrying codes |
+
+Two of the four zones I expected to cut were the wrong call, and reading them is what showed it.
+
 ## What this means for the rebalance
 
 The plan I would take into pass 4:
