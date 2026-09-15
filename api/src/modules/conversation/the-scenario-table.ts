@@ -37,10 +37,19 @@ export interface AScenarioRow {
   /** The name in Hafsah's table. The pack must deliver this and not something adjacent to it. */
   name: string;
   /**
-   * What the card actually says, where the product deliberately differs and wrote down why. One row
-   * uses this. Anything else differing is drift, and the spec beside this file fails on it.
+   * THERE IS NO ESCAPE HATCH HERE ANY MORE, AND THAT IS THE POINT.
+   *
+   * This field existed for one row: SNAPSHOT's card said "Take One Read, Today" rather than the
+   * table's "Take the Pulse of the Team", to keep the word "pulse" away from the scenario that is
+   * NOT called PULSE_CHECK. The reasoning was about the enum names, and the enum names lie:
+   * PULSE_CHECK is the recurring read and SNAPSHOT is the quick one-off, which is what most people
+   * mean by a pulse check.
+   *
+   * So the card carries the table's name, and the two are told apart by what they say they do -
+   * "regularly, while it is happening" against "a quick picture, right now, once only" - which is
+   * what was actually separating them. A field that lets one row differ is a field that lets the
+   * next twenty differ, one reasonable exception at a time.
    */
-  cardName?: string;
   /** What it is for, in one line, as the card says it. */
   description: string;
   lead: { first: string; second: string; last: string };
@@ -328,22 +337,8 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Reflect on what needs to be addressed going forward.',
     },
   },
-  /**
-   * THE ONE ROW WHERE THE CARD DOES NOT USE HER NAME, AND IT IS DELIBERATE.
-   *
-   * Her table gives SNAPSHOT "Take the Pulse of the Team". The client's catalogue says "Take One
-   * Read, Today", and says why: PULSE_CHECK is the recurring read and SNAPSHOT is the one-off, they
-   * were a single card once, nobody could tell them apart, and handing the word "pulse" to the one
-   * that is NOT PULSE_CHECK rebuilds exactly that confusion. "Today" is the thing that separates
-   * them.
-   *
-   * That reasoning is good and it was written down before this table existed, so it is not
-   * overridden here on my own judgement. `cardName` carries what a person actually reads. Hafsah's
-   * name stays as `name` because it is her table, and it is one word to put back if she wants hers.
-   */
   [GroundScenario.SNAPSHOT]: {
     name: 'Take the Pulse of the Team',
-    cardName: 'Take One Read, Today',
     description: 'Get a quick picture of how people are experiencing the work right now.',
     lead: {
       first: 'Get a starting picture of how things feel and what matters.',

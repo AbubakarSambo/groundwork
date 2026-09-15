@@ -37,21 +37,18 @@ describe('the card and the pack are one product', () => {
     );
     for (const s of scenarios) {
       const row = THE_SCENARIO_TABLE[s]!;
-      /*
-       * `cardName` is the one escape, and it exists for exactly one row. SNAPSHOT's card says "Take
-       * One Read, Today" rather than her "Take the Pulse of the Team", because PULSE_CHECK is the
-       * recurring read and SNAPSHOT is the one-off, and giving the word "pulse" to the one that is
-       * not PULSE_CHECK rebuilds a confusion somebody already fixed. That reasoning predates the
-       * table and was written down, so it is named here rather than overridden quietly.
-       */
-      const onTheCard = row.cardName ?? row.name;
-      expect(catalogue).toContain(`${s}: '${onTheCard.replace(/'/g, "\\'")}'`);
+      expect(catalogue).toContain(`${s}: '${row.name.replace(/'/g, "\\'")}'`);
     }
   });
 
-  it('and only one row is allowed to differ from its card, so this cannot become a habit', () => {
-    const differing = scenarios.filter((s) => THE_SCENARIO_TABLE[s]!.cardName);
-    expect(differing).toEqual([GroundScenario.SNAPSHOT]);
+  it('and no row is allowed to differ from its card, because one exception becomes twenty', () => {
+    /*
+     * There WAS one. SNAPSHOT's card said "Take One Read, Today" rather than the table's "Take the
+     * Pulse of the Team", to keep the word "pulse" off the scenario that is not called PULSE_CHECK.
+     * The enum names lie - PULSE_CHECK is the recurring read - so the reasoning was protecting a
+     * confusion rather than the person. The two are told apart by what they say they do.
+     */
+    expect(scenarios.filter((s) => (THE_SCENARIO_TABLE[s] as any).cardName)).toEqual([]);
   });
 
   it.each(scenarios)('%s says what each of the six check-ins is for', (s) => {
