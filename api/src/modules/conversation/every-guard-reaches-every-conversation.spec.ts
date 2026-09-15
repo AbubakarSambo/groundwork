@@ -36,6 +36,7 @@ describe('every guard reaches every conversation', () => {
     'theyPushedBackOnTheQuestions',
     'alreadyAskedTwice',
     'isAVerdictAboutSomebodyElse',
+    'isAnEssay',
     'screen',
   ];
 

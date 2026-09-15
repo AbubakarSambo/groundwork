@@ -47,6 +47,7 @@ import {
   THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER } from '../conversation/a-reply-is-not-an-essay';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -430,7 +431,12 @@ export function buildEntrySystemPrompt(
   // giving their own independent read of the situation the initiator already
   // framed - never "what is beginning". Threaded so participantChat no longer
   // reuses the initiator's opener (BUG 1 root cause).
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment);
+  /*
+   * THE FIRST CHECK-IN, ALWAYS, ON THIS PATH. The entry flow IS session one: setup and the lead's
+   * own first check-in, before a ground exists. So the table's "first" cell is the right one and
+   * there is nothing to work out. See the-scenario-table.ts.
+   */
+  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment, 'first');
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,
@@ -711,12 +717,22 @@ Your job is to gather these things through natural conversation:
    over - there is nobody to hand it to any more. Say plainly that whoever knows what this is about
    should be the one setting it up, and that they can be added to watch the reports afterwards from
    the check-in's settings. Then stop; do not press for a situation they cannot describe.
-1b. yourPart: THE ONE THING ABOUT THEM. After the first question about the situation, ask once
-   what their own part in it is, in one plain sentence that fits what they just said: "And where do
-   you sit in this, are you her manager?" or "And your part in this?" Take whatever they say in their
-   own words; do not offer options, do not ask for a title, do not ask again. It is asked because
-   the questions their own check-in gets are shaped by it, and it was skipped by 237 of the last 239
-   people because nothing asked. If they already said it, do not ask.
+1b. yourPart: THE ONE THING ABOUT THEM, AND IT IS NOT THE SECOND THING YOU ASK.
+   Ask once what their own part in it is, in one plain sentence that fits what they just said: "And
+   where do you sit in this, are you her manager?" or "And your part in this?" Take whatever they say
+   in their own words; do not offer options, do not ask for a title, do not ask again. It is asked
+   because the questions their own check-in gets are shaped by it, and it was skipped by 237 of the
+   last 239 people because nothing asked. If they already said it, do not ask.
+
+   WHEN. After the thing they came here to do, never before it. It used to be asked immediately
+   after the first question, so a lead who chose "set goals and keep the team on track" was asked
+   "and what is your part in setting these goals?" as question two, before a single word about the
+   goals. Read live, and her words were "the your part question should come last, it should ask what
+   the goals, objectives or workplan are, this feels off."
+   
+   Asking somebody about themselves before asking about the thing they came for reads as a form
+   collecting fields. Get what they came to say first - the goals, the situation, the decision,
+   whatever this scenario is for - and ask this after it, or last.
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
@@ -1200,6 +1216,12 @@ from finishing at all.`;
       }
       if (theirLast && opensByRepeatingThem(theirLast, text)) {
         return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+      }
+      /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
+      if (isAnEssay(text, hadCloseMarker(text))) {
+        /* A count, never the words. See no-log-line-carries-what-somebody-wrote. */
+        const wasThisLong = howManyWords(text);
+        return { fault: `${wasThisLong} words`, instruction: SAY_IT_SHORTER };
       }
       return null;
     };

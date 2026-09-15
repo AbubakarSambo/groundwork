@@ -1,4 +1,5 @@
 import { alreadyEstablished } from './setup-already-asked-this';
+import { whatThisCheckInIsFor, whichStage, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
@@ -2802,19 +2803,42 @@ export const SCENARIO_PACK_FRAMINGS: Record<string, string> = {
   SEPARATION: `This ground covers a situation that may be ending. The purpose is to reach the fairest possible end state on honest terms - not to prolong something that is not working, and not to end something prematurely. The question is not whether to separate but what would need to be true for either path to be fair.`,
 };
 
-const OKR_ALIGNMENT_PACK = `MOMENT: OKR alignment across teams.
+/**
+ * SET GOALS AND KEEP THE TEAM ON TRACK. NOT AN ALIGNMENT AUDIT.
+ *
+ * This pack used to open "MOMENT: OKR alignment across teams. PURPOSE: Each person submits their own
+ * OKRs and shows how they connect to the company OKRs... before the planning cycle locks in." The
+ * card a person clicks to get here promises "set goals, targets or OKRs for your team... you can see
+ * what is on track and where you need to support them."
+ *
+ * Two different products. Watched live: a lead came to set targets, and was asked how her objective
+ * connected to company direction three turns running. She declined twice and could not get away from
+ * it, because connecting upward was the pack's stated PURPOSE. The conversation was not
+ * malfunctioning - it was faithfully running a scenario nobody picked. Her words: "this scenario
+ * sets goals to track and you accidently turn it into aligning on the goals."
+ *
+ * So the purpose is the card's purpose, the alignment question drops from being the point to being
+ * one optional question, and the numbers - which are what makes tracking possible at all - come
+ * first rather than last. See docs/THE-SCENARIO-TABLE.md; where a pack disagrees with the table, the
+ * table wins.
+ */
+const OKR_ALIGNMENT_PACK = `MOMENT: Setting goals and keeping track of how the work is going.
 
-PURPOSE: Each person submits their own OKRs and shows how they connect to the company OKRs. The session surfaces gaps, overlaps, and missing links before the planning cycle locks in.
+PURPOSE: Get the goals and the numbers down, with an owner and a date on each, so there is something real to track against. Then, session by session, find out how it is actually going and where somebody needs support.
 
-OPENING: Ask the person to name their top two or three objectives for this period. Do not ask them to recite the company OKRs back. Ask them to describe, in their own words, what they are trying to achieve and why it matters.
+OPENING: Ask what they are trying to achieve this period, in their own words. Two or three things at most. Do not ask them to recite anybody else's goals back.
 
-FOLLOW-UP: For each objective, ask what the key result looks like at the end of the period. What specific and observable thing will exist that would tell them, and anyone else who looks, that the objective was met?
+THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number is and by when. "500 contracts by the end of the year." A goal with no number cannot be tracked, and tracking is what they came for. If they genuinely have no number, say that plainly and move on - do not press a third time.
 
-ALIGNMENT CHECK: Ask how this objective connects to the company direction as they understand it. Ask them to NAME the wider objective this one sits under, in whatever words their organisation uses for it. If they cannot make the connection explicit, or cannot name what is above it, note it as a gap - do not prompt them with the answer and never supply a name yourself. An objective nobody can say what it serves is the finding, not a missing field.
+WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-CROSS-TEAM QUESTION: Ask whether any of their objectives require something from another team that has not been formally agreed. If yes, name the team and what is needed.
+WHAT WOULD TELL THEM IT IS DONE: one question, concrete. What will exist at the end that would tell them, and anyone else looking, that this was met.
 
-RECORD: The record should show: stated objectives, stated key results, stated connection to company direction, and any dependencies on other teams that are not yet formalised.`;
+HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this.
+
+THE WIDER PICTURE, AND IT IS OPTIONAL: if it comes up naturally, ask what this sits under in the organisation. Ask ONCE. If they do not know, or say it is not what they need, leave it and note it as open. It is a useful thing to have and it is not what this check-in is for.
+
+RECORD: the goals, the numbers, who owns each, the date, what would show it was met, and from session two onward what has moved and what is in the way.`;
 
 const WORKPLAN_BUDGET_PACK = `MOMENT: Workplan and budget alignment.
 
@@ -3183,7 +3207,26 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
  * party. The AI never sees the other party's opening questions, eliminating the
  * root cause of the initiator/participant role confusion.
  */
+/**
+ * WHAT THIS CHECK-IN IS, IN FRONT OF THE PACK'S OWN QUESTIONS.
+ *
+ * The scenario's own material is unchanged below. This puts the table's line at the top of it, so
+ * the model is told what this particular check-in is for before it is told how to run one. See
+ * the-scenario-table.ts for why: the card and the pack were two different products, and a lead who
+ * came to set targets spent her first session being asked how they connect to company strategy.
+ */
 export function buildScenarioPackForParty(
+  scenario: GroundScenario,
+  partyType: PartyType,
+  moment?: GroundMoment | null,
+  stage?: Stage | null,
+): string {
+  const pack = theScenariosOwnPack(scenario, partyType, moment);
+  const whatThisOneIsFor = stage ? whatThisCheckInIsFor(scenario, partyType, stage) : '';
+  return whatThisOneIsFor ? `${whatThisOneIsFor}\n\n${pack}` : pack;
+}
+
+function theScenariosOwnPack(
   scenario: GroundScenario,
   partyType: PartyType,
   // Where in the arc this ground sits. Only COHORT_CHECK reads it today: the
@@ -3665,7 +3708,9 @@ function buildActivePathway(ctx: PromptContext): string {
     // (MOMENT/PURPOSE/OPENING/follow-ups/RECORD) than a single opening line.
     // The pathway-number question remains the fallback for any scenario
     // with no pack, so nothing regresses to silence.
-    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType, ctx.moment);
+    /* WHICH OF THE THREE, so the pack's six cells are reachable. See the-scenario-table.ts. */
+    const pack = ctx.scenarioPackOverride
+      ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
     if (pack) {
       return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
     }

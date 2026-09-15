@@ -1,0 +1,115 @@
+import { GroundScenario, PartyType } from '@prisma/client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { THE_SCENARIO_TABLE, whatThisCheckInIsFor, whichStage } from './the-scenario-table';
+
+/**
+ * THE CARD AND THE PACK WERE TWO DIFFERENT PRODUCTS.
+ *
+ * The card for OKR_ALIGNMENT promises "set goals, targets or OKRs for your team... you can see what
+ * is on track". The pack behind it said "MOMENT: OKR alignment across teams. PURPOSE: Each person
+ * submits their own OKRs and shows how they connect to the company OKRs... before the planning cycle
+ * locks in."
+ *
+ * So a lead who came to set targets was asked three times how her objective connected to the company
+ * direction and could not get away from it. The conversation was not malfunctioning: it was
+ * faithfully running a scenario nobody picked. Her words: "this scenario sets goals to track and you
+ * accidently turn it into aligning on the goals."
+ *
+ * The table at docs/THE-SCENARIO-TABLE.md is the source of truth. Where a pack disagrees with it,
+ * the table wins. This file is what stops them separating again.
+ */
+describe('the card and the pack are one product', () => {
+  const scenarios = Object.keys(GroundScenario) as GroundScenario[];
+
+  it('every scenario the product can run has a row, so none inherits a neighbour’s', () => {
+    const missing = scenarios.filter((s) => !THE_SCENARIO_TABLE[s]);
+    expect(missing).toEqual([]);
+    expect(Object.keys(THE_SCENARIO_TABLE)).toHaveLength(scenarios.length);
+  });
+
+  it('and the name in the table is the name on the card the person clicked', () => {
+    /* The client's catalogue is what a person reads before they choose. If these two ever differ,
+       somebody is being sold one thing and given another, which is the whole fault. */
+    const catalogue = readFileSync(
+      join(__dirname, '..', '..', '..', '..', 'client', 'src', 'lib', 'scenario-catalog.ts'),
+      'utf8',
+    );
+    for (const s of scenarios) {
+      const row = THE_SCENARIO_TABLE[s]!;
+      /*
+       * `cardName` is the one escape, and it exists for exactly one row. SNAPSHOT's card says "Take
+       * One Read, Today" rather than her "Take the Pulse of the Team", because PULSE_CHECK is the
+       * recurring read and SNAPSHOT is the one-off, and giving the word "pulse" to the one that is
+       * not PULSE_CHECK rebuilds a confusion somebody already fixed. That reasoning predates the
+       * table and was written down, so it is named here rather than overridden quietly.
+       */
+      const onTheCard = row.cardName ?? row.name;
+      expect(catalogue).toContain(`${s}: '${onTheCard.replace(/'/g, "\\'")}'`);
+    }
+  });
+
+  it('and only one row is allowed to differ from its card, so this cannot become a habit', () => {
+    const differing = scenarios.filter((s) => THE_SCENARIO_TABLE[s]!.cardName);
+    expect(differing).toEqual([GroundScenario.SNAPSHOT]);
+  });
+
+  it.each(scenarios)('%s says what each of the six check-ins is for', (s) => {
+    const row = THE_SCENARIO_TABLE[s]!;
+    for (const side of [row.lead, row.participant]) {
+      for (const stage of ['first', 'second', 'last'] as const) {
+        expect(side[stage].trim().length).toBeGreaterThan(10);
+      }
+    }
+    /* Six genuinely different cells. A pack with one voice runs session four as session one. */
+    const six = [row.lead.first, row.lead.second, row.lead.last, row.participant.first, row.participant.second, row.participant.last];
+    expect(new Set(six).size).toBe(6);
+  });
+
+  it('puts the right cell in front of the model', () => {
+    const lead = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.INITIATOR, 'first');
+    expect(lead).toContain('Set Goals and Keep the Team on Track');
+    expect(lead).toContain('Set goals and understand what each person is working towards.');
+
+    const later = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.PARTICIPANT, 'second');
+    expect(later).toContain('Share progress, blockers, and what they need.');
+    expect(later).toMatch(/what has happened since/i);
+
+    const end = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.INITIATOR, 'last');
+    expect(end).toContain('See what was achieved and what still needs attention.');
+    expect(end).toMatch(/where did this get to/i);
+  });
+
+  it('names the three stages as understand, what changed, where it landed', () => {
+    expect(whatThisCheckInIsFor(GroundScenario.PIP, PartyType.INITIATOR, 'first'))
+      .toMatch(/Establish their picture of it\. Do not interrogate them/);
+    expect(whatThisCheckInIsFor(GroundScenario.PIP, PartyType.INITIATOR, 'second'))
+      .toMatch(/Pick up the thread/);
+    expect(whatThisCheckInIsFor(GroundScenario.PIP, PartyType.INITIATOR, 'last'))
+      .toMatch(/Close the loop/);
+  });
+
+  describe('which of the three a session is', () => {
+    it('is the first one first', () => {
+      expect(whichStage(1, 6)).toBe('first');
+    });
+
+    it('and the last one last, however many there are', () => {
+      expect(whichStage(6, 6)).toBe('last');
+      expect(whichStage(2, 2)).toBe('last');
+      /* A run that overran its plan is still at its end. */
+      expect(whichStage(9, 6)).toBe('last');
+    });
+
+    it('and everything between is a second, because "what changed" is right for session three too', () => {
+      expect(whichStage(2, 6)).toBe('second');
+      expect(whichStage(3, 6)).toBe('second');
+      expect(whichStage(5, 6)).toBe('second');
+    });
+
+    it('never calls a session the last one when nobody has said how many there are', () => {
+      expect(whichStage(4, null)).toBe('second');
+      expect(whichStage(1, null)).toBe('first');
+    });
+  });
+});

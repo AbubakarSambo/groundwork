@@ -106,6 +106,7 @@ import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER } from './a-reply-is-not-an-essay';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -1211,6 +1212,31 @@ export class ConversationService {
        * feeds. The prompt carries three and a half thousand characters on exactly this and it did
        * not hold. See a-verdict-is-not-a-question.
        */
+      /*
+       * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
+       * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
+       */
+      if (isAnEssay(screened.text, closingNow)) {
+        /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
+           interpolation and not what it evaluates to, and it is right to: a guard that has to
+           reason about what a call returns is a guard that will miss the next one. */
+        const wasThisLong = howManyWords(screened.text);
+        this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
+        const shorter = await this.anthropic
+          .respond(`${fullSystem}\n\n${SAY_IT_SHORTER}`, history)
+          .catch(() => '');
+        const second = shorter.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isAnEssay(second.text, closingNow) && !isADeadEnd(second.text, closingNow)) {
+          screened = second;
+          const nowThisLong = howManyWords(second.text);
+          this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
       if (isAVerdictAboutSomebodyElse(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
         const hers = await this.anthropic
