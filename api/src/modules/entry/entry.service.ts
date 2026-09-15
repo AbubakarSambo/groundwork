@@ -41,11 +41,12 @@ import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWor
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
-import { isADeadEnd } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
+import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
   opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
+  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
 } from '../conversation/asked-twice-and-told-no-twice';
-import { isAVerdictAboutSomebodyElse } from '../conversation/a-verdict-is-not-a-question';
+import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -1162,18 +1163,65 @@ from finishing at all.`;
      * the stream has usually already left. What it buys is that the fault is visible in the log with
      * the check-in that produced it, instead of being found again by a lead reading her screen.
      */
+    /*
+     * AND IT ASKS AGAIN, RATHER THAN NOTING THAT IT WENT WRONG.
+     *
+     * The first version of this only logged, on the reasoning that a streamed reply has already left
+     * and there is no second attempt to make. Watched in a browser, that reasoning was wrong in the
+     * way that matters: four of five turns of a real setup conversation tripped a guard and the
+     * person saw every one of them. A log nobody is reading while she is on the screen is not a
+     * guard, it is a note about a guard.
+     *
+     * The whole reply is in hand here, before it is returned, on both the streamed and unstreamed
+     * paths. So it asks once more with the fault named, exactly as the check-in does, and keeps the
+     * second only if it is genuinely better. If it is not, the first stands: a flawed reply beats no
+     * reply, and a loop here would strand the person it is trying to help.
+     *
+     * The streamed case does mean a person can see the first attempt appear and be replaced. That is
+     * worth it. What she saw instead was a lecture about recall sessions ending in the same question
+     * she had just declined.
+     */
     const theirLast = personSaid[personSaid.length - 1] ?? '';
     const asksBefore = messages.filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
-    const faults: string[] = [];
-    if (isADeadEnd(restored, hadCloseMarker(restored))) faults.push('asked nothing and did not close');
-    if (theirLast && opensByRepeatingThem(theirLast, restored)) faults.push('opened by repeating them');
-    if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
-      && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], restored)) faults.push('asked again after they said no');
-    if (alreadyAskedTwice(restored, asksBefore)) faults.push('the same question a third time');
-    if (theirLast && isAVerdictAboutSomebodyElse(theirLast, restored)) faults.push('a verdict about somebody not in the room');
-    if (faults.length) this.logger.warn(`entry chat: ${faults.join('; ')} - "${restored.slice(0, 90)}"`);
 
-    return { reply: forHumans(restored), closed: hadCloseMarker(restored) };
+    const whatIsWrong = (text: string): { fault: string; instruction: string } | null => {
+      if (isADeadEnd(text, hadCloseMarker(text))) {
+        return { fault: 'asked nothing and did not close', instruction: ASK_SOMETHING_OR_CLOSE };
+      }
+      if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
+        && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], text)) {
+        return { fault: 'asked again after they said no', instruction: THEY_ALREADY_SAID_NO };
+      }
+      if (alreadyAskedTwice(text, asksBefore)) {
+        return { fault: 'the same question a third time', instruction: ASKED_IT_TWICE_ALREADY };
+      }
+      if (theirLast && isAVerdictAboutSomebodyElse(theirLast, text)) {
+        return { fault: 'a verdict about somebody not in the room', instruction: HERS_TO_DRAW };
+      }
+      if (theirLast && opensByRepeatingThem(theirLast, text)) {
+        return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+      }
+      return null;
+    };
+
+    let best = restored;
+    const wrong = whatIsWrong(best);
+    if (wrong) {
+      this.logger.warn(`entry chat: ${wrong.fault} - asking again.`);
+      const again = await this.anthropic
+        .respond(`${system}\n\n${wrong.instruction}`, messages)
+        .catch(() => '');
+      const secondScreened = again.trim() ? screen(again, personSaid) : null;
+      const second = secondScreened?.text?.trim() ?? '';
+      if (second && !whatIsWrong(second)) {
+        best = second;
+        this.logger.log(`entry chat: the second try was clean.`);
+      } else {
+        this.logger.warn(`entry chat: the second try was no better; the first stands.`);
+      }
+    }
+
+    return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }
 
   /**
