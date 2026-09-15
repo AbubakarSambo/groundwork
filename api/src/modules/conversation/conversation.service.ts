@@ -18,6 +18,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
@@ -1264,6 +1265,35 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
+       *
+       * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
+       * turns. A literal string is a shape, so it is checked here. Their own word handed back to
+       * them is not the fault - the fault is the product reaching for it - so what they have said
+       * so far is passed in. See words-we-do-not-use.
+       */
+      const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
+      if (notOurWords.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
+        const ours = await this.anthropic
+          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords)}`, history)
+          .catch(() => '');
+        const second = ours.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !wordsWeDoNotUse(second.text, theirWords).length &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
         }
       }
 

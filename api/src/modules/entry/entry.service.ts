@@ -49,6 +49,7 @@ import {
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER } from '../conversation/a-reply-is-not-an-essay';
 import { stillAsking } from '../conversation/one-question-per-turn';
+import { wordsWeDoNotUse, sayItWithoutThose } from '../conversation/words-we-do-not-use';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -1225,6 +1226,12 @@ from finishing at all.`;
       }
       if (theirLast && opensByRepeatingThem(theirLast, text)) {
         return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+      }
+      /* The words this product does not use, same list and same reason as the check-in path. Their
+         own word back is not the fault; the product reaching for it is. See words-we-do-not-use. */
+      const notOurWords = wordsWeDoNotUse(text, personSaid);
+      if (notOurWords.length) {
+        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords) };
       }
       /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
       /* A reply that carries the marker and still asks is not the closing turn, so it does not get
