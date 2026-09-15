@@ -15,7 +15,14 @@ import { join } from 'path';
  * asked, and their own check-in's questions are shaped by it - so it moves rather than goes.
  */
 describe('what they came for comes first', () => {
-  const src = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8');
+  /*
+   * Comments out first. Every line asserted below is prompt copy the model is actually sent, so
+   * stripping changes no result today - it stops a future explanation of the rule standing in for
+   * the rule.
+   */
+  const src = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
   it('says the role question is not the second thing asked', () => {
     expect(src).toMatch(/AND IT IS NOT THE SECOND THING YOU ASK/);

@@ -31,10 +31,13 @@ describe('the card and the pack are one product', () => {
   it('and the name in the table is the name on the card the person clicked', () => {
     /* The client's catalogue is what a person reads before they choose. If these two ever differ,
        somebody is being sold one thing and given another, which is the whole fault. */
+    /* Comments out first: a name quoted in an explanation is not a name on a card. */
     const catalogue = readFileSync(
       join(__dirname, '..', '..', '..', '..', 'client', 'src', 'lib', 'scenario-catalog.ts'),
       'utf8',
-    );
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     for (const s of scenarios) {
       const row = THE_SCENARIO_TABLE[s]!;
       expect(catalogue).toContain(`${s}: '${row.name.replace(/'/g, "\\'")}'`);

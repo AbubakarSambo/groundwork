@@ -3820,6 +3820,29 @@ function buildActivePathway(ctx: PromptContext): string {
   const { scenario, partyType, sessionNumber, lowSpecificityMultiDim } = ctx;
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
+  /*
+   * THE PACK REACHES EVERY SESSION, NOT ONLY THE FIRST.
+   *
+   * This was built inside the `sessionNumber === 1` branch, so whichStage() could only ever be
+   * handed a 1 and could only ever answer 'first'. The second and last cells of the table were
+   * unreachable in a live conversation - written, tested, and never sent.
+   *
+   * Worse than the stage: from session 2 onwards the scenario left the prompt entirely. A fourth
+   * check-in about somebody's improvement plan and a fourth check-in about a team's targets got
+   * word-for-word the same instructions, because the continuity blocks below know the session
+   * number and nothing else.
+   *
+   * So the pack is built once, for whatever session this is. Session 1 opens with it. Later
+   * sessions keep their continuity opening - that block carries the PRIOR_SESSION mechanics and
+   * nothing here replaces it - and the pack follows underneath as what the conversation is about.
+   */
+  const pack = ctx.scenarioPackOverride
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
+
+  /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
+  const withTheScenarioUnderneath = (continuity: string): string =>
+    pack ? `${continuity}\n\n${pack}` : continuity;
+
   if (sessionNumber === 1) {
     // Merge, don't replace: a scenario-specific pack (DB override first, then
     // the in-code function) is the primary session-1 content when one
@@ -3828,8 +3851,6 @@ function buildActivePathway(ctx: PromptContext): string {
     // The pathway-number question remains the fallback for any scenario
     // with no pack, so nothing regresses to silence.
     /* WHICH OF THE THREE, so the pack's six cells are reachable. See the-scenario-table.ts. */
-    const pack = ctx.scenarioPackOverride
-      ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
     if (pack) {
       return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
     }
@@ -3841,23 +3862,23 @@ function buildActivePathway(ctx: PromptContext): string {
   // unexpected-angle questions without announcing the change.
   if (lowSpecificityMultiDim) {
     if (sessionNumber === 2) {
-      return `SESSION 2 OPENING STRUCTURE (SHIFTED APPROACH):
+      return withTheScenarioUnderneath(`SESSION 2 OPENING STRUCTURE (SHIFTED APPROACH):
 
 Open with this block in order, as one natural message:
 "Last time you told us: [reference one specific named thing from their record by the exact word or phrase they used, not a paraphrase]"
 "Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, alignment map, documents. Never a score: nobody here is scored, and telling a person one exists is telling them they are]"
 "Today we are going to: [focus on an unexpected angle - session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
 
-Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`;
+Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`);
     }
     if (sessionNumber === 3) {
-      return `SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process - not the situation itself, what has been hard to say. One statement. One question. Wait.`;
+      return withTheScenarioUnderneath(`SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process - not the situation itself, what has been hard to say. One statement. One question. Wait.`);
     }
-    return `SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`;
+    return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`);
   }
 
   if (sessionNumber === 2) {
-    return `SESSION 2 OPENING STRUCTURE:
+    return withTheScenarioUnderneath(`SESSION 2 OPENING STRUCTURE:
 
 Open with this block in order, as one natural message:
 "Last time you told us: [one specific named thing from session 1 in plain language - a synthesis of the most important thing they said, not a quote]"
@@ -3866,12 +3887,12 @@ Open with this block in order, as one natural message:
 
 Then ask the first question of session 2. Draw it directly from a gap or a vague answer in session 1. It must be specific to what this person said. Never ask "what have you been working on." Never ask "welcome back." Never open with a question.
 
-One opening block. One question. Wait for a response before asking anything else.`;
+One opening block. One question. Wait for a response before asking anything else.`);
   }
   if (sessionNumber === 3) {
-    return `SESSION 3 CONTINUITY: Open with one statement - name the specific evidence baseline from session 1 (use PRIOR_SESSION). Then ask one question: what exists in the record against it now. If nothing exists: ask about the blocker, not the failure. One statement. One question.`;
+    return withTheScenarioUnderneath(`SESSION 3 CONTINUITY: Open with one statement - name the specific evidence baseline from session 1 (use PRIOR_SESSION). Then ask one question: what exists in the record against it now. If nothing exists: ask about the blocker, not the failure. One statement. One question.`);
   }
-  return `SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`;
+  return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`);
 }
 
 function cadenceLabel(cadence: PromptContext['cadence']): string {
