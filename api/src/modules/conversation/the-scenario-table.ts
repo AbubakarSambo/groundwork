@@ -396,10 +396,46 @@ export function whatThisCheckInIsFor(
   const row = THE_SCENARIO_TABLE[scenario];
   if (!row) return '';
   const side = partyType === PartyType.INITIATOR ? row.lead : row.participant;
+  /*
+   * AND WHAT TO DO WITH THE PACK'S OWN QUESTIONS, WHICH ARE ALL WRITTEN FOR SESSION ONE.
+   *
+   * Six packs were rewritten to their cards. The other sixteen got the right opening line and a body
+   * that still asks what somebody is trying to achieve, what their role is, what the situation is -
+   * every one of them a first-session question. So a fourth check-in ran a first interview under a
+   * heading that said "what has changed since".
+   *
+   * Rewriting sixteen bodies is the thorough fix and it is not the honest one to do blind: those
+   * questions are right, they are simply right ONCE. What the model actually needs is to be told
+   * that. The pack becomes what this check-in is ABOUT, and the stage decides what to do with it.
+   *
+   * ALREADY ANSWERED IS THE TEST, NOT ALREADY ASKED. Somebody who never answered a pack question in
+   * session one should still be asked it in session two. The conversation so far is in front of the
+   * model; this tells it to look.
+   */
   const wording: Record<Stage, string> = {
-    first: 'This is the FIRST check-in. Establish their picture of it. Do not interrogate them.',
-    second: 'This is a LATER check-in, not the last. Pick up the thread: what they said before, and what has happened since.',
-    last: 'This is the LAST check-in. Close the loop: where did this get to.',
+    first: [
+      'This is the FIRST check-in. Establish their picture of it. Do not interrogate them.',
+      'The questions in the situation prompt below are for this conversation. Work through them one at a time.',
+    ].join('\n'),
+    second: [
+      'This is a LATER check-in, not the last. Pick up the thread: what they said before, and what has happened since.',
+      '',
+      'THE QUESTIONS IN THE SITUATION PROMPT BELOW WERE WRITTEN FOR THE FIRST CHECK-IN. Read them as what',
+      'this check-in is ABOUT, not as what to ask today. Anything already answered is settled: do not ask it',
+      'again, ask what has changed about it. Anything genuinely never answered is still worth asking once.',
+      '',
+      'Open on what moved. Their own numbers, what is in the way now, what they need from somebody else.',
+    ].join('\n'),
+    last: [
+      'This is the LAST check-in. Close the loop: where did this get to.',
+      '',
+      'THE QUESTIONS IN THE SITUATION PROMPT BELOW WERE WRITTEN FOR THE FIRST CHECK-IN and this is the end of',
+      'the run. Do not re-open them. Where the thing they set out to do landed, what did not, and what is left',
+      'for somebody to pick up is the whole of this conversation.',
+      '',
+      'Nothing new is being set up here. If they raise something new, take it down and say plainly that it is',
+      'one for whatever comes next rather than something this run will resolve.',
+    ].join('\n'),
   };
   return [
     `WHAT THIS CHECK-IN IS: ${row.name}.`,
