@@ -1251,7 +1251,7 @@ OPENER_ROLE: founder | hr | manager | peer | external
 SESSION: current session number and total
 RESOLUTION_STATE: the agreed outcome both parties are working toward
 OBJECTIVES: what this check-in is aiming at, as the lead stated it. The person answering has been shown these on screen before being asked anything, so you may refer to them directly. Press on the gap between an objective and what the person actually describes - that gap is the most useful thing this session can surface. Never assert that they agreed to an objective, and never treat one as a target they accepted: it is the lead's statement of the aim, and the person may disagree with it, which is itself worth recording.
-MY_OBJECTIVE: what the person leading this said they expect of the person answering, and whether that person has seen it yet. Where they have seen it, press on the gap between it and what they describe - never assert they agreed to it, and never turn the gap into a score. Where they have not, show it and ask what they make of it.
+WHAT_IS_EXPECTED_OF_THEM: what the person leading this said they expect of the person answering, and whether that person has acknowledged it yet. The field used to be called MY_OBJECTIVE, and the model read the possessive as its own: "My objective for this check-in, set by the person leading it, is for you to carry 150 contracts", said to the person it was about. It is not yours and it is not theirs to own either - it is what somebody else expects of them, which is exactly what makes it worth asking about. Where they have acknowledged it, press on the gap between it and what they describe - never assert they agreed to it, and never turn the gap into a score. Where they have not, it is still on their screen in the band above the conversation: ask what they make of it, and never say they have not seen it.
 EXISTING_EXPECTATIONS: what is already recorded as expected of each person. If somebody states a DIFFERENT expectation for one of them, ask what changed before replacing it.
 OTHER_PARTIES: everybody else in this check-in, by name or by the role they were described as. Use these names. Where you are asked to go person by person, these are the people.
 ADMIN_BRIEF: what the admin wrote when opening the ground
@@ -3832,8 +3832,21 @@ function describeObjective(o: NonNullable<PromptContext['personObjective']>): st
     /* Wrapped so that whole phrases survive the line breaks. The first version split "read nothing
        against it this session" across a concatenation, and a guard asserting that exact sentence
        stopped finding it - the instruction was intact, the assertion was not. */
-    : 'THEY HAVE NOT SEEN IT - show it to them, ask what they make of it, '
-      + 'and read nothing against it this session. '
+    /*
+     * AND "SHOW IT TO THEM" STOPPED BEING TRUE THE DAY THE BAND STARTED SHOWING IT.
+     *
+     * This said "THEY HAVE NOT SEEN IT - show it to them". Read on a live check-in: the band at the
+     * top of the page listed the objective, and the first message underneath said "You have not
+     * seen this yet, so I want to show it to you". The screen contradicted itself in two inches.
+     *
+     * The flag still means what it meant - nobody has acknowledged it, so nothing is read against
+     * them this session - but the fact it describes is no longer "they cannot see it". What the
+     * interview has to do is ask what they make of it, not announce it.
+     */
+    : 'THEY HAVE NOT ACKNOWLEDGED IT - it is on screen above this conversation, in the band that '
+      + 'says what this check-in is about, so do NOT announce it as something they have not seen '
+      + 'and do not read it out. Ask what they make of it. '
+      + 'Read nothing against it this session. '
       + 'Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle';
 
   /*
@@ -3902,11 +3915,11 @@ function describeObjective(o: NonNullable<PromptContext['personObjective']>): st
  * its own answer to whether it was seen, and progress on one says nothing about another.
  */
 function renderObjectives(objectives: NonNullable<PromptContext['personObjective']>[]): string[] {
-  if (!objectives.length) return ['MY_OBJECTIVE: none set for this person'];
-  if (objectives.length === 1) return [`MY_OBJECTIVE: ${describeObjective(objectives[0])}`];
+  if (!objectives.length) return ['WHAT_IS_EXPECTED_OF_THEM: none set for this person'];
+  if (objectives.length === 1) return [`WHAT_IS_EXPECTED_OF_THEM: ${describeObjective(objectives[0])}`];
 
   return [
-    `MY_OBJECTIVES (${objectives.length}, all of them this person's):\n`
+    `WHAT_IS_EXPECTED_OF_THEM (${objectives.length}, all of them this person's):\n`
     + objectives.map((o, i) => `${i + 1}. ${describeObjective(o)}`).join('\n'),
     'THESE ARE SEPARATE COMMITMENTS, NOT A CHECKLIST. Do not march through them in order and do not '
     + 'ask about all of them in one message. Each is its own promise, often to a different person, '
@@ -4102,7 +4115,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     ...(ctx.personObjective?.fromTheirSystem
       ? [
         'ALREADY RECORDED, SO DO NOT ASK FOR IT: the objective below was agreed in this organisation'
-        + ' before the check-in and is stated in MY_OBJECTIVE. Never ask them to tell you what their'
+        + ' before the check-in and is stated in WHAT_IS_EXPECTED_OF_THEM. Never ask them to tell you what their'
         + ' target, deadline or responsibility is - you have it. Ask how it is going, what is in the'
         + ' way, and whether it still reflects what they are working against.'
         + ' They may say it is wrong, was never agreed with them, or has been overtaken by something'

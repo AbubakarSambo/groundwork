@@ -199,8 +199,27 @@ describe('and the state travels with the text', () => {
       'utf8',
     );
     expect(PROMPT).toMatch(/seenBySubject/);
-    expect(PROMPT).toMatch(/THEY HAVE NOT SEEN IT/);
-    expect(PROMPT).toMatch(/read nothing against it this session/);
+    /*
+     * "THEY HAVE NOT SEEN IT" became "THEY HAVE NOT ACKNOWLEDGED IT" on 15 September 2026, and the
+     * instruction that went with it - "show it to them" - is gone.
+     *
+     * Hafsah, reading a live participant check-in: "what is weird is the you have not seen it yet,
+     * did the lead say this?" No. Nobody said it. `seenBySubject` is false until somebody marks the
+     * expectation seen, and the model was turning that internal flag into a sentence addressed to
+     * the person - while the band directly above the message was showing them the objective. The
+     * prompt's own rule is that the system's words stay behind the curtain; this was the state
+     * itself walking out from behind it.
+     *
+     * The protection is unchanged and is what this spec is for: nothing is read against somebody
+     * who has not acknowledged what is expected of them.
+     */
+    expect(PROMPT).toMatch(/THEY HAVE NOT ACKNOWLEDGED IT/);
+    expect(PROMPT).toMatch(/Read nothing against it this session/);
+    /* Comments out: the code carries a note quoting the sentence it replaced, and this assertion
+       found that note rather than an instruction. See a-guard-that-a-comment-satisfies-is-not-a-guard. */
+    const code = PROMPT.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/THEY HAVE NOT SEEN IT/);
+    expect(code).not.toMatch(/show it to them/);
   });
 
   /** And the person can actually see it, which is what makes the flag mean anything. */

@@ -48,7 +48,9 @@ describe('an objective that carries its reason', () => {
       { ...base, seenBySubject: false, whyThisNumber: 'The pipeline can carry ten.' },
     ]);
     expect(block).toContain('Do not present the reason as something they agreed to');
-    expect(block).toContain('read nothing against it this session');
+    /* Capital R since the sentence moved: the branch before it no longer ends mid-clause, because
+       "show it to them" became "it is on screen above this conversation". Same rule. */
+    expect(block).toContain('Read nothing against it this session');
   });
 
   it('and says nothing at all when no reason was ever recorded', () => {

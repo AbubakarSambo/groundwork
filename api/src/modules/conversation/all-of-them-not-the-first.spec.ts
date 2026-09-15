@@ -19,7 +19,7 @@ describe('all of a person\'s objectives reach the interview', () => {
       obj('Onboard the clients the team brings in'),
       obj('Own client onboarding end to end'),
     ] });
-    expect(block).toMatch(/MY_OBJECTIVES \(3, all of them this person's\)/);
+    expect(block).toMatch(/WHAT_IS_EXPECTED_OF_THEM \(3, all of them this person's\)/);
     for (const t of ['Bring in six paying clients', 'Onboard the clients', 'Own client onboarding']) {
       expect(block).toContain(t);
     }
@@ -35,7 +35,10 @@ describe('all of a person\'s objectives reach the interview', () => {
     const seen = block.slice(block.indexOf('Seen target'), block.indexOf('Unseen commitment'));
     const unseen = block.slice(block.indexOf('Unseen commitment'));
     expect(seen).toMatch(/PRESS ON THE GAP/);
-    expect(unseen).toMatch(/THEY HAVE NOT SEEN IT/);
+    expect(unseen).toMatch(/* Was "THEY HAVE NOT SEEN IT". The band at the top of a participant's screen shows the objective
+       now, so that sentence produced "you have not seen this yet" directly under the thing itself.
+       The flag still means nobody has acknowledged it; it no longer means they cannot see it. */
+    /THEY HAVE NOT ACKNOWLEDGED IT/);
   });
 
   it('and they are named as separate commitments, not a checklist', () => {
@@ -55,19 +58,21 @@ describe('all of a person\'s objectives reach the interview', () => {
 describe('the single and empty cases are unchanged', () => {
   it('one objective still reads as one', () => {
     const block = buildIntakeBlock({ ...base, personObjectives: [obj('Bring in six paying clients')] });
-    expect(block).toMatch(/MY_OBJECTIVE: Bring in six paying clients/);
-    expect(block).not.toMatch(/MY_OBJECTIVES/);
+    expect(block).toMatch(/WHAT_IS_EXPECTED_OF_THEM: Bring in six paying clients/);
+    /* And not the counted, multi-objective header - the pair used to be MY_OBJECTIVE against
+       MY_OBJECTIVES, which the rename would have flattened into a contradiction. */
+    expect(block).not.toMatch(/WHAT_IS_EXPECTED_OF_THEM \(/);
     expect(block).not.toMatch(/SEPARATE COMMITMENTS/);
   });
 
   it('and none still says so', () => {
     expect(buildIntakeBlock({ ...base, personObjectives: [] }))
-      .toMatch(/MY_OBJECTIVE: none set for this person/);
+      .toMatch(/WHAT_IS_EXPECTED_OF_THEM: none set for this person/);
   });
 
   it('and a caller passing only the old single field still works', () => {
     /* `personObjective` predates this and is still read by anything that has not been updated. */
     const block = buildIntakeBlock({ ...base, personObjective: obj('Just the one') });
-    expect(block).toMatch(/MY_OBJECTIVE: Just the one/);
+    expect(block).toMatch(/WHAT_IS_EXPECTED_OF_THEM: Just the one/);
   });
 });
