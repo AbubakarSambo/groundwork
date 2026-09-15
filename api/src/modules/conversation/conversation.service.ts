@@ -108,7 +108,7 @@ import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
 import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
-import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
 import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
@@ -1253,8 +1253,11 @@ export class ConversationService {
            reason about what a call returns is a guard that will miss the next one. */
         const wasThisLong = howManyWords(screened.text);
         this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
+        /* A close that ran long is not a long reply, it is a close that read the record back. Ask
+           for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
+        const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
         const shorter = await this.anthropic
-          .respond(`${fullSystem}\n\n${SAY_IT_SHORTER}`, history)
+          .respond(`${fullSystem}\n\n${askFor}`, history)
           .catch(() => '');
         const second = shorter.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)

@@ -47,7 +47,7 @@ import {
   THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
-import { isAnEssay, howManyWords, SAY_IT_SHORTER } from '../conversation/a-reply-is-not-an-essay';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES } from '../conversation/a-reply-is-not-an-essay';
 import { stillAsking } from '../conversation/one-question-per-turn';
 import { wordsWeDoNotUse, sayItWithoutThose } from '../conversation/words-we-do-not-use';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -1236,10 +1236,15 @@ from finishing at all.`;
       /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
       /* A reply that carries the marker and still asks is not the closing turn, so it does not get
          the closing turn's room. See a-turn-still-asking-is-not-a-close. */
-      if (isAnEssay(text, hadCloseMarker(text) && !stillAsking(text))) {
+      const closingHere = hadCloseMarker(text) && !stillAsking(text);
+      if (isAnEssay(text, closingHere)) {
         /* A count, never the words. See no-log-line-carries-what-somebody-wrote. */
         const wasThisLong = howManyWords(text);
-        return { fault: `${wasThisLong} words`, instruction: SAY_IT_SHORTER };
+        /* Ask a long close for what a close is FOR, not merely for fewer words. */
+        return {
+          fault: `${wasThisLong} words`,
+          instruction: closingHere ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER,
+        };
       }
       return null;
     };

@@ -28,19 +28,53 @@
  * and that is the one place a longer reply earns its length.
  */
 
+import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
+
 /** Past this, it has stopped being a conversation. */
 export const A_REPLY_IS_ABOUT = 60;
 
-/** Where a reply may run long, because it is doing something a short one cannot. */
-export const A_CLOSE_MAY_RUN_TO = 140;
+/**
+ * AND THE CLOSE IS THE SHORTEST TURN, NOT THE LONGEST. Decided by Hafsah, 15 September 2026.
+ *
+ * This used to allow a close a hundred and forty words, on the reasoning that the last turn names
+ * what now exists and that earns its length. The prompt said the opposite in two places - "THE
+ * CLOSING TURN IS THE SHORTEST TURN OF THE SESSION" and "three sentences at most" - and the two
+ * had been disagreeing for as long as both existed. Put to her with both arguments; she took the
+ * three sentences.
+ *
+ * The reason that settles it: the report shows them their whole record the moment the session
+ * ends, everybody's, in full. Reading it back first is saying the same thing twice, and it is
+ * where the voice slips into summary. A close observed live ran to 72 words and six sentences.
+ *
+ * THE THREE. One: the thing THEY said they would do, in their words, with its date. Two: the
+ * report is theirs and nothing needs acting on today. Three: goodbye.
+ */
+export const A_CLOSE_IS_AT_MOST = 3;
+
+/*
+ * A BACKSTOP, BECAUSE THREE SENTENCES CAN STILL BE A PARAGRAPH. Three sentences carrying a figure,
+ * a date and a name sit comfortably under eighty; past that it is one long sentence doing what the
+ * rule was written to stop.
+ */
+export const A_CLOSE_STILL_FITS_IN = 80;
 
 export function howManyWords(text: string): number {
   return ((text ?? '').trim().match(/\S+/g) ?? []).length;
 }
 
-export function isAnEssay(text: string, closing: boolean): boolean {
-  return howManyWords(text) > (closing ? A_CLOSE_MAY_RUN_TO : A_REPLY_IS_ABOUT);
+export function howManySentences(text: string): number {
+  return sentencesIn(text ?? '').filter((s) => s.trim()).length;
 }
+
+export function isAnEssay(text: string, closing: boolean): boolean {
+  if (!closing) return howManyWords(text) > A_REPLY_IS_ABOUT;
+  return howManySentences(text) > A_CLOSE_IS_AT_MOST || howManyWords(text) > A_CLOSE_STILL_FITS_IN;
+}
+
+/** The close has its own instruction, because "shorter" does not say what a close is FOR. */
+export const A_CLOSE_IS_THREE_SENTENCES = `That is the closing turn and it is too long. They are about to be shown their whole record, everybody's, in full - so reading it back to them first is saying the same thing twice.
+
+Three sentences at most, and fewer is better. One: the thing THEY said they would do, in their own words, with its date if they gave one. Two: the report is theirs now and nothing in it needs acting on today. Three: goodbye. Nothing else.`;
 
 export const SAY_IT_SHORTER = `That reply is far longer than it needs to be. Somebody typing one sentence into a box and getting five back knows what has happened, however good the five are.
 

@@ -27,10 +27,18 @@ describe('a reply is not an essay', () => {
     expect(isAnEssay('Got it. Five hundred contracts by the end of the year. What would tell you it was met?', false)).toBe(false);
   });
 
-  it('lets the close run longer, because naming what now exists is worth the words', () => {
+  it('holds the close to three sentences, which is the shortest turn and not the longest', () => {
+    /*
+     * This used to assert the opposite: a hundred words passed as a close because a close was
+     * allowed a hundred and forty. The prompt had said "the closing turn is the shortest turn of
+     * the session" and "three sentences at most" the whole time, and the two rules had been
+     * disagreeing for as long as both existed. Put to Hafsah with both arguments on 15 September
+     * 2026; she took the three sentences, because the report shows them their whole record the
+     * moment the session ends and reading it back first says the same thing twice.
+     */
     const close = Array.from({ length: 100 }, (_, i) => `word${i}`).join(' ');
     expect(isAnEssay(close, false)).toBe(true);
-    expect(isAnEssay(close, true)).toBe(false);
+    expect(isAnEssay(close, true)).toBe(true);
   });
 
   it('is a number somebody can argue with, not a feeling', () => {
@@ -53,12 +61,52 @@ describe('a reply is not an essay', () => {
      * seven. See a-turn-still-asking-is-not-a-close.
      */
     expect(checkIn).toMatch(/isAnEssay\(screened\.text, thisIsTheClosingTurn\)/);
-    expect(entry).toMatch(/isAnEssay\(text, hadCloseMarker\(text\) && !stillAsking\(text\)\)/);
+    expect(entry).toMatch(/const closingHere = hadCloseMarker\(text\) && !stillAsking\(text\)/);
+    expect(entry).toMatch(/isAnEssay\(text, closingHere\)/);
   });
 
   it('is checked last on the entry path, so a real fault is fixed for the fault not the length', () => {
     const entry = readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8');
     const fn = entry.slice(entry.indexOf('const whatIsWrong'));
     expect(fn.indexOf('isAnEssay')).toBeGreaterThan(fn.indexOf('opensByRepeatingThem'));
+  });
+});
+
+/*
+ * Decided by Hafsah on 15 September 2026, with both arguments put to her: the close may run to a
+ * hundred and forty words, or it is three sentences. She took the three sentences, and the reason
+ * that settles it is that the report shows them their whole record the moment the session ends.
+ */
+describe('and the close is the shortest turn, not the longest', () => {
+  const { isAnEssay: essay, A_CLOSE_IS_AT_MOST, A_CLOSE_STILL_FITS_IN, howManySentences, A_CLOSE_IS_THREE_SENTENCES } =
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('./a-reply-is-not-an-essay');
+
+  const aRealClose = 'You said you will speak to Rita on Thursday. That is on your board, and the report is yours now. Speak soon.';
+
+  it('three sentences is a close', () => {
+    expect(howManySentences(aRealClose)).toBe(A_CLOSE_IS_AT_MOST);
+    expect(essay(aRealClose, true)).toBe(false);
+  });
+
+  it('four is not, however short they are', () => {
+    expect(essay(`${aRealClose} One more thing.`, true)).toBe(true);
+  });
+
+  it('and three enormous ones are not either, which is why the word backstop is there', () => {
+    const padded = `${'word '.repeat(A_CLOSE_STILL_FITS_IN + 5)}. Two. Three.`;
+    expect(essay(padded, true)).toBe(true);
+  });
+
+  it('the close that was read live - 72 words, six sentences - would now be asked again', () => {
+    const asItLanded =
+      "You're looking at procurement as the main risk for the two biggest accounts. You've clearly identified your next steps: speaking to Rita on Thursday to confirm the new numbers, and adjusting Amir's target. Before we close: you said you will speak to Rita on Thursday and confirm the new numbers with Amir. That is on your board. Your report is ready now, and nothing in it needs acting on today. Speak soon.";
+    expect(essay(asItLanded, true)).toBe(true);
+  });
+
+  it('and the retry asks for what a close is for, not merely for fewer words', () => {
+    expect(A_CLOSE_IS_THREE_SENTENCES).toMatch(/Three sentences at most/);
+    expect(A_CLOSE_IS_THREE_SENTENCES).toMatch(/in their own words, with its date/);
+    expect(A_CLOSE_IS_THREE_SENTENCES).toMatch(/saying the same thing twice/);
   });
 });

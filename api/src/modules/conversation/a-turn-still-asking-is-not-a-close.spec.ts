@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isAnEssay, A_REPLY_IS_ABOUT, A_CLOSE_MAY_RUN_TO } from './a-reply-is-not-an-essay';
+import { isAnEssay, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
 import { stillAsking } from './one-question-per-turn';
 
 /*
@@ -39,8 +39,13 @@ describe('a turn that is still asking is not a close', () => {
     expect(isAnEssay(askingAtTheEnd, false)).toBe(true);
   });
 
-  it('and a real close still gets its room', () => {
-    const closing = `${'word '.repeat(A_CLOSE_MAY_RUN_TO - 20)}That is on your board.`;
+  it('and a real close still passes, now that a close is three sentences', () => {
+    /*
+     * This used to build a 120-word close and assert it fit, because a close was allowed 140. That
+     * allowance is gone - Hafsah took the three sentences on 15 September - so the fixture is now
+     * what a close is actually meant to be. See a-reply-is-not-an-essay.
+     */
+    const closing = 'You said you will speak to Rita on Thursday. That is on your board, and the report is yours now. Speak soon.';
     expect(stillAsking(closing)).toBe(false);
     expect(isAnEssay(closing, true)).toBe(false);
   });
