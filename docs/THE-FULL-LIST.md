@@ -1,8 +1,8 @@
 # The full list, 15-16 September 2026
 
-Everything from this session. Part 1 is done and waiting on a deploy. Parts 2 to 6 are the work,
+Everything from this session. Part 1 is done and waiting on a deploy. Parts 2 to 7 are the work,
 each with what is wrong, what it should do instead, how I would build it, and what could go wrong.
-Nothing in parts 2 to 6 is started.
+Nothing in parts 2 to 7 is started.
 
 ---
 
@@ -35,7 +35,57 @@ Production has none of this. Every screenshot read in this session came from the
 
 ---
 
-# PART 2 - THE CHAT
+# PART 2 - THE LANGUAGE
+
+Her words, on reading the live product: "the language is a bit off and unclear in general", "the
+tone is weird", "the language is so AI and hard to understand", and finally the one that settles
+its priority - the writing sounds stupid and we need something clearer.
+
+This sits ahead of the report's content because a report with perfect reasoning in this voice is
+still one nobody reads.
+
+## 2.1 What is actually wrong, in its own words
+
+| Live text | What it should say |
+|---|---|
+| "Because silence is usually a stage, not a rejection, it is important to know that this kind of sales and expansion work often faces unfair reading, which you should consider before making assumptions about your current standing." | "Nothing in your session says how the 150 get closed. That is the gap." |
+| "What decides whether the later sessions are worth anything is what you can point at." | "Next time bring one thing somebody else could open." |
+| "Nothing above this has been named yet. The objectives here are being held on their own, so there is nothing to check them against." | "These goals do not sit under anything bigger. If they are meant to, say what." |
+| "still open, as the written report reads it" | "1 still unsettled" |
+| "Your record is building from what you are doing, not from what you are hoping for." | "You have 62 signed. What is next?" |
+| "It is your baseline. I will use this when we check in on progress." | "Got it - that is the number we come back to." |
+| Headings: NOTHING ABOVE THIS, AGAINST WHAT GOOD LOOKS LIKE, WHAT THIS RESTS ON, HOW MUCH THERE IS TO GO ON | What these goals serve. What each person said success is. How solid this is. How much was said. |
+
+## 2.2 The pattern
+
+Every bad sentence does one of two things. It **talks about a category instead of about the person**
+- "this kind of work", "later sessions", "your current standing" - or it uses **words nobody says
+out loud**: checkable, rests on, read against, unfair reading, surface, baseline, anchored.
+
+## 2.3 Three rules, all testable
+
+1. **A sentence that would be equally true of somebody else is cut.** "This kind of work often faces
+   unfair reading" fails it. "You carry 150 of a 10,000 nobody has divided up" passes. This is
+   checkable at generation: a sentence with no number, no name and no date from THIS record is a
+   sentence about nothing.
+2. **No word a person would not say to a colleague.** The list goes in code beside the other bans,
+   because that is the one mechanism that has held.
+3. **Headings name what is under them**, in ordinary words.
+
+## 2.4 Where it applies
+
+Both surfaces. The report's own written copy AND the generated sentences, and the chat's
+acknowledgements - "that is the target you are working to", "it is your baseline" - which are the
+same voice in a different place.
+
+## 2.5 How this gets approved
+
+I draft the replacement copy - headings, the standing sentences, the ban list - and show it to you
+before any of it ships. It is your product's voice and I am not guessing at it.
+
+---
+
+# PART 3 - THE CHAT
 
 ## 2.1 It must notice the gap DURING session 1, not after it
 
@@ -99,7 +149,7 @@ reach the objective. Say one of those, once, before the session closes.
 
 ---
 
-# PART 3 - THE REPORTS
+# PART 4 - THE REPORTS
 
 The plan has three layers, because "no reasoning" is three different absences.
 
@@ -170,7 +220,7 @@ And a commitment goes under commitments, not under "what everybody agrees".
 Now: *"What did that turn into - pipeline, conversion, sign-ups?"* in a conversation about tea in
 Abuja.
 
-## 3.7 The copy pass - the AI voice
+## 4.7 The copy pass - see PART 2, which this is now part of
 
 `NOTHING ABOVE THIS`, `WHAT THIS RESTS ON`, `AGAINST WHAT GOOD LOOKS LIKE` are cryptic. The generated
 sentences are worse. This is a rewrite of the report's own language into plain words.
@@ -179,7 +229,7 @@ sentences are worse. This is a rewrite of the report's own language into plain w
 
 ---
 
-# PART 4 - WHAT THE PRODUCT GIVES BACK
+# PART 5 - WHAT THE PRODUCT GIVES BACK
 
 Your words: "the give something isn't really working well here."
 
@@ -202,7 +252,7 @@ said earlier in this same conversation.
 
 ---
 
-# PART 5 - PLUMBING AND DATA
+# PART 6 - PLUMBING AND DATA
 
 | | What | Size |
 |---|---|---|
@@ -214,11 +264,11 @@ said earlier in this same conversation.
 
 ---
 
-# PART 6 - DECISIONS
+# PART 7 - DECISIONS
 
 | | Question |
 |---|---|
-| 6.1 | Deploy the ten commits |
-| 6.2 | Order of parts 2 and 3 - my recommendation is 2.1 first, then 3.1 and 3.2 together |
-| 6.3 | Whether to spend an extra model call on 5.4 |
-| 6.4 | The copy pass in 3.7 - I draft, you approve |
+| 7.1 | Deploy the ten commits |
+| 7.2 | Order. My recommendation: PART 2 (the language) and 3.1 (the chat noticing the gap) first, then 4.1 and 4.2 together. The language pass makes everything after it legible |
+| 7.3 | Whether to spend an extra model call on 6.4 |
+| 7.4 | The language drafts in PART 2 - I write them, you approve before they ship |
