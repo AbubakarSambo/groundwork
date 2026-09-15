@@ -52,11 +52,11 @@ function makeService(over: {
       update: upsert,
       findUnique: jest.fn(async () => over.prior ?? null),
     },
-    groundObjective: { count: jest.fn(async () => 0), createMany },
+    groundObjective: { count: jest.fn(async () => 0), findMany: jest.fn(async () => [] as any[]), createMany },
   };
   const anthropic: any = {
     extract: jest.fn(async () => over.extraction ?? {
-      groundAims: ['He owns delivery end to end in 90 days'],
+      groundAims: [{ name: 'He owns delivery end to end in 90 days', target: 90 }],
       expectations: [{ personName: 'Abubakar', expectation: 'Own the weekly delivery call by week four', awareness: 'NOT_TOLD', awarenessDetail: 'I assumed Hafsah covered it' }],
     }),
   };
@@ -144,11 +144,30 @@ describe('GW-EXP-1b: what gets written', () => {
     expect((createMany.mock.calls[0][0] as any).data[0].name).toBe('He owns delivery end to end in 90 days');
   });
 
-  it('but not a second time, so a lead restating the aim does not duplicate the list', async () => {
+  it('with the number they said, which used to be thrown away', async () => {
+    const { svc, createMany } = makeService();
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect((createMany.mock.calls[0][0] as any).data[0].target).toBe(90);
+  });
+
+  it('does not duplicate an aim they restate', async () => {
+    /*
+     * This used to refuse everything once ANY objective existed, so a lead naming a second aim in
+     * session four was dropped in silence. Matched by name now: the one they restated is skipped and
+     * nothing else is refused.
+     */
     const { svc, prisma, createMany } = makeService();
-    prisma.groundObjective.count = jest.fn(async () => 2);
+    prisma.groundObjective.findMany = jest.fn(async () => [{ name: 'He owns delivery end to end in 90 days' }] as any[]);
     await svc.extractExpectations('c1', 'lead', 'g1');
     expect(createMany).not.toHaveBeenCalled();
+  });
+
+  it('but does write a new one alongside aims that already exist', async () => {
+    const { svc, prisma, createMany } = makeService();
+    prisma.groundObjective.findMany = jest.fn(async () => [{ name: 'Something else entirely' }] as any[]);
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    expect(createMany).toHaveBeenCalled();
+    expect((createMany.mock.calls[0][0] as any).data[0].name).toBe('He owns delivery end to end in 90 days');
   });
 });
 

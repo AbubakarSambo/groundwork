@@ -44,12 +44,19 @@ import type { SubscriptionPlan } from '@/api/billing'
  * "Performance improvement plan", which also keeps the word "performance" out of the product - a
  * decision taken for the participant-facing strings and quietly broken here once already.
  *
- * ONE NAME IS NOT THE ONE HAFSAH WROTE. Her table gives SNAPSHOT "Take the Pulse of the Team". The
- * two are a known collision - PULSE_CHECK is the recurring read and SNAPSHOT is the one-off, they
- * were a single card once, and nobody could tell them apart, which is why the note below SNAPSHOT
- * exists at all. Handing the word "pulse" to the one that is NOT PULSE_CHECK rebuilds exactly that.
- * "Take One Read, Today" says the thing that actually separates them, which is that it happens once.
- * One word to put back if she would rather have hers.
+ * THE ENUM NAMES LIE ABOUT THESE TWO, AND THE CARDS DO NOT.
+ *
+ * PULSE_CHECK is not the pulse check. It is the RECURRING read, "Keep a Read on Live Work". SNAPSHOT
+ * is the quick one-off, which is what most people mean by a pulse check, and its card is
+ * "Take the Pulse of the Team". The enum was named before the cards were and nobody renamed it, so
+ * reading the schema gives you the opposite of the truth. Read the labels, not the keys.
+ *
+ * The two were a single card once and nobody could tell them apart. The fix for that is not a
+ * different name: it is that their descriptions say plainly which is which. "Regularly understand
+ * how work is going while it is happening" against "get a quick picture of how people are
+ * experiencing the work right now", and one card says "Once only, not on a schedule" in its own
+ * opening line. That is what separates them, and it does the job a renamed label was standing in
+ * for.
  */
 export const SCENARIO_LABELS = {
   NEW_HIRE: 'Help a New Hire Get Started',
@@ -99,7 +106,7 @@ export const SCENARIO_LABELS = {
    * today, no target and no second session. They were the same card once, which is why neither could
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
-  SNAPSHOT: 'Take One Read, Today',
+  SNAPSHOT: 'Take the Pulse of the Team',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS

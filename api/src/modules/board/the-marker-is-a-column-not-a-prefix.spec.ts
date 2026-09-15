@@ -28,7 +28,15 @@ describe('the marker is a column, not a prefix', () => {
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 900);
     expect(block).toContain('verifiability: v');
-    expect(block).toContain('text: e.text.trim()');
+    /*
+     * The text goes in as the person said it, with no marker built onto the front of it - which is
+     * what this spec is for. It used to pin the exact call `e.text.trim()`; the trim now happens
+     * inside theLineWithoutItsDanglingJoin, which takes a leading "and" off the half of a split
+     * sentence that kept it and changes nothing else. Pinning the rule rather than the call, so a
+     * tidy-up that leaves her words alone does not read as a marker coming back.
+     */
+    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)/);
+    expect(block).not.toMatch(/text: `/);
     /* The prefix is not built any more. This is the line that ends the class. */
     expect(block).not.toMatch(/\[VERIFIABILITY:\$\{/);
   });

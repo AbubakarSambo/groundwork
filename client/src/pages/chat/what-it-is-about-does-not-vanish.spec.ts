@@ -44,8 +44,20 @@ describe('what this check-in is about', () => {
     const at = SERVICE.indexOf('async getTranscript(')
     const end = SERVICE.indexOf('async getDownload(')
     const body = SERVICE.slice(at, end)
-    expect(body).toContain('brief: true')
-    expect(body).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/)
+    /*
+     * The field list moved into WHAT_THE_BRIEF_IS_READ_FROM and is spread in here. It moved
+     * because this query and the one that opens a session had drifted: both feed briefFor,
+     * neither fetched initiatorId, and briefFor reads it through `as any` - so a lead opening
+     * her own check-in came back as not-the-lead and was shown the narrowed view of targets she
+     * set herself. One shape now, so the two cannot disagree again.
+     *
+     * Asserted on the shared constant rather than on this query's own lines, because listing
+     * them here again is the duplication that caused it.
+     */
+    expect(body).toMatch(/\.\.\.WHAT_THE_BRIEF_IS_READ_FROM/)
+    const shape = SERVICE.split('const WHAT_THE_BRIEF_IS_READ_FROM = {')[1]?.split('} as const;')[0] ?? ''
+    expect(shape).toContain('brief: true')
+    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/)
   })
 
   it('is declared on the response the client reads', () => {

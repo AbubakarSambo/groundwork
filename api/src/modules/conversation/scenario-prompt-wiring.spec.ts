@@ -259,17 +259,41 @@ describe('GW-PROMPT-WIRE-02: PIP resolves to SITUATION_TYPE Accountability', () 
 // future change ever collapses these to one shared pack, this goes red.
 // ---------------------------------------------------------------------------
 
+/**
+ * THIS SPEC PINNED THE TWO PARTIES THE WRONG WAY ROUND, AND PINNED IT CONFIDENTLY.
+ *
+ * It required the INITIATOR to get "Name the specific ask" - a question for somebody seeking a raise
+ * - and the PARTICIPANT to get "Someone is about to make a case to you", which is the manager who
+ * decides. So the person who sets the check-in up was the applicant and the person invited in was
+ * the decider: the opposite of every other scenario in the product.
+ *
+ * The card says "understand someone's contribution and experience before making a recognition
+ * decision", and the table's participant cell is "share what they have been working on and how they
+ * see their contribution". The lead decides. The participant is the person being recognised.
+ *
+ * The spec was not wrong about there being two framings, which is why it is rewritten rather than
+ * deleted. It was wrong about who gets which.
+ */
 describe('GW-PROMPT-WIRE-03: RECOGNITION initiator vs participant framing', () => {
-  it('initiator gets the "making the ask" framing', async () => {
+  it('the lead is asked about the person, because the lead is the one deciding', async () => {
     const prompt = await assembledPrompt(GroundScenario.RECOGNITION, PartyType.INITIATOR, {});
-    expect(prompt).toContain('Name the specific ask.');
-    expect(prompt).not.toContain('Someone is about to make a case to you.');
+    expect(prompt).toMatch(/what this person has been responsible for/i);
+    expect(prompt).not.toMatch(/What are you asking for/i);
+    /* And is not asked to reach the decision inside the check-in. */
+    expect(prompt).toMatch(/they have the picture before they decide/i);
   });
 
-  it('participant gets the "receiving the ask" framing, not the initiator framing', async () => {
+  it('the person it is about is asked about their own work, not asked to judge somebody', async () => {
     const prompt = await assembledPrompt(GroundScenario.RECOGNITION, PartyType.PARTICIPANT, {});
-    expect(prompt).toContain('Someone is about to make a case to you.');
-    expect(prompt).not.toContain('Name the specific ask.');
+    expect(prompt).toMatch(/the person this check-in is about/i);
+    expect(prompt).toMatch(/What have you been working on over this period/i);
+    expect(prompt).not.toMatch(/the person who will receive the ask/i);
+  });
+
+  it('and nobody is told what the decision will be', async () => {
+    const prompt = await assembledPrompt(GroundScenario.RECOGNITION, PartyType.PARTICIPANT, {});
+    expect(prompt).toMatch(/do not tell them what their chances are/i);
+    expect(prompt).toMatch(/The decision is not yours and it is not made here/i);
   });
 
   it('the two framings are genuinely different strings', async () => {

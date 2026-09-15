@@ -38,7 +38,9 @@ import { BoardFamily, familyFor } from '../board/board-families';
  */
 let patternByCode: Map<string, { code: string; signal: string; probe?: string }> | null = null;
 const patternCatalogue = () => (patternByCode ??= new Map(
-  [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]),
+  /* All three families. A code missing from here reaches `.get(code)!` and takes the report
+     down with it, which is what a fourth family would do next time. */
+  [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { whatTheyCouldTry } from './what-you-could-try-next';
@@ -72,7 +74,7 @@ import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/cover
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
-import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
@@ -2442,6 +2444,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           isYou: !!me && r.participantId === me.id,
           signal: lib.signal,
           positive: isPositiveCode(r.code),
+          carrying: isCarryingCode(r.code),
           periodsObserved: r.periodsObserved,
         };
       });

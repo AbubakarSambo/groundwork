@@ -55,3 +55,25 @@ describe('what they declined is not a gap', () => {
     expect(whatTheyDeclined(cross)).toHaveLength(0);
   });
 });
+
+describe('a why-it-matters line that says the opposite of its point', () => {
+  const { saysTheOppositeOfWhatItMeans, putTheMissingWordBack } = require('./what-they-declined-is-not-a-gap');
+  const real = 'with a clear link, the team might hit its numbers but not contribute to the most important company goals, or face resource conflicts with other teams.';
+
+  it('catches the line off the real report', () => {
+    expect(saysTheOppositeOfWhatItMeans(real)).toBe(true);
+    expect(putTheMissingWordBack(real)).toMatch(/^Without a clear link/);
+  });
+
+  it('leaves the rest of the sentence exactly as written', () => {
+    expect(putTheMissingWordBack(real)).toContain('face resource conflicts with other teams.');
+  });
+
+  it('leaves a line that was already right', () => {
+    for (const ok of [
+      'Without a named owner this will slip again.',
+      'With the finance team confirming it, this is checkable by anybody.',
+      'Nobody can tell whether the number moved.',
+    ]) expect(saysTheOppositeOfWhatItMeans(ok)).toBe(false);
+  });
+});

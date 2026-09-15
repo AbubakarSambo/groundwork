@@ -83,8 +83,18 @@ describe('and the lead is told where the setting is doing nothing', () => {
      */
     const threeWays = [...partly, { name: 'Amina', target: 21, ownerParticipantId: 'amina' }];
     const out = targetsFor(threeWays, 'musa', 'their own');
-    expect(out.alsoSay).toContain('aiming at 96');
     expect(out.alsoSay).not.toMatch(/across \d+ (person|people)/);
+    /*
+     * AND NOT THE TOTAL EITHER, WHICH THIS USED TO EXPECT.
+     *
+     * It asked for "aiming at 96" - every number added up while some of them belong to nobody.
+     * Read live afterwards: a team target of 500 with four people carrying 150, 150, 150 and 50 OF
+     * it came back as "aiming at 1000", the same work counted twice. Nothing in a target says
+     * whether it is a whole or a part, so where the two are mixed there is no honest sum to give.
+     * What is still worth saying is that something was left out and why.
+     */
+    expect(out.alsoSay).not.toMatch(/aiming at/);
+    expect(out.alsoSay).toContain('numbers of their own');
   });
 
   it('but keeps it once every number has a name on it', () => {
