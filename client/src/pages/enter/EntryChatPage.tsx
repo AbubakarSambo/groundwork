@@ -3039,7 +3039,10 @@ export function EntryChatPage() {
                     </div>
                   </div>
                 )}
-                <div style={{ padding: '10px 16px' }}>
+                {/* The composer keeps its own stacking context so a floating control can never take
+                    a click meant for Send. It happened: the feedback button's mobile position put it
+                    exactly on top of Send at 375px. See gw-fb-trigger-chat-mobile-safe. */}
+                <div style={{ padding: '10px 16px', position: 'relative', zIndex: 101 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
                     <button
                       onClick={() => setShowDocPanel(v => !v)}

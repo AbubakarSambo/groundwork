@@ -967,7 +967,21 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 @media (max-width: 640px) {
   .gw-fb-trigger-chat-mobile-safe {
     top: auto !important;
-    bottom: 76px !important;
+    /*
+     * AND CLEAR OF THE COMPOSER, WHICH IS WHAT 76px LANDED ON.
+     *
+     * 76px was the bottom nav's 60px strip plus a gap, and it moved this button out of the header
+     * row and straight onto the message box. Measured in the browser at 375px: the composer row
+     * occupies 691 to 752 of an 812px viewport, and this button sat at 704 to 736 - inside it,
+     * on top of Send. document.elementFromPoint at the centre of the Send button returned the
+     * feedback trigger, so on a phone a person could not send a message by pressing Send.
+     *
+     * 148px is the nav's 60, the composer's 60, and a gap. The component's own comment says a
+     * fixed corner is a bet that no screen will ever need that corner, and it is right - so the
+     * composer row is also given a stacking context below (see EntryChatPage and ChatPage), and
+     * wins the click if a taller composer ever reaches up here again.
+     */
+    bottom: 148px !important;
     right: 16px !important;
     padding: 7px 12px !important;
     font-size: 11.5px !important;
