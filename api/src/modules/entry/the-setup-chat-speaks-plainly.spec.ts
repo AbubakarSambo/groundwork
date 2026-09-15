@@ -44,7 +44,15 @@ describe('the setup chat', () => {
 
   it('asks how long the situation runs, not whether the person will be checking in', () => {
     expect(ONBOARD).toMatch(/ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM/);
-    expect(ONBOARD).toMatch(/Is this a one off, or something you want to come back to as it goes\?/);
+    /*
+     * Hafsah's own wording, 15 September 2026, read off the live setup: the question was right and
+     * stopped too early. Somebody answering it does not yet know the dates, the cadence and the
+     * context are theirs to change later, so the answer carries more weight than it should.
+     */
+    expect(ONBOARD).toMatch(/Is this a one-off check-in, or something that you will track over time\?/);
+    expect(ONBOARD).toMatch(/Context and Setup tabs once this first conversation is done/);
+    /* One ask. The second sentence tells them where the rest lives; it is not a second question. */
+    expect(ONBOARD).toMatch(/The second sentence is not a second ask/);
   });
 
   it('never says what this stage does not count as', () => {

@@ -1570,11 +1570,34 @@ export class GroundsService {
       [...objectivesByParticipant].map(([pid, list]) => [pid, list[0]]),
     );
 
+    /*
+     * AND THE SETTING THAT DECIDES WHOSE NUMBERS SOMEBODY READS, WHICH THIS PAGE WAS NOT READING.
+     *
+     * `whoSeesTargets` had two readers - the board and the conversation - and the note on the
+     * column above lists exactly those two. Context was the third and nobody noticed, so the two
+     * surfaces answered the same question differently on the same check-in.
+     *
+     * Read live on 15 September 2026. In the check-in itself Rita was shown the team's 500 and her
+     * own 150, with the line "Other people on this check-in have numbers of their own, and those
+     * are theirs". On the Context tab of the same check-in, one tap away, she was shown Kunle's
+     * 150, Amir's 150 and the lead's 50. The panel's own heading for a participant is "What is
+     * expected of YOU", and it was listing everybody.
+     *
+     * Narrowed at the read rather than in the page, because a second reader forgetting the rule is
+     * how this happened in the first place. The lead still sees everybody - that is their job and
+     * the heading says "Person by person" for them. Where the check-in is set so everybody sees
+     * every number, nothing here changes.
+     */
+    const peersKeepTheirNumbers =
+      !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
       const raw = sharedArtifactById.get(p.id);
       const isSelf = !!requestingUserId && p.userId === requestingUserId;
+      /* Somebody else's expectations, on a check-in that keeps numbers to their owner. */
+      const withholdTheirNumbers = peersKeepTheirNumbers && !isSelf;
       return {
         ...p,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -1585,7 +1608,9 @@ export class GroundsService {
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
         objective: (() => {
-          const row = objectiveByParticipant.get(p.id);
+          /* The single-expectation shape travels the same way as `all` above: not somebody else's,
+             on a check-in that keeps numbers to their owner. */
+          const row = withholdTheirNumbers ? undefined : objectiveByParticipant.get(p.id);
           const shaped = {
             participantId: p.id,
             text: row?.text ?? null,
@@ -1629,7 +1654,7 @@ export class GroundsService {
              * above stays as it was so nothing that reads it had to change on the day this landed;
              * the page reads this.
              */
-            all: (objectivesByParticipant.get(p.id) ?? []).map(o => ({
+            all: (withholdTheirNumbers ? [] : (objectivesByParticipant.get(p.id) ?? [])).map(o => ({
               // The id is what lets somebody file what they delivered AGAINST a specific
               // expectation rather than into a general box. Nothing else needs it.
               id: o.id,
