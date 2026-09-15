@@ -562,7 +562,17 @@ export class EmailService implements OnModuleInit {
          <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Say what I am seeing →</a></p>
+         <!--
+           THE BUTTON SAYS WHAT HAPPENS WHEN YOU PRESS IT.
+
+           It said "Say what I am seeing", which reads as a strange thing to be asked and does not
+           name the thing on the other side of it. Reported off a real invitation: "say what I am
+           seeing instead of check-in is strange."
+
+           The words above it already explain what a check-in is and that nobody on the team reads
+           it. The button only has to say what pressing it starts.
+         -->
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Start my check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),

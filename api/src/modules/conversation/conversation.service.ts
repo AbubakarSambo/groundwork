@@ -19,6 +19,7 @@ import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
+import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
@@ -1360,6 +1361,41 @@ export class ConversationService {
           this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
         } else {
           this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
+      /*
+       * AND A QUESTION THAT ASKS THEM TO INVENT A SHAPE SHOWS ONE.
+       *
+       * "It doesn't give examples of the responses it expects." Read off a live check-in: "When
+       * you say 10,000 units are sold, what would tell you, or anyone else looking, that this goal
+       * has been met?" - a fair question and a hard one cold.
+       *
+       * The prompt has asked for examples on exactly these questions for months, in one paragraph
+       * of eighteen thousand words, and it loses the same way the restating rule lost. The examples
+       * themselves are judgement and stay with the model; what is checkable is whether it gave any.
+       *
+       * After the restating guard, because a reply that both restates and asks bare should lose the
+       * restatement first - and before the ban list, which is last on purpose.
+       */
+      if (asksForAShapeWithoutShowingOne(screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: asked for a shape without showing one; asking again.`);
+        const withOne = await this.anthropic
+          .respond(`${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`, history)
+          .catch(() => '');
+        const second = withOne.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withOne), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !asksForAShapeWithoutShowingOne(second.text) &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+          !opensByRepeatingThem(message, second.text)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try showed what an answer looks like.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try showed nothing either; the first stands.`);
         }
       }
 

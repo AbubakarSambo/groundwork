@@ -93,6 +93,40 @@ export function whenTheyMeant(said: string | null | undefined, on: Date): Date |
     }
   }
 
+  /*
+   * MONTH FIRST, WHICH IS HOW HALF THE WORLD WRITES A DATE AND HOW SHE WROTE IT.
+   *
+   * The match above reads "1 December 2026" and nothing else, so "December 1 2026" - typed into a
+   * live check-in, in answer to a direct question about when - came back as no date at all, and the
+   * record said "no date agreed" about a person who had given one.
+   *
+   * Same rules as the day-first case: an ordinal suffix is optional, the comma is optional, and no
+   * year means the next one of those rather than a date already in the past.
+   */
+  const monthFirst = t.match(/\b([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?/);
+  if (monthFirst) {
+    const mi = MONTHS.indexOf(monthFirst[1]);
+    const dd = Number(monthFirst[2]);
+    if (mi !== -1 && dd >= 1 && dd <= 31) {
+      const yr = monthFirst[3] ? Number(monthFirst[3]) : (mi < m || (mi === m && dd < d) ? y + 1 : y);
+      return day(yr, mi, dd);
+    }
+  }
+
+  /*
+   * "END OF THE YEAR", WHICH IS ONE DAY AND WAS BEING TREATED AS A FEELING.
+   *
+   * Said in a live check-in - "500 contracts by the end of the year" - and recorded as no date
+   * agreed. It is the thirty-first of December and there is nothing to ask about: the month-end
+   * rule two lines below has read "end of October" as a date since the day it was written, and the
+   * year was simply never added to it.
+   *
+   * "End of 2026" is the same sentence with the year said out loud. No year means this one, unlike
+   * a month, because the end of the year has not passed until it has.
+   */
+  const endOfYear = t.match(/^(?:by )?(?:the )?end of (?:the |this )?(?:year|(\d{4}))$|^(?:by )?year[- ]end$/);
+  if (endOfYear) return day(endOfYear[1] ? Number(endOfYear[1]) : y, 11, 31);
+
   /* "end of October", "end of the month", "end of the quarter" is a month end, which is one day. */
   const endOfMonth = t.match(/^end of (?:the )?([a-z]+)$/);
   if (endOfMonth) {
