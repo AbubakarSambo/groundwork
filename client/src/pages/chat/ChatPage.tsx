@@ -798,7 +798,7 @@ export function ChatPage() {
           */}
           {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
               description but which has no objectives and no label showed nothing at all. */}
-          {brief && (brief.subject || (brief as any).says || brief.objectives.length > 0) && (
+          {brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
                 What this check-in is about
@@ -816,9 +816,9 @@ export function ChatPage() {
                 stopped. Read on a real invitation: the lead had written four sentences describing
                 the situation and the person being asked to account for it never saw a word of them.
               */}
-              {(brief as any).says && (
+              {brief.says && (
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
-                  {(brief as any).says}
+                  {brief.says}
                 </div>
               )}
               {brief.objectives.length > 0 && (
@@ -833,6 +833,20 @@ export function ChatPage() {
                     </div>
                   ))}
                 </>
+              )}
+              {/*
+                AND WHY THE LIST IS SHORT, WHICH THE SERVER HAS BEEN SAYING TO NOBODY.
+
+                A check-in that keeps numbers to their owner sends this line with the brief: "Other
+                people on this check-in have numbers of their own, and those are theirs." Without
+                it, somebody reads two objectives on a check-in with four people and has no idea
+                whether the rest are missing, secret, or simply not set. The line was written on 15
+                September and rendered nowhere.
+              */}
+              {brief.alsoSay && (
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>
+                  {brief.alsoSay}
+                </div>
               )}
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 7, lineHeight: 1.45 }}>
                 Answer in your own words. You are not expected to agree with any of it.
