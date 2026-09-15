@@ -18,6 +18,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
@@ -4477,7 +4478,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           checkInId,
           type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
           verifiability: v as any,
-          text: e.text.trim(),
+          /* A half sentence that kept its "and" is not a line anybody should read under a heading.
+             See half-a-sentence-is-not-a-line-in-a-report. */
+          text: theLineWithoutItsDanglingJoin(e.text),
         };
       }),
     });
