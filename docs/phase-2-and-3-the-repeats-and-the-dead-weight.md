@@ -60,18 +60,23 @@ pass 1 - 237 turns out of 8,317 - is what both copies together achieve.
 
 ---
 
-## The repeats
+## The repeats - CORRECTED, and most of them were not repeats
 
-| Rule | Stated at | What it should be |
+**The first version of this section counted keyword hits and called them duplicates. I read each
+hit afterwards and most are not.** What follows is what survived reading.
+
+| Claimed | True? | What the hits actually are |
 |---|---|---|
-| One question per turn | lines 137, 336, 337, 339, 445, 477, 551, 883, 1008, 1093, 1219 - **eleven places** | One. The statement at 336 is the good one: it carries a well-argued exception (two asks where neither half means anything alone) and names what is *not* two questions. The other ten are loose restatements, and line 445 exists only to reconcile itself with 336 |
-| Do not say their answer back | lines 154, 264, 270, 896, plus a standing code block added this week | One, in code, which is where it now is. The row's copy at 154 has the best explanation of why, and that reasoning is worth keeping wherever it ends up |
-| A claim about an absent colleague | lines 30, 269, 270, 765, 789, 820, 822, 962 - **eight places** | One. This is a safety rule about somebody who cannot answer, which makes it the most important repeat in the file and the one most likely to be half-deleted by a later edit |
-| Ask for the timeframe | lines 341-368, six statements inside one 845-word section | One section, which is what it nearly is |
-| Never announce a save or a change | lines 455, 485 | One |
-| Do not re-ask what was answered | lines 437, 438 | One |
+| "One question per turn, stated in eleven places" | **No** | One canonical statement, at the ONE QUESTION RULE, and it is a good one - it names its own exception and says what is NOT two questions. The other hits use the same words for different rules: "every alignment ground is working toward one question" is about the key question of a whole check-in; "the one question" in a trigger briefing is a founder's opening line; "name the pattern, show the evidence, ask one question" is how to deliver a reading. One line does reconcile itself with the rule - "this composes with the ONE QUESTION RULE above" - and that is a useful sentence, not a duplicate |
+| "A claim about an absent colleague, stated in eight places" | **No, and worse** | Five of the eight are the word "absent" meaning not delivering - "Invisible Backbone: work only noticed when absent", "equity held, delivery absent". The rule itself appears once, under A CLAIM ABOUT A COLLEAGUE IS THEIRS, NOT YOURS. I had called it the most important repeat in the file. It is not a repeat |
+| "The banned words, written out twice" | **Yes** | Verified by comparing the two lists field by field; they had drifted. Now one copy plus a pointer |
+| "Ask for the timeframe, six statements" | Partly | Six statements inside one section on one topic, which is a section, not six copies |
+| "Never announce a save, twice" / "Do not re-ask, twice" | Small and real | Two lines each, adjacent, worth merging if that file is ever touched for another reason |
 
----
+**Why I got it wrong:** I grepped for a topic, counted the lines that matched, and reported the
+count as duplication without reading the matches. The same shortcut produced both errors. The
+findings in this document that were checked by reading or by comparing against code - the three
+conflicts, the two ban lists, the pattern codes - all stand.
 
 ## The pattern codes: 52 in the prompt, 39 in the product
 
