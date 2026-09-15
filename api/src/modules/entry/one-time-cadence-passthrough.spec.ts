@@ -31,6 +31,7 @@ function makeService() {
   };
   const conversation: any = {
     extractRecordEntries: jest.fn(async () => undefined),
+    extractExpectations: jest.fn(async () => undefined),
     // The commit schedules session 2 now, so the mock has to answer for it.
     ensureNextSession: jest.fn(async () => undefined),
     buildSoloArtifact: jest.fn(async () => undefined),

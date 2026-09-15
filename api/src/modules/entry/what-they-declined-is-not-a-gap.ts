@@ -66,3 +66,36 @@ export function withoutWhatTheyDeclined<T extends AnOpenItem>(items: T[], turns:
     return !declined.some((q) => asksTheSameThingAgain(q, subject));
   });
 }
+
+
+/**
+ * "WITH A CLEAR LINK, THE TEAM MIGHT HIT ITS NUMBERS BUT NOT CONTRIBUTE."
+ *
+ * Read off a live report, under "why it matters". It means WITHOUT. As written it says the good
+ * thing causes the bad one, and a reader either trips over it or reads the opposite of the point.
+ *
+ * It is one dropped syllable and it is on the line whose whole job is to explain why an open item
+ * deserves attention, in the report a lead reads first. The prompt is told to say what goes wrong if
+ * this stays open; this catches the shape when it comes out inverted anyway.
+ *
+ * NARROW ON PURPOSE. It fires only on a sentence that opens by naming the remedy and then describes
+ * harm. Anything else is left alone: a warning is supposed to describe harm, and most of them are
+ * worded correctly.
+ */
+const OPENS_WITH_THE_REMEDY = /^\s*with (?:a|an|the|clear|specific)\b/i;
+const THEN_DESCRIBES_HARM =
+  /\b(?:might not|may not|will not|cannot|could not|won't|can't|risk|fail|miss|conflict|not contribute|no way|unclear|blocked)\b/i;
+
+export function saysTheOppositeOfWhatItMeans(line: string): boolean {
+  const said = (line ?? '').trim();
+  if (!OPENS_WITH_THE_REMEDY.test(said)) return false;
+  return THEN_DESCRIBES_HARM.test(said);
+}
+
+/**
+ * The repair is the missing word, and nothing else about the sentence is touched. Rewriting it would
+ * be putting our voice where a model's reasoning is; adding "out" makes it say what it meant.
+ */
+export function putTheMissingWordBack(line: string): string {
+  return (line ?? '').replace(/^(\s*)with\b/i, (_m, lead) => `${lead}Without`);
+}

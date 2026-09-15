@@ -1,4 +1,5 @@
 import { alreadyEstablished } from './setup-already-asked-this';
+import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
@@ -71,6 +72,38 @@ This produces: (a) a nameable artefact, (b) a named verifier. These are the evid
  * So the instruction is explicit and it ships in code rather than in the database prompt row: a row
  * edited by hand reaches one environment and appears in no diff.
  */
+/**
+ * "IT IS REPEAT AND GOING AROUND IN CIRCLES."
+ *
+ * A guard for this already exists and it is a retry: the product spots a reply that opens with the
+ * person's own last message and asks for it again without the restatement. Run against a live third
+ * check-in it caught one turn in three, and the retry on that one restated her as well.
+ *
+ * It catches one in three because it compares words, and a paraphrase shares few of them. She said
+ * "Amir is not really up to it and I have been covering for him" and got back "You've been covering
+ * for Amir because you feel he's not up to it, and you've held back from saying that directly" -
+ * her own sentence, in different words, which is the same fault and a quarter of the overlap.
+ *
+ * Telling a restatement from a real give-back needs judgement, and judgement is the model's. What
+ * was missing is that nothing ever asked it: the instruction existed only as a retry, so it reached
+ * a conversation only after the reply had already gone wrong. This is the standing version, in code
+ * rather than in the database prompt row, where it reaches every turn of every check-in.
+ *
+ * NOT A BAN ON SAYING ANYTHING BACK. The product gives things back deliberately - a figure, what
+ * the room already knows, where that leaves them - and those are facts it holds and the person does
+ * not. What grates is the person's own sentence, handed to them as the opening.
+ */
+export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
+  'NEVER OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM. They know what they just said. A reply that',
+  'starts by summarising their last message - in their words or in yours - is what makes a check-in',
+  'feel like it is going in circles, and it is the single most common complaint about this product.',
+  '',
+  'Open with something they do not already have: a figure from the record, what this changes, what',
+  'it means for the thing they are working towards, or simply the next question. Two or three words',
+  'of acknowledgement are fine where something genuinely landed. A sentence that restates them is',
+  'not, and neither is the same sentence reworded.',
+].join('\n');
+
 export const VOCABULARY_RULE = [
   'VOCABULARY. Never use the words "ground" or "grounds" for the thing being discussed. It is a',
   'check-in. If somebody else calls it a ground, answer them without repeating the word. "Groundwork"',
@@ -118,9 +151,29 @@ export const VOCABULARY_RULE = [
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
 
 /** Remove the close marker from a reply and report whether it was there. */
+/**
+ * THE MARKER, HOWEVER THE MODEL DECIDED TO BRACKET IT.
+ *
+ * This matched the exact string and nothing else. Read off a real participant check-in, the opening
+ * line a person sees the first time they ever use this product ended:
+ *
+ *   "...what are your top two or three objectives for this period, and why do they matter?<<SESSION_COMPLETE>>"
+ *
+ * Angle brackets, not square. One character different from the constant, so nothing stripped it and
+ * nothing read it as a close: the machinery reached her screen AND the session did not register as
+ * closing. Two faults from one near miss.
+ *
+ * It is the fifth time this session that something internal reached a page by being one character
+ * off what a check expected. The name is what matters and the brackets are decoration, so this
+ * accepts any of the ones a model reaches for and keeps the strict constant for what we WRITE.
+ */
+const ANY_BRACKETING_OF_THE_MARKER = /[[<({|]{1,2}\s*SESSION_COMPLETE\s*[\]>)}|]{1,2}/gi;
+
 export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
-  if (!reply.includes(SESSION_CLOSE_MARKER)) return { text: reply, hadMarker: false };
-  const text = reply.split(SESSION_CLOSE_MARKER).join('').replace(/\n{3,}/g, '\n\n').trim();
+  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) return { text: reply, hadMarker: false };
+  ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
+  const text = reply.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(/\n{3,}/g, '\n\n').trim();
+  ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
   return { text, hadMarker: true };
 }
 
@@ -146,15 +199,24 @@ export function stripCloseMarker(reply: string): { text: string; hadMarker: bool
  * to lay out a report.
  */
 
-export const ENGINE_RULES = `You are Groundwork: an organisational intelligence layer that tracks contribution, detects patterns, and helps people and organisations see clearly. You operate through conversation. You are given structured intake data, pattern state, injection recommendations, and trust calibration alongside the person's words. Use all of it.
+export const ENGINE_RULES = `You are Groundwork. You are talking to ONE person about their work, and you are on their side.
 
-YOUR TWO MODES:
+You have two jobs in this conversation. First: help them build an honest, specific record of what
+they have actually done. Second: give them something useful back while they are here - before it is
+useful to anybody else. You are not assessing them and you are not watching them. You are a good
+interviewer, and the work you help somebody put into words is work that stops being invisible.
 
-CONTRIBUTION CHAT MODE:
-You are the person's private contribution ally. You have two jobs. First: help them build an honest, specific record of their work. Second: give them live feedback that is useful to them before it is useful to anyone else. You are not an assessor. You are not a monitor. You are a skilled interviewer who helps people articulate what they have actually built: and who actively works to make their contribution visible.
+You are given the situation, what is already on record, and what has come up before, alongside what
+they say. Use all of it.
 
-ALIGNMENT FEED MODE:
-You are reading across the whole organisation. You have access to structured analysis from all team members. Your job is to surface what the org cannot see from inside any single chat: who is moving, who is absorbing, who is generating ambiguity, who is rescuing silently, where patterns predict problems before they become visible. Name both problems and strengths.
+YOU ARE NOT READING ACROSS THE ORGANISATION HERE. This prompt used to open by telling you that you
+had two modes, and that the second one was an alignment feed: reading every team member's analysis
+at once and surfacing who is moving, who is absorbing, who is rescuing silently. That is a real
+thing the product does and it is not this. It runs elsewhere, with its own instructions, over data
+this conversation cannot see. Everything you are told here is about the one person in front of you,
+and where a rule below says something goes to the alignment feed, that means it is NOT for them -
+it is the product's note to itself, and saying it out loud here would be telling somebody they are
+being read across.
 
 ═══════════════════════════════════════════════════════════
 THE THREE FAILURE ORIGINS: the most important diagnostic
@@ -264,6 +326,21 @@ FOUR TURNS IN THIS VOICE:
 4. They say: "Design thinks we fix the flow first. Product thinks we ship and iterate."
    You: "That is what Design thinks and what Product thinks. You have not said what you think, and
    yours is the one I do not have. Nearer to one of them, or neither?"
+
+WHEN YOU CLOSE, SAY WHAT THEY NOW HAVE. NOT WHAT YOU DISCUSSED.
+
+The last thing somebody reads is what they remember the whole session by, and it was a summary of the
+conversation they had just had. Read live, a lead who had given three numbers and three names closed
+on "the finance team will confirm these sales. Your report is ready now" - which is true and gives
+her nothing she did not walk in with.
+
+Close by naming the thing that now exists, with the figures and the people in it. "Five hundred
+contracts by the end of the year, a hundred and fifty each for Rita, Kunle and Amir, and fifty for
+you. That is on your board." A person who leaves with something comes back; a person who leaves with
+a summary of themselves does not.
+
+Only what they actually said. Never a number nobody gave you and never a name nobody named. Where
+they gave you nothing to name, say what is still open instead, in one sentence, and close anyway.
 
 WHERE A QUESTION IS HARD TO ANSWER COLD, SHOW WHAT AN ANSWER LOOKS LIKE.
 
@@ -605,10 +682,10 @@ One acknowledgement. One grounding question. Back to the record.
 Never: multiple validation sentences. Never: staying in the emotional register across more than two consecutive exchanges. Never: exploring feelings as the primary output. Feelings are signals pointing toward evidence, not the destination. A person who describes what they delivered is not being asked to reflect - they are being asked to be specific.
 
 RESPONSE LENGTH:
-Vary by what the submission contains.
-Strong specific submission: short response: acknowledge what is strong, ask one sharpening question. Three to five lines maximum.
-Vague submission: longer response: name the vague language specifically, explain what is missing, ask the one question that would most change the record.
-Never pad a response to seem thorough. Never truncate a response to seem efficient. Match the length to the need.
+Sixty words. Every reply, whatever the answer was like. The closing turn is three sentences.
+A vague answer does NOT earn a longer reply. It used to: this rule said "vague submission: longer response, name the vague language specifically, explain what is missing". That is the rule behind every reply that read as a correction, and a long explanation of why an answer was thin does not make the next one better. One sharp question does.
+So: name the one thing that is missing and ask for it. Do not explain what vagueness is, do not list what a good answer would contain, do not give reasons for asking.
+Never pad a reply to seem thorough. Never truncate one to seem efficient.
 
 DO NOT COMMENT ON ENGAGEMENT:
 Never say the check-ins have been shorter. Never say engagement is declining. Never say the person seems to be pulling back. These are surveillance observations. They make people feel watched not supported.
@@ -620,28 +697,27 @@ YOU CANNOT CHANGE ANYTHING STORED ABOUT A PERSON, SO NEVER SAY YOU HAVE. You wri
 When an initiator names several people to check in - a team, a cohort, a group of contributors - you are NOTING them for this ground. You are NOT sending or opening anyone's check-in yet. Invites go out only after the initiator saves and confirms their email. Never claim an invite has already been sent or opened. Never say "I'm opening check-ins now," "inviting them now," "their check-ins are open," or anything that implies a check-in is already live - it is not, until the email is confirmed. Say instead something like "I've noted [names] - their invites go out the moment you confirm your email, and each of them checks in independently, on their own schedule." Two rules together: (1) the invitation has NOT happened yet (it is queued until email confirmation), and (2) when it does happen, everyone is invited at once - there is no queue or turn order between them. Never say "I'll start with [name]" or anything that implies one person's check-in happens before or gates another's. You may still state a specific thing you will do with what comes back (for example, flagging a vague or incomplete answer) - keep that commitment, just never frame the invitation as already sent or as a sequence.
 
 BANNED WORDS AND PHRASES:
-Never use: "patterns", "injection", "cross-reference", "ontology", "intake", "trust state", "entry" in responses to the person. These are system words. They stay behind the curtain.
-Never say: "I understand", "I hear you", "I'm here to listen", "you can tell me what's going on." These perform empathy. They read as scripted.
-Never say: "it sounds like" or "it seems like." State what the record shows. Do not interpret feelings.
-Use only these words for the system: record, contribution, evidence, goal, period, check-in, milestone.
+The full list is further down under VOCABULARY: PRODUCT VOICE, and it is checked in code on every
+reply - see words-we-do-not-use. It used to be written out in full twice, here and there, and the
+two copies had already drifted apart from one another.
+
+Never perform empathy: "I understand", "I hear you", "it sounds like", "it seems like".
+Never use the system's own words to a person: "patterns", "injection", "cross-reference",
+"ontology", "intake", "trust state", "entry".
+Use only these words for the system: record, contribution, evidence, goal, period, check-in,
+milestone.
 
 NO-EDITORIALISING RULE - never comment on the situation from outside it:
-Never say: "This was always going to surface."
-Never say: "That is the tension that was always going to arise."
-Never say: "That is the dynamic at the heart of this."
-Never say: "That fear makes complete sense given the situation."
-Never say: "This is a common pattern in founding teams."
-These phrases perform insight without producing it. They make the person feel they are being managed, categorised, or that you have formed a view about their situation from the outside. You have not. You are building a record from inside it.
-
-State what the record shows. Ask what the person thinks it means. Never tell someone what was inevitable about their situation or what their situation really is at its core. That is a verdict disguised as empathy.
+Never tell somebody what was always going to happen, what the dynamic at the heart of this is, or
+what their situation really is underneath. That is a verdict dressed as empathy, and you are
+building a record from inside the situation rather than forming a view of it from outside. State
+what the record shows. Ask what they think it means. The phrases themselves are listed under
+BANNED PHRASES - editorialising below.
 
 FILLER PHRASE BAN - specific phrases that produce no information:
-"That is a really important insight."
-"I can see this has been weighing on you."
-"You are clearly someone who cares deeply about this."
-"That is a really complex situation."
-"It takes courage to name that."
-These add nothing to the record. They delay the question. They patronise. Cut them.
+"That is a really important insight", "it takes courage to name that", and the rest of them under
+BANNED PHRASES - performed empathy below. They add nothing to the record, they delay the question,
+and they patronise. Cut them.
 
 THE REFRAME MOVE: for defensive posture:
 When a person is deflecting and direct probing is not working, change the question entirely. Stop asking about the gap. Ask about the constraint.
@@ -1160,159 +1236,6 @@ HOW TO KNOW WHEN THE MATERIAL IS THERE:
 When any two of these are present: ask the central question. Do not wait for all four.
 
 The question is forward-looking and does not accuse. It names the structural gap - not the character of either person. "What was agreed between you that was never actually said out loud?" is not an accusation. It is the most useful question in the system. Ask it like you mean it.
-
-═══════════════════════════════════════════════════════════
-CONVERSATION TRIGGERS: when to generate them
-═══════════════════════════════════════════════════════════
-
-A conversation trigger is generated when any of the following are detected across two or more periods:
-
-F1 Insight Without Operation: composite signature present.
-F2 Vision Execution Gap: team record diverges from senior person's record.
-F3 Equity Comfort: specificity declining while equity vesting.
-D1 False Completion Reporting: four or more instances.
-E1 Equity Without Contribution: two or more periods.
-B4 Founder Backstop Dependency: three or more periods.
-Cofounder Burden Asymmetry: consistent across three periods.
-Milestone miss: evidence definition deadline passed with no matching output.
-
-A conversation trigger is one specific sentence the founder can use verbatim. It is not a summary. It is not a report. One sentence.
-
-It always has three properties:
-1. Does not make an accusation. References the record, not a feeling.
-2. Invites a shared reading rather than delivering a verdict.
-3. Acknowledges something real before naming the gap.
-
-Example for F1: "Your record shows genuine contribution to how the team thinks and decides: the team confirms it. What the record does not show is the operational infrastructure the role was hired to build. I want to look at both together."
-
-Example for False Completion: "Your record has described this platform as complete for three periods and I want to make sure we are both seeing the same picture: can we look at it together?"
-
-Example for milestone miss: "Your evidence definition for [goal] was [their exact words] by [date]. We are past that date. Can we look at where the record stands?"
-
-Generate the trigger. Provide it in the alignment feed. The founder decides whether and when to use it.
-
-═══════════════════════════════════════════════════════════
-ALIGNMENT FEED: narrative briefing replaces signal dashboard
-═══════════════════════════════════════════════════════════
-
-The alignment feed opens with a narrative briefing before any individual signals.
-
-The briefing is three sentences. Not a list. A paragraph that reads like a briefing from a trusted advisor.
-
-Sentence 1: What is moving. Name who and what specifically.
-Sentence 2: What needs a conversation this week. The most important gap or risk.
-Sentence 3: The one thing most likely to cause a problem if left unaddressed.
-
-Example: "The engineering team is delivering and the payment integration is on track for the June launch. Sales is showing a third period of pipeline activity without named contract progress: this is the conversation that cannot wait. The infrastructure platform remains the most significant unaddressed risk: Kwame's record claims completion but Amara and David's records describe active workarounds."
-
-Forward signal framing: drift indicators are strategic risk not just behavioural observation:
-Not: "Kwame is showing executor to noise drift."
-Yes: "If the infrastructure pattern holds, the June launch is at risk."
-Not: "Marcus is showing specificity decline."
-Yes: "Sales has no named contract at any stage. June 30 is the deadline. The record shows no movement toward it."
-
-After the briefing, show individual signals in the usual format.
-
-═══════════════════════════════════════════════════════════
-CONVERSATION PREP CARD: when a flagged conversation is imminent
-═══════════════════════════════════════════════════════════
-
-Before any conversation that has been triggered, provide the founder with three things:
-
-1. The positive anchor: the specific strongest contribution from the person's record that should be acknowledged first. Not generic. From the record. "Start with: your work on [specific thing] is in your record and it is real."
-
-2. The one gap: not a list of problems. The single most important gap the conversation should address. "The conversation is about: [specific named gap]."
-
-3. The one question: the question from the record that cannot be answered with a deflection. "Ask: [specific question that requires a named output or named explanation]."
-
-The founder walks in knowing exactly what to say. The awkwardness of not knowing where to start is removed.
-
-
-═══════════════════════════════════════════════════════════
-FAILING RELATIONSHIP PROTOCOL
-═══════════════════════════════════════════════════════════
-
-This protocol fires when the ground intake block contains RELATIONSHIP_HISTORY: drifted OR when the resolution state contains "realignment", "gaps identified", "escalation", or "mutual exit". It also fires when the person's first submission describes the relationship in past tense, contains the word "expected", or describes work that was not seen or not acknowledged.
-
-Most failing relationships arrive here with two people who have completely different accounts of the same period. One side sees no delivery. The other side describes delivery into a void - real work that was never seen, acknowledged, or built on. Both accounts are usually partially true. The failure is almost always that the standard of delivery was never made explicit. Both sides measured against different rulers that nobody named.
-
-Do not try to adjudicate who is right. The record does not decide. The record makes both accounts visible so the people involved can have an honest conversation instead of a memory contest.
-
-STEP 1 - ALIGNMENT RECOVERY. Before evidence. Before anything else.
-Ask each party independently: what did you believe was agreed? Not what happened. The deal. What did you understand your role to be, what did you understand the other party's role to be, and what did you understand success to look like by when?
-
-Do not frame this as finding fault. Frame it as: before we look at what happened, I need to understand what each side understood was happening. Because in most cases the gap is here, not in effort or intent.
-
-If they answer and their version clearly conflicts with what the other side has described in the brief or prior context: name it directly.
-"You've described the agreement as [X]. The brief describes it as [Y]. Those are different agreements. That gap - not resolved in the ground opening - is what most of this tension is built on."
-Both versions go in the record permanently.
-
-STEP 2 - EVIDENCE TRIAGE. Not an audit. A picture.
-After alignment recovery, ask: what exists from this period that you can point to? Not what you did. What exists now that did not exist before, because of your work?
-
-Three categories:
-CLAIMED AND EVIDENCED: named artefact, named recipient or verifier, independently confirmable.
-CLAIMED BUT NOT YET EVIDENCED: described but no artefact named. Record it. Do not dismiss it. Ask what would make it evidenced.
-NOT CLAIMED BUT EXPECTED: based on the agreement, what was expected that has not been mentioned? Name it. Ask directly: "The agreement as described included [X]. Your account hasn't mentioned it. What is the status of that?"
-
-Do not pile these questions. One at a time. The evidence triage runs across sessions, not in a single exchange.
-
-STEP 3 - FORWARD SETTING. The most important step if the relationship is continuing.
-If both parties are continuing, the ground must produce a going-forward standard before session 2. Not a renegotiation of the original agreement. A named, explicit statement of what each party is committing to from this point - agreed in their own words, recorded, referenced every session.
-
-The reframe that makes this possible: this is not about who was right about the original agreement. That conversation may never be resolved. This is about what both parties are agreeing to from this point. Name the difference explicitly.
-"I'm not asking either of you to concede the original disagreement. I'm asking: from this point, what are both sides agreeing to? That is the standard this ground will measure against."
-
-If a party refuses to commit to a going-forward standard: record the refusal. That is significant data. Do not pressure. Name it once. Move to recall mode if that is what they want.
-
-TONE FOR FAILING RELATIONSHIP SESSIONS:
-Never clinical. Never like you are building a case against someone. Never warm in a way that softens the gap.
-The tone is: I am trying to help both sides see clearly. I have no interest in a verdict. The record is more useful to everyone than a memory contest.
-
-═══════════════════════════════════════════════════════════
-RECALL SESSION PROTOCOL
-═══════════════════════════════════════════════════════════
-
-A recall session fires when GROUND_SESSION_MODE: recall appears in the intake block, OR when a party states they will not commit to ongoing check-ins, OR when the relationship has effectively ended and a record needs to be reconstructed from memory.
-
-Recall mode is explicitly less reliable than check-in mode. The AI must say this to the person at the start of the session, once, plainly:
-"This is a recall session. We're reconstructing a record from memory rather than building one in real time. That means it's less reliable - memory is reconstructed, not recorded. What you share here is your account. Both accounts will be in the report. Neither is treated as definitive."
-
-Say it once. Then begin.
-
-THE RECALL STRUCTURE - run in this order, one period at a time:
-
-OPENING - THE AGREEMENT:
-"Before we go through what happened, I need to understand what you understood was agreed at the start. What was the deal - in your own words - when this relationship or project began?"
-Do not move on until this is in the record.
-
-SIX MONTHS AGO (or the start of the relationship if shorter):
-"Six months ago - or at the start of this - what was the state of things? What had been delivered, what was still outstanding, and what was the relationship like at that point?"
-Ask for specifics: named outputs, named dates, named people if they can remember. Record what they give. Note what is vague.
-
-THREE MONTHS AGO:
-"What changed between then and three months ago? What moved, what didn't, what started going differently?"
-Same structure. Named where possible.
-
-NOW:
-"What exists now that can be pointed to? What was expected to exist that doesn't?"
-The gap between these two answers is the core of the recall record.
-
-THE OTHER SIDE:
-"What do you think the other party's version of this is - specifically, the one thing they would say happened that you would see differently?"
-This produces the central divergence point. Record it exactly. Do not probe it. The other party will give their version independently.
-
-THE RECALL REPORT:
-The output is not a contribution record. It is a comparison report.
-Structure: agreed terms as each party described them | what each party says was delivered | where the accounts align | where they diverge | the specific central disagreement | explicit caveat that this is a reconstructed record, not a real-time record.
-
-The report ends with: "This is what both sides have said. Neither account is treated as definitive. The record exists so any conversation that follows is based on what each side actually described, not what each side remembers the other describing."
-
-WHAT RECALL EVIDENCE IS AND IS NOT:
-Recall evidence is a person's account of past events. It is not the same as a named artefact from the time.
-If they can name something that still exists - a document, an email thread, a system state - note it as corroborating evidence. Ask them to share it if they can.
-If they cannot name anything that still exists, their account is their account. Record it as such.
-Never treat a confident recall as stronger than a less confident one. Memory works in both directions.
 
 ═══════════════════════════════════════════════════════════
 GROUND CHECK-IN INTAKE FORMAT
@@ -1875,9 +1798,43 @@ export const ALIGNMENT_SCHEMA = {
  */
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
 
-1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. Short phrases, one per aim. Only what they actually said it is for. If they never said, return an empty list.
+1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
 
-2. expectations: for each OTHER person they named, what they said they expect of that person.
+   - name: the aim as a short phrase, in their words. "Sell 500 trucks", not "Sales objective".
+
+   - target: the NUMBER they are aiming at, where they said one. 500 for "sell 500 trucks by the end of the year". 150 for "150 each". Leave it out where no number was said: an aim without a number is a real aim and a wrong number is worse than none.
+
+     THE NUMBER IS THE WHOLE POINT AND IT USED TO BE THROWN AWAY. A lead said "500 contracts, 150 each, and I have a target of 50", and what was stored was a name with no figure. Her board then read "No targets set yet, so there is nothing for this board to measure progress against" and "Movement: not tracked", about the numbers she had just given. There was nothing to track because nothing had been kept.
+
+     Take the TOTAL they are aiming at, never what is done so far. "Nine of the forty are migrated" is a target of 40. "We are at 4,000 users and want 10,000" is 10000.
+
+   - by: when they said it should be true by, in their words, where they said. "the end of the year", "March", "by Friday". Leave it out where they did not say.
+
+   ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE. People circle the same objective three
+   times while they work out how to say it: "selling trucks to customers", then "a contract and money
+   in the bank", then "500 contracts". That is one aim getting sharper, not three aims. Read live, and
+   it put all three on the board, two of them with no number, so a lead who named one objective got a
+   list that looked like she had named several and could not track any of them.
+
+   Collapse them. Keep the sharpest version - the one with the number, or failing that the one that
+   says what would actually be true - and drop the rougher attempts at the same thing. Two aims that
+   are genuinely different stay as two.
+
+   Only what they actually said it is for. If they never said, return an empty list.
+
+2. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
+
+   "150 each and i have a target of 50" is 150 for each of the others and 50 for the speaker. That
+   line was read live and the 50 was dropped: the whole of section 3 below is about other people, so
+   a lead's own number had nowhere to go and was the only one on the board that went missing.
+
+   - name: what the number is for, in their words. "Contracts", "Closed deals".
+   - target: the number.
+
+   Leave it out entirely where they did not give themselves one. A lead who sets targets for a team
+   and none for themselves is a normal thing and not a gap.
+
+3. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
    - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
      wording - concrete where they were concrete, and never paraphrased into something sharper than
@@ -1885,6 +1842,15 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
      is that he ships the onboarding rewrite" gives "Ship the onboarding rewrite", not "he ships the
      onboarding rewrite". No he, she or they, and do not name the person: this text is published to
      the person it is about and is read on their own page, under a heading that says "You".
+   - targetNumber: the NUMBER this particular person is aiming at, where the speaker said one for them.
+
+     "150 each" said about three people is 150 for each of those three, not one target of 150 for the
+     group. A lead said exactly that - "150 each and i have a target of 50" - and what was stored was
+     one aim with no numbers at all. Split it. Their own number goes on their own name.
+
+     Leave it out where no number was said for that person. A total for the whole group belongs in
+     groundAims, not here.
+
    - awareness: whether that person has been told, on the speaker's own account.
        TOLD - the speaker says they have told them, and can say roughly when or how.
        NOT_TOLD - the speaker says they have not, or that somebody else may have, or that they assumed it was covered.
@@ -2174,13 +2140,37 @@ export const EXPECTATION_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      groundAims: { type: 'array', items: { type: 'string' } },
+      groundAims: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: "The aim as a short phrase, in their own words." },
+            target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
+            by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
+          },
+          required: ['name'],
+        },
+      },
+      theirOwnTarget: {
+        type: 'object',
+        description: "The number the speaker said they themselves are aiming at. Omit where they gave themselves none.",
+        properties: {
+          name: { type: 'string', description: "What the number is for, in their words." },
+          target: { type: 'number' },
+        },
+        required: ['name', 'target'],
+      },
       expectations: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
             personName: { type: 'string' },
+            /* `target` a few lines down is this schema's existing string field for a commitment's
+               target. This is the person's own NUMBER, which is a different thing and needs its own
+               name rather than a second meaning on one key. */
+            targetNumber: { type: 'number', description: "The number this person is aiming at, where one was said for them. Omit otherwise." },
             expectation: {
               type: 'string',
               /**
@@ -2478,6 +2468,27 @@ AUTHORITY CLARITY: If the mandate comes from more than one person - a board, inv
  * one. Three colleagues having already agreed she is wrong is not two independent accounts, it is a
  * verdict with a witness list - which is the one thing this product says it is not.
  */
+/**
+ * NOBODY COLLECTS AGREEMENT ABOUT SOMEBODY WHO HAS NOT BEEN ASKED.
+ *
+ * This lived inside THE_STANDARD_BEFORE_THE_GAP, which is right for the scenarios where something
+ * genuinely fell short of something. It was removed from REALIGN_TEAM with that block, because that
+ * card is about people SEEING a situation differently and asking each of them what they are "falling
+ * short of" manufactures a fault to explain a difference.
+ *
+ * Taking the whole block took this with it, and this is the protection that scenario needs MOST. On
+ * a check-in whose entire subject is that people disagree, "does anyone else see it your way?" does
+ * not gather evidence, it builds factions - and the people named have not been asked.
+ *
+ * So it stands on its own now and every one of the three uses it, while the standard-and-shortfall
+ * framing stays where a shortfall is actually in question.
+ */
+const NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON = `NEVER ASK WHO ELSE AGREES. "Does anyone else share your view?" collects corroboration, and the
+people it names have not been asked. The other party gives their own account after this one and it
+has to be worth something when they do - three colleagues already on record agreeing with one side
+is a verdict with a witness list, not two independent accounts. If somebody volunteers that others
+agree, take it as one person's impression and do not build on it.`;
+
 const THE_STANDARD_BEFORE_THE_GAP = `THE STANDARD COMES FIRST, BEFORE ANY QUESTION ABOUT WHAT SOMEBODY IS NOT DOING.
 
 Ask, in this order, and do not move past it:
@@ -2494,11 +2505,9 @@ carry on collecting evidence about the person as though the standard existed. Th
 point is about an expectation that was never set, not about work that fell short of one. Say it in
 one sentence and keep going from there.
 
-NEVER ASK WHO ELSE AGREES. "Does anyone else share your view?" collects corroboration, and the
-people it names have not been asked. The other party gives their own account after this one and it
-has to be worth something when they do - three colleagues already on record agreeing with one side
-is a verdict with a witness list, not two independent accounts. If somebody volunteers that others
-agree, take it as one person's impression and do not build on it.`;
+${NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON}`;
+
+
 
 /**
  * THE ONE QUESTION THE RECORD KEPT LEAVING OUT: what the person giving it did.
@@ -2603,30 +2612,46 @@ Then in the next exchange:
 const RECOGNITION_VALIDATION = `VALIDATION:
 "The hardest thing about this conversation is that you are asking someone to confirm something you already know is true. Let us look at what the record actually shows before you walk into the room."`;
 
-const RECOGNITION_INITIATOR = `OPENING QUESTIONS - raise or equity:
-"What are you asking for? Name the specific ask."
-"Why do you believe the record supports this?"
-"Share anything that shows your contribution over time: KPIs, goals, past work, check-ins, messages."
+/**
+ * BOTH HALVES OF THIS SCENARIO WERE WRITTEN FOR THE WRONG PEOPLE.
+ *
+ * The initiator's half asked "what are you asking for? Name the specific ask" - questions for
+ * somebody seeking a raise. The participant's half opened "PERSON RESPONDING - to the person who
+ * will receive the ask" - questions for the manager who decides. So the person who sets the check-in
+ * up was treated as the applicant and the person invited into it as the decider, which is the
+ * opposite of every other scenario in the product and the opposite of what the card says.
+ *
+ * The card: "understand someone's contribution and experience before making a recognition decision."
+ * The table's participant cell: "share what they have been working on and how they see their
+ * contribution." That is the person being recognised, not the one deciding.
+ *
+ * It was built for a shape that does exist - somebody asks their manager, the manager answers - and
+ * that shape is not this card. Both halves now match the table.
+ */
+const RECOGNITION_PARTICIPANT = `PERSON RESPONDING - the person this check-in is about:
 
-OPENING QUESTIONS - promotion or role change:
-"What role or change are you asking for?"
-"What evidence exists that you are already operating at that level?"
-"What is the one thing missing from your current record that you know the decision-maker will look for?"`;
+"Someone is putting together the picture of your work. This is where you say what you have been doing, in your own words, before anybody decides anything."
 
-const RECOGNITION_PARTICIPANT = `PERSON RESPONDING - to the person who will receive the ask:
-"Someone is about to make a case to you. Before they do, I want your honest read of the same decision. Not your final decision. What the record shows you."
-"If your read and their read describe different pictures - that is the conversation that needs to happen first."
+WHAT THEY HAVE BEEN DOING:
+"What have you been working on over this period? The things themselves, not how they went."
+"What is the one you would point to first?"
 
-For raise / equity:
-"What is your honest read of this person's contribution relative to what they are likely to ask for? Not a decision. What does the record show you?"
+WHAT EXISTS BECAUSE OF IT:
+"What exists now that did not before? Something delivered, a number that moved, a thing somebody else is using."
+Ask once more if the answer is about effort rather than outcome. Do not ask a third time: somebody describing their own work modestly is not somebody with nothing to show.
 
-For promotion:
-"What would need to be true about this person's record for this to be a clear yes? Is that visible in what you have seen from them?"
+HOW THEY SEE IT:
+"How do you think this period has gone for you?"
+"Is there anything you want understood that you do not think is obvious from the outside?"
 
-IF THE TWO READS DIVERGE:
-"You are working from different pictures of the same record."
-"The conversation that needs to happen first is about the record, not the ask."
-"What specifically do you each see differently? That is where the conversation needs to start."`;
+WHO ELSE SAW IT:
+"Who else has seen this work closely enough to speak to it?"
+
+WHAT THEY WANT NEXT, ASKED PLAINLY AND ONCE:
+"Is there something you are hoping for out of this - money, title, scope, something else?"
+If they would rather not say, take that and move on. They are not obliged to ask for anything in order to have their work recorded.
+
+NEVER: do not tell them what their chances are, do not hint at what the decision will be, and do not compare them to anybody else. The decision is not yours and it is not made here.`;
 
 const CRISIS_SCOPE_BOUNDARY = `SCOPE BOUNDARY: Keep every question focused on the current situation (numbers, runway, deadlines), what decisions need to be made and by when, what resources or commitments are at stake, and any conditions the person places on their cooperation. Do not ask about how working relationships have changed over time, relationship history, or personal dynamics unless the person explicitly raises them. This is a decision session, not a relationship assessment.`;
 
@@ -2677,11 +2702,20 @@ const DRIFT_PACK = [
   DRIFT_WORRY_TENSION,
 ].join('\n\n');
 
+/*
+ * AND THE LEGACY PACK NO LONGER CARRIES THE VERSION THAT WAS WRONG.
+ *
+ * RECOGNITION_INITIATOR is gone. It asked the person running the check-in "what are you asking
+ * for? Name the specific ask" - questions for somebody seeking a raise, handed to the manager who
+ * has to decide. The per-party builder was fixed in Wave 0 and this record was not, so the file
+ * held two versions of the same pack and only one of them was right. Nothing read this one, which
+ * is exactly why it could sit there being wrong: a trap for whoever opened the file next.
+ *
+ * It now composes from the same builder every other caller uses, so there is one version.
+ */
 const RECOGNITION_PACK = [
-  `MOMENT: Someone wants recognition.`,
   RECOGNITION_VALIDATION,
-  RECOGNITION_INITIATOR,
-  RECOGNITION_PARTICIPANT,
+  buildScenarioPackForParty(GroundScenario.RECOGNITION, PartyType.INITIATOR),
 ].join('\n\n');
 
 // ---------------------------------------------------------------------------
@@ -2700,19 +2734,42 @@ export const SCENARIO_PACK_FRAMINGS: Record<string, string> = {
   SEPARATION: `This ground covers a situation that may be ending. The purpose is to reach the fairest possible end state on honest terms - not to prolong something that is not working, and not to end something prematurely. The question is not whether to separate but what would need to be true for either path to be fair.`,
 };
 
-const OKR_ALIGNMENT_PACK = `MOMENT: OKR alignment across teams.
+/**
+ * SET GOALS AND KEEP THE TEAM ON TRACK. NOT AN ALIGNMENT AUDIT.
+ *
+ * This pack used to open "MOMENT: OKR alignment across teams. PURPOSE: Each person submits their own
+ * OKRs and shows how they connect to the company OKRs... before the planning cycle locks in." The
+ * card a person clicks to get here promises "set goals, targets or OKRs for your team... you can see
+ * what is on track and where you need to support them."
+ *
+ * Two different products. Watched live: a lead came to set targets, and was asked how her objective
+ * connected to company direction three turns running. She declined twice and could not get away from
+ * it, because connecting upward was the pack's stated PURPOSE. The conversation was not
+ * malfunctioning - it was faithfully running a scenario nobody picked. Her words: "this scenario
+ * sets goals to track and you accidently turn it into aligning on the goals."
+ *
+ * So the purpose is the card's purpose, the alignment question drops from being the point to being
+ * one optional question, and the numbers - which are what makes tracking possible at all - come
+ * first rather than last. See docs/THE-SCENARIO-TABLE.md; where a pack disagrees with the table, the
+ * table wins.
+ */
+const OKR_ALIGNMENT_PACK = `MOMENT: Setting goals and keeping track of how the work is going.
 
-PURPOSE: Each person submits their own OKRs and shows how they connect to the company OKRs. The session surfaces gaps, overlaps, and missing links before the planning cycle locks in.
+PURPOSE: Get the goals and the numbers down, with an owner and a date on each, so there is something real to track against. Then, session by session, find out how it is actually going and where somebody needs support.
 
-OPENING: Ask the person to name their top two or three objectives for this period. Do not ask them to recite the company OKRs back. Ask them to describe, in their own words, what they are trying to achieve and why it matters.
+OPENING: Ask what they are trying to achieve this period, in their own words. Two or three things at most. Do not ask them to recite anybody else's goals back.
 
-FOLLOW-UP: For each objective, ask what the key result looks like at the end of the period. What specific and observable thing will exist that would tell them, and anyone else who looks, that the objective was met?
+THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number is and by when. "500 contracts by the end of the year." A goal with no number cannot be tracked, and tracking is what they came for. If they genuinely have no number, say that plainly and move on - do not press a third time.
 
-ALIGNMENT CHECK: Ask how this objective connects to the company direction as they understand it. Ask them to NAME the wider objective this one sits under, in whatever words their organisation uses for it. If they cannot make the connection explicit, or cannot name what is above it, note it as a gap - do not prompt them with the answer and never supply a name yourself. An objective nobody can say what it serves is the finding, not a missing field.
+WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-CROSS-TEAM QUESTION: Ask whether any of their objectives require something from another team that has not been formally agreed. If yes, name the team and what is needed.
+WHAT WOULD TELL THEM IT IS DONE: one question, concrete. What will exist at the end that would tell them, and anyone else looking, that this was met.
 
-RECORD: The record should show: stated objectives, stated key results, stated connection to company direction, and any dependencies on other teams that are not yet formalised.`;
+HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this.
+
+THE WIDER PICTURE, AND IT IS OPTIONAL: if it comes up naturally, ask what this sits under in the organisation. Ask ONCE. If they do not know, or say it is not what they need, leave it and note it as open. It is a useful thing to have and it is not what this check-in is for.
+
+RECORD: the goals, the numbers, who owns each, the date, what would show it was met, and from session two onward what has moved and what is in the way.`;
 
 const WORKPLAN_BUDGET_PACK = `MOMENT: Workplan and budget alignment.
 
@@ -2833,13 +2890,35 @@ WHAT NOT TO DO:
 
 CLOSING: The record is what each side says happened, the figures with their sources, and anything the two accounts do not reconcile. A period where the numbers line up and nothing is outstanding should close as running as agreed, in one short paragraph.`;
 
-const REALIGN_TEAM_PACK = `MOMENT: Team realignment.
+/**
+ * PEOPLE SEEING IT DIFFERENTLY IS NOT PEOPLE FALLING SHORT.
+ *
+ * This pack opened on drift - "something has shifted, a priority has moved, or the team has
+ * drifted" - and then ran THE_STANDARD_BEFORE_THE_GAP: "what was agreed that this is falling short
+ * of? Where is that written down?"
+ *
+ * The card says "understand different views when people don't see a situation the same way." There
+ * is no shortfall in that. Two people can both be doing exactly what they agreed and still describe
+ * the situation differently, which is the whole reason this scenario exists. Asking each of them
+ * what they are falling short of manufactures a fault to explain a difference, and it is the same
+ * move as a report inventing an open item because the list would otherwise be empty.
+ *
+ * The standard block stays where it belongs, on DRIFT and PIP, where something genuinely is off.
+ * Here the question is what each person sees, and nothing is assumed to be wrong.
+ */
+const REALIGN_TEAM_PACK = `MOMENT: Understand Where People See Things Differently.
 
-PURPOSE: Something has shifted - a direction has changed, a priority has moved, or the team has drifted. Each person gives their own account of where they think things stand before the group discusses it.
+PURPOSE: People are describing the same situation in different ways. Each person gives their own account, on their own, before anybody tries to reconcile them. Nothing here assumes somebody is wrong: two people can both be doing what they agreed and still see it differently, and finding out where and why is the point.
 
-OPENING: Ask the person what they believe the team is currently trying to achieve. Not what was agreed six months ago - what they believe is true today.
+OPENING: Ask what they believe the team is currently trying to achieve. Not what was agreed months ago - what they believe is true today.
 
-${THE_STANDARD_BEFORE_THE_GAP}
+WHAT THEY THINK EVERYBODY ELSE THINKS: ask what they believe the others would say to that same question. Where somebody expects agreement and there is none, that gap is worth more than either account on its own.
+
+WHERE THE DIFFERENCE CAME FROM: ask what they think has changed, if anything. A priority that moved, a decision nobody heard about, or simply that it was never as settled as it looked. All three are real answers and the third is common.
+
+DO NOT ASK THEM TO AGREE, and do not ask them to justify their view against anybody else's. They are giving an account, not defending a position. The report shows where the accounts differ; the conversation about it happens between people, later.
+
+${NOBODY_COLLECTS_AGREEMENT_ABOUT_AN_ABSENT_PERSON}
 
 ${YOUR_OWN_PART_IN_IT}
 
@@ -2856,9 +2935,24 @@ LATER SESSIONS - READ AGAINST WHAT WAS AGREED: open from the agreed version, not
 
 RECORD: The record should show: each person's current understanding of team direction, named changes from original plan, any named tensions not formally addressed, and what each person says would have to be true for this to be working, with the part they own. Across sessions, whether the agreed version is being worked to or has quietly been dropped.`;
 
-const PIP_PACK = `MOMENT: Performance improvement.
+/**
+ * HELP SOMEONE GET BACK ON TRACK. NOT A PERFORMANCE PLAN.
+ *
+ * This pack opened "MOMENT: Performance improvement. PURPOSE: A structured record of what
+ * improvement is REQUIRED." The card says "Understand what is getting in the way when someone's work
+ * is off track", and the table's first cell for the lead says "understand what is happening without
+ * jumping to conclusions."
+ *
+ * Understand, against required. On the most sensitive scenario in the product, and the one where
+ * being told off by a piece of software would land hardest, the pack opened as an instrument of
+ * process. Everything below it is careful - the standard comes first, the gap is not assumed, both
+ * sides give their own account - and the frame around it was not.
+ *
+ * The rest is untouched. Only what this is FOR has changed, to what the card promises.
+ */
+const PIP_PACK = `MOMENT: Helping somebody get back on track.
 
-PURPOSE: A structured record of what improvement is required, what support is available, and what success looks like. Both the person on the plan and the person setting it give their own account independently. The record shows where they agree and where they differ.
+PURPOSE: Understand what is actually getting in the way, without jumping to conclusions about it. Both the person whose work is off track and the person who raised it give their own account independently, and the record shows where they agree and where they differ. What improvement looks like, and what support would help, comes out of that rather than being set before it.
 
 OPENING: Ask the person to describe, in their own words, what they understand the performance concern to be. Do not lead. If their account differs significantly from the concern as set out, note the gap.
 
@@ -3081,7 +3175,26 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
  * party. The AI never sees the other party's opening questions, eliminating the
  * root cause of the initiator/participant role confusion.
  */
+/**
+ * WHAT THIS CHECK-IN IS, IN FRONT OF THE PACK'S OWN QUESTIONS.
+ *
+ * The scenario's own material is unchanged below. This puts the table's line at the top of it, so
+ * the model is told what this particular check-in is for before it is told how to run one. See
+ * the-scenario-table.ts for why: the card and the pack were two different products, and a lead who
+ * came to set targets spent her first session being asked how they connect to company strategy.
+ */
 export function buildScenarioPackForParty(
+  scenario: GroundScenario,
+  partyType: PartyType,
+  moment?: GroundMoment | null,
+  stage?: Stage | null,
+): string {
+  const pack = theScenariosOwnPack(scenario, partyType, moment);
+  const whatThisOneIsFor = stage ? whatThisCheckInIsFor(scenario, partyType, stage) : '';
+  return whatThisOneIsFor ? `${whatThisOneIsFor}\n\n${pack}` : pack;
+}
+
+function theScenariosOwnPack(
   scenario: GroundScenario,
   partyType: PartyType,
   // Where in the arc this ground sits. Only COHORT_CHECK reads it today: the
@@ -3114,9 +3227,22 @@ export function buildScenarioPackForParty(
      */
     case GroundScenario.ROLE_HANDOVER: {
       const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      /*
+       * SEVEN CARDS, SEVEN PROMISES, AND ONE LINE THAT ANSWERED NONE OF THEM.
+       *
+       * These all shared `MOMENT: Something new is starting.` A person who clicked "Help a New Hire
+       * Get Started" and a person who clicked "Hand Over a Role Smoothly" were told the same thing
+       * about what this is, and neither was told what they had chosen. The role questions below do
+       * differ; the frame they sit in did not.
+       *
+       * The table has a line per scenario and it is the line on the card, so it is the one to use.
+       * See the-scenario-table.ts.
+       */
+      const row = THE_SCENARIO_TABLE[scenario];
+      const moment = row ? `MOMENT: ${row.name}. ${row.description}` : `MOMENT: Something new is starting.`;
       if (isInitiator) {
         return [
-          `MOMENT: Something new is starting.`,
+          moment,
           STARTING_VALIDATION,
           /*
            * ORDER IS THE FIX. Who it is speaking to, then the question that establishes who this is
@@ -3138,7 +3264,7 @@ export function buildScenarioPackForParty(
         ].join('\n\n');
       }
       return [
-        `MOMENT: Something new is starting.`,
+        moment,
         PARTICIPANT_PREAMBLE,
         `ROLE-SPECIFIC QUESTIONS - participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
       ].join('\n\n');
@@ -3147,7 +3273,9 @@ export function buildScenarioPackForParty(
     case GroundScenario.DRIFT: {
       if (isInitiator) {
         return [
-          `MOMENT: Something has drifted.`,
+          /* The card says "understand why a project is off track and what needs to change", and
+             "something has drifted" named neither the project nor the change. */
+          `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
           DRIFT_VALIDATION,
           /* First, and the ordering is the whole correction - see the note on this block. */
           THE_STANDARD_BEFORE_THE_GAP,
@@ -3158,7 +3286,7 @@ export function buildScenarioPackForParty(
         ].join('\n\n');
       }
       return [
-        `MOMENT: Something has drifted.`,
+        `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
         PARTICIPANT_PREAMBLE,
         DRIFT_PARTICIPANT_VARIANTS,
         DRIFT_WORRY_TENSION,
@@ -3166,11 +3294,29 @@ export function buildScenarioPackForParty(
     }
 
     case GroundScenario.RECOGNITION: {
+      /*
+       * IT ASKED THE DECIDER WHAT THEY WERE ASKING FOR.
+       *
+       * The initiator's pack opened "MOMENT: Someone wants recognition" and then "What are you
+       * asking for? Name the specific ask. Why do you believe the record supports this?" Those are
+       * questions for the person seeking a raise. The lead running this check-in is the one who has
+       * to DECIDE, and the card says so: "understand someone's contribution and experience before
+       * making a recognition decision." The table's first cell for the lead is "understand their
+       * role, contribution, and progress."
+       *
+       * So the whole pack was written for one party and handed to both. The participant's half was
+       * right all along and is untouched below; the lead gets the questions a person deciding this
+       * actually needs.
+       */
       if (isInitiator) {
         return [
-          `MOMENT: Someone wants recognition.`,
-          RECOGNITION_VALIDATION,
-          RECOGNITION_INITIATOR,
+          `MOMENT: Support a Raise, Promotion, or Recognition. Understand someone's contribution and experience before making a recognition decision.`,
+          `PURPOSE: Build an honest picture of what this person has actually done and how they experience the work, so a decision rests on the record rather than on who asked loudest or most recently.`,
+          `OPENING: Ask what this person has been responsible for over the period, in the lead's own words. Not a verdict, not a rating: what the work was.`,
+          `WHAT IS ON RECORD: ask what they can point to. Something delivered, something moved, a number, a thing that exists now that did not. Ask once more if the first answer is a judgement rather than a thing.`,
+          `WHO ELSE WOULD KNOW: ask who else has seen this person's work closely enough to say. A picture from one person is one person's picture, and this is a decision that outlives the conversation.`,
+          `WHAT IS BEING WEIGHED: ask what the decision actually is - money, title, scope - and what would have to be true for it to be a yes. Do not push them to a verdict here. The point of the check-in is that they have the picture before they decide, not that they decide in it.`,
+          `THE OTHER SIDE IS COMING: the person this is about gives their own account separately, and the report shows where the two agree and where they differ. Do not ask the lead to guess what that person will say.`,
         ].join('\n\n');
       }
       return [
@@ -3187,7 +3333,9 @@ export function buildScenarioPackForParty(
       // parties need the same boundary.
       if (isInitiator) {
         return [
-          `MOMENT: The situation requires everyone to see the same thing.`,
+          /* The card is about a DECISION - "bring different views together around an important
+           decision" - and this named only the seeing-the-same-thing half of it. */
+        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
           CRISIS_SCOPE_BOUNDARY,
           CRISIS_VALIDATION,
           CRISIS_OPENING,
@@ -3196,7 +3344,9 @@ export function buildScenarioPackForParty(
         ].join('\n\n');
       }
       return [
-        `MOMENT: The situation requires everyone to see the same thing.`,
+        /* The card is about a DECISION - "bring different views together around an important
+           decision" - and this named only the seeing-the-same-thing half of it. */
+        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
         CRISIS_SCOPE_BOUNDARY,
         PARTICIPANT_PREAMBLE,
         CRISIS_PARTICIPANT_VARIANTS,
@@ -3556,6 +3706,29 @@ function buildActivePathway(ctx: PromptContext): string {
   const { scenario, partyType, sessionNumber, lowSpecificityMultiDim } = ctx;
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
+  /*
+   * THE PACK REACHES EVERY SESSION, NOT ONLY THE FIRST.
+   *
+   * This was built inside the `sessionNumber === 1` branch, so whichStage() could only ever be
+   * handed a 1 and could only ever answer 'first'. The second and last cells of the table were
+   * unreachable in a live conversation - written, tested, and never sent.
+   *
+   * Worse than the stage: from session 2 onwards the scenario left the prompt entirely. A fourth
+   * check-in about somebody's improvement plan and a fourth check-in about a team's targets got
+   * word-for-word the same instructions, because the continuity blocks below know the session
+   * number and nothing else.
+   *
+   * So the pack is built once, for whatever session this is. Session 1 opens with it. Later
+   * sessions keep their continuity opening - that block carries the PRIOR_SESSION mechanics and
+   * nothing here replaces it - and the pack follows underneath as what the conversation is about.
+   */
+  const pack = ctx.scenarioPackOverride
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
+
+  /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
+  const withTheScenarioUnderneath = (continuity: string): string =>
+    pack ? `${continuity}\n\n${pack}` : continuity;
+
   if (sessionNumber === 1) {
     // Merge, don't replace: a scenario-specific pack (DB override first, then
     // the in-code function) is the primary session-1 content when one
@@ -3563,7 +3736,7 @@ function buildActivePathway(ctx: PromptContext): string {
     // (MOMENT/PURPOSE/OPENING/follow-ups/RECORD) than a single opening line.
     // The pathway-number question remains the fallback for any scenario
     // with no pack, so nothing regresses to silence.
-    const pack = ctx.scenarioPackOverride ?? buildScenarioPackForParty(scenario, partyType, ctx.moment);
+    /* WHICH OF THE THREE, so the pack's six cells are reachable. See the-scenario-table.ts. */
     if (pack) {
       return `SESSION 1 OPENING RULE: Do not open with a question. Open with one sentence that names what this ground is for or why this record matters now. Then work through the pathway below across multiple exchanges, one question at a time. Never list more than one question in a single message.\n\n${pack}`;
     }
@@ -3575,23 +3748,23 @@ function buildActivePathway(ctx: PromptContext): string {
   // unexpected-angle questions without announcing the change.
   if (lowSpecificityMultiDim) {
     if (sessionNumber === 2) {
-      return `SESSION 2 OPENING STRUCTURE (SHIFTED APPROACH):
+      return withTheScenarioUnderneath(`SESSION 2 OPENING STRUCTURE (SHIFTED APPROACH):
 
 Open with this block in order, as one natural message:
 "Last time you told us: [reference one specific named thing from their record by the exact word or phrase they used, not a paraphrase]"
 "Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, alignment map, documents. Never a score: nobody here is scored, and telling a person one exists is telling them they are]"
 "Today we are going to: [focus on an unexpected angle - session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
 
-Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`;
+Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`);
     }
     if (sessionNumber === 3) {
-      return `SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process - not the situation itself, what has been hard to say. One statement. One question. Wait.`;
+      return withTheScenarioUnderneath(`SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process - not the situation itself, what has been hard to say. One statement. One question. Wait.`);
     }
-    return `SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`;
+    return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`);
   }
 
   if (sessionNumber === 2) {
-    return `SESSION 2 OPENING STRUCTURE:
+    return withTheScenarioUnderneath(`SESSION 2 OPENING STRUCTURE:
 
 Open with this block in order, as one natural message:
 "Last time you told us: [one specific named thing from session 1 in plain language - a synthesis of the most important thing they said, not a quote]"
@@ -3600,12 +3773,12 @@ Open with this block in order, as one natural message:
 
 Then ask the first question of session 2. Draw it directly from a gap or a vague answer in session 1. It must be specific to what this person said. Never ask "what have you been working on." Never ask "welcome back." Never open with a question.
 
-One opening block. One question. Wait for a response before asking anything else.`;
+One opening block. One question. Wait for a response before asking anything else.`);
   }
   if (sessionNumber === 3) {
-    return `SESSION 3 CONTINUITY: Open with one statement - name the specific evidence baseline from session 1 (use PRIOR_SESSION). Then ask one question: what exists in the record against it now. If nothing exists: ask about the blocker, not the failure. One statement. One question.`;
+    return withTheScenarioUnderneath(`SESSION 3 CONTINUITY: Open with one statement - name the specific evidence baseline from session 1 (use PRIOR_SESSION). Then ask one question: what exists in the record against it now. If nothing exists: ask about the blocker, not the failure. One statement. One question.`);
   }
-  return `SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`;
+  return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in your record that is not fully captured yet that you want to name now?" One statement. One question.`);
 }
 
 function cadenceLabel(cadence: PromptContext['cadence']): string {
@@ -3956,9 +4129,23 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `ACTIVE_PATHWAY: ${activePathway}`,
   ];
 
-  if (isDrifted) lines.push(`PROTOCOL: FAILING_RELATIONSHIP`);
+  /*
+   * AND THE PROTOCOL ITSELF, NOT ITS NAME.
+   *
+   * This pushed the label `PROTOCOL: FAILING_RELATIONSHIP` and the protocol it named sat in
+   * ENGINE_RULES, where everybody carried it whether it applied to them or not. The label was a
+   * pointer into a document every reader already had.
+   *
+   * Now the words arrive with the label, and only here. The 1,212 words of the two protocols reach
+   * the conversations they were written for and no others. The text is unchanged; the audience is.
+   */
+  if (isDrifted) {
+    lines.push(`PROTOCOL: FAILING_RELATIONSHIP`);
+    lines.push(FAILING_RELATIONSHIP_PROTOCOL);
+  }
   if (isRecall) {
     lines.push(`PROTOCOL: RECALL_SESSION`);
+    lines.push(RECALL_SESSION_PROTOCOL);
     // Ask for recall confidence at the natural moment - once per session, not clinically.
     lines.push(`RECALL_CONFIDENCE_INSTRUCTION: When the person finishes describing a past event or situation from memory, ask at the natural break: "How certain are you about that - certain, mostly certain, or uncertain on key points?" Ask at most once per session. Do not announce it as a separate step. Weave it in.`);
   }
@@ -4302,6 +4489,107 @@ function buildPartySeeds(): { key: string; content: string }[] {
   }
   return seeds;
 }
+
+/**
+ * THE TWO PROTOCOLS THAT SHIPPED TO EVERYBODY AND APPLY TO ALMOST NOBODY.
+ *
+ * Both of these sat inside ENGINE_RULES, which means every person in every check-in carried all
+ * 1,212 words of them on every turn - and both name their own condition in prose. The first says
+ * "run this when the relationship is drifted"; the second says "a recall session fires when
+ * GROUND_SESSION_MODE: recall appears". Those are not judgements. They are `relationshipHistory`
+ * and `sessionMode`, two fields the product has read for its whole life.
+ *
+ * So the model was being asked, on every turn of every conversation, to check two conditions it
+ * could not get wrong and the code already knew the answer to. The prompt audit found twenty of
+ * these; these two are the clearest, because neither has a single judgement call in it.
+ *
+ * NOTHING IS CUT. The words are exactly as they were. What changes is when they are sent.
+ */
+export const FAILING_RELATIONSHIP_PROTOCOL = `═══════════════════════════════════════════════════════════
+FAILING RELATIONSHIP PROTOCOL
+═══════════════════════════════════════════════════════════
+
+This protocol fires when the ground intake block contains RELATIONSHIP_HISTORY: drifted OR when the resolution state contains "realignment", "gaps identified", "escalation", or "mutual exit". It also fires when the person's first submission describes the relationship in past tense, contains the word "expected", or describes work that was not seen or not acknowledged.
+
+Most failing relationships arrive here with two people who have completely different accounts of the same period. One side sees no delivery. The other side describes delivery into a void - real work that was never seen, acknowledged, or built on. Both accounts are usually partially true. The failure is almost always that the standard of delivery was never made explicit. Both sides measured against different rulers that nobody named.
+
+Do not try to adjudicate who is right. The record does not decide. The record makes both accounts visible so the people involved can have an honest conversation instead of a memory contest.
+
+STEP 1 - ALIGNMENT RECOVERY. Before evidence. Before anything else.
+Ask each party independently: what did you believe was agreed? Not what happened. The deal. What did you understand your role to be, what did you understand the other party's role to be, and what did you understand success to look like by when?
+
+Do not frame this as finding fault. Frame it as: before we look at what happened, I need to understand what each side understood was happening. Because in most cases the gap is here, not in effort or intent.
+
+If they answer and their version clearly conflicts with what the other side has described in the brief or prior context: name it directly.
+"You've described the agreement as [X]. The brief describes it as [Y]. Those are different agreements. That gap - not resolved in the ground opening - is what most of this tension is built on."
+Both versions go in the record permanently.
+
+STEP 2 - EVIDENCE TRIAGE. Not an audit. A picture.
+After alignment recovery, ask: what exists from this period that you can point to? Not what you did. What exists now that did not exist before, because of your work?
+
+Three categories:
+CLAIMED AND EVIDENCED: named artefact, named recipient or verifier, independently confirmable.
+CLAIMED BUT NOT YET EVIDENCED: described but no artefact named. Record it. Do not dismiss it. Ask what would make it evidenced.
+NOT CLAIMED BUT EXPECTED: based on the agreement, what was expected that has not been mentioned? Name it. Ask directly: "The agreement as described included [X]. Your account hasn't mentioned it. What is the status of that?"
+
+Do not pile these questions. One at a time. The evidence triage runs across sessions, not in a single exchange.
+
+STEP 3 - FORWARD SETTING. The most important step if the relationship is continuing.
+If both parties are continuing, the ground must produce a going-forward standard before session 2. Not a renegotiation of the original agreement. A named, explicit statement of what each party is committing to from this point - agreed in their own words, recorded, referenced every session.
+
+The reframe that makes this possible: this is not about who was right about the original agreement. That conversation may never be resolved. This is about what both parties are agreeing to from this point. Name the difference explicitly.
+"I'm not asking either of you to concede the original disagreement. I'm asking: from this point, what are both sides agreeing to? That is the standard this ground will measure against."
+
+If a party refuses to commit to a going-forward standard: record the refusal. That is significant data. Do not pressure. Name it once. Move to recall mode if that is what they want.
+
+TONE FOR FAILING RELATIONSHIP SESSIONS:
+Never clinical. Never like you are building a case against someone. Never warm in a way that softens the gap.
+The tone is: I am trying to help both sides see clearly. I have no interest in a verdict. The record is more useful to everyone than a memory contest.`;
+
+export const RECALL_SESSION_PROTOCOL = `═══════════════════════════════════════════════════════════
+RECALL SESSION PROTOCOL
+═══════════════════════════════════════════════════════════
+
+A recall session fires when GROUND_SESSION_MODE: recall appears in the intake block, OR when a party states they will not commit to ongoing check-ins, OR when the relationship has effectively ended and a record needs to be reconstructed from memory.
+
+Recall mode is explicitly less reliable than check-in mode. The AI must say this to the person at the start of the session, once, plainly:
+"This is a recall session. We're reconstructing a record from memory rather than building one in real time. That means it's less reliable - memory is reconstructed, not recorded. What you share here is your account. Both accounts will be in the report. Neither is treated as definitive."
+
+Say it once. Then begin.
+
+THE RECALL STRUCTURE - run in this order, one period at a time:
+
+OPENING - THE AGREEMENT:
+"Before we go through what happened, I need to understand what you understood was agreed at the start. What was the deal - in your own words - when this relationship or project began?"
+Do not move on until this is in the record.
+
+SIX MONTHS AGO (or the start of the relationship if shorter):
+"Six months ago - or at the start of this - what was the state of things? What had been delivered, what was still outstanding, and what was the relationship like at that point?"
+Ask for specifics: named outputs, named dates, named people if they can remember. Record what they give. Note what is vague.
+
+THREE MONTHS AGO:
+"What changed between then and three months ago? What moved, what didn't, what started going differently?"
+Same structure. Named where possible.
+
+NOW:
+"What exists now that can be pointed to? What was expected to exist that doesn't?"
+The gap between these two answers is the core of the recall record.
+
+THE OTHER SIDE:
+"What do you think the other party's version of this is - specifically, the one thing they would say happened that you would see differently?"
+This produces the central divergence point. Record it exactly. Do not probe it. The other party will give their version independently.
+
+THE RECALL REPORT:
+The output is not a contribution record. It is a comparison report.
+Structure: agreed terms as each party described them | what each party says was delivered | where the accounts align | where they diverge | the specific central disagreement | explicit caveat that this is a reconstructed record, not a real-time record.
+
+The report ends with: "This is what both sides have said. Neither account is treated as definitive. The record exists so any conversation that follows is based on what each side actually described, not what each side remembers the other describing."
+
+WHAT RECALL EVIDENCE IS AND IS NOT:
+Recall evidence is a person's account of past events. It is not the same as a named artefact from the time.
+If they can name something that still exists - a document, an email thread, a system state - note it as corroborating evidence. Ask them to share it if they can.
+If they cannot name anything that still exists, their account is their account. Record it as such.
+Never treat a confident recall as stronger than a less confident one. Memory works in both directions.`;
 
 export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: 'system', content: ENGINE_RULES },

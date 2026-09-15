@@ -25,7 +25,7 @@ export interface PictureInput {
   ofPeople: number;
   confidence: { band: 'thin' | 'partial' | 'solid'; saying: string; reasons: string[] };
   tiles: { label: string; value: string; sub: string; tone: string }[];
-  patterns: { who: string; signal: string; periodsObserved: number; positive: boolean }[];
+  patterns: { who: string; signal: string; periodsObserved: number; positive: boolean; carrying?: boolean }[];
   /** Per person, from buildCoverage: what is landing where, in the engine's words. */
   coverage: { name: string; reasonText: string }[];
   /** Per person, from buildContribution: the engine's reason line, where it has one. */
@@ -153,7 +153,11 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   for (const p of i.patterns) {
     out.push({
       key: `pattern-${p.who}-${p.signal.slice(0, 16)}`,
-      text: `${p.who}: ${p.signal} Seen across ${p.periodsObserved} sessions${p.positive ? ', which is a good sign' : ''}.`,
+      /* Three endings, because there are three kinds of pattern and the middle one is neither
+         praise nor a problem with the person. See CARRYING_CODES. */
+      text: `${p.who}: ${p.signal} Seen across ${p.periodsObserved} sessions${
+        p.positive ? ', which is a good sign' : p.carrying ? ', and that is worth somebody looking at' : ''
+      }.`,
       mustKeep: [p.signal],
     });
   }

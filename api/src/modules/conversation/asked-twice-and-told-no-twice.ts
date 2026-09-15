@@ -114,23 +114,78 @@ If what they asked for is to set targets and track them, ask about the targets.`
 export function opensByRepeatingThem(theySaid: string, reply: string): boolean {
   const theirs = subjectWords(theySaid);
   if (theirs.size < 3) return false;
-  /* The first sentence, which is all a reader has before deciding whether this is going anywhere. */
-  const opening = (reply ?? '').split(/(?<=[.?!])\s/)[0] ?? '';
-  const opener = subjectWords(opening);
-  if (opener.size < 3) return false;
-  let shared = 0;
-  for (const w of opener) if (theirs.has(w)) shared += 1;
   /*
-   * Most of the opening being words they just used, rather than a word or two in common.
+   * THE OPENING, WHICH IS THE FIRST SENTENCE OR THE FIRST TWO.
    *
-   * Six tenths, not seven. Measured against the real pair above: "500 contracts and the sales linked
-   * to them by the end of the year" shares four of its six subject words with what she typed, and
-   * seven tenths let it through. A check tuned above the thing it was written for is not a check.
+   * One sentence was not enough. Once a give-back was added, the reply opened with a real fact and
+   * restated her in the sentence AFTER it, which is the same fault one place further along:
+   *
+   *   "Sixty of your hundred and fifty. That means the supply side is the bottleneck, and you're
+   *    worried about Rita. What's holding up the supply side specifically?"
+   *
+   * Sentence one earns its place. Sentence two is her own message handed back. Found by running a
+   * turn, and it passed the one-sentence version of this check.
+   *
+   * Two, not all of them: quoting somebody later in a turn is often right, and the product does it
+   * deliberately where a document contradicts them. What grates is leading with it.
    */
-  return shared / opener.size >= 0.6;
+  const sentences = (reply ?? '')
+    .split(/(?<=[.?!])\s/)
+    .filter((x) => x.trim() && !/\?\s*$/.test(x.trim()))
+    .slice(0, 2);
+
+  /*
+   * EACH OF THE FIRST TWO, SEPARATELY. Joining them and measuring the pair was the first attempt and
+   * it made the check weaker rather than wider: sentence two carries new words, they dilute sentence
+   * one's restatement, and the pair scores under the line while sentence one on its own is plainly
+   * her message handed back. One restating sentence at the top is the fault, whichever of the two.
+   */
+  return sentences.some((sentence) => {
+    const opener = subjectWords(sentence);
+    if (opener.size < 3) return false;
+    let shared = 0;
+    for (const w of opener) if (theirs.has(w)) shared += 1;
+    return shared / opener.size >= 0.6;
+  });
 }
 
 /** Named for the model, which then writes its own opening. */
 export const DO_NOT_SAY_IT_BACK = `Your reply opens by repeating what they just told you before asking the next thing. They know what they said. Reading their own answer handed back is what makes a check-in feel like it is going in circles.
 
 Write it again without the restatement. Go straight to the next question. A two or three word acknowledgement is fine if something genuinely landed; a summary of their last message is not.`;
+
+/**
+ * ASKED TWICE ALREADY AND STILL ASKING. NOBODY HAS TO OBJECT FOR THIS TO BE WRONG.
+ *
+ * The guard above fires when somebody says the questions are wrong. Most people never say that. They
+ * answer something adjacent, or answer a different question, and a polite person will do that all
+ * day while the same question keeps coming back.
+ *
+ * Run through a first setup conversation, a lead was asked how her objective connects to the company
+ * direction in three consecutive turns:
+ *
+ *   "How does that objective of 500 contracts by year-end connect to the company direction?"
+ *   "How does that overall objective of 500 contracts by year-end connect to the company direction?"
+ *   "How does this objective connect to the company's overall direction?"
+ *
+ * She never complained. She answered "150 each and I have a target of 50 myself", then "finance
+ * confirms the numbers", both real answers to something, and got the same question back both times.
+ * From her side that is the product not listening. From the prompt's side it is a step that has not
+ * been satisfied. Neither half can see the other.
+ *
+ * TWICE IS THE LIMIT. Once is asking. Twice is checking you were heard. A third time is the thing a
+ * person remembers about the product, and whatever it was going to learn is worth less than that. If
+ * it matters and nobody has answered it, it belongs in the report as still open, which is what the
+ * report is for.
+ */
+export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
+  const asked = (earlierAsks ?? []).filter((a) => (a ?? '').trim());
+  if (asked.length < 2) return false;
+  /* The two most recent asks. Something raised once, several turns ago, is not this fault. */
+  const recent = asked.slice(-2);
+  return recent.every((a) => asksTheSameThingAgain(a, reply));
+}
+
+export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.
+
+Let it go and ask about something else that matters here. Do not rephrase it and do not explain why you wanted it. If it genuinely matters and nobody has answered it, it belongs in the report as still open, not in a fourth question.`;

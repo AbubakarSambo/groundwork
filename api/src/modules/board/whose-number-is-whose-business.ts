@@ -59,22 +59,43 @@ export function targetsFor(
    * it is 21, and it is the fact that makes the ask reasonable rather than arbitrary. It gives away
    * nothing about any individual.
    */
-  const total = targets.reduce((a, t) => a + (t.target ?? 0), 0);
+  /*
+   * AND THE WHOLE IS ONLY ADDED UP WHERE EVERY NUMBER HAS A NAME ON IT.
+   *
+   * Read live: a check-in with a team target of 500 and four people carrying 150, 150, 150 and 50
+   * of it was told "the whole check-in is aiming at 1000". The per-person numbers COMPOSE the
+   * team's one, so adding both counted the same work twice and doubled the ask.
+   *
+   * The first fix was to treat a target belonging to nobody as the whole. That is wrong too: a
+   * target with no owner is often just a target nobody has been given yet, and calling it the whole
+   * understates the ask by as much as the other way overstated it. Nothing in a target says whether
+   * it is a whole or a part, so where the two are mixed there is no honest total to give.
+   *
+   * So the sum is said only where every number has a name on it, which is the case it was written
+   * for - "yours is 21, of 270 across ten people". Where some number belongs to nobody, what is
+   * withheld is still worth saying and the arithmetic is not.
+   */
+  const total = unowned.length ? 0 : targets.reduce((a, t) => a + (t.target ?? 0), 0);
   /*
    * THE HEAD COUNT ONLY WHERE EVERY NUMBER HAS A NAME ON IT.
    *
    * Read live with eight of ten targets unassigned: "aiming at 270 across 2 people" - the two whose
-   * targets happened to have owners. True of the data and nonsense to a reader. Where the check-in
-   * is only part-way assigned, the total is still worth saying and the head count is not.
+   * targets happened to have owners. True of the data and nonsense to a reader.
    */
   const everyoneNamed = unowned.length === 0;
   const heads = others.length + mine.length;
+  if (!everyoneNamed) {
+    /*
+     * NO NUMBER, BUT STILL AN ANSWER. Something is missing from this screen and the reason is worth
+     * one line - without it, a person sees a short list and has no idea anything was left out.
+     */
+    return { shown: [...unowned, ...mine], alsoSay: 'Other people on this check-in have numbers of their own, and those are theirs.' };
+  }
   return {
     shown: [...unowned, ...mine],
     alsoSay: total > 0
-      ? `The whole check-in is aiming at ${total}` +
-        (everyoneNamed ? ` across ${heads} ${heads === 1 ? 'person' : 'people'}` : '') +
-        ". Everybody's own number is their own."
+      ? `The whole check-in is aiming at ${total} across ${heads} ${heads === 1 ? 'person' : 'people'}.` +
+        " Everybody's own number is their own."
       : null,
   };
 }

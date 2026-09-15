@@ -19,7 +19,22 @@ import { buildScenarioPackForParty } from './prompt-library';
  * answered fourth, by which point the conversation is about a person. So the standard goes first,
  * their own part goes second, and everything about anybody else comes after both.
  */
-const GAP_SHAPED = [GroundScenario.DRIFT, GroundScenario.REALIGN_TEAM, GroundScenario.PIP];
+/**
+ * REALIGN_TEAM IS NOT GAP-SHAPED, AND PUTTING IT HERE WAS THE MISTAKE.
+ *
+ * Its card is "understand different views when people don't see a situation the same way". Nobody is
+ * falling short of anything in that: two people can both be doing exactly what they agreed and still
+ * describe the situation differently, which is the entire reason the scenario exists. Asking each of
+ * them what they are "falling short of" manufactures a fault to explain a difference.
+ *
+ * It keeps the protection that matters, below, and needs it more than either of the other two: on a
+ * check-in whose whole subject is that people disagree, "does anyone else see it your way?" does not
+ * gather evidence, it builds factions.
+ */
+const GAP_SHAPED = [GroundScenario.DRIFT, GroundScenario.PIP];
+const EVERY_SCENARIO_WHERE_SOMEBODY_ELSE_GETS_TALKED_ABOUT = [
+  GroundScenario.DRIFT, GroundScenario.PIP, GroundScenario.REALIGN_TEAM,
+];
 
 describe('the standard comes before the gap', () => {
   for (const scenario of GAP_SHAPED) {
@@ -66,4 +81,19 @@ describe('the standard comes before the gap', () => {
       });
     });
   }
+
+  describe.each(EVERY_SCENARIO_WHERE_SOMEBODY_ELSE_GETS_TALKED_ABOUT)('%s', (scenario) => {
+    const pack = buildScenarioPackForParty(scenario, PartyType.INITIATOR, null);
+
+    it('never collects agreement about somebody who has not been asked', () => {
+      expect(pack).toMatch(/NEVER ASK WHO ELSE AGREES/);
+      expect(pack).toMatch(/verdict with a witness list/);
+    });
+  });
+
+  it('and the falling-short framing stays off the scenario that is only about difference', () => {
+    const realign = buildScenarioPackForParty(GroundScenario.REALIGN_TEAM, PartyType.INITIATOR, null);
+    expect(realign).not.toMatch(/falling short of/i);
+    expect(realign).not.toMatch(/THE STANDARD COMES FIRST/);
+  });
 });

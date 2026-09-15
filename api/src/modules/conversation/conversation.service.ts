@@ -18,8 +18,10 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
+import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
-import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -100,7 +102,14 @@ import {
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK } from './asked-twice-and-told-no-twice';
+import { whatIsWorthSaying } from './what-the-room-already-knows';
+import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
+import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
+import { oneThingBack } from './one-thing-back-not-three';
+import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
+import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, DO_NOT_SAY_IT_BACK, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -177,6 +186,27 @@ export function countCheckableSpecifics(text: string): number {
   return total;
 }
 
+
+/**
+ * EVERYTHING briefFor NEEDS, IN ONE PLACE, BECAUSE IT WAS IN TWO AND THEY DISAGREED.
+ *
+ * `whoIsReadingIt` is handed the ground through `as any`, so a field a query forgot to select is
+ * not a compile error - it arrives undefined, and undefined is falsy. `initiatorId` was missing
+ * here, so every lead opening their own check-in read as isLead false and was handed the narrowed
+ * participant view of targets they set themselves, with "everybody's own number is their own" said
+ * back to the person who set them. `whoSeesTargets` was missing the same way, so a check-in set so
+ * everybody sees every number was still read under the narrow rule.
+ *
+ * One constant, so the next read cannot be half right.
+ */
+const WHAT_THE_BRIEF_IS_READ_FROM = {
+  label: true,
+  brief: true,
+  scenario: true,
+  initiatorId: true,
+  whoSeesTargets: true,
+  objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' as const } },
+} as const;
 
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
@@ -324,8 +354,6 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       select: {
-        label: true,
-        scenario: true,
         /*
          * WHAT THE CHECK-IN IS ABOUT, WHICH ONLY EVER ARRIVED ONCE.
          *
@@ -343,8 +371,7 @@ export class ConversationService {
          * The transcript is what every later load reads, so the brief travels on it too. Same
          * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
          */
-        brief: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        ...WHAT_THE_BRIEF_IS_READ_FROM,
       },
     });
 
@@ -622,11 +649,7 @@ export class ConversationService {
       select: {
         status: true,
         organizationId: true,
-        label: true,
-        /* What the check-in is actually about, for the brief a participant reads first. */
-        brief: true,
-        scenario: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        ...WHAT_THE_BRIEF_IS_READ_FROM,
       },
     });
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
@@ -1174,6 +1197,141 @@ export class ConversationService {
        * not the fix on its own. This checks shape: they objected to the asking, and the reply is
        * about the same thing as the question they objected to. See asked-twice-and-told-no-twice.
        */
+      /*
+       * ASKED TWICE ALREADY, AND NOBODY HAD TO OBJECT. The guard below needs somebody to say the
+       * questions are wrong, and most people never do: they answer something adjacent and take the
+       * same question again. Seen in a first setup conversation, three turns running.
+       */
+      const earlierAsks = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
+      if (alreadyAskedTwice(screened.text, earlierAsks)) {
+        this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
+        const moved = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`, history)
+          .catch(() => '');
+        const second = moved.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !alreadyAskedTwice(second.text, earlierAsks)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
+       *
+       * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
+       * That stops being a communication problem somewhere around the second time." Nobody in
+       * Marketing is in that conversation, they cannot answer it, and they will read the board it
+       * feeds. The prompt carries three and a half thousand characters on exactly this and it did
+       * not hold. See a-verdict-is-not-a-question.
+       */
+      /*
+       * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
+       * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
+       */
+      /*
+       * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
+       *
+       * The hundred and forty words a close may run to are for the one turn that names what now
+       * exists, with the figures and the people in it. A reply that carries the marker AND ends on
+       * a question is not that turn: the product already knows this and refuses to complete the
+       * session on it, a few hundred lines down, because marking it complete put a finish button
+       * under a question nobody had answered.
+       *
+       * Both readings were using the same flag, so a turn that asked one more thing inherited the
+       * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
+       * hundred and twenty seven words of restating, a compliment about her flexibility, then the
+       * question. Sixty is the bar for anything still asking.
+       */
+      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
+      if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
+        /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
+           interpolation and not what it evaluates to, and it is right to: a guard that has to
+           reason about what a call returns is a guard that will miss the next one. */
+        const wasThisLong = howManyWords(screened.text);
+        this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
+        /* A close that ran long is not a long reply, it is a close that read the record back. Ask
+           for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
+        const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
+        const shorter = await this.anthropic
+          .respond(`${fullSystem}\n\n${askFor}`, history)
+          .catch(() => '');
+        const second = shorter.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
+          screened = second;
+          const nowThisLong = howManyWords(second.text);
+          this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+        }
+      }
+
+      /*
+       * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
+       *
+       * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
+       * turns. A literal string is a shape, so it is checked here. Their own word handed back to
+       * them is not the fault - the fault is the product reaching for it - so what they have said
+       * so far is passed in. See words-we-do-not-use.
+       */
+      const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
+      if (notOurWords.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
+        const ours = await this.anthropic
+          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords)}`, history)
+          .catch(() => '');
+        const second = ours.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !wordsWeDoNotUse(second.text, theirWords).length &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
+        }
+      }
+
+      /*
+       * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
+       *
+       * A hundred and twenty seven word reply reached somebody and the log could not say which of
+       * two things had happened: the guard never fired because a close marker had lifted the bar,
+       * or it fired twice and the second try was no better. Different faults, different fixes, and
+       * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
+       * answers that question by itself.
+       */
+      const shipping = howManyWords(screened.text);
+      if (shipping > A_REPLY_IS_ABOUT) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: shipping ${shipping} words (closing turn: ${thisIsTheClosingTurn}).`,
+        );
+      }
+
+      if (isAVerdictAboutSomebodyElse(message, screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
+        const hers = await this.anthropic
+          .respond(`${fullSystem}\n\n${HERS_TO_DRAW}`, history)
+          .catch(() => '');
+        const second = hers.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !isAVerdictAboutSomebodyElse(message, second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try left the conclusion to them.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try reached a verdict too; the first stands.`);
+        }
+      }
+
       if (theyPushedBackOnTheQuestions(message)) {
         const lastAsk = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
         if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
@@ -2713,6 +2871,38 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId);
 
     /*
+     * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
+     *
+     * The conversation gives nothing back until the report, which is read afterwards and alone. This
+     * is the first block that trades: they name a thing in the way, and the reply can tell them
+     * somebody else is waiting on the same thing and nobody owns it. Drawn only from handoffs that
+     * already render on the shared board, so it reveals nothing, and only on a shared ground.
+     * See what-the-room-already-knows.ts.
+     */
+    const roomKnows = await this.whatTheRoomAlreadyKnows(checkIn, latestMessage ?? '');
+
+    /*
+     * AND WHERE THEIR OWN NUMBER LEAVES THEM, when they have just said one. The safest trade in the
+     * product: her number against her target, nothing about anybody else. See where-that-leaves-them.
+     */
+    const againstTheirNumber = await this.whereTheirNumberLeavesThem(checkIn, latestMessage ?? '');
+
+    /*
+     * AND WHAT THEY HAVE ALREADY SAID ABOUT SOMEBODY THEY JUST NAMED, including whether that person
+     * knows. Nothing here crosses the wall: an expectation is written for the person it is about and
+     * published to them. See you-have-already-said-this-about-them.ts.
+     */
+    const alreadySaidAboutThem = await this.whatIsAlreadyOnSomebodyTheyNamed(checkIn, latestMessage ?? '');
+
+    /*
+     * AND ONLY ONE OF THEM REACHES THE TURN. Each block refuses to hand over more than one fact and
+     * none of them knew about the others, so a single sentence from a lead came back carrying all
+     * three - a briefing with a question stapled to the end. Found by running one turn; every block
+     * passed its own tests. See one-thing-back-not-three.ts.
+     */
+    const theOneThingBack = oneThingBack({ againstTheirNumber, alreadySaidAboutThem, roomKnows });
+
+    /*
      * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
      *
      * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
@@ -2792,7 +2982,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    /*
+     * WHAT ACTUALLY FIRED, NAMED AND SIZED. Logs and changes nothing: the prompt below is byte for
+     * byte what it was. Before a single block moves out of the base prompt, this says which blocks
+     * never fire, which fire every turn, and which are in play on a turn somebody complained about.
+     * You cannot tune what always fires. See which-blocks-actually-fire.ts.
+     */
+    const inThisTurn = [
+      ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
+      ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
+      ['recordAlreadyHolds', recordAlreadyHolds], ['owedBlock', owedBlock], ['intakeBlock', intakeBlock],
+      ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
+      ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
+      ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
+      ['finalSessionContext', finalSessionContext], ['returningUserContext', returningUserContext],
+      ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
+      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack],
+      ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
+      ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
+      ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
+      ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
+      ['burden', burden], ['putThisToThem', putThisToThem],
+    ].map(([name, text]) => ({ name: String(name), text: text as any }));
+    this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
+
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2816,6 +3030,114 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
    * exist for the alignment feed only, and picks at most one.
    */
+  /**
+   * One true thing off the shared board, worth saying back in the turn they said it.
+   *
+   * Best effort in the strictest sense: a give-back must never be the reason somebody cannot get a
+   * reply, so every failure here is a silent empty string and the conversation carries on.
+   */
+  private async whatTheRoomAlreadyKnows(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!latestMessage.trim()) return '';
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: { mode: true },
+      });
+      if (ground?.mode !== 'SHARED') return '';
+      const rows = await this.prisma.groundDependency.findMany({
+        where: {
+          groundId: checkIn.groundId,
+          clearedAt: null,
+          status: { in: ['WAITING', 'BLOCKING'] as any },
+          fromParticipantId: { not: checkIn.participantId },
+        },
+        select: {
+          what: true,
+          onParticipantId: true,
+          fromParticipant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+        take: 40,
+      });
+      const others = rows.map((r: any) => ({
+        what: r.what ?? '',
+        raisedBy: [r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
+          || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null),
+        owned: !!r.onParticipantId,
+      }));
+      return whatIsWorthSaying({ shared: true, theyJustSaid: latestMessage, others });
+    } catch (err: any) {
+      this.logger.warn(`Could not read what the room knows for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * Their own targets in front of the model, but only in a turn where they said a number.
+   *
+   * Silent otherwise, deliberately: a conversation that recites somebody's targets back at them
+   * unprompted is the restating fault wearing a different coat, and that one is already on record.
+   */
+  private async whereTheirNumberLeavesThem(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!theySaidANumber(latestMessage)) return '';
+      const theirs = await this.prisma.groundObjective.findMany({
+        where: {
+          groundId: checkIn.groundId,
+          target: { not: null },
+          OR: [{ ownerParticipantId: checkIn.participantId }, { ownerParticipantId: null }],
+        },
+        select: { name: true, target: true, count: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 8,
+      });
+      return whereThatLeavesThem(latestMessage, theirs as any);
+    } catch (err: any) {
+      this.logger.warn(`Could not read their targets for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * What this person has already put on somebody they just named again.
+   *
+   * Only expectations THIS person set, so nothing another party wrote is read, and only on a ground
+   * where the named person is a participant. Best effort: a give-back never blocks a reply.
+   */
+  private async whatIsAlreadyOnSomebodyTheyNamed(
+    checkIn: { id: string; groundId: string; participantId: string },
+    latestMessage: string,
+  ): Promise<string> {
+    try {
+      if (!latestMessage.trim()) return '';
+      const rows = await this.prisma.personObjective.findMany({
+        where: { groundId: checkIn.groundId, participantId: { not: checkIn.participantId } },
+        select: {
+          text: true,
+          awareness: true,
+          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      });
+      const onThem = rows.map((r: any) => ({
+        name: [r.participant?.user?.firstName, r.participant?.user?.lastName].filter(Boolean).join(' ').trim()
+          || aNameOrNothing(r.participant?.roleAsDescribed ?? null) || '',
+        text: r.text ?? '',
+        awareness: r.awareness ?? null,
+      })).filter((r: { name: string }) => r.name);
+      return whatIsAlreadyOnThem(latestMessage, onThem);
+    } catch (err: any) {
+      this.logger.warn(`Could not read what is already on them for ${checkIn.id}: ${err?.message}`);
+      return '';
+    }
+  }
+
   private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
     try {
       const rows = await this.prisma.patternDetection.findMany({
@@ -4221,7 +4543,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           checkInId,
           type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
           verifiability: v as any,
-          text: e.text.trim(),
+          /* A half sentence that kept its "and" is not a line anybody should read under a heading.
+             See half-a-sentence-is-not-a-line-in-a-report. */
+          text: theLineWithoutItsDanglingJoin(e.text),
         };
       }),
     });
@@ -4983,9 +5307,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
 
     const result = await this.anthropic.extract<{
-      groundAims: string[];
+      groundAims: { name: string; target?: number | null; by?: string | null }[];
+      theirOwnTarget?: { name: string; target: number } | null;
       expectations: {
         personName: string;
+        targetNumber?: number | null;
         expectation: string;
         awareness: string;
         awarenessDetail?: string;
@@ -5029,9 +5355,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
     const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
 
+    /* "150 each" said about three people is three owned targets, not one. Collected here where the
+       name is already resolved to a participant, written below beside the ground's own aims. */
+    const theirOwnNumbers: { participantId: string; name: string; target: number }[] = [];
     for (const e of result.expectations ?? []) {
       const target = resolve(e.personName);
       if (!target) continue;
+      if (Number.isFinite(e.targetNumber) && (e.targetNumber as number) > 0) {
+        const said = (e.expectation ?? '').trim();
+        if (said) theirOwnNumbers.push({ participantId: target, name: said, target: Math.round(e.targetNumber as number) });
+      }
       const text = (e.expectation ?? '').trim();
 
       const kind = KINDS.includes(e.kind ?? '') ? (e.kind as any) : null;
@@ -5200,13 +5533,91 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * yet: a lead restating the aim in session 4 should not silently duplicate the list, and merging
      * by text is the kind of guess this file avoids elsewhere.
      */
-    const aims = (result.groundAims ?? []).map((a) => a.trim()).filter(Boolean);
+    /*
+     * THE NUMBER THEY SAID IS KEPT. IT USED TO BE THROWN AWAY.
+     *
+     * This stored `target: null` on every aim, always. A lead said "500 contracts by the end of the
+     * year, 150 each, and I have a target of 50", and what was kept was three names and no figures.
+     * Her board then read "No targets set yet, so there is nothing for this board to measure
+     * progress against" and "Movement: not tracked", about the numbers she had just given it.
+     * Nothing was being tracked because nothing had been kept.
+     *
+     * AND IT RAN ONCE PER GROUND, EVER. `existing === 0` meant a lead naming a second objective in
+     * session four was dropped without a word. Aims are matched by name now and only what is new is
+     * added, so restating an aim does not duplicate it and adding one is not refused.
+     *
+     * A NUMBER A PERSON SET BY HAND IS NEVER OVERWRITTEN. Where an aim already exists, this leaves
+     * it alone. The board already has the honest shape for that case - "the record shows 40 for
+     * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
+     */
+    const aims = (result.groundAims ?? [])
+      .map((a) => ({
+        name: (a?.name ?? '').trim(),
+        /* A target is a whole count of something. A wrong number is worse than none. */
+        target: Number.isFinite(a?.target) && (a!.target as number) > 0 ? Math.round(a!.target as number) : null,
+      }))
+      .filter((a) => a.name);
     if (aims.length) {
-      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
-      if (existing === 0) {
+      const existing = await this.prisma.groundObjective.findMany({
+        where: { groundId },
+        select: { name: true },
+      });
+      const already = new Set(existing.map((o) => o.name.trim().toLowerCase()));
+      const fresh = aims.filter((a) => !already.has(a.name.toLowerCase()));
+      if (fresh.length) {
         await this.prisma.groundObjective.createMany({
-          data: aims.map((name, i) => ({ groundId, name, target: null, sortOrder: i })),
+          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i })),
         });
+        const withNumbers = fresh.filter((a) => a.target != null).length;
+        this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
+      }
+    }
+
+    /*
+     * AND A NUMBER SAID ABOUT ONE PERSON IS THAT PERSON'S.
+     *
+     * "150 each" about three people is three targets with three owners, not one target of 150 sitting
+     * on the ground with nobody against it. `ownerParticipantId` has been on the model the whole time
+     * and `where-each-person-is-against-their-number.ts` already renders progress per person; nothing
+     * was writing the rows.
+     *
+     * Same rules as the aims above: matched by name and owner so restating does not duplicate, and a
+     * number already on the board is never overwritten from here.
+     */
+    /*
+     * AND THE SPEAKER'S OWN NUMBER, WHICH HAD NOWHERE TO GO.
+     *
+     * "150 each and i have a target of 50" was read live: the three 150s landed on the three people
+     * and the 50 did not land anywhere. Everything above this is about OTHER people, so a lead's own
+     * target was the one number on the board that went missing, and the lead is the person who set
+     * the whole thing up.
+     *
+     * Found by running her transcript through the real extraction and reading the rows, not by
+     * reading the code. Nothing in the tests would have caught it.
+     */
+    const own = result.theirOwnTarget;
+    if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
+      theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
+    }
+
+    if (theirOwnNumbers.length) {
+      const owned = await this.prisma.groundObjective.findMany({
+        where: { groundId, ownerParticipantId: { not: null } },
+        select: { name: true, ownerParticipantId: true },
+      });
+      const held = new Set(owned.map((o) => `${o.ownerParticipantId}::${o.name.trim().toLowerCase()}`));
+      const freshOwned = theirOwnNumbers.filter((t) => !held.has(`${t.participantId}::${t.name.toLowerCase()}`));
+      if (freshOwned.length) {
+        await this.prisma.groundObjective.createMany({
+          data: freshOwned.map((t, i) => ({
+            groundId,
+            name: t.name,
+            target: t.target,
+            ownerParticipantId: t.participantId,
+            sortOrder: 100 + i,
+          })),
+        }).catch((err: any) => this.logger.warn(`Could not write per-person targets on ${groundId}: ${err?.message}`));
+        this.logger.log(`Ground ${groundId}: kept ${freshOwned.length} target(s) against the person who owns them.`);
       }
     }
   }

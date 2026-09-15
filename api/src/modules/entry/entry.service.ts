@@ -36,10 +36,20 @@ import {
   buildScenarioPackForParty,
   buildRuntimeContext,
 } from '../conversation/prompt-library';
-import { withoutWhatTheyDeclined } from './what-they-declined-is-not-a-gap';
+import { oneScriptOnly } from '../conversation/one-script-per-conversation';
+import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
-import { VOCABULARY_RULE } from '../conversation/prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
+import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
+import {
+  opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
+  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
+} from '../conversation/asked-twice-and-told-no-twice';
+import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
+import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES } from '../conversation/a-reply-is-not-an-essay';
+import { stillAsking } from '../conversation/one-question-per-turn';
+import { wordsWeDoNotUse, sayItWithoutThose } from '../conversation/words-we-do-not-use';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -224,6 +234,21 @@ Rules:
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
 - Honest close must name what is settled, what is open, what to revisit, and what the risk is if things stay as they are.
+
+- AND THE SETTLED LINE ANSWERS THEIR FIRST MESSAGE. They said what they came for in their opening line, in
+  their own words: "we are setting shared goals for this period and I want everyone aligned on what
+  matters most". Read it back and answer it. Did they get it.
+
+  Name what now exists, with the figures and the people, not what was discussed. "Five hundred
+  contracts by the end of the year, a hundred and fifty each for Rita, Kunle and Amir, and fifty for
+  you" is an answer. "The session established a clear sales objective" is a description of a
+  conversation.
+
+  Where they did NOT get what they came for, say that plainly and say what is missing. A lead who
+  wanted targets set and has none is owed that sentence, not a summary that reads as though the
+  session went well.
+
+  This is the whole test the report is measured by: did the lead get what they came for.
 - In areasRequiringAlignment, list a topic that genuinely came up and genuinely has not been settled. Do NOT pad it to reach a number, and do not add one because the list would otherwise be empty. A first session with nothing open is a real answer and a better one than an invented gap.
 
 - SOMETHING THEY CHOSE NOT TO DO IS NOT AN OPEN GAP. If the person was asked about a topic and declined it, said it was not what they needed, or steered away from it, that is a decision they made about their own check-in. Leave it out. It is theirs to make and it is not a finding.
@@ -304,7 +329,7 @@ const ENTRY_REPORT_SCHEMA = {
       honestClose: {
         type: 'object',
         properties: {
-          aligned: { type: 'string', description: 'What is settled in this account.' },
+          aligned: { type: 'string', description: "What they came for, answered. Name what now exists, with the figures and the people. Where they did not get it, say so plainly." },
           open: { type: 'string', description: 'What still needs to be resolved.' },
           revisit: { type: 'string', description: 'What to check again next session.' },
           risk: { type: 'string', description: 'What happens if the open items stay unresolved.' },
@@ -408,7 +433,12 @@ export function buildEntrySystemPrompt(
   // giving their own independent read of the situation the initiator already
   // framed - never "what is beginning". Threaded so participantChat no longer
   // reuses the initiator's opener (BUG 1 root cause).
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment);
+  /*
+   * THE FIRST CHECK-IN, ALWAYS, ON THIS PATH. The entry flow IS session one: setup and the lead's
+   * own first check-in, before a ground exists. So the table's "first" cell is the right one and
+   * there is nothing to work out. See the-scenario-table.ts.
+   */
+  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment, 'first');
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,
@@ -427,7 +457,9 @@ export function buildEntrySystemPrompt(
     adminBrief: null,
     readerSetItUp: partyType === PartyType.INITIATOR,
   });
-  return [ENGINE_RULES, scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  /* ONE SCRIPT. Where the situation says how to open, the base prompt's own interview is not sent
+     alongside it. Nothing is deleted; see one-script-per-conversation.ts. */
+  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
@@ -615,7 +647,15 @@ export class EntryService {
      * FAQ_PROMPT and ENTRY_REPORT_PROMPT do carry it: those speak to somebody who has already
      * been through setup, where "check-in" is the honest name for the thing.
      */
-    const ONBOARD_SYSTEM = `You are Groundwork, helping someone set up a record for a situation involving more than one person.
+    /*
+     * THIS ONE DOES CARRY IT, unlike VOCABULARY_RULE above: it names no word this prompt bans, and
+     * the fault it stops was read in a SETUP conversation first. She said "500 contracts, daaa. and
+     * the sales linked to them" and got back "500 contracts and the sales linked to them by the end
+     * of the year. Got it." See OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE.
+     */
+    const ONBOARD_SYSTEM = `${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
+
+You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
 Your job is to gather these things through natural conversation:
 1. THE SITUATION ITSELF, STARTING WITH THE QUESTION THAT SITUATION DESERVES.
@@ -687,12 +727,22 @@ Your job is to gather these things through natural conversation:
    over - there is nobody to hand it to any more. Say plainly that whoever knows what this is about
    should be the one setting it up, and that they can be added to watch the reports afterwards from
    the check-in's settings. Then stop; do not press for a situation they cannot describe.
-1b. yourPart: THE ONE THING ABOUT THEM. After the first question about the situation, ask once
-   what their own part in it is, in one plain sentence that fits what they just said: "And where do
-   you sit in this, are you her manager?" or "And your part in this?" Take whatever they say in their
-   own words; do not offer options, do not ask for a title, do not ask again. It is asked because
-   the questions their own check-in gets are shaped by it, and it was skipped by 237 of the last 239
-   people because nothing asked. If they already said it, do not ask.
+1b. yourPart: THE ONE THING ABOUT THEM, AND IT IS NOT THE SECOND THING YOU ASK.
+   Ask once what their own part in it is, in one plain sentence that fits what they just said: "And
+   where do you sit in this, are you her manager?" or "And your part in this?" Take whatever they say
+   in their own words; do not offer options, do not ask for a title, do not ask again. It is asked
+   because the questions their own check-in gets are shaped by it, and it was skipped by 237 of the
+   last 239 people because nothing asked. If they already said it, do not ask.
+
+   WHEN. After the thing they came here to do, never before it. It used to be asked immediately
+   after the first question, so a lead who chose "set goals and keep the team on track" was asked
+   "and what is your part in setting these goals?" as question two, before a single word about the
+   goals. Read live, and her words were "the your part question should come last, it should ask what
+   the goals, objectives or workplan are, this feels off."
+   
+   Asking somebody about themselves before asking about the thing they came for reads as a form
+   collecting fields. Get what they came to say first - the goals, the situation, the decision,
+   whatever this scenario is for - and ask this after it, or last.
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
@@ -1123,7 +1173,100 @@ from finishing at all.`;
      * what the model actually said. Cleaning the text first would have them inspect a string the
      * model did not produce.
      */
-    return { reply: forHumans(restored), closed: hadCloseMarker(restored) };
+    /*
+     * AND THE FOUR SHAPE GUARDS THE SIGNED-IN CHECK-IN HAS HAD ALL EVENING.
+     *
+     * This path had only the invention screen. Every guard built tonight - a reply that asks nothing,
+     * a question asked after somebody refused it, a reply that opens by handing somebody their own
+     * message back, and the same question a third time - was wired into conversation.service and
+     * nowhere else. This is the conversation every lead meets FIRST, and none of them reached it.
+     *
+     * Third time in one evening that a fix sat on a path nobody takes: the start-a-check-in flag no
+     * button passed, the target extraction the entry commit never called, and now this.
+     *
+     * READ, NOT REWRITTEN. Nothing here writes a word or drops a sentence. Where a reply has one of
+     * these shapes it is logged and named, because on this path there is no second attempt to make -
+     * the stream has usually already left. What it buys is that the fault is visible in the log with
+     * the check-in that produced it, instead of being found again by a lead reading her screen.
+     */
+    /*
+     * AND IT ASKS AGAIN, RATHER THAN NOTING THAT IT WENT WRONG.
+     *
+     * The first version of this only logged, on the reasoning that a streamed reply has already left
+     * and there is no second attempt to make. Watched in a browser, that reasoning was wrong in the
+     * way that matters: four of five turns of a real setup conversation tripped a guard and the
+     * person saw every one of them. A log nobody is reading while she is on the screen is not a
+     * guard, it is a note about a guard.
+     *
+     * The whole reply is in hand here, before it is returned, on both the streamed and unstreamed
+     * paths. So it asks once more with the fault named, exactly as the check-in does, and keeps the
+     * second only if it is genuinely better. If it is not, the first stands: a flawed reply beats no
+     * reply, and a loop here would strand the person it is trying to help.
+     *
+     * The streamed case does mean a person can see the first attempt appear and be replaced. That is
+     * worth it. What she saw instead was a lecture about recall sessions ending in the same question
+     * she had just declined.
+     */
+    const theirLast = personSaid[personSaid.length - 1] ?? '';
+    const asksBefore = messages.filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
+
+    const whatIsWrong = (text: string): { fault: string; instruction: string } | null => {
+      if (isADeadEnd(text, hadCloseMarker(text))) {
+        return { fault: 'asked nothing and did not close', instruction: ASK_SOMETHING_OR_CLOSE };
+      }
+      if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
+        && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], text)) {
+        return { fault: 'asked again after they said no', instruction: THEY_ALREADY_SAID_NO };
+      }
+      if (alreadyAskedTwice(text, asksBefore)) {
+        return { fault: 'the same question a third time', instruction: ASKED_IT_TWICE_ALREADY };
+      }
+      if (theirLast && isAVerdictAboutSomebodyElse(theirLast, text)) {
+        return { fault: 'a verdict about somebody not in the room', instruction: HERS_TO_DRAW };
+      }
+      if (theirLast && opensByRepeatingThem(theirLast, text)) {
+        return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+      }
+      /* The words this product does not use, same list and same reason as the check-in path. Their
+         own word back is not the fault; the product reaching for it is. See words-we-do-not-use. */
+      const notOurWords = wordsWeDoNotUse(text, personSaid);
+      if (notOurWords.length) {
+        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords) };
+      }
+      /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
+      /* A reply that carries the marker and still asks is not the closing turn, so it does not get
+         the closing turn's room. See a-turn-still-asking-is-not-a-close. */
+      const closingHere = hadCloseMarker(text) && !stillAsking(text);
+      if (isAnEssay(text, closingHere)) {
+        /* A count, never the words. See no-log-line-carries-what-somebody-wrote. */
+        const wasThisLong = howManyWords(text);
+        /* Ask a long close for what a close is FOR, not merely for fewer words. */
+        return {
+          fault: `${wasThisLong} words`,
+          instruction: closingHere ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER,
+        };
+      }
+      return null;
+    };
+
+    let best = restored;
+    const wrong = whatIsWrong(best);
+    if (wrong) {
+      this.logger.warn(`entry chat: ${wrong.fault} - asking again.`);
+      const again = await this.anthropic
+        .respond(`${system}\n\n${wrong.instruction}`, messages)
+        .catch(() => '');
+      const secondScreened = again.trim() ? screen(again, personSaid) : null;
+      const second = secondScreened?.text?.trim() ?? '';
+      if (second && !whatIsWrong(second)) {
+        best = second;
+        this.logger.log(`entry chat: the second try was clean.`);
+      } else {
+        this.logger.warn(`entry chat: the second try was no better; the first stands.`);
+      }
+    }
+
+    return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }
 
   /**
@@ -1204,6 +1347,15 @@ from finishing at all.`;
       report.areasRequiringAlignment = withoutWhatTheyDeclined(report.areasRequiringAlignment as any, messages as any) as any;
       const dropped = before - report.areasRequiringAlignment.length;
       if (dropped) this.logger.log(`Entry report: dropped ${dropped} open item(s) the person had declined.`);
+
+      /* "With a clear link, the team might hit its numbers but not contribute" means WITHOUT. One
+         dropped syllable, on the line whose job is to say why this matters. See the guard. */
+      for (const item of report.areasRequiringAlignment as any[]) {
+        if (item?.whyItMatters && saysTheOppositeOfWhatItMeans(item.whyItMatters)) {
+          item.whyItMatters = putTheMissingWordBack(item.whyItMatters);
+          this.logger.warn(`Entry report: a "why it matters" line said the opposite of its point; the missing word is back.`);
+        }
+      }
     }
 
     /**
@@ -1738,6 +1890,7 @@ from finishing at all.`;
       await this.conversation
         .extractRecordEntries(checkIn.id, participant.id)
         .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
+
       this.conversation
         .buildSoloArtifact(participant.id, ground.id)
         .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
@@ -1866,6 +2019,31 @@ from finishing at all.`;
     // with a resend path, instead of silently rebranding it a solo ground.
     if (dto.contributors.length === 0) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { status: 'ACTIVE' as any } });
+    }
+
+    /*
+     * AND WHAT THEY SAID THEY ARE AIMING AT BECOMES TARGETS ON THE BOARD, AFTER THE PEOPLE EXIST.
+     *
+     * The signed-in check-in has run this since it was written. This path, the one every lead meets
+     * first, never called it - so a lead who said "500 contracts, 150 each, 50 for me" finished with
+     * a record of having said it and a board reading "no targets set yet".
+     *
+     * IT WAS CALLED TOO EARLY THE FIRST TIME AND HALF OF IT SILENTLY DID NOTHING. Placed straight
+     * after the record extraction, it ran before the contributors were invited, so the ground had
+     * nobody on it but the lead. The model returned Rita, Kunle and Amir at 150 each; the resolver
+     * had an empty list to match them against and dropped all three without a word. The ground's own
+     * 500 and her own 50 landed, which is exactly the kind of partial success that reads as working.
+     *
+     * Found by running the whole journey and counting the rows: two objectives where there should
+     * have been five. So it runs here, after addParticipant, where the people it needs are real.
+     *
+     * Awaited: the report is built moments later and reads the board, and a target that arrives
+     * after it is a target the lead does not see where she would look for it.
+     */
+    if (dto.history.length > 0) {
+      await this.conversation
+        .extractExpectations(checkIn.id, participant.id, ground.id)
+        .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;

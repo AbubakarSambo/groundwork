@@ -81,3 +81,35 @@ describe('a reply that opens by saying it back', () => {
     expect(opensByRepeatingThem('finance team', 'Who else would need to confirm it?')).toBe(false);
   });
 });
+
+/**
+ * THE SAME QUESTION A THIRD TIME, AND SHE NEVER OBJECTED.
+ *
+ * Off a real setup conversation. She answered something adjacent each time, which is what a polite
+ * person does, so nothing that waits for a complaint could ever have caught this.
+ */
+describe('asked twice already', () => {
+  const { alreadyAskedTwice } = require('./asked-twice-and-told-no-twice');
+  const asks = [
+    'How does that objective of 500 contracts by year-end connect to the company direction as you understand it?',
+    'How does that overall objective of 500 contracts by year-end connect to the company direction?',
+  ];
+
+  it('catches the third one', () => {
+    expect(alreadyAskedTwice("How does this objective connect to the company's overall direction?", asks)).toBe(true);
+  });
+
+  it('allows the second, because twice is checking you were heard', () => {
+    expect(alreadyAskedTwice(asks[1], [asks[0]])).toBe(false);
+  });
+
+  it('lets a genuinely different question through after two of the same', () => {
+    expect(alreadyAskedTwice('Who owns each of those, and by when?', asks)).toBe(false);
+    expect(alreadyAskedTwice('What is in the way of the first one right now?', asks)).toBe(false);
+  });
+
+  it('only counts the two most recent, so something raised once long ago is not this fault', () => {
+    const old = ['How does this connect to the company direction?', 'What is the target?', 'Who owns it?'];
+    expect(alreadyAskedTwice('How does this connect to the company direction?', old)).toBe(false);
+  });
+});
