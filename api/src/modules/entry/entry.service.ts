@@ -58,6 +58,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from '../conversation/a-question-is-read-before-it-is-sent';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -801,17 +802,28 @@ Your job is to gather these things through natural conversation:
    Ask it as one question. The second sentence is not a second ask and does not need an answer.
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
-   ORGANISATIONS ARE NOT PEOPLE. If the answer names companies, teams, partners or clients rather
+   ASK IT SO A TEAM OR A DEPARTMENT IS A VALID ANSWER, NOT ONLY A LIST OF NAMES. "Who else is
+   making that happen?" reads as a demand for individuals, and somebody whose honest answer is
+   "the ops team" or "finance, mostly" then feels they have answered wrongly. Ask it as
+   "Who else is part of this - a person, a team, another department?" and take whichever they give.
+   ORGANISATIONS ARE NOT PEOPLE, AND THAT IS ABOUT WHO CHECKS IN, NOT ABOUT WHOSE NAME THEY MAY
+   SAY FIRST. "The ops team" is a complete answer to who else is part of this. What it is not is
+   somebody who can answer a check-in, so the follow-up is about that and is asked once.
+   If the answer names companies, teams, partners or clients rather
    than individuals ("we work with Afrimash, Bayer and NABG"), that is a good answer to a
    different question, and you are not finished. Ask once, in one sentence, who the person
    responsible is inside them - by name if they know it, by role if they do not. A record is
    built from accounts that individual people give; an organisation cannot check in. If they say
    they do not know yet, accept it and move on: never press twice, and never invent a name.
 5. decision: what is making this worth doing right now.
-   ASK THIS ONE WITH EXAMPLES, ALWAYS. Bare, it is the question people stall on: "what makes you
-   want to do this right now?" sounds like it is asking them to justify themselves, and
-   the honest answer ("it just seemed sensible") feels wrong to type. Two or three concrete
-   examples turn it into a menu they can point at.
+   NEVER ASK IT AS "what makes you want to do this right now?" OR ANY VARIANT OF "why do you want
+   to". Hafsah, 17 September 2026, after reading it live: it is asking them to justify themselves,
+   and the honest answer ("it just seemed sensible") feels wrong to type.
+   ASK ABOUT THE TIMING, NOT THE MOTIVE, AND ALWAYS WITH EXAMPLES:
+   "What makes this the right time to set this check-in up - a new quarter, a quarter that missed,
+    a handover?"
+   The timing question has an easy answer that costs nobody anything to give. The motive question
+   does not. Two or three concrete examples turn it into a menu they can point at.
 
    THE EXAMPLES ARE BUILT FROM WHAT THEY JUST TOLD YOU. NEVER FROM THIS FILE.
    This used to print three: onboarding going well, probation being decided, the project starting
@@ -1411,7 +1423,58 @@ from finishing at all.`;
       }
     }
 
-    return { reply: forHumans(best), closed: hadCloseMarker(best) };
+    /*
+     * AND LAST, SOMEBODY READS IT.
+     *
+     * Everything above this line asks what SHAPE the reply is. "To start, what is the number you
+     * are working towards for these 40 shops?" passes every one of them and is incoherent, because
+     * she had just given the number. Meaning needs a reader, and the reader is given the
+     * conversation and the draft and nothing else - no engine rules, no pack, no idea what we were
+     * trying to do. See a-question-is-read-before-it-is-sent.
+     */
+    const read = await this.readBeforeSending(messages, forHumans(best), personSaid);
+    return { reply: read, closed: hadCloseMarker(best) };
+  }
+
+  /**
+   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
+   *
+   * Her five checks. The reader may rewrite, which no guard here can do, and its rewrite goes
+   * through the same invention screen as everything else: a reader that adds a name or a figure is
+   * refused and the draft stands, because being fresh is not a licence to invent.
+   */
+  private async readBeforeSending(messages: ChatTurn[], draft: string, personSaid: string[]): Promise<string> {
+    if (!draft.trim()) return draft;
+    try {
+      const said = theTailOf(
+        (messages as { role: string; content: string }[])
+          .filter((m) => (m.content ?? '').trim())
+          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
+      );
+      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
+        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: personSaid }) },
+      ]);
+      const decided = whatTheReaderDecided(answer, draft);
+      /* Logged either way, so a run can be counted rather than argued about: how many turns the
+         reader let through and how many it rewrote is the only evidence that it is worth its call. */
+      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
+      const clean = screen(decided.text, personSaid);
+      if (clean.hits.length || !clean.text.trim()) {
+        this.logger.warn(`entry chat: the reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
+        return draft;
+      }
+      /*
+       * THE LOG SAYS IT HAPPENED, NOT WHAT WAS SAID. The first version printed the draft and the
+       * rewrite, which was useful to read live and is a message body in a log line: a rewritten
+       * question routinely carries the person's own nouns back to them.
+       */
+      this.logger.log(`entry chat: the reader rewrote it (${draft.length} chars to ${clean.text.length})`);
+      return forHumans(clean.text);
+    } catch (err: any) {
+      /* A reader that cannot be reached is not a reason to lose the reply. */
+      this.logger.warn(`entry chat: could not read the draft before sending: ${err?.message}`);
+      return draft;
+    }
   }
 
   /**

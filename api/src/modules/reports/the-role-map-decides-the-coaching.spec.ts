@@ -47,7 +47,7 @@ describe('which map applies', () => {
   it('and no detection at all degrades to stage, with the reason said', () => {
     const { map, why } = whichRoleMap(null, null);
     expect(map).toBeNull();
-    expect(why).toContain('has not been read from your record yet');
+    expect(why).toContain('has not been read from the record yet');
   });
 });
 

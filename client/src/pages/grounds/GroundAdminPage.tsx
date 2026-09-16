@@ -1028,7 +1028,7 @@ export function GroundAdminPage() {
           <div style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 18 }}>
             Setting up a check-in, inviting people and releasing the report belong to its lead, or to
             an admin in your organisation. {amAParty
-              ? 'Your own check-ins and your record are on your page.'
+              ? 'Your own check-ins and the record are on your page.'
               : 'You are not a participant in this check-in, so there is nothing here for you.'}
           </div>
           <button

@@ -453,7 +453,9 @@ export class EntryController {
       r.includes('[session complete]') ||
       r.includes('your account is now on record') ||
       r.includes('your record is here') ||
+      r.includes('the record is here') ||
       r.includes('your record is saved as is') ||
+      r.includes('the record is saved as is') ||
       r.includes('cannot be verified from this account') ||
       r.includes('your contribution is saved');
         return sessionComplete;

@@ -4411,7 +4411,7 @@ export function EntryChatPage() {
               Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Once you save your record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+              Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

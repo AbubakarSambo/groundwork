@@ -484,7 +484,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               {'. '}
             </>
           )}
-          Notes are yours alone. They are not part of your record, and the next check-in will ask you about them.
+          Notes are yours alone. They are not part of the record, and the next check-in will ask you about them.
         </div>
         <label
           title="Attach a document for your next check-in"

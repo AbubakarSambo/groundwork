@@ -127,7 +127,7 @@ export function ChoosePasswordPage() {
       <h1 className="gw-ttl">{kind === 'set' ? 'One last step' : 'Reset your password'}</h1>
       <div className="gw-sub-t" style={{ marginBottom: kind === 'set' ? 6 : 0 }}>
         {kind === 'set'
-          ? 'Set a password so you can sign back in to see your record and receive the report when it is ready.'
+          ? 'Set a password so you can sign back in to see the record and receive the report when it is ready.'
           : 'Choose a new password for your account.'}
       </div>
 

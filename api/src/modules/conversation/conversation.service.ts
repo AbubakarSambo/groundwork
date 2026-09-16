@@ -24,6 +24,7 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
+import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from './a-question-is-read-before-it-is-sent';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -1682,6 +1683,17 @@ export class ConversationService {
       reply = screened.text || ASK_AGAIN;
 
       /*
+       * AND LAST, SOMEBODY READS IT, WHICH IS A DIFFERENT ACT FROM EVERY GUARD ABOVE.
+       *
+       * The nine guards above ask what SHAPE this reply is. Her example passes all of them and is
+       * still wrong: "what is the number you are working towards for these 40 shops", to somebody
+       * whose first sentence gave the number. Meaning needs a reader, and a reader holding this
+       * prompt is the reader that wrote the fault. So it gets the conversation and the draft and
+       * nothing else. See a-question-is-read-before-it-is-sent.
+       */
+      reply = await this.readBeforeSending(history, reply, theirWords);
+
+      /*
        * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
        *
        * See the-line-that-touches-what-they-said.ts. Where what they just said contradicts a
@@ -1817,6 +1829,45 @@ export class ConversationService {
       return null;
     }
     return { screened, hadMarker: textHadCloseMarker(second) };
+  }
+
+  /**
+   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
+   *
+   * Her five checks, in a call that knows nothing about this product: only the last few turns and
+   * the draft. It may rewrite, and the rewrite goes through the same invention screen as everything
+   * else - a reader that adds a name or a figure is refused and the draft stands.
+   */
+  private async readBeforeSending(
+    history: { role: 'user' | 'assistant'; content: string }[],
+    draft: string,
+    theirWords: string[],
+  ): Promise<string> {
+    if (!draft.trim()) return draft;
+    try {
+      const said = theTailOf(
+        (history ?? [])
+          .filter((m) => (m.content ?? '').trim())
+          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
+      );
+      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
+        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: theirWords }) },
+      ]);
+      const decided = whatTheReaderDecided(answer, draft);
+      /* Logged either way, so a run can be counted rather than argued about: how many turns the
+         reader let through and how many it rewrote is the only evidence that it is worth its call. */
+      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
+      const clean = screen(decided.text, theirWords);
+      if (clean.hits.length || !clean.text.trim()) {
+        this.logger.warn(`The reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
+        return draft;
+      }
+      this.logger.log(`The reader rewrote the turn (${draft.length} chars to ${clean.text.length}).`);
+      return forHumans(clean.text);
+    } catch (err: any) {
+      this.logger.warn(`Could not read the draft before sending: ${err?.message}`);
+      return draft;
+    }
   }
 
   /**
@@ -6593,7 +6644,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: entryId, participantId: checkIn.participantId },
       select: { id: true, disputedAt: true },
     });
-    if (!entry) throw new NotFoundException('That line is not on your record');
+    if (!entry) throw new NotFoundException('That line is not on the record');
     if (entry.disputedAt) return { id: entry.id, disputedAt: entry.disputedAt };
     const updated = await this.prisma.recordEntry.update({
       where: { id: entry.id },

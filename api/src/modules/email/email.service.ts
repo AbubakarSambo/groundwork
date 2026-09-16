@@ -755,7 +755,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(firstName)}</p>` +
         `<p>Your organisation's API access has been withdrawn, effective now: calls made with your keys will be refused from this point. The reason given:</p>` +
         `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
-        `<p>Nothing you have built is deleted, and your records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
+        `<p>Nothing you have built is deleted, and the records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
         `<p><a href="${link}">Open Connect</a></p>`,
       ),
     }, undefined, 'sendApiAccessWithdrawn');

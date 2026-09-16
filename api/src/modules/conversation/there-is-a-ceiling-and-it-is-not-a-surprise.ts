@@ -20,7 +20,7 @@ export const MENTION_IT_WITH_LEFT = 3;
 export function howMuchRoomIsLeft(answersSoFar: number): string | null {
   const left = A_CHECK_IN_TAKES_ANSWERS - answersSoFar;
   if (left > MENTION_IT_WITH_LEFT || left <= 0) return null;
-  if (left === 1) return 'There is room for one more answer in this session - after that, finish and your record is written.';
+  if (left === 1) return 'There is room for one more answer in this session - after that, finish and the record is written.';
   return `There is room for ${left} more answers in this session. Anything still on your mind is worth saying now.`;
 }
 

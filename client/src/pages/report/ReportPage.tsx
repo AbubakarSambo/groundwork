@@ -1606,7 +1606,7 @@ export function ReportBody({
               ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix that specific claim. '
               : ''}
             {myLatestCompletedSession != null
-              ? 'For anything else you said, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
+              ? 'For anything else you said, revisit your last session below. It opens a short follow-up that corrects or adds to the record. Your original answers are kept as they were, and the update flows into the next report.'
               : 'To correct something you said, reopen a session you have already finished here.'}
           </div>
           {myLatestCompletedSession != null && (

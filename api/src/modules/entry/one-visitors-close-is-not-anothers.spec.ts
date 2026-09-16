@@ -17,7 +17,12 @@ describe('the close flag', () => {
     expect(controller).not.toContain('didLastReplyClose');
   });
   it('comes back beside the reply and is what the controller reads', () => {
-    expect(service).toMatch(/return \{ reply: forHumans\(best\), closed: hadCloseMarker\(best\) \};/);
+    /*
+     * The reply is now read once more before it is sent, so the returned text is the reader's,
+     * while the close flag is still read off the SAME `best` the reply was made from. That pairing
+     * is what this file is about, and pinning the literal old line hid it behind a rename.
+     */
+    expect(service).toMatch(/return \{ reply: \w+, closed: hadCloseMarker\(best\) \};/);
     expect(service).toMatch(/async chat\([\s\S]*?\): Promise<\{ reply: string; closed: boolean \}>/);
     expect(controller).toMatch(/const \{ reply, closed \} = await this\.service\.chat\(/);
     expect(controller).toMatch(/private sessionCompleteFrom\(reply: string, markerClosed: boolean\)/);

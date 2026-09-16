@@ -5039,5 +5039,5 @@ function diplomaticObservation(raw: string): string {
   if (!raw.trim()) return '';
   // Strip any period tags from the three-period rule bookkeeping
   const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
-  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as your record builds.`;
+  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as the record builds.`;
 }
