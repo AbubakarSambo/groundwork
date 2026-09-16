@@ -64,7 +64,11 @@ Worked, from live runs:
   DRAFT: "Sahar chased them, and two shops that were previously slow took a second pallet. That initiative is a good sign. What did Sahar do specifically that made the difference?"
   SEND:  "What did Sahar do that the earlier chasing did not?"
 
+JOINING TWO THINGS THEY SAID IS STILL ONLY THINGS THEY SAID. This is the version that keeps getting through: two of their own facts from different turns, stitched with "and", which feels like synthesis and is not. Live: "Amina owns wholesale, but she hasn't had the pricing authority to move it, and you're stepping in to put a floor price in writing." Both halves are theirs. The join is not a fact.
+
 A first clause that carries one specific detail FORWARD into the question is not a restatement - it is doing work. A clause that could be deleted without the question losing anything is.
+
+AND WHILE YOU ARE THERE: ONE QUESTION MARK, NOT TWO. "Does she know you're doing this, and what do you expect will happen once that authority is given?" is two questions, and the second one is the only one that gets answered. If you find two, keep the one that is harder to answer and drop the other.
 
 Then six questions, in this order:
 

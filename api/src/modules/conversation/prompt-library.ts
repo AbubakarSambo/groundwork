@@ -3830,10 +3830,14 @@ Open with this block in order, as one natural message:
 "Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, alignment map, documents. Never a score: nobody here is scored, and telling a person one exists is telling them they are]"
 "Today we are going to: [focus on an unexpected angle - session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
 
-Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`);
+Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.
+
+THE "TODAY WE ARE GOING TO" LINE IS ABOUT THEIR WORK, NEVER ABOUT THIS PRODUCT. Read live: "Today we're going to dig into what's actually happening on the check-in with those shops" - the check-in is where they are standing, not a thing that has shops. Name the work: the shops, the margin, the migration. If the sentence needs the words check-in, record or session to make sense, it is the wrong sentence.`);
     }
     if (sessionNumber === 3) {
-      return withTheScenarioUnderneath(`SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question: what has been hardest to talk about in this process - not the situation itself, what has been hard to say. One statement. One question. Wait.`);
+      return withTheScenarioUnderneath(`SESSION 3 CONTINUITY (SHIFTED APPROACH): Open with one statement naming the most specific thing in their record from sessions 1 and 2. Then ask one question about the work that the first two sessions did not get to: what they have not put in writing yet, what they expected to be true by now and is not, or what somebody else would say is going wrong. One statement. One question. Wait.
+
+NOT A QUESTION ABOUT THE CONVERSATION ITSELF. This asked "what has been hardest to talk about in this process - not the situation itself, what has been hard to say", which on the screen reads as therapy, says the same thing twice, and asks somebody at work to account for their own reticence. Read live, 17 September 2026. The unexpected angle is a different question about the WORK, never a question about how the talking is going.`);
     }
     return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY (SHIFTED APPROACH): Open with one statement naming one thing in the record that was vague last time. Then ask one question: what specifically happened with it. One statement. One question. Do not ask follow-ups in the same message.`);
   }
