@@ -57,3 +57,47 @@ describe('the setup conversation reads you first', () => {
     expect(SRC).toMatch(/LEAVE IT OUT/);
   });
 });
+
+/*
+ * AND THE FOUR THINGS SHE READ BACK OFF THE NEXT RUN.
+ */
+describe('the first question fits the situation, and the context tab exists', () => {
+  it('works out the situation before asking, when they described their own', () => {
+    /* Every one of the twenty-two has its own first question and they only ever reached somebody
+       who clicked a card. Describe your own and the generic opener asked for what she had written. */
+    expect(SRC).toMatch(/WORK OUT WHICH SITUATION THIS IS BEFORE ASKING THE FIRST QUESTION/);
+    expect(SRC).toMatch(/const scenarioForTheQuestion = scenarioInput/);
+    expect(SRC).toMatch(/buildSetupPrompt\(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput\)/);
+  });
+
+  it('and only on the first turn, so it costs one call where it matters', () => {
+    expect(SRC).toMatch(/const firstTurn = \(messages as \{ role: string \}\[\]\)\.filter\(\(m\) => m\.role === 'user'\)\.length <= 1/);
+  });
+
+  it('the closer says where documents and further context go', () => {
+    expect(SRC).toMatch(/SAY WHERE THE REST OF THE CONTEXT GOES/);
+    expect(SRC).toMatch(/goes on the Context tab, any time/);
+  });
+});
+
+/*
+ * AND THE CHECK-IN AFTER IT, WHICH IS A DIFFERENT PROMPT AND HAD THE SAME FAULTS.
+ */
+describe('the check-in after setup does not start again', () => {
+  it('treats everything setup settled as answered', () => {
+    expect(SRC).toMatch(/# Setup is finished, and everything in it is answered/);
+    expect(SRC).toMatch(/Never for something already on the card/);
+  });
+
+  it('carries the reason and the example there too, where the conversation actually is', () => {
+    expect(SRC).toMatch(/# A question carries its reason, and an abstract one carries an example/);
+    expect(SRC).toMatch(/A distributor list, a photo from a shop visit, an invoice/);
+    expect(SRC).toMatch(/pipeline, conversion and sign-ups mean nothing to/);
+  });
+
+  it('and stops asking after two I-do-not-knows', () => {
+    /* Read live: three versions of the same unanswerable question in a row. */
+    expect(SRC).toMatch(/# Twice is enough/);
+    expect(SRC).toMatch(/A third version of the\nsame question is the product arguing with a person about their own work/);
+  });
+});

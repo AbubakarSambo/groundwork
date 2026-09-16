@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
+import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -467,7 +467,11 @@ export function summariseSetup(
     const mine = [...words(why)];
     if (!mine.length) return true;
     const theirs = words(about);
-    return mine.filter((w) => theirs.has(w)).length / mine.length < 0.6;
+    /* Read live at 0.6 and still let "setting goals for the next quarter" through against "Setting
+       goals for 40 shops in Kano stocking tea by end of Q4": two words of four. A real reason shares
+       almost nothing with the subject - "the client is unhappy about the delay" shares one word in
+       four with "a client meeting on Thursday" - so the line sits between them. */
+    return mine.filter((w) => theirs.has(w)).length / mine.length < 0.4;
   };
   if (sels.decision?.trim() && aReasonRatherThanAnEcho(sels.decision, sels.initial ?? '')) {
     have.push({ label: 'Why now', value: sels.decision.trim() })
@@ -934,7 +938,16 @@ export const THE_OPENING_QUESTION =
    * So this says what the two routes ARE. The question is asked once, on the card that takes the
    * answer.
    */
-  HOW_A_SITUATION_IS_CHOSEN
+  /*
+   * AND ONE WORKED EXAMPLE, BECAUSE AN EMPTY BOX WITH AN INSTRUCTION IN IT IS THE HARDEST QUESTION
+   * IN THE PRODUCT.
+   *
+   * "Describe it in your own words" tells somebody nothing about how much to write, how specific to
+   * be, or whether a number belongs in it. One sentence showing all three costs a line and removes
+   * the stall. See WHAT_THAT_SOUNDS_LIKE, which is deliberately about buying chickens: this is used
+   * to procure livestock and to sell tea as often as it is used to ship software.
+   */
+  `${HOW_A_SITUATION_IS_CHOSEN} ${WHAT_THAT_SOUNDS_LIKE}`
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -3202,6 +3215,20 @@ export function EntryChatPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
                   <VennIcon size={22} />
                   <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
+                </div>
+              )}
+              {/*
+                AND WHERE THE REST OF THE CONTEXT GOES, WHICH NOTHING HAS EVER SAID.
+                
+                A lead finishes setup believing this conversation was the only chance to explain the
+                situation. There is a Context tab that takes documents, notes and anything else the
+                check-ins should be held against, and no screen in the flow mentions it - so the
+                brief, the plan and the spreadsheet somebody already has never arrive, and every
+                session afterwards runs on memory alone.
+              */}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
+                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {

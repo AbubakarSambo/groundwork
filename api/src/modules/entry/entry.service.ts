@@ -159,6 +159,34 @@ Do not reference prior sessions or what anybody else said.
 Do not mention saving or payment unless the person asks.
 The first session is free.
 
+# A question carries its reason, and an abstract one carries an example
+This is in the engine rules above and it loses there, because it is one paragraph in eighteen
+thousand words and this is the conversation somebody is having right now. Read live, twice in a row,
+after somebody had already said they did not know:
+  "What would tell you that the tea is actually being stocked in those shops?"
+  "What is the smallest sign that would tell you something is actually moving?"
+Both are fair questions and both are unanswerable cold.
+
+Every question you ask carries ONE short line saying why it helps: "It helps to keep a definition of
+what clear success looks like." And any question that asks for something abstract - what good looks
+like, what would count, what would tell you - carries two or three concrete options FROM THEIR OWN
+WORLD: "A distributor list, a photo from a shop visit, an invoice, whatever you would actually look
+at." Never an example from another business: pipeline, conversion and sign-ups mean nothing to
+somebody selling tea in Kano.
+
+# Setup is finished, and everything in it is answered
+The summary above holds what they told setup: what this is about, who is in it, what they are aiming
+at, and the period. Not one of those may be asked for again. Read live, after her opening sentence
+had named both people: "Who else is involved in making that happen?" - asked of somebody who had
+written "Sahar and Amina each need their own number" four minutes earlier.
+If you want to go wider than what is there, ask for something genuinely new: where it stands today,
+what is in the way, what would have to be true. Never for something already on the card.
+
+# Twice is enough
+If somebody has said they do not know, twice, they do not know. Take it, say plainly that it can be
+settled later and is recorded as open, and move to something they CAN answer. A third version of the
+same question is the product arguing with a person about their own work.
+
 # Time awareness
 If the person indicates urgency, says they have limited time, or signals a meeting is imminent ("10 minutes", "quick", "before the meeting", "between patients"), acknowledge it immediately: "Got it. I will keep this tight." Then limit to three focused questions covering the most important point only. Do not extend the session past what the time allows.
 
@@ -894,6 +922,12 @@ Rules:
       often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
   Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
+- AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
+  this conversation was their only chance to explain the situation. It is not: the Context tab takes
+  documents, notes and anything else the check-ins should be held against, and nothing in this flow
+  has ever said so - so the plan, the brief and the spreadsheet they already have never arrive, and
+  every session afterwards runs on memory. One clause, in the closer, in plain words: anything else
+  worth holding this against goes on the Context tab, any time.
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
@@ -946,7 +980,32 @@ Rules:
       .map((m) => m.content ?? '')
       .join(' ');
     const lookingBack = thisAlreadyHappened(theirWords);
-    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput)
+    /*
+     * WORK OUT WHICH SITUATION THIS IS BEFORE ASKING THE FIRST QUESTION, NOT AFTER.
+     *
+     * Every one of the twenty-two situations has its own first question, and they only ever reached
+     * somebody who CLICKED A CARD. Describe your own situation and `scenarioInput` is empty, so the
+     * pack is empty and the generic opener asks for the thing they have just written.
+     *
+     * Read live: "I want 40 shops in Kano stocking our tea by the end of Q4, and Sahar and Amina
+     * each need their own number under that" was answered with "What is the overall goal you want
+     * Sahar and Amina to help achieve for the quarter?"
+     *
+     * The classifier already runs on this text - it was running AFTER the reply, in the background,
+     * to set the plan. It runs first now, on the first turn only, and costs one call on the turn
+     * where getting it right matters most. A low-confidence answer returns nothing and the honest
+     * open question stands, exactly as it did.
+     */
+    const firstTurn = (messages as { role: string }[]).filter((m) => m.role === 'user').length <= 1;
+    const scenarioForTheQuestion = scenarioInput
+      ? scenarioInput
+      : firstTurn && theirWords.trim().length > 12
+        ? (await this.classifyIntent(theirWords).catch(() => null))?.scenario ?? undefined
+        : undefined;
+    if (!scenarioInput && scenarioForTheQuestion) {
+      this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
+    }
+    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and

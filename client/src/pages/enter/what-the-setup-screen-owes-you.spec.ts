@@ -47,6 +47,6 @@ describe('why now is a reason, not the same fact twice', () => {
     /* About: "Setting goals for 40 shops in Kano stocking tea by end of Q4."
        Why now: "setting goals for the next quarter." Two rows, one fact. */
     expect(PAGE).toContain('aReasonRatherThanAnEcho')
-    expect(PAGE).toMatch(/mine\.filter\(\(w\) => theirs\.has\(w\)\)\.length \/ mine\.length < 0\.6/)
+    expect(PAGE).toMatch(/mine\.filter\(\(w\) => theirs\.has\(w\)\)\.length \/ mine\.length < 0\.4/)
   })
 })
