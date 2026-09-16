@@ -1,7 +1,7 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { Public, CurrentUser, CurrentUserData } from '../../common';
+import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
 import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
@@ -72,6 +72,15 @@ export class EntryChatDto {
   alreadySaid?: string[];
 }
 
+/**
+ * WHO IS ASKING, IF ANYBODY. `@OptionalAuth()` fills `req.user` when a session exists and leaves it
+ * undefined when it does not, so this reads as "a stranger" without a branch at every call site.
+ */
+function whoIsAsking(req: any): { userId: string; organizationId: string } | null {
+  const u = req?.user;
+  return u?.id && u?.organizationId ? { userId: u.id, organizationId: u.organizationId } : null;
+}
+
 class EntryOnboardDto {
   @IsArray()
   @ArrayMaxSize(A_HISTORY_MAX_TURNS)
@@ -99,6 +108,21 @@ class EntryOnboardDto {
   @IsOptional()
   @IsString()
   moment?: string;
+
+  /**
+   * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
+   *
+   * The screen holds it - it is what the summary card renders - and setup was throwing it away
+   * every turn and re-reading the whole situation off the transcript. See
+   * what-setup-already-knows-travels-with-it for what that cost live.
+   *
+   * Not validated field by field, deliberately: it is this route's OWN previous answer coming
+   * back, every field is optional, and a shape that does not match is rendered as text in a prompt
+   * and nothing else. What it must not be is large, so it is capped.
+   */
+  @IsOptional()
+  @IsObject()
+  soFar?: Record<string, unknown>;
 }
 
 class EntryOpenerDto {
@@ -396,11 +420,17 @@ export class EntryController {
     return this.service.patchDraft(body.draftToken, body.payload);
   }
 
+  /*
+   * PUBLIC, AND STILL READS A SESSION IF THERE IS ONE. A lead with four check-ins already running
+   * met a setup conversation that knew nothing about them, every time, because this route took no
+   * user. See setup-is-not-a-stranger-to-somebody-who-is-signed-in. It stays open to strangers.
+   */
   @Public()
+  @OptionalAuth()
   @Post('onboard')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  async onboard(@Body() dto: EntryOnboardDto) {
-    return this.service.onboard(dto.messages, dto.scenario, dto.moment);
+  async onboard(@Body() dto: EntryOnboardDto, @Req() req: any) {
+    return this.service.onboard(dto.messages, dto.scenario, dto.moment, undefined, dto.soFar as any, whoIsAsking(req));
   }
 
   /*
@@ -409,13 +439,14 @@ export class EntryController {
    * carries exactly what the plain route would have returned.
    */
   @Public()
+  @OptionalAuth()
   @Post('onboard/stream')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response) {
+  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response, @Req() req: any) {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }));
+      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }), dto.soFar as any, whoIsAsking(req));
       write({ type: 'done', ...out });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);

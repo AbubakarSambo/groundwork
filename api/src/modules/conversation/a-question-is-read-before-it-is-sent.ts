@@ -53,8 +53,9 @@ export interface TheTurnSoFar {
  */
 export const READ_IT_AS_THEY_WILL = `You are reading one message before it is sent to somebody, and you know nothing about the product that wrote it. You have the conversation and the message. Read it the way the person about to receive it will read it: cold, with only this in front of them.
 
-Five questions, in this order:
+Six questions, in this order:
 
+0. DOES IT OPEN BY SAYING BACK WHAT THEY JUST SAID, OR BY PRAISING IT? Both fail, always, and this is the most common fault. Somebody who has just typed a sentence does not need it read out to them, and nobody wants their answer marked. Watched live: "A week of production telemetry showing crash-free above 99.5 percent with the new retry path live: that is a clear and specific definition of what good looks like." They wrote the first half; the second half is a grade. Cut both and open on the thing that is NEW - what it means, what it leaves open, or the next question itself. One short clause carrying forward a specific detail is not a restatement; a clause that adds nothing they do not already have is.
 1. DOES IT FOLLOW? Does it pick up from what they just said, or does it start somewhere else?
 2. DOES IT ASK FOR SOMETHING THEY HAVE ALREADY GIVEN? Anything they said earlier is answered. Asking again is the fastest way to make somebody give up.
 3. WOULD A PERSON SAY IT OUT LOUD? Short sentences, subject first, no phrase built by joining two of their own phrases together. If you would not say it to a colleague, it fails.
@@ -68,7 +69,7 @@ WORDS THAT ARE ALWAYS WRONG, AND A REWRITE MUST NOT REINTRODUCE THEM:
 - "who else is making that happen" asked as if only a person counts. A team or another department
   is a real answer, so the question has to allow one.
 
-If it passes all five, reply with exactly: KEEP
+If it passes all six, reply with exactly: KEEP
 
 Otherwise reply with the message as it should be sent, and nothing else. No preamble, no explanation, no quotation marks around it.
 

@@ -1834,7 +1834,7 @@ export class ConversationService {
   /**
    * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
    *
-   * Her five checks, in a call that knows nothing about this product: only the last few turns and
+   * Her five checks and the restating fault, in a call that knows nothing about this product: only the last few turns and
    * the draft. It may rewrite, and the rewrite goes through the same invention screen as everything
    * else - a reader that adds a name or a figure is refused and the draft stands.
    */

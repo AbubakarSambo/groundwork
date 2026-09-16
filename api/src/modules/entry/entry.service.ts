@@ -56,6 +56,8 @@ import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invente
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from '../conversation/a-question-is-read-before-it-is-sent';
@@ -637,6 +639,38 @@ export class EntryService {
     return { scenario: resolveScenario(mode), confidence: 'low' };
   }
 
+  /**
+   * WHAT THIS LEAD ALREADY HAS HERE, OR NOTHING AT ALL FOR A STRANGER.
+   *
+   * Their own check-ins and their own job title. Never a participant's words - see
+   * setup-is-not-a-stranger-to-somebody-who-is-signed-in for why the wall has no door here. A
+   * failure is nothing: setup for somebody with an account must never be worse than setup for
+   * somebody without one.
+   */
+  private async whatThisLeadAlreadyHas(askedBy?: { userId: string; organizationId: string } | null) {
+    if (!askedBy?.userId) return null;
+    try {
+      const [user, grounds] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { jobTitle: true } }),
+        this.prisma.ground.findMany({
+          where: { initiatorId: askedBy.userId, organizationId: askedBy.organizationId },
+          select: { label: true, brief: true },
+          orderBy: { createdAt: 'desc' },
+          take: ENOUGH_TO_RECOGNISE_THEM,
+        }),
+      ]);
+      /* Counts, never labels: a check-in's name is something a person wrote. */
+      this.logger.log(`Setup knows this lead: ${grounds.length} check-in(s) of their own, job title ${user?.jobTitle ? 'known' : 'not set'}.`);
+      return {
+        jobTitle: user?.jobTitle ?? null,
+        theirCheckIns: grounds.map((g) => ({ label: g.label, about: g.brief })),
+      };
+    } catch (err: any) {
+      this.logger.warn(`Setup could not read what this lead already has: ${err?.message}`);
+      return null;
+    }
+  }
+
   async onboard(
     messages: ChatTurn[],
     /**
@@ -646,6 +680,17 @@ export class EntryService {
     scenarioInput?: string,
     momentInput?: string,
     onDelta?: (text: string) => void,
+    /**
+     * WHAT THE LAST TURN READ OUT OF THIS CONVERSATION, HANDED BACK BY THE SCREEN THAT IS SHOWING IT.
+     * See what-setup-already-knows-travels-with-it. Absent on the first turn, and absent from an old
+     * client, which is why nothing here requires it.
+     */
+    soFar?: WhatSetupHasSoFar | null,
+    /**
+     * THE SIGNED-IN LEAD, IF THERE IS ONE. The route is public and stays public; a session that
+     * happens to exist is read. See setup-is-not-a-stranger-to-somebody-who-is-signed-in.
+     */
+    askedBy?: { userId: string; organizationId: string } | null,
   ): Promise<{
     reply: string;
     extracted: {
@@ -863,6 +908,10 @@ Your job is to gather these things through natural conversation:
 
 Rules:
 - Ask one short question at a time. One sentence. No lists, no sub-questions.
+- AND JOINED TO A SECOND QUESTION IS STILL TWO QUESTIONS. Read live: "What timeline are you working
+  to for the migration, and how often would you like to check in on the progress?" - two unrelated
+  things in one sentence, so one of them gets answered and the other is asked again later. An
+  example INSIDE a question is fine; a second ask after "and" is not.
 - Keep each reply to 1 or 2 sentences. Never write more than that.
 - The person's own part in this is step 1b, the second question, on its own - see above. It used to
   be an instruction to "ask early" inside step 3, which is why it kept arriving third, mixed into a
@@ -1017,8 +1066,12 @@ Rules:
     if (!scenarioInput && scenarioForTheQuestion) {
       this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
     }
+    const settled = whatIsSettledAndWhatIsNot(soFar);
+    const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
-      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '');
+      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
+      + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
+      + (settled ? `\n\n---\n\n${settled}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
@@ -1439,7 +1492,7 @@ from finishing at all.`;
   /**
    * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
    *
-   * Her five checks. The reader may rewrite, which no guard here can do, and its rewrite goes
+   * Her five checks, plus the restating fault that kept getting through them. The reader may rewrite, which no guard here can do, and its rewrite goes
    * through the same invention screen as everything else: a reader that adds a name or a figure is
    * refused and the draft stands, because being fresh is not a licence to invent.
    */

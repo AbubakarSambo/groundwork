@@ -1739,6 +1739,21 @@ export function EntryChatPage() {
         onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { draft += text; setOnboardingDraft(draft) },
+        /*
+         * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
+         *
+         * This screen has held the read of the conversation all along - it is what the summary card
+         * renders - and setup was throwing it away and re-deriving the whole situation from the
+         * transcript on every turn. Live, that dropped a named team, never asked why now, and moved
+         * the planned session count three times while the person answered about something else. See
+         * what-setup-already-knows-travels-with-it on the API side.
+         */
+        {
+          ...onboardingSelections,
+          ...(yourRole ? { yourRole } : {}),
+          ...(cadenceChosen ? { cadence } : {}),
+          ...(plannedFrom?.timelineDays ? { timelineDays: plannedFrom.timelineDays } : {}),
+        },
       )
       setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
