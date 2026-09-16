@@ -2084,6 +2084,24 @@ export class ConversationService {
       }
 
       /*
+       * AND THE READER RUNS HERE TOO, WHICH IS WHERE IT WAS MISSING.
+       *
+       * The reader was wired into the turn path and not this one, and this one is the path every
+       * real check-in takes: ChatPage streams. So a fix proved in the lead's setup chat reached no
+       * participant at all. Read live on a payments SDK migration, both from this path and both
+       * through all nine guards: a reply that opened by reciting the person's own sentence back to
+       * them, and one that marked their answer ("that is a clear and specific definition of what
+       * good looks like").
+       *
+       * A STREAM CANNOT BE UNSENT, so a rewrite arrives the way every other whole-reply correction
+       * on this path already does: `done` carries the corrected text and ChatPage replaces what it
+       * streamed. That mechanism is not invented here - the close-ask and the whole-reply screen
+       * both rely on it - and a reader that rewrites one turn in three is worth a replace.
+       */
+      const readOnTheStream = await this.readBeforeSending(history, reply, streamKnown);
+      if (readOnTheStream && readOnTheStream !== reply) reply = readOnTheStream;
+
+      /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
        *
        * A shortened version of their own word and a causal claim they did not make are both real
