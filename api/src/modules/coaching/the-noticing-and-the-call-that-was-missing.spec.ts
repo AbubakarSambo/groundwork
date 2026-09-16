@@ -1,3 +1,4 @@
+import { theBehavioursAnybodyCanBeRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { roleMapFor, RoleFunction } from '../board/role-maps';
 import { ConversationService } from '../conversation/conversation.service';
 
@@ -114,7 +115,10 @@ describe('what the session showed', () => {
     for (const signal of map.failureSignals ?? []) expect(handed).not.toContain(signal);
     /* The floor instead: read off the ACCOUNT, never off the work, because the work is the part
        that cannot be read without knowing the job. */
-    expect(handed).toContain('did not come with a date, a number or a name attached');
+    /* Asserted through the module rather than by quoting the line, which was rewritten out of
+       Yoda once already and will be again. What matters is that the floor's own list is what was
+       handed over. */
+    for (const line of theBehavioursAnybodyCanBeRead()) expect(handed).toContain(line);
 
     expect(upserts).toHaveLength(1);
     expect(upserts[0].create.lastInput.why).toMatch(/below 0.5|no role map/);

@@ -34,8 +34,11 @@ STILL OPEN, and each is open for a reason rather than for want of time:
   detections on the corpus sit at one period and the rule needs three, so nothing has surfaced yet.
   Lowering that gate is a product decision about how soon this product says somebody is carrying
   the place, and it is hers, not mine.
-- **Patterns and the coaching staircase**, proven wired and never seen firing, for the same reason:
-  no ground here has run enough periods.
+- **Pattern-based coaching**, which is the part that waits for three periods. Coaching itself does
+  NOT wait for a pattern and never did - I said it did, and that was wrong. A step needs the same
+  behaviour noticed in two distinct sessions (`SESSIONS_BEFORE_A_STEP`); a pattern only steers which
+  behaviour to look at first, and is told explicitly that it is never the reason. Counted on the
+  corpus: 582 coaching states, 494 with an observation, 307 with two or more, 81 holding a step.
 - **The language pass on generated sentences.** The headings are plain now and the padding is gone.
   Whether a generated line sounds like a person is her ear, and the way to do it is to read real
   lines from a real run together.

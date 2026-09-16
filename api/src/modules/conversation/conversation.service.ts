@@ -3959,6 +3959,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
+        /* A step off the universal floor is about how the account reads, so a thin session is the
+           evidence for it rather than a reason to withhold it. See nextMove. */
+        aboutTheAccount: readFromTheAccount,
       },
       outcome,
     );
@@ -3983,6 +3986,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     sessionNumber: number,
     read: {
       noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
+      /** Whether the step is about how they give their account rather than about the work. */
+      aboutTheAccount?: boolean;
       /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
       observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean; modelSaidTheyAsked?: boolean } | null;
       observations?: Observation[];
