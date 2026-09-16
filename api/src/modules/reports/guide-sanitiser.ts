@@ -199,7 +199,55 @@ export function containsQuote(text: string): boolean {
 }
 
 /** Why a field was dropped, for the log. */
-export type DropReason = 'names-a-party' | 'contains-a-quote';
+export type DropReason = 'names-a-party' | 'contains-a-quote' | 'about-nothing-they-said';
+
+/**
+ * WORDS FROM SOMEBODY ELSE'S BUSINESS. 4.6.
+ *
+ * Read off a real report, on a check-in about selling tea in Abuja:
+ *
+ *   "What did that turn into - pipeline, conversion, sign-ups?"
+ *
+ * Three nouns, none of them anybody's, in a question somebody is meant to carry into a real
+ * conversation with a colleague. It reads as a machine that knows the shape of business talk and
+ * nothing about this business, which is the fastest way to lose a reader.
+ *
+ * THE TEST IS WHETHER ANY OF IT IS THEIRS. Not a list of banned jargon - "pipeline" is the right
+ * word in half the check-ins this product runs - but whether the line's own content words appear
+ * anywhere in what was actually said here. One word of overlap is enough: the failure being caught
+ * is a sentence about nothing in front of it, and that one is total.
+ *
+ * Dropped rather than rewritten, like the other two rules, because a guide missing a line is
+ * honest and a guide about somebody else's business is not.
+ */
+const CARRIES_NOTHING = new Set([
+  'what', 'that', 'this', 'they', 'them', 'their', 'there', 'then', 'with', 'from', 'about', 'into',
+  'turn', 'turned', 'have', 'been', 'does', 'did', 'would', 'could', 'should', 'might', 'will',
+  'your', 'yours', 'you', 'our', 'ours', 'the', 'and', 'for', 'but', 'not', 'are', 'was', 'were',
+  'how', 'why', 'who', 'when', 'where', 'which', 'here', 'more', 'most', 'some', 'any', 'each',
+  'thing', 'things', 'something', 'anything', 'nothing', 'view', 'views', 'other', 'others',
+  'different', 'differently', 'same', 'want', 'wanted', 'need', 'needed', 'make', 'made', 'get',
+  'got', 'take', 'taken', 'say', 'said', 'see', 'seen', 'look', 'looks', 'work', 'working',
+  'week', 'weeks', 'month', 'months', 'year', 'years', 'time', 'times', 'next', 'last', 'first',
+]);
+
+const wordsIn = (s: string): string[] =>
+  (s.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).map((w) => w.replace(/[',.]+$/, ''));
+
+/** Below this, the record is too thin for the overlap test to mean anything. */
+const ENOUGH_SAID = 200;
+
+export function enoughToCheckAgainst(saidHere: string[]): boolean {
+  return (saidHere ?? []).join(' ').trim().length >= ENOUGH_SAID;
+}
+
+/** Does this line carry anything at all from what was said on this check-in? */
+export function aboutSomethingTheySaid(line: string, saidHere: string[]): boolean {
+  const mine = wordsIn(line).filter((w) => !CARRIES_NOTHING.has(w));
+  if (!mine.length) return true;
+  const ground = new Set((saidHere ?? []).flatMap(wordsIn));
+  return mine.some((w) => ground.has(w));
+}
 
 /**
  * Remove any field that names someone or quotes them.
@@ -211,6 +259,8 @@ export type DropReason = 'names-a-party' | 'contains-a-quote';
 export function sanitiseGuide(
   guide: PostReportGuide,
   names: ForbiddenName[],
+  /** Everything said on this check-in, so a line about nothing in it can be recognised. See 4.6. */
+  saidHere: string[] = [],
 ): { guide: PostReportGuide; dropped: { field: keyof PostReportGuide; reason: DropReason }[] } {
   const clean: PostReportGuide = {};
   const dropped: { field: keyof PostReportGuide; reason: DropReason }[] = [];
@@ -225,6 +275,18 @@ export function sanitiseGuide(
     }
     if (containsQuote(text)) {
       dropped.push({ field, reason: 'contains-a-quote' });
+      continue;
+    }
+    /*
+     * ONLY WHERE THERE IS ENOUGH TO CHECK AGAINST.
+     *
+     * On a check-in with two lines on it, every sentence looks unrelated to every other one, and
+     * this would drop guides wholesale on exactly the thinnest records - where a guide is worth
+     * most. The threshold is deliberately low: a session with less than this in it has not said
+     * enough for "about nothing they said" to mean anything.
+     */
+    if (enoughToCheckAgainst(saidHere) && !aboutSomethingTheySaid(text, saidHere)) {
+      dropped.push({ field, reason: 'about-nothing-they-said' });
       continue;
     }
     clean[field] = text;

@@ -81,6 +81,8 @@ import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
+import { whatYourOwnRecordSays } from './what-your-own-record-says';
+import { whatChangedSinceLastTime } from './what-changed-since-last-time';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
@@ -2691,6 +2693,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
             }) ?? Promise.resolve([])).catch(() => [] as any[])) as any[],
             whoAnswered.expected,
           ).says,
+          /*
+           * AND WHAT MOVED SINCE THE LAST ROUND, which from round two is the most useful sentence
+           * on the page and was never on it. 4.3. Computed from the rounds already kept, so it
+           * cannot disagree with the movement view. See what-changed-since-last-time.
+           */
+          sinceLastTime: await (async () => {
+            const kept = await (this.prisma.reportRound?.findMany?.({
+              where: { groundId },
+              orderBy: { sessionNumber: 'desc' },
+              take: 2,
+              select: { sessionNumber: true, divergences: true },
+            }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+            /* A kept round holds what was said, not who had answered when it was taken, so the
+               count is left out of the comparison rather than guessed at. */
+            const rounds = (kept as any[]).map((r: any) => ({
+              topics: (Array.isArray(r.divergences) ? r.divergences : []).map((d: any) => String(d?.topic ?? '')).filter(Boolean),
+              answered: whoAnswered.answered,
+            }));
+            const current = {
+              topics: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[]).map((d: any) => String(d?.topic ?? '')).filter(Boolean),
+              answered: whoAnswered.answered,
+            };
+            /* The most recent kept round is this one where it has already been stored. */
+            const previous = rounds.find((r) => r.topics.join('|') !== current.topics.join('|')) ?? rounds[1] ?? null;
+            return whatChangedSinceLastTime(current, previous);
+          })(),
           answered: whoAnswered.answered,
           ofPeople: whoAnswered.expected,
           confidence: shape.confidence,
@@ -3636,6 +3664,14 @@ happened, and what is in the way.`;
       where: { groundId, participantId: participant.id, sessionNumber, isFinal: true },
       select: { id: true },
     }));
+    /* The board's numbers, for the sentences that are about this person's share of them. */
+    const theBoardNumbers = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId }, select: { name: true, target: true, ownerParticipantId: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const theWholeNumber = (theBoardNumbers as any[]).find((o: any) => !o.ownerParticipantId && typeof o.target === 'number');
+    const theOwnedNumbers = (theBoardNumbers as any[]).filter((o: any) => o.ownerParticipantId && typeof o.target === 'number');
+    const theirOwnNumber = theOwnedNumbers.find((o: any) => o.ownerParticipantId === participant.id);
+
     const note = whatToWorkOnNext({
       patterns: held.detections
         .filter((d) => d.participantId === participant.id)
@@ -3695,6 +3731,24 @@ happened, and what is in the way.`;
         })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
+      /*
+       * AND THE PART THAT IS ABOUT THIS ONE PERSON. 4.4.
+       *
+       * Everything above is about a role, a stage or a blocker. These are sentences carrying a
+       * figure or a thing off their own lines, so none of them could be said to anybody else. See
+       * what-your-own-record-says.
+       */
+      aboutYou: whatYourOwnRecordSays({
+        whole: theWholeNumber ? { name: theWholeNumber.name, target: theWholeNumber.target! } : null,
+        peopleWithANumber: theOwnedNumbers.length,
+        peopleInIt: ground.participants.filter((p: any) => !p.managingOnly).length,
+        theirs: theirOwnNumber ? { name: theirOwnNumber.name, target: theirOwnNumber.target! } : null,
+        standsAt: null,
+        promises: mine
+          .filter((e: any) => String(e.kind ?? '').toUpperCase().includes('COMMIT'))
+          .map((e: any) => ({ what: e.text ?? '', hasDate: !!e.dueDate || /\b(by|on)\b.{0,20}\d/i.test(e.text ?? '') })),
+        anythingDocumented: mine.some((e) => !e.recallBased),
+      }),
     });
 
     /*
@@ -4481,7 +4535,10 @@ happened, and what is in the way.`;
           );
           if (!result) return;
 
-          let { guide, dropped } = sanitiseGuide(result, names);
+          /* What was actually said on this check-in, so a line about nothing in it is recognised.
+             The shared picture counts as said here: it is built from everybody's own words. */
+          const saidHere = [...entries.map((e) => e.text ?? ''), synthesisText];
+          let { guide, dropped } = sanitiseGuide(result, names, saidHere);
 
           /**
            * ONE MORE ATTEMPT WHEN A FIELD IS STRIPPED, AND HERE IS THE RUN THAT
@@ -4521,7 +4578,7 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
               )
               .catch(() => null);
             if (retry) {
-              const second = sanitiseGuide(retry, names);
+              const second = sanitiseGuide(retry, names, saidHere);
               // Only take the retry if it actually lost less. A worse second attempt
               // is not an improvement, and the first one is already sanitised.
               if (Object.keys(second.guide).length > Object.keys(guide).length) {

@@ -47,6 +47,18 @@ export interface PictureInput {
    * coverage, because a number that does not reach another number is not a matter of opinion.
    */
   numbers?: string | null;
+  /**
+   * WHAT CHANGED SINCE LAST TIME, WHICH FROM SESSION 2 IS THE MOST USEFUL SENTENCE ON THE PAGE.
+   *
+   * 4.3: "Session 1 has nothing to compare, but from session 2 the report should open on movement,
+   * not on a fresh read." Every round's picture was written as though it were the first one, so a
+   * reader on session 4 got a fresh description of a situation they already knew and had to work
+   * out for themselves what was different.
+   *
+   * Computed rather than asked for, like the arithmetic above it, and ranked above everything
+   * except the arithmetic: a number that does not add up is still the bigger fact.
+   */
+  sinceLastTime?: string | null;
 }
 
 const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
@@ -62,7 +74,7 @@ const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[
  * the tile line, which outranks the settled-and-open line. The basis line never leads; it goes
  * underneath the finding, small.
  */
-const FINDING_RANK: [RegExp, number][] = [[/^numbers$/, -1], [/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
+const FINDING_RANK: [RegExp, number][] = [[/^numbers$/, -1], [/^moved$/, -0.5], [/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
 export function pickTheFinding(keys: string[]): string | null {
   const ranked = keys
     .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
@@ -83,6 +95,11 @@ export function draftThePicture(i: PictureInput): Drafted[] {
    * THE NUMBERS FIRST, where there are any. It leads the picture and it takes the finding slot,
    * because arithmetic about the objective outranks every read in this file. See PictureInput.
    */
+  /* Before the reads and after the arithmetic. See PictureInput.sinceLastTime. */
+  if (i.sinceLastTime?.trim()) {
+    out.push({ key: 'moved', text: i.sinceLastTime.trim(), mustKeep: [] });
+  }
+
   if (i.numbers?.trim()) {
     /* The line arrives written for the model with an instruction on the end of it; the picture
        wants only the fact. Everything up to the first instruction sentence is the fact. */
