@@ -38,12 +38,45 @@
  * English words is a chore that is always one word out of date, and it was. Driving a check-in
  * produced "Starting" reported as an invented name, because nobody had added it yet.
  */
+/**
+ * A MONTH IS NOT A PERSON, AND THIS LIST NOT KNOWING THAT DELETED THE MOST IMPORTANT SENTENCE
+ * THIS PRODUCT WRITES.
+ *
+ * Every capitalised word the person did not type is read here as a name somebody invented, and the
+ * sentence carrying it is cut before anybody sees it. The list of exceptions had "And", "But",
+ * "Session" and "Groundwork" in it, and no months and no days of the week. So:
+ *
+ *   "End of the year, so 31 December 2026?"        deleted
+ *   "You said Friday. Which Friday?"               deleted
+ *   "Is that by December, or by March?"            deleted
+ *   "So the deadline is Monday the 5th."           deleted
+ *   "What happens in January if the shops slip?"   deleted
+ *
+ * The first of those is the sentence she asked for by name and watched the product fail to produce
+ * for two days. It was producing it. This was eating it. Six sentences went in one short setup
+ * conversation, which is also why replies read truncated and why one turn arrived with no question
+ * in it at all: the question was in a sentence that had been cut.
+ *
+ * Every one of these is a word a conversation about deadlines cannot avoid, and none of them is
+ * ever somebody's name in the sense this check exists to catch - which is the product putting a
+ * colleague's name into somebody's record that nobody typed.
+ */
+const A_DATE_NOT_A_PERSON = [
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December',
+  'Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Sept', 'Oct', 'Nov', 'Dec',
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+  'Mon', 'Tue', 'Tues', 'Wed', 'Thu', 'Thur', 'Thurs', 'Fri', 'Sat', 'Sun',
+  'Today', 'Tomorrow', 'Yesterday', 'Tonight', 'Q1', 'Q2', 'Q3', 'Q4', 'H1', 'H2',
+];
+
 const NOT_A_NAME = new Set([
   'I', 'You', 'We', 'They', 'It', 'The', 'A', 'An', 'And', 'But', 'So', 'That',
   'This', 'What', 'When', 'Where', 'Who', 'Why', 'How', 'Your', 'Yours', 'My',
   'Okay', 'OK', 'Got', 'Understood', 'Thank', 'Thanks', 'Good', 'Both', 'Before',
   'Session', 'Groundwork', 'Is', 'Was', 'Can', 'Does', 'Do', 'If', 'For', 'To',
   'In', 'On', 'At', 'One', 'Two', 'Not', 'No', 'Yes', 'There', 'Here', 'Now',
+  ...A_DATE_NOT_A_PERSON,
 ]);
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');

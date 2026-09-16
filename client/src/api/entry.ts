@@ -195,9 +195,12 @@ export const entryApi = {
     /* Who setup already named. This is the live path the check-in actually uses, so without it here
        the block that stops "who else is involved" never reaches the conversation people have. */
     peopleNamed?: string[],
+    /* And what they typed in setup. Without it their own place names and deadlines read as invented
+       the moment the check-in starts, and the sentences carrying them are deleted. */
+    alreadySaid?: string[],
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     /* No joinToken: the branch it reached served the organiser's brief to whoever supplied one (fix plan D10). */
-    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, peopleNamed }, onDelta),
+    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, peopleNamed, alreadySaid }, onDelta),
 
   classifyIntent: (description: string, mode?: string) =>
     /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */

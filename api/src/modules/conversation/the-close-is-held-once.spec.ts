@@ -26,7 +26,17 @@ describe('a number nobody said is dropped like a name nobody said', () => {
     expect(numbersNobodySaid('You wrote on the 14th.', SAID)).toEqual([]);
   });
   it('catches a figure that appears nowhere', () => {
-    expect(numbersNobodySaid('Three transfers waited 45 minutes on 2 September.', SAID)).toEqual(['45', '2']);
+    /*
+     * THE 2 IS THE SECOND OF SEPTEMBER AND IT IS NO LONGER REPORTED.
+     *
+     * A day of the month is a figure the person did not say by construction - the product worked it
+     * out - and reporting it deleted the sentence. That deletion is what stopped "End of the year,
+     * so 31 December 2026?" reaching anybody for two days. See a-date-is-not-an-invention.
+     *
+     * The 45 is the point of this test and is still caught: a duration is not a date, however close
+     * it sits to one.
+     */
+    expect(numbersNobodySaid('Three transfers waited 45 minutes on 2 September.', SAID)).toEqual(['45']);
   });
   it('a list marker is not a claim', () => {
     expect(numbersNobodySaid('1. What happened next?', SAID)).toEqual([]);

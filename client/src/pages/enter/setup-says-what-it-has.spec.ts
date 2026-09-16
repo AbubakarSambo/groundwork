@@ -92,8 +92,22 @@ describe('whether people are missing is the server\'s answer', () => {
     goals: ['Check they took in the briefing'],
   }
 
-  it('reports them missing when the server says so, whatever the local list looks like', () => {
-    expect(summariseSetup(full, 'a_party', 1, true).missing.join(' ')).toContain('who is in it')
+  /*
+   * AND NOT WHILE THE CARD IS SHOWING THEIR NAMES.
+   *
+   * The server's answer still decides, and it is no longer the ONLY thing that decides, because the
+   * two together produced a card that read "People: Sahar, Amina" with "Not said yet: who is in it,
+   * by name" three lines underneath. Read live. The server means the structured roster is empty;
+   * the card means it has names on the screen; both were true and the pair was nonsense.
+   *
+   * So: the server says missing AND nothing is showing.
+   */
+  it('reports them missing when the server says so and nothing is on the card', () => {
+    expect(summariseSetup({ ...full, peopleNamed: [] }, 'a_party', 1, true).missing.join(' ')).toContain('who is in it')
+  })
+
+  it('and never while their names are on the card, whatever the server says', () => {
+    expect(summariseSetup(full, 'a_party', 1, true).missing.join(' ')).not.toContain('who is in it')
   })
 
   it('and stays quiet when the server says they are not', () => {

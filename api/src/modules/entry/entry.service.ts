@@ -744,6 +744,21 @@ Your job is to gather these things through natural conversation:
    Asking somebody about themselves before asking about the thing they came for reads as a form
    collecting fields. Get what they came to say first - the goals, the situation, the decision,
    whatever this scenario is for - and ask this after it, or last.
+   READ WHAT THEY HAVE ALREADY TYPED BEFORE YOU ASK ANYTHING. THIS IS THE FIRST THING YOU DO.
+   Read live, twice. She opened with "I want 40 shops in Kano stocking our tea by the end of Q4,
+   and Sahar and Amina each need their own number under that." The first question back was "What is
+   the overall goal you want Sahar and Amina to help achieve for the quarter?" - the thing she had
+   just written, asked for again in her own words. She replied "I just said it."
+
+   So: whatever is already in their message is ANSWERED. The goal, the people, the deadline, the
+   place, the reason - if it is in there, it is done, and asking for it again is the single fastest
+   way to make somebody give up on this. Ask only for what is genuinely missing, and ask for the
+   thing that is missing that matters most.
+
+   AND IF THEY TELL YOU THEY ALREADY SAID IT, THEY ARE RIGHT. Do not defend the question and do not
+   apologise. Say what you have, in their words, in half a sentence, and ask the next thing:
+   "Got it, 40 shops in Kano by the end of Q4. Who is carrying which part of that?"
+
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
@@ -844,6 +859,31 @@ Rules:
   each other's responses at the same time. They do not, and never did.
 - If someone asks what they will get at the end: say they get a private summary for themselves, and a shared picture showing where people agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for everybody involved to say what they are seeing, separately, so the shared picture can show where they agree and where they see it differently.
+- ONE QUESTION, AND SAY WHY IT HELPS. Two faults, read off one live setup, and they are the same
+  fault twice: a question with nothing around it.
+    "I also need to know what Sahar's individual target is, and what Amina's individual target is."
+  Two asks in one turn, and the product making demands of somebody who came to it for help. Ask for
+  ONE thing. Never "I need to know".
+  Then give the reason, in one short sentence, in front of or behind the question. Her own example
+  of what this should sound like:
+    "And how will you know they are stocking it? It helps to keep a definition of what clear
+     success looks like."
+  The reason is not a justification and it is not a lecture. It is the half-line that tells somebody
+  why answering is worth their time, and without it every question reads like a form.
+- AND SHOW WHAT AN ANSWER COULD LOOK LIKE. Anything abstract - what good looks like, what would
+  count, what would tell you - is hard cold, and people either stall or answer in the air. Offer two
+  or three concrete options FROM THEIR OWN WORLD, in their words, never from somewhere else:
+    "What would tell you the shops are actually stocking it? A distributor list, a photo from a shop
+     visit, an invoice - whatever you would actually look at."
+  Never offer examples that belong to a different business. On a check-in about tea in Kano, the
+  words pipeline, conversion and sign-ups are somebody else's.
+- SAY IT AS YOU WOULD TO A COLLEAGUE, AND NEVER BUILD A SENTENCE OUT OF THEIR PHRASES.
+  Read live, and she could not read it:
+    "So what Sahar and Amina see on the check-in is the check on the distributor's list. You have
+     Sahar and Amina on the check-in."
+  That is two of her phrases joined with "is", plus a sentence telling her something she already
+  knows. It also changed what she said: she said what they see ON THE GROUND. If you cannot say the
+  thing in one plain clause in your own words, say nothing and ask your question.
 - HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
 - THE WRAP-UP TURN (read carefully). WHEN YOU ARE DONE GATHERING DEPENDS ON WHO YOU ARE TALKING TO,
   and it is the same rule the product uses to decide it:
@@ -941,7 +981,13 @@ Fields:
   by their role where you do not ("Priya", "Tom", "the finance lead"). A team, a company, a client or a
   department is NOT an entry: "my team" is zero people, not one. Leave it out entirely if no individual
   has been identified - an empty list is an honest answer and is handled.
-- decision: what prompted this, why now
+- decision: what prompted this, why now.
+  NOT A RESTATEMENT OF WHAT THIS IS ABOUT, AND THIS IS THE COMMON FAILURE. Read live: About said
+  "Setting goals for 40 shops in Kano stocking tea by end of Q4" and Why said "setting goals for the
+  next quarter" - the same fact, twice, with the second field pretending to be a reason. A reason
+  says what changed, what went wrong last time, or what is at stake now. If they have not given one,
+  LEAVE IT OUT. An empty field is honest and the screen says so; a paraphrase of another field is
+  the product inventing content and it teaches people the summary cannot be trusted.
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
@@ -1086,7 +1132,7 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[]): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -1102,6 +1148,8 @@ from finishing at all.`;
       buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed),
       messages,
       onDelta,
+      /* Theirs: the people they named, what they called it, and everything they typed in setup. */
+      [...(peopleNamed ?? []), groundLabel ?? '', ...(alreadySaid ?? [])],
     );
   }
 
@@ -1137,8 +1185,30 @@ from finishing at all.`;
    * text reaches a person, so the fact has to travel beside the reply - never on the service, which is
    * one instance serving every concurrent visitor to a public route.
    */
-  private async guardedReplyWithClose(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
-    const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+  private async guardedReplyWithClose(
+    system: string,
+    messages: ChatTurn[],
+    onDelta?: (text: string) => void,
+    /**
+     * WHAT THEY SAID BEFORE THIS PHASE, AND THE PEOPLE ON THE CHECK-IN.
+     *
+     * Read off a live run, from the log this fix also gave us:
+     *
+     *   dropped a sentence: a name nobody said (Kano) in "Twice a month for the Kano distributor."
+     *   dropped a sentence: a name nobody said (Amina) in "And what about Amina's part in this?"
+     *
+     * She typed Kano and Amina in her very first message. The check is right - a name nobody said
+     * must never reach somebody - and it was looking at the wrong list: only the user turns of THIS
+     * phase, so everything she said in setup, and everybody on the roster, read as invented the
+     * moment the check-in began. Sentences naming her own colleagues were deleted mid-reply, which
+     * is what left "What does her goal look like?" standing on its own.
+     */
+    alsoTheirs?: string[],
+  ): Promise<{ reply: string; closed: boolean }> {
+    const personSaid = [
+      ...messages.filter((m) => m.role === 'user').map((m) => m.content ?? ''),
+      ...(alsoTheirs ?? []).filter(Boolean),
+    ];
     const reply = onDelta
       ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
       : await this.anthropic.respond(system, messages);
@@ -1150,7 +1220,17 @@ from finishing at all.`;
      */
     const screened = screen(reply, personSaid);
     if (screened.dropped.length) {
-      this.logger.warn(`Dropped ${screened.dropped.length} sentence(s) with an invented name on the entry path.`);
+      /*
+       * WHAT WENT, NOT ONLY HOW MANY. The count alone is what made the date fault invisible for two
+       * days: six sentences were cut from one setup conversation and every log line said "Dropped 1
+       * sentence(s)", so nobody could see that the thing being deleted was the date question. The
+       * reason and the offending word go with it - that is what names the bug.
+       */
+      for (const hit of screened.hits) {
+        this.logger.warn(
+          `Entry path dropped a sentence: ${hit.check} (${hit.offending.join(', ')}) in ${JSON.stringify(hit.sentence)}`,
+        );
+      }
     }
     const restored = screened.text || ASK_AGAIN;
 

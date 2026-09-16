@@ -51,6 +51,25 @@ export class EntryChatDto {
   @IsString({ each: true })
   @ArrayMaxSize(40)
   peopleNamed?: string[];
+
+  /**
+   * WHAT THEY SAID IN SETUP, WHICH THE CHECK-IN TREATED AS SOMEBODY ELSE'S WORDS.
+   *
+   * The invention gate reads the user turns of the CURRENT phase, and the check-in starts a new
+   * one. So everything typed during setup - the place, the deadline, the people - became a name
+   * nobody said the moment the check-in began, and sentences carrying it were deleted mid-reply:
+   *
+   *   dropped a sentence: a name nobody said (Kano) in "Twice a month for the Kano distributor."
+   *   dropped a sentence: a name nobody said (Amina) in "And what about Amina's part in this?"
+   *
+   * Both were in her first message. This carries those words across the phase boundary so her own
+   * vocabulary is recognised as hers.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(40)
+  alreadySaid?: string[];
 }
 
 class EntryOnboardDto {
@@ -414,7 +433,7 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed);
+      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
       write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
@@ -463,7 +482,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed);
+    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *

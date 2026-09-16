@@ -450,7 +450,28 @@ export function summariseSetup(
    */
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
   if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
-  if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
+  /*
+   * "WHY NOW" IS NOT "WHAT THIS IS ABOUT", SAID AGAIN.
+   *
+   * Read off the card twice in one evening: About said "Setting goals for 40 shops in Kano stocking
+   * tea by end of Q4" and Why now said "setting goals for the next quarter". The same fact, in the
+   * next row down, wearing a different label - so the card looks full and says one thing.
+   *
+   * The extraction is told to leave it out when nobody gave a reason, and it fills it anyway. So
+   * the card decides what it shows: a "why" that is mostly words already sitting in "about" is not
+   * a reason, and an honest gap reads better than a duplicate. Word overlap rather than an exact
+   * match, because the paraphrase is never identical.
+   */
+  const aReasonRatherThanAnEcho = (why: string, about: string): boolean => {
+    const words = (t: string) => new Set((t.toLowerCase().match(/[a-z]{4,}/g) ?? []));
+    const mine = [...words(why)];
+    if (!mine.length) return true;
+    const theirs = words(about);
+    return mine.filter((w) => theirs.has(w)).length / mine.length < 0.6;
+  };
+  if (sels.decision?.trim() && aReasonRatherThanAnEcho(sels.decision, sels.initial ?? '')) {
+    have.push({ label: 'Why now', value: sels.decision.trim() })
+  }
   /* The goal is a clause the model lifted mid-sentence ("take the on-call escalations off me"). It is
      the person's words, so nothing is added to them; it is capitalised because it now opens a line. */
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)).join('; ') })
@@ -473,7 +494,17 @@ export function summariseSetup(
    * Said ONCE, and with the consequence attached. It was printed twice - a terse line here and a
    * fuller paragraph under the fork - which is two amber blocks saying one thing.
    */
-  if (needsPeople) {
+  /*
+   * AND NOT WHILE THE CARD IS SHOWING THEIR NAMES. Read live: "People: Sahar, Amina" with "Not said
+   * yet: who is in it, by name" directly underneath it. The server's `needsPeople` is about the
+   * structured roster, which the extraction left empty while putting both names in the free-text
+   * field above - so the card said it had them and did not have them, three lines apart, and
+   * whoever reads that stops believing the card.
+   *
+   * The names ARE what is missing when nothing is showing. When something is showing, what is
+   * actually missing is a way to reach them, and the next screen asks for exactly that.
+   */
+  if (needsPeople && !people.length) {
     missing.push('who is in it, by name - until they are on the record there is nobody to check in with, and nothing can be expected of anyone by name')
   }
   if (!sels.goals?.length) missing.push('what you want out of it')
@@ -1414,8 +1445,16 @@ export function EntryChatPage() {
     saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
+  /*
+   * AND THE SAME WHOLE STATE HERE, WHICH IS WHERE IT WAS LOST.
+   *
+   * The comment above says whole state or none, and this sibling dropped the four fields it names.
+   * `saveSession` writes the record rather than merging into it, so the first persist after the
+   * check-in starts erased the plan somebody had just agreed to. Seen live: "6 sessions planned"
+   * came back as "1 session planned" after a reload, with the conversation intact above it.
+   */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections })
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom } as any)
   }
 
   /*
@@ -1503,6 +1542,16 @@ export function EntryChatPage() {
         /* Everybody setup heard named. The check-in asked "who else is involved" after being told
            three times, and the block that stops that needs the names to state. */
         onboardingSelections.peopleNamed,
+        /* AND EVERY WORD THEY TYPED IN SETUP. The invention gate reads the current phase only, so
+           "Kano" and "Amina" - both in her first sentence - were deleted from check-in replies as
+           names nobody had said. Their own vocabulary crosses the phase boundary with them. */
+        [
+          ...onboardingHistory.filter((t) => t.role === 'user').map((t) => t.content),
+          onboardingSelections.initial ?? '',
+          onboardingSelections.whoInvolved ?? '',
+          onboardingSelections.decision ?? '',
+          ...(onboardingSelections.goals ?? []),
+        ].filter(Boolean),
       )
     },
     onSuccess: (res, msgs) => {
@@ -2566,14 +2615,37 @@ export function EntryChatPage() {
                 * because the flag they had set was gone. Asking about the transcript covers the
                 * click and the reload with one question.
                 */}
-              {phase === 'onboarding' && onboardingHistory.length > 1 && (
-                <button
-                  onClick={pickADifferentSituation}
-                  style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  ← Pick a different situation
-                </button>
-              )}
+              {/*
+                * SAY WHICH SITUATION IT PICKED, BECAUSE IT PICKS ONE AND NEVER SAID SO.
+                *
+                * Read live. She described tea shops in Kano and the engine classified it, changed
+                * the plan to six sessions and put "Pick a different situation" on the screen - and
+                * nowhere did it say which situation it had chosen. The header still read "Describe
+                * it in your own words, or choose a situation". So the product made a decision that
+                * shapes every question she will be asked, and kept it to itself.
+                *
+                * Beside the way out, because the two belong together: this is what it chose, and
+                * here is how to change it.
+                */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && (() => {
+                const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
+                const label = chosen ? (SCENARIO_LABELS as Record<string, string>)[chosen] : null
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {label && (
+                      <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
+                        Set up as <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>
+                      </span>
+                    )}
+                    <button
+                      onClick={pickADifferentSituation}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      ← Pick a different situation
+                    </button>
+                  </span>
+                )
+              })()}
               {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
                   organisation name and anybody queued to be invited - cheap to confirm, expensive
                   to undo. On the picker with nothing said yet there is nothing to lose, so it goes
@@ -3578,6 +3650,12 @@ export function EntryChatPage() {
                 
                 So the choice is a choice, and it is the same mechanism underneath: hold means a
                 start date, and the date is what the invites wait for.
+
+                AND THE SECOND OPTION SAID "ON THE DAY IT STARTS", WHICH WAS TRUE AND UNREADABLE.
+                No start date is set by default, so a lead reading those two buttons saw a choice
+                between "now" and a day nobody had named - which for her meant the same thing twice.
+                It always did set a date; the label just never said so. It says so now, and the date
+                field it opens is the answer to the question the button asks.
               */}
               <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginBottom: 12 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7 }}>When should the invites go out?</div>
@@ -3596,7 +3674,7 @@ export function EntryChatPage() {
                       border: `1px solid ${checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                       background: checkInBy ? 'var(--gw-navy)' : 'white', color: checkInBy ? 'white' : 'var(--gw-text)' }}
                   >
-                    On the day it starts
+                    On a date I pick
                   </button>
                 </div>
                 {checkInBy ? (
@@ -3609,7 +3687,7 @@ export function EntryChatPage() {
                       style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
                     />
                     <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Your work is saved now. Nobody hears anything until that morning.
+                      Your work is saved now. The invites go out on the morning of that date, and nobody hears anything before then.
                     </span>
                   </div>
                 ) : (

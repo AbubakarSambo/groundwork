@@ -2069,7 +2069,8 @@ export class GroundsService {
     const screened = screen(raw, leadSaid);
     if (screened.dropped.length) {
       this.logger.warn(
-        `Dropped ${screened.dropped.length} sentence(s) with an invented name in the context chat for ground ${ground.id}.`,
+        `Context chat on ${ground.id} dropped ${screened.dropped.length} sentence(s): `
+          + screened.hits.map((h) => `${h.check} (${h.offending.join(', ')}) in ${JSON.stringify(h.sentence)}`).join(' | '),
       );
     }
     const reply = screened.text || ASK_AGAIN;
