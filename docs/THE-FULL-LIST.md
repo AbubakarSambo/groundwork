@@ -2,7 +2,43 @@
 
 Everything from this session. Part 1 is done and waiting on a deploy. Parts 2 to 7 are the work,
 each with what is wrong, what it should do instead, how I would build it, and what could go wrong.
-Nothing in parts 2 to 7 is started.
+
+## WHERE THIS STANDS, 16 September, on `product-only` and in PR #301
+
+Everything below is built, tested and pushed, except the three lines at the end.
+
+| | | Where it lives now |
+|---|---|---|
+| 3.1 | The gap noticed during session 1 | `the-numbers-do-not-meet.ts` |
+| 3.2 | Who carries which part | `who-carries-which-part.ts` |
+| 3.3 | A number said in passing becomes a target | the check-in extraction, already running on completion |
+| 3.4 | Press for the baseline | `a-number-with-no-starting-point.ts` |
+| 3.5 | Periods with no financial year, Q4 and H1 included | `when-words-mean-a-date.ts` |
+| 3.6 | The first session says one thing to do better | `what-this-session-is-missing.ts` |
+| 4.1 | The finding leads with the arithmetic | `do-the-parts-add-up-to-the-whole.ts` |
+| 4.2 | Every difference carries its reasoning | `the-session-report.ts`, `settledBy` |
+| 4.3 | What changed since last time | `what-changed-since-last-time.ts` |
+| 4.4 | The private note is about you | `what-your-own-record-says.ts` |
+| 4.5 | Names, not "Participant A" | `party-labels.ts`, `each-side-gets-somebody` |
+| 4.6 | The conversation from their words | `guide-sanitiser.ts`, `aboutSomethingTheySaid` |
+| 2, 4.7 | The three cryptic headings, dashes, "account", "checkable" | the client, `the-four-reports.ts`, `a-dash-is-not-a-comma.spec.ts` |
+| 5 | Every session gives something back | `something-they-could-not-have-said-themselves.ts` |
+| 6.1 | Rita's label | not reproducible: no participant on the corpus carries a shouted role |
+| 6.2 | 3,623 legacy `[VERIFIABILITY:]` lines | migration `20260916000000_the_marker_moves_out_of_the_text` |
+| 6.4 | Banned ~6%, long ~7% | the designed fallback, and the opener is now held to the same bar |
+| 6.5 | Commit returning an old ground | `a-second-setup-is-a-second-check-in.ts` |
+
+STILL OPEN, and each is open for a reason rather than for want of time:
+
+- **6.3, the carrying codes.** They are wired into the picture and the lead's list. All 28
+  detections on the corpus sit at one period and the rule needs three, so nothing has surfaced yet.
+  Lowering that gate is a product decision about how soon this product says somebody is carrying
+  the place, and it is hers, not mine.
+- **Patterns and the coaching staircase**, proven wired and never seen firing, for the same reason:
+  no ground here has run enough periods.
+- **The language pass on generated sentences.** The headings are plain now and the padding is gone.
+  Whether a generated line sounds like a person is her ear, and the way to do it is to read real
+  lines from a real run together.
 
 ---
 

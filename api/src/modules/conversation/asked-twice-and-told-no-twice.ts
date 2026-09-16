@@ -266,3 +266,32 @@ export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string
   if (opensByRepeatingThem(theySaid, rest)) return null;
   return rest;
 }
+
+/**
+ * AND WHEN THE SECOND TRY ASKS IT A FOURTH TIME, THE PRODUCT TAKES THE QUESTION OUT.
+ *
+ * Read on a live session about shops in Kano. The date question went out four turns running:
+ *
+ *   "By the end of Q4, do you have a specific date in mind, even if it is an estimate?"
+ *   "What date in Q4 are you hoping to hit the 40-shop target by, even if that is a stretch goal?"
+ *   "And a target of 40 by the end of Q4. What specific date are you working towards?"
+ *
+ * The guard above caught the third one and asked again, exactly as designed, and the retry asked it
+ * again in new words - which is the designed fallback, and the fallback is the bug: the person is
+ * still reading the same question for the fourth time.
+ *
+ * So the question comes out. What is left of the reply is whatever else it said, which is usually an
+ * acknowledgement of what they just told it, and the conversation moves on without the product
+ * pretending nobody noticed. Where the question was the whole reply, there is nothing to keep and
+ * the caller falls back to what it had.
+ *
+ * "There is no date yet" is a real answer to a date question, and after three asks the honest thing
+ * is to treat the silence as that answer rather than to keep asking for one.
+ */
+export function withoutTheQuestionAskedAgain(reply: string, earlierAsks: string[]): string {
+  const kept = (reply.match(/[^.!?\n]+[.!?]*/g) ?? []).filter((sentence) => {
+    if (!sentence.includes('?')) return true;
+    return !earlierAsks.some((asked) => asksTheSameThingAgain(asked, sentence));
+  });
+  return kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}

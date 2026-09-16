@@ -53,7 +53,7 @@ describe('the order of the shared report', () => {
     /* What a thing is FOR before where it stands: every line underneath means something different
        depending on what it was in service of. Where-things-stand was first of all on the old body;
        it is second here, and that is a decision rather than drift. */
-    expect(at('label="Against what good looks like"')).toBeLessThan(at('label="Where things stand"'))
+    expect(at('label="What everybody said good looks like"')).toBeLessThan(at('label="Where things stand"'))
   })
 
   it('the page does not open with the prose either', () => {

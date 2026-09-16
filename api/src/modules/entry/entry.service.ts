@@ -58,6 +58,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
 
@@ -1487,8 +1488,28 @@ from finishing at all.`;
     // other waits for the winner's groundId and returns it. Sequential
     // replays return the recorded ground immediately.
     const draft = await this.prisma.entryDraft.findUnique({ where: { userId: initiatorId } });
+    /*
+     * A CONSUMED DRAFT IS A REPLAY ONLY WHILE IT STILL LOOKS LIKE ONE.
+     *
+     * Nothing creates a second draft - it is written once at signup - so a lead coming back through
+     * /entry a week later to set up a different check-in hit this line and was handed the ground
+     * they made the first time, with everything they had just typed dropped in silence. 5.5.
+     *
+     * The protection this gives is real and stays: two requests seconds apart must not make two
+     * grounds. See a-second-setup-is-a-second-check-in for what separates the two.
+     */
     if (draft?.consumedAt) {
-      return this.awaitConsumedDraftGround(initiatorId);
+      const itMade = draft.groundId
+        ? await this.prisma.ground.findUnique({ where: { id: draft.groundId }, select: { label: true } }).catch(() => null)
+        : null;
+      if (isAReplayRatherThanASecondSetup({
+        consumedAt: draft.consumedAt,
+        theGroundItMade: itMade?.label ?? null,
+        nowAskingFor: dto.groundLabel,
+      })) {
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+      this.logger.log(`Entry commit for ${initiatorId}: the draft was consumed on ${new Date(draft.consumedAt).toISOString()} by ${JSON.stringify(itMade?.label ?? null)}, and this is a new check-in. Setting it up fresh.`);
     }
     if (draft) {
       const claimed = await this.prisma.entryDraft.updateMany({

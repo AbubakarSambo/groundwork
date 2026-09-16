@@ -33,7 +33,8 @@ const THEMES = ['Progress and priorities', 'Commitments', 'Risks and concerns', 
  * silence, so a later change to the section list cannot quietly put them back.
  */
 const NOT_ON_A_SESSION = ['What changed since last session', 'What changed since the beginning']
-const RESTS_ON = ['What this rests on']
+/* Was "What this rests on", which is court language for where the report got its information. */
+const RESTS_ON = ['What this is built from', 'What this rests on']
 
 /** Body copy is capped so a long quote does not run the full width of the container. */
 const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.6 }
@@ -307,9 +308,21 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </div>
       )}
 
-      {/* ── 01 · what this sits under, where anything does. It qualifies the objective, so it leads. */}
+      {/*
+        ── 01 · what this sits under, where anything does. It qualifies the objective, so it leads.
+
+        PLAIN WORDS FOR THE THREE HEADINGS SHE COULD NOT READ.
+
+        "Nothing above this", "Against what good looks like" and "What this rests on" are the
+        product describing its own structure to itself. Somebody opening their report reads a
+        heading to find out what is under it, and none of these three said.
+
+        What each one actually holds: whether this objective sits under a bigger one; the objective
+        set against each person's version of it; and where the report got what it knows. The new
+        headings say those.
+      */}
       {d.cascade && (
-        <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+        <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'This is the top of it'}>
           {d.cascade.parentNamed && (
             <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
           )}
@@ -319,7 +332,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* ── What this is for. The full band: the stated objective and each person's own version. */}
       {d.againstSuccess && (
-        <Row n={next()} note="the objective, and each person's own version of it" label="Against what good looks like">
+        <Row n={next()} note="the objective, and each person's own version of it" label="What everybody said good looks like">
           <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
           {definitions.length > 0 && (
             <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
@@ -473,7 +486,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* ── What this rests on. The method, last and folded: a caveat above what it qualifies is
              read as a verdict on it. */}
-      <Row n={next()} note="how solid this is, and what it is built from" label="What this rests on">
+      <Row n={next()} note="how solid this is, and what it is built from" label="What this is built from">
         <Folded summary="How much there is to go on, and what it is built from">
           <div style={{ marginTop: 10 }}>
             {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}

@@ -23,6 +23,7 @@ import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
 import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carries-which-part';
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
+import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -119,7 +120,7 @@ import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY } from './asked-twice-and-told-no-twice';
+import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1324,7 +1325,19 @@ export class ConversationService {
           screened = second;
           this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
         } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the first stands.`);
+          /*
+           * THE FOURTH ASK DOES NOT SHIP. Keeping the first is the fallback everywhere else here,
+           * and everywhere else it costs a clumsy sentence. Here it costs the person the same
+           * question for the fourth time, which is the fault. The question comes out and whatever
+           * else the reply said stands. See withoutTheQuestionAskedAgain.
+           */
+          const withoutIt = withoutTheQuestionAskedAgain(screened.text, earlierAsks);
+          if (withoutIt.trim() && withoutIt !== screened.text) {
+            screened = { ...screened, text: withoutIt };
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; the first stands.`);
+          }
         }
       }
 
@@ -1608,6 +1621,41 @@ export class ConversationService {
        * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
        * answers that question by itself.
        */
+      /*
+       * AND IT DOES NOT MOVE THEIR TARGET TO WHERE THEY ARE STANDING.
+       *
+       * Read in a browser: she said "my 3000 is short, I am at about 900" and got back "your
+       * 3000-unit target is now 900". Both figures are hers, so nothing else here objects, and a
+       * target quietly rewritten down to match progress means nothing is ever behind.
+       *
+       * Asked again, once, with both numbers named. See where-you-are-is-not-what-you-aim-at.
+       */
+      const standingNow = saysWhereItStands(message ?? '') ? theNumbersIn(message ?? '') : [];
+      const theirOwnTarget = standingNow.length
+        ? await (this.prisma.groundObjective?.findFirst?.({
+            where: { groundId: checkIn.groundId, ownerParticipantId: checkIn.participantId },
+            select: { target: true },
+          }) ?? Promise.resolve(null)).catch(() => null)
+        : null;
+      const target = typeof theirOwnTarget?.target === 'number' ? theirOwnTarget.target : null;
+      const standsAt = standingNow.length ? Math.max(...standingNow) : null;
+      const movedIt = movedTheirTargetToWhereTheyAre(screened.text, standsAt, target);
+      if (movedIt && standsAt != null && target != null) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply moved a target to where they stand; asking again.`);
+        const again = await this.anthropic
+          .respond(`${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`, history)
+          .catch(() => '');
+        const second = again.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !movedTheirTargetToWhereTheyAre(second.text, standsAt, target)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try left the target where it was.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try moved it too; the first stands.`);
+        }
+      }
+
       /*
        * AND IT DOES NOT TELL THEM THEY PROMISED SOMETHING THEY NEVER MENTIONED.
        *
