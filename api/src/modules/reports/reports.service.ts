@@ -4143,7 +4143,7 @@ happened, and what is in the way.`;
           forming: true,
           withheldUntilYouAnswer: true,
           saying:
-            'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
+            'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.',
           soloArtifact,
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),

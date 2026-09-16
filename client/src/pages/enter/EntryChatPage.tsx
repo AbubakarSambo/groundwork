@@ -627,7 +627,7 @@ export const SITUATION_CARDS = [
     detail: 'Bring different views together around an important decision.',
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
     examples: [
-      'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
+      'A hiring, budget, or direction call where you want each person\'s real view before the group settles.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
     ],
   },

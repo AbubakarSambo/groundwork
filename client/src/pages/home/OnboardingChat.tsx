@@ -40,7 +40,7 @@ const MODE_OPENER: Record<string, string> = {
   something_new: 'The best time to get both sides of a working relationship on record is before anything goes wrong. This tool builds that record from day one.',
   look_back: 'Some situations need more than a conversation. They need a record of what actually happened, cross-referenced against what was agreed and what each side delivered.',
   look_forward: 'Good working relationships do not happen by accident. They are built on clarity. This tool builds that clarity before it is needed.',
-  both: 'Whether you need to get something on record or build a clear picture of what comes next, this tool handles both in one place.',
+  both: 'Get something on record, or build a clear picture of what comes next. This does both, in one place.',
 }
 
 const TIMEFRAME = ['One session only', 'One month', 'Three months', 'Six months or more']

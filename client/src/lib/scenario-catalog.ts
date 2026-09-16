@@ -233,7 +233,7 @@ export const SCENARIO_GROUPS = [
    * opened on "Beginning something well" while the list had been agreed the other way round.
    */
   { key: 'planning', heading: 'Getting people aligned',
-    question: "You are deciding what the period is for, and you want each person's own answer before the room converges on one version." },
+    question: "You are deciding what the period is for, and you want each person's own answer before the team settles on one version." },
   { key: 'starting', heading: 'Beginning something well',
     question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
   { key: 'reading', heading: 'Get a read',

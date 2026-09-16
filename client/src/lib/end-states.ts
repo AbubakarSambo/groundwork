@@ -146,8 +146,8 @@ export const END_STATES: Record<string, EndStateOption[]> = {
   ACUTE_SHOCK: [
     { value: 'OBJECTIVE_MET', label: 'What we set out to do, done', description: 'The objective set after the first session was achieved, and the record shows what moved and who moved it.' },
     { value: 'PARTLY_RECOVERED', label: 'Partly recovered', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck at the end.' },
-    { value: 'NOT_RECOVERED', label: 'Not recovered', description: 'The objective was not achieved. The record shows what was tried and where it stalled, which is what the next decision should rest on.' },
-    { value: 'OBJECTIVE_OVERTAKEN', label: 'Overtaken by events', description: 'What we were trying to achieve stopped being the right aim partway through. The record shows when that became clear and why.' },
+    { value: 'NOT_RECOVERED', label: 'Not recovered', description: 'The objective was not met. The record shows what was tried and where it stalled. That is what the next decision should rest on.' },
+    { value: 'OBJECTIVE_OVERTAKEN', label: 'Overtaken by events', description: 'What we were aiming at stopped being the right aim partway through. The record shows when that became clear, and why.' },
     { value: 'PICTURE_SHARED', label: 'Shared picture established, nothing to recover', description: "Everyone's accounts are on record and agreed, and there was nothing to win back. No objective was set, deliberately." },
     { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts never reconciled, so no shared objective could honestly be set. The points of divergence are named so the conversation starts there.' },
     { value: 'UNKNOWNS_REMAIN', label: 'Key facts still unknown', description: 'The picture cannot be settled yet because named facts are still missing. Revisit when they land.' },
