@@ -20,8 +20,11 @@ import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
+import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carries-which-part';
+import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
+import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
-import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers } from './the-numbers-do-not-meet';
+import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
@@ -3180,6 +3183,109 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Only the person who runs the check-in gets it - a participant is not the one who divides the
      * objective up - and only where something is genuinely missing. See what-this-session-is-missing.
      */
+    /*
+     * AND THE FLOOR UNDER ALL OF IT: NO SESSION GIVES BACK NOTHING.
+     *
+     * Part 5. The three give-backs above are better than this when they fire, and they need data
+     * the first session does not have, so the session where somebody most needs a reason to keep
+     * going was the session that gave them least. This runs only where they all came back empty
+     * and the conversation has gone far enough that silence is what the person is getting.
+     *
+     * The bar is hers: something they could not have said themselves. Not a number they just gave,
+     * handed back. See something-they-could-not-have-said-themselves.
+     */
+    const theFloorGiveBack = await (async () => {
+      if (theOneThingBack) return '';
+      const [board, mine, turns] = await Promise.all([
+        (this.prisma.groundObjective?.findMany?.({
+          where: { groundId: checkIn.groundId }, select: { target: true, name: true, ownerParticipantId: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+        (this.prisma.personObjective?.findMany?.({
+          where: { groundId: checkIn.groundId, participantId: checkIn.participantId }, select: { dueDate: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+        (this.prisma.conversationTurn?.findMany?.({
+          where: { checkInId: checkIn.id }, select: { role: true, content: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+      ]);
+      const answers = (turns as any[]).filter((t: any) => t.role === TurnRole.PERSON);
+      const aiSaid = (turns as any[]).filter((t: any) => t.role === TurnRole.AI).map((t: any) => t.content ?? '');
+      const owned = (board as any[]).filter((o: any) => o.ownerParticipantId && typeof o.target === 'number');
+      const whole = (board as any[]).find((o: any) => !o.ownerParticipantId && typeof o.target === 'number');
+      const theirs = owned.find((o: any) => o.ownerParticipantId === checkIn.participantId);
+      const due = (mine as any[]).map((m: any) => m.dueDate).find(Boolean);
+      const daysLeft = due ? Math.ceil((new Date(due).getTime() - Date.now()) / 86400000) : null;
+      /* Where their own number stands, taken only from a figure they said next to a now-word. */
+      const standing = theNumbersIn(
+        answers.map((t: any) => t.content ?? '').filter((c: string) => saysWhereItStands(c)).join(' '),
+      );
+      return somethingTheyCouldNotHaveSaid({
+        whole: whole ? { name: whole.name, target: whole.target } : null,
+        parts: owned.map((o: any) => ({ target: o.target, theirs: o.ownerParticipantId === checkIn.participantId })),
+        standsAt: standing.length ? Math.max(...standing) : null,
+        theirTarget: theirs?.target ?? null,
+        daysLeft,
+        answersSoFar: answers.length,
+        /* Once this session has handed something back, it has met the floor. */
+        gaveSomethingAlready: aiSaid.some((line: string) => /\bthat is [\d,]+ short\b|\ba week from here\b/i.test(line)),
+        somethingBetterFired: false,
+      }) ?? '';
+    })();
+
+    /*
+     * AND THE TWO QUESTIONS A NUMBER NEEDS, ASKED IN THE MIDDLE RATHER THAN NOTED AT THE END.
+     *
+     * 3.2 and 3.4 on her list, and they are the same fault twice: the product took a number and
+     * asked nothing that would make it checkable next time. Who carries which part of it, and
+     * where it stands today. The close already says the first one is worth doing before the next
+     * check-in - a note about what to go and do, where a question they could answer in the moment
+     * was what was wanted.
+     *
+     * Both are the lead's, both fire at most once, and both take "not decided" and "I do not know"
+     * as real answers. See who-carries-which-part and a-number-with-no-starting-point.
+     */
+    const numbersAndOwners = await (async () => {
+      const leadsSession = !!ground?.initiatorId && ground.initiatorId === (checkIn as any)?.participant?.userId;
+      if (!leadsSession) return { whoCarries: '', whereItStands: '' };
+      const [board, owned, said] = await Promise.all([
+        (this.prisma.groundObjective?.findMany?.({
+          where: { groundId: checkIn.groundId },
+          select: { name: true, target: true, ownerParticipantId: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+        (this.prisma.personObjective?.findMany?.({
+          where: { groundId: checkIn.groundId }, select: { participantId: true, text: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+        (this.prisma.conversationTurn?.findMany?.({
+          where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+      ]);
+      const aiSoFar = (said as any[]).map((t: any) => t.content ?? '');
+      const others = (ground?.participants ?? [])
+        .filter((p: any) => p.id !== checkIn.participantId && !p.managingOnly)
+        .map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.roleAsDescribed || '')
+        .filter(Boolean);
+      const whoCarries = askWhoCarriesWhichPart({
+        sharedNumbers: (board as any[]).filter((o: any) => !o.ownerParticipantId).map((o: any) => ({ name: o.name, target: o.target })),
+        peopleWithANumberOfTheirOwn: new Set((board as any[]).filter((o: any) => o.ownerParticipantId).map((o: any) => o.ownerParticipantId)).size,
+        peopleNamed: others,
+        theyRunIt: true,
+        alreadyAsked: alreadyAskedWhoCarriesWhat(aiSoFar),
+      }) ?? '';
+      /* A starting point is known once anything on record says where the thing stands. */
+      const standingSaid = (owned as any[]).some((o: any) => saysWhereItStands(o.text ?? ''))
+        || aiSoFar.some((line) => saysWhereItStands(line));
+      const whereItStands = askWhereTheNumberStands(
+        (board as any[]).map((o: any) => ({
+          name: o.name,
+          target: o.target ?? 0,
+          theirs: !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId,
+          baselineKnown: standingSaid,
+        })),
+        latestMessage ?? '',
+      ) ?? '';
+      /* One of the two per turn. Two instructions about the same number is the briefing fault. */
+      return whoCarries ? { whoCarries, whereItStands: '' } : { whoCarries: '', whereItStands };
+    })();
+
     const oneThingToDoBetter = checkIn.sessionNumber === 1
       ? theOneThingToDoBetter({
           /*
@@ -3302,6 +3408,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
+      ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
@@ -3322,7 +3429,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['returningUserContext', returningUserContext],
       ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
-      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack], ['oneThingToDoBetter', oneThingToDoBetter],
+      ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack],
+      ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands],
+      ['oneThingToDoBetter', oneThingToDoBetter],
       ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
@@ -3331,7 +3440,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**

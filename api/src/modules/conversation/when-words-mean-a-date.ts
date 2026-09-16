@@ -197,6 +197,26 @@ const A_PERIOD_NOT_A_DAY = [
   /\bend of (?:january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
   /\b(?:this|next) (?:month|quarter|year|week)\b/i,
   /\bby (?:the )?(?:summer|winter|spring|autumn|fall)\b/i,
+  /*
+   * THE WAY FINANCE PEOPLE WRITE IT, WHICH NOTHING HERE READ.
+   *
+   * "by the end of Q4" and "in H1" went straight through: no vague word, no phrase on this list, so
+   * no question, and a deadline nobody can be early or late against went onto the record. They are
+   * the two most common ways a number gets a period attached to it in the kind of check-in this
+   * product is for.
+   *
+   * They are NOT given a reading, deliberately. Q4 is a different fortnight in every organisation -
+   * to December, to March, to June - and the file's whole argument is that a period with no
+   * financial year behind it is asked about rather than guessed at. So they land on the same branch
+   * as "this quarter": ask which day, accept "not settled" as an answer.
+   *
+   * TWO SHAPES, NOT A BARE TOKEN. "Q4" on its own also matches an h1 heading, a QA team and a
+   * spreadsheet column, and a product that asks which day "the h1 heading" falls on has stopped
+   * listening. So it counts when a time word introduces it, or when the thing it is attached to is
+   * a number people work to.
+   */
+  /\b(?:end of|in|by|before|after|during|until|through|for)\s+(?:the\s+)?(?:end\s+of\s+)?(?:q[1-4]|h[12])\b/i,
+  /\b(?:q[1-4]|h[12])\s+(?:target|targets|goal|goals|plan|plans|forecast|numbers|revenue|budget|pipeline)\b/i,
 ];
 
 /** The period phrase they used, where they gave one rather than a day. */

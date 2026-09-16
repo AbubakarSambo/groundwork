@@ -93,3 +93,35 @@ describe('and the check that it actually said the date', () => {
     expect(ask).toMatch(/Saying the date is not repeating them back/);
   });
 });
+
+/*
+ * "BY THE END OF Q4" AND "IN H1" WENT STRAIGHT THROUGH.
+ *
+ * 3.5 on her list: "This quarter", "end of Q4", "H1" need a financial year the product does not
+ * have. The first was already caught and asked about. The other two carried no vague word and
+ * matched no phrase, so a deadline nobody can be early or late against went onto the record with
+ * no question asked.
+ *
+ * They get no reading on purpose. Q4 ends in December, March or June depending on the
+ * organisation, and guessing one is the fault this whole file exists to refuse.
+ */
+describe('a quarter and a half are periods too', () => {
+  const on = new Date('2026-09-16T00:00:00Z');
+  const { whatToDoAboutTheirDeadline: whatToDo } = require('./a-period-is-not-a-day');
+
+  it('asks which day, rather than reading a financial year nobody gave', () => {
+    for (const said of ['by the end of Q4', 'in H1', 'we close 12 deals in q2', 'our h2 target is 300']) {
+      const out = whatToDo(said, on);
+      expect(out).toBeTruthy();
+      expect(out).toMatch(/does not carry a date/);
+      /* And never a guessed day. */
+      expect(out).not.toMatch(/December 2026|March 2027|June 2027/);
+    }
+  });
+
+  it('and leaves alone the words that only look like one', () => {
+    for (const said of ['the qa team is behind', 'high quality work', 'we use HQ for that', 'the h1 heading is wrong']) {
+      expect(whatToDo(said, on)).toBeNull();
+    }
+  });
+});
