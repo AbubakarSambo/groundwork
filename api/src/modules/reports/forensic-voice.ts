@@ -127,8 +127,15 @@ export function forensicInReport(report: Record<string, unknown>): { field: stri
  * half of a compound and always start a clause. No judgement, no scoring, nothing to be wrong
  * about - which is the whole reason it is allowed to edit a reply at all.
  */
+/*
+ * THE LIST GREW ONCE ALREADY. The first version held the words that open a clause with a noun and
+ * missed the ones that open it with a verb: three lead setups run straight afterwards produced
+ * "your part in this situation-are you directly managing Musa" and "a check-in on this-is it
+ * because she is new". Every word here is one that never begins the second half of a compound, so
+ * check-in, follow-up, trade-off and drop-in are all still safe.
+ */
 const A_CLAUSE_NOT_A_COMPOUND =
-  /([a-z0-9])-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i)\b/gi;
+  /([a-z0-9])-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i|is|are|was|were|am|do|does|did|has|have|had|will|would|can|could|should|because|when|where|why|how|what|who)\b/gi;
 
 export function withoutDashes(text: string): string {
   if (!text) return text;

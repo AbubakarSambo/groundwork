@@ -19,6 +19,14 @@ describe('a hyphen between clauses', () => {
       .toBe('set up a check-in on this, a new quarter, a push, or something else?');
   });
 
+  /* The two the first version of the list missed, found by running three lead setups. */
+  it('and the verb-opening clauses the first list missed', () => {
+    expect(withoutDashes('your part in this situation-are you directly managing Musa?'))
+      .toBe('your part in this situation, are you directly managing Musa?');
+    expect(withoutDashes('a check-in on this-is it because she is new?'))
+      .toBe('a check-in on this, is it because she is new?');
+  });
+
   it('and leaves every real compound alone, which is the whole risk', () => {
     for (const compound of ['check-in', 'follow-up', 'cost-per-delivery', 'well-run', 'day-to-day', 'twenty-five', 'end-to-end', 'crash-free']) {
       expect(withoutDashes(`They ran a ${compound} review.`)).toContain(compound);
