@@ -463,7 +463,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin on the account - promote someone else to admin first.');
+        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
       }
     }
 
@@ -551,7 +551,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin on the account - promote someone else to admin first.');
+        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
       }
     }
 

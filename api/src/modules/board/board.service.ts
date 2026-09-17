@@ -1188,8 +1188,15 @@ export class BoardService {
         // One period is not a pattern. The same three-period discipline that
         // governs every other negative read governs this one, and this is the
         // most consequential read on the board.
+        /*
+         * EXCEPT FOR THE ONE THAT IS NOT A BEHAVIOUR. SETUP_NEVER_SAID reads what was written
+         * before anybody arrived: either the setup named the thing people differ about or it did
+         * not, and there is no second period in which an absence becomes more true. Waiting for it
+         * to repeat is waiting for the same silence twice, and it is the only pattern here that is
+         * about a document rather than about how somebody is behaving. See coverage.ts.
+         */
         const periods = Number(g.periods ?? 0);
-        if (periods < 2) return null;
+        if (periods < 2 && named.pattern !== LeadershipPattern.SETUP_NEVER_SAID) return null;
         return {
           // Deliberately not attributed. The gap is BETWEEN two accounts;
           // naming whose it is would undo the point.
