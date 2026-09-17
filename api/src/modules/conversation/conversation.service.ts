@@ -871,7 +871,40 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
+    const openerBeforeReading = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
+
+    /*
+     * AND SOMEBODY READS IT, WHICH THE OPENER STILL WAS NOT GETTING.
+     *
+     * The reader was wired into both message paths and not into this one, and this one writes the
+     * FIRST thing a person reads in every session. Read live on session 3 of a tea check-in: "What
+     * has changed with Amina's pricing authority since then, and how many shops in Kano are stocking
+     * you today?" - two questions in the opening breath, so only the second gets answered.
+     *
+     * The transcript is empty here by definition, so what the reader is given is what they said in
+     * the sessions BEFORE this one: that is the thing an opener can repeat back at them, and the
+     * thing it must not ask for again.
+     */
+    /*
+     * THEIR OWN RECORD LINES, NOT THEIR TRANSCRIPT. The first version of this read their PERSON
+     * turns across their own check-ins, which is their own words and still the wrong door: the hard
+     * architectural rule is that turn content is loaded one check-in at a time, and a query that
+     * reaches across them is the shape that later reaches across people. participant-ground-context
+     * caught it. Record entries are already participant-scoped by design and carry the same thing
+     * the reader needs - what this person has already told us, so an opener cannot ask for it again.
+     */
+    /* Best-effort, like the reader itself: knowing less about what they already said makes the
+       reader weaker, and failing to open a session over it makes the product unusable. */
+    const whatTheySaidBefore = await this.prisma.recordEntry
+      .findMany({
+        where: { participantId: checkIn.participantId },
+        orderBy: { createdAt: 'desc' },
+        select: { text: true },
+        take: 40,
+      })
+      .then((rows) => rows.map((e) => e.text ?? '').filter(Boolean))
+      .catch(() => [] as string[]);
+    const opening = await this.readBeforeSending([], openerBeforeReading, whatTheySaidBefore);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.

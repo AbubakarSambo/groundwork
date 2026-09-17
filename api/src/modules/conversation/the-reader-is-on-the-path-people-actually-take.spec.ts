@@ -20,6 +20,17 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 const SRC = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
 
 describe('every reply a person reads is read first', () => {
+  /*
+   * THE OPENER IS THE FIRST THING A PERSON READS IN EVERY SESSION, AND IT WAS THE LAST PATH TO GET
+   * ONE. Read live on session 3 of a tea check-in: "What has changed with Amina's pricing authority
+   * since then, and how many shops in Kano are stocking you today?" - two questions in the opening
+   * breath, so only the second gets answered.
+   */
+  it('runs on the opener, which nobody answers back to', () => {
+    const opener = SRC.slice(SRC.indexOf('async open('), SRC.indexOf('async sendMessage('));
+    expect(opener).toContain('this.readBeforeSending(');
+  });
+
   it('runs on the turn path', () => {
     const turn = SRC.slice(SRC.indexOf('async sendMessage('), SRC.indexOf('async *sendMessageStream('));
     expect(turn).toContain('this.readBeforeSending(');
