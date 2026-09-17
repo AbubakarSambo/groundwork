@@ -24,7 +24,6 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
-import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from './a-question-is-read-before-it-is-sent';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -871,40 +870,7 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const openerBeforeReading = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
-
-    /*
-     * AND SOMEBODY READS IT, WHICH THE OPENER STILL WAS NOT GETTING.
-     *
-     * The reader was wired into both message paths and not into this one, and this one writes the
-     * FIRST thing a person reads in every session. Read live on session 3 of a tea check-in: "What
-     * has changed with Amina's pricing authority since then, and how many shops in Kano are stocking
-     * you today?" - two questions in the opening breath, so only the second gets answered.
-     *
-     * The transcript is empty here by definition, so what the reader is given is what they said in
-     * the sessions BEFORE this one: that is the thing an opener can repeat back at them, and the
-     * thing it must not ask for again.
-     */
-    /*
-     * THEIR OWN RECORD LINES, NOT THEIR TRANSCRIPT. The first version of this read their PERSON
-     * turns across their own check-ins, which is their own words and still the wrong door: the hard
-     * architectural rule is that turn content is loaded one check-in at a time, and a query that
-     * reaches across them is the shape that later reaches across people. participant-ground-context
-     * caught it. Record entries are already participant-scoped by design and carry the same thing
-     * the reader needs - what this person has already told us, so an opener cannot ask for it again.
-     */
-    /* Best-effort, like the reader itself: knowing less about what they already said makes the
-       reader weaker, and failing to open a session over it makes the product unusable. */
-    const whatTheySaidBefore = await this.prisma.recordEntry
-      .findMany({
-        where: { participantId: checkIn.participantId },
-        orderBy: { createdAt: 'desc' },
-        select: { text: true },
-        take: 40,
-      })
-      .then((rows) => rows.map((e) => e.text ?? '').filter(Boolean))
-      .catch(() => [] as string[]);
-    const opening = await this.readBeforeSending([], openerBeforeReading, whatTheySaidBefore);
+    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1716,17 +1682,6 @@ export class ConversationService {
       reply = screened.text || ASK_AGAIN;
 
       /*
-       * AND LAST, SOMEBODY READS IT, WHICH IS A DIFFERENT ACT FROM EVERY GUARD ABOVE.
-       *
-       * The nine guards above ask what SHAPE this reply is. Her example passes all of them and is
-       * still wrong: "what is the number you are working towards for these 40 shops", to somebody
-       * whose first sentence gave the number. Meaning needs a reader, and a reader holding this
-       * prompt is the reader that wrote the fault. So it gets the conversation and the draft and
-       * nothing else. See a-question-is-read-before-it-is-sent.
-       */
-      reply = await this.readBeforeSending(history, reply, theirWords);
-
-      /*
        * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
        *
        * See the-line-that-touches-what-they-said.ts. Where what they just said contradicts a
@@ -1862,45 +1817,6 @@ export class ConversationService {
       return null;
     }
     return { screened, hadMarker: textHadCloseMarker(second) };
-  }
-
-  /**
-   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
-   *
-   * Her five checks and the restating fault, in a call that knows nothing about this product: only the last few turns and
-   * the draft. It may rewrite, and the rewrite goes through the same invention screen as everything
-   * else - a reader that adds a name or a figure is refused and the draft stands.
-   */
-  private async readBeforeSending(
-    history: { role: 'user' | 'assistant'; content: string }[],
-    draft: string,
-    theirWords: string[],
-  ): Promise<string> {
-    if (!draft.trim()) return draft;
-    try {
-      const said = theTailOf(
-        (history ?? [])
-          .filter((m) => (m.content ?? '').trim())
-          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
-      );
-      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
-        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: theirWords }) },
-      ]);
-      const decided = whatTheReaderDecided(answer, draft);
-      /* Logged either way, so a run can be counted rather than argued about: how many turns the
-         reader let through and how many it rewrote is the only evidence that it is worth its call. */
-      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
-      const clean = screen(decided.text, theirWords);
-      if (clean.hits.length || !clean.text.trim()) {
-        this.logger.warn(`The reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
-        return draft;
-      }
-      this.logger.log(`The reader rewrote the turn (${draft.length} chars to ${clean.text.length}).`);
-      return forHumans(clean.text);
-    } catch (err: any) {
-      this.logger.warn(`Could not read the draft before sending: ${err?.message}`);
-      return draft;
-    }
   }
 
   /**
@@ -2116,23 +2032,6 @@ export class ConversationService {
         yield { type: 'delta', text: reply };
       }
 
-      /*
-       * AND THE READER RUNS HERE TOO, WHICH IS WHERE IT WAS MISSING.
-       *
-       * The reader was wired into the turn path and not this one, and this one is the path every
-       * real check-in takes: ChatPage streams. So a fix proved in the lead's setup chat reached no
-       * participant at all. Read live on a payments SDK migration, both from this path and both
-       * through all nine guards: a reply that opened by reciting the person's own sentence back to
-       * them, and one that marked their answer ("that is a clear and specific definition of what
-       * good looks like").
-       *
-       * A STREAM CANNOT BE UNSENT, so a rewrite arrives the way every other whole-reply correction
-       * on this path already does: `done` carries the corrected text and ChatPage replaces what it
-       * streamed. That mechanism is not invented here - the close-ask and the whole-reply screen
-       * both rely on it - and a reader that rewrites one turn in three is worth a replace.
-       */
-      const readOnTheStream = await this.readBeforeSending(history, reply, streamKnown);
-      if (readOnTheStream && readOnTheStream !== reply) reply = readOnTheStream;
 
       /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.

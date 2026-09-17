@@ -76,6 +76,24 @@ const NOT_A_NAME = new Set([
   'Okay', 'OK', 'Got', 'Understood', 'Thank', 'Thanks', 'Good', 'Both', 'Before',
   'Session', 'Groundwork', 'Is', 'Was', 'Can', 'Does', 'Do', 'If', 'For', 'To',
   'In', 'On', 'At', 'One', 'Two', 'Not', 'No', 'Yes', 'There', 'Here', 'Now',
+  /*
+   * AND THE REST OF THE ORDINARY WORDS A SENTENCE CAN START WITH.
+   *
+   * Read live, 17 September 2026: "Those are the shapes I'm looking for." was deleted from the
+   * middle of a reply because "Those" is capitalised and nobody had typed it. The person was left
+   * with a half-sentence and an unclosed quotation mark, mid-answer, after asking for examples.
+   *
+   * Every word here is a common word that only looks like a name because it opened a sentence.
+   * This list is cheap to extend and the cost of a missing entry is a sentence deleted out of
+   * somebody's reply, which is the worst failure this file has.
+   */
+  'Those', 'These', 'Each', 'Every', 'Some', 'Any', 'All', 'Most', 'Much', 'Many',
+  'Either', 'Neither', 'Another', 'Other', 'Such', 'Same', 'Once', 'Just', 'Still',
+  'Even', 'Also', 'Then', 'Than', 'Because', 'Since', 'While', 'After', 'Until',
+  'From', 'With', 'Without', 'About', 'Against', 'Between', 'Under', 'Over',
+  'Right', 'Nothing', 'Something', 'Anything', 'Everything', 'Nobody', 'Somebody',
+  'Anyone', 'Everyone', 'Whatever', 'Whether', 'Which', 'Whose', 'Whom',
+  'Say', 'Let', 'Tell', 'Take', 'Give', 'Make', 'Put', 'Keep', 'Try', 'Think',
   ...A_DATE_NOT_A_PERSON,
 ]);
 

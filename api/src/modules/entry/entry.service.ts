@@ -60,7 +60,6 @@ import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
-import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from '../conversation/a-question-is-read-before-it-is-sent';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -1490,59 +1489,9 @@ from finishing at all.`;
       }
     }
 
-    /*
-     * AND LAST, SOMEBODY READS IT.
-     *
-     * Everything above this line asks what SHAPE the reply is. "To start, what is the number you
-     * are working towards for these 40 shops?" passes every one of them and is incoherent, because
-     * she had just given the number. Meaning needs a reader, and the reader is given the
-     * conversation and the draft and nothing else - no engine rules, no pack, no idea what we were
-     * trying to do. See a-question-is-read-before-it-is-sent.
-     */
-    const read = await this.readBeforeSending(messages, forHumans(best), personSaid);
-    return { reply: read, closed: hadCloseMarker(best) };
+    return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }
 
-  /**
-   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
-   *
-   * Her five checks, plus the restating fault that kept getting through them. The reader may rewrite, which no guard here can do, and its rewrite goes
-   * through the same invention screen as everything else: a reader that adds a name or a figure is
-   * refused and the draft stands, because being fresh is not a licence to invent.
-   */
-  private async readBeforeSending(messages: ChatTurn[], draft: string, personSaid: string[]): Promise<string> {
-    if (!draft.trim()) return draft;
-    try {
-      const said = theTailOf(
-        (messages as { role: string; content: string }[])
-          .filter((m) => (m.content ?? '').trim())
-          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
-      );
-      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
-        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: personSaid }) },
-      ]);
-      const decided = whatTheReaderDecided(answer, draft);
-      /* Logged either way, so a run can be counted rather than argued about: how many turns the
-         reader let through and how many it rewrote is the only evidence that it is worth its call. */
-      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
-      const clean = screen(decided.text, personSaid);
-      if (clean.hits.length || !clean.text.trim()) {
-        this.logger.warn(`entry chat: the reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
-        return draft;
-      }
-      /*
-       * THE LOG SAYS IT HAPPENED, NOT WHAT WAS SAID. The first version printed the draft and the
-       * rewrite, which was useful to read live and is a message body in a log line: a rewritten
-       * question routinely carries the person's own nouns back to them.
-       */
-      this.logger.log(`entry chat: the reader rewrote it (${draft.length} chars to ${clean.text.length})`);
-      return forHumans(clean.text);
-    } catch (err: any) {
-      /* A reader that cannot be reached is not a reason to lose the reply. */
-      this.logger.warn(`entry chat: could not read the draft before sending: ${err?.message}`);
-      return draft;
-    }
-  }
 
   /**
    * Sentences go out as the model says them, through the same gate the check-in stream uses, cleaned
