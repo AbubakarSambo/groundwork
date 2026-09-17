@@ -76,6 +76,7 @@ import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
+import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
@@ -1208,6 +1209,10 @@ export class ConversationService {
        * whether any of this is worth having; the second call goes.
        */
       for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
+      /* Counting whether the 16,000 characters of pattern library are reaching the words at all.
+         See whether-the-pattern-library-is-doing-anything - it changes nothing. */
+      const reachedAPattern = thePatternLine(checkIn.id, screened.text);
+      if (reachedAPattern) this.logger.log(reachedAPattern);
       if (!screened.text) {
         for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
       }
@@ -1983,6 +1988,8 @@ export class ConversationService {
        */
       let reply = shown.trim();
       for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
+      const reachedAPatternOnTheStream = thePatternLine(checkIn.id, reply);
+      if (reachedAPatternOnTheStream) this.logger.log(reachedAPatternOnTheStream);
       if (!reply) {
         for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'nothing came back'));
         reply = ASK_AGAIN;

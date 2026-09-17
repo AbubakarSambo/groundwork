@@ -38,8 +38,25 @@ const AT_THE_QUESTIONS =
 const A_REFUSAL =
   /\b(?:wrong|not (?:what|aligned|relevant|helpful|useful)|does ?n[o']?t align|annoying|irrelevant|pointless|stop asking|just (?:set|do|help|give)|please just)\b/i;
 
+/**
+ * AND THE WAYS SOMEBODY PUSHES BACK WITHOUT USING THE WORD "QUESTION".
+ *
+ * The rule above needed both halves - a word about the questioning AND a word of refusal - and
+ * that is the polite form of pushback. Read live on 17 September 2026, none of the real ones
+ * matched: "this questions is stupid" (misspelled, so no "question" word), "this is a waste of
+ * time", "it is not about the targets". Three genuine objections, three misses, and the line that
+ * exists for exactly this moment never arrived.
+ *
+ * These are the blunt forms, and each is a whole objection on its own rather than half of one.
+ */
+const BLUNTLY =
+  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|going (?:round|around) in circles|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
+
 export function theyPushedBackOnTheQuestions(text: string): boolean {
   const said = text ?? '';
+  if (BLUNTLY.test(said)) return true;
+  /* A misspelling is still an objection: "this questions is stupid" has no clean word boundary. */
+  if (/\bquestion/i.test(said) && /\bstupid\b/i.test(said)) return true;
   return AT_THE_QUESTIONS.test(said) && A_REFUSAL.test(said);
 }
 

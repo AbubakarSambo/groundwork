@@ -1283,9 +1283,23 @@ from finishing at all.`;
       return this.guardedReplyWithClose(FAQ_PROMPT, messages, onDelta);
     }
 
+    /*
+     * AND THE THREE THINGS GO LAST HERE TOO, WHICH THEY WERE NOT.
+     *
+     * They were appended to the SETUP prompt and this is a different prompt on the same screen: the
+     * lead's own check-in, step 2 of /start. Read live within the hour: "you just asked me that in
+     * setup. this is a waste of time" came back as "You just said this is a waste of time and that
+     * I already asked you this in setup. What makes it feel that way?" - the complaint restated,
+     * then a request that they justify it, which is the exact move rule 2 exists to stop.
+     *
+     * Third time a fix has landed on one of two paths in this file. The lesson each time is that
+     * "the entry chat" is two prompts, not one.
+     */
     const mapped = resolveScenario(scenario);
+    const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
     return this.guardedReplyWithClose(
-      buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed),
+      entrySystem,
       messages,
       onDelta,
       /* Theirs: the people they named, what they called it, and everything they typed in setup. */
