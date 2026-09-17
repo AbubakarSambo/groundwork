@@ -56,6 +56,7 @@ import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invente
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
@@ -1084,7 +1085,9 @@ Rules:
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
-      + (settled ? `\n\n---\n\n${settled}` : '');
+      + (settled ? `\n\n---\n\n${settled}` : '')
+      /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
+      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`;
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
