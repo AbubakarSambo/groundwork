@@ -134,7 +134,7 @@ describe('ConversationContextService - Degree-3 invisible labour cross-reference
       latestMessage: 'We shipped the migration this week.',
     });
     expect(block).toContain('[INVISIBLE_LABOUR | TIER 1]');
-    expect(block).toContain('There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does your record here reflect it?');
+    expect(block).toContain('There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does the record here reflect it?');
     // The count itself, and any other party's verbatim words, must never appear.
     expect(block).not.toContain('3');
   });

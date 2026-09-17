@@ -45,5 +45,5 @@ export const CLOSING_STEPS = [
   'Reading back what you said',
   'Checking what is specific enough to stand on',
   'Finding what is still open',
-  'Writing it into your record',
+  'Writing it into the record',
 ]

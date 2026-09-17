@@ -74,7 +74,7 @@ export function JoinPage() {
       setPhase('sent')
     } catch {
       /* The toast's words were right; a toast leaves the page looking unchanged. Inline, and kept. */
-      setFailure('Could not send your link — nobody has been emailed and nothing was added. Try again.')
+      setFailure('Could not send your link - nobody has been emailed and nothing was added. Try again.')
     } finally {
       setJoining(false)
     }

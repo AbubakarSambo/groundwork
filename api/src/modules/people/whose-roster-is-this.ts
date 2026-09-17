@@ -34,10 +34,10 @@ export const A_SOURCE_SYSTEM = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
 export function whyThisIsNotASourceSystem(said: string): string | null {
   const s = said.trim();
-  if (!s) return 'A source system needs a name — the system the roster comes from, like "workday".';
+  if (!s) return 'A source system needs a name - the system the roster comes from, like "workday".';
   if (!A_SOURCE_SYSTEM.test(s)) {
     return (
-      `"${said}" cannot be a source system. Use lower-case letters, numbers and hyphens — `
+      `"${said}" cannot be a source system. Use lower-case letters, numbers and hyphens - `
       + 'it is typed again every time this credential is replaced, so it has to be easy to repeat.'
     );
   }

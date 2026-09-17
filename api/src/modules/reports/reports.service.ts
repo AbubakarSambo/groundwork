@@ -43,6 +43,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
@@ -54,7 +55,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -80,6 +81,8 @@ import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
+import { whatYourOwnRecordSays } from './what-your-own-record-says';
+import { whatChangedSinceLastTime } from './what-changed-since-last-time';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
@@ -183,7 +186,7 @@ const SIGNAL_EXTRACTION_SCHEMA = {
 
 // Outcome learning - weekly prompt-version resolution-rate summary (#100).
 const OUTCOME_LEARNING_PROMPT =
-  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3–5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
+  'You are a Groundwork analyst. You are given structured data: for each active prompt version, the number of grounds resolved, the total outcomes, and the fairness rate (% of parties who said the process felt fair). Produce a 3 to 5 sentence summary identifying which version(s) have the highest resolution rate, any version showing decline, and a one-sentence recommendation. Data is anonymous - no names, no org identifiers.';
 
 export const REPORT_SCHEMA = {
   name: 'emit_report',
@@ -216,6 +219,11 @@ export const REPORT_SCHEMA = {
               items: { type: 'string' },
               description: "1-2 short supporting references for this gap, taken from what people actually said (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
             },
+            settledBy: {
+              type: 'string',
+              description:
+                "What would settle this, in one short sentence a person could act on today. \"Agree one unit and who carries how much\" or \"put a date on the pricing sheet and tell the two people waiting on it\". Never advice about how to communicate, never \"have a conversation about it\" - name the decision or the thing that has to exist. Read off a live report: a difference was printed as the words \"The definition of success\" and nothing else, which told a reader what the subject was and nothing about what to do. Return an empty string only where the record genuinely points at nothing.",
+            },
             atStake: {
               type: 'string',
               description:
@@ -235,7 +243,9 @@ export const REPORT_SCHEMA = {
           // rather than as absence, so declining is a thing the model does on
           // purpose rather than by omission, and the renderer treats '' exactly
           // as it treated a missing field.
-          required: ['topic', 'positions', 'atStake'],
+          /* settledBy is required for the same reason atStake is: an optional field is one the
+             model skips without ever weighing whether it should. '' is how it declines. */
+          required: ['topic', 'positions', 'atStake', 'settledBy'],
         },
         description:
           "The gap. For each topic, where each person stands - never framed as one side being right.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
@@ -745,6 +755,34 @@ export class ReportsService {
     if ((ground as any).brief) {
       groundContextLines.push(`INITIATOR'S OPENING BRIEF: ${(ground as any).brief}`);
     }
+
+    /*
+     * THE ARITHMETIC, DONE HERE, BECAUSE THE REPORT WAS NOT DOING IT.
+     *
+     * Read off a real shared report: the objective was ten thousand units of tea, the three people
+     * in it described two thousand units, a hundred and fifty bags and fifty bags each, and the
+     * report's finding was that the role was never clearly defined. True of almost every check-in,
+     * and it told her nothing. Her words: "doesnt tell us to go work out individual targets and
+     * also the fact that all of us are listing goals too low to meet the objective."
+     *
+     * The service already says how this works a few lines down - "deterministic features are
+     * computed here (never by the model); the model narrates them" - and nothing was computing the
+     * one thing anybody could have checked on a napkin.
+     *
+     * See do-the-parts-add-up-to-the-whole: it refuses more often than it answers, because two
+     * thousand units and a hundred and fifty bags cannot be added together and a total would be a
+     * number nobody said.
+     */
+    /* Optional-chained: a property access on a client without this model throws before any
+       `.catch` can see it, and a report must never fail because the arithmetic could not run. */
+    const objectivesForTheSums = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId },
+      select: { name: true, target: true, ownerParticipantId: true },
+    }) ?? Promise.resolve([]))
+      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null }[]);
+    const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
+    const numbers = howTheNumbersSit(objectivesForTheSums, answering);
+    if (numbers.says) groundContextLines.push(numbers.says);
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : [];
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
@@ -926,7 +964,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
         charsSaid: saidByLabel.get(label) ?? 0,
       });
     });
-    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
+    /*
+     * AND THE LABELS ARE THE ONLY ONES ALLOWED, WHICH THE ROSTER NEVER SAID OUTRIGHT.
+     *
+     * The schema asks for "their role if they have one, otherwise the initiator or participant A".
+     * Run live on a three-person check-in, the model wrote "Person" for both participants - not one
+     * of the labels on the roster, so the substitution that turns a label into a name had nothing
+     * to match, and a report about three people named two of them "Person".
+     *
+     * The roster already lists the labels. What was missing was the sentence saying those are the
+     * only strings that may appear in participantLabel.
+     */
+    const theOnlyLabels = `USE THESE LABELS AND NO OTHERS. Every participantLabel you write must be one of these strings, copied exactly: ${parties
+      .map((p: any) => `"${labelById.get(p.id)}"`)
+      .join(', ')}. Never "Person", never "the participant", never a name, and never a label you have invented - each reader's own copy swaps these for the real names they are allowed to see, and a label that is not on this list is swapped for nothing.\n\n`;
+
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n${theOnlyLabels}`;
 
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
@@ -2627,6 +2680,45 @@ Close the report by framing - neutrally, without recommending one - the choice n
               topic: String(d.topic),
               sides: (d.perspectives as any[]).slice(0, 3).map((p) => ({ who: nameByLabel.get(String(p.participantLabel ?? '')) ?? String(p.participantLabel ?? 'somebody'), says: String(p.view ?? '') })),
             })),
+          /*
+           * THE ARITHMETIC, COMPUTED HERE AND NARRATED THERE. Same rule this service already
+           * follows for every other deterministic feature, and the reason the finding could read
+           * "the role was never clearly defined" while three people's numbers sat four lines below
+           * it, in three different units. See do-the-parts-add-up-to-the-whole.
+           */
+          numbers: howTheNumbersSit(
+            (await (this.prisma.groundObjective?.findMany?.({
+              where: { groundId },
+              select: { name: true, target: true, ownerParticipantId: true },
+            }) ?? Promise.resolve([])).catch(() => [] as any[])) as any[],
+            whoAnswered.expected,
+          ).says,
+          /*
+           * AND WHAT MOVED SINCE THE LAST ROUND, which from round two is the most useful sentence
+           * on the page and was never on it. 4.3. Computed from the rounds already kept, so it
+           * cannot disagree with the movement view. See what-changed-since-last-time.
+           */
+          sinceLastTime: await (async () => {
+            const kept = await (this.prisma.reportRound?.findMany?.({
+              where: { groundId },
+              orderBy: { sessionNumber: 'desc' },
+              take: 2,
+              select: { sessionNumber: true, divergences: true },
+            }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+            /* A kept round holds what was said, not who had answered when it was taken, so the
+               count is left out of the comparison rather than guessed at. */
+            const rounds = (kept as any[]).map((r: any) => ({
+              topics: (Array.isArray(r.divergences) ? r.divergences : []).map((d: any) => String(d?.topic ?? '')).filter(Boolean),
+              answered: whoAnswered.answered,
+            }));
+            const current = {
+              topics: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[]).map((d: any) => String(d?.topic ?? '')).filter(Boolean),
+              answered: whoAnswered.answered,
+            };
+            /* The most recent kept round is this one where it has already been stored. */
+            const previous = rounds.find((r) => r.topics.join('|') !== current.topics.join('|')) ?? rounds[1] ?? null;
+            return whatChangedSinceLastTime(current, previous);
+          })(),
           answered: whoAnswered.answered,
           ofPeople: whoAnswered.expected,
           confidence: shape.confidence,
@@ -3281,7 +3373,7 @@ happened, and what is in the way.`;
    * an instruction to a model.
    */
   private applyNames<T extends Record<string, any>>(
-    report: T,
+    reportIn: T,
     parties: any[],
     viewerParticipantId: string | null,
     viewerIsLead: boolean,
@@ -3312,6 +3404,33 @@ happened, and what is in the way.`;
     // Every party's label, so the bare-label tidy-up can tell "unambiguous" from "the only
     // one I am allowed to see". W8-73.
     const allLabels = [...labelsForParties(parties).values()];
+
+    /*
+     * A LABEL THE MODEL INVENTED, GIVEN TO SOMEBODY REAL, BEFORE ANY NAME GOES BACK.
+     *
+     * Run live on a three-person check-in: the corpus listed the labels, the schema said to use
+     * them, an instruction was added saying they were the only strings allowed - and it wrote
+     * "Person" for both participants twice. A report about three people named two of them Person.
+     *
+     * The substitution below can only replace labels it knows, so an invented one survives to the
+     * screen. This hands each side of a difference somebody who is actually on the check-in, by
+     * position, before the names are looked up. See eachSideGetsSomebody.
+     */
+    const withSomebodyOnEachSide = (d: any) => {
+      if (!d || typeof d !== 'object') return d;
+      const fix = (sides: any[]) => eachSideGetsSomebody(sides, allLabels);
+      return {
+        ...d,
+        ...(Array.isArray(d.positions) ? { positions: fix(d.positions) } : {}),
+        ...(Array.isArray(d.perspectives) ? { perspectives: fix(d.perspectives) } : {}),
+      };
+    };
+    const report = {
+      ...(reportIn as any),
+      ...(Array.isArray((reportIn as any)?.divergences)
+        ? { divergences: (reportIn as any).divergences.map(withSomebodyOnEachSide) }
+        : {}),
+    };
     /**
      * The reader's own label, so the report addresses them rather than describing them. A person
      * opened their private report and read "Hafsah Jumare described their role" about themselves.
@@ -3545,6 +3664,14 @@ happened, and what is in the way.`;
       where: { groundId, participantId: participant.id, sessionNumber, isFinal: true },
       select: { id: true },
     }));
+    /* The board's numbers, for the sentences that are about this person's share of them. */
+    const theBoardNumbers = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId }, select: { name: true, target: true, ownerParticipantId: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const theWholeNumber = (theBoardNumbers as any[]).find((o: any) => !o.ownerParticipantId && typeof o.target === 'number');
+    const theOwnedNumbers = (theBoardNumbers as any[]).filter((o: any) => o.ownerParticipantId && typeof o.target === 'number');
+    const theirOwnNumber = theOwnedNumbers.find((o: any) => o.ownerParticipantId === participant.id);
+
     const note = whatToWorkOnNext({
       patterns: held.detections
         .filter((d) => d.participantId === participant.id)
@@ -3604,6 +3731,24 @@ happened, and what is in the way.`;
         })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
+      /*
+       * AND THE PART THAT IS ABOUT THIS ONE PERSON. 4.4.
+       *
+       * Everything above is about a role, a stage or a blocker. These are sentences carrying a
+       * figure or a thing off their own lines, so none of them could be said to anybody else. See
+       * what-your-own-record-says.
+       */
+      aboutYou: whatYourOwnRecordSays({
+        whole: theWholeNumber ? { name: theWholeNumber.name, target: theWholeNumber.target! } : null,
+        peopleWithANumber: theOwnedNumbers.length,
+        peopleInIt: ground.participants.filter((p: any) => !p.managingOnly).length,
+        theirs: theirOwnNumber ? { name: theirOwnNumber.name, target: theirOwnNumber.target! } : null,
+        standsAt: null,
+        promises: mine
+          .filter((e: any) => String(e.kind ?? '').toUpperCase().includes('COMMIT'))
+          .map((e: any) => ({ what: e.text ?? '', hasDate: !!e.dueDate || /\b(by|on)\b.{0,20}\d/i.test(e.text ?? '') })),
+        anythingDocumented: mine.some((e) => !e.recallBased),
+      }),
     });
 
     /*
@@ -3643,7 +3788,29 @@ happened, and what is in the way.`;
       /* Written FROM the map, never quoting it. See Drafted.context. */
       { key: 'whyItMatters', text: note.whyItMatters, context: mapContext },
       ...(note.role ? [
-        { key: 'protectAgainst', text: `This kind of work is often read unfairly, and that is worth knowing before you read anything into where you stand.`, context: `How ${note.role.label.toLowerCase()} work gets read unfairly: ${note.role.protectAgainst}` },
+        /*
+         * THE SEED SENTENCE SAID NOTHING, SO THE MODEL WROTE FILLER AROUND IT.
+         *
+         * It was "This kind of work is often read unfairly, and that is worth knowing before you
+         * read anything into where you stand." - a preamble with no content in it. Read live on the
+         * tea ground under the heading "Where this kind of work gets misread":
+         *
+         *   "The buyer-side process takes weeks, and most of it is invisible to you, so silence is
+         *    just a stage. It is worth knowing how unfairly this kind of work can be read before
+         *    you draw any conclusions about where you stand."
+         *
+         * The first sentence is the map earning its place. The second is the empty seed coming back
+         * out, and it is the exact voice she has flagged twice: "this kind of work often faces
+         * unfair reading". A wording pass cannot add substance to a draft that has none, so the
+         * draft is the map's own claim now and the pass does what it is for - putting it in plain
+         * words for this reader rather than quoting a manual at them.
+         */
+        {
+          key: 'protectAgainst',
+          text: note.role.protectAgainst,
+          context: `This is about ${note.role.label.toLowerCase()} work. Say the thing itself, plainly, as one sentence to the person doing it. `
+            + 'Never open with a preamble about what is worth knowing, and never use the words "this kind of work".',
+        },
       ] : []),
       ...note.beforeNextTime.map((t, n) => ({
         key: `a${n}`,
@@ -3976,7 +4143,7 @@ happened, and what is in the way.`;
           forming: true,
           withheldUntilYouAnswer: true,
           saying:
-            'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
+            'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.',
           soloArtifact,
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),
@@ -4368,7 +4535,10 @@ happened, and what is in the way.`;
           );
           if (!result) return;
 
-          let { guide, dropped } = sanitiseGuide(result, names);
+          /* What was actually said on this check-in, so a line about nothing in it is recognised.
+             The shared picture counts as said here: it is built from everybody's own words. */
+          const saidHere = [...entries.map((e) => e.text ?? ''), synthesisText];
+          let { guide, dropped } = sanitiseGuide(result, names, saidHere);
 
           /**
            * ONE MORE ATTEMPT WHEN A FIELD IS STRIPPED, AND HERE IS THE RUN THAT
@@ -4408,7 +4578,7 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
               )
               .catch(() => null);
             if (retry) {
-              const second = sanitiseGuide(retry, names);
+              const second = sanitiseGuide(retry, names, saidHere);
               // Only take the retry if it actually lost less. A worse second attempt
               // is not an improvement, and the first one is already sanitised.
               if (Object.keys(second.guide).length > Object.keys(guide).length) {

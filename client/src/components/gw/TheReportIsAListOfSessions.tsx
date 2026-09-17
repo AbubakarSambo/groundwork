@@ -98,10 +98,19 @@ export function TheReportIsAListOfSessions({
                     background: r.closed ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)',
                     color: r.closed ? 'var(--gw-green-t)' : 'var(--gw-amber-t)',
                     border: `1px solid ${r.closed ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {/* 'Final' read as 'the last one' on every row. It means the report is out. */}
-                  {r.closed ? 'Released' : 'Forming'}
+                  {/*
+                    'Final' read as 'the last one' on every row. It means the report is out.
+
+                    AND "FORMING" ON A ROUND WHERE EVERYBODY HAS ANSWERED IS WRONG IN THE OTHER
+                    DIRECTION. Read off a lead's own screen: "Session 1 · 3 of 3 answered · Forming",
+                    on a round whose report was written, complete and sitting behind that row. It
+                    is not forming; it is waiting for her, and she is the only person who can move
+                    it. Saying which of the two it is turns a status into the next thing to do.
+                  */}
+                  {r.closed ? 'Released' : r.answered >= r.total && r.total > 0 ? 'Ready to release' : 'Forming'}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
               </span>

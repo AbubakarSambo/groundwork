@@ -139,7 +139,7 @@ export function subjectsFrom(
       ownerExternalId: whoOwnsIt(objective.ownerId) ?? undefined,
       sourceSystem: OUR_SOURCE_SYSTEM,
       type: 'objective',
-      title: `${objective.title} — ${kr.title}`,
+      title: `${objective.title} - ${kr.title}`,
       measure: kr.unit,
       target: String(kr.target),
       justification: kr.justification ?? undefined,
@@ -161,7 +161,7 @@ export function objectivesFrom(objectives: ObjectiveShape[]) {
   return objectives.flatMap((objective) =>
     objective.keyResults.map((kr) => ({
       externalId: kr.id,
-      text: `${objective.title} — ${kr.title}`,
+      text: `${objective.title} - ${kr.title}`,
       measure: kr.unit,
       target: String(kr.target),
       /* The reason travels to the session, not only to the graph. A check-in

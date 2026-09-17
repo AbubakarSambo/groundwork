@@ -69,14 +69,14 @@ export function whatWouldAccountForIt(d: Difference): Candidate[] {
   return [
     {
       key: 'the periods are cut differently',
-      says: 'The two figures cover the same dates but not the same events — something invoiced in one period and recognised in another.',
+      says: 'The two figures cover the same dates but not the same events - something invoiced in one period and recognised in another.',
       toldApartBy: 'Whether either figure includes something that falls on the other side of the period boundary.',
-      ask: 'Does either of these figures include anything that sits just outside the period — something invoiced late, or paid early?',
+      ask: 'Does either of these figures include anything that sits just outside the period - something invoiced late, or paid early?',
       settles: 2,
     },
     {
       key: 'the two figures count different things',
-      says: 'Each is right about what it measures, and they measure different things — one gross and one net, one including something the other excludes.',
+      says: 'Each is right about what it measures, and they measure different things - one gross and one net, one including something the other excludes.',
       toldApartBy: 'What each figure is defined to include.',
       ask: 'What does each of these two figures include? If one leaves something out that the other counts, that is likely the whole of it.',
       settles: 2,
@@ -90,7 +90,7 @@ export function whatWouldAccountForIt(d: Difference): Candidate[] {
     },
     {
       key: 'one of the figures is wrong',
-      says: 'One of the two numbers is a mistake — a transcription, a wrong column, a filing that was later corrected.',
+      says: 'One of the two numbers is a mistake - a transcription, a wrong column, a filing that was later corrected.',
       toldApartBy: 'Whether either figure has been restated or corrected since it was produced.',
       ask: 'Has either of these figures been corrected or restated since it was first produced?',
       settles: 1,
@@ -136,7 +136,7 @@ export function whatToAskNext(
 export function whenNothingIsLeft(d: Difference): string {
   return (
     'Every ordinary explanation for this has been asked about and none of them accounted for it. '
-    + 'That does not make it anything more than unexplained — it means the answer is not one of the '
+    + 'That does not make it anything more than unexplained - it means the answer is not one of the '
     + 'usual ones, and the people in this relationship are better placed than this record to say '
     + 'what it is. It is worth putting in front of both of them together.'
   );

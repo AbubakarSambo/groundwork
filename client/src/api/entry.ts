@@ -80,9 +80,19 @@ async function readEntryStream<T>(
   body: unknown,
   onDelta: (text: string) => void,
 ): Promise<T> {
+  /*
+   * THE TOKEN, WHEN THERE IS ONE, AND THESE ROUTES STAY OPEN WITHOUT IT.
+   *
+   * These are the only calls in the client that use `fetch` rather than `apiClient`, because they
+   * read a stream - so they also missed the interceptor that attaches the session. That was
+   * invisible until setup started reading who is signed in: the API asked for a user, the browser
+   * never sent one, and a lead with four check-ins already running still met a stranger's setup.
+   * The routes are @Public: no token is a fine answer, and the header is simply left off.
+   */
+  const token = (() => { try { return localStorage.getItem('token') } catch { return null } })()
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(body),
   })
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`)
@@ -183,8 +193,12 @@ export const entryApi = {
     scenario: string | undefined,
     moment: string | undefined,
     onDelta: (text: string) => void,
+    /* What the last turn already worked out, handed back so setup does not re-read the whole
+       situation off the transcript every time somebody speaks. See
+       what-setup-already-knows-travels-with-it on the API side. */
+    soFar?: Record<string, unknown>,
   ): Promise<OnboardResult> =>
-    readEntryStream('/entry/onboard/stream', { messages, scenario, moment }, onDelta),
+    readEntryStream('/entry/onboard/stream', { messages, scenario, moment, soFar }, onDelta),
 
   /** chat (old form), streamed. */
   chatStream: (
@@ -195,9 +209,12 @@ export const entryApi = {
     /* Who setup already named. This is the live path the check-in actually uses, so without it here
        the block that stops "who else is involved" never reaches the conversation people have. */
     peopleNamed?: string[],
+    /* And what they typed in setup. Without it their own place names and deadlines read as invented
+       the moment the check-in starts, and the sentences carrying them are deleted. */
+    alreadySaid?: string[],
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     /* No joinToken: the branch it reached served the organiser's brief to whoever supplied one (fix plan D10). */
-    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, peopleNamed }, onDelta),
+    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, peopleNamed, alreadySaid }, onDelta),
 
   classifyIntent: (description: string, mode?: string) =>
     /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */

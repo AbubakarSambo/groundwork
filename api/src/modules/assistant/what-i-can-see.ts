@@ -66,7 +66,7 @@ export function whatICanSee(truth: WhatIsTrue): WhatICanSee {
           o.theirs ? 'yours' : 'you contribute',
           measure,
           due ? `due ${due}` : null,
-        ].filter(Boolean).join(' — ');
+        ].filter(Boolean).join(' - ');
       }),
     },
     {
@@ -74,14 +74,14 @@ export function whatICanSee(truth: WhatIsTrue): WhatICanSee {
       from: truth.commitments.from,
       howMany: truth.commitments.value.length,
       each: truth.commitments.value.map((c) =>
-        [c.text, c.dueSaid, c.state].filter(Boolean).join(' — '),
+        [c.text, c.dueSaid, c.state].filter(Boolean).join(' - '),
       ),
     },
     {
       what: 'Check-ins that are yours right now',
       from: truth.sessions.from,
       howMany: truth.sessions.value.length,
-      each: truth.sessions.value.map((s) => `${s.label} — ${s.standing}`),
+      each: truth.sessions.value.map((s) => `${s.label} - ${s.standing}`),
     },
     {
       what: 'What your organisation has written down',

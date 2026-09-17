@@ -51,7 +51,7 @@ function WhatGroundworkHasSentUs() {
             <li key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
               {/* A delivery that did not verify is the one worth seeing, so it is said first and in
                   the product's own words rather than shown as a red dot. */}
-              {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
+              {e.verified ? (e.says ?? e.kind) : `${e.kind} - the signature did not check out`}
             </li>
           ))}
         </ul>
@@ -132,7 +132,7 @@ export function OpsDeploymentPage() {
         </>
       ),
     },
-    { head: 'Why', cell: (d) => d.blockerSummary ?? '—' },
+    { head: 'Why', cell: (d) => d.blockerSummary ?? ' - ' },
     { head: 'Target live', cell: (d) => <DueDate value={d.targetLiveDate} /> },
   ]
 
@@ -187,7 +187,7 @@ export function OpsMarketingPage() {
   const columns: Column<OpsCampaign>[] = [
     { head: 'Campaign', cell: (c) => <strong>{c.title}</strong> },
     { head: 'Kind', cell: (c) => c.activityType },
-    { head: 'Channel', cell: (c) => c.channel ?? '—' },
+    { head: 'Channel', cell: (c) => c.channel ?? ' - ' },
     { head: 'Status', cell: (c) => readEnum(c.status) },
     { head: 'Started', cell: (c) => readDate(c.startDate) },
     {

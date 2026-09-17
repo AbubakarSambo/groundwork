@@ -165,8 +165,7 @@ export default function EveryReportSideBySide() {
     <div style={WRAP}>
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Every report surface</h1>
       <p style={{ fontSize: 13, color: 'var(--gw-text)', margin: '0 0 18px', maxWidth: '80ch' }}>
-        All of them, on one check-in, on real data. Four reports — two readers by two scopes —
-        drawn by eight surfaces, two of which turn out to carry no report at all. This page is for
+        All of them, on one check-in, on real data. Four reports - two readers by two scopes - drawn by eight surfaces, two of which turn out to carry no report at all. This page is for
         judging the rebuild against what it replaces, and it goes when the last surface is ported.
       </p>
 
@@ -197,7 +196,7 @@ export default function EveryReportSideBySide() {
         <>
           <p style={{ fontSize: 12, color: 'var(--gw-text)', margin: '0 0 26px' }}>
             {checkInId
-              ? <>Your own sitting at session {sessionNumber}: <code style={{ fontSize: 11.5 }}>{checkInId}</code>{askedFor ? '' : ' — found for you.'}</>
+              ? <>Your own sitting at session {sessionNumber}: <code style={{ fontSize: 11.5 }}>{checkInId}</code>{askedFor ? '' : ' - found for you.'}</>
               : 'You have no sitting of your own on this one, so the three surfaces about your own half say so rather than drawing empty.'}
           </p>
 
@@ -212,7 +211,7 @@ export default function EveryReportSideBySide() {
 
           <Surface
             n={2}
-            name="The top half of a session's report — your own"
+            name="The top half of a session's report - your own"
             cell="A · session"
             note="Rebuilt. Where a report was stored it is shown exactly as it was read, because that object IS what the person read - only the entry chat stores one, ten of four hundred and ninety-five sittings. Everything else draws the same template as surface 04, from the same component. Its note read 'not rebuilt yet' for months, and the page carrying that note was deleted before the surface was done."
           >
@@ -237,7 +236,7 @@ export default function EveryReportSideBySide() {
             n={3}
             name="The end of the entry chat"
             cell="A · session, cropped"
-            note="The same component, with two blocks dropped: there is no movement on a first session and nothing earlier to be solid against. The completeness read stays, because on a first session it is the only read there is — extraction has not run yet. Every stored report in the database is one of these, which is the other half of the finding above."
+            note="The same component, with two blocks dropped: there is no movement on a first session and nothing earlier to be solid against. The completeness read stays, because on a first session it is the only read there is - extraction has not run yet. Every stored report in the database is one of these, which is the other half of the finding above."
           >
             {report
               ? <TheReportYouSawAtTheEnd report={report} stands={null} onRecordLine="Built from what you said just now." />
@@ -277,7 +276,7 @@ export default function EveryReportSideBySide() {
             n={7}
             name="Over WhatsApp"
             cell="not a report"
-            note="Counted as a report surface by the audit. It is not: it carries a check-in question and a link. A notification says a report exists — the moment it starts carrying content it inherits every rule the report has and can honour almost none of them."
+            note="Counted as a report surface by the audit. It is not: it carries a check-in question and a link. A notification says a report exists - the moment it starts carrying content it inherits every rule the report has and can honour almost none of them."
           >
             <AsItIsSent
               head="What is actually sent"
@@ -295,7 +294,7 @@ export default function EveryReportSideBySide() {
             note="Also counted as a report surface. It holds no read either: four sentences about what a shared picture is, and the way in."
           >
             <AsItIsSent
-              head="Subject — The shared picture for this check-in is ready"
+              head="Subject - The shared picture for this check-in is ready"
               lines={[
                 'Everybody has now checked in, so the shared picture is open to all of you at the same moment.',
                 'It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the picture draws on them without showing them.',

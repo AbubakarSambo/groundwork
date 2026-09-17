@@ -443,7 +443,7 @@ export class OpsPeopleService implements OnModuleInit {
       says:
         added.count === 0
           ? 'They already held everything that role comes with. Nothing was taken away.'
-          : `${added.count} added. Nothing was taken away — revoke what they no longer need, one at a time, so it is a decision.`,
+          : `${added.count} added. Nothing was taken away - revoke what they no longer need, one at a time, so it is a decision.`,
     };
   }
 

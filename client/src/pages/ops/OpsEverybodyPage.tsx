@@ -15,7 +15,7 @@ import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
  */
 
 const money = (cents: number) =>
-  cents === 0 ? '—' : `$${(cents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  cents === 0 ? ' - ' : `$${(cents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
 const SERVES_SAID: Record<string, string> = {
   SALES: 'sales',
@@ -32,7 +32,7 @@ function Count({ label, value, muted }: { label: string; value: number | string;
         style={{
           fontSize: 19,
           fontVariantNumeric: 'tabular-nums',
-          color: muted && (value === 0 || value === '—') ? 'var(--gw-sub)' : 'inherit',
+          color: muted && (value === 0 || value === ' - ') ? 'var(--gw-sub)' : 'inherit',
         }}
       >
         {value}
@@ -89,7 +89,7 @@ function PersonRow({ row }: { row: OpsEverybodyRow }) {
                 <div key={o.id} style={{ marginBottom: 5 }}>
                   {o.title}
                   <span style={{ color: 'var(--gw-sub)' }}>
-                    {o.serves ? ` — serves ${SERVES_SAID[o.serves] ?? o.serves.toLowerCase()}` : ' — serves nothing named'}
+                    {o.serves ? ` - serves ${SERVES_SAID[o.serves] ?? o.serves.toLowerCase()}` : ' - serves nothing named'}
                     {o.unjustifiedKeyResults > 0
                       ? ` · ${o.unjustifiedKeyResults} target${o.unjustifiedKeyResults === 1 ? '' : 's'} with no justification or approach`
                       : ''}
@@ -125,7 +125,7 @@ export function OpsEverybodyPage() {
     <div style={PAGE}>
       <OpsHeader
         name="Everybody"
-        answers="What each person agreed to this period, and what they did. Read a row on its own — nothing here is added up across people, and the order is by name on purpose."
+        answers="What each person agreed to this period, and what they did. Read a row on its own - nothing here is added up across people, and the order is by name on purpose."
       />
 
       {(periods.data ?? []).length > 0 && (

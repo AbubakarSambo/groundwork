@@ -91,7 +91,30 @@ export interface SessionReportShape {
     saying: string;
     /** What is settled and what is not, named. A count with no subject is what the tiles are for. */
     settled: string[];
+    /*
+     * AND WHY EACH OPEN ONE IS OPEN, WHICH THIS THREW AWAY.
+     *
+     * Read off a live three-person report: "03 WHERE THINGS STAND" held one line, "The definition
+     * of success", and that was the whole section. A topic. Her verdict: "the shared report has no
+     * reasoning at all."
+     *
+     * The reasoning was never missing from the report - the synthesis returns each difference with
+     * where each person stands, what it rests on and what is at stake - it was thrown away HERE, by
+     * a map to the title. The strings stay for anything still reading them; `openWithReasons` is
+     * the same list with everything that makes it worth reading.
+     */
     open: string[];
+    openWithReasons: {
+      topic: string;
+      /** Where each person stands, in their own terms. */
+      positions: { who: string; view: string }[];
+      /** The lines it rests on, from what people actually said. */
+      restsOn: string[];
+      /** What happens to the work if it holds. Never about a person. */
+      atStake: string | null;
+      /** What would settle it. The half a reader can act on. */
+      settledBy: string | null;
+    }[];
   };
   sections: SessionReportSection[];
   howClearThisWas: {
@@ -208,6 +231,32 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
      through .filter(Boolean), so "4 still open" could sit above a list of two. */
   const settled = input.agreements.map(titleOf).filter(Boolean) as string[];
   const openNow = input.divergences.map(titleOf).filter(Boolean) as string[];
+
+  /*
+   * THE SAME DIFFERENCES, WITH THE REASONING KEPT. See the note on the shape above: everything
+   * below was already on the object and was being dropped on the way to a bullet list.
+   */
+  const openWithReasons = (input.divergences as any[])
+    .map((d) => {
+      const topic = titleOf(d);
+      if (!topic) return null;
+      const sides = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [];
+      return {
+        topic,
+        positions: sides
+          .map((p: any) => ({
+            who: String(p?.participantLabel ?? p?.who ?? '').trim(),
+            view: String(p?.view ?? p?.said ?? '').trim(),
+          }))
+          .filter((p: { who: string; view: string }) => p.view),
+        restsOn: (Array.isArray(d?.evidence) ? d.evidence : [])
+          .map((e: unknown) => String(e ?? '').trim())
+          .filter(Boolean),
+        atStake: typeof d?.atStake === 'string' && d.atStake.trim() ? d.atStake.trim() : null,
+        settledBy: typeof d?.settledBy === 'string' && d.settledBy.trim() ? d.settledBy.trim() : null,
+      };
+    })
+    .filter(Boolean) as SessionReportShape['whereThingsStand']['openWithReasons'];
   const agreed = settled.length;
   const stillOpen = openNow.length;
 
@@ -482,7 +531,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     plannedSessions: input.plannedSessions ?? null,
     state: input.closed ? 'final' : 'forming',
     confidence,
-    whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow },
+    whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow, openWithReasons },
     atAGlance,
     whatEachPersonSaid,
     sections,
@@ -549,7 +598,7 @@ function whatChanged(input: SessionReportInputs): SaidThing[] {
     if (!e.threadKey) continue;
     const was = before.get(e.threadKey);
     if (was && was.trim() !== e.text.trim()) {
-      out.push({ text: `Was: ${was} — now: ${e.text}`, who: e.who, documented: !e.recallBased });
+      out.push({ text: `Was: ${was} - now: ${e.text}`, who: e.who, documented: !e.recallBased });
     }
   }
   return out;
@@ -563,7 +612,7 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
   for (const e of nowSuccess) {
     if (input.baselineSuccess && input.baselineSuccess.trim() !== e.text.trim()) {
       out.push({
-        text: `At the start: ${input.baselineSuccess} — this session: ${e.text}`,
+        text: `At the start: ${input.baselineSuccess} - this session: ${e.text}`,
         who: e.who,
         documented: !e.recallBased,
       });

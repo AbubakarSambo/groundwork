@@ -49,7 +49,7 @@ export function OpsWhatWeArePage() {
               <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '10px 0 0' }}>
                 Written {readDate(d.writtenAt)}
                 {d.writtenBy ? ` by ${d.writtenBy}` : ''}
-                {d.because ? ` — ${d.because}` : ''}
+                {d.because ? ` - ${d.because}` : ''}
               </p>
             )}
             {d.seeded && (
@@ -91,8 +91,8 @@ export function OpsWhatWeArePage() {
               fields={[
                 { name: 'headline', label: 'What this is, in one line', required: true, placeholder: d.headline },
                 { name: 'saidOutLoud', label: 'The line to say out loud in the room', placeholder: d.saidOutLoud },
-                { name: 'isIt', label: 'What it is — one per line', type: 'textarea', required: true, placeholder: d.isIt.join('\n') },
-                { name: 'isNotIt', label: 'What it is not — one per line', type: 'textarea', required: true, placeholder: d.isNotIt.join('\n') },
+                { name: 'isIt', label: 'What it is - one per line', type: 'textarea', required: true, placeholder: d.isIt.join('\n') },
+                { name: 'isNotIt', label: 'What it is not - one per line', type: 'textarea', required: true, placeholder: d.isNotIt.join('\n') },
                 { name: 'because', label: 'Why it changed', type: 'textarea' },
               ]}
               submit={(v) =>
@@ -117,7 +117,7 @@ export function OpsWhatWeArePage() {
               {(past.data ?? []).slice(1).map((v) => (
                 <p key={v.version} style={{ fontSize: 13, margin: '8px 0 0', color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                   <strong>v{v.version}</strong> · {v.headline}
-                  {v.because ? ` — ${v.because}` : ''} · {readDate(v.writtenAt)}
+                  {v.because ? ` - ${v.because}` : ''} · {readDate(v.writtenAt)}
                 </p>
               ))}
             </section>

@@ -76,13 +76,13 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'workspace',
     why: 'not a person’s question',
-    because: 'Where an organisation’s notices are posted — a Slack or Teams channel an admin connects once. The same shape as the WhatsApp channel below: something we turn on, not something anybody asks for.',
+    because: 'Where an organisation’s notices are posted - a Slack or Teams channel an admin connects once. The same shape as the WhatsApp channel below: something we turn on, not something anybody asks for.',
   },
   {
     area: 'alignment',
     why: 'not yet',
     because:
-      'Figures, differences, agreement terms, assertions and obligations. They are created by the check-in interview, where both sides are asked separately and neither is told what the other said — and that separation is the whole reason the record is worth anything. Recording a figure by asking the assistant for it would mean one person’s account entering the record without the other side ever being asked, which is the one thing this area exists to prevent. What it would take: a way for the assistant to record something as ONE SIDE’S account and put the matching question into the other side’s own check-in, which is exactly what an Assertion already does — so this is a lane to build rather than a decision to defend.',
+      'Figures, differences, agreement terms, assertions and obligations. They are created by the check-in interview, where both sides are asked separately and neither is told what the other said - and that separation is the whole reason the record is worth anything. Recording a figure by asking the assistant for it would mean one person’s account entering the record without the other side ever being asked, which is the one thing this area exists to prevent. What it would take: a way for the assistant to record something as ONE SIDE’S account and put the matching question into the other side’s own check-in, which is exactly what an Assertion already does - so this is a lane to build rather than a decision to defend.',
   },
   {
     area: 'whatsapp',
@@ -135,7 +135,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     area: 'participants',
     why: 'not yet',
     because:
-      'Inviting somebody onto a check-in is part of creating one, which is item six. Accepting an invitation stays with the person accepting it — that is the consent.',
+      'Inviting somebody onto a check-in is part of creating one, which is item six. Accepting an invitation stays with the person accepting it - that is the consent.',
   },
   {
     area: 'coach',
@@ -150,7 +150,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'resolution',
     why: 'not yet',
-    because: 'Proposing and countering a settlement between two people. High stakes and slow — it needs its own thinking, not a lane.',
+    because: 'Proposing and countering a settlement between two people. High stakes and slow - it needs its own thinking, not a lane.',
   },
   {
     area: 'back-office',

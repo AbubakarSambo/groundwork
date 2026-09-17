@@ -747,7 +747,7 @@ export function AppSidebar() {
       await groundsApi.update(id, { label: val }, { quiet: true })
       qc.invalidateQueries({ queryKey: ['grounds'] })
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? 'The name did not change. Nothing else was altered — try again.')
+      toast.error(e?.response?.data?.message ?? 'The name did not change. Nothing else was altered - try again.')
     }
   }
 

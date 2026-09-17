@@ -60,8 +60,15 @@ export function theWordsForPickingASituation(): TheWordsForPickingASituation {
      */
     describeOwnLabel: 'Work Through Something Else',
     describeOwnQuestion: 'What are you trying to achieve with this check-in?',
+    /*
+     * AND ONE WORKED EXAMPLE. The help text said what to put in and gave no sense of how much, how
+     * specific, or whether a number belongs - which is the whole difficulty of an empty box. The
+     * example is deliberately not about software: this gets used to buy chickens and sell tea.
+     */
     describeOwnHelp:
       'Set the overall context, goals, or plan, or add them for each individual, in your own words. '
-      + 'This will define the purpose of the conversations in each check-in.',
+      + 'This will define the purpose of the conversations in each check-in. '
+      + 'For example: I am setting a goal for my team to procure 300 organic chickens from Kaduna by 31 March, '
+      + 'and I need Sahar and Amina to each own part of it.',
   };
 }

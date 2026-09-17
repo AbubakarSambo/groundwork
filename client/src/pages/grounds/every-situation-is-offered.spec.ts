@@ -141,7 +141,11 @@ describe('every card describes a run against an objective', () => {
     // "decided" belongs here: on CRISIS_ALIGNMENT the bar IS the decision, and the check-ins after
     // it test whether what people are doing matches what was actually decided. Same concept as an
     // objective, different word, and the first version of this regex rejected it.
-    const SETS_A_BAR = /\b(agree[ds]?|sets? (out|down)|pin(s|ned)? down|commits? to|expectations|objectives?|standard|target|decided|turns on)\b/i
+    /* "writes down" belongs here for the same reason as "decided": the comment above already says
+       a standard is something "written down at the start", and the copy pass moved several cards
+       from "Agree what is outstanding" to the plainer "Both sides write down what is outstanding".
+       Same claim, shorter sentence, and the first version of this regex rejected it. */
+    const SETS_A_BAR = /\b(agree[ds]?|sets? (out|down)|write[s]? down|written down|pin(s|ned)? down|commits? to|expectations|objectives?|standard|target|decided|turns on)\b/i
     for (const c of SCENARIOS) {
       if (NO_OBJECTIVE_BY_DESIGN.includes(c.cardKey)) continue
       expect(
@@ -160,6 +164,8 @@ describe('every card describes a run against an objective', () => {
      */
     const pulse = SCENARIOS.find(c => c.cardKey === 'PULSE_CHECK')!
     expect(pulse.desc).toMatch(/no target|no objective/i)
-    expect(pulse.desc).toMatch(/pick that situation instead/i)
+    /* The wording moved from "pick that situation instead" to "pick one of the others" in the
+       plain-language pass. What the test is about is that it sends you somewhere else at all. */
+    expect(pulse.desc).toMatch(/pick (that situation instead|one of the others)/i)
   })
 })

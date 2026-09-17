@@ -33,7 +33,7 @@ import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
-import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
+import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -1570,11 +1570,34 @@ export class GroundsService {
       [...objectivesByParticipant].map(([pid, list]) => [pid, list[0]]),
     );
 
+    /*
+     * AND THE SETTING THAT DECIDES WHOSE NUMBERS SOMEBODY READS, WHICH THIS PAGE WAS NOT READING.
+     *
+     * `whoSeesTargets` had two readers - the board and the conversation - and the note on the
+     * column above lists exactly those two. Context was the third and nobody noticed, so the two
+     * surfaces answered the same question differently on the same check-in.
+     *
+     * Read live on 15 September 2026. In the check-in itself Rita was shown the team's 500 and her
+     * own 150, with the line "Other people on this check-in have numbers of their own, and those
+     * are theirs". On the Context tab of the same check-in, one tap away, she was shown Kunle's
+     * 150, Amir's 150 and the lead's 50. The panel's own heading for a participant is "What is
+     * expected of YOU", and it was listing everybody.
+     *
+     * Narrowed at the read rather than in the page, because a second reader forgetting the rule is
+     * how this happened in the first place. The lead still sees everybody - that is their job and
+     * the heading says "Person by person" for them. Where the check-in is set so everybody sees
+     * every number, nothing here changes.
+     */
+    const peersKeepTheirNumbers =
+      !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
       const raw = sharedArtifactById.get(p.id);
       const isSelf = !!requestingUserId && p.userId === requestingUserId;
+      /* Somebody else's expectations, on a check-in that keeps numbers to their owner. */
+      const withholdTheirNumbers = peersKeepTheirNumbers && !isSelf;
       return {
         ...p,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -1585,7 +1608,9 @@ export class GroundsService {
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
         objective: (() => {
-          const row = objectiveByParticipant.get(p.id);
+          /* The single-expectation shape travels the same way as `all` above: not somebody else's,
+             on a check-in that keeps numbers to their owner. */
+          const row = withholdTheirNumbers ? undefined : objectiveByParticipant.get(p.id);
           const shaped = {
             participantId: p.id,
             text: row?.text ?? null,
@@ -1629,7 +1654,7 @@ export class GroundsService {
              * above stays as it was so nothing that reads it had to change on the day this landed;
              * the page reads this.
              */
-            all: (objectivesByParticipant.get(p.id) ?? []).map(o => ({
+            all: (withholdTheirNumbers ? [] : (objectivesByParticipant.get(p.id) ?? [])).map(o => ({
               // The id is what lets somebody file what they delivered AGAINST a specific
               // expectation rather than into a general box. Nothing else needs it.
               id: o.id,
@@ -2013,7 +2038,17 @@ export class GroundsService {
      * WHAT RECORDING AN EXPECTATION MEANS, SAID WHERE IT IS ABOUT TO HAPPEN. Only when that gap is
      * open, because a rule about a thing nobody is doing is noise.
      */
-    const expectationRule = gaps.some((g) => g.key === 'objectives') ? `\n\n${WHAT_RECORDING_IT_MEANS}` : '';
+    /*
+     * WHAT RECORDING AN EXPECTATION MEANS, WHEREVER THE CONVERSATION IS.
+     *
+     * This was attached only while the objectives gap was open, so on a check-in whose people
+     * already had objectives the rule was absent and the model filled the space by refusing: "this
+     * setup conversation isn't the right place to set individual targets". Setting what you expect
+     * of somebody is available for as long as there is somebody to expect it of.
+     */
+    const expectationRule = ground.participants.filter((p) => !p.managingOnly).length > 1
+      ? `\n\n${WHAT_RECORDING_IT_MEANS}`
+      : '';
     const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps)}${expectationRule}\n\n${documentBlock}`;
     const raw = await this.anthropic.respond(
       systemPrompt,
@@ -2034,7 +2069,8 @@ export class GroundsService {
     const screened = screen(raw, leadSaid);
     if (screened.dropped.length) {
       this.logger.warn(
-        `Dropped ${screened.dropped.length} sentence(s) with an invented name in the context chat for ground ${ground.id}.`,
+        `Context chat on ${ground.id} dropped ${screened.dropped.length} sentence(s): `
+          + screened.hits.map((h) => `${h.check} (${h.offending.join(', ')}) in ${JSON.stringify(h.sentence)}`).join(' | '),
       );
     }
     const reply = screened.text || ASK_AGAIN;
@@ -2073,6 +2109,34 @@ export class GroundsService {
         if (heard) proposal = proposalFrom(openGap, heard, await this.partiesForMatching(groundId));
       } catch {
         /* no proposal; the conversation carries on and the lead can use the form */
+      }
+
+      /*
+       * AND A TARGET FOR A NAMED PERSON IS HEARD WHATEVER QUESTION WAS ON THE TABLE.
+       *
+       * Only `gaps[0]` was ever extracted, so everything the lead said that was not an answer to
+       * the one open question fell on the floor. Live: "give her 3,000 units by December" was read
+       * by the timeline extractor, came back as "I will set this to run for 90 days", and the
+       * target for Amina was never heard by anything.
+       *
+       * It WINS over the open gap's own reading when both fire. A sentence naming a person and a
+       * number is about that person - reading it as how long the check-in runs is the failure that
+       * was observed, not a tie to be broken gently.
+       */
+      if (openGap !== 'objectives') {
+        try {
+          const alsoHeard = await this.anthropic.extract<Heard>(
+            WHO_AND_WHAT_THEY_EXPECT,
+            asContextThenTheSentence(history, lastFromLead),
+            extractionToolFor('objectives'),
+          );
+          if (alsoHeard) {
+            const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId));
+            if (forSomebody.kind === 'expectation') proposal = forSomebody;
+          }
+        } catch {
+          /* the open gap's proposal, or none, stands */
+        }
       }
     }
 
@@ -2118,7 +2182,14 @@ export class GroundsService {
   async applyContextProposal(
     groundId: string,
     requestingUserId: string,
-    dto: { said: string },
+    /*
+     * `history` is context for WHO, never for what. "Yes, give her 3,000 units by December" cannot
+     * be resolved from one sentence: the extractor returned "her" and the matcher found nobody on
+     * the check-in by that name, so a target the lead had just been asked for was silently lost.
+     * The change is still re-derived from their own words here - the client sends sentences, never
+     * a participantId or a value - so the guarantee that made this a confirmation is unchanged.
+     */
+    dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
   ) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2176,7 +2247,30 @@ export class GroundsService {
       [{ role: 'user' as const, content: dto.said }],
       extractionToolFor(openGap),
     );
-    const proposal = proposalFrom(openGap, heard ?? {}, await this.partiesForMatching(groundId));
+    const parties = await this.partiesForMatching(groundId);
+    let proposal = proposalFrom(openGap, heard ?? {}, parties);
+
+    /*
+     * AND THE SAME SECOND READING THE CHAT DOES, BECAUSE THIS IS WHERE THE YES LANDS.
+     *
+     * The chat can now hear "give her 3,000 units by December" whatever question was open. If this
+     * half still only read `gaps[0]`, the lead would be shown that proposal, say yes, and be told
+     * there was nothing in what they said - or worse, have the length of the check-in changed
+     * instead. The two halves have to read the same sentence the same way.
+     */
+    if (openGap !== 'objectives') {
+      const alsoHeard = await this.anthropic
+        .extract<Heard>(
+          WHO_AND_WHAT_THEY_EXPECT,
+          asContextThenTheSentence(dto.history, dto.said),
+          extractionToolFor('objectives'),
+        )
+        .catch(() => null);
+      if (alsoHeard) {
+        const forSomebody = proposalFrom('objectives', alsoHeard, parties);
+        if (forSomebody.kind === 'expectation') proposal = forSomebody;
+      }
+    }
     if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
 
     /**
@@ -2779,7 +2873,7 @@ export class GroundsService {
         inviteToken: undefined,
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
-        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again — it uses the same link.`,
+        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
       };
     }
 
@@ -4945,5 +5039,5 @@ function diplomaticObservation(raw: string): string {
   if (!raw.trim()) return '';
   // Strip any period tags from the three-period rule bookkeeping
   const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
-  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as your record builds.`;
+  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as the record builds.`;
 }

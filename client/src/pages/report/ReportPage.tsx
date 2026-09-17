@@ -939,7 +939,7 @@ export function ReportBody({
           /* Not decoration: without it the sentence above is indistinguishable from a page that
              has given up, which is what sends somebody looking for the reload button. */
           <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-            Checking again every few seconds — this page will show it the moment it is there.
+            Checking again every few seconds - this page will show it the moment it is there.
           </div>
         )}
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
@@ -1092,7 +1092,7 @@ export function ReportBody({
           <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--gw-sub)' }}>
             {restsOn.documents.map(d => (
               <li key={d.fileName} style={{ marginBottom: 3 }}>
-                <span style={{ color: 'var(--gw-text)' }}>{d.fileName}</span> — {d.whose}
+                <span style={{ color: 'var(--gw-text)' }}>{d.fileName}</span> - {d.whose}
                 {d.read ? ', and it was read' : '. Nothing has read it yet'}
               </li>
             ))}
@@ -1606,7 +1606,7 @@ export function ReportBody({
               ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix that specific claim. '
               : ''}
             {myLatestCompletedSession != null
-              ? 'For anything else you said, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
+              ? 'For anything else you said, revisit your last session below. It opens a short follow-up that corrects or adds to the record. Your original answers are kept as they were, and the update flows into the next report.'
               : 'To correct something you said, reopen a session you have already finished here.'}
           </div>
           {myLatestCompletedSession != null && (

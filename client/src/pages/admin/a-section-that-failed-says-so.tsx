@@ -27,7 +27,7 @@ export function SectionFailed({ what, error, retry }: { what: string; error: unk
       padding: '12px 14px', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5,
       display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
     }}>
-      <span>{what} did not load — {because}.</span>
+      <span>{what} did not load - {because}.</span>
       {retry && (
         <button onClick={retry} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
           Try again

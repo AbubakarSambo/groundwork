@@ -94,8 +94,13 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     until: 'what is being decided, who is in the room for it, and the date it has to be made by',
   },
   OKR_ALIGNMENT: {
-    ask: 'What period are you setting goals for, and who is setting them with you?',
-    until: 'the period, who is involved, and what the goals are meant to achieve',
+    /*
+     * THE GOAL FIRST, THEN THE PEOPLE. This asked for the period first, which is the least
+     * interesting thing about somebody's quarter and reads like a form opening on a date field.
+     * Her shape: what are you trying to hit, and who is being pulled in to get there.
+     */
+    ask: 'What are you trying to hit this period, and who is being pulled in to get there?',
+    until: 'what the goals are, who is involved, and the period they run over',
   },
   WORKPLAN_BUDGET: {
     ask: 'What is the plan for, and what resources do you actually have?',

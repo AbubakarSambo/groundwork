@@ -14,7 +14,7 @@ import { Adder, Choose } from './OpsForm'
  * tables and holding the join in your head.
  */
 
-const money = (v: string | null) => (v === null ? '—' : `$${Number(v).toLocaleString()}`)
+const money = (v: string | null) => (v === null ? ' - ' : `$${Number(v).toLocaleString()}`)
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -241,7 +241,7 @@ export default function OpsCompanyPage() {
             return (
               <div key={u.id} style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 14, margin: 0 }}>
-                  <strong>{u.title}</strong> — {readEnum(u.productReadiness)}
+                  <strong>{u.title}</strong> - {readEnum(u.productReadiness)}
                 </p>
                 {u.expectedWorkflow && (
                   <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '3px 0 0' }}>
@@ -328,7 +328,7 @@ export default function OpsCompanyPage() {
                 </span>
                 <span style={{ flex: 1 }}>
                   {readEnum(a.kind)}
-                  {a.note && <span style={{ color: 'var(--gw-sub)' }}> — {a.note}</span>}
+                  {a.note && <span style={{ color: 'var(--gw-sub)' }}> - {a.note}</span>}
                 </span>
                 <span style={{ color: 'var(--gw-sub)', flex: 'none' }}>{a.by ?? 'the system'}</span>
               </li>

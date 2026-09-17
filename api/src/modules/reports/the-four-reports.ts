@@ -469,13 +469,16 @@ export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
   howMuchYouGaveIt: 'How much you gave this one',
 
   /* B - everybody's half, one sitting. */
-  againstWhatGoodLooksLike: 'Against what good looks like',
+  /* Was "Against what good looks like", which is the product describing its own structure. The
+     heading names what is under it: the objective, and what each person said good looks like. */
+  againstWhatGoodLooksLike: 'What everybody said good looks like',
   whereThingsStand: 'Where things stand',
   whatPeopleSaid: 'What people said this session',
   thePictureFromEverybody: 'The picture from everybody',
   notRaisedAgain: 'Not raised again',
   theConversationWorthHaving: 'The conversation worth having now',
-  whatThisRestsOn: 'What this rests on',
+  /* Was "What this rests on". Where the report got what it knows, said as that. */
+  whatThisRestsOn: 'What this is built from',
 };
 
 export const THE_ORDER: Record<Cell, string[]> = {

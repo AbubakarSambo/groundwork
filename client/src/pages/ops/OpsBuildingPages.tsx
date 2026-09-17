@@ -214,7 +214,7 @@ export function OpsReadinessPage() {
         )
       },
     },
-    { head: 'Next', cell: (u) => u.nextAction ?? '—' },
+    { head: 'Next', cell: (u) => u.nextAction ?? ' - ' },
     {
       head: 'What would fix it',
       /*
@@ -286,7 +286,7 @@ function workItemColumns(kind: 'tech' | 'ux'): Column<OpsWorkItem>[] {
     { head: kind === 'tech' ? 'Item' : 'Issue', cell: (i) => <strong>{i.title}</strong> },
     {
       head: kind === 'tech' ? 'Kind' : 'Flow',
-      cell: (i) => (kind === 'tech' ? i.itemType ?? '—' : i.affectedFlow ?? '—'),
+      cell: (i) => (kind === 'tech' ? i.itemType ?? ' - ' : i.affectedFlow ?? ' - '),
     },
     { head: 'Severity', cell: (i) => i.severity },
     {
@@ -304,7 +304,7 @@ function workItemColumns(kind: 'tech' | 'ux'): Column<OpsWorkItem>[] {
       ),
     },
     ...(kind === 'tech'
-      ? [{ head: 'Blocked on', cell: (i: OpsWorkItem) => i.blockerReason ?? '—' }]
+      ? [{ head: 'Blocked on', cell: (i: OpsWorkItem) => i.blockerReason ?? ' - ' }]
       : []),
     { head: 'Due', cell: (i) => <DueDate value={i.targetDate} /> },
   ]

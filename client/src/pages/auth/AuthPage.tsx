@@ -407,7 +407,7 @@ export function AuthPage() {
               )}
               {sessionExpired && !error && (
                 <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
-                  You were signed out because you had been away a while. Sign in and we will take you back to where you were — nothing you wrote has been lost.
+                  You were signed out because you had been away a while. Sign in and we will take you back to where you were - nothing you wrote has been lost.
                 </div>
               )}
               {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
@@ -443,7 +443,7 @@ export function AuthPage() {
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
               <TextAction onClick={() => { clearNotices(); setView('forgot') }}>Forgot your password?</TextAction>
               <br />
-              <TextAction strong onClick={() => { clearNotices(); setView('create') }}>New here? Create an account</TextAction>
+              <TextAction strong onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</TextAction>
             </div>
           </>
         )}

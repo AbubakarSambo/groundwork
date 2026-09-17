@@ -87,7 +87,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
           ? `Terms ${request.termsVersion} accepted ${whenItWas(request.acceptedTermsAt, 'day')}.${request.termsOutOfDate ? ' - terms have changed since.' : ''}`
           : 'Asked before the terms existed; no version accepted.'}
         {request.decidedAt && (
-          <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {whenItWas(request.decidedAt, 'day')}{request.note ? ` — ${request.note}` : ''}.</>
+          <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {whenItWas(request.decidedAt, 'day')}{request.note ? ` - ${request.note}` : ''}.</>
         )}
       </div>
 

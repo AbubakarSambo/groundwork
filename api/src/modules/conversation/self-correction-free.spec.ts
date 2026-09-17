@@ -49,6 +49,9 @@ function makeService(checkIn: any, canStartSession: jest.Mock) {
       findUnique: jest.fn(async () => ({ status: 'ACTIVE', organizationId: 'org1', isFreeGround: false })),
       updateMany: jest.fn(async () => ({ count: 1 })),
     },
+    /* The opener reads this person's own record lines, so the reader knows what they have already
+       told us and cannot ask for it again. Nothing to do with billing; the table has to answer. */
+    recordEntry: { findMany: jest.fn(async () => []) },
     conversationTurn: {
       findFirst: jest.fn(async () => null), // no existing AI turn, no round already started
       findMany: jest.fn(async () => []),

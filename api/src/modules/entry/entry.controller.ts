@@ -1,7 +1,7 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { Public, CurrentUser, CurrentUserData } from '../../common';
+import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
 import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
@@ -51,6 +51,34 @@ export class EntryChatDto {
   @IsString({ each: true })
   @ArrayMaxSize(40)
   peopleNamed?: string[];
+
+  /**
+   * WHAT THEY SAID IN SETUP, WHICH THE CHECK-IN TREATED AS SOMEBODY ELSE'S WORDS.
+   *
+   * The invention gate reads the user turns of the CURRENT phase, and the check-in starts a new
+   * one. So everything typed during setup - the place, the deadline, the people - became a name
+   * nobody said the moment the check-in began, and sentences carrying it were deleted mid-reply:
+   *
+   *   dropped a sentence: a name nobody said (Kano) in "Twice a month for the Kano distributor."
+   *   dropped a sentence: a name nobody said (Amina) in "And what about Amina's part in this?"
+   *
+   * Both were in her first message. This carries those words across the phase boundary so her own
+   * vocabulary is recognised as hers.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(40)
+  alreadySaid?: string[];
+}
+
+/**
+ * WHO IS ASKING, IF ANYBODY. `@OptionalAuth()` fills `req.user` when a session exists and leaves it
+ * undefined when it does not, so this reads as "a stranger" without a branch at every call site.
+ */
+function whoIsAsking(req: any): { userId: string; organizationId: string } | null {
+  const u = req?.user;
+  return u?.id && u?.organizationId ? { userId: u.id, organizationId: u.organizationId } : null;
 }
 
 class EntryOnboardDto {
@@ -80,6 +108,21 @@ class EntryOnboardDto {
   @IsOptional()
   @IsString()
   moment?: string;
+
+  /**
+   * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
+   *
+   * The screen holds it - it is what the summary card renders - and setup was throwing it away
+   * every turn and re-reading the whole situation off the transcript. See
+   * what-setup-already-knows-travels-with-it for what that cost live.
+   *
+   * Not validated field by field, deliberately: it is this route's OWN previous answer coming
+   * back, every field is optional, and a shape that does not match is rendered as text in a prompt
+   * and nothing else. What it must not be is large, so it is capped.
+   */
+  @IsOptional()
+  @IsObject()
+  soFar?: Record<string, unknown>;
 }
 
 class EntryOpenerDto {
@@ -377,11 +420,17 @@ export class EntryController {
     return this.service.patchDraft(body.draftToken, body.payload);
   }
 
+  /*
+   * PUBLIC, AND STILL READS A SESSION IF THERE IS ONE. A lead with four check-ins already running
+   * met a setup conversation that knew nothing about them, every time, because this route took no
+   * user. See setup-is-not-a-stranger-to-somebody-who-is-signed-in. It stays open to strangers.
+   */
   @Public()
+  @OptionalAuth()
   @Post('onboard')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  async onboard(@Body() dto: EntryOnboardDto) {
-    return this.service.onboard(dto.messages, dto.scenario, dto.moment);
+  async onboard(@Body() dto: EntryOnboardDto, @Req() req: any) {
+    return this.service.onboard(dto.messages, dto.scenario, dto.moment, undefined, dto.soFar as any, whoIsAsking(req));
   }
 
   /*
@@ -390,13 +439,14 @@ export class EntryController {
    * carries exactly what the plain route would have returned.
    */
   @Public()
+  @OptionalAuth()
   @Post('onboard/stream')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response) {
+  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response, @Req() req: any) {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }));
+      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }), dto.soFar as any, whoIsAsking(req));
       write({ type: 'done', ...out });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
@@ -414,7 +464,7 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed);
+      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
       write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
@@ -434,7 +484,9 @@ export class EntryController {
       r.includes('[session complete]') ||
       r.includes('your account is now on record') ||
       r.includes('your record is here') ||
+      r.includes('the record is here') ||
       r.includes('your record is saved as is') ||
+      r.includes('the record is saved as is') ||
       r.includes('cannot be verified from this account') ||
       r.includes('your contribution is saved');
         return sessionComplete;
@@ -463,7 +515,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed);
+    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *

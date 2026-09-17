@@ -79,7 +79,7 @@ export function whatWasInForce(
     null,
   );
   if (earliest !== null && day < earliest) {
-    return { none: `Nothing was in force then — this agreement starts on ${earliest.toISOString().slice(0, 10)}.` };
+    return { none: `Nothing was in force then - this agreement starts on ${earliest.toISOString().slice(0, 10)}.` };
   }
   return { none: 'No version of this agreement covers that date.' };
 }
@@ -99,7 +99,7 @@ export function whyThisCannotStart(existing: AgreementVersion[], from: Date): st
   const day = at(from);
 
   if (day <= at(current.inForceFrom)) {
-    return `Version ${current.number} has been in force since ${current.inForceFrom.toISOString().slice(0, 10)}. A new version starts after that, not before it — the old one keeps standing over the period it covered.`;
+    return `Version ${current.number} has been in force since ${current.inForceFrom.toISOString().slice(0, 10)}. A new version starts after that, not before it - the old one keeps standing over the period it covered.`;
   }
   return null;
 }

@@ -280,8 +280,8 @@ export function whereYouAreAgainstWhatYouNamed(
               /* Said in a check-in but never set as the yardstick. Naming that difference is the
                  useful thing: the words are right there, they are simply not what anybody is being
                  read against, and one person can change it in a minute. */
-              ? 'The person running this has said what success looks like in their own check-in - it is in the list below - but has not set it as the standard, so nothing is being read against it. They can state it on the Setup tab.'
-              : 'No standard is set. The person running this has not said what success looks like, so nobody is being read against anything yet.'
+              ? 'The person running this said what success looks like in their own check-in, and it is in the list below. They have not set it as the standard, so nothing is being measured against it yet. They can set it on the Setup tab.'
+              : 'No standard is set. The person running this has not said what success looks like, so nobody is being measured against anything yet.'
             : null,
   };
 }

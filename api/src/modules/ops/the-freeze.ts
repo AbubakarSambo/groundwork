@@ -75,7 +75,7 @@ export function whyThisNeedsAnException(
   if (PERMITTED_WHILE_FROZEN.includes(proposed.serves)) return null;
 
   if (proposed.serves === 'MOAT') {
-    return `${quoted} The moat is frozen with everything else — it is phase four, scaling and moat as we scale. Somebody has to agree this one cannot wait.`;
+    return `${quoted} The moat is frozen with everything else - it is phase four, scaling and moat as we scale. Somebody has to agree this one cannot wait.`;
   }
 
   return `${quoted} This is an addition, and September is for making what exists work. Somebody has to agree it is worth breaking that for.`;

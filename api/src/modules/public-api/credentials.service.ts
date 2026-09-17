@@ -145,7 +145,7 @@ export class CredentialsService {
       ...issued,
       replaces: clientId,
       says:
-        'This is the same integration under a new secret — it speaks for the same system, so your '
+        'This is the same integration under a new secret - it speaks for the same system, so your '
         + 'roster stays one roster. Put it live, then revoke the old one. The old one keeps working '
         + 'until you do.',
     };

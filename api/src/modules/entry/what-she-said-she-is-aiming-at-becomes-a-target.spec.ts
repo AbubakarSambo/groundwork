@@ -23,14 +23,27 @@ describe('what she said she is aiming at becomes a target', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the entry commit runs the aims and targets extraction, not only the record', () => {
-    expect(src).toMatch(/extractRecordEntries\(checkIn\.id, participant\.id\)/);
-    expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id\)/);
+/*
+     * SETUP IS NOT THE LEAD'S CHECK-IN ANY MORE. Decided by Hafsah, 15 September 2026: "the setup
+     * does not count as a leads first checkin. lead has to always do a first checkin."
+     *
+     * So commit no longer copies the setup transcript onto session 1, no longer marks it complete,
+     * and no longer extracts record entries from it - those answers are about the SHAPE of the
+     * check-in and were being filed as an account of the work.
+     *
+     * The targets still come from setup, because they are what she said the check-in is FOR rather
+     * than her account of it. They are read from the transcript passed in, not from the session.
+     */
+    expect(src).not.toMatch(/extractRecordEntries\(checkIn\.id, participant\.id\)/);
+    expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id, dto\.history\)/);
   });
 
   it('and waits for it, so the report and the board are not built before the targets exist', () => {
-    const commit = src.slice(src.indexOf('extractRecordEntries(checkIn.id'));
-    const call = commit.slice(0, commit.indexOf('extractExpectations') + 40);
-    expect(call).toMatch(/await this\.conversation\s*\.extractExpectations/s);
+    /* Look back from the call itself: there is an earlier `await this.conversation` on this path
+       (ensureNextSession), and the first match is not the one this spec is about. */
+    const at = src.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/await this\.conversation/);
   });
 
   it('and a failure there never loses the session', () => {

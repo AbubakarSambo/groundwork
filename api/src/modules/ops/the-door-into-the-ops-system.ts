@@ -97,7 +97,7 @@ export class OpsDoorService {
     const user = await this.prisma.user.findUnique({ where: { email: address } });
     if (!user) {
       throw new NotFoundException(
-        `No Groundwork account uses ${address}. They have to sign up and verify the address first — this connects an account, it does not create one.`,
+        `No Groundwork account uses ${address}. They have to sign up and verify the address first - this connects an account, it does not create one.`,
       );
     }
 

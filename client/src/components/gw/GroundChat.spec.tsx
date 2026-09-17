@@ -141,7 +141,7 @@ describe('the bottom of the scroll', () => {
     // The product is about a shared record. A private box inside it has to say
     // which it is, or somebody will think they have checked in.
     renderChat()
-    await waitFor(() => expect(screen.getByText(/not part of your record/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/not part of the record/)).toBeTruthy())
   })
 })
 

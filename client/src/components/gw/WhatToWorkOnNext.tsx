@@ -15,6 +15,8 @@
  * teaches somebody the product has nothing to say to them.
  */
 export interface CoachingNote {
+  /** What is true of this reader and nobody else. Empty is normal. See what-your-own-record-says.ts. */
+  aboutYou?: string[]
   showingUp: string | null
   whyItMatters: string
   /** One or two things to do. A list, because two actions run together read as one sentence. */
@@ -61,6 +63,28 @@ export function WhatToWorkOnNext({ note, guide }: {
 
       {note && (
         <div style={{ display: 'grid', gap: 12 }}>
+          {/*
+            WHAT IS TRUE OF YOU AND NOBODY ELSE, FIRST.
+
+            The page used to open on the role map, which is about a KIND of person: "this kind of
+            sales and expansion work often faces unfair reading, which you should consider before
+            making assumptions about your current standing." Read off a real report, and true of
+            every salesperson alive.
+
+            These lines carry a figure or a thing off this reader's own record, so none of them
+            could be said to anybody else. First, because a reader who opens on something that is
+            plainly about them reads the rest as being about them too.
+          */}
+          {note.aboutYou && note.aboutYou.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Where you stand</div>
+              {note.aboutYou.map((line, i) => (
+                <p key={i} style={{ margin: i ? '4px 0 0' : 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
           {note.showingUp && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What keeps showing up</div>

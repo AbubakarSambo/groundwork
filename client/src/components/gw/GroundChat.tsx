@@ -368,7 +368,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
   const add = useMutation({
     mutationFn: (t: string) => groundsApi.addMyNote(groundId, t),
     onSuccess: () => { setText(''); qc.invalidateQueries({ queryKey: ['my-notes', groundId] }) },
-    onError: () => toast.error('The note did not save. It is still in the box — try again.'),
+    onError: () => toast.error('The note did not save. It is still in the box - try again.'),
   })
 
   const remove = useMutation({
@@ -390,7 +390,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
       qc.invalidateQueries({ queryKey: ['docs', groundId] })
       toast.success('Added. Your next check-in can draw on it.')
     },
-    onError: () => toast.error('That file did not upload. Nothing was added to the record — try again.'),
+    onError: () => toast.error('That file did not upload. Nothing was added to the record - try again.'),
   })
 
   // Notes no session has raised yet. Once one has been picked up it belongs to the
@@ -484,7 +484,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               {'. '}
             </>
           )}
-          Notes are yours alone. They are not part of your record, and the next check-in will ask you about them.
+          Notes are yours alone. They are not part of the record, and the next check-in will ask you about them.
         </div>
         <label
           title="Attach a document for your next check-in"

@@ -38,14 +38,21 @@ describe('a session finished in the entry chat', () => {
     }
   });
 
-  it('after the record it will be synthesised from has been written', () => {
-    /* Fire-and-forget extraction would hand the synthesis an empty record - the synthesis runs
-       inside the listener, on this same event. */
-    const extraction = service.indexOf('extractRecordEntries(checkIn.id, participant.id)');
+  it('after the targets it will be read against have been written', () => {
+    /*
+     * Fire-and-forget extraction would hand the synthesis an empty record - the synthesis runs
+     * inside the listener, on this same event.
+     *
+     * This used to name `extractRecordEntries`, which commit no longer calls: setup stopped
+     * counting as the lead's own check-in on 15 September 2026, so there is no account to extract
+     * here and she gives one in her own session 1. What commit still writes, and still has to write
+     * before the event, is the TARGETS - what she said the check-in is for.
+     */
+    const extraction = service.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
     const emit = service.indexOf('GroundworkEvents.CHECK_IN_COMPLETED');
     expect(extraction).toBeGreaterThan(-1);
-    expect(extraction).toBeLessThan(emit);
-    expect(service.slice(extraction - 120, extraction)).toContain('await this.conversation');
+    expect(service.slice(Math.max(0, extraction - 400), extraction)).toContain('await this.conversation');
+    expect(emit).toBeGreaterThan(-1);
   });
 
   it('and a round is only called closed once everybody is on the check-in', () => {

@@ -175,7 +175,7 @@ export class AlignmentController {
   }
 
   @Get('terms/:termId/may-be-used-to')
-  @ApiOperation({ summary: 'Whether a term may be shown, used to ask, or used to judge — and why not, where not' })
+  @ApiOperation({ summary: 'Whether a term may be shown, used to ask, or used to judge - and why not, where not' })
   mayBeUsed(
     @CurrentUser('organizationId') organizationId: string,
     @Param('groundId') groundId: string,
@@ -199,7 +199,7 @@ export class AlignmentController {
   }
 
   @Get('versions/:versionId/standing')
-  @ApiOperation({ summary: 'Where a version stands today — discussed, agreed, signed, in force — and whether anything may be settled against it' })
+  @ApiOperation({ summary: 'Where a version stands today - discussed, agreed, signed, in force - and whether anything may be settled against it' })
   standing(
     @CurrentUser('organizationId') organizationId: string,
     @Param('groundId') groundId: string,
@@ -307,7 +307,7 @@ export class AlignmentController {
   }
 
   @Get('assertions/waiting-on/:who')
-  @ApiOperation({ summary: 'What to ask somebody, with the claim not in it — this read cannot return a claim at all' })
+  @ApiOperation({ summary: 'What to ask somebody, with the claim not in it - this read cannot return a claim at all' })
   waitingOn(
     @CurrentUser('organizationId') organizationId: string,
     @Param('groundId') groundId: string,

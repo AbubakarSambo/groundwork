@@ -70,7 +70,7 @@ export class WhatEachSideUnderstands {
     const onFile = version.terms;
     const said = await this.anthropic.extract<{ readings?: unknown }>(
       `${WHAT_THEY_SAY_IT_IS_PROMPT}\n\nTHE TERMS ALREADY READ OUT OF THE DOCUMENT:\n`
-        + onFile.map((t) => `- id ${t.id}${t.clause ? ` (${t.clause})` : ''}: ${t.says} — read as: ${t.reads}`).join('\n'),
+        + onFile.map((t) => `- id ${t.id}${t.clause ? ` (${t.clause})` : ''}: ${t.says} - read as: ${t.reads}`).join('\n'),
       [{
         role: 'user',
         content: turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n'),

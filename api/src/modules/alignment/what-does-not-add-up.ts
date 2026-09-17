@@ -122,7 +122,7 @@ export function howItReads(d: Difference): string {
   return (
     `For ${said(d.period)}, ${d.between} do not come to the same amount: ${amount} apart, and ${which}. `
     + 'That difference has not been explained yet. It is very often the periods being cut differently, '
-    + 'a different basis, or something out of scope — the people who know are the ones being asked.'
+    + 'a different basis, or something out of scope - the people who know are the ones being asked.'
   );
 }
 
@@ -132,4 +132,4 @@ export const A_DIFFERENCE_IS_NOT_A_FINDING =
   + 'concealed, under-reported or owed. Never say a figure is wrong; two figures disagreeing means '
   + 'the difference exists, not that either is false. Never attribute a difference to anybody\'s '
   + 'conduct. Say what the two figures are, what they are apart by, and what has not been explained '
-  + 'yet — and if somebody has already explained part of it, say that first.';
+  + 'yet - and if somebody has already explained part of it, say that first.';

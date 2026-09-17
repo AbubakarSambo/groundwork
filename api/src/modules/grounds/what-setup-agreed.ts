@@ -80,9 +80,34 @@ function theExpectationItself(text: string): string {
  * nothing. It matches the expectation with the lead's framing removed, which is what people
  * actually type.
  */
+/**
+ * AND A DESCRIPTION OF A PERSON IS NOT AN EXPECTATION OF THEM, WHICH THE LENGTH TEST CANNOT SEE.
+ *
+ * Run live the moment the context chat was allowed to hear a target whatever question was open.
+ * The lead's first sentence was "Amina is struggling with the wholesale accounts and I have not
+ * told her a number yet", and the proposal came back:
+ *
+ *   "I will record that as what you expect of Amina Yusuf: 'is struggling with the wholesale
+ *    accounts'."
+ *
+ * Six words, checkable-looking, and it passed. It is a judgement about somebody about to be filed
+ * as a standard they will then be measured against - the exact thing the private note exists for
+ * and the exact thing the rule in the prompt refuses. The instruction to the extractor said not to
+ * return one and it returned one anyway, which is the usual result.
+ *
+ * An expectation says what somebody is to DO or REACH. These say what somebody IS.
+ */
+export function readsAsAJudgement(text: string): boolean {
+  const t = ` ${(text ?? '').toLowerCase().trim()} `;
+  return /\b(is|are|seems?|appears?|has been|have been|keeps|kept|was|were)\s+(really\s+|quite\s+|very\s+|a bit\s+|not\s+|never\s+)*(struggling|slipping|failing|underperforming|difficult|the problem|a problem|weak|lazy|slow|behind|disengaged|checked out|not (coping|delivering|performing|pulling)|doing (well|badly|fine|poorly)|great|excellent|strong|unreliable|reliable)\b/.test(t)
+    || /\b(i (am )?(worried|concerned) about|my concern (with|about)|the issue with|the problem with|not a good fit|attitude problem)\b/.test(t);
+}
+
 export function worthRecording(text: string): boolean {
   const t = (text ?? '').trim();
   if (t.length < 15) return false;
+  /* What somebody IS never becomes what somebody is held to. See readsAsAJudgement. */
+  if (readsAsAJudgement(t)) return false;
 
   const itself = theExpectationItself(t);
   if (TOO_THIN.some((p) => itself === p)) return false;

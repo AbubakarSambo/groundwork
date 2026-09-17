@@ -24,7 +24,7 @@ export const WHERE_COMPANIES_COME_FROM = [
   { key: 'OUTBOUND', label: 'We went to them' },
   { key: 'EVENT', label: 'An event' },
   { key: 'EXISTING_CLIENT', label: 'Someone we already work with' },
-  { key: 'OTHER', label: 'Something else — say what' },
+  { key: 'OTHER', label: 'Something else - say what' },
 ] as const;
 
 export type WhereFrom = (typeof WHERE_COMPANIES_COME_FROM)[number]['key'];

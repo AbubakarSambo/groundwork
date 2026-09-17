@@ -33,6 +33,14 @@ import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of
  * because naming them to the person would do harm.
  */
 export interface WhatToWorkOnNext {
+  /**
+   * THE PART THAT IS ABOUT YOU AND NOBODY ELSE, AND IT IS FIRST ON PURPOSE.
+   *
+   * Everything else here is true of a role or a stage. This is true of one person's record, and a
+   * reader who sees it first reads the rest as being about them too. Empty where there is nothing
+   * of theirs to say, which is a real state and better than a category sentence filling the space.
+   */
+  aboutYou: string[];
   /** What keeps showing up, in plain words, with what makes it a recurrence. Null when none. */
   showingUp: string | null;
   /** Why it matters for somebody in this role at this point. */
@@ -108,6 +116,18 @@ export interface CoachingInputs {
   holdingUp: Dependency[];
   saidSomethingSpecific: boolean;
   anythingDocumented: boolean;
+  /**
+   * WHAT THIS PERSON'S OWN RECORD SAYS, WHICH IS WHAT 4.4 WAS ABOUT.
+   *
+   * The note was built out of the role map and the blockers, and both are about a KIND of person.
+   * Read live, the first thing on it was "this kind of sales and expansion work often faces unfair
+   * reading, which you should consider before making assumptions about your current standing" -
+   * true of every salesperson alive, and deletable with nothing lost.
+   *
+   * These are sentences that could only have been written for this reader: a figure, a date, or a
+   * thing off their own lines. See what-your-own-record-says. Empty is normal and fine.
+   */
+  aboutYou?: string[];
 }
 
 const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
@@ -135,7 +155,7 @@ export function whichRoleMap(
   if (!map) {
     return {
       map: null,
-      why: 'What kind of work this is has not been read from your record yet, so this is about where you are rather than about the role.',
+      why: 'What kind of work this is has not been read from the record yet, so this is about where you are rather than about the role.',
     };
   }
   if ((confidence ?? 0) < MIN_COACHING_CONFIDENCE) {
@@ -233,6 +253,8 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
 }
 
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
+  /* First on the page and first here: the part that could only have been written for this reader. */
+  const aboutYou = i.aboutYou ?? [];
   const { map, why: whyNoRoleMap } = whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
   const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
@@ -310,6 +332,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   if (entry && recurring) {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
+      aboutYou,
       showingUp: `${entry.signal} Read across ${recurring.periodsObserved} sessions, not once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
@@ -337,6 +360,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   }
 
   return {
+    aboutYou,
     showingUp: null,
     whyItMatters: early
       ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`

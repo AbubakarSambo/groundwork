@@ -1,0 +1,126 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync, statSync } from 'fs'
+import { join } from 'path'
+
+/**
+ * "STOP MAKING IT FUCKING SOUND LIKE YODA."
+ *
+ * Her words, twice, about two different surfaces. The shape she is naming is consistent and it is
+ * checkable: a sentence that opens on a long subordinate clause, puts an abstract noun where a
+ * person should be, and leaves the point until the end.
+ *
+ *   "The things you named did not come with a date, a number or a name attached, so there is
+ *    nothing in them anybody could check later."
+ *   "Each person writes the two or three objectives they think matter most, before the room
+ *    converges on one version - and the plan under each one, where there is a plan: what is meant
+ *    to happen and who is responsible for which part."
+ *
+ * Both are now short sentences with the subject first.
+ *
+ * WHAT THIS IS AND IS NOT. It is a ratchet, not a grader. It cannot tell whether a line sounds
+ * human - that is Hafsah's ear and it always will be - so it counts the shapes that reliably
+ * accompany the fault and holds the number where the copy pass left it. A new line in this shape
+ * fails; the ones already here that read fine do not have to be rewritten to satisfy a regex.
+ *
+ * INSTRUCTIONS TO A MODEL ARE NOT COPY. prompt-library.ts and the extraction prompts are written
+ * for precision, nobody reads them, and holding them to this would trade accuracy for prettiness.
+ */
+const ROOTS = [join(__dirname, '..'), join(__dirname, '..', '..', '..', 'api', 'src')]
+
+/** Copy this pass deliberately leaves alone: model instructions, and her own words. */
+const NOT_COPY = ['prompt-library.ts', 'what-the-moat-is-made-of.ts']
+
+const blankComments = (src: string) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/^(\s*)\/\/.*$/gm, (_m, pre) => pre)
+
+function everyFile(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    if (name === 'node_modules' || name === 'dist') continue
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) everyFile(full, out)
+    else if ((full.endsWith('.ts') || full.endsWith('.tsx')) && !full.includes('.spec.')) out.push(full)
+  }
+  return out
+}
+
+const LEADS_WITH_A_CLAUSE = /^(when|where|while|because|since|if|once|after|before|although|though|unless|given that|as soon as|whenever|wherever)\b[^,.!?]{12,},/i
+const ABSTRACT_SUBJECT = /^(the (thing|things|work|way|part|point|answer|reason|question|account|record|difference|fact)\b|what [a-z]+ (did|said|was|is|are|were)\b|whether\b|the ones that\b)/i
+const POINT_BURIED = /^[^,.!?]{60,},/
+const NOMINALISED = /\b(the fact that|is what|which is what|it is (that|because)|there is nothing in (them|it)|is part of the)\b/i
+const INVERTED = /\b(and .{0,40}did not\b|, so (there is|nothing|somebody|nobody))/i
+const A_PROMPT = /\b(return (json|only|nothing)|do not invent|schema|JSON only|Emit |one sentence and under|ask what|Write one for every|use GROUND_STATE|candidate leadership pattern)\b/i
+const SHOUTING = /\b[A-Z]{4,}\b/g
+
+function score(text: string): number {
+  let points = 0
+  for (const sentence of text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+    const words = sentence.split(/\s+/).length
+    if (LEADS_WITH_A_CLAUSE.test(sentence)) points += 2
+    if (ABSTRACT_SUBJECT.test(sentence)) points += 2
+    if (POINT_BURIED.test(sentence)) points += 2
+    if (NOMINALISED.test(sentence)) points += 1
+    if (INVERTED.test(sentence)) points += 1
+    if (words >= 30) points += 2
+    else if (words >= 24) points += 1
+  }
+  return points
+}
+
+/** Prose a person could read, as opposed to an identifier, a path or an instruction to a model. */
+function proseIn(src: string): string[] {
+  const out: string[] = []
+  const strings = src.match(/'(?:[^'\\]|\\.){12,400}'|"(?:[^"\\]|\\.){12,400}"|`(?:[^`\\$]|\\.){12,400}`/g) ?? []
+  for (const raw of strings) {
+    const s = raw.slice(1, -1).trim()
+    if (!s.includes(' ') || s.split(/\s+/).length < 6) continue
+    if (/https?:\/\/|\.\/|[{}<>]|\.(ts|tsx|json|css)\b/.test(s)) continue
+    if (!/\b(the|a|you|your|it|this|that|is|are|was|to|of|and)\b/i.test(s)) continue
+    if (A_PROMPT.test(s)) continue
+    if ((s.match(SHOUTING) ?? []).length >= 2) continue
+    out.push(s)
+  }
+  return out
+}
+
+/**
+ * Where the copy pass of 16 September left it. It went DOWN from 96 and it does not go back up.
+ * Lowering this number is always welcome; raising it means a line was written in the shape above.
+ */
+const WHERE_THE_COPY_PASS_LEFT_IT = 60
+
+describe('copy does not sound like Yoda', () => {
+  it('no more lines in that shape than the copy pass left behind', () => {
+    const offenders: string[] = []
+    for (const root of ROOTS) {
+      let files: string[] = []
+      try { files = everyFile(root) } catch { continue }
+      for (const f of files) {
+        if (NOT_COPY.some((name) => f.endsWith(name))) continue
+        for (const line of proseIn(blankComments(readFileSync(f, 'utf8')))) {
+          if (score(line) >= 3) offenders.push(`${f.replace(/^.*\/(api|client|src)\//, '$1/')}  ${line.slice(0, 100)}`)
+        }
+      }
+    }
+    expect(
+      offenders.length,
+      `lines reading like Yoda went up to ${offenders.length}, from ${WHERE_THE_COPY_PASS_LEFT_IT}. The new ones are somewhere in:\n${offenders.slice(0, 40).join('\n')}`,
+    ).toBeLessThanOrEqual(WHERE_THE_COPY_PASS_LEFT_IT)
+  })
+
+  it('and the lines that started this are gone', () => {
+    const gone = [
+      'The things you named did not come with a date, a number or a name attached',
+      'When a thing stalls, what you tried next is part of the account',
+      'before the room converges on one version',
+      'Against what good looks like',
+      'Put something checkable on record',
+    ]
+    const all = ROOTS.flatMap((r) => { try { return everyFile(r) } catch { return [] } })
+      .filter((f) => !NOT_COPY.some((n) => f.endsWith(n)))
+      .map((f) => blankComments(readFileSync(f, 'utf8')))
+      .join('\n')
+    for (const line of gone) expect(all).not.toContain(line)
+  })
+})

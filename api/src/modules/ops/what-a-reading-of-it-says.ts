@@ -84,7 +84,7 @@ export function thePrompt(
     'WE ARE NOT:',
     ...statement.isNotIt.map((c, i) => `  ISNOT-${i}: ${c}`),
     '',
-    `THE PIECE — "${resource.title}":`,
+    `THE PIECE - "${resource.title}":`,
     resource.content.slice(0, 20000),
     '',
     'For each claim above, answer whether this piece is consistent with it.',

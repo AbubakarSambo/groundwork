@@ -439,7 +439,7 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect a number first.');
     if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
-    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into your record.')).sent;
+    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
     if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
     await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
     return { sent: true };

@@ -140,7 +140,7 @@ export function whatThisIsEvidenceOf(o: Obligation): string {
       return `${o.whose} says it was not done. Their own account, which is the only way this record can hold such a thing.`;
     case 'nothing has been shown either way':
       return (
-        'Nothing has been shown either way. That is not a claim that it was not done — very often it '
+        'Nothing has been shown either way. That is not a claim that it was not done - very often it '
         + 'means nobody was ever asked to evidence it, which is worth finding out before it is worth complaining about.'
       );
   }
@@ -152,7 +152,7 @@ export const NOTHING_SHOWN_IS_NOT_A_BREACH =
   + 'Never say an obligation was breached, missed, failed, ignored or not met. Where nothing has been '
   + 'shown, say that nothing has been shown and that nobody may have been asked. Where one side says '
   + 'it was done, say who said it. The only thing this record can hold as not done is the responsible '
-  + 'side saying so in their own words — and even then it is their account, not a finding.';
+  + 'side saying so in their own words - and even then it is their account, not a finding.';
 
 /** Whether an obligation may exist at all, given the standing of the term it comes from. */
 export function whyThisCannotBeAnObligation(termState: string): string | null {

@@ -64,7 +64,7 @@ export function whatIsMissingAcrossThem(objectives: AnObjective[]): string | nul
 
   return (
     'None of these records why its number is the number or how it is meant to move. '
-    + 'That is usually because they came from a planning tool that never asked — worth having to hand '
+    + 'That is usually because they came from a planning tool that never asked - worth having to hand '
     + 'before a check-in, where the first useful question about a target being missed is whether the '
     + 'reason for it still holds.'
   );

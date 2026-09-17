@@ -161,7 +161,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
   }
 
   const confirm = useMutation({
-    mutationFn: () => groundsApi.confirmContext(groundId, proposal!.said),
+    mutationFn: () => groundsApi.confirmContext(groundId, proposal!.said, history),
     onSuccess: res => {
       toast.success(res.say.replace(/^I will /, 'Done. ').replace(/\.$/, '.'))
       setProposal(null)

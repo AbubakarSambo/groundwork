@@ -179,7 +179,7 @@ describe('where you are against what you named', () => {
       stated: null, version: null, conditions: [], leadHasSaidIt: true,
       entries: [entry(RecordEntryType.SUCCESS_DEFINITION, 'Each of them at eight closed deals.', 'Tunde')],
     });
-    expect(said.saying).toContain('has said what success looks like in their own check-in');
+    expect(said.saying).toContain('said what success looks like in their own check-in');
     expect(said.saying).not.toContain('No standard is set');
     /* And where the lead genuinely has not, the original sentence stands. */
     const notSaid = whereYouAreAgainstWhatYouNamed({ ...base,

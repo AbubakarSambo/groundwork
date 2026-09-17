@@ -93,8 +93,16 @@ async function assemble(opts: AssembleOpts): Promise<{ system: string; history: 
   let capturedSystem = '';
   let capturedHistory: { role: string; content: string }[] = [];
   const anthropic: any = {
+    /*
+     * THE FIRST CALL IS THE ONE THIS FILE IS ABOUT, AND IT STOPPED BEING THE LAST ONE.
+     * A turn now ends with the reader (a-question-is-read-before-it-is-sent), a fresh call whose
+     * system prompt is deliberately only the transcript and the draft - it knows nothing about the
+     * engine. Capturing the last call captured the reader, so every assertion here read an empty
+     * engine prompt. What is assembled for the engine is the first call of the turn.
+     */
     respond: jest.fn(async (sys: string, hist: { role: string; content: string }[]) => {
-      capturedSystem = sys; capturedHistory = hist ?? []; return 'ok.';
+      if (!capturedSystem) { capturedSystem = sys; capturedHistory = hist ?? []; }
+      return 'ok.';
     }),
   };
   const prompts: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? ENGINE_RULES : null)) };

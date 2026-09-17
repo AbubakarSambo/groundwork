@@ -419,9 +419,11 @@ export const groundsApi = {
    * rather than a value, because the server re-derives the change from them - an endpoint that takes
    * `timelineDays` from the client is an edit endpoint wearing a confirmation's name.
    */
-  confirmContext: (groundId: string, said: string) =>
+  /* The conversation goes with it so a pronoun can be resolved on the server - "give her 3,000
+     units" names nobody on its own. Still only sentences: no id, no value. */
+  confirmContext: (groundId: string, said: string, history?: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
-      .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said })
+      .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said, history })
       .then(r => r.data),
 
 

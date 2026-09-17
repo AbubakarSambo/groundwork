@@ -59,10 +59,10 @@ const DRAFT_KEY = 'gw-new-ground-draft'
 
 export const SCENARIOS: ScenarioCard[] = [
   { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: SCENARIO_LABELS.NEW_HIRE,
-    desc: "Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it. Each check-in then tests what they are doing against that, so a mismatch surfaces in week two instead of at a review.",
+    desc: "Agree what the job is, and what doing it well looks like in the first 90 days. Make sure they have seen it. Each check-in compares what they are doing with that. A mismatch shows up in week two, not at a review.",
     moment: 'Help a new team member settle in, understand their role, and surface what they need.',
-    agreed: 'Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it.',
-    tests: 'Each check-in then tests what they are doing against that, so a mismatch surfaces in week two instead of at a review.',
+    agreed: 'Agree what the job is, and what doing it well looks like in the first 90 days. Make sure they have seen it.',
+    tests: 'Each check-in compares what they are doing with that. A mismatch shows up in week two, not at a review.',
     examples: [
       'You hired a sales lead. They start Monday.',
       'Someone starts Monday and you want to be sure you both mean the same thing by "doing well."',
@@ -70,10 +70,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'A new joiner and their manager each writing what success looks like in the first 90 days.',
     ] },
   { cardKey: 'ROLE_HANDOVER', scenario: 'ROLE_HANDOVER', label: SCENARIO_LABELS.ROLE_HANDOVER,
-    desc: "Agree what is actually outstanding, what is fragile, and which relationships come with the role rather than the person. Each check-in then tests what has really transferred against that, so the gaps are named while the person who can close them is still here.",
+    desc: "Both sides write down what is outstanding, what is fragile, and which relationships come with the role rather than the person. Each check-in asks what has really transferred. The gaps get named while the person who can close them is still here.",
     moment: 'Help someone take over a role without losing important context or work.',
-    agreed: 'Both sides write down what is outstanding, what is fragile, and which relationships come with the role.',
-    tests: 'Each check-in tests what has actually transferred against that, so the gaps are named while the person who can close them is still here.',
+    agreed: 'Both sides write down what is outstanding, what is fragile, and which relationships come with the role rather than the person.',
+    tests: 'Each check-in asks what has really transferred. The gaps get named while the person who can close them is still here.',
     examples: [
       'Someone is leaving a role in a month and their replacement starts next week.',
       'Someone is leaving in four weeks and their replacement has already started.',
@@ -81,10 +81,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'You want the incoming person to say what they would be guessing about, before they stop noticing.',
     ] },
   { cardKey: 'CONTRACT_REVIEW', scenario: 'CONTRACT_REVIEW', label: SCENARIO_LABELS.CONTRACT_REVIEW,
-    desc: "Before you sign, each side writes down its own expectations separately - what the numbers are actually of, who does what, and what happens if. Each check-in then tests the two versions against each other, so a difference surfaces while changing it is still free.",
+    desc: "Before you sign, each side writes down its own expectations: what the numbers are actually of, who does what, and what happens if. The check-ins put the two versions side by side. A difference turns up while changing it is still free.",
     moment: 'Make sure the people involved understand and are comfortable with an agreement.',
-    agreed: 'Each side says, on its own, what it expects to give and to get, and what the numbers are actually of.',
-    tests: 'The check-ins compare the two versions, so "twenty per cent of gross" and "twenty per cent of net" is found now rather than in a year.',
+    agreed: 'Each side writes down, on its own, what it expects to give and to get, and what the numbers are actually of.',
+    tests: 'The check-ins put the two versions side by side. "Twenty per cent of gross" and "twenty per cent of net" turn up now, not in a year.',
     examples: [
       'You are two weeks from signing and both sides think it is clear.',
       'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
@@ -92,10 +92,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'A partnership you are about to sign with somebody you would rather not fall out with.',
     ] },
   { cardKey: 'IMPLEMENTATION_TRACKING', scenario: 'IMPLEMENTATION_TRACKING', label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
-    desc: "A quiet monthly read on an agreement that is running. Each check-in tests what is actually happening against what was agreed, and most months it should say the numbers reconcile and nothing needs anybody - which is the point. When something does not add up, it stays on the record until somebody explains it.",
+    desc: "A quiet monthly read on an agreement that is running. Each check-in compares what is happening with what was agreed. Most months it should say the numbers reconcile and nothing needs anybody, which is the point. When something does not add up, it stays on the record until somebody explains it.",
     moment: 'Understand how an agreement is working in practice.',
     agreed: 'What each side reports, where the figures come from, and what falls due when.',
-    tests: 'Each month asks what changed, carries anything unexplained forward, and says plainly when a period is clear.',
+    tests: 'Each month asks what changed. Anything unexplained carries forward, and a clear period is called clear.',
     examples: [
       'The contract has been running for eight months and neither side has looked at it since.',
       'A revenue share where the reported figure and the filed figure have never been put side by side.',
@@ -103,10 +103,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'A relationship that is fine, where you would like to be able to prove it was fine.',
     ] },
   { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: SCENARIO_LABELS.NEW_PROJECT,
-    desc: "Agree scope, who owns what, and what \"done\" means before anyone starts. The check-ins then test the work against that, so a quiet change of scope or a task nobody owns shows up while there is still time to act.",
+    desc: "Agree scope, who owns what, and what \"done\" means before anyone starts. The check-ins compare the work with that. Scope that quietly changed, or a task nobody owns, turns up while you can still act.",
     moment: 'Get everyone clear on the work, their role, and what needs to happen.',
-    agreed: 'Agree scope, who owns what, and what "done" means before anyone starts.',
-    tests: 'The check-ins then test the work against that, so a quiet change of scope or a task nobody owns shows up while there is still time to act.',
+    agreed: 'Agree the scope, who owns what, and what done means, before anyone starts.',
+    tests: 'The check-ins compare the work with that. Scope that quietly changed, or a task nobody owns, turns up while you can still act.',
     examples: [
       'You are kicking off a six-month build with four people on it.',
       'Kicking off a build and you want scope and "done" agreed before anyone writes code.',
@@ -117,57 +117,57 @@ export const SCENARIOS: ScenarioCard[] = [
     desc: "Agree up front what the advisor will actually contribute, and on what terms. Each check-in across the year tests the work against that, so \"available\" cannot quietly replace contributing.",
     moment: 'Build a shared understanding of the role, expectations, and contribution.',
     agreed: 'Agree up front what the advisor will actually contribute, and on what terms.',
-    tests: 'Each check-in across the year tests the work against that, so "available" cannot quietly replace contributing.',
+    tests: 'Each check-in across the year asks what they did. Being available cannot quietly replace contributing.',
     examples: [
       'An advisor is joining for 1% and you want their year set out before they start.',
       'Bringing on an advisor for equity and you want it clear what they will actually do for it.',
       'A new board member joining, each side writing what they expect from the relationship.',
     ] },
   { cardKey: 'NEW_COFOUNDER', scenario: 'NEW_COFOUNDER', label: SCENARIO_LABELS.NEW_COFOUNDER,
-    desc: "Each of you sets down what you expect to build, own and contribute, before the assumptions harden. The check-ins over the next 90 days test what each of you is actually doing against that, so a drift in who carries what surfaces while it is still a conversation.",
+    desc: "Each of you writes down what you expect to build, own and contribute, before the assumptions harden. The check-ins over the next 90 days ask what each of you actually did. If who carries what starts to drift, you find out while it is still a conversation.",
     moment: 'Build a shared understanding of a new co-founder or partner relationship.',
-    agreed: 'Each of you sets down what you expect to build, own and contribute, before the assumptions harden.',
-    tests: 'The check-ins over the next 90 days test what each of you is actually doing against that, so a drift in who carries what surfaces while it is still a conversation.',
+    agreed: 'Each of you writes down what you expect to build, own and contribute, before the assumptions harden.',
+    tests: 'The check-ins over the next 90 days ask what each of you actually did. If who carries what starts to drift, you find out while it is still a conversation.',
     examples: [
       'You and your co-founder are splitting equity next week.',
       'You and a co-founder splitting equity and roles and want the assumptions said out loud first.',
       'A new equal partner joining the founding team.',
     ] },
   { cardKey: 'NEW_MANAGER', scenario: 'NEW_MANAGER', label: SCENARIO_LABELS.NEW_MANAGER,
-    desc: "Agree what they own, who they report to, and what success looks like in the first 90 days. Each check-in then tests what they are doing against what you handed over, so a gap in scope shows up in week three rather than month three.",
+    desc: "Agree what they own, who they report to, and what doing well looks like in the first 90 days. Each check-in compares what they are doing with what you handed over. A gap in scope shows up in week three, not month three.",
     moment: 'Help a new manager understand the team and how the work is going.',
-    agreed: 'Agree what they own, who they report to, and what success looks like in the first 90 days.',
-    tests: 'Each check-in then tests what they are doing against what you handed over, so a gap in scope shows up in week three rather than month three.',
+    agreed: 'Agree what they own, who they report to, and what doing well looks like in the first 90 days.',
+    tests: 'Each check-in compares what they are doing with what you handed over. A gap in scope shows up in week three, not month three.',
     examples: [
       'A new manager is taking over a team of eight, mid-project.',
       'An interim leader stepping into an existing team for six months.',
       'A new manager taking over mid-project and you want scope and authority clear.',
     ] },
   { cardKey: 'CONTRACT_RENEWAL', scenario: 'CONTRACT_RENEWAL', label: SCENARIO_LABELS.CONTRACT_RENEWAL,
-    desc: "Set out what the term was meant to deliver, from both sides. The check-ins across the renewal window test the real work against that, so you negotiate the next term from a record instead of from impressions.",
+    desc: "Both sides write down what the term was meant to deliver. The check-ins through the renewal window compare that with the real work. You negotiate the next term from a record, not from impressions.",
     moment: 'Understand how a working relationship is going before deciding what happens next.',
-    agreed: 'Set out what the term was meant to deliver, from both sides.',
-    tests: 'The check-ins across the renewal window test the real work against that, so you negotiate the next term from a record instead of from impressions.',
+    agreed: 'Both sides write down what the term was meant to deliver.',
+    tests: 'The check-ins through the renewal window compare that with the real work. You negotiate the next term from a record, not from impressions.',
     examples: [
       'An agency contract ends in six weeks and you are not sure what you got.',
       'A contractor\'s term is ending and you are deciding whether to renew.',
       'An agency engagement up for renewal and you want an honest read of what got delivered.',
     ] },
   { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: SCENARIO_LABELS.RECOGNITION,
-    desc: "The person sets out their case and the evidence behind it; you set out what the decision actually turns on. Over the month the check-ins test that evidence against that bar, so the answer rests on the record rather than on who asked most recently.",
+    desc: "The person sets out their case and the evidence for it. You set out what the decision actually turns on. Over the month the check-ins hold that evidence against that bar. The answer comes from the record, not from who asked most recently.",
     moment: "Understand someone's contribution and experience before making a recognition decision.",
-    agreed: 'The person sets out their case and the evidence behind it; you set out what the decision actually turns on.',
-    tests: 'Over the month the check-ins test that evidence against that bar, so the answer rests on the record rather than on who asked most recently.',
+    agreed: 'The person sets out their case and the evidence for it. You set out what the decision actually turns on.',
+    tests: 'Over the month the check-ins hold that evidence against that bar. The answer comes from the record, not from who asked most recently.',
     examples: [
       'Someone asked for a raise on Friday.',
       'You are going to ask for a raise and want the evidence lined up first.',
       'Someone is up for promotion and you want their record and your read to match before the talk.',
     ] },
   { cardKey: 'PIP', scenario: 'PIP', label: SCENARIO_LABELS.PIP,
-    desc: "Agree the concern, the support on offer, and the standard being measured, and make sure they have seen it. Every check-in across the 90 days tests the work against that same standard, so the decision at the end rests on a run of evidence rather than a write-up assembled afterwards.",
+    desc: "Agree the concern, the support on offer, and the standard being measured. Make sure they have seen it. Every check-in over the 90 days holds the work against that same standard. The decision at the end rests on a run of evidence, not on a write-up done afterwards.",
     moment: "Understand what is getting in the way when someone's work is off track.",
-    agreed: 'Agree the concern, the support on offer, and the standard being measured, and make sure they have seen it.',
-    tests: 'Every check-in across the 90 days tests the work against that same standard, so the decision at the end rests on a run of evidence rather than a write-up assembled afterwards.',
+    agreed: 'Agree the concern, the support on offer, and the standard being measured. Make sure they have seen it.',
+    tests: 'Every check-in over the 90 days holds the work against that same standard. The decision at the end rests on a run of evidence, not on a write-up done afterwards.',
     examples: [
       'A senior person has missed three deadlines and you are thinking about letting them go.',
       'You are putting someone on a formal plan and want both sides on the concern and what success looks like.',
@@ -186,10 +186,10 @@ export const SCENARIOS: ScenarioCard[] = [
      * Here it is a thing that may or may not exist, and the check-in asks rather than assumes. A
      * goal with no plan under it is a real answer and the card must not read as demanding one.
      */
-    desc: "Each person writes the two or three objectives they think matter most, before the room converges on one version - and the plan under each one, where there is a plan: what is meant to happen and who is responsible for which part. The check-ins across the quarter then test what people are actually working on against those objectives, so effort aimed at the wrong thing shows up early.",
+    desc: "Everyone writes the two or three objectives they think matter most, before the team settles on one version. Where there is a plan under an objective, it says what happens and who owns which part. The check-ins through the quarter ask what people are actually working on. Effort aimed at the wrong thing shows up early.",
     moment: 'Set goals, targets or OKRs and a workplan, and keep track of how the work is going.',
-    agreed: 'Each person writes the two or three objectives they think matter most, before the room converges on one version - and where a workplan sits under a goal, what it is and who is responsible for which part of it.',
-    tests: 'The check-ins across the quarter test what people are actually working on against those objectives and against what they said they would do, so effort aimed at the wrong thing shows up early and a part of the plan nobody owns shows up at all.',
+    agreed: 'Everyone writes the two or three objectives they think matter most, before the team settles on one version. Where a workplan sits under a goal, it says what happens and who owns which part.',
+    tests: 'The check-ins through the quarter ask what people are actually working on, and what they said they would do. Effort aimed at the wrong thing shows up early, and so does a part of the plan nobody has picked up.',
     examples: [
       'The quarter starts in two weeks and six people would name different priorities.',
       'Planning season and you want to check everyone\'s goals actually connect before they lock.',
@@ -208,39 +208,39 @@ export const SCENARIOS: ScenarioCard[] = [
    * `cardKey` is its own, because two cards sharing a scenario is exactly what cardKey is for.
    */
   { cardKey: 'OKR_CASCADE', scenario: 'OKR_ALIGNMENT', label: 'Connect Goals Across the Team',
-    desc: 'The goal at the top is written down, and then each team lead or partner writes the goal and target they own underneath it, in their own words. The check-ins across the period test whether each one still connects to the thing above it and whether they add up together, so a team quietly working to its own number shows up while the quarter can still absorb it.',
+    desc: 'The goal at the top is written down. Each team lead or partner then writes the goal and target they own underneath it, in their own words. The check-ins ask whether each one still connects to the goal above it, and whether they add up. A team quietly working to its own number shows up while the quarter can still absorb it.',
     moment: 'Set a main goal, then have team leads and partners set their own goals and targets.',
-    agreed: 'The goal at the top, and then each team lead or partner writing the goal and target they own underneath it, in their own words.',
-    tests: 'The check-ins test whether each one still connects to the thing above it and whether they add up together, so a team quietly working to its own number shows up while the quarter can still absorb it.',
+    agreed: 'The goal at the top. Each team lead or partner then writes the goal and target they own underneath it, in their own words.',
+    tests: 'The check-ins ask whether each one still connects to the goal above it, and whether they add up. A team quietly working to its own number shows up while the quarter can still absorb it.',
     examples: [
       'A company target with three departments each writing their own results under it.',
       'Team goals that each look sensible on their own and may not add up to the thing at the top.',
     ] },
   { cardKey: 'WORKPLAN_BUDGET', scenario: 'WORKPLAN_BUDGET', label: SCENARIO_LABELS.WORKPLAN_BUDGET,
-    desc: "Each person commits to their own plan and budget, and the numbers have to hold together. The check-ins then test spend and delivery against what they committed, so an overlap or an overrun shows up while there is still quarter left.",
+    desc: "Each person commits to their own plan and budget, and the numbers have to add up together. The check-ins ask what was spent and what was delivered. An overlap or an overrun shows up while there is still quarter left.",
     moment: "Bring people's plans together so the work and budget line up.",
-    agreed: 'Each person commits to their own plan and budget, and the numbers have to hold together.',
-    tests: 'The check-ins then test spend and delivery against what they committed, so an overlap or an overrun shows up while there is still quarter left.',
+    agreed: 'Each person commits to their own plan and budget, and the numbers have to add up together.',
+    tests: 'The check-ins ask what was spent and what was delivered. An overlap or an overrun shows up while there is still quarter left.',
     examples: [
       'Two teams have each budgeted for the same hire.',
       'Start of the quarter and you want each person\'s plan and budget to hold up against real resources.',
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
   { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: SCENARIO_LABELS.PULSE_CHECK,
-    desc: "A lightweight recurring check-in, with no setup and no target to measure against: about five minutes each on one thing going well, one thing stuck, and what has changed since last time. Reach for this when you want a temperature read, not a record. If there is a specific thing you need people held to, pick that situation instead.",
+    desc: "A short recurring check-in, with no setup and no target. About five minutes each on one thing going well, one thing stuck, and what has changed since last time. Use it for a temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.",
     moment: 'Regularly understand how work is going while it is happening.',
     agreed: 'Agree what the team is working on and what each person owns.',
-    tests: 'Each check-in then tests what that person actually did since last time, so work drifting off what was agreed shows up week by week rather than at the end.',
+    tests: 'Each check-in asks what that person did since last time. Work drifting off what was agreed shows up week by week, not at the end.',
     examples: [
       'You want to know what your team is actually doing, every week.',
       'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
   { cardKey: 'DRIFT', scenario: 'DRIFT', label: SCENARIO_LABELS.DRIFT,
-    desc: "Pin down what was agreed, what actually exists now, and the exact gap between them. The check-ins then test whether that gap is closing or holding, so something unresolved three sessions running reads as a pattern rather than bad luck.",
+    desc: "Pin down what was agreed, what exists now, and the gap between them. The check-ins ask whether that gap is closing. The same thing unresolved three sessions running is a pattern, not bad luck.",
     moment: 'Understand why a project is off track and what needs to change.',
-    agreed: 'Pin down what was agreed, what actually exists now, and the exact gap between them.',
-    tests: 'The check-ins then test whether that gap is closing or holding, so something unresolved three sessions running reads as a pattern rather than bad luck.',
+    agreed: 'Pin down what was agreed, what exists now, and the gap between them.',
+    tests: 'The check-ins ask whether that gap is closing. The same thing unresolved three sessions running is a pattern, not bad luck.',
     examples: [
       'The project is eight weeks late and everyone has a different reason.',
       'A project blew up or is badly behind and everyone has a different story about why.',
@@ -258,10 +258,10 @@ export const SCENARIOS: ScenarioCard[] = [
    * decision with a date on it.
    */
   { cardKey: 'CRISIS_ALIGNMENT', scenario: 'CRISIS_ALIGNMENT', label: SCENARIO_LABELS.CRISIS_ALIGNMENT,
-    desc: "One real choice, with a date on it. Each person's own read comes in before the room converges, and the check-ins after it test whether what people are doing matches what was actually decided.",
+    desc: "One real choice, with a date on it. Each person gives their own read before the group settles. The check-ins after it ask whether what people are doing matches what was decided.",
     moment: 'Bring different views together around an important decision.',
-    agreed: 'One real choice with a date on it, and each person\'s own read before the room converges.',
-    tests: 'The check-ins after it test whether what people are doing matches what was actually decided.',
+    agreed: 'One real choice with a date on it, and each person\'s own read before the group settles.',
+    tests: 'The check-ins after it ask whether what people are doing matches what was decided.',
     examples: [
       'You are deciding this month whether to shut down a product line.',
       'A hiring, budget, or direction call where you want each person\'s real view first.',
@@ -269,19 +269,19 @@ export const SCENARIOS: ScenarioCard[] = [
       'Two options on the table and you suspect the quiet objection is the important one.',
     ] },
   { cardKey: 'BOARD_STRATEGY', scenario: 'BOARD_STRATEGY', label: SCENARIO_LABELS.BOARD_STRATEGY,
-    desc: "Each leader sets out their own read on the strategy before the room debates it. The check-ins across the quarter then test whether what the business is actually doing matches the strategy that was agreed, so quiet disagreement shows up now rather than after the decision.",
+    desc: "Each leader writes their own read on the strategy before the room debates it. The check-ins through the quarter ask whether what the business is doing matches the strategy that was agreed. Quiet disagreement surfaces now, not after the decision.",
     moment: 'Understand how leaders see the direction and where their views differ.',
-    agreed: 'Each leader sets out their own read on the strategy before the room debates it.',
-    tests: 'The check-ins across the quarter then test whether what the business is actually doing matches the strategy that was agreed, so quiet disagreement shows up now rather than after the decision.',
+    agreed: 'Each leader writes their own read on the strategy before the room debates it.',
+    tests: 'The check-ins through the quarter ask whether what the business is doing matches the strategy that was agreed. Quiet disagreement surfaces now, not after the decision.',
     examples: [
       'The board agreed the strategy in the room, and two of them have since told you privately they disagree.',
       'Before a strategy offsite, you want each leader\'s real read so quiet disagreement shows up early.',
       'The board looks aligned in the room but you suspect it is not on one big bet.',
     ] },
   { cardKey: 'COHORT_CHECK', scenario: 'COHORT_CHECK', label: SCENARIO_LABELS.COHORT_CHECK,
-    desc: "One set of expectations, many people in the same role, each answering on their own. The check-ins test each person's work against that same frame, so you see who is on track and who is stuck without them swaying each other. For a group who are new, use \"Onboarding several people at once\" instead.",
+    desc: "One set of expectations, for several people in the same role, each answering on their own. The check-ins hold every person's work against the same frame. You see who is on track and who is stuck, without anyone swaying anyone else. For a group who are new, use \"Onboarding several people at once\" instead.",
     moment: 'Understand how people doing similar work are experiencing it.',
-    agreed: 'One set of expectations, for many people in the same role, each answering on their own.',
+    agreed: 'One set of expectations, for several people in the same role, each answering on their own.',
     tests: 'The check-ins test each person\'s work against that same frame, so you see who is on track and who is stuck without them swaying each other.',
     examples: [
       'Twenty field officers, and you only hear from the three who call.',
@@ -315,17 +315,17 @@ export const SCENARIOS: ScenarioCard[] = [
     desc: 'One honest read from everyone, once. No setup and no target: about five minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
     moment: 'Get a quick picture of how people are experiencing the work right now.',
     agreed: 'Nothing. No setup and no target to measure against, which is the point.',
-    tests: 'Nothing over time either: one check-in, one honest read from each person on what is going well, what is stuck and what has changed. A temperature read, not a record. If there is a specific thing you need people held to, pick that situation instead.',
+    tests: 'Nothing over time either. One check-in, and one honest read from each person on what is going well, what is stuck, and what has changed. A temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.',
     examples: [
       'You want one honest read from everyone this week.',
       'You want to know how people are actually doing this week, without booking a meeting.',
       'Something feels off across the team and you want a read before deciding whether it needs watching.',
     ] },
   { cardKey: 'COHORT_ONBOARDING', scenario: 'COHORT_CHECK', label: 'Onboarding several people at once',
-    desc: "Several people starting the same role at once, each answering on their own against the same expectations. The check-ins test how each of them is settling against those, so you see early who is finding it and who is struggling, before the end of the period decides anything.",
+    desc: "Several people start the same role at once. Each answers on their own, against the same expectations. The check-ins ask how each of them is settling. You see early who has found their feet and who is struggling, before the end of the period decides anything.",
     moment: 'Help several people starting the same role at once settle in, and see who is on track.',
     agreed: 'The same expectations for several people starting the same role together.',
-    tests: 'The check-ins test how each of them is settling against those, so you see early who is finding it and who is struggling, before the end of the period decides anything.',
+    tests: 'The check-ins ask how each of them is settling. You see early who has found their feet and who is struggling, before the end of the period decides anything.',
     examples: [
       'Six new managers, each running a different branch, all started this month.',
       'Four new managers on a three month onboarding that is also their probation.',
@@ -333,10 +333,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'Trainees in different locations who never work together but are all learning the same job.',
     ] },
   { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: SCENARIO_LABELS.ACUTE_SHOCK,
-    desc: "Something has just happened that nobody planned for, and versions of it are already diverging. The first check-in gets each person's version down while it is fresh and separates the facts everyone agrees on from the ones still contested, and a follow-up a week later tests what turned out different once the dust settled.",
+    desc: "Something has just happened that nobody planned for, and the versions of it are already drifting apart. The first check-in gets each person's version down while it is fresh, and separates the facts everyone agrees on from the ones still argued over. A follow-up a week later asks what turned out differently once the dust settled.",
     moment: 'Give people a private way to explain what happened and what needs attention.',
-    agreed: 'First the facts everyone actually has, separated from what is being repeated. Then what you are now trying to achieve, with a date on it.',
-    tests: 'Each daily check-in tests what that person did against that objective, so a recovery that is stalling shows up on day three rather than at the end of the fortnight.',
+    agreed: 'First the facts everyone actually has, kept apart from what is being repeated. Then what you are trying to achieve now, with a date on it.',
+    tests: 'Each daily check-in asks what that person did. A recovery that is stalling shows up on day three, not at the end of the fortnight.',
     examples: [
       'Your biggest client left on Tuesday and you want them back.',
       'A major client pulled out overnight and everyone has a different version of why.',
@@ -344,10 +344,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
   { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM,
-    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the official one. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
+    desc: "Each person gives their own read before the group talks, so the loudest version does not become the official one. The first session sets out what you agree on and what you do not. The check-ins after it ask whether the gap closed or only went quiet.",
     moment: "Understand different views when people don't see a situation the same way.",
-    agreed: 'Each person gives their own read of the situation before the group talks, and that first session sets out what you do and do not agree on.',
-    tests: 'The check-ins after it test whether the gap closed or only went quiet.',
+    agreed: 'Each person gives their own read before the group talks. The first session sets out what you agree on and what you do not.',
+    tests: 'The check-ins after it ask whether the gap closed or only went quiet.',
     examples: [
       'You and your ops lead have stopped agreeing on what matters.',
       'The team is pulling two ways on a decision and you want each person\'s honest read before the meeting.',
@@ -384,10 +384,10 @@ export const SCENARIOS: ScenarioCard[] = [
    * would rather say it in their own words, which is a different and much larger offer.
    */
   { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ,
-    desc: "Say what is happening in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
+    desc: "Say what is happening in your own words. Each person gives their own read first, privately. The check-ins that follow ask whether that picture holds. If it turns out to be one of the situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
     moment: "Give people a starting point when the situation doesn't fit a predefined scenario.",
-    agreed: 'Nothing fixed: each person gives their own read first, privately, because the situation is not named yet.',
-    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.',
+    agreed: 'Nothing fixed. Each person gives their own read first, privately, because nobody has named the situation yet.',
+    tests: 'The check-ins that follow ask whether that picture holds. If it turns out to be one of the situations below, pick that instead: it sets the objective and shapes the questions people are asked.',
     /* The line this card used to lead with. Every other card keeps its concrete one here; this is
        the only one that had nowhere to put it, so it got somewhere. */
     examples: [
@@ -1027,7 +1027,7 @@ export function CreateGroundPage() {
             justifyContent: 'center',
           }}
         >
-          <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          <span>Picked up where you left off {howLongAgo(restored)} - on this device.</span>
           {/* "Start fresh" was `gw-btn-ghost`, which no stylesheet defines - so it rendered as a
               raw browser button inside a styled banner. Same silent failure as the seven `gw-in`
               fields; found by the guard written for those. `gw-btn-sm` is the small muted control
@@ -1620,7 +1620,7 @@ export function CreateGroundPage() {
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We could not check your plan just then</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                  This is our side, not yours — nothing about your plan has changed. Try again, and if it
+                  This is our side, not yours - nothing about your plan has changed. Try again, and if it
                   keeps failing you can carry on setting this up and create it in a moment.
                 </div>
                 <button

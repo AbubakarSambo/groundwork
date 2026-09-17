@@ -99,7 +99,7 @@ export function Adder<T>({
                 onChange={(e) => set(f.name, e.target.value)}
                 style={INPUT}
               >
-                <option value="">—</option>
+                <option value=""> - </option>
                 {f.options.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
