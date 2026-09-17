@@ -48,7 +48,7 @@ export function whatToAskForNext(
   if (!said(draft.proposedMeasure)) {
     return {
       piece: 'measure',
-      asks: 'What is being measured? Not the goal — the thing that will have a number against it.',
+      asks: 'What is being measured? Not the goal - the thing that will have a number against it.',
     };
   }
 

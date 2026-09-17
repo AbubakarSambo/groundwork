@@ -255,9 +255,11 @@ describe('the service applies it, and the flag stays off', () => {
      * punctuation. What matters is that the sanitiser runs on the model's output
      * before anything is stored, which is what the pattern says now.
      */
-    expect(SERVICE).toMatch(/sanitiseGuide\(result, names\)/);
+    /* `saidHere` joined the two arguments so a line about nothing on this check-in can be
+       recognised - see the 4.6 block at the end of this file. */
+    expect(SERVICE).toMatch(/sanitiseGuide\(result, names, saidHere\)/);
     // And that a retry, if one happens, is sanitised too rather than trusted.
-    expect(SERVICE).toMatch(/sanitiseGuide\(retry, names\)/);
+    expect(SERVICE).toMatch(/sanitiseGuide\(retry, names, saidHere\)/);
     // Stored value is the sanitised one, never the raw extraction.
     expect(SERVICE).toMatch(/guides\[participantId\] = guide;/);
     expect(SERVICE).not.toMatch(/guides\[participantId\] = result;/);
@@ -334,5 +336,60 @@ describe('the prompt no longer contradicts the report or invent a meeting', () =
     // The strip is the guarantee; the instruction reduces how often it fires.
     expect(PROMPT).toMatch(/NEVER NAME ANYONE AND NEVER QUOTE ANYONE/);
     expect(PROMPT).toMatch(/discarded before the person sees it/);
+  });
+});
+
+/*
+ * 4.6, READ OFF A REAL REPORT ABOUT SELLING TEA IN ABUJA:
+ *
+ *   "What did that turn into - pipeline, conversion, sign-ups?"
+ *
+ * Three nouns, none of them anybody's, in a question somebody is meant to carry into a real
+ * conversation. The words came from business in general rather than from this business.
+ */
+describe('a line about nothing they said', () => {
+  const { aboutSomethingTheySaid, sanitiseGuide } = require('./guide-sanitiser');
+  /* Long enough to be worth checking against: see enoughToCheckAgainst, which keeps this rule off
+     the thinnest records, where a guide is worth most and everything looks unrelated to everything. */
+  const saidHere = [
+    'We are aiming at 10,000 units of tea sold in Abuja this year, and I want to see steady progress.',
+    'The distributor in Wuse has not restocked since August, so the wholesale accounts are stuck.',
+    'Invoices in the system, and the monthly sales report from the CRM, would show it.',
+    'Sahar handles the retail shops and Amina handles the wholesalers.',
+  ];
+
+  it('catches the question that started this', () => {
+    expect(aboutSomethingTheySaid('What did that turn into - pipeline, conversion, sign-ups?', saidHere)).toBe(false);
+  });
+
+  it('and lets through a question built from what is actually here', () => {
+    for (const real of [
+      'What would have to change for the Wuse distributor to restock?',
+      'Is the CRM report the thing we both mean when we say sales?',
+      'How do the units split between us?',
+    ]) {
+      expect(aboutSomethingTheySaid(real, saidHere)).toBe(true);
+    }
+  });
+
+  it('drops that field and says why', () => {
+    const out = sanitiseGuide(
+      { openingLine: 'The units we each carry do not add up to the objective.', questionToCarry: 'What did that turn into - pipeline, conversion, sign-ups?' },
+      [],
+      saidHere,
+    );
+    expect(out.guide.questionToCarry).toBeUndefined();
+    expect(out.guide.openingLine).toBeTruthy();
+    expect(out.dropped).toEqual([{ field: 'questionToCarry', reason: 'about-nothing-they-said' }]);
+  });
+
+  it('and drops nothing at all when there is not enough to check against', () => {
+    expect(sanitiseGuide({ questionToCarry: 'What did that turn into - pipeline, conversion, sign-ups?' }, []).guide.questionToCarry).toBeTruthy();
+    /* A two-line record is too thin for the test to mean anything. */
+    expect(sanitiseGuide(
+      { questionToCarry: 'What did that turn into - pipeline, conversion, sign-ups?' },
+      [],
+      ['We sell tea.', 'It is going fine.'],
+    ).guide.questionToCarry).toBeTruthy();
   });
 });

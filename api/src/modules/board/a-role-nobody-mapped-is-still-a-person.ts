@@ -51,26 +51,44 @@ export const UNIVERSAL_ORDER: UniversalMode[] = [
   UniversalMode.UNDER_PERSISTENCE,
 ];
 
+/**
+ * PLAIN SENTENCES, AFTER THESE WERE READ BACK AS YODA.
+ *
+ * Her word for them, and she is right. Every line here opened on a long subordinate clause, put an
+ * abstract noun where a person should be, and buried the point at the end:
+ *
+ *   "The things you named did not come with a date, a number or a name attached, so there is
+ *    nothing in them anybody could check later."
+ *   "When a thing stalls, what you tried next is part of the account - including when the answer is
+ *    that you decided to leave it."
+ *
+ * Nobody speaks like that, and these are the lines MOST people get: 93% of people on record have no
+ * confident role map, so this floor is their coaching, not the role maps.
+ *
+ * THE SHAPE EACH ONE TAKES NOW. `noticed` is a flat statement about what is missing, subject first.
+ * `lookingLike` is an instruction you could follow tomorrow, verb first. Both short enough to read
+ * once. Nothing here is softened: what it says is what it said.
+ */
 const SIGNALS: Record<string, Omit<UniversalSignal, 'probe'>> = {
   [UniversalMode.VAGUENESS]: {
-    noticed: 'The things you named did not come with a date, a number or a name attached, so there is nothing in them anybody could check later.',
-    lookingLike: 'Each thing you name carries the one detail that would let somebody else tell whether it happened.',
+    noticed: 'Nothing you named has a date, a number or a name on it, so nobody can check any of it later.',
+    lookingLike: 'Put one detail on each thing you name, so somebody else can tell whether it happened.',
   },
   [UniversalMode.NON_COMMITMENT]: {
-    noticed: 'Several things were described as being considered or looked at, and none of them was described as decided.',
-    lookingLike: 'The ones that are yours to call get called, and the ones that are not get named as somebody else’s with a date on them.',
+    noticed: 'You said several things were being considered. You did not say that any of them had been decided.',
+    lookingLike: 'Decide the ones that are yours to decide. For the rest, say whose they are and by when.',
   },
   [UniversalMode.ILLEGIBILITY]: {
-    noticed: 'What you did came through, and what changed because of it did not - so somebody reading this cannot tell what is different now.',
-    lookingLike: 'Each thing you did is followed by what somebody else can do now that they could not before.',
+    noticed: 'You said what you did. You did not say what changed because of it, so nobody can tell what is different now.',
+    lookingLike: 'After each thing you did, say what somebody else can do now that they could not before.',
   },
   [UniversalMode.INVISIBILITY]: {
-    noticed: 'The work that went right and the trouble you headed off are not in your own account, so the only record of them is somebody else happening to mention it.',
-    lookingLike: 'What worked, and what you prevented, are in your account in your own words rather than waiting to be noticed.',
+    noticed: 'What went well, and the trouble you stopped, are missing from your own account. The only record of them is somebody else mentioning it.',
+    lookingLike: 'Say what worked and what you stopped, in your own words, instead of waiting for somebody to notice.',
   },
   [UniversalMode.UNDER_PERSISTENCE]: {
-    noticed: 'Something you were waiting on went quiet and the account moves on without saying what you did about it.',
-    lookingLike: 'When a thing stalls, what you tried next is part of the account - including when the answer is that you decided to leave it.',
+    noticed: 'Something you were waiting on went quiet, and you did not say what you did about it.',
+    lookingLike: 'When something stalls, say what you tried next. Saying you left it is an answer.',
   },
 };
 
@@ -104,4 +122,4 @@ export function universalSignalRead(index: number, reason: string): (UniversalSi
  * wrong or unknown, saying what it is makes everything else better.
  */
 export const READ_FROM_THE_ACCOUNT_NOT_THE_ROLE =
-  'This is read from your account rather than from your role, because what kind of work this is has not been settled yet. It is about how the record reads, not about the work itself.';
+  'This comes from what you wrote, not from your job, because nobody has settled yet what kind of work this is. It is about how your account reads, not about the work.';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
+import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -450,7 +450,32 @@ export function summariseSetup(
    */
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
   if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
-  if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
+  /*
+   * "WHY NOW" IS NOT "WHAT THIS IS ABOUT", SAID AGAIN.
+   *
+   * Read off the card twice in one evening: About said "Setting goals for 40 shops in Kano stocking
+   * tea by end of Q4" and Why now said "setting goals for the next quarter". The same fact, in the
+   * next row down, wearing a different label - so the card looks full and says one thing.
+   *
+   * The extraction is told to leave it out when nobody gave a reason, and it fills it anyway. So
+   * the card decides what it shows: a "why" that is mostly words already sitting in "about" is not
+   * a reason, and an honest gap reads better than a duplicate. Word overlap rather than an exact
+   * match, because the paraphrase is never identical.
+   */
+  const aReasonRatherThanAnEcho = (why: string, about: string): boolean => {
+    const words = (t: string) => new Set((t.toLowerCase().match(/[a-z]{4,}/g) ?? []));
+    const mine = [...words(why)];
+    if (!mine.length) return true;
+    const theirs = words(about);
+    /* Read live at 0.6 and still let "setting goals for the next quarter" through against "Setting
+       goals for 40 shops in Kano stocking tea by end of Q4": two words of four. A real reason shares
+       almost nothing with the subject - "the client is unhappy about the delay" shares one word in
+       four with "a client meeting on Thursday" - so the line sits between them. */
+    return mine.filter((w) => theirs.has(w)).length / mine.length < 0.4;
+  };
+  if (sels.decision?.trim() && aReasonRatherThanAnEcho(sels.decision, sels.initial ?? '')) {
+    have.push({ label: 'Why now', value: sels.decision.trim() })
+  }
   /* The goal is a clause the model lifted mid-sentence ("take the on-call escalations off me"). It is
      the person's words, so nothing is added to them; it is capitalised because it now opens a line. */
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)).join('; ') })
@@ -473,7 +498,17 @@ export function summariseSetup(
    * Said ONCE, and with the consequence attached. It was printed twice - a terse line here and a
    * fuller paragraph under the fork - which is two amber blocks saying one thing.
    */
-  if (needsPeople) {
+  /*
+   * AND NOT WHILE THE CARD IS SHOWING THEIR NAMES. Read live: "People: Sahar, Amina" with "Not said
+   * yet: who is in it, by name" directly underneath it. The server's `needsPeople` is about the
+   * structured roster, which the extraction left empty while putting both names in the free-text
+   * field above - so the card said it had them and did not have them, three lines apart, and
+   * whoever reads that stops believing the card.
+   *
+   * The names ARE what is missing when nothing is showing. When something is showing, what is
+   * actually missing is a way to reach them, and the next screen asks for exactly that.
+   */
+  if (needsPeople && !people.length) {
     missing.push('who is in it, by name - until they are on the record there is nobody to check in with, and nothing can be expected of anyone by name')
   }
   if (!sels.goals?.length) missing.push('what you want out of it')
@@ -627,7 +662,7 @@ export const SITUATION_CARDS = [
     detail: 'Bring different views together around an important decision.',
     message: 'We are making a big decision and I want each person\'s honest read before we commit.',
     examples: [
-      'A hiring, budget, or direction call where you want each person\'s real view before the room converges.',
+      'A hiring, budget, or direction call where you want each person\'s real view before the group settles.',
       'A choice everyone will nod along to in the meeting - you want the honest reads first.',
     ],
   },
@@ -903,7 +938,16 @@ export const THE_OPENING_QUESTION =
    * So this says what the two routes ARE. The question is asked once, on the card that takes the
    * answer.
    */
-  HOW_A_SITUATION_IS_CHOSEN
+  /*
+   * AND ONE WORKED EXAMPLE, BECAUSE AN EMPTY BOX WITH AN INSTRUCTION IN IT IS THE HARDEST QUESTION
+   * IN THE PRODUCT.
+   *
+   * "Describe it in your own words" tells somebody nothing about how much to write, how specific to
+   * be, or whether a number belongs in it. One sentence showing all three costs a line and removes
+   * the stall. See WHAT_THAT_SOUNDS_LIKE, which is deliberately about buying chickens: this is used
+   * to procure livestock and to sell tea as often as it is used to ship software.
+   */
+  `${HOW_A_SITUATION_IS_CHOSEN} ${WHAT_THAT_SOUNDS_LIKE}`
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -1414,8 +1458,16 @@ export function EntryChatPage() {
     saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
+  /*
+   * AND THE SAME WHOLE STATE HERE, WHICH IS WHERE IT WAS LOST.
+   *
+   * The comment above says whole state or none, and this sibling dropped the four fields it names.
+   * `saveSession` writes the record rather than merging into it, so the first persist after the
+   * check-in starts erased the plan somebody had just agreed to. Seen live: "6 sessions planned"
+   * came back as "1 session planned" after a reload, with the conversation intact above it.
+   */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections })
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom } as any)
   }
 
   /*
@@ -1503,6 +1555,16 @@ export function EntryChatPage() {
         /* Everybody setup heard named. The check-in asked "who else is involved" after being told
            three times, and the block that stops that needs the names to state. */
         onboardingSelections.peopleNamed,
+        /* AND EVERY WORD THEY TYPED IN SETUP. The invention gate reads the current phase only, so
+           "Kano" and "Amina" - both in her first sentence - were deleted from check-in replies as
+           names nobody had said. Their own vocabulary crosses the phase boundary with them. */
+        [
+          ...onboardingHistory.filter((t) => t.role === 'user').map((t) => t.content),
+          onboardingSelections.initial ?? '',
+          onboardingSelections.whoInvolved ?? '',
+          onboardingSelections.decision ?? '',
+          ...(onboardingSelections.goals ?? []),
+        ].filter(Boolean),
       )
     },
     onSuccess: (res, msgs) => {
@@ -1595,7 +1657,7 @@ export function EntryChatPage() {
          otherwise. The turn stays in the history — the server may have taken it — and the words go
          back where they were typed. */
       setCorrectionText(text)
-      toast.error('That did not send — what you wrote is back in the box. Try again.')
+      toast.error('That did not send - what you wrote is back in the box. Try again.')
     } finally {
       setCorrectionLoading(false)
     }
@@ -1677,6 +1739,21 @@ export function EntryChatPage() {
         onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { draft += text; setOnboardingDraft(draft) },
+        /*
+         * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
+         *
+         * This screen has held the read of the conversation all along - it is what the summary card
+         * renders - and setup was throwing it away and re-deriving the whole situation from the
+         * transcript on every turn. Live, that dropped a named team, never asked why now, and moved
+         * the planned session count three times while the person answered about something else. See
+         * what-setup-already-knows-travels-with-it on the API side.
+         */
+        {
+          ...onboardingSelections,
+          ...(yourRole ? { yourRole } : {}),
+          ...(cadenceChosen ? { cadence } : {}),
+          ...(plannedFrom?.timelineDays ? { timelineDays: plannedFrom.timelineDays } : {}),
+        },
       )
       setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
@@ -1774,7 +1851,7 @@ export function EntryChatPage() {
        */
       setOnboardingHistory(onboardingHistory)
       setInput(text.trim())
-      toast.error('That did not send — your message is back in the box. Try again.')
+      toast.error('That did not send - your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
@@ -2048,7 +2125,7 @@ export function EntryChatPage() {
        */
       toast.error(
         'Nothing has been lost. This browser will not let us hold your conversation while you sign '
-        + 'in with Google — use the email option below and it will be waiting for you.',
+        + 'in with Google - use the email option below and it will be waiting for you.',
       )
       return
     }
@@ -2566,14 +2643,37 @@ export function EntryChatPage() {
                 * because the flag they had set was gone. Asking about the transcript covers the
                 * click and the reload with one question.
                 */}
-              {phase === 'onboarding' && onboardingHistory.length > 1 && (
-                <button
-                  onClick={pickADifferentSituation}
-                  style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  ← Pick a different situation
-                </button>
-              )}
+              {/*
+                * SAY WHICH SITUATION IT PICKED, BECAUSE IT PICKS ONE AND NEVER SAID SO.
+                *
+                * Read live. She described tea shops in Kano and the engine classified it, changed
+                * the plan to six sessions and put "Pick a different situation" on the screen - and
+                * nowhere did it say which situation it had chosen. The header still read "Describe
+                * it in your own words, or choose a situation". So the product made a decision that
+                * shapes every question she will be asked, and kept it to itself.
+                *
+                * Beside the way out, because the two belong together: this is what it chose, and
+                * here is how to change it.
+                */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && (() => {
+                const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
+                const label = chosen ? (SCENARIO_LABELS as Record<string, string>)[chosen] : null
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {label && (
+                      <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
+                        Set up as <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>
+                      </span>
+                    )}
+                    <button
+                      onClick={pickADifferentSituation}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      ← Pick a different situation
+                    </button>
+                  </span>
+                )
+              })()}
               {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
                   organisation name and anybody queued to be invited - cheap to confirm, expensive
                   to undo. On the picker with nothing said yet there is nothing to lose, so it goes
@@ -3039,7 +3139,10 @@ export function EntryChatPage() {
                     </div>
                   </div>
                 )}
-                <div style={{ padding: '10px 16px' }}>
+                {/* The composer keeps its own stacking context so a floating control can never take
+                    a click meant for Send. It happened: the feedback button's mobile position put it
+                    exactly on top of Send at 375px. See gw-fb-trigger-chat-mobile-safe. */}
+                <div style={{ padding: '10px 16px', position: 'relative', zIndex: 101 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
                     <button
                       onClick={() => setShowDocPanel(v => !v)}
@@ -3127,6 +3230,20 @@ export function EntryChatPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
                   <VennIcon size={22} />
                   <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
+                </div>
+              )}
+              {/*
+                AND WHERE THE REST OF THE CONTEXT GOES, WHICH NOTHING HAS EVER SAID.
+                
+                A lead finishes setup believing this conversation was the only chance to explain the
+                situation. There is a Context tab that takes documents, notes and anything else the
+                check-ins should be held against, and no screen in the flow mentions it - so the
+                brief, the plan and the spreadsheet somebody already has never arrive, and every
+                session afterwards runs on memory alone.
+              */}
+              {!startCheckin.isPending && displayedHistory.length <= 2 && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
+                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {
@@ -3575,6 +3692,12 @@ export function EntryChatPage() {
                 
                 So the choice is a choice, and it is the same mechanism underneath: hold means a
                 start date, and the date is what the invites wait for.
+
+                AND THE SECOND OPTION SAID "ON THE DAY IT STARTS", WHICH WAS TRUE AND UNREADABLE.
+                No start date is set by default, so a lead reading those two buttons saw a choice
+                between "now" and a day nobody had named - which for her meant the same thing twice.
+                It always did set a date; the label just never said so. It says so now, and the date
+                field it opens is the answer to the question the button asks.
               */}
               <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginBottom: 12 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7 }}>When should the invites go out?</div>
@@ -3593,7 +3716,7 @@ export function EntryChatPage() {
                       border: `1px solid ${checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                       background: checkInBy ? 'var(--gw-navy)' : 'white', color: checkInBy ? 'white' : 'var(--gw-text)' }}
                   >
-                    On the day it starts
+                    On a date I pick
                   </button>
                 </div>
                 {checkInBy ? (
@@ -3606,7 +3729,7 @@ export function EntryChatPage() {
                       style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
                     />
                     <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Your work is saved now. Nobody hears anything until that morning.
+                      Your work is saved now. The invites go out on the morning of that date, and nobody hears anything before then.
                     </span>
                   </div>
                 ) : (
@@ -3885,7 +4008,7 @@ export function EntryChatPage() {
                   </div>
                   <button type="button" onClick={() => setWorkingDays(workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? [] : [...WEEKDAYS])}
                     style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
-                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear — any day is fine' : 'Weekdays only, skip weekends'}
+                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear - any day is fine' : 'Weekdays only, skip weekends'}
                   </button>
                 </div>
               )}
@@ -4303,7 +4426,7 @@ export function EntryChatPage() {
               Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Once you save your record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+              Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

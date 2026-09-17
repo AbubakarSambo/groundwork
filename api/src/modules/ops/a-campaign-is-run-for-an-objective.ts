@@ -65,7 +65,7 @@ export function whatThisCampaignIsActuallyServing(serves: string | null): string
   }
   if (serves === 'SALES' || serves === 'UNLOCKS_A_CUSTOMER') return null;
   if (serves === 'MOAT') {
-    return 'This campaign is running for an objective that serves the moat rather than sales. That can be right — say so where it is questioned.';
+    return 'This campaign is running for an objective that serves the moat rather than sales. That can be right - say so where it is questioned.';
   }
   return 'This campaign is running for an objective that serves keeping the company up. Worth checking that is what was meant.';
 }

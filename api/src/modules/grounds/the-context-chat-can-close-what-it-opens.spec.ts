@@ -101,14 +101,19 @@ describe('and the service writes only after a yes', () => {
      * confirmation-shaped name. It takes what they said and reads it again.
      */
     const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 3000);
-    expect(apply).toMatch(/dto: \{ said: string \}/);
+    /* `history` joined `said` so a pronoun can be resolved - "give her 3,000 units" names nobody on
+       its own, and the target was being lost. What the rule is really about is unchanged and is
+       what is checked: sentences go in, no id and no value. */
+    expect(apply).toMatch(/dto: \{ said: string; history\?: \{ role: 'user' \| 'assistant'; content: string \}\[\] \}/);
+    expect(apply).not.toMatch(/dto\.(timelineDays|cadence|participantId|target)\b/);
     expect(apply).toMatch(/extractionToolFor\(openGap\)/);
     /*
      * The parties are passed as well now, so a name in an answer can be matched to a real person.
      * The invariant is unchanged and is what this asserts: the proposal is re-derived from the
      * words, never taken from a payload.
      */
-    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, await this\.partiesForMatching\(groundId\)\)/);
+    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, parties\)/);
+    expect(apply).toMatch(/const parties = await this\.partiesForMatching\(groundId\)/);
   });
 
   it('and it is the lead\'s, checked again on the write and not only on the read', () => {
@@ -150,7 +155,10 @@ describe('and the panel has the yes it always promised', () => {
   });
 
   it('and sends their words, not a value', () => {
-    expect(PANEL).toMatch(/confirmContext\(groundId, proposal!\.said\)/);
+    /* The conversation goes too, so the server can resolve a pronoun - "give her 3,000 units by
+       December" names nobody on its own and the target was being dropped. Sentences only: no id
+       and no value crosses. */
+    expect(PANEL).toMatch(/confirmContext\(groundId, proposal!\.said, history\)/);
   });
 
   it('with a way to say no that is not just closing the panel', () => {

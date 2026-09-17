@@ -81,7 +81,7 @@ export function theEmailForOneManager(input: {
   ];
 
   for (const person of withSomething) {
-    lines.push(`${person.displayName} — ${person.kind}, ${asADate(person.dueOn)}`);
+    lines.push(`${person.displayName} - ${person.kind}, ${asADate(person.dueOn)}`);
     for (const report of byPerson.get(person.displayName) ?? []) {
       lines.push(`  ${report.label}: ${input.linkTo(report.groundId)}`);
     }

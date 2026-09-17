@@ -1,3 +1,5 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
 /**
  * THE DATE A DEADLINE'S WORDS MEAN, WHERE THEY UNAMBIGUOUSLY MEAN ONE.
  *
@@ -93,6 +95,40 @@ export function whenTheyMeant(said: string | null | undefined, on: Date): Date |
     }
   }
 
+  /*
+   * MONTH FIRST, WHICH IS HOW HALF THE WORLD WRITES A DATE AND HOW SHE WROTE IT.
+   *
+   * The match above reads "1 December 2026" and nothing else, so "December 1 2026" - typed into a
+   * live check-in, in answer to a direct question about when - came back as no date at all, and the
+   * record said "no date agreed" about a person who had given one.
+   *
+   * Same rules as the day-first case: an ordinal suffix is optional, the comma is optional, and no
+   * year means the next one of those rather than a date already in the past.
+   */
+  const monthFirst = t.match(/\b([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?/);
+  if (monthFirst) {
+    const mi = MONTHS.indexOf(monthFirst[1]);
+    const dd = Number(monthFirst[2]);
+    if (mi !== -1 && dd >= 1 && dd <= 31) {
+      const yr = monthFirst[3] ? Number(monthFirst[3]) : (mi < m || (mi === m && dd < d) ? y + 1 : y);
+      return day(yr, mi, dd);
+    }
+  }
+
+  /*
+   * "END OF THE YEAR", WHICH IS ONE DAY AND WAS BEING TREATED AS A FEELING.
+   *
+   * Said in a live check-in - "500 contracts by the end of the year" - and recorded as no date
+   * agreed. It is the thirty-first of December and there is nothing to ask about: the month-end
+   * rule two lines below has read "end of October" as a date since the day it was written, and the
+   * year was simply never added to it.
+   *
+   * "End of 2026" is the same sentence with the year said out loud. No year means this one, unlike
+   * a month, because the end of the year has not passed until it has.
+   */
+  const endOfYear = t.match(/^(?:by )?(?:the )?end of (?:the |this )?(?:year|(\d{4}))$|^(?:by )?year[- ]end$/);
+  if (endOfYear) return day(endOfYear[1] ? Number(endOfYear[1]) : y, 11, 31);
+
   /* "end of October", "end of the month", "end of the quarter" is a month end, which is one day. */
   const endOfMonth = t.match(/^end of (?:the )?([a-z]+)$/);
   if (endOfMonth) {
@@ -136,4 +172,78 @@ export function askWhenTheyMean(said: string): string {
   return `They said "${said.trim()}", which does not carry a date. Ask which day that is, in their `
     + 'own terms - and accept "there is not a date yet" as an answer rather than pressing for one. '
     + 'Ask once, and only where the promise is one somebody else is waiting on.';
+}
+
+/**
+ * A PERIOD IS NOT A DAY, AND THE PRODUCT MUST NOT QUIETLY PICK ONE.
+ *
+ * Hafsah, on reading a live check-in where she had said "by the end of the year": "If i say end of
+ * year it should rrespond with december? what date?"
+ *
+ * Both halves of her earlier instruction - "yes infer a date but be sure to probe for details in
+ * the engine" - are in this file now. `whenTheyMeant` reads "end of the year" as the thirty-first
+ * of December so the product has something machine-readable. This says the reading out loud and
+ * asks her to confirm it, because thirty-first of December is our reading of her words and not her
+ * words, and a deadline nobody agreed to is the thing a later check-in asks somebody why they
+ * missed.
+ *
+ * A DAY SOMEBODY NAMES IS NOT ASKED ABOUT. "December 1 2026" and "15 May 2027" are dates. Reading
+ * those back as a question is the product checking whether somebody meant what they typed.
+ */
+const A_PERIOD_NOT_A_DAY = [
+  /\bend of (?:the |this )?(?:year|month|quarter|week)\b/i,
+  /\bend of \d{4}\b/i,
+  /\byear[- ]end\b/i,
+  /\bend of (?:january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
+  /\b(?:this|next) (?:month|quarter|year|week)\b/i,
+  /\bby (?:the )?(?:summer|winter|spring|autumn|fall)\b/i,
+  /*
+   * THE WAY FINANCE PEOPLE WRITE IT, WHICH NOTHING HERE READ.
+   *
+   * "by the end of Q4" and "in H1" went straight through: no vague word, no phrase on this list, so
+   * no question, and a deadline nobody can be early or late against went onto the record. They are
+   * the two most common ways a number gets a period attached to it in the kind of check-in this
+   * product is for.
+   *
+   * They are NOT given a reading, deliberately. Q4 is a different fortnight in every organisation -
+   * to December, to March, to June - and the file's whole argument is that a period with no
+   * financial year behind it is asked about rather than guessed at. So they land on the same branch
+   * as "this quarter": ask which day, accept "not settled" as an answer.
+   *
+   * TWO SHAPES, NOT A BARE TOKEN. "Q4" on its own also matches an h1 heading, a QA team and a
+   * spreadsheet column, and a product that asks which day "the h1 heading" falls on has stopped
+   * listening. So it counts when a time word introduces it, or when the thing it is attached to is
+   * a number people work to.
+   */
+  /\b(?:end of|in|by|before|after|during|until|through|for)\s+(?:the\s+)?(?:end\s+of\s+)?(?:q[1-4]|h[12])\b/i,
+  /\b(?:q[1-4]|h[12])\s+(?:target|targets|goal|goals|plan|plans|forecast|numbers|revenue|budget|pipeline)\b/i,
+];
+
+/** The period phrase they used, where they gave one rather than a day. */
+export function thePeriodTheyNamed(said: string | null | undefined): string | null {
+  const t = (said ?? '').trim();
+  if (!t) return null;
+  for (const rx of A_PERIOD_NOT_A_DAY) {
+    const m = rx.exec(t);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+/**
+ * What to tell the interview when somebody has given a period. It carries the date we read it as,
+ * so the question is a specific one - "so the 31st of December?" - rather than "when exactly?",
+ * which is the question that makes people feel interrogated about something they already answered.
+ */
+export function sayTheDateAndCheckIt(period: string, meansThisDay: Date): string {
+  /* One formatter for the whole product. A hand-rolled toLocaleDateString here is how "12 September
+     2026" and "September 12, 2026" end up on two screens of the same check-in. */
+  const day = whenItWas(meansThisDay, 'full', 'UTC');
+  return `They said "${period}", which is a period rather than a day. The product reads that as ${day}.
+
+YOUR NEXT REPLY IS THAT QUESTION AND NOTHING ELSE: "${period} - so ${day}?" Or the same question in your own words, as long as the DATE is in it.
+
+THIS IS NOT SAYING THEIR ANSWER BACK TO THEM, and the rule against that does not apply here. You are giving them something they did not say: ${day} is the product's reading of their words, not their words, and they have never seen it. Driven live, this instruction and that rule pulled against each other and what reached the person was "Is that the date you mean?" - a question about a date that had been left out of the message asking it.
+
+Ask once. If they confirm it, or give a different day, take it and move on. If they say it is not settled yet, that is a real answer - record it and never press again. Do not explain why you are asking, and do not add a second question to the same turn.`;
 }

@@ -447,7 +447,7 @@ export class ConversationContextService {
             tier: 1,
             downstream: false,
             text: "Your name appears in other parts of the organisation's record in connection with specific work. Your own record should reflect that work explicitly.",
-            probe: 'There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does your record here reflect it?',
+            probe: 'There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does the record here reflect it?',
           });
           degree3Injections++;
         }

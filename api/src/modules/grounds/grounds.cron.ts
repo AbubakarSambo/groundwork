@@ -386,7 +386,7 @@ export class GroundsCron {
             checkInId: checkIn.id,
             role: TurnRole.AI,
             content:
-              'This session closes automatically in 30 minutes due to inactivity. If there is anything you want to add to your record before it closes, add it now.',
+              'This session closes in 30 minutes if nothing else is said. Add anything you still want on the record now.',
           },
         });
 

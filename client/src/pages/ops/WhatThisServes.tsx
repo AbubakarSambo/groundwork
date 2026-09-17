@@ -40,7 +40,7 @@ export function WhatThisServes({
      that swapped its contents as you chose would be cleverer and harder to
      read back. */
   const canPointAt = [
-    ...(useCases.data ?? []).map((u) => ({ value: u.id, label: `Use case · ${u.company.name} — ${u.title}` })),
+    ...(useCases.data ?? []).map((u) => ({ value: u.id, label: `Use case · ${u.company.name} - ${u.title}` })),
     ...(moat.data?.components ?? []).map((c) => ({ value: c.key, label: `Moat · ${c.name}` })),
   ]
 
@@ -76,7 +76,7 @@ export function WhatThisServes({
           },
           {
             name: 'servesRecordId',
-            label: 'Which one — the use case, or the moat component',
+            label: 'Which one - the use case, or the moat component',
             options: canPointAt,
           },
           {
@@ -150,7 +150,7 @@ export function TheFreeze() {
       {f.isOn && (
         <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>
           Making an unsupported use case work, and keeping what exists running, go through as normal.
-          Anything else — including the moat — needs somebody to agree it cannot wait.
+          Anything else - including the moat - needs somebody to agree it cannot wait.
         </p>
       )}
       {f.overdue && (
@@ -215,7 +215,7 @@ function WhatWasDecidedAboutTheFreeze() {
         <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
           {(past.data ?? []).map((d) => (
             <li key={d.id}>
-              <strong>{d.isOn ? 'Frozen' : 'Lifted'}</strong> {readDate(d.decidedAt)} by {d.decidedById} — {d.because}
+              <strong>{d.isOn ? 'Frozen' : 'Lifted'}</strong> {readDate(d.decidedAt)} by {d.decidedById} - {d.because}
             </li>
           ))}
           {past.data?.length === 0 && <li>Nobody has decided anything about it yet.</li>}
@@ -300,11 +300,11 @@ export function TheFrame({ item }: { item: { id: string; title: string; descript
                   ))}
                   {s.useCases.map((u) => (
                     <li key={`${u.company}-${u.title}`}>
-                      {u.company} · {u.title} — {u.readiness.replace(/_/g, ' ').toLowerCase()}
+                      {u.company} · {u.title} - {u.readiness.replace(/_/g, ' ').toLowerCase()}
                     </li>
                   ))}
                   {s.blocked.map((b) => (
-                    <li key={b.name}>Blocked · {b.name} — {b.why}</li>
+                    <li key={b.name}>Blocked · {b.name} - {b.why}</li>
                   ))}
                 </ul>
               )}

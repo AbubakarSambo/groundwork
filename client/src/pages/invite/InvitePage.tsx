@@ -385,7 +385,7 @@ export function InvitePage() {
 
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
           This also saves your place, so you can come back any time to add to
-          your record - and see the shared report once everyone has checked in.
+          the record - and see the shared report once everyone has checked in.
           We'll email you a link for returning later.
         </div>
 

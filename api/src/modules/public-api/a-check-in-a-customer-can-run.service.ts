@@ -147,7 +147,7 @@ export class ACheckInACustomerCanRunService {
          confirmed, so it is returned rather than summarised. */
       brief: g.brief,
       timelineDays: g.timelineDays,
-      says: 'This was set up for you and has not started. Read what it says, change it if it is wrong, and confirm it — nothing is asked of anybody until you do.',
+      says: 'This was set up for you and has not started. Read what it says, change it if it is wrong, and confirm it - nothing is asked of anybody until you do.',
     }));
   }
 

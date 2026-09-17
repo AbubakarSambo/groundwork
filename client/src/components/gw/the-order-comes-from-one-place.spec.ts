@@ -31,11 +31,11 @@ const at = (label: string) => drawn.findIndex((l) => l === label)
 describe('the order comes from one place', () => {
   it('draws what this sits under before the objective it qualifies', () => {
     expect(at('What this sits under')).toBeGreaterThan(-1)
-    expect(at('What this sits under')).toBeLessThan(at('Against what good looks like'))
+    expect(at('What this sits under')).toBeLessThan(at('What everybody said good looks like'))
   })
 
   it('draws the objective before anything measured against it', () => {
-    expect(at('Against what good looks like')).toBeLessThan(at('Where things stand'))
+    expect(at('What everybody said good looks like')).toBeLessThan(at('Where things stand'))
   })
 
   it('draws the sharp part before the prose', () => {
@@ -44,8 +44,8 @@ describe('the order comes from one place', () => {
   })
 
   it('draws the conversation before the method, and the method last', () => {
-    expect(at('The conversation worth having now')).toBeLessThan(at('What this rests on'))
-    expect(at('What this rests on')).toBe(drawn.length - 1)
+    expect(at('The conversation worth having now')).toBeLessThan(at('What this is built from'))
+    expect(at('What this is built from')).toBe(drawn.length - 1)
   })
 
   it('draws no run block on the report for one session', () => {

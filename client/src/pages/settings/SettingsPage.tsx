@@ -34,7 +34,7 @@ export function SettingsPage() {
       updateUser({ firstName: u.firstName, lastName: u.lastName } as any)
       toast.success('Your name is updated. This is what your team sees.')
     },
-    onError: () => toast.error('Your name did not change. Nothing else was altered — try again.'),
+    onError: () => toast.error('Your name did not change. Nothing else was altered - try again.'),
   })
   const nameChanged =
     firstName.trim() !== (user?.firstName ?? '') || lastName.trim() !== (user?.lastName ?? '')
@@ -60,7 +60,7 @@ export function SettingsPage() {
     mutationFn: (change: { whoMayOpen?: string; needsApproval?: boolean }) =>
       apiClient.patch('/users/organization/check-ins', change),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['how-check-ins-work'] }); toast.success('Saved') },
-    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
+    onError: () => toast.error('Not saved. What you typed is still here - try again.'),
   })
   /* The defaults, which are the stricter of each - the same two this product starts an org on. */
   const howCheckIns = checkInsQuery.data ?? { whoMayOpen: 'NAMED_LEADS', needsApproval: true }

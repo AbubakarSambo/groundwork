@@ -43,7 +43,7 @@ export function whyThisIsNotYoursToSay(
 
   return (
     'Saying what an agreement says, or that a version is signed, binds your organisation to a '
-    + 'reading of it. That is for an admin or whoever set this check-in up — anybody can record a '
+    + 'reading of it. That is for an admin or whoever set this check-in up - anybody can record a '
     + 'figure or answer a question about one.'
   );
 }

@@ -81,7 +81,13 @@ describe('each gap says what is at stake', () => {
     expect(DIVERGENCE_BLOCK).toMatch(/Write one for every gap you report/);
     expect(DIVERGENCE_BLOCK).toMatch(/if and only if you would have to invent a consequence/i);
     // Required, so declining is a decision the model makes rather than a field it skips.
-    expect(DIVERGENCE_BLOCK).toContain("required: ['topic', 'positions', 'atStake']");
+    /*
+     * `settledBy` joined it on 16 September 2026, required for the same reason: an optional field
+     * is one the model skips without weighing whether it should. Her report printed a difference as
+     * the words "The definition of success" and nothing else - a subject, with nothing a reader
+     * could do about it.
+     */
+    expect(DIVERGENCE_BLOCK).toContain("required: ['topic', 'positions', 'atStake', 'settledBy']");
     expect(PROMPT).toMatch(/if and only if you would have to invent a consequence the record does not point to, return an empty string/i);
     // And the tiebreak, so the model knows which way to fail.
     expect(PROMPT).toMatch(/Reaching for a dramatic one is the worse failure/);

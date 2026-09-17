@@ -29,6 +29,14 @@ const COMMENT_ACCURACY_BY_DESIGN = [
   'activation-comments-accurate.spec.ts',
   'no-method-in-here-is-dead.spec.ts',
   'a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts',
+  /*
+   * ASSERTS THE PROMPT ITSELF, WHICH IS PROSE IN A TEMPLATE LITERAL RATHER THAN CODE.
+   *
+   * What it pins is the wording the model is given - "READ WHAT THEY HAVE ALREADY TYPED BEFORE YOU
+   * ASK ANYTHING" and the rest - and stripping comments would not change a character of it. It is
+   * on this list for the same reason as the others: the thing under test is words.
+   */
+  'the-setup-conversation-reads-you-first.spec.ts',
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

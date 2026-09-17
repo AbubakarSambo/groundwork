@@ -139,7 +139,7 @@ export function classifyCoverageReason(input: {
     return {
       reason: CoverageReason.BLOCKED_OR_OVERLOADED,
       reasonText:
-        'Part of their work is blocked (see what people are waiting on), so some of this is the team covering a blocked person, not a drop. Separate the blocked part from the rest before reading anything into it.',
+        'Part of their work is blocked, which you can see in what people are waiting on. So some of this is the team covering for somebody who is stuck, not somebody dropping things. Take the blocked part out before you read anything into the rest.',
     };
   }
   if (input.kind === CoverageKind.LEAKING && input.risingPeriods >= 3) {
@@ -238,7 +238,7 @@ export const LEADERSHIP_PATTERNS: LeadershipPatternSpec[] = [
     pole: ManagementPole.CONTROL,
     label: 'Commitments handed down rather than authored',
     signature:
-      "One account describes setting or assigning what others should do, while those others' accounts describe their commitments in the manager's terms rather than their own, or are unsure what they own.",
+      "One account describes setting or assigning what other people should do. Those other accounts either describe the same commitments in the manager's words rather than their own, or are not sure what they own.",
     why: 'A commitment someone authored themselves is one they own. One handed to them is one they comply with, and it slips differently.',
   },
   {
@@ -246,7 +246,7 @@ export const LEADERSHIP_PATTERNS: LeadershipPatternSpec[] = [
     pole: ManagementPole.CONTROL,
     label: 'Doing work the team should own',
     signature:
-      "One account is substantially made up of hands-on work that falls inside another party's stated remit, across more than one period, while that other party's account is thin on the same work.",
+      "One account is mostly hands-on work that sits inside somebody else's stated remit, over more than one period. That somebody else's account is thin on the same work.",
     why: 'This is the control pole. The team cannot own what is still being done for them, and the manager stays the bottleneck.',
   },
   {
@@ -262,7 +262,7 @@ export const LEADERSHIP_PATTERNS: LeadershipPatternSpec[] = [
     pole: ManagementPole.ABDICATION,
     label: 'A conversation that keeps not happening',
     signature:
-      'One account names a conversation as still to be had across two or more periods without it happening, or another account describes tension that no account describes addressing.',
+      'One account names a conversation as still to be had, over two periods or more, and it still has not happened. Or an account describes tension that nobody describes addressing.',
     why: 'The hard conversation is the core of the job, and deferring it is the most common way the role gets quietly avoided.',
   },
   {
@@ -309,4 +309,4 @@ export interface ManagerAlignmentRead {
 }
 
 export const MANAGER_ALIGNMENT_GUARD =
-  'Neither account is called wrong. A manager can set something clearly and have it not land, and both people can be describing their own experience honestly. This shows that the two accounts of the same leadership differ, never who said what, and it is a prompt for a conversation rather than a finding about anyone.';
+  'Neither account is called wrong. A manager can set something out clearly and have it not land, and both people can be describing their own experience honestly. This says the two accounts differ. It never says who said what, and it is a reason to talk rather than a finding about anybody.';

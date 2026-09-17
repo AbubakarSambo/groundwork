@@ -36,7 +36,7 @@ function ThingsWeDoByHand() {
       qc.invalidateQueries({ queryKey: ['call-request'] })
       toast.success('Asked. We will be in touch.')
     },
-    onError: () => toast.error('That did not send. What you wrote is still here — try again.'),
+    onError: () => toast.error('That did not send. What you wrote is still here - try again.'),
   })
 
   const open: Record<string, string> = asked.data?.open ?? {}
@@ -205,7 +205,7 @@ export function BillingPage() {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
-    onError: () => toast.error('Your plan did not change. You have not been charged — try again.'),
+    onError: () => toast.error('Your plan did not change. You have not been charged - try again.'),
   })
 
   /**

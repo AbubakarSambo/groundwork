@@ -25,7 +25,7 @@ describe('the invites wait if you say so', () => {
   it('asks when the invites should go out, and offers both answers', () => {
     expect(page).toContain('When should the invites go out?')
     expect(page).toContain('As soon as I save')
-    expect(page).toContain('On the day it starts')
+    expect(page).toContain('On a date I pick')
   })
 
   it('wires holding them to the start date, which is what actually delays the mail', () => {

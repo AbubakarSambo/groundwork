@@ -247,7 +247,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Platform console</Link>
           )}
         </div>
-        <p style={{ ...LABEL, fontSize: 10, marginBottom: 14 }}>{me.data?.displayName ?? '—'}</p>
+        <p style={{ ...LABEL, fontSize: 10, marginBottom: 14 }}>{me.data?.displayName ?? ' - '}</p>
 
         {GROUPS.map((group) => {
           const pages = mine.filter((p) => p.group === group)
@@ -308,7 +308,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
               {didNotLoad.failed === 1
                 ? 'Something on this page did not load'
                 : `${didNotLoad.failed} things on this page did not load`}
-              {' '}— what you can see may be incomplete.
+              {' '} - what you can see may be incomplete.
             </span>
             {/* `gw-btn-ghost` matches no rule, so the one control on a "something did not load"
                 banner was an unstyled browser button - the moment a control most needs to look

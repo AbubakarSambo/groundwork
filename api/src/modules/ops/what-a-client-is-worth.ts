@@ -112,7 +112,7 @@ export function earnedCredit(
     monthsRetained: months,
     says:
       earned === 0
-        ? `${possible} possible, none earned yet — ${milestone.label}`
-        : `${earned} of ${possible} earned — ${milestone.label}`,
+        ? `${possible} possible, none earned yet - ${milestone.label}`
+        : `${earned} of ${possible} earned - ${milestone.label}`,
   };
 }

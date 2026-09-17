@@ -215,7 +215,7 @@ function AFrontDoorOfItsOwn() {
           This is not the live site.
         </h1>
         <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>
-          It is a test build of the product, with its own database. An account from the live site does
+          It is a test build of the product, with its own database. A sign-in from the live site does
           not work here.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

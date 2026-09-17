@@ -17,18 +17,18 @@ export interface Column<T> {
 }
 
 export function readEnum(value: string | null | undefined): string {
-  if (!value) return '—'
+  if (!value) return ' - '
   return value.replace(/_/g, ' ').toLowerCase()
 }
 
 export function readDate(value: string | Date | null | undefined): string {
-  if (!value) return '—'
+  if (!value) return ' - '
   return whenItWas(value, 'day')
 }
 
 /** Overdue is worth seeing at a glance, and only where something is actually due. */
 export function DueDate({ value }: { value: string | null | undefined }) {
-  if (!value) return <>—</>
+  if (!value) return <> - </>
   const due = new Date(value)
   const late = due < new Date()
   return (

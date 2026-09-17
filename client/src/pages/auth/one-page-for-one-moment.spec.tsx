@@ -84,7 +84,7 @@ describe('/auth/sent is a state of /auth, not a second page', () => {
      * panel was there and the old copy was gone, and both held - but the sign-in form
      * still rendered ABOVE it, because the password view was gated on `view` and never
      * on `linkSent`. So /auth/sent showed an email field, a password field, "Sign in",
-     * "Forgot your password?", "Create an account", and then "Check your email"
+     * "Forgot your password?", "Sign up", and then "Check your email"
      * underneath all of it. Two screens stacked.
      *
      * The lesson is the one already in the plan: prove it at the render, not at the

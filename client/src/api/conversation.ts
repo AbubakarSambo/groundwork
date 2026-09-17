@@ -7,7 +7,16 @@ import { apiClient } from './client'
  */
 export interface CheckInBrief {
   subject: string | null
+  /** The lead's own words about the situation. Null where nobody has written one. */
+  says?: string | null
   objectives: { name: string; target: number | null }[]
+  /*
+   * Why the list of objectives is short, on a check-in that keeps numbers to their owner. The
+   * server has sent this since 15 September and the two fields above were the only ones declared,
+   * so the page could not read it without a cast. Somebody seeing two objectives on a check-in
+   * with four people otherwise cannot tell whether the rest are missing, secret, or not yet set.
+   */
+  alsoSay?: string | null
 }
 export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null }
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean }

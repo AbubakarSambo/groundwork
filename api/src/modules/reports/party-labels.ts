@@ -493,3 +493,40 @@ export function withNames(
   }
   return out;
 }
+
+/**
+ * A LABEL THE MODEL INVENTED, MATCHED TO A REAL PERSON BY POSITION.
+ *
+ * WHAT THIS IS NOT. A three-person report read "Person" for two of the three and this was written
+ * to fix it. It was not the cause: the two were seeded with the first name "Person", the model had
+ * written the roster labels correctly, and the substitution put back exactly the name it was given.
+ * Left in anyway, because the hole it covers is real and cheap to hold shut - the corpus lists the
+ * labels and the schema says to use them, and neither can stop a model writing a label that is not
+ * on the roster. Nothing here fires while the model behaves.
+ *
+ * A label that is not on the roster is resolved by ORDER: the positions on a difference are in the
+ * order the model wrote them, and the labels not already used in that difference are handed out in
+ * roster order.
+ *
+ * It is a guess, and a safe one: every candidate is somebody on this check-in whose name this
+ * reader is already allowed to see, so the worst case is two colleagues transposed rather than
+ * anybody learning something they should not. The alternative on the page is a side of a difference
+ * belonging to nobody, which is worse and is not even honest about being a guess.
+ */
+export function eachSideGetsSomebody<T extends { participantLabel?: string | null }>(
+  sides: T[],
+  knownLabels: Iterable<string>,
+): T[] {
+  const known = new Set([...knownLabels].map((l) => l.toLowerCase()));
+  const used = new Set(
+    sides.map((s) => String(s.participantLabel ?? '').toLowerCase()).filter((l) => known.has(l)),
+  );
+  const spare = [...knownLabels].filter((l) => !used.has(l.toLowerCase()));
+
+  return sides.map((side) => {
+    const label = String(side.participantLabel ?? '').trim();
+    if (label && known.has(label.toLowerCase())) return side;
+    const next = spare.shift();
+    return next ? { ...side, participantLabel: next } : side;
+  });
+}

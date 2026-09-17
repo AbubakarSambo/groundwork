@@ -106,7 +106,7 @@ function readBlocks(payload: unknown): string {
              a sentence. Only the page-to-open kind is described in words. */
           if (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in' || b.kind === 'upload_a_document') return null
           const href = typeof b.href === 'string' ? b.href : null
-          return href ? `${label} — in Groundwork, at ${href}` : label
+          return href ? `${label} - in Groundwork, at ${href}` : label
         }
         return b.body ?? b.text
       })
@@ -286,7 +286,7 @@ export function TheAssistantAsACustomerSeesIt() {
            * out loud rather than repeating the API's silence.
            */
           setProblem(
-            'Groundwork will not open a panel for this person. It means one of three things and does not say which: nobody with this id exists in that organisation, they are marked inactive, or their department is excluded. The usual cause is the organisation — the id the token names has to be the same one the machine credential pushes people into, and a push has to have run.',
+            'Groundwork will not open a panel for this person. It means one of three things and does not say which: nobody with this id exists in that organisation, they are marked inactive, or their department is excluded. The usual cause is the organisation - the id the token names has to be the same one the machine credential pushes people into, and a push has to have run.',
           )
           return
         }

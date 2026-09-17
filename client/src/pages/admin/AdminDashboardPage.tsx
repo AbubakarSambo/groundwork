@@ -186,7 +186,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
       await adminApi.requestOtp()
       setStep('enter')
     } catch (e: any) {
-      setError(e.message ?? 'Could not send the code — try again.')
+      setError(e.message ?? 'Could not send the code - try again.')
     } finally {
       setLoading(false)
     }
@@ -606,7 +606,7 @@ function AdminManagementSection({
 
         {admins.data?.length === 0 && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: '8px 0' }}>
-            Nobody — which should be impossible, since you are reading this.
+            Nobody - which should be impossible, since you are reading this.
           </div>
         )}
 
@@ -629,7 +629,7 @@ function AdminManagementSection({
           </button>
         </form>
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
-          They have to have a Groundwork account already — this promotes one, it does not create one.
+          They have to have a Groundwork account already - this promotes one, it does not create one.
         </div>
       </div>
 
@@ -742,7 +742,7 @@ function OpsAccessSection() {
       <div style={C}>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
           Targets, the pipeline, commitments, spend, the moat. Everybody on the platform-admin list
-          above is on this team — your account is admitted the first time you open it. Connect the
+          above is on this team - your account is admitted the first time you open it. Connect the
           rest of the team below.
         </div>
 
@@ -999,7 +999,7 @@ export function AdminDashboardPage() {
 
         {error && (
           <div style={{ ...C, borderLeft: '3px solid var(--gw-danger)', fontSize: 13, color: 'var(--gw-danger)' }}>
-            {(error as Error).message ?? 'Could not load the dashboard — try again.'}
+            {(error as Error).message ?? 'Could not load the dashboard - try again.'}
           </div>
         )}
 

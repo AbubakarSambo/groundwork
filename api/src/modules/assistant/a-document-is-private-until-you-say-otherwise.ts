@@ -32,7 +32,7 @@ export const WHO_IT_COULD_BE_FOR: { value: WhoFor; label: string; said: string }
 /** What the assistant asks once a file is in. */
 export function askWhoItIsFor(fileName: string): string {
   return (
-    `"${fileName}" is in, and for now only you can see it. Who is it for — `
+    `"${fileName}" is in, and for now only you can see it. Who is it for - `
     + WHO_IT_COULD_BE_FOR.map((o) => o.label).join(', ')
     + '?'
   );
@@ -67,7 +67,7 @@ export function askAgain(): string {
 /** What to say once it is set, so somebody knows exactly what happened. */
 export function whatWasDone(fileName: string, who: WhoFor): string {
   const chosen = WHO_IT_COULD_BE_FOR.find((o) => o.value === who)!;
-  return `"${fileName}" — ${chosen.said}`;
+  return `"${fileName}" - ${chosen.said}`;
 }
 
 /**
@@ -81,7 +81,7 @@ export function whatWasDone(fileName: string, who: WhoFor): string {
 export function whyThereIsNowhereToPutIt(openCheckIns: number): string | null {
   if (openCheckIns > 0) return null;
   return (
-    'A document goes with a check-in — it is evidence for something being discussed rather than a filing cabinet. '
+    'A document goes with a check-in - it is evidence for something being discussed rather than a filing cabinet. '
     + 'You have none open, so there is nowhere to put one yet. '
     + 'If it is something the whole organisation should know, that is a different thing and whoever set Groundwork up can add it.'
   );

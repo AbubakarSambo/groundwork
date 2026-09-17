@@ -117,7 +117,14 @@ describe('commit falls back to the server-side draft (the vanish fix)', () => {
     expect(grounds.create).toHaveBeenCalledTimes(1);
     expect(grounds.create.mock.calls[0][2]).toMatchObject({ label: 'Launch checklist ownership' });
     expect(prisma.organization.update).toHaveBeenCalledWith({ where: { id: 'org1' }, data: { name: 'Acme Ops' } });
-    expect(prisma.conversationTurn.createMany).toHaveBeenCalled(); // transcript from the DRAFT
+    /*
+     * The draft's transcript no longer becomes a conversation: setup stopped counting as the lead's
+     * own check-in on 15 September 2026, so nothing is written onto session 1 and she answers it
+     * herself. What this spec is actually for is that the DRAFT is what commit read when the body
+     * arrived empty, and the assertions above and below prove that from the label, the org name and
+     * the contributor. The transcript still travels - it is what the targets are read from.
+     */
+    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
     expect(grounds.addParticipant).toHaveBeenCalledTimes(1); // contributor from the DRAFT
     expect(res.groundId).toBe('g-new');
   });

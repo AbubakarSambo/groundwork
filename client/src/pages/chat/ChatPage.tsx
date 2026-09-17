@@ -443,10 +443,22 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
+          /*
+            AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
+
+            This line lived inside the turns check below, so a session with no turns yet - which is
+            every session at the moment somebody opens it - kept the default of 1 that navigation
+            state carries. Walked in a browser as a participant on session 2: the header said
+            "Session 1" and so did the composer, on a page whose opening line was about what they
+            said last time.
+
+            Which session this is is a fact about the check-in, not about whether its turns have
+            arrived, so it is read from the check-in. Same fix, same paragraph, as the brief.
+          */
+          if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
+          if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
-            if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
-            if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
             if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
@@ -798,7 +810,7 @@ export function ChatPage() {
           */}
           {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
               description but which has no objectives and no label showed nothing at all. */}
-          {brief && (brief.subject || (brief as any).says || brief.objectives.length > 0) && (
+          {brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
                 What this check-in is about
@@ -816,9 +828,9 @@ export function ChatPage() {
                 stopped. Read on a real invitation: the lead had written four sentences describing
                 the situation and the person being asked to account for it never saw a word of them.
               */}
-              {(brief as any).says && (
+              {brief.says && (
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
-                  {(brief as any).says}
+                  {brief.says}
                 </div>
               )}
               {brief.objectives.length > 0 && (
@@ -833,6 +845,20 @@ export function ChatPage() {
                     </div>
                   ))}
                 </>
+              )}
+              {/*
+                AND WHY THE LIST IS SHORT, WHICH THE SERVER HAS BEEN SAYING TO NOBODY.
+
+                A check-in that keeps numbers to their owner sends this line with the brief: "Other
+                people on this check-in have numbers of their own, and those are theirs." Without
+                it, somebody reads two objectives on a check-in with four people and has no idea
+                whether the rest are missing, secret, or simply not set. The line was written on 15
+                September and rendered nowhere.
+              */}
+              {brief.alsoSay && (
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>
+                  {brief.alsoSay}
+                </div>
               )}
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 7, lineHeight: 1.45 }}>
                 Answer in your own words. You are not expected to agree with any of it.

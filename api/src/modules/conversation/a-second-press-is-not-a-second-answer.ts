@@ -22,7 +22,7 @@
 export const A_SECOND_PRESS_WINDOW_MS = 120_000;
 
 export const STILL_ON_YOUR_LAST_ANSWER =
-  'Still reading your last answer — this can take a few seconds. Nothing was lost.';
+  'Still reading your last answer - this can take a few seconds. Nothing was lost.';
 
 export interface ATurnAlreadyThere {
   role: 'PERSON' | 'AI';

@@ -132,7 +132,16 @@ describe('GW-EXP-5: a seen expectation gets pressed on', () => {
   it('but presses on nothing they have never seen', () => {
     const unseen = build(false);
     expect(unseen).not.toMatch(/PRESS ON THE GAP/);
-    expect(unseen).toMatch(/read nothing against it this session/);
+    /*
+     * Renamed from MY_OBJECTIVE on 15 September 2026. Read on a live participant check-in, the
+     * model took the possessive as its own: "My objective for this check-in, set by the person
+     * leading it, is for you to carry 150 contracts", said to the person it was about. And the
+     * unseen branch told it to "show it to them" when the band at the top of the same screen was
+     * already showing it - "you have not seen this yet" sat two inches under the thing itself.
+     */
+    expect(unseen).toMatch(/Read nothing against it this session/);
+    expect(unseen).toMatch(/it is on screen above this conversation/);
+    expect(unseen).not.toMatch(/show it to them/);
   });
 
   it('and never tells them they agreed to it, because they never did', () => {
@@ -146,7 +155,7 @@ describe('GW-EXP-5: a seen expectation gets pressed on', () => {
       scenario: GroundScenario.NEW_HIRE, partyType: PartyType.PARTICIPANT, sessionNumber: 2,
       otherPartyCheckedIn: false, groundLabel: 'New hire',
     } as any);
-    expect(none).toContain('MY_OBJECTIVE: none set for this person');
+    expect(none).toContain('WHAT_IS_EXPECTED_OF_THEM: none set for this person');
     expect(none).not.toMatch(/PRESS ON THE GAP/);
   });
 });

@@ -59,7 +59,7 @@ export function whyThisPeriodCannotOpenYet(input: {
 
   return (
     `${names.join(', ')} ${names.length === 1 ? 'has' : 'have'} no objective in ${input.periodName}. ` +
-    'A period opens once everybody active has agreed what they are measured on — after it opens, an objective written for somebody is a target they did not get to argue with.'
+    'A period opens once everybody active has agreed what they are measured on - after it opens, an objective written for somebody is a target they did not get to argue with.'
   );
 }
 

@@ -562,7 +562,17 @@ export class EmailService implements OnModuleInit {
          <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
-         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Say what I am seeing →</a></p>
+         <!--
+           THE BUTTON SAYS WHAT HAPPENS WHEN YOU PRESS IT.
+
+           It said "Say what I am seeing", which reads as a strange thing to be asked and does not
+           name the thing on the other side of it. Reported off a real invitation: "say what I am
+           seeing instead of check-in is strange."
+
+           The words above it already explain what a check-in is and that nobody on the team reads
+           it. The button only has to say what pressing it starts.
+         -->
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Start my check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
@@ -659,7 +669,7 @@ export class EmailService implements OnModuleInit {
       subject: 'Groundwork could not reach your webhook endpoint',
       html: this.layout(
         `<p>${greeting(firstName)}</p>` +
-        `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one — a <code>${eventType}</code> — was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
+        `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one - a <code>${eventType}</code> - was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
         `<p>We have switched this endpoint off, so nothing more queues against a receiver we know we cannot reach. Nothing has been lost on our side: every attempt and its response is in your delivery log. Once it is reachable again, switch it back on from your integrations page and new events flow to it.</p>` +
         `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
         `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
@@ -745,7 +755,7 @@ export class EmailService implements OnModuleInit {
         `<p>${greeting(firstName)}</p>` +
         `<p>Your organisation's API access has been withdrawn, effective now: calls made with your keys will be refused from this point. The reason given:</p>` +
         `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(note)}</p>` +
-        `<p>Nothing you have built is deleted, and your records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
+        `<p>Nothing you have built is deleted, and the records and reports are unaffected. If you believe this is wrong, reply to this email.</p>` +
         `<p><a href="${link}">Open Connect</a></p>`,
       ),
     }, undefined, 'sendApiAccessWithdrawn');

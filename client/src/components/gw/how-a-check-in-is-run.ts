@@ -37,7 +37,7 @@ export const HOW_TO_STEPS = [
      * different scenarios, offered to somebody who has not been told what a scenario is.
      */
     title: 'Say what you want to be true at the end',
-    body: 'The brief asks what this is about and what needs to be true when it is finished. Each person is then asked for their own version of what good looks like here. Where those answers differ is most of what the report is for, so it is worth being plain about yours.',
+    body: 'The brief asks what this is about, and what has to be true when it is finished. Each person then gives their own version of what good looks like. Most of what the report is for is where those answers differ, so be plain about yours.',
   },
   {
     title: 'Check in independently. Be specific.',

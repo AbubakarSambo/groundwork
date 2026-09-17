@@ -538,7 +538,7 @@ export class GroundsByApiService {
     const unmatched = out.filter((o) => !o.matched).map((o) => o.objectiveExternalId);
     const says =
       matchedItems.length === 0
-        ? `Nothing was written. None of these ${out.length} objectiveExternalIds is on a check-in in this organisation — check the ids you sent, or that the objectives were created with sourceSystem "api".`
+        ? `Nothing was written. None of these ${out.length} objectiveExternalIds is on a check-in in this organisation - check the ids you sent, or that the objectives were created with sourceSystem "api".`
         : unmatched.length === 0
           ? `${matchedItems.length} updated.`
           : `${matchedItems.length} updated. ${unmatched.length} matched no objective and were not written.`;

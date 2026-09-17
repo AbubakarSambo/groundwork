@@ -1056,7 +1056,7 @@ export class PublicApiController {
     @Param('contentionId') contentionId: string,
     @Body() dto: { resolution?: string },
   ) {
-    if (!dto?.resolution) throw new BadRequestException('resolution is required — say what it is, not only that it is settled.');
+    if (!dto?.resolution) throw new BadRequestException('resolution is required - say what it is, not only that it is settled.');
     return this.drafts.resolveContention(req.machine.organizationId, id, contentionId, dto.resolution);
   }
 
@@ -1075,7 +1075,7 @@ export class PublicApiController {
     @Body() dto: { externalId?: string; sourceSystem?: string },
   ) {
     if (!dto?.externalId || !dto?.sourceSystem) {
-      throw new BadRequestException('externalId and sourceSystem are both required — the objective needs an id in your own system.');
+      throw new BadRequestException('externalId and sourceSystem are both required - the objective needs an id in your own system.');
     }
     return this.drafts.seed(req.machine.organizationId, id, dto.externalId, dto.sourceSystem);
   }

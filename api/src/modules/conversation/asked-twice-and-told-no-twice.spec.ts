@@ -113,3 +113,43 @@ describe('asked twice already', () => {
     expect(alreadyAskedTwice('How does this connect to the company direction?', old)).toBe(false);
   });
 });
+
+/*
+ * THE FOURTH ASK, READ ON A LIVE SESSION ABOUT SHOPS IN KANO.
+ *
+ * The guard caught the third and asked again, and the retry asked it again in new words. That is
+ * the designed fallback everywhere else in this file, and here the fallback is the fault.
+ */
+describe('the question asked again comes out', () => {
+  const { withoutTheQuestionAskedAgain } = require('./asked-twice-and-told-no-twice');
+  const earlier = [
+    'By "the end of Q4," do you have a specific date in mind, even if it is an estimate?',
+    'What date in Q4 are you hoping to hit the 40-shop target by, even if that is a stretch goal?',
+  ];
+
+  it('takes the repeat out and leaves what else was said', () => {
+    const out = withoutTheQuestionAskedAgain(
+      'And a target of 40 by the end of Q4. What specific date are you working towards for that Q4 target?',
+      earlier,
+    );
+    expect(out).toBe('And a target of 40 by the end of Q4.');
+    expect(out).not.toContain('?');
+  });
+
+  it('leaves a different question alone', () => {
+    const different = 'Understood. Who is closest to the shops that have gone quiet?';
+    expect(withoutTheQuestionAskedAgain(different, earlier)).toBe(different);
+  });
+
+  it('and hands back nothing when the repeat was the whole reply, so the caller can keep the first', () => {
+    expect(withoutTheQuestionAskedAgain(earlier[1], earlier)).toBe('');
+  });
+
+  it('is what the service does when the second try repeats', () => {
+    const src = require('fs')
+      .readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).toMatch(/withoutTheQuestionAskedAgain\(screened\.text, earlierAsks\)/);
+    expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text\)/);
+  });
+});

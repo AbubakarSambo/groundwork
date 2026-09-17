@@ -112,7 +112,7 @@ export function theQuestionLeaks(claim: string, question: string, alreadyShared 
  */
 export function whatTheOtherSideIsAsked(about: string): string {
   const subject = about.trim().replace(/[.?]+$/, '');
-  return `${subject.charAt(0).toUpperCase()}${subject.slice(1)}? Whatever you have is fine — I am asking for your own account of it.`;
+  return `${subject.charAt(0).toUpperCase()}${subject.slice(1)}? Whatever you have is fine - I am asking for your own account of it.`;
 }
 
 /**
@@ -154,6 +154,6 @@ export function howItReads(a: Assertion): string {
 /** Given to any synthesis that reads one of these. */
 export const AN_ASSERTION_IS_NOT_A_FACT =
   'WHAT ONE SIDE SAID IS NOT WHAT HAPPENED. Where only one side has been asked, say who said it and '
-  + 'that the other has not been asked — never state it as established. Where the two accounts differ, '
+  + 'that the other has not been asked - never state it as established. Where the two accounts differ, '
   + 'say both, in their own words, and never say which is correct, which is more likely, or that '
   + 'anybody is mistaken. You were not there and neither was this record.';

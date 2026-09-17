@@ -72,11 +72,51 @@ export type Hit = {
  * so "2,000" matches "2000" and "2am" matches "2". A list marker ("1." on its own) is not a claim
  * and is let through.
  */
+/**
+ * A DAY OF THE MONTH IS NOT A FIGURE SOMEBODY INVENTED.
+ *
+ * The other half of the fault that ate the date sentences. With months no longer read as names,
+ * "End of the year, so 31 December 2026?" was still deleted - now for the 31 and the 2026, as
+ * figures nobody had said. And they had not said them: the whole point of that sentence is that
+ * the product worked the date out from "end of the year" and is showing them its reading so they
+ * can confirm it. See sayTheDateAndCheckIt, which says exactly that in its own header.
+ *
+ * So a number that is part of a date is left alone. Everything else this check exists for - a
+ * target, a count, a percentage, a figure attached to somebody's work - is untouched, because
+ * inventing one of those is the fault it was built to catch.
+ */
+const PART_OF_A_DATE = (sentence: string, raw: string): boolean => {
+  const at = sentence.indexOf(raw);
+  if (at < 0) return false;
+  /*
+   * ADJACENT, NOT MERELY NEARBY. A window of a few words caught "Three transfers waited 45 minutes
+   * on 2 September" and let the 45 through as part of the date, which is exactly the kind of figure
+   * this check exists to catch. The month or day has to be touching the number, with nothing
+   * between them but the words a date is written with.
+   */
+  const JOINING = "(?:\\s+(?:of|the)){0,2}\\s*,?\\s*";
+  const MONTH = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*";
+  const DAY = "(?:mon|tues?|wednes|thurs?|fri|satur|sun)day";
+  const before = sentence.slice(0, at);
+  const after = sentence.slice(at + raw.length);
+
+  /* "31 December", "5th of January", "22nd," */
+  if (new RegExp(`^(?:st|nd|rd|th)?${JOINING}(?:${MONTH}|${DAY})\\b`, 'i').test(after)) return true;
+  /* "December 31", "Friday the 25th" */
+  if (new RegExp(`\\b(?:${MONTH}|${DAY})${JOINING}$`, 'i').test(before)) return true;
+  /* "by the 5th", "on the 22nd" - an ordinal introduced the way a deadline is written. */
+  if (/^(?:st|nd|rd|th)\b/i.test(after) && /\b(?:by|on|before|after|until|since)\s+(?:the\s+)?$/i.test(before)) return true;
+  /* A four-digit year, which in this product's sentences is only ever a year. */
+  if (/^(?:19|20)\d\d$/.test(raw)) return true;
+  return false;
+};
+
 export function numbersNobodySaid(sentence: string, known: string[]): string[] {
   const table = known.join(' ').replace(/[^0-9]+/g, ' ');
   const have = new Set(table.split(' ').filter(Boolean));
   const out: string[] = [];
   for (const raw of sentence.match(/\d[\d,.:]*\d|\d/g) ?? []) {
+    if (PART_OF_A_DATE(sentence, raw)) continue;
     if (/^\d+$/.test(raw) && new RegExp(`(^|\\s)${raw}[.)](\\s|$)`).test(sentence)) continue;
     const digits = raw.replace(/[^0-9]/g, '');
     if (!digits || have.has(digits)) continue;

@@ -28,7 +28,58 @@
  * back as a fact, and it opened a quarter of the turns in the one conversation that was read line
  * by line.
  */
+/**
+ * AND THE SENTENCES THAT SOUND LIKE A MACHINE EXPLAINING A CATEGORY.
+ *
+ * Read off a live report, in full: "Because silence is usually a stage, not a rejection, it is
+ * important to know that this kind of sales and expansion work often faces unfair reading, which
+ * you should consider before making assumptions about your current standing."
+ *
+ * Her verdict on it was blunt and correct. Nobody speaks like that. It is about a CATEGORY rather
+ * than about the person, it survives being deleted, and it is the reason a report with the right
+ * facts in it still does not get read.
+ *
+ * Every one of these openers introduces a sentence about nothing. They are banned outright, the
+ * same way the performed-empathy phrases are, because the fix for each is the same: say the thing
+ * about this person instead.
+ */
+export const SAYS_NOTHING_ABOUT_ANYBODY = [
+  'this kind of work',
+  'this kind of sales',
+  'this type of work',
+  'it is important to know',
+  'it is worth noting',
+  'you should consider',
+  'before making assumptions',
+  'your current standing',
+  'often faces unfair',
+  'is usually a stage',
+  'what decides whether',
+  'tends to be misread',
+  'is often misunderstood',
+  'in situations like this',
+  'generally speaking',
+];
+
+/**
+ * WORDS THE PRODUCT USES ABOUT ITSELF, WHICH NOBODY SAYS OUT LOUD.
+ *
+ * "Checkable", "rests on", "read against", "anchored", "surface" as a verb. Every one of them is
+ * the product describing its own machinery to somebody who only wants to know what is going on.
+ */
+export const OUR_WORDS_NOT_THEIRS = [
+  'checkable',
+  'rests on',
+  'read against',
+  'anchored to',
+  'unfair reading',
+  'the record shows over time',
+  'surfaced to',
+];
+
 export const PHRASES_WE_NEVER_WRITE = [
+  ...SAYS_NOTHING_ABOUT_ANYBODY,
+  ...OUR_WORDS_NOT_THEIRS,
   'it sounds like',
   'it seems like',
   'I understand',
@@ -90,11 +141,36 @@ export function wordsWeDoNotUse(reply: string, whatTheySaidSoFar: string[] = [])
   return found;
 }
 
-export function sayItWithoutThose(found: string[]): string {
+/**
+ * AND THE INSTRUCTION QUOTES THE SENTENCE, BECAUSE NAMING THE WORD WAS NOT ENOUGH.
+ *
+ * Measured across nineteen live check-ins: this guard fired ten times and the second try was clean
+ * twice. The same failure shape the restating guard had, and the same cause - it named the fault
+ * and left the model to find its own way out, and the way out it kept finding was the phrasing it
+ * had just been told not to use.
+ *
+ * NO SURGICAL FALLBACK HERE, and that is deliberate. The restating guard can drop its opening
+ * sentence because that sentence carries nothing. Here it would be the opposite: "It sounds like
+ * you are carrying the weight of this" with the lead-in removed becomes "You are carrying the
+ * weight of this" - a hedge turned into a verdict about somebody's feelings, which is the exact
+ * thing the ban exists to stop. A worse reply, arrived at faster.
+ */
+export function sayItWithoutThose(found: string[], reply = ''): string {
   const list = found.map((f) => `"${f}"`).join(', ');
-  return `Your last reply used ${list}. ${
-    found.length === 1 ? 'That is' : 'Those are'
-  } on the list this product never uses: they either perform empathy instead of producing it, or they make a record read like an assessment, which is the one thing this is not.
+  const one = found.length === 1;
+  const sentence = (reply || '')
+    .split(/(?<=[.?!])\s+/)
+    .find((s) => found.some((f) => s.toLowerCase().includes(f.toLowerCase())))
+    ?.trim();
 
-Say the same thing again without ${found.length === 1 ? 'it' : 'them'}. Do not replace a banned word with a longer way of saying the same word: state what the record shows, and ask what you were going to ask.`;
+  return `Your last reply used ${list}. ${one ? 'That is' : 'Those are'} on the list this product never uses: they either perform empathy instead of producing it, or they make a record read like an assessment, which is the one thing this is not.
+${sentence ? `\nThis is the sentence:\n"${sentence}"\n` : ''}
+Write the reply again with ${one ? 'that word' : 'those words'} gone, and do not reach for a longer way of saying the same thing - "it seems to me that", "what I am hearing is", "your delivery record" are the same move with more syllables.
+
+Say the thing itself instead. Any of these works:
+- state what the record holds, as a fact: "The forecast went out with gaps."
+- say what they told you, in their words, without a verb of interpretation in front of it
+- drop the preamble entirely and ask the question straight
+
+You are not reading somebody's feelings back to them. You are building a record with them.`;
 }

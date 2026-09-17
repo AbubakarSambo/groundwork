@@ -28,11 +28,11 @@ export function whyThereIsNoReportYet(where: WhereEverybodyIs): string {
   }
   if (waiting > 0) {
     const who = waiting === 1 ? 'one person has' : `${waiting} people have`;
-    return `The report is written once everybody has answered. ${who} not finished yet — you will be emailed when it is ready.`;
+    return `The report is written once everybody has answered. ${who} not finished yet - you will be emailed when it is ready.`;
   }
   /*
    * Everybody is done and there is still no row: the report is being written. This is the one
    * people met most often, pressing straight through from the end of their own session.
    */
-  return 'Everybody has answered and the report is being written. This takes up to a minute — you will be emailed when it is ready.';
+  return 'Everybody has answered and the report is being written. This takes up to a minute - you will be emailed when it is ready.';
 }

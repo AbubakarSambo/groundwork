@@ -91,7 +91,7 @@ export class OpsResourcesService {
         checkedAt: new Date(),
         checkSays:
           read?.says ??
-          'Checked against the words only — nothing read it. A claim made without our words would not be caught by this.',
+          'Checked against the words only - nothing read it. A claim made without our words would not be caught by this.',
       },
     });
 

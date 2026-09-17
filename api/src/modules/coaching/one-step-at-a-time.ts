@@ -138,6 +138,14 @@ export interface SessionRead {
   sessionNumber: number;
   /** Whether this session had anything checkable in it at all. */
   hadSubstance: boolean;
+  /**
+   * WHETHER THE STEP IS ABOUT THE ACCOUNT RATHER THAN ABOUT THE WORK.
+   *
+   * The two are coached differently and the substance gate below only makes sense for one of them.
+   * True for every step off the universal floor, which is what somebody gets when nobody has
+   * settled what kind of work they do. See a-role-nobody-mapped-is-still-a-person.
+   */
+  aboutTheAccount?: boolean;
 }
 
 /**
@@ -153,7 +161,23 @@ export function nextMove(state: CoachingStateShape, read: SessionRead): NextMove
   if (!read.reason?.trim()) {
     return { move: 'wait', because: 'nothing in this session gave a reason to offer a step.' };
   }
-  if (!read.hadSubstance) {
+  /*
+   * A THIN SESSION IS NOT A REASON TO WITHHOLD A STEP ABOUT THIN SESSIONS.
+   *
+   * The rule is right about work: you cannot coach somebody on work they never described. Counted
+   * on the corpus, it was wrong about thirteen people in the other direction - the behaviour had
+   * recurred, nothing was inverted, a destination existed, and the step was held back because the
+   * session was vague. The steps being held back:
+   *
+   *   "Put one detail on each thing you name, so somebody else can tell whether it happened."
+   *   "When something stalls, say what you tried next."
+   *
+   * The step that fixes a vague session, withheld because the session was vague. So the gate now
+   * applies to what it was always about: a step about the WORK needs something of the work in
+   * front of it; a step about how somebody gives their account needs only the account, and a thin
+   * one is the evidence rather than the obstacle.
+   */
+  if (!read.hadSubstance && !read.aboutTheAccount) {
     return { move: 'wait', because: 'this session had nothing checkable in it, so there is nothing to coach from.' };
   }
 

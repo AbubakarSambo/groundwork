@@ -35,7 +35,7 @@ function TheirAgreement({ personKey }: { personKey: string }) {
       {a?.originatorSharePercent
         ? `Agreed: ${Number(a.originatorSharePercent)}% originator share${
             a.originatorShareMonths ? ` for ${a.originatorShareMonths} months` : ''
-          }${a.agreementNote ? ` — ${a.agreementNote}` : ''}`
+          }${a.agreementNote ? ` - ${a.agreementNote}` : ''}`
         : 'No revenue share recorded. Being the originator does not create one.'}
     </p>
   )

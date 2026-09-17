@@ -199,7 +199,7 @@ export default function OpsTargetCompaniesPage() {
               <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
                 {data.counts.notProductReady.map((c) => (
                   <li key={c.name} style={{ marginBottom: 4 }}>
-                    <strong>{c.name}</strong> — {c.why.join('; ')}
+                    <strong>{c.name}</strong> - {c.why.join('; ')}
                   </li>
                 ))}
               </ul>
@@ -311,16 +311,16 @@ export default function OpsTargetCompaniesPage() {
                       */}
                       {c.summaryIsStale && (
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                          from the work — the summary still says {readStage(c.storedStage)}
+                          from the work - the summary still says {readStage(c.storedStage)}
                         </div>
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', color: 'var(--gw-sub)' }}>
-                      {c.broughtBy.map((b) => b.contributor).join(', ') || '—'}
+                      {c.broughtBy.map((b) => b.contributor).join(', ') || ' - '}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>{c.nextAction ?? '—'}</td>
+                    <td style={{ padding: '10px 12px' }}>{c.nextAction ?? ' - '}</td>
                     <td style={{ padding: '10px 12px', color: 'var(--gw-sub)' }}>
-                      {c.blockerSummary ?? c.deploymentBlocker ?? '—'}
+                      {c.blockerSummary ?? c.deploymentBlocker ?? ' - '}
                     </td>
                   </tr>
                 ))}

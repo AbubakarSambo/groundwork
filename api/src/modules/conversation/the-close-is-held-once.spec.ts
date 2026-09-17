@@ -26,7 +26,17 @@ describe('a number nobody said is dropped like a name nobody said', () => {
     expect(numbersNobodySaid('You wrote on the 14th.', SAID)).toEqual([]);
   });
   it('catches a figure that appears nowhere', () => {
-    expect(numbersNobodySaid('Three transfers waited 45 minutes on 2 September.', SAID)).toEqual(['45', '2']);
+    /*
+     * THE 2 IS THE SECOND OF SEPTEMBER AND IT IS NO LONGER REPORTED.
+     *
+     * A day of the month is a figure the person did not say by construction - the product worked it
+     * out - and reporting it deleted the sentence. That deletion is what stopped "End of the year,
+     * so 31 December 2026?" reaching anybody for two days. See a-date-is-not-an-invention.
+     *
+     * The 45 is the point of this test and is still caught: a duration is not a date, however close
+     * it sits to one.
+     */
+    expect(numbersNobodySaid('Three transfers waited 45 minutes on 2 September.', SAID)).toEqual(['45']);
   });
   it('a list marker is not a claim', () => {
     expect(numbersNobodySaid('1. What happened next?', SAID)).toEqual([]);
@@ -73,5 +83,41 @@ describe('the role map is there from turn one, provisionally', () => {
     ], { fn: stated.fn, confidence: stated.confidence });
     expect(withWords.fn).toBe('SALES');
     expect(withWords.basis).toMatch(/does not bear out/);
+  });
+});
+
+/*
+ * BOTH ENDINGS IN ONE MESSAGE, READ LIVE:
+ *
+ *   "Your report is ready now, and nothing in it needs acting on today. Speak soon.
+ *
+ *    One more before this closes. Put a date or a number on that, or name where it is written down."
+ */
+describe('a refused close does not keep its goodbye', () => {
+  const { withoutTheGoodbye } = require('./the-close-is-held-once');
+
+  it('takes the farewell out and leaves what they said', () => {
+    const out = withoutTheGoodbye(
+      'That is 1,200 units toward the goal. Your report is ready now, and nothing in it needs acting on today. Speak soon.',
+    );
+    expect(out).toBe('That is 1,200 units toward the goal.');
+  });
+
+  it('and hands back nothing rather than half a farewell when that is all there was', () => {
+    expect(withoutTheGoodbye('Your report is ready now. Speak soon.')).toBe('');
+  });
+
+  it('and leaves an ordinary turn exactly as it was', () => {
+    const asked = 'What specifically is making it slower, and what had you expected by now?';
+    expect(withoutTheGoodbye(asked)).toBe(asked);
+  });
+
+  it('is applied at both close sites, not only the one that was read', () => {
+    const src = require('fs')
+      .readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* The turn path and the stream path append the held question separately; fixing one leaves the
+       other reading exactly as it did before. */
+    expect((src.match(/withoutTheGoodbye\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 });

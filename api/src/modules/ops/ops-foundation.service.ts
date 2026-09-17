@@ -59,7 +59,7 @@ export class OpsFoundationService {
     actorPersonId?: string;
   }) {
     const name = input.name?.trim();
-    if (!name) throw new BadRequestException('A target list needs a name — it is what every board will call it.');
+    if (!name) throw new BadRequestException('A target list needs a name - it is what every board will call it.');
 
     const wrong = whyTheseDatesAreWrong({ startsOn: input.startsOn, endsOn: input.endsOn });
     if (wrong) throw new BadRequestException(wrong);
@@ -68,7 +68,7 @@ export class OpsFoundationService {
     const clash = await this.prisma.opsPeriod.findUnique({ where: { key } });
     if (clash) {
       throw new ConflictException(
-        `There is already a period called "${clash.name}". Give this one a name that tells them apart — the key is made from the name and has to be unique.`,
+        `There is already a period called "${clash.name}". Give this one a name that tells them apart - the key is made from the name and has to be unique.`,
       );
     }
 
@@ -200,7 +200,7 @@ export class OpsFoundationService {
     if (!period) throw new NotFoundException(`No period called ${key}`);
     if (period.kind !== 'TARGET_LIST') {
       throw new BadRequestException(
-        `${period.name} is a ${period.kind.toLowerCase()}, not a target list. Quarters follow the calendar and cycles hang off a quarter — neither is ours to move.`,
+        `${period.name} is a ${period.kind.toLowerCase()}, not a target list. Quarters follow the calendar and cycles hang off a quarter - neither is ours to move.`,
       );
     }
 

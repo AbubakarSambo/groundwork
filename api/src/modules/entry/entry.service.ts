@@ -44,7 +44,7 @@ import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbo
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
   opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice,
-  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, DO_NOT_SAY_IT_BACK,
+  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, doNotSayItBack,
 } from '../conversation/asked-twice-and-told-no-twice';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES } from '../conversation/a-reply-is-not-an-essay';
@@ -56,8 +56,12 @@ import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invente
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from '../conversation/a-question-is-read-before-it-is-sent';
+import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
 
@@ -157,6 +161,34 @@ There is no prior check-in data, no longitudinal patterns, no other-party record
 Do not reference prior sessions or what anybody else said.
 Do not mention saving or payment unless the person asks.
 The first session is free.
+
+# A question carries its reason, and an abstract one carries an example
+This is in the engine rules above and it loses there, because it is one paragraph in eighteen
+thousand words and this is the conversation somebody is having right now. Read live, twice in a row,
+after somebody had already said they did not know:
+  "What would tell you that the tea is actually being stocked in those shops?"
+  "What is the smallest sign that would tell you something is actually moving?"
+Both are fair questions and both are unanswerable cold.
+
+Every question you ask carries ONE short line saying why it helps: "It helps to keep a definition of
+what clear success looks like." And any question that asks for something abstract - what good looks
+like, what would count, what would tell you - carries two or three concrete options FROM THEIR OWN
+WORLD: "A distributor list, a photo from a shop visit, an invoice, whatever you would actually look
+at." Never an example from another business: pipeline, conversion and sign-ups mean nothing to
+somebody selling tea in Kano.
+
+# Setup is finished, and everything in it is answered
+The summary above holds what they told setup: what this is about, who is in it, what they are aiming
+at, and the period. Not one of those may be asked for again. Read live, after her opening sentence
+had named both people: "Who else is involved in making that happen?" - asked of somebody who had
+written "Sahar and Amina each need their own number" four minutes earlier.
+If you want to go wider than what is there, ask for something genuinely new: where it stands today,
+what is in the way, what would have to be true. Never for something already on the card.
+
+# Twice is enough
+If somebody has said they do not know, twice, they do not know. Take it, say plainly that it can be
+settled later and is recorded as open, and move to something they CAN answer. A third version of the
+same question is the product arguing with a person about their own work.
 
 # Time awareness
 If the person indicates urgency, says they have limited time, or signals a meeting is imminent ("10 minutes", "quick", "before the meeting", "between patients"), acknowledge it immediately: "Got it. I will keep this tight." Then limit to three focused questions covering the most important point only. Do not extend the session past what the time allows.
@@ -607,6 +639,38 @@ export class EntryService {
     return { scenario: resolveScenario(mode), confidence: 'low' };
   }
 
+  /**
+   * WHAT THIS LEAD ALREADY HAS HERE, OR NOTHING AT ALL FOR A STRANGER.
+   *
+   * Their own check-ins and their own job title. Never a participant's words - see
+   * setup-is-not-a-stranger-to-somebody-who-is-signed-in for why the wall has no door here. A
+   * failure is nothing: setup for somebody with an account must never be worse than setup for
+   * somebody without one.
+   */
+  private async whatThisLeadAlreadyHas(askedBy?: { userId: string; organizationId: string } | null) {
+    if (!askedBy?.userId) return null;
+    try {
+      const [user, grounds] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { jobTitle: true } }),
+        this.prisma.ground.findMany({
+          where: { initiatorId: askedBy.userId, organizationId: askedBy.organizationId },
+          select: { label: true, brief: true },
+          orderBy: { createdAt: 'desc' },
+          take: ENOUGH_TO_RECOGNISE_THEM,
+        }),
+      ]);
+      /* Counts, never labels: a check-in's name is something a person wrote. */
+      this.logger.log(`Setup knows this lead: ${grounds.length} check-in(s) of their own, job title ${user?.jobTitle ? 'known' : 'not set'}.`);
+      return {
+        jobTitle: user?.jobTitle ?? null,
+        theirCheckIns: grounds.map((g) => ({ label: g.label, about: g.brief })),
+      };
+    } catch (err: any) {
+      this.logger.warn(`Setup could not read what this lead already has: ${err?.message}`);
+      return null;
+    }
+  }
+
   async onboard(
     messages: ChatTurn[],
     /**
@@ -616,6 +680,17 @@ export class EntryService {
     scenarioInput?: string,
     momentInput?: string,
     onDelta?: (text: string) => void,
+    /**
+     * WHAT THE LAST TURN READ OUT OF THIS CONVERSATION, HANDED BACK BY THE SCREEN THAT IS SHOWING IT.
+     * See what-setup-already-knows-travels-with-it. Absent on the first turn, and absent from an old
+     * client, which is why nothing here requires it.
+     */
+    soFar?: WhatSetupHasSoFar | null,
+    /**
+     * THE SIGNED-IN LEAD, IF THERE IS ONE. The route is public and stays public; a session that
+     * happens to exist is read. See setup-is-not-a-stranger-to-somebody-who-is-signed-in.
+     */
+    askedBy?: { userId: string; organizationId: string } | null,
   ): Promise<{
     reply: string;
     extracted: {
@@ -728,9 +803,16 @@ Your job is to gather these things through natural conversation:
    should be the one setting it up, and that they can be added to watch the reports afterwards from
    the check-in's settings. Then stop; do not press for a situation they cannot describe.
 1b. yourPart: THE ONE THING ABOUT THEM, AND IT IS NOT THE SECOND THING YOU ASK.
-   Ask once what their own part in it is, in one plain sentence that fits what they just said: "And
-   where do you sit in this, are you her manager?" or "And your part in this?" Take whatever they say
-   in their own words; do not offer options, do not ask for a title, do not ask again. It is asked
+   Ask once what their own part in it is, in one plain sentence that fits what they just said.
+   ASK IT WIDE, AND "And your part in this?" IS TOO NARROW - Hafsah, reading it live on a payments
+   SDK migration, 17 September 2026. Four words, no example, and no clue what kind of answer is
+   wanted, so it reads as a demand for a job title from somebody who has just described a project.
+   A part can be any of these and all of them are real answers: they own the outcome, they run the
+   people doing it, they do some of the work, they unblock it, they pay for it, they are the one
+   being checked in on, or they are keeping an eye on it from one step back. Ask it so that range
+   is visible - "And what is your part in the migration, are you running it, doing some of it, or
+   watching how it lands?" - with the options taken from THEIR situation and never from this list.
+   Take whatever they say in their own words; do not ask for a title, and do not ask again. It is asked
    because the questions their own check-in gets are shaped by it, and it was skipped by 237 of the
    last 239 people because nothing asked. If they already said it, do not ask.
 
@@ -743,26 +825,64 @@ Your job is to gather these things through natural conversation:
    Asking somebody about themselves before asking about the thing they came for reads as a form
    collecting fields. Get what they came to say first - the goals, the situation, the decision,
    whatever this scenario is for - and ask this after it, or last.
+   READ WHAT THEY HAVE ALREADY TYPED BEFORE YOU ASK ANYTHING. THIS IS THE FIRST THING YOU DO.
+   Read live, twice. She opened with "I want 40 shops in Kano stocking our tea by the end of Q4,
+   and Sahar and Amina each need their own number under that." The first question back was "What is
+   the overall goal you want Sahar and Amina to help achieve for the quarter?" - the thing she had
+   just written, asked for again in her own words. She replied "I just said it."
+
+   So: whatever is already in their message is ANSWERED. The goal, the people, the deadline, the
+   place, the reason - if it is in there, it is done, and asking for it again is the single fastest
+   way to make somebody give up on this. Ask only for what is genuinely missing, and ask for the
+   thing that is missing that matters most.
+
+   AND IF THEY TELL YOU THEY ALREADY SAID IT, THEY ARE RIGHT. Do not defend the question and do not
+   apologise. Say what you have, in their words, in half a sentence, and ask the next thing:
+   "Got it, 40 shops in Kano by the end of Q4. Who is carrying which part of that?"
+
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
    checking in regularly?" was asked live and the honest reply was "is this about me or the other
    person?" - because "will YOU be checking in" is a question about who answers, and this is a
-   question about how long the situation runs. Ask the shape of the thing:
-   "Is this a one off, or something you want to come back to as it goes?"
+   question about how long the situation runs. Ask the shape of the thing, and in the same breath
+   say where the rest of it gets set, because somebody answering this does not yet know that the
+   dates, the cadence and the context are theirs to change afterwards - Hafsah's wording, 15
+   September 2026:
+   "Is this a one-off check-in, or something that you will track over time? You can set context and
+    change the settings on the Context and Setup tabs once this first conversation is done."
+   Ask it as one question. The second sentence is not a second ask and does not need an answer.
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
-   ORGANISATIONS ARE NOT PEOPLE. If the answer names companies, teams, partners or clients rather
+   ASK IT SO A TEAM OR A DEPARTMENT IS A VALID ANSWER, NOT ONLY A LIST OF NAMES. "Who else is
+   making that happen?" reads as a demand for individuals, and somebody whose honest answer is
+   "the ops team" or "finance, mostly" then feels they have answered wrongly. Ask it as
+   "Who else is part of this - a person, a team, another department?" and take whichever they give.
+   ORGANISATIONS ARE NOT PEOPLE, AND THAT IS ABOUT WHO CHECKS IN, NOT ABOUT WHOSE NAME THEY MAY
+   SAY FIRST. "The ops team" is a complete answer to who else is part of this. What it is not is
+   somebody who can answer a check-in, so the follow-up is about that and is asked once.
+   If the answer names companies, teams, partners or clients rather
    than individuals ("we work with Afrimash, Bayer and NABG"), that is a good answer to a
    different question, and you are not finished. Ask once, in one sentence, who the person
    responsible is inside them - by name if they know it, by role if they do not. A record is
    built from accounts that individual people give; an organisation cannot check in. If they say
    they do not know yet, accept it and move on: never press twice, and never invent a name.
 5. decision: what is making this worth doing right now.
-   ASK THIS ONE WITH EXAMPLES, ALWAYS. Bare, it is the question people stall on: "what makes you
-   want to do this right now?" sounds like it is asking them to justify themselves, and
-   the honest answer ("it just seemed sensible") feels wrong to type. Two or three concrete
-   examples turn it into a menu they can point at.
+   NEVER ASK IT AS "what makes you want to do this right now?" OR ANY VARIANT OF "why do you want
+   to". Hafsah, 17 September 2026, after reading it live: it is asking them to justify themselves,
+   and the honest answer ("it just seemed sensible") feels wrong to type.
+   ASK ABOUT THE TIMING, NOT THE MOTIVE, AND ALWAYS WITH EXAMPLES:
+   "What makes this the right time to set up a check-in on this - a new quarter, a quarter that
+    missed, a handover, needing the team lined up on it?"
+   SAY "SET UP A CHECK-IN", NOT "CHECK IN". Read live: "What makes this the right time to check in
+   on the migration?" asks why they are answering questions today, which is not the question. What
+   is being decided is whether to stand a check-in up at all, and for how long - so the sentence has
+   to say so. Her wording, 17 September 2026.
+   AND THE DASH IS A SPACED ONE OR IT IS NOTHING. Read live: "set this check-in up-a new quarter",
+   which is a typo on the screen. If the examples do not fit around a spaced dash, put them in
+   brackets instead.
+   The timing question has an easy answer that costs nobody anything to give. The motive question
+   does not. Two or three concrete examples turn it into a menu they can point at.
 
    THE EXAMPLES ARE BUILT FROM WHAT THEY JUST TOLD YOU. NEVER FROM THIS FILE.
    This used to print three: onboarding going well, probation being decided, the project starting
@@ -802,6 +922,10 @@ Your job is to gather these things through natural conversation:
 
 Rules:
 - Ask one short question at a time. One sentence. No lists, no sub-questions.
+- AND JOINED TO A SECOND QUESTION IS STILL TWO QUESTIONS. Read live: "What timeline are you working
+  to for the migration, and how often would you like to check in on the progress?" - two unrelated
+  things in one sentence, so one of them gets answered and the other is asked again later. An
+  example INSIDE a question is fine; a second ask after "and" is not.
 - Keep each reply to 1 or 2 sentences. Never write more than that.
 - The person's own part in this is step 1b, the second question, on its own - see above. It used to
   be an instruction to "ask early" inside step 3, which is why it kept arriving third, mixed into a
@@ -838,6 +962,31 @@ Rules:
   each other's responses at the same time. They do not, and never did.
 - If someone asks what they will get at the end: say they get a private summary for themselves, and a shared picture showing where people agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for everybody involved to say what they are seeing, separately, so the shared picture can show where they agree and where they see it differently.
+- ONE QUESTION, AND SAY WHY IT HELPS. Two faults, read off one live setup, and they are the same
+  fault twice: a question with nothing around it.
+    "I also need to know what Sahar's individual target is, and what Amina's individual target is."
+  Two asks in one turn, and the product making demands of somebody who came to it for help. Ask for
+  ONE thing. Never "I need to know".
+  Then give the reason, in one short sentence, in front of or behind the question. Her own example
+  of what this should sound like:
+    "And how will you know they are stocking it? It helps to keep a definition of what clear
+     success looks like."
+  The reason is not a justification and it is not a lecture. It is the half-line that tells somebody
+  why answering is worth their time, and without it every question reads like a form.
+- AND SHOW WHAT AN ANSWER COULD LOOK LIKE. Anything abstract - what good looks like, what would
+  count, what would tell you - is hard cold, and people either stall or answer in the air. Offer two
+  or three concrete options FROM THEIR OWN WORLD, in their words, never from somewhere else:
+    "What would tell you the shops are actually stocking it? A distributor list, a photo from a shop
+     visit, an invoice - whatever you would actually look at."
+  Never offer examples that belong to a different business. On a check-in about tea in Kano, the
+  words pipeline, conversion and sign-ups are somebody else's.
+- SAY IT AS YOU WOULD TO A COLLEAGUE, AND NEVER BUILD A SENTENCE OUT OF THEIR PHRASES.
+  Read live, and she could not read it:
+    "So what Sahar and Amina see on the check-in is the check on the distributor's list. You have
+     Sahar and Amina on the check-in."
+  That is two of her phrases joined with "is", plus a sentence telling her something she already
+  knows. It also changed what she said: she said what they see ON THE GROUND. If you cannot say the
+  thing in one plain clause in your own words, say nothing and ask your question.
 - HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
 - THE WRAP-UP TURN (read carefully). WHEN YOU ARE DONE GATHERING DEPENDS ON WHO YOU ARE TALKING TO,
   and it is the same rule the product uses to decide it:
@@ -848,6 +997,12 @@ Rules:
       often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
   Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
+- AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
+  this conversation was their only chance to explain the situation. It is not: the Context tab takes
+  documents, notes and anything else the check-ins should be held against, and nothing in this flow
+  has ever said so - so the plan, the brief and the spreadsheet they already have never arrive, and
+  every session afterwards runs on memory. One clause, in the closer, in plain words: anything else
+  worth holding this against goes on the Context tab, any time.
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
@@ -900,8 +1055,37 @@ Rules:
       .map((m) => m.content ?? '')
       .join(' ');
     const lookingBack = thisAlreadyHappened(theirWords);
-    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput)
-      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '');
+    /*
+     * WORK OUT WHICH SITUATION THIS IS BEFORE ASKING THE FIRST QUESTION, NOT AFTER.
+     *
+     * Every one of the twenty-two situations has its own first question, and they only ever reached
+     * somebody who CLICKED A CARD. Describe your own situation and `scenarioInput` is empty, so the
+     * pack is empty and the generic opener asks for the thing they have just written.
+     *
+     * Read live: "I want 40 shops in Kano stocking our tea by the end of Q4, and Sahar and Amina
+     * each need their own number under that" was answered with "What is the overall goal you want
+     * Sahar and Amina to help achieve for the quarter?"
+     *
+     * The classifier already runs on this text - it was running AFTER the reply, in the background,
+     * to set the plan. It runs first now, on the first turn only, and costs one call on the turn
+     * where getting it right matters most. A low-confidence answer returns nothing and the honest
+     * open question stands, exactly as it did.
+     */
+    const firstTurn = (messages as { role: string }[]).filter((m) => m.role === 'user').length <= 1;
+    const scenarioForTheQuestion = scenarioInput
+      ? scenarioInput
+      : firstTurn && theirWords.trim().length > 12
+        ? (await this.classifyIntent(theirWords).catch(() => null))?.scenario ?? undefined
+        : undefined;
+    if (!scenarioInput && scenarioForTheQuestion) {
+      this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
+    }
+    const settled = whatIsSettledAndWhatIsNot(soFar);
+    const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
+    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
+      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
+      + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
+      + (settled ? `\n\n---\n\n${settled}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
@@ -935,7 +1119,13 @@ Fields:
   by their role where you do not ("Priya", "Tom", "the finance lead"). A team, a company, a client or a
   department is NOT an entry: "my team" is zero people, not one. Leave it out entirely if no individual
   has been identified - an empty list is an honest answer and is handled.
-- decision: what prompted this, why now
+- decision: what prompted this, why now.
+  NOT A RESTATEMENT OF WHAT THIS IS ABOUT, AND THIS IS THE COMMON FAILURE. Read live: About said
+  "Setting goals for 40 shops in Kano stocking tea by end of Q4" and Why said "setting goals for the
+  next quarter" - the same fact, twice, with the second field pretending to be a reason. A reason
+  says what changed, what went wrong last time, or what is at stake now. If they have not given one,
+  LEAVE IT OUT. An empty field is honest and the screen says so; a paraphrase of another field is
+  the product inventing content and it teaches people the summary cannot be trusted.
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
@@ -1080,7 +1270,7 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[]): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -1096,6 +1286,8 @@ from finishing at all.`;
       buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed),
       messages,
       onDelta,
+      /* Theirs: the people they named, what they called it, and everything they typed in setup. */
+      [...(peopleNamed ?? []), groundLabel ?? '', ...(alreadySaid ?? [])],
     );
   }
 
@@ -1131,8 +1323,30 @@ from finishing at all.`;
    * text reaches a person, so the fact has to travel beside the reply - never on the service, which is
    * one instance serving every concurrent visitor to a public route.
    */
-  private async guardedReplyWithClose(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
-    const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+  private async guardedReplyWithClose(
+    system: string,
+    messages: ChatTurn[],
+    onDelta?: (text: string) => void,
+    /**
+     * WHAT THEY SAID BEFORE THIS PHASE, AND THE PEOPLE ON THE CHECK-IN.
+     *
+     * Read off a live run, from the log this fix also gave us:
+     *
+     *   dropped a sentence: a name nobody said (Kano) in "Twice a month for the Kano distributor."
+     *   dropped a sentence: a name nobody said (Amina) in "And what about Amina's part in this?"
+     *
+     * She typed Kano and Amina in her very first message. The check is right - a name nobody said
+     * must never reach somebody - and it was looking at the wrong list: only the user turns of THIS
+     * phase, so everything she said in setup, and everybody on the roster, read as invented the
+     * moment the check-in began. Sentences naming her own colleagues were deleted mid-reply, which
+     * is what left "What does her goal look like?" standing on its own.
+     */
+    alsoTheirs?: string[],
+  ): Promise<{ reply: string; closed: boolean }> {
+    const personSaid = [
+      ...messages.filter((m) => m.role === 'user').map((m) => m.content ?? ''),
+      ...(alsoTheirs ?? []).filter(Boolean),
+    ];
     const reply = onDelta
       ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
       : await this.anthropic.respond(system, messages);
@@ -1144,7 +1358,17 @@ from finishing at all.`;
      */
     const screened = screen(reply, personSaid);
     if (screened.dropped.length) {
-      this.logger.warn(`Dropped ${screened.dropped.length} sentence(s) with an invented name on the entry path.`);
+      /*
+       * WHAT WENT, NOT ONLY HOW MANY. The count alone is what made the date fault invisible for two
+       * days: six sentences were cut from one setup conversation and every log line said "Dropped 1
+       * sentence(s)", so nobody could see that the thing being deleted was the date question. The
+       * reason and the offending word go with it - that is what names the bug.
+       */
+      for (const hit of screened.hits) {
+        this.logger.warn(
+          `Entry path dropped a sentence: ${hit.check} (${hit.offending.join(', ')}) in ${JSON.stringify(hit.sentence)}`,
+        );
+      }
     }
     const restored = screened.text || ASK_AGAIN;
 
@@ -1225,13 +1449,13 @@ from finishing at all.`;
         return { fault: 'a verdict about somebody not in the room', instruction: HERS_TO_DRAW };
       }
       if (theirLast && opensByRepeatingThem(theirLast, text)) {
-        return { fault: 'opened by repeating them', instruction: DO_NOT_SAY_IT_BACK };
+        return { fault: 'opened by repeating them', instruction: doNotSayItBack(theirLast, text) };
       }
       /* The words this product does not use, same list and same reason as the check-in path. Their
          own word back is not the fault; the product reaching for it is. See words-we-do-not-use. */
       const notOurWords = wordsWeDoNotUse(text, personSaid);
       if (notOurWords.length) {
-        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords) };
+        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords, text) };
       }
       /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
       /* A reply that carries the marker and still asks is not the closing turn, so it does not get
@@ -1266,7 +1490,58 @@ from finishing at all.`;
       }
     }
 
-    return { reply: forHumans(best), closed: hadCloseMarker(best) };
+    /*
+     * AND LAST, SOMEBODY READS IT.
+     *
+     * Everything above this line asks what SHAPE the reply is. "To start, what is the number you
+     * are working towards for these 40 shops?" passes every one of them and is incoherent, because
+     * she had just given the number. Meaning needs a reader, and the reader is given the
+     * conversation and the draft and nothing else - no engine rules, no pack, no idea what we were
+     * trying to do. See a-question-is-read-before-it-is-sent.
+     */
+    const read = await this.readBeforeSending(messages, forHumans(best), personSaid);
+    return { reply: read, closed: hadCloseMarker(best) };
+  }
+
+  /**
+   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
+   *
+   * Her five checks, plus the restating fault that kept getting through them. The reader may rewrite, which no guard here can do, and its rewrite goes
+   * through the same invention screen as everything else: a reader that adds a name or a figure is
+   * refused and the draft stands, because being fresh is not a licence to invent.
+   */
+  private async readBeforeSending(messages: ChatTurn[], draft: string, personSaid: string[]): Promise<string> {
+    if (!draft.trim()) return draft;
+    try {
+      const said = theTailOf(
+        (messages as { role: string; content: string }[])
+          .filter((m) => (m.content ?? '').trim())
+          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
+      );
+      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
+        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: personSaid }) },
+      ]);
+      const decided = whatTheReaderDecided(answer, draft);
+      /* Logged either way, so a run can be counted rather than argued about: how many turns the
+         reader let through and how many it rewrote is the only evidence that it is worth its call. */
+      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
+      const clean = screen(decided.text, personSaid);
+      if (clean.hits.length || !clean.text.trim()) {
+        this.logger.warn(`entry chat: the reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
+        return draft;
+      }
+      /*
+       * THE LOG SAYS IT HAPPENED, NOT WHAT WAS SAID. The first version printed the draft and the
+       * rewrite, which was useful to read live and is a message body in a log line: a rewritten
+       * question routinely carries the person's own nouns back to them.
+       */
+      this.logger.log(`entry chat: the reader rewrote it (${draft.length} chars to ${clean.text.length})`);
+      return forHumans(clean.text);
+    } catch (err: any) {
+      /* A reader that cannot be reached is not a reason to lose the reply. */
+      this.logger.warn(`entry chat: could not read the draft before sending: ${err?.message}`);
+      return draft;
+    }
   }
 
   /**
@@ -1482,8 +1757,28 @@ from finishing at all.`;
     // other waits for the winner's groundId and returns it. Sequential
     // replays return the recorded ground immediately.
     const draft = await this.prisma.entryDraft.findUnique({ where: { userId: initiatorId } });
+    /*
+     * A CONSUMED DRAFT IS A REPLAY ONLY WHILE IT STILL LOOKS LIKE ONE.
+     *
+     * Nothing creates a second draft - it is written once at signup - so a lead coming back through
+     * /entry a week later to set up a different check-in hit this line and was handed the ground
+     * they made the first time, with everything they had just typed dropped in silence. 5.5.
+     *
+     * The protection this gives is real and stays: two requests seconds apart must not make two
+     * grounds. See a-second-setup-is-a-second-check-in for what separates the two.
+     */
     if (draft?.consumedAt) {
-      return this.awaitConsumedDraftGround(initiatorId);
+      const itMade = draft.groundId
+        ? await this.prisma.ground.findUnique({ where: { id: draft.groundId }, select: { label: true } }).catch(() => null)
+        : null;
+      if (isAReplayRatherThanASecondSetup({
+        consumedAt: draft.consumedAt,
+        theGroundItMade: itMade?.label ?? null,
+        nowAskingFor: dto.groundLabel,
+      })) {
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+      this.logger.log(`Entry commit for ${initiatorId}: the draft was consumed on ${new Date(draft.consumedAt).toISOString()} by ${JSON.stringify(itMade?.label ?? null)}, and this is a new check-in. Setting it up fresh.`);
     }
     if (draft) {
       const claimed = await this.prisma.entryDraft.updateMany({
@@ -1818,25 +2113,31 @@ from finishing at all.`;
     });
     if (!checkIn) throw new BadRequestException('Session 1 check-in not found');
 
-    // Bulk-insert the conversation turns from the anonymous session.
+    /*
+     * SETUP IS NOT THE LEAD'S CHECK-IN. Decided by Hafsah, 15 September 2026: "the setup does not
+     * count as a leads first checkin. lead has to always do a first checkin."
+     *
+     * It used to be. The setup transcript was copied into session 1 and the session was marked
+     * COMPLETED, so a lead finished setup and had already given their account without ever being
+     * asked how anything was going. The setup conversation says "then you go into your own
+     * check-in, where you set the context and say how it is going" - and that sentence was false
+     * for the person reading it, in their own completed transcript.
+     *
+     * The two are different conversations. Setup works out what kind of situation this is and who
+     * is in it; the check-in asks how it is actually going. The answers to the first are not an
+     * account of the second, and treating them as one is why a lead's record held four lines about
+     * the shape of the thing and nothing about the work.
+     *
+     * WHAT STILL TRAVELS. Everything the setup produced: the brief in their own words, the
+     * objectives and targets, the people, the cadence. None of that came from the transcript - it
+     * is extracted at commit - so the context is unchanged. What changes is that the lead now has
+     * a session 1 to do, like everybody else.
+     */
     if (dto.history.length > 0) {
-      await this.prisma.conversationTurn.createMany({
-        data: dto.history.map(t => ({
-          checkInId: checkIn.id,
-          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
-          content: t.content,
-        })),
-      });
+      this.logger.log(
+        `Ground ${ground.id}: setup produced ${dto.history.length} turns; session 1 stays open for the lead to answer.`,
+      );
     }
-
-    // Mark session 1 complete.
-    await this.prisma.checkIn.update({
-      where: { id: checkIn.id },
-      data: {
-        status: CheckInStatus.COMPLETED,
-        completedAt: new Date(),
-      },
-    });
 
     /**
      * KEEP THE DOCUMENTS THE PERSON ATTACHED.
@@ -1881,20 +2182,16 @@ from finishing at all.`;
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
     /*
-     * Extract structured record entries for the initiator so report synthesis can read them.
-     * AWAITED, because the synthesis two dozen lines down reads exactly these rows - the normal
-     * completion path awaits it for the same reason. The summary it builds afterwards is not
-     * awaited: nothing downstream reads that, and a model failure there must not fail a commit.
+     * NOTHING IS EXTRACTED FROM SETUP AS THOUGH IT WERE THEIR ACCOUNT.
+     *
+     * This read the setup transcript and wrote record entries against session 1 - "I am their
+     * manager, I set the target", "I want to see what is on track" - which are answers about the
+     * SHAPE of the check-in, filed as though they were an account of the work. Read live in a
+     * report: a lead's "what you said this time" held two lines, both about who she is.
+     *
+     * The session she is about to do produces her record, on the normal completion path, like
+     * everybody else's.
      */
-    if (dto.history.length > 0) {
-      await this.conversation
-        .extractRecordEntries(checkIn.id, participant.id)
-        .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
-
-      this.conversation
-        .buildSoloArtifact(participant.id, ground.id)
-        .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
-    }
 
     /*
      * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
@@ -2042,7 +2339,10 @@ from finishing at all.`;
      */
     if (dto.history.length > 0) {
       await this.conversation
-        .extractExpectations(checkIn.id, participant.id, ground.id)
+        /* From the setup conversation, which is no longer copied onto her session. See
+           extractExpectations: the targets are what she said the check-in is FOR, not her account
+           of the work, so setup is still the right place to read them from. */
+        .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
         .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
     }
 

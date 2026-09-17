@@ -11,7 +11,7 @@ const STRATEGIC_STATUSES = ['IDENTIFIED', 'OUTREACH', 'ENGAGED', 'OPPORTUNITY_CR
 /** Objectives, commitments, approvals, spend, fundraise, strategy, the seam. */
 
 const money = (v: number | string | null | undefined) =>
-  v === null || v === undefined ? '—' : `$${Number(v).toLocaleString()}`
+  v === null || v === undefined ? ' - ' : `$${Number(v).toLocaleString()}`
 
 /**
  * The rows a figure was made of, on request.
@@ -176,7 +176,7 @@ export function OpsQuarterPage() {
                pipeline may be the target rather than a mistake — which it is
                belongs to whoever set it. */
             <p key={d.objective} style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '8px 0 0', lineHeight: 1.6 }}>
-              <strong>{d.objective}</strong> — {d.says}
+              <strong>{d.objective}</strong> - {d.says}
             </p>
           ))}
         </section>
@@ -604,7 +604,7 @@ function WhatWasDecidedBefore({
             {earlier.map((d) => (
               <li key={d.id} style={{ marginBottom: 3 }}>
                 {readEnum(d.status)} on {readDate(d.decidedAt ?? d.createdAt)}
-                {d.decisionNote ? ` — ${d.decisionNote}` : ''}
+                {d.decisionNote ? ` - ${d.decisionNote}` : ''}
               </li>
             ))}
           </ul>
@@ -763,7 +763,7 @@ export function OpsSpendPage() {
 
           {balance.data.nobodyCanApprove.map((e) => (
             <p key={e.id} style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
-              {e.description} ({money(e.amount)}) — {e.why}
+              {e.description} ({money(e.amount)}) - {e.why}
             </p>
           ))}
         </section>
@@ -861,7 +861,7 @@ export function OpsFundraisePage() {
           { head: 'Ask', cell: (f) => money(f.askAmount), numeric: true },
           { head: 'Committed', cell: (f) => money(f.committedAmount), numeric: true },
           { head: 'In', cell: (f) => money(f.closedAmount), numeric: true },
-          { head: 'Next', cell: (f) => f.nextAction ?? '—' },
+          { head: 'Next', cell: (f) => f.nextAction ?? ' - ' },
           {
             head: 'Due',
             /* "Overdue" is one of the five numbers at the top of this page, and
@@ -893,7 +893,7 @@ export function OpsStrategyPage() {
 
   const columns: Column<OpsStrategic>[] = [
     { head: 'Who', cell: (s) => <strong>{s.personOrNetwork}</strong> },
-    { head: 'Where', cell: (s) => s.organization ?? '—' },
+    { head: 'Where', cell: (s) => s.organization ?? ' - ' },
     { head: 'For', cell: (s) => s.opportunityType },
     {
       head: 'Status',
@@ -946,7 +946,7 @@ export function OpsStrategyPage() {
           />
         ),
     },
-    { head: 'Next', cell: (s) => s.nextStep ?? '—' },
+    { head: 'Next', cell: (s) => s.nextStep ?? ' - ' },
     { head: 'Due', cell: (s) => <DueDate value={s.nextStepDueAt} /> },
   ]
 
@@ -1067,7 +1067,7 @@ export function OpsRequestsPage() {
     { head: 'Who', cell: (r) => nameFor(r.requesterId) },
     { head: 'Why', cell: (r) => <span style={{ color: 'var(--gw-sub)' }}>{r.reason}</span> },
     { head: 'How urgent', cell: (r) => readEnum(r.urgency) },
-    { head: 'By', cell: (r) => (r.requestedByDate ? readDate(r.requestedByDate) : '—') },
+    { head: 'By', cell: (r) => (r.requestedByDate ? readDate(r.requestedByDate) : ' - ') },
     {
       head: 'Where it stands',
       cell: (r) => (
@@ -1154,7 +1154,7 @@ export function OpsDecisionsPage() {
 
       <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16, maxWidth: 620, lineHeight: 1.6 }}>
         Each of these is something a person chose and could choose differently. Nothing here is
-        stored twice — changing one recomputes every number that depends on it, which is why the
+        stored twice - changing one recomputes every number that depends on it, which is why the
         note says what choosing differently would change.
       </p>
 

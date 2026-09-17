@@ -133,7 +133,7 @@ export function whatThisCompanyDecided(held: WhatWeHold): Card[] {
             (p) =>
               `${p.name} (${asADate(p.startsOn)} to ${asADate(p.endsOn)})\n${p.intent}\n`
               + `Done when: ${p.exitCondition}`
-              + (p.exitMetric ? ` — read from ${p.exitMetric}.` : ' — not a number this system reads; somebody decides.'),
+              + (p.exitMetric ? ` - read from ${p.exitMetric}.` : ' - not a number this system reads; somebody decides.'),
           ),
         ].join('\n\n'),
         'Ops → The workplan',
@@ -209,9 +209,9 @@ export function whatServingMeans(): { label: string; description: string }[] {
     SALES: 'It unblocks a customer use case.',
     MOAT: 'It adds to one of the moat components.',
     UNLOCKS_A_CUSTOMER: 'It unlocks a customer we could not have taken before.',
-    KEEPING_IT_UP: 'It keeps what exists working. Necessary, invisible, counted — and it needs somebody to agree it was.',
+    KEEPING_IT_UP: 'It keeps what exists working. Necessary, invisible, counted - and it needs somebody to agree it was.',
     MAKES_THE_COMPANY_OPERABLE:
-      'It makes the company able to operate — hiring, onboarding, writing down how we work. Only during the phase that permits it.',
+      'It makes the company able to operate - hiring, onboarding, writing down how we work. Only during the phase that permits it.',
   };
   return (Object.keys(said) as OpsServes[]).map((k) => ({ label: k, description: said[k] }));
 }

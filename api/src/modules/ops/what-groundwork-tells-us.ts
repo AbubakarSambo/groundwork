@@ -76,7 +76,7 @@ export function whatItMeansForUs(kind: string, payload: Record<string, unknown>)
     case 'round.completed':
       /* The one that matters most: a report exists and nobody here would
          otherwise know until they went looking. */
-      return `A round finished on check-in ${short(payload.groundId)} — a report is ready.`;
+      return `A round finished on check-in ${short(payload.groundId)} - a report is ready.`;
 
     case 'checkin.completed':
       return `Somebody finished their check-in on ${short(payload.groundId)}.`;

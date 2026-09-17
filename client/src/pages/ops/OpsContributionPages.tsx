@@ -15,7 +15,7 @@ import { Adder, Choose } from './OpsForm'
  */
 
 const money = (n: number | string | null | undefined) =>
-  n === null || n === undefined ? '—' : `$${Number(n).toLocaleString()}`
+  n === null || n === undefined ? ' - ' : `$${Number(n).toLocaleString()}`
 
 const WINDOWS = [
   { key: 'all', label: 'All time', from: undefined, to: undefined },
@@ -162,7 +162,7 @@ export function OpsContributionPage() {
             <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0 }}>
               {l.origination.clients.map((c) => (
                 <li key={c.opportunity} style={{ fontSize: 12.5, color: 'var(--gw-sub)', padding: '2px 0' }}>
-                  {c.company} — {money(c.cash)} · {c.credit}
+                  {c.company} - {money(c.cash)} · {c.credit}
                 </li>
               ))}
             </ul>
@@ -186,7 +186,7 @@ export function OpsContributionPage() {
             <strong>Their agreement: </strong>
             {l.entitlement.percent === null
               ? l.entitlement.says
-              : `${money(l.entitlement.originatorShare)} — ${l.entitlement.says}`}
+              : `${money(l.entitlement.originatorShare)} - ${l.entitlement.says}`}
           </p>
 
           {l.notCounting.length > 0 && (
@@ -219,9 +219,9 @@ export function OpsPositioningPage() {
 
   const columns: Column<OpsPositioningRecord>[] = [
     { head: 'Who', cell: (r) => <strong>{r.personOrNetwork}</strong> },
-    { head: 'Where', cell: (r) => r.organization ?? '—' },
+    { head: 'Where', cell: (r) => r.organization ?? ' - ' },
     { head: 'Kind of access', cell: (r) => r.accessType },
-    { head: 'Opened by', cell: (r) => r.contributor ?? '—' },
+    { head: 'Opened by', cell: (r) => r.contributor ?? ' - ' },
     {
       head: 'How far',
       cell: (r) => (
@@ -298,7 +298,7 @@ export function OpsAttributionPage() {
         <section key={c.id} style={{ ...CARD, marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
             <strong style={{ fontSize: 15, color: 'var(--gw-navy)' }}>{c.claimant}</strong>
-            <span style={{ fontSize: 13.5 }}>— {c.company}</span>
+            <span style={{ fontSize: 13.5 }}> - {c.company}</span>
             <span style={{ ...LABEL, fontSize: 9.5, marginLeft: 'auto' }}>{readRole(c.role)}</span>
           </div>
 
@@ -415,7 +415,7 @@ function HowAttributionGotHere({ opportunityId }: { opportunityId: string }) {
             <li key={h.id} style={{ marginBottom: 3 }}>
               {readEnum(h.kind)} · {readDate(h.occurredAt)}
               {h.actor ? ` · ${h.actor}` : ''}
-              {h.note ? ` — ${h.note}` : ''}
+              {h.note ? ` - ${h.note}` : ''}
             </li>
           ))}
           {history.data?.length === 0 && <li>Nothing recorded. Nobody has claimed it.</li>}
@@ -434,7 +434,7 @@ export function OpsCommercialPipelinePage() {
   })
   const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
   const nameOf = (id: string | null) =>
-    id ? people.data?.find((p) => p.id === id)?.displayName ?? '—' : null
+    id ? people.data?.find((p) => p.id === id)?.displayName ?? ' - ' : null
 
   const cashOf = (o: { payments: Array<{ amount: string }> }) =>
     o.payments.reduce((sum, p) => sum + Number(p.amount), 0)
@@ -515,7 +515,7 @@ export function OpsCommercialPipelinePage() {
          with nobody able to record what would move it. */
       cell: (o) => (
         <>
-          {o.nextAction ?? '—'}
+          {o.nextAction ?? ' - '}
           <Adder
             title={o.nextAction ? 'change it' : 'say what is next'}
             fields={[
@@ -599,7 +599,7 @@ export function OpsCommercialPipelinePage() {
       {/* Said once, on the page where somebody would otherwise assume otherwise. */}
       <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', maxWidth: '64ch', marginBottom: 12 }}>
         Opening a record here does not make it yours. Whoever created the opportunity claims it, and
-        somebody else approves — running the process afterwards is not origination.
+        somebody else approves - running the process afterwards is not origination.
       </p>
 
       <OpsTable

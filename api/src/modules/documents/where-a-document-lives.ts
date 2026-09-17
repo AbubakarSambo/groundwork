@@ -103,7 +103,7 @@ export function whatToCallIt(where: WhereItLives, said: string): string {
 export function whatWeCanAndCannotDo(where: WhereItLives, name: string): string {
   return (
     `"${name}" is on the check-in, in ${where.livesIn}. `
-    + 'I have not read it and I cannot — it stays where it lives, and anybody it is for opens it there. '
+    + 'I have not read it and I cannot - it stays where it lives, and anybody it is for opens it there. '
     + 'If what is inside it matters here, paste the part that does or upload the file.'
   );
 }

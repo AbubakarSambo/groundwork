@@ -285,7 +285,7 @@ export function IntegrationsPage() {
       qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] })
       toast.success('New secret issued. The old one keeps working until you revoke it.')
     },
-    onError: () => toast.error('Could not replace that — nothing was issued and the old one is unchanged.'),
+    onError: () => toast.error('Could not replace that - nothing was issued and the old one is unchanged.'),
   })
   const register = useMutation({
     mutationFn: () => integrationsApi.registerEndpoint(hookUrl, hookEvents),
@@ -707,7 +707,7 @@ export function IntegrationsPage() {
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 2 }}>
                 speaks for <span style={S.mono}>{c.sourceSystem}</span>
                 {c.replacedByClientId && (
-                  <> · replaced by <span style={S.mono}>{c.replacedByClientId}</span> — revoke this one once that is live</>
+                  <> · replaced by <span style={S.mono}>{c.replacedByClientId}</span> - revoke this one once that is live</>
                 )}
               </div>
             </div>

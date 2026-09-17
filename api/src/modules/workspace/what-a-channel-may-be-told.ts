@@ -51,7 +51,7 @@ const SAYS: Record<WhatHappened, (n: Notice) => string> = {
       : `A check-in is waiting on “${n.about}”.`,
   'a report is ready': (n) => `A report is ready on “${n.about}”.`,
   'somebody is blocked': (n) => `Something is blocked on “${n.about}”, and somebody is waiting.`,
-  'an integration cannot be reached': (n) => `Groundwork cannot deliver events to ${n.about}. Nothing is lost — every attempt is in your delivery log.`,
+  'an integration cannot be reached': (n) => `Groundwork cannot deliver events to ${n.about}. Nothing is lost - every attempt is in your delivery log.`,
 };
 
 /** The sentence, the same in every workspace. */

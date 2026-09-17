@@ -44,7 +44,11 @@ describe('what the lead is told before everyone has answered', () => {
   it('and every session row says how many answered, and whether it is final', () => {
     expect(LIST).toContain('{r.answered} of {r.total} answered')
     /* 'Final' read as 'the last session' on every released row. It means the report is out. */
-    expect(LIST).toContain("{r.closed ? 'Released' : 'Forming'}")
+    /* A round everybody has answered is not forming, it is waiting for the lead - see
+       a-round-everybody-answered-is-not-forming. The three states are still the three states. */
+    expect(LIST).toContain("r.closed ? 'Released'")
+    expect(LIST).toContain("'Ready to release'")
+    expect(LIST).toContain("'Forming'")
   })
 
   it('and names who is still being waited on, rather than a number alone', () => {

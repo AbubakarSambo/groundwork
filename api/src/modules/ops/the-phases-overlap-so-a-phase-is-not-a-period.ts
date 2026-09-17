@@ -73,7 +73,7 @@ export function whereTheCompanyIs(
     says:
       running.length === 1
         ? `${running[0].name} is running.`
-        : `${running.map((p) => p.name).join(' and ')} are running at the same time. That is the plan, not a mistake — a phase is a stretch of work, not a period.`,
+        : `${running.map((p) => p.name).join(' and ')} are running at the same time. That is the plan, not a mistake - a phase is a stretch of work, not a period.`,
   };
 }
 
@@ -118,7 +118,7 @@ export function whyThisIsNotOperabilityWork(input: {
   if (permitted.length > 0) return null;
 
   return (
-    'No phase running today makes this a contribution on its own. Work that makes the company operable counts during the phase the company agreed it for — outside it, say what it unblocks, adds to the moat, or keeps up.'
+    'No phase running today makes this a contribution on its own. Work that makes the company operable counts during the phase the company agreed it for - outside it, say what it unblocks, adds to the moat, or keeps up.'
   );
 }
 

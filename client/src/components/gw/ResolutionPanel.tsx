@@ -120,7 +120,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
 
           {split && (
             <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 7, padding: '9px 12px', marginBottom: 12, lineHeight: 1.55 }}>
-              People have chosen differently so far. That disagreement is the useful part — it is
+              People have chosen differently so far. That disagreement is the useful part - it is
               worth talking about before anyone changes their answer.
             </div>
           )}

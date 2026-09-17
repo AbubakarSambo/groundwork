@@ -108,14 +108,14 @@ export function howItReads(t: Term): string {
   const where = t.clause ? ` (${t.clause})` : '';
   switch (t.state) {
     case 'read from the document':
-      return `${t.says}${where}: “${t.reads}” — read out of the document and not checked by anybody yet.`;
+      return `${t.says}${where}: “${t.reads}” - read out of the document and not checked by anybody yet.`;
     case 'checked by one side':
-      return `${t.says}${where}: “${t.reads}” — as ${t.checkedBy.join(' and ')} reads it. The other side has not said.`;
+      return `${t.says}${where}: “${t.reads}” - as ${t.checkedBy.join(' and ')} reads it. The other side has not said.`;
     case 'agreed by both':
-      return `${t.says}${where}: “${t.reads}” — both sides say that is what it says.`;
+      return `${t.says}${where}: “${t.reads}” - both sides say that is what it says.`;
     case 'said, and not in the document':
       return (
-        `${t.says}: “${t.reads}” — ${t.checkedBy[0] ?? 'one side'} described this as part of the arrangement, `
+        `${t.says}: “${t.reads}” - ${t.checkedBy[0] ?? 'one side'} described this as part of the arrangement, `
         + 'and no clause in the document says it. Worth saying which it is, so everybody works from the same one.'
       );
     case 'read differently by each side':
