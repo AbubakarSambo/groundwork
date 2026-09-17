@@ -56,17 +56,25 @@ describe('a reply that asks nothing is a dead end', () => {
     expect(ASK_SOMETHING_OR_CLOSE).not.toMatch(/\?/);
   });
 
-  it('and it is wired as a retry, not as a rewrite of the reply', () => {
-    /*
-     * The same shape as the two gates beside it: ask again with one instruction, and keep the
-     * second only if it is genuinely better. The product never writes the sentence itself.
-     */
+  /**
+   * AND IT IS WIRED AS A NOTE, WHICH IS NOT WHAT THIS FILE ORIGINALLY SAID.
+   *
+   * It was a retry: ask again with one instruction, keep the second only if it is genuinely better.
+   * Measured on 17 September 2026, four retries of this shape fired in one live conversation and all
+   * four logged "the second try was no better; the first stands", each having spent a model call of
+   * latency on the turn somebody was waiting for. They went together. See DELETES_WHAT_IT_FINDS.
+   *
+   * This is the one of them with the best case for coming back - a reply with no question in it
+   * really does strand somebody - so the detection is asserted here, and the log is what will say
+   * whether it happens often enough to be worth a second call.
+   */
+  it('and it is wired as a note rather than a second model call', () => {
     const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const at = SERVICE.indexOf('isADeadEnd(screened.text');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 900);
-    expect(block).toContain('ASK_SOMETHING_OR_CLOSE');
-    expect(block).toMatch(/the first stands/);
+    expect(block).toMatch(/asked nothing and did not close/);
+    expect(block).not.toContain('ASK_SOMETHING_OR_CLOSE');
   });
 });

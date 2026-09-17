@@ -1472,22 +1472,16 @@ from finishing at all.`;
       return null;
     };
 
-    let best = restored;
+    /*
+     * WRITTEN DOWN, NOT ASKED AGAIN. Same decision as the check-in's four - see
+     * DELETES_WHAT_IT_FINDS in the gate. Measured live, these re-asks fired four times in one
+     * conversation and every one logged "the second try was no better; the first stands", having
+     * spent a model call of latency on the turn somebody was waiting for. The detection stays,
+     * because the count is what decides whether any of it earns its place.
+     */
+    const best = restored;
     const wrong = whatIsWrong(best);
-    if (wrong) {
-      this.logger.warn(`entry chat: ${wrong.fault} - asking again.`);
-      const again = await this.anthropic
-        .respond(`${system}\n\n${wrong.instruction}`, messages)
-        .catch(() => '');
-      const secondScreened = again.trim() ? screen(again, personSaid) : null;
-      const second = secondScreened?.text?.trim() ?? '';
-      if (second && !whatIsWrong(second)) {
-        best = second;
-        this.logger.log(`entry chat: the second try was clean.`);
-      } else {
-        this.logger.warn(`entry chat: the second try was no better; the first stands.`);
-      }
-    }
+    if (wrong) this.logger.warn(`entry chat: ${wrong.fault}.`);
 
     return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }

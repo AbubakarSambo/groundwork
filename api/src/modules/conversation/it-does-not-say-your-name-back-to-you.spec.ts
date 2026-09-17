@@ -25,31 +25,40 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 const SERVICE = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
 
 describe('a reply that names the person reading it', () => {
-  it('does not go out', () => {
+  /* Noted rather than removed now - see DELETES_WHAT_IT_FINDS. The detection is what this file is
+     for, and it is unchanged: the count of how often the product says somebody's own name back at
+     them is what decides whether this check earns its place. */
+  it('is noticed', () => {
     const out = screen('Does Zainab face the same choice? ', [], 'Zainab');
-    expect(out.text).toBe('');
+    expect(out.hits.map((h) => h.check)).toContain('a name nobody said');
     expect(out.dropped).toHaveLength(1);
   });
 
   it('even though they typed their own name themselves', () => {
-    /* The exact hole the invented-name rule leaves: personSaid contains it, so that rule allows it. */
+    /* The exact hole the invented-name rule leaves: personSaid contains it, so that rule allows it,
+       and only the reader-name check catches it. Noted rather than removed - see
+       DELETES_WHAT_IT_FINDS - so what is asserted is that the check still fires. */
     const out = screen('Does Zainab face the same choice? ', ['Signing off, Zainab'], 'Zainab');
-    expect(out.text).toBe('');
+    expect(out.hits.map((h) => h.check)).toEqual(['called the reader by name']);
+    expect(out.dropped).toHaveLength(1);
   });
 
   it('while the same sentence about somebody else passes', () => {
     const out = screen('Does Nadia face the same choice? ', ['Nadia runs the ward team'], 'Zainab');
+    expect(out.hits).toEqual([]);
     expect(out.text).toContain('Nadia');
   });
 
   it('and an ordinary word that happens to be a name does not cost them a sentence', () => {
     /* Case-sensitive on the capital: a person called Grace keeps "handled with grace". */
     const out = screen('That was handled with grace. ', [], 'Grace');
+    expect(out.hits).toEqual([]);
     expect(out.text).toContain('handled with grace');
   });
 
   it('and a name too short to tell from a word is left alone', () => {
     const out = screen('Al the work landed on time. ', [], 'Al');
+    expect(out.hits).toEqual([]);
     expect(out.text).toContain('landed on time');
   });
 
@@ -62,13 +71,13 @@ describe('a reply that names the person reading it', () => {
 });
 
 describe('and the streamed reply is held to the same rule', () => {
-  it('drops the sentence rather than emitting it word by word', () => {
+  it('notices the sentence, one sentence at a time', () => {
     const gate = new SentenceGate([], 'Zainab');
     /* push emits only sentences it knows are finished; the trailing one waits for flush. */
     const emitted = gate.push('Does Zainab face the same choice? And what would you do next? ') + gate.flush();
-    expect(emitted).not.toContain('Zainab');
-    expect(emitted).toContain('what would you do next');
+    expect(gate.hits).toHaveLength(1);
     expect(gate.dropped).toHaveLength(1);
+    expect(emitted).toContain('what would you do next');
   });
 });
 

@@ -1199,18 +1199,14 @@ export class ConversationService {
       this.knownForThisTurn.delete(checkIn.id);
       const conversationSoFar = turns.map((t) => t.content ?? '');
       let screened = screen(stripped.text, known, readerName, conversationSoFar);
-      /* Only an invention is worth a second call: a second question is fixed by the drop that
-         already happened. See needsAFreshAsk. */
-      if (screened.hits.length && needsAFreshAsk(screened.hits)) {
-        /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
-           the hit named. One time. If the second try is clean it replaces the first; if not, the
-           first stands minus its dropped sentences. */
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, screened.hits, known, readerName, theirWords, checkIn.id);
-        if (again) {
-          screened = again.screened;
-          stripped.hadMarker = again.hadMarker;
-        }
-      }
+      /*
+       * IT IS WRITTEN DOWN, NOT ASKED AGAIN. See DELETES_WHAT_IT_FINDS in the gate for the whole
+       * argument. Measured live: four of these fired in one conversation and all four logged "the
+       * second try was no better; the first stands" - a model call of latency, on the turn a person
+       * is waiting for, buying nothing. The detection stays, because the count is what tells us
+       * whether any of this is worth having; the second call goes.
+       */
+      for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
       if (!screened.text) {
         for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
       }
@@ -1222,19 +1218,7 @@ export class ConversationService {
        * that reads oddly is better than no reply at all. See a-sentence-with-a-word-missing.ts.
        */
       if (screened.text && readsAsBroken(screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken; asking again.`);
-        const plainly = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_FOR_IT_AGAIN_PLAINLY}`, history)
-          .catch(() => '');
-        const second = plainly.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(plainly), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !readsAsBroken(second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try was whole.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken.`);
       }
       /*
        * AND A GUESS IS NOT ALLOWED TO HARDEN INTO A FACT ON THE WAY OUT.
@@ -1253,46 +1237,21 @@ export class ConversationService {
       const theirLastTurn = theirWords[theirWords.length - 1] ?? '';
       const hardened = screened.text ? hardenedAGuess(theirLastTurn, screened.text) : null;
       if (hardened) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact; asking again.`);
-        const softer = await this.anthropic
-          .respond(`${fullSystem}\n\n${DO_NOT_HARDEN_IT(hardened)}`, history)
-          .catch(() => '');
-        const second = softer.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(softer), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !hardenedAGuess(theirLastTurn, second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try kept it as their estimate.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try hardened it too; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact.`);
       }
 
       /*
        * AND A REPLY THAT ASKS NOTHING AND DOES NOT CLOSE LEAVES SOMEBODY HOLDING IT.
        *
-       * Last of the three, because the two above can change the text and this reads the final one.
-       * Same shape as both: spot it, ask again with one instruction, keep the second only if it is
-       * actually better. If it is not, the first stands - a flat reply is better than no reply, and
-       * a loop here would strand the person it is trying to help.
+       * Written down like the two above rather than asked again. This is the one of the four with
+       * the best case for a retry - a reply with no question in it really does strand somebody -
+       * so if the log says it happens, it comes back as a retry aimed with evidence.
        */
       /* `textHadCloseMarker`, not the local flag of the same name: that one is set further down,
          after this runs. The alias exists for exactly this collision. */
       const closingNow = textHadCloseMarker(rawReply);
       if (isADeadEnd(screened.text, closingNow)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; asking again.`);
-        const withAQuestion = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_SOMETHING_OR_CLOSE}`, history)
-          .catch(() => '');
-        const second = withAQuestion.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withAQuestion), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !isADeadEnd(second.text, textHadCloseMarker(withAQuestion))) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try left them something to answer.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was a dead end too; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close.`);
       }
 
       /*
@@ -2015,23 +1974,19 @@ export class ConversationService {
        * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
        * somebody the model hallucinated is alarming and useless to them.
        */
-      /* On the stream the sentence is already gone by the time it is known to be wrong, so a hit is
-         dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
+      /*
+       * EVERY HIT IS WRITTEN DOWN AND NOTHING IS REMOVED. See DELETES_WHAT_IT_FINDS in the gate.
+       * The branch that used to ask the model again when NOTHING survived cannot arise now that
+       * nothing is dropped, and it went with the other three re-asks for the same reason: measured
+       * live, they fired four times and won nothing.
+       */
       let reply = shown.trim();
-      if (reply) {
-        for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
-      } else {
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, whole.hits.length ? whole.hits : gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
-        if (again) {
-          reply = again.screened.text;
-          strippedStream.hadMarker = again.hadMarker;
-        } else {
-          for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
-          reply = ASK_AGAIN;
-        }
+      for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
+      if (!reply) {
+        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'nothing came back'));
+        reply = ASK_AGAIN;
         yield { type: 'delta', text: reply };
       }
-
 
       /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.

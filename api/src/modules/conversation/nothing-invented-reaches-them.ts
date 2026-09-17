@@ -246,6 +246,27 @@ function callsTheReaderSomebodyElse(sentence: string): string | null {
   return NOT_A_NAME.test(name) ? null : name;
 }
 
+/**
+ * WHETHER THIS GATE DELETES WHAT IT FINDS, OR ONLY WRITES IT DOWN.
+ *
+ * FALSE, decided by Hafsah on 17 September 2026, after reading what deletion actually does on a
+ * screen. Asked for examples and finally given them, she got a reply with its middle cut out and an
+ * unclosed quotation mark, because "Those" is capitalised and she had not typed it. Before that the
+ * same gate deleted month names, day numbers, and her own places and people.
+ *
+ * WHAT IT IS GUARDING, READ HONESTLY. These are QUESTIONS, not the record. The record is built from
+ * what the person typed, and no sentence here ever reaches it. So the worst case from a name
+ * slipping into a question is an awkward question the person corrects in one line. The worst case
+ * from deleting is a mangled half-sentence at the moment the product was being useful. Those costs
+ * are not close, and we had been paying the larger one to avoid the smaller.
+ *
+ * IT STILL WATCHES. Every hit is still found, still counted and still logged with its check and the
+ * offending words, so a week of real conversations answers the question this switch exists for: if
+ * the log fills with real inventions, the deleting comes back with the evidence to aim it properly;
+ * if it fills with "Those" and "Kano", the whole gate goes. Measured, rather than argued about.
+ */
+export const DELETES_WHAT_IT_FINDS = false;
+
 export function screen(reply: string, personSaid: string[], readerName?: string | null, conversation?: string[]): Screened {
   const repaired = restoreTheirWords(reply, personSaid);
   const dropped: string[] = [];
@@ -259,14 +280,13 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
     if (why) {
       dropped.push(sentence);
       hits.push({ sentence, ...why });
-      continue;
-    }
-    /* A second question standing on its own. The person answers the last thing they were asked, so
-       the first ask is what gets lost - and a turn that reads as a list is answered as a list. */
-    if (questions.isASecondQuestion(sentence)) {
+      if (DELETES_WHAT_IT_FINDS) continue;
+    } else if (questions.isASecondQuestion(sentence)) {
+      /* A second question standing on its own. The person answers the last thing they were asked,
+         so the first ask is what gets lost - and a turn that reads as a list is answered as one. */
       dropped.push(sentence);
       hits.push({ sentence, check: 'a second question', offending: [] });
-      continue;
+      if (DELETES_WHAT_IT_FINDS) continue;
     }
     kept.push(sentence);
   }
@@ -342,12 +362,11 @@ export class SentenceGate {
       if (why) {
         this.droppedSentences.push(s);
         this.hitRows.push({ sentence: s, ...why });
-        continue;
-      }
-      if (this.questions.isASecondQuestion(repaired)) {
+        if (DELETES_WHAT_IT_FINDS) continue;
+      } else if (this.questions.isASecondQuestion(repaired)) {
         this.droppedSentences.push(s);
         this.hitRows.push({ sentence: s, check: 'a second question', offending: [] });
-        continue;
+        if (DELETES_WHAT_IT_FINDS) continue;
       }
       out.push(repaired);
     }
@@ -374,7 +393,18 @@ export function askInsteadOfInventing(hits: Hit[]): string {
   return `YOUR LAST REPLY WAS NOT SHOWN. It used ${what}, which appears nowhere in what this person wrote, in who is in this check-in, or in anything shared with them. Do not state names, dates or figures they have not given you. If you need one, ask for it. Write the reply again.`;
 }
 
-export type HitOutcome = 'dropped live' | 'regenerated, clean' | 'regenerated, still hit' | 'whole reply, asked again';
+/*
+ * 'noted, not removed' is what every hit is now, because the gate stopped deleting - see
+ * DELETES_WHAT_IT_FINDS. The older outcomes stay in the type so a log from before this change still
+ * reads, and so that turning deletion back on needs no change here.
+ */
+export type HitOutcome =
+  | 'noted, not removed'
+  | 'nothing came back'
+  | 'dropped live'
+  | 'regenerated, clean'
+  | 'regenerated, still hit'
+  | 'whole reply, asked again';
 
 /** One greppable log line per hit, so the real rate can be read before anything is tuned. */
 export function hitLogLine(checkInId: string, hit: Hit, outcome: HitOutcome): string {
