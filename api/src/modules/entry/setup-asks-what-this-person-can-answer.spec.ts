@@ -24,11 +24,21 @@ import { onboardingIsReady } from './entry.service';
  *
  * BEHAVIOUR, NOT SOURCE TEXT. This is a pure function, so it is tested by calling it.
  */
+/*
+ * AND THE AIM JOINED THEM ON 18 SEPTEMBER 2026. The three fields below are still necessary and they
+ * stopped being sufficient: measured across all 22 situations, a lead answering in two words got to
+ * the end with an aim three times out of twenty-two, because none of these three is a target. See
+ * a-check-in-with-no-aim-has-nothing-to-read-against, which also holds the three situations that
+ * have no aim by design. Every case here now carries one, so this file keeps testing what it is
+ * about - what setup may and may not wait for - rather than silently testing the aim as well.
+ */
+const AND_AN_AIM = { goals: ['a number by a date'] };
+
 describe('setup asks what this person can actually answer', () => {
   it('wants the situation and why now, from everybody', () => {
-    expect(onboardingIsReady({ mode: 'recurring' })).toBe(false);
-    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing' })).toBe(false);
-    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring' })).toBe(false);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing' })).toBe(false);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
   });
 
   it('does not wait for a question setup no longer asks', () => {
@@ -37,7 +47,7 @@ describe('setup asks what this person can actually answer', () => {
      * `yourRole`, the prompt stopped asking for it, so nothing would ever have been ready and the
      * wrap-up screen would never have appeared for anybody.
      */
-    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
   });
 
   /**
@@ -46,6 +56,11 @@ describe('setup asks what this person can actually answer', () => {
    * of "My team". The warning is `needsPeople`, not a refusal.
    */
   it('is let through having named nobody', () => {
-    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
+  });
+
+  /* And the same rule now covers the aim: saying there is not one is answering, not failing. */
+  it('and is let through having said there is no target', () => {
+    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because', noAimAndTheySaidSo: true })).toBe(true);
   });
 });

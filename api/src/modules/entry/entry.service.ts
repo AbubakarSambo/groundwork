@@ -59,7 +59,8 @@ import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
-import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
+import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
+import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -566,13 +567,13 @@ export function overlayDraftOntoBody(
  * and other checkin, you just look at the reports". A gate that waits for a question nobody asks any
  * more would simply never open.
  */
-export function onboardingIsReady(extracted: {
-  mode?: string;
-  initial?: string;
-  decision?: string;
-}): boolean {
-  return !!(extracted.mode && extracted.initial && extracted.decision);
-}
+/*
+ * THE GATE MOVED, AND GREW THE ONE FIELD IT WAS MISSING. See
+ * a-check-in-with-no-aim-has-nothing-to-read-against for what it now asks for and for the three
+ * situations that are exempt because they have no aim by design. Re-exported here because this is
+ * where every caller has always found it.
+ */
+export { onboardingIsReady, theAimIsSettled, anAimIsOwedHere, NO_AIM_BY_DESIGN } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 
 /** Enough to fill typed fields from a short chat, not enough to sit on the turn. See AnthropicService.extract. */
 const CONVERSATION_THINKING_BUDGET_FOR_EXTRACT = 256;
@@ -1226,10 +1227,17 @@ from finishing at all.`;
      * the gate that a person can actually get past.
      */
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
-    const ready = onboardingIsReady(extracted) || stoppedAsking;
-    if (stoppedAsking && !onboardingIsReady(extracted)) {
+    /*
+     * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
+     * MEASUREMENTS THAT SAY WHY. Putting it in did not make setup ask for an aim - the screen reads
+     * `ready`, not the model - while what was added alongside it took why-now from ten out of
+     * twenty-two to two. Read that file before trying again.
+     */
+    const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
+    const ready = theGate(extracted, forThisSituation) || stoppedAsking;
+    if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
-        `Setup finished without ${whatSetupNeverGot(extracted).join(', ')} - the assistant had stopped asking.`,
+        `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
       );
     }
 

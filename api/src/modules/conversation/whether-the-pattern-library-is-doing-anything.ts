@@ -1,4 +1,3 @@
-import { ENGINE_RULES } from './prompt-library';
 
 /**
  * WHETHER THE PATTERN LIBRARY IS DOING ANYTHING, MEASURED RATHER THAN ARGUED ABOUT.
@@ -31,18 +30,115 @@ import { ENGINE_RULES } from './prompt-library';
  * string and writes a log line.
  */
 
-/** `M2+ = Force Multiplier`, read out of the prompt itself so the two cannot drift apart. */
+/**
+ * THE NINETY NAMES, HELD HERE RATHER THAN READ OUT OF THE PROMPT.
+ *
+ * They were read out of ENGINE_RULES so the two could not drift. Then the catalogue was removed from
+ * the prompt on 18 September 2026 - and this went blank, which is the one thing it must not do. The
+ * whole question is whether removing it costs anything, and an instrument that disappears with the
+ * thing it measures cannot answer that. So the names live here now, and they are the list as it was
+ * on the day it left.
+ */
+const THE_NAMED_PATTERNS: [string, string][] = [
+  ['A1', 'Coordination Debt Absorber'],
+  ['A2', 'Execution Rescuer'],
+  ['A3', 'Contributor Suppression'],
+  ['B1', 'CEO-Pleasing'],
+  ['B1+', 'Honest Upward Reporting'],
+  ['B10', 'Meeting Dependency'],
+  ['B10+', 'Async Execution'],
+  ['B11', 'Blame Shifting'],
+  ['B11+', 'Ownership Under Pressure'],
+  ['B12', 'Stage Mismatch'],
+  ['B12+', 'Stage Awareness'],
+  ['B2', 'Confidence Without Delivery'],
+  ['B2+', 'Delivery Without Announcement'],
+  ['B3', 'Claimed Work Inflation'],
+  ['B3+', 'Accurate Attribution'],
+  ['B4', 'Founder Backstop Dependency'],
+  ['B4+', 'Executive Independence'],
+  ['B5', 'Coordination Without Leverage'],
+  ['B5+', 'High-Leverage Communication'],
+  ['B6', 'Exploration Without Action'],
+  ['B6+', 'Research to Decision'],
+  ['B7', 'Burn Without Outcomes'],
+  ['B7+', 'High-ROI Spend'],
+  ['B8', 'Defensive Leadership'],
+  ['B8+', 'Non-Defensive Engagement'],
+  ['B9', 'Team Without Direction'],
+  ['B9+', 'Team Clarity Signal'],
+  ['C1', 'Alignment Creator'],
+  ['C1+', 'Clarity Creator'],
+  ['C2', 'Dependency Manager'],
+  ['C2+', 'Dependency Resolved'],
+  ['C3', 'Synthesis Contributor'],
+  ['C3+', 'Team-Leader Alignment'],
+  ['D1', 'False Completion Reporting'],
+  ['D1+', 'Evidence-Matched Delivery'],
+  ['D2', 'Demo-Ready Shipping'],
+  ['D2+', 'Production-Confirmed Delivery'],
+  ['D3', 'Scope Rewriting'],
+  ['D3+', 'Proactive Scope Alignment'],
+  ['D4', 'Strategy Theater'],
+  ['D4+', 'Strategy to Execution'],
+  ['D5', 'Half-Built Product'],
+  ['D5+', 'Full-Stack Delivery'],
+  ['D6', 'Dependency Creation'],
+  ['D6+', 'Knowledge Distributed'],
+  ['D7', 'Complexity Inflation'],
+  ['D7+', 'Right-Sized Delivery'],
+  ['D8', 'Operational Fragility'],
+  ['D8+', 'Stable Delivery'],
+  ['E1', 'Equity Without Contribution'],
+  ['E1+', 'Equity-Matched Delivery'],
+  ['E2', 'Intro Evasion'],
+  ['E2+', 'Completed Introduction'],
+  ['E3', 'Selective Presence'],
+  ['E3+', 'Consistent Presence'],
+  ['E4', 'Founder Burden Imbalance'],
+  ['E4+', 'Load Distribution'],
+  ['E5', 'Extractive Behaviour'],
+  ['E5+', 'Reciprocal Contribution'],
+  ['F1', 'INSIGHT WITHOUT OPERATION'],
+  ['F2', 'VISION EXECUTION GAP'],
+  ['F3', 'EQUITY COMFORT'],
+  ['F4', 'RELATIONSHIP WITHOUT LEVERAGE'],
+  ['F5', 'COFOUNDER BURDEN ASYMMETRY'],
+  ['K1', 'Sales Documentation Avoidance'],
+  ['K1+', 'Customer Conversation Evidence'],
+  ['K2', 'Passive Finance Leadership'],
+  ['K2+', 'Active Financial Intervention'],
+  ['K3', 'Reporting Without Intervention'],
+  ['K3+', 'Escalation to Resolution'],
+  ['K4', 'Tactical Busyness'],
+  ['K4+', 'Strategic Focus'],
+  ['K5', 'Activity Without Outcome Logic'],
+  ['K5+', 'Outcome-Linked Activity'],
+  ['M1', 'Directional Executor'],
+  ['M1+', 'Verified Delivery'],
+  ['M2', 'Velocity Multiplier'],
+  ['M2+', 'Force Multiplier'],
+  ['M3', 'Catalyst'],
+  ['M3+', 'High Leverage Catalyst'],
+  ['M4', 'Invisible Backbone'],
+  ['M4+', 'Invisible Backbone Surfaced'],
+  ['N1', 'Strategic Narrator'],
+  ['N2', 'Process Generator'],
+  ['N3', 'Visibility Optimiser'],
+  ['R1', 'Dependency Bottleneck'],
+  ['R2', 'Ambiguity Generator'],
+  ['R3', 'Trust Anchor'],
+  ['R3+', 'Trust Anchor'],
+  ['R4', 'Relationship Drift'],
+];
+
 function theNamedPatterns(): { code: string; label: string; words: string[] }[] {
-  const rows = [...ENGINE_RULES.matchAll(/^([A-Z]\d+\+?)\.\s+([A-Z][A-Za-z \-/]{3,45}):/gm)];
-  return rows.map((m) => {
-    const label = m[2].trim();
-    return {
-      code: m[1],
-      label,
-      /* The words that make the label distinctive. Short ones carry no signal and match everything. */
-      words: label.toLowerCase().split(/[\s/-]+/).filter((w) => w.length >= 5),
-    };
-  });
+  return THE_NAMED_PATTERNS.map(([code, label]) => ({
+    code,
+    label,
+    /* The words that make the label distinctive. Short ones carry no signal and match everything. */
+    words: label.toLowerCase().split(/[\s/-]+/).filter((w) => w.length >= 5),
+  }));
 }
 
 const THE_PATTERNS = theNamedPatterns();

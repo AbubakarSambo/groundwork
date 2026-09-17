@@ -31,7 +31,7 @@ import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
-import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { buildScenarioPackForParty, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -77,6 +77,7 @@ import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
+import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
@@ -2214,7 +2215,7 @@ export class ConversationService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
-    const systemPrompt = await this.prompts.getActiveContent('system');
+    const wholeEngine = await this.prompts.getActiveContent('system');
 
     // Load prior session summaries for PRIOR_SESSION in the intake block.
     // For session 3+, include all prior sessions for longitudinal context (max 800 chars total).
@@ -3425,6 +3426,33 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
+
+    /*
+     * AND ONLY THE PART OF THE ENGINE THIS TURN CAN USE. See only-the-rules-this-turn-needs.
+     *
+     * Nothing is removed from the product: a section is left out of the turns where its own text
+     * says it does not apply. The biggest is the goal-alignment fallback, 13,019 characters whose
+     * own opening calls it "the fallback for when there is none" - and every one of the twenty-two
+     * situations has a prompt of its own, so it has been riding along on every turn, never meant to
+     * run, and once demonstrably running alongside the real one.
+     *
+     * Done here rather than at the read, because whether this conversation has a situation prompt
+     * is only settled by the time the pathway is built.
+     */
+    const packForThisSituation =
+      scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any);
+    const thisTurn = {
+      hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
+      sessionNumber: checkIn.sessionNumber,
+    };
+    const systemPrompt = onlyTheRulesThisTurnNeeds(wholeEngine, thisTurn);
+    const leftOut = whatWasLeftOut(thisTurn);
+    /* `wholeEngine` is whatever the prompt store returned, which in a test is sometimes nothing. */
+    if (leftOut.length && wholeEngine) {
+      this.logger.log(
+        `Check-in ${checkIn.id}: engine ${wholeEngine.length} to ${(systemPrompt ?? '').length} chars, leaving out ${leftOut.join('; ')}`,
+      );
+    }
 
     /*
      * WHAT ACTUALLY FIRED, NAMED AND SIZED. Logs and changes nothing: the prompt below is byte for
