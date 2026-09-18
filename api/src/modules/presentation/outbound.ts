@@ -222,6 +222,28 @@ export function unwrapRecordNarration(sentence: string): string | null {
   return /[.!?]$/.test(t) ? t : `${t}.`;
 }
 
+/**
+ * WHAT IS LEFT WHEN A STRIP TOOK THE SUBJECT WITH IT.
+ *
+ * Read in a live check-in, as the opening words of a reply:
+ *
+ *   "Is a real answer, and it. So Tunde did not send leads after August, you raised it twice..."
+ *
+ * The narration strip did exactly what it is for, and what it handed back was not a sentence: it
+ * begins on a verb with nothing to attach to, and ends on the comma the removed half was hanging
+ * from. The rest of the reply was fine, which is why this is worth catching rather than rewriting -
+ * a fragment reads as the product being broken, and the paragraph says the same thing without it.
+ */
+export function aFragmentNotASentence(sentence: string): boolean {
+  const t = sentence.trim();
+  if (!t) return true;
+  /* Opens on a verb or a conjunction with no subject before it. */
+  if (/^(?:is|are|was|were|has|have|had|does|do|did|which|whom)\b/i.test(t)) return true;
+  /* Or trails off on the word the removed half was going to complete. */
+  if (/(?:,\s*(?:and|but|or|which|that|it|so)|\band it|\bwhich)\s*[.!?]?$/i.test(t)) return true;
+  return false;
+}
+
 export function withoutRecordNarration(text: string): string {
   const sentences = sentencesIn(text);
   const kept = sentences.map((sentence) => {
@@ -243,7 +265,9 @@ export function withoutRecordNarration(text: string): string {
     const tidied = cleaned.replace(/[,;:\s]+([.!?])\s*$/, '$1').replace(/[,;:]\s*$/, '.');
     /* What followed the lead-in is the real content. It now starts the sentence. */
     const t = tidied.trimStart();
-    return t.charAt(0).toUpperCase() + t.slice(1);
+    const rebuilt = t.charAt(0).toUpperCase() + t.slice(1);
+    /* And if the cut took the subject with it, the sentence goes rather than the wreckage. */
+    return aFragmentNotASentence(rebuilt) ? '' : rebuilt;
   });
   return kept.filter((s) => s.trim() !== '').join(' ');
 }
@@ -318,8 +342,22 @@ const OURS_NOT_THEIRS: [RegExp, string][] = [
   [/\btheir account\b/gi, 'what they said'],
   [/\bhis account\b/gi, 'what he said'],
   [/\bher account\b/gi, 'what she said'],
-  /* The plural with a determiner: "the accounts", "both accounts", "all three accounts". */
-  [/\b(?:the|both|all(?: \w+)?|these|those)\s+accounts\b/gi, 'what people said'],
+  /*
+   * The plural with a determiner - but only where it is OUR account, which is the one that differs
+   * from somebody else's. "Accounts" is also what a salesperson calls their customers, and this
+   * rule fired on that: a live check-in asked "who are the accounts, and what is the revenue?" and
+   * the person read "who are what people said, and what is the revenue?". A rewrite that produces
+   * a sentence nobody could have written is worse than the word it was avoiding, so the divergence
+   * sense has to be visible in the sentence before the swap happens.
+   */
+  [
+    /\b(?:the|both|all|these|those)(?:\s+\w+)?\s+accounts\b(?=[^.!?]{0,60}\b(?:differ|diverge|disagree|agree|conflict|contradict|line up|pull against|match|overlap|are the same|are different)\b)/gi,
+    'what people said',
+  ],
+  [
+    /(?<=\b(?:where|whether|how|why|compare|comparing|compared|against)\b[^.!?]{0,40})\b(?:the|both|all|these|those)(?:\s+\w+)?\s+accounts\b/gi,
+    'what people said',
+  ],
 ];
 
 /**

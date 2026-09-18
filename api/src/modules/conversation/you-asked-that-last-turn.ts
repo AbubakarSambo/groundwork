@@ -17,6 +17,10 @@
  * the same sentence back. Re-asking is often RIGHT: they did not answer. Asking again in the same
  * words is what makes it read as not listening.
  *
+ * WHERE IT SITS. Second to last, after everything this turn must not miss and before the pattern
+ * probe, because position is the one lever that has measured clean all week. It was earlier in the
+ * list and a live run still put the same sentence back twice in a row.
+ *
  * SO THIS IS NOT A GUARD AND IT DELETES NOTHING. It is the last question, handed back as context,
  * with one instruction: if you still need it, ask it differently and say why you are asking again.
  * Context going in is the only mechanism that has measured clean all week.
@@ -39,12 +43,9 @@ export function whatYouAskedLastTurn(lastReply?: string | null): string {
 
 You asked: "${last}"
 
-If they answered it, do not ask it again in any form - take what they gave you and move on.
+If they answered it, take what they gave you and move on.
 
-If they did not - they pushed back, changed the subject, or answered something adjacent - you may
-still need it, and you may ask again ONCE. Not in these words. Ask it differently, and say in the
-same breath why you are coming back to it, so it reads as somebody still listening rather than a
-form that did not register the answer. "I am still stuck on X, because Y" is the whole of it.
+If they did not, you may come back to it ONCE, in different words, saying why you are asking again.
 
-Never send the sentence above again as it stands.`;
+Sending that sentence again as it stands is the one thing you may not do.`;
 }

@@ -24,7 +24,9 @@ describe('the three things', () => {
     const line = assembly.slice(0, assembly.indexOf('\n'));
     /* Last, or last but for the pattern probe - which is a question this turn owes and is written
        to be the final word when there is one. Both are the "read this last" slot by design. */
-    expect(line).toMatch(/cannotBeMissed(, patternProbeBlock)?\]/);
+    /* Last three, in order: what must not be missed, the question it asked last turn, the probe. A
+       live run put the same sentence back twice in a row with the repeat block sitting earlier. */
+    expect(line).toMatch(/cannotBeMissed(, askedLastTurn)?(, patternProbeBlock)?\]/);
   });
 
   it('and last in the setup prompt too', () => {

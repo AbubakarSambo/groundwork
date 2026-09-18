@@ -12,7 +12,7 @@ describe('the question it asked last turn', () => {
   it('is handed back, with the sentence quoted so it is unmistakable', () => {
     const block = whatYouAskedLastTurn('That is useful. What would need to exist for it to be settled?');
     expect(block).toContain('What would need to exist for it to be settled?');
-    expect(block).toContain('Never send the sentence above again as it stands');
+    expect(block).toContain('is the one thing you may not do');
   });
 
   /*
@@ -22,13 +22,13 @@ describe('the question it asked last turn', () => {
    */
   it('permits one more ask, differently worded, with a reason', () => {
     const block = whatYouAskedLastTurn('What is stuck?');
-    expect(block).toMatch(/you may ask again ONCE/);
-    expect(block).toMatch(/Not in these words/);
-    expect(block).toMatch(/say in the\s+same breath why you are coming back to it/);
+    expect(block).toMatch(/come back to it ONCE/);
+    expect(block).toMatch(/in different words/);
+    expect(block).toMatch(/saying why you are asking again/);
   });
 
   it('and says to drop it entirely if they answered', () => {
-    expect(whatYouAskedLastTurn('What is stuck?')).toMatch(/If they answered it, do not ask it again in any form/);
+    expect(whatYouAskedLastTurn('What is stuck?')).toMatch(/If they answered it, take what they gave you and move on/);
   });
 
   it('is nothing at all when the last turn asked nothing', () => {
