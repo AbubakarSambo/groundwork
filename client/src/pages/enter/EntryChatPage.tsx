@@ -27,6 +27,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
+import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
@@ -2477,6 +2478,21 @@ export function EntryChatPage() {
         </div>
       </div>
     )
+  }
+
+  /**
+   * THE ONE CARD THAT IS NOT A CONVERSATION.
+   *
+   * "Get updates from your team" promises a two-minute setup, and an interview cannot be two
+   * minutes. Four fields - who, what you want to know, how often, send - and nothing to work out,
+   * because there is no aim to agree and nobody's part to establish. See ask-your-team-one-thing.
+   *
+   * It sits here rather than on a route of its own so the card, the picker and the back link all
+   * keep working the way every other card does: the only thing that changes is what the page renders
+   * once somebody has picked.
+   */
+  if ((pickedScenario ?? scenario) === 'TEAM_UPDATES') {
+    return <AskYourTeamOneThing onBack={() => { setPickedScenario(null); navigate('/start?new=1', { replace: true }) }} />
   }
 
   return (

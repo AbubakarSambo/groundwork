@@ -238,6 +238,11 @@ export const entryApi = {
     groundLabel: string
     orgName?: string
     scenario?: string
+    /* The four-field card sends these directly rather than through an interview - see
+       ask-your-team-one-thing. Every other caller still lets the conversation settle them. */
+    cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'
+    checkInBy?: string
+    inviteNote?: string
     cadenceChosen?: boolean
     history: ChatTurn[]
     report?: EntryReport | null
