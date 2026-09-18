@@ -812,6 +812,22 @@ export const SITUATION_CARDS = [
       'You want the same few questions answered honestly every week.',
     ],
   },
+  /*
+   * ASK ONE QUESTION, GET ONE REPORT. The lightest card in the product, and the only one whose
+   * question belongs to the lead rather than to us. The word doing the work is "one": one line, one
+   * link, one report - the cadence and the links are how it works rather than what it is.
+   */
+  {
+    group: 'reading',
+    scenario: 'TEAM_UPDATES',
+    label: SCENARIO_LABELS.TEAM_UPDATES,
+    detail: 'Ask one question, everyone answers on their own link, you get one report.',
+    message: 'I want to ask my team one question and get one report back. Weekly, or however often I pick. Nothing to set up and no target to agree.',
+    examples: [
+      'What are your three priorities this quarter, and what is blocking you?',
+      'What shipped this week, and what slipped?',
+    ],
+  },
   {
     group: 'reading',
     scenario: 'SNAPSHOT',

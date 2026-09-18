@@ -11,6 +11,7 @@ import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { withWhatGroundworkIs } from './what-groundwork-is';
+import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -816,6 +817,54 @@ export class EmailService implements OnModuleInit {
       this.logger.error(`Team alert to ${email} did not send: ${err?.message}`);
       return { sent: false };
     }
+  }
+
+  /**
+   * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
+   *
+   * A two-minute setup is only worth anybody's time because of what arrives in the same week, so
+   * neither of these is the ordinary invite or the ordinary report mail. The words are Hafsah's and
+   * the reasoning is in one-line-one-link-one-report.
+   */
+  async sendTeamUpdateAsk(
+    email: string,
+    leadName: string,
+    theOneLine: string,
+    url: string,
+    by: string | null,
+    aTrial = false,
+    context?: DeliveryContext,
+  ): Promise<{ devUrl?: string }> {
+    const { subject, lines } = whatTheTeamGets({ leadName, theOneLine, by, aTrial });
+    const [who, question, ...rest] = lines;
+    const devUrl = await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(
+        `<p>${escapeHtml(who)}</p>` +
+        `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
+        rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_TEAM_BUTTON} &rarr;</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">Nobody on your team sees what you write. It goes into one summary.</p>`,
+      ),
+    }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendTeamUpdateAsk');
+    return { devUrl };
+  }
+
+  /** The moment of value: everybody answered, and here is the one report. */
+  async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string): Promise<void> {
+    const { subject, lines } = whatTheLeadGets({ theOneLine, howMany });
+    const [allIn, question, ...rest] = lines;
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(
+        `<p>${escapeHtml(allIn)}</p>` +
+        `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
+        rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_LEAD_BUTTON} &rarr;</a></p>`,
+      ),
+    }, undefined, 'sendTeamUpdateAllIn');
   }
 
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {

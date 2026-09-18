@@ -17,6 +17,8 @@ import { STATUS_DISPLAY } from '@/pages/enter/EntryChatPage'
 // The canonical GroundScenario enum values (must match api/prisma/schema.prisma).
 const ENUM_KEYS = [
   'ROLE_HANDOVER',
+  /* Added 18 September 2026: one line, one link, one report. */
+  'TEAM_UPDATES',
   'NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER',
   'CONTRACT_RENEWAL', 'RECOGNITION', 'DRIFT', 'CRISIS_ALIGNMENT', 'OKR_ALIGNMENT',
   'WORKPLAN_BUDGET', 'PULSE_CHECK', 'REALIGN_TEAM', 'PIP', 'BOARD_STRATEGY',

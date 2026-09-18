@@ -114,6 +114,8 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
    * questions and the outcome; the FAMILY drives only the board, so the board is what changed.
    */
   PULSE_CHECK: BoardFamily.RECURRING,
+  /* Same board as the other recurring read: what each person said, period after period. */
+  TEAM_UPDATES: BoardFamily.RECURRING,
 
   // Sensing the mood: transparency would poison these.
   /**

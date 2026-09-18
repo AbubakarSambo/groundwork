@@ -103,6 +103,16 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
    * the same day rather than sitting open for a month with nothing left to happen in it.
    */
   SNAPSHOT: 1,
+  /**
+   * A STANDING UPDATE RUNS UNTIL SOMEBODY STOPS IT, and ninety days is the honest stand-in.
+   *
+   * Every other number here is the length of a thing that finishes: an onboarding, a handover, a
+   * contract. This one has no finish in it - "weekly, until I say otherwise" is what the lead picked
+   * - so the number is a default horizon rather than a deadline, and the lead moves it on the Setup
+   * tab like any other. A one-off by a date is the other half of the same card and comes in with its
+   * own timeline from the date they gave.
+   */
+  TEAM_UPDATES: 90,
 };
 
 /**
@@ -174,6 +184,9 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   OPEN_READ: GroundMoment.RECOGNITION,
   /** One honest read of right now. No objective to set and none to close. */
   SNAPSHOT: GroundMoment.RECOGNITION,
+  /* STARTING, like the other recurring read: the enum's three moments are about where a ground sits
+     in its own arc, and a standing update is always at the start of the next one. */
+  TEAM_UPDATES: GroundMoment.STARTING,
   /** The case is built from a period that has already happened. */
   RECOGNITION: GroundMoment.RECOGNITION,
 
@@ -231,6 +244,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   OPEN_READ: Cadence.FORTNIGHTLY,
   /** The only ONE_TIME in the product: one round, and no follow-up is ever scheduled. */
   SNAPSHOT: Cadence.ONE_TIME,
+  /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
+  TEAM_UPDATES: Cadence.WEEKLY,
 };
 
 // All scenarios support any number of participants - the initiator decides who

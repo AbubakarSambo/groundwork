@@ -98,6 +98,22 @@ enum GroundScenario {
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
 
+  /// ONE LINE, SOME EMAIL ADDRESSES, AND A RHYTHM. THE LIGHTEST THING IN THIS ENUM.
+  ///
+  /// Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
+  /// emails, and pick how often you want it - daily, weekly, every two weeks. They answer on their
+  /// own link, and the updates come back to you as one picture."
+  ///
+  /// WHAT MAKES IT DIFFERENT FROM EVERYTHING ELSE HERE, and it is one thing: the lead's own line IS
+  /// the question. Every other situation has the product composing the interview from a pack; this
+  /// one has a person writing the question and the product carrying it, asking for whatever it takes
+  /// to make an answer checkable, and nothing else.
+  ///
+  /// NOT PULSE_CHECK, which spends a whole first session establishing what each person owns before
+  /// it asks how anything is going. Not SNAPSHOT, which happens once. This recurs, and it never
+  /// sets anything up: somebody who wanted to set up targets would have opened a different card.
+  TEAM_UPDATES
+
   /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
   /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
   CONTRACT_REVIEW

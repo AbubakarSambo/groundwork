@@ -311,6 +311,33 @@ export const SCENARIOS: ScenarioCard[] = [
    * are going", and the only way to tell them apart is to read them side by side. Hence notThisOneIf
    * on all three.
    */
+  /**
+   * ASK ONE QUESTION, GET ONE REPORT. THE LIGHTEST CARD HERE, AND THE ONLY ONE WHOSE QUESTION IS
+   * THEIRS.
+   *
+   * Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
+   * emails, and pick how often you want it - daily, weekly, every two weeks. They answer on their
+   * own link, and the updates come back to you as one picture."
+   *
+   * THE WORD DOING THE WORK IS "ONE", and it is a positioning decision rather than a style one: one
+   * line, one link, one report. The pitch is ask your team one thing and get one answer back.
+   * Cadence, links and reports are how it works and not what it is, so the card leads with the ask
+   * and mentions the machinery once.
+   *
+   * WHY IT IS NOT SNAPSHOT AND NOT THE PULSE. A snapshot happens once. The pulse spends a whole
+   * first session working out what each person owns before it asks how anything is going. This one
+   * asks the lead's own question, on a rhythm, and sets nothing up.
+   */
+  { cardKey: 'TEAM_UPDATES', scenario: 'TEAM_UPDATES', label: SCENARIO_LABELS.TEAM_UPDATES,
+    desc: 'Ask one question, everyone answers on their own link, you get one report. It comes back every week, or however often you pick. Two minutes to set up: who, the one line you want answered, and how often. No target to agree and nothing to set up.',
+    moment: 'You want to know one thing from your team, regularly, without booking a meeting.',
+    agreed: 'Nothing. You write the question; they answer that question.',
+    tests: 'Nothing over time against a target, because there is not one. Each period everyone answers your line on their own link, and the report shows what each person said, where they line up, where they do not, and what nobody is holding.',
+    examples: [
+      'What are your three priorities this quarter, and what is blocking you?',
+      'What shipped this week, and what slipped?',
+      'What is the one thing you need from me before Friday?',
+    ] },
   { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT,
     desc: 'One honest read from everyone, once. No setup and no target: about five minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
     moment: 'Get a quick picture of how people are experiencing the work right now.',

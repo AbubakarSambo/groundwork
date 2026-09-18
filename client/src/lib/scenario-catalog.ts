@@ -107,6 +107,12 @@ export const SCENARIO_LABELS = {
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
   SNAPSHOT: 'Take the Pulse of the Team',
+  /**
+   * ONE LINE, ONE LINK, ONE REPORT. Hafsah's words, 18 September 2026, and the word doing the work
+   * is "one": the pitch is ask your team one thing and get one answer back. Cadence, links and
+   * reports are how it works rather than what it is, so none of them is in the name.
+   */
+  TEAM_UPDATES: 'Get Updates from Your Team',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
@@ -365,6 +371,10 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
                       notThisOneIf: 'Everyone does the same job in parallel. Use "several people in the same role" instead.' },
   COHORT_CHECK:     { group: 'reading',  cadence: 'Every 2 weeks', timelineDays: 30, ongoing: true,
                       notThisOneIf: 'They all started together. Use "onboarding several people at once" instead.' },
+  /* One line, one link, one report. The lightest thing here: no target to set and nothing to agree,
+     so the only decisions are who, what, and how often. */
+  TEAM_UPDATES:     { group: 'reading',  cadence: 'Weekly',        timelineDays: 90, ongoing: true,
+                      notThisOneIf: 'You need people held to something. Then pick that situation, so there is an aim to read the work against.' },
   SNAPSHOT:         { group: 'reading',  cadence: 'One time',      timelineDays: 1,
                       notThisOneIf: 'There is a specific thing you need people held to. Then pick that situation, so there is something to measure against.' },
 
@@ -419,6 +429,7 @@ export const RECOMMENDED_MOMENT: Record<ScenarioKey, MomentValue> = {
   DRIFT: 'RECOGNITION',
   REALIGN_TEAM: 'RECOGNITION',
   OPEN_READ: 'RECOGNITION',
+  TEAM_UPDATES: 'STARTING',
   SNAPSHOT: 'RECOGNITION',
   RECOGNITION: 'RECOGNITION',
 

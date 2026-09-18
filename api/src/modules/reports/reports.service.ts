@@ -3315,8 +3315,21 @@ happened, and what is in the way.`;
       p.user?.passwordHash || !p.inviteToken
         ? reportUrl
         : `${frontend}/invite?token=${p.inviteToken}&next=${encodeURIComponent(`/grounds/${groundId}/report`)}`;
+    /*
+     * AND "GET UPDATES FROM YOUR TEAM" GETS ITS OWN, BECAUSE THAT EMAIL IS THE PRODUCT.
+     *
+     * The ordinary mail leads with "the shared picture is ready", which is our name for the thing
+     * rather than the sentence the lead is waiting for. That card promises a two-minute setup and a
+     * same-week payoff, and the payoff is this arriving. See one-line-one-link-one-report.
+     */
+    const aStandingUpdate = (ground as any).scenario === 'TEAM_UPDATES';
+    const theOneLine = ((ground as any).brief ?? '').trim();
     const emailResults = await Promise.allSettled(
-      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, linkFor(p))),
+      ground.participants.map((p) =>
+        aStandingUpdate && theOneLine
+          ? this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p))
+          : this.email.sendReportReady(p.email, ground.label, linkFor(p)),
+      ),
     );
     /*
      * AND THE CHANNEL, IF THERE IS ONE.
