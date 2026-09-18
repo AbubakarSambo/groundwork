@@ -77,6 +77,7 @@ import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
+import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
@@ -3507,7 +3508,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const cannotBeMissed = theThingsThatCannotBeMissed(latestMessage, theyPushedBackOnTheQuestions(latestMessage ?? ''));
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, patternProbeBlock].filter(Boolean).join('\n\n');
+    /*
+     * AND THE QUESTION IT ASKED LAST TURN, HANDED BACK. See you-asked-that-last-turn: the product
+     * refuses a third ask and never looked at the second, which is the one people read because it
+     * arrives in the next breath. Twenty of twenty-two conversations repeated a question, almost
+     * always consecutively. Context in, nothing removed.
+     */
+    /* Best-effort, like every other block here: not knowing the last question makes this turn no
+       worse than it was before the block existed, and failing to build a prompt over it would. */
+    let lastAiTurn: { content: string | null } | null = null;
+    try {
+      lastAiTurn = await this.prisma.conversationTurn.findFirst({
+        where: { checkInId: checkIn.id, role: TurnRole.AI },
+        orderBy: { createdAt: 'desc' },
+        select: { content: true },
+      });
+    } catch {
+      /* A try rather than a .catch: a caller whose client has no findFirst throws before there is a
+         promise to catch on, and this block is never worth failing a turn over. */
+    }
+    const askedLastTurn = whatYouAskedLastTurn(lastAiTurn?.content ?? null);
+
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, askedLastTurn, cannotBeMissed, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
