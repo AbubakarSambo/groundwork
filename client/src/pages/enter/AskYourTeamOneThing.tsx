@@ -18,6 +18,10 @@ import {
  * cannot be two minutes, and being asked what success looks like before you may ask your team one
  * question is what would kill it. See ask-your-team-one-thing.ts for the four fields and the rules.
  */
+/** Her sentence, 18 September 2026, quoted rather than rewritten. */
+const THE_TRIAL_LINE =
+  'We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.'
+
 export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void }) {
   const [pasted, setPasted] = useState('')
   const [theOneLine, setTheOneLine] = useState('')
@@ -56,10 +60,15 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
       checkInBy: howOften === 'ONE_TIME' ? by.trim() || undefined : undefined,
       /* The lead asks; the team answers. They can add themselves on Setup in one click. */
       managingOnly: true,
-      inviteNote: aTrial
-        ? 'We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.'
-        : undefined,
-      contributors: emails.map(email => ({ email })),
+      /*
+       * THE TRIAL LINE TRAVELS ON THE PERSON, NOT ON THE GROUND. A top-level inviteNote is not a
+       * field the commit accepts, so the sentence went nowhere: the note each contributor carries
+       * is what reaches their invite. See sendTheInviteThisGroundSends on the API side.
+       */
+      contributors: emails.map(email => ({
+        email,
+        ...(aTrial ? { note: THE_TRIAL_LINE } : {}),
+      })),
     }
   }
 

@@ -140,6 +140,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendJoinConfirmation: 'the way back in',
   sendUserInvite: 'the way back in',
   sendParticipantInvite: 'the way back in',
+  /* It is one of the two invites, picked by the situation. Classified as the invite it delegates to. */
+  sendTheInviteThisGroundSends: 'the way back in',
   /* Somebody's own manager asking them one question: the same kind of mail as any other invite, and
      without it there is no link to answer on. See one-line-one-link-one-report. */
   sendTeamUpdateAsk: 'the way back in',

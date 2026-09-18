@@ -677,7 +677,7 @@ export class GroundsService {
     // Best-effort: the ground/participant rows are already committed; a failed
     // email is logged, not rolled back, since some invites may have succeeded.
     for (const invite of pendingInvites) {
-      await this.email.sendParticipantInvite(invite.email, dto.leadName ?? 'Your lead', dto.label, invite.token, undefined, { kind: 'PARTICIPANT_INVITE', participantId: invite.participantId, groundId: ground.id }).catch((err: any) =>
+      await this.email.sendTheInviteThisGroundSends(ground, invite.email, dto.leadName ?? 'Your lead', invite.token, undefined, { kind: 'PARTICIPANT_INVITE', participantId: invite.participantId, groundId: ground.id }).catch((err: any) =>
         this.logger.error(`Participant invite email failed for ${invite.email} on ground ${ground.id}: ${err.message}`),
       );
     }
@@ -2868,10 +2868,10 @@ export class GroundsService {
         where: { id: existing.id },
         data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
       });
-      const emailResult = await this.email.sendParticipantInvite(
+      const emailResult = await this.email.sendTheInviteThisGroundSends(
+        ground,
         dto.email.toLowerCase(),
         `${initiator?.firstName ?? 'A founder'}`,
-        ground.label,
         freshToken,
         dto.note,
         { kind: 'PARTICIPANT_INVITE', participantId: existing.id, groundId: ground.id },
@@ -3069,10 +3069,10 @@ export class GroundsService {
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
     if (!startsInFuture && waitingForASeat.room) {
     try {
-      emailResult = await this.email.sendParticipantInvite(
+      emailResult = await this.email.sendTheInviteThisGroundSends(
+        ground,
         dto.email.toLowerCase(),
         `${initiator?.firstName ?? 'A founder'}`,
-        ground.label,
         token,
         dto.note,
         { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
@@ -3213,10 +3213,10 @@ export class GroundsService {
     });
 
     const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
-    await this.email.sendParticipantInvite(
+    await this.email.sendTheInviteThisGroundSends(
+      ground,
       participant.email,
       `${initiator?.firstName ?? 'A founder'}`,
-      ground.label,
       token,
       undefined,
       { kind: 'REMINDER', participantId: participant.id, groundId: ground.id },
@@ -3578,7 +3578,7 @@ export class GroundsService {
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, inviteToken: true, groundId: true,
-        ground: { select: { label: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, brief: true, initiator: { select: { firstName: true } } } },
       },
     });
     if (!waiting.length) return { sent: 0, stillWaiting: 0 };
@@ -3590,10 +3590,10 @@ export class GroundsService {
 
     for (const w of waiting.slice(0, canSend)) {
       try {
-        await this.email.sendParticipantInvite(
+        await this.email.sendTheInviteThisGroundSends(
+          { scenario: w.ground?.scenario ?? '', brief: w.ground?.brief ?? null, label: w.ground?.label ?? 'a check-in' },
           w.email,
           w.ground?.initiator?.firstName ?? 'A founder',
-          w.ground?.label ?? 'a check-in',
           w.inviteToken ?? '',
           undefined,
           /* So the "you can ignore this" line resolves to this person, as it does on a first send. */

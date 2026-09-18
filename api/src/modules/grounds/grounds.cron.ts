@@ -93,17 +93,17 @@ export class GroundsCron {
         },
         select: {
           id: true, email: true, inviteToken: true, groundId: true,
-          ground: { select: { label: true, initiator: { select: { firstName: true } } } },
+          ground: { select: { label: true, scenario: true, brief: true, initiator: { select: { firstName: true } } } },
         },
         take: 200,
       });
 
       for (const p of due) {
         try {
-          await this.email.sendParticipantInvite(
+          await this.email.sendTheInviteThisGroundSends(
+            p.ground,
             p.email,
             p.ground.initiator?.firstName ?? 'A founder',
-            p.ground.label,
             p.inviteToken!,
             undefined,
             { kind: 'PARTICIPANT_INVITE', participantId: p.id, groundId: p.groundId },

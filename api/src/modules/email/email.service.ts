@@ -851,6 +851,36 @@ export class EmailService implements OnModuleInit {
     return { devUrl };
   }
 
+  /**
+   * WHICH INVITE THIS GROUND SENDS, DECIDED IN ONE PLACE.
+   *
+   * "Get updates from your team" has its own ask - one line, one link, two minutes - and it was
+   * written and then never reached, because every invite in the product goes through
+   * sendParticipantInvite and that is the ordinary one: it explains what a check-in is, that nobody
+   * sees the words, and that it takes about ten minutes. All true, none of it what somebody being
+   * asked one question by their own manager should read.
+   *
+   * So the choice lives here rather than at each of the five call sites, and a site added later
+   * inherits it. Everything that is not a team update is untouched.
+   */
+  async sendTheInviteThisGroundSends(
+    theCheckIn: { scenario: string; brief: string | null; label: string },
+    email: string,
+    leadName: string,
+    token: string,
+    note?: string,
+    context?: DeliveryContext,
+    by: string | null = null,
+  ): Promise<{ devUrl?: string }> {
+    const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? theCheckIn.brief?.trim() : '';
+    if (!theOneLine) return this.sendParticipantInvite(email, leadName, theCheckIn.label, token, note, context);
+    /* The trial line is carried on the note, which is where the setup form puts her sentence. */
+    return this.sendTeamUpdateAsk(
+      email, leadName, theOneLine, this.buildInviteUrl(token), by,
+      !!note && /trying this out/i.test(note), context,
+    );
+  }
+
   /** The moment of value: everybody answered, and here is the one report. */
   async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string): Promise<void> {
     const { subject, lines } = whatTheLeadGets({ theOneLine, howMany });

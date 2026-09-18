@@ -36,7 +36,13 @@ const ROOTS = [join(__dirname, '..'), join(__dirname, '..', '..', '..', 'api', '
  * answers go into one summary that gives us a shared picture." It is long enough to score, and the
  * regex does not get to edit her.
  */
-const NOT_COPY = ['prompt-library.ts', 'what-the-moat-is-made-of.ts', 'one-line-one-link-one-report.ts']
+const NOT_COPY = [
+  'prompt-library.ts',
+  'what-the-moat-is-made-of.ts',
+  /* Both hold that same sentence of hers: the email that sends it, and the form that sets it. */
+  'one-line-one-link-one-report.ts',
+  'AskYourTeamOneThing.tsx',
+]
 
 const blankComments = (src: string) =>
   src
