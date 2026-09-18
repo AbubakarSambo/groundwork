@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { entryApi } from '@/api/entry'
+import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import {
   theEmailsIn, whatIsNotAnEmail, aNameFromTheQuestion, readyToSend, whatIsStillNeeded,
-  HOW_OFTEN, type HowOften,
+  theOneEmail, HOW_OFTEN, type HowOften,
 } from './ask-your-team-one-thing'
 
 /**
@@ -22,34 +25,56 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
   const [by, setBy] = useState('')
   const [aTrial, setATrial] = useState(false)
   const [sending, setSending] = useState(false)
+  /* Sending from a signed-out browser ends here rather than on the ground, because the ground does
+     not exist until the way in is opened. See the two endings in send(). */
+  const [checkYourEmail, setCheckYourEmail] = useState<string | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const signedIn = useAuthStore(s => s.isAuthenticated)
+  const me = useAuthStore(s => s.user)
+  const trap = useTheTrap()
+  /* Somebody signed in has answered this already; asking again is a fifth field for nothing. */
+  const [yourEmail, setYourEmail] = useState(me?.email ?? '')
 
   const emails = theEmailsIn(pasted)
   const notEmails = whatIsNotAnEmail(pasted)
-  const missing = whatIsStillNeeded({ pasted, theOneLine, howOften, by })
-  const canSend = readyToSend({ pasted, theOneLine, howOften, by }) && !sending
+  const fields = { pasted, theOneLine, howOften, by, yourEmail }
+  const missing = whatIsStillNeeded(fields)
+  const canSend = readyToSend(fields) && !sending
+
+  /* Both endings send the same thing. What differs is whether there is already somebody to send
+     the report to: signed in, the ground is made now; signed out, it is made the moment they open
+     the link we email them, and their team is invited then. */
+  function whatIsBeingSent() {
+    return {
+      groundLabel: aNameFromTheQuestion(theOneLine),
+      scenario: 'TEAM_UPDATES' as const,
+      /* The one line is the question everybody answers, and the brief is how it reaches them. */
+      brief: theOneLine.trim(),
+      cadence: howOften,
+      cadenceChosen: true,
+      checkInBy: howOften === 'ONE_TIME' ? by.trim() || undefined : undefined,
+      /* The lead asks; the team answers. They can add themselves on Setup in one click. */
+      managingOnly: true,
+      inviteNote: aTrial
+        ? 'We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.'
+        : undefined,
+      contributors: emails.map(email => ({ email })),
+    }
+  }
 
   async function send() {
     if (!canSend) return
     setSending(true)
+    const mine = theOneEmail(yourEmail)!
     try {
-      const res = await entryApi.commit({
-        groundLabel: aNameFromTheQuestion(theOneLine),
-        scenario: 'TEAM_UPDATES',
-        /* The one line is the question everybody answers, and the brief is how it reaches them. */
-        brief: theOneLine.trim(),
-        cadence: howOften,
-        cadenceChosen: true,
-        checkInBy: howOften === 'ONE_TIME' ? by.trim() || undefined : undefined,
-        /* The lead asks; the team answers. They can add themselves on Setup in one click. */
-        managingOnly: true,
-        inviteNote: aTrial
-          ? 'We are trying this out as a way to see how aligned we are on priorities. Your answers go into one summary for the team.'
-          : undefined,
-        contributors: emails.map(email => ({ email })),
-        history: [],
-      })
+      if (!signedIn) {
+        await authApi.entrySave(mine, { payload: whatIsBeingSent(), history: [] }, trap.filled)
+        setSending(false)
+        setCheckYourEmail(mine)
+        return
+      }
+      const res = await entryApi.commit({ ...whatIsBeingSent(), history: [] })
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       toast.success(`Sent to ${emails.length} ${emails.length === 1 ? 'person' : 'people'}. You will get one email the moment they have all answered.`)
       navigate(`/grounds/${res.groundId}`, { replace: true })
@@ -65,6 +90,21 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
   }
   const legend: React.CSSProperties = { fontWeight: 600, fontSize: 14, marginBottom: 6 }
   const hint: React.CSSProperties = { fontSize: 12.5, color: 'var(--gw-muted)', marginTop: 5 }
+
+  if (checkYourEmail) {
+    return (
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '28px 20px 64px' }}>
+        <h1 style={{ fontSize: 24, margin: '0 0 6px' }}>Check your email</h1>
+        <p style={{ margin: '0 0 14px' }}>
+          We have sent your way in to {checkYourEmail}. Open it and your {emails.length}{' '}
+          {emails.length === 1 ? 'person gets their' : 'people get their'} link straight away.
+        </p>
+        <p style={{ color: 'var(--gw-muted)', margin: 0 }}>
+          They hear nothing until you open it.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: 620, margin: '0 auto', padding: '28px 20px 64px' }}>
@@ -130,10 +170,30 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
           <span>
             Say we are trying this out
             <span style={{ ...hint, marginTop: 2, display: 'block' }}>
-              Adds one line to the invite: we are trying this out to see how aligned we are, and your answers go into one summary.
+              Adds one line to the invite: we are trying this out to see if this new tool can help
+              us be aligned, and your answers go into one summary that gives us a shared picture.
             </span>
           </span>
         </label>
+
+        {/*
+          YOUR OWN EMAIL, SO NOBODY HAS TO SIGN IN FIRST. Her call, 18 September 2026. Signed in,
+          this is simply where the report goes and it is already filled. Signed out, it is also the
+          way in: the link arrives by mail and the team is invited the moment it is opened.
+        */}
+        <div>
+          <div style={legend}>Your email</div>
+          <input
+            id="your-email" type="email" value={yourEmail} onChange={e => setYourEmail(e.target.value)}
+            placeholder="you@work.com" autoComplete="email" style={field}
+          />
+          <div style={hint}>
+            {signedIn
+              ? 'Where the report goes.'
+              : 'Where the report goes. You do not have to sign in first: we will email you your way in.'}
+          </div>
+        </div>
+        {trap.field}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
           <button

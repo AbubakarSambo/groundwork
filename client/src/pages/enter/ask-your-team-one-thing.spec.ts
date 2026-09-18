@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { theEmailsIn, whatIsNotAnEmail, aNameFromTheQuestion, readyToSend, whatIsStillNeeded, HOW_OFTEN } from './ask-your-team-one-thing'
+import { theOneEmail, theEmailsIn, whatIsNotAnEmail, aNameFromTheQuestion, readyToSend, whatIsStillNeeded, HOW_OFTEN } from './ask-your-team-one-thing'
 
 /**
  * ASK YOUR TEAM ONE THING.
@@ -41,9 +41,9 @@ describe('the name', () => {
 })
 
 describe('what it takes to send', () => {
-  const ok = { pasted: 'a@x.com', theOneLine: 'What is blocking you this week?', howOften: 'WEEKLY' as const, by: '' }
+  const ok = { pasted: 'a@x.com', theOneLine: 'What is blocking you this week?', howOften: 'WEEKLY' as const, by: '', yourEmail: 'lead@x.com' }
 
-  it('is the four fields and nothing else', () => {
+  it('is the five fields and nothing else', () => {
     expect(readyToSend(ok)).toBe(true)
     expect(whatIsStillNeeded(ok)).toBeNull()
   })
@@ -52,6 +52,18 @@ describe('what it takes to send', () => {
     expect(whatIsStillNeeded({ ...ok, pasted: '' })).toBe('Add at least one email address.')
     expect(whatIsStillNeeded({ ...ok, theOneLine: 'hi' })).toBe('Write the one thing you want to ask them.')
     expect(whatIsStillNeeded({ ...ok, howOften: 'ONE_TIME', by: '' })).toBe('Pick the date you want it back by.')
+    expect(whatIsStillNeeded({ ...ok, yourEmail: '' })).toBe('Add your own email, so the report has somewhere to go.')
+  })
+
+  /*
+   * YOUR OWN EMAIL IS THE FIFTH, AND IT BUYS THE SIGN-IN BACK. Her call, 18 September 2026: giving
+   * it here is what means nobody has to sign in before they may ask their team anything.
+   */
+  it('wants one address of your own, not a list and not a near miss', () => {
+    expect(readyToSend({ ...ok, yourEmail: '' })).toBe(false)
+    expect(readyToSend({ ...ok, yourEmail: 'lead@' })).toBe(false)
+    expect(readyToSend({ ...ok, yourEmail: 'a@x.com, b@x.com' })).toBe(false)
+    expect(theOneEmail('  Lead@X.com ')).toBe('lead@x.com')
   })
 
   /* A one-off needs the date; a rhythm does not, and asking for one would be a fifth field. */

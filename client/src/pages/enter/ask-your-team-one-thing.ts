@@ -59,18 +59,35 @@ export function aNameFromTheQuestion(theOneLine: string): string {
   return short.length > 60 ? `${short.slice(0, 57)}...` : short
 }
 
-/** Whether the four fields are answered. Nothing else gates sending. */
-export function readyToSend(v: { pasted: string; theOneLine: string; howOften: HowOften; by: string }): boolean {
+/**
+ * YOUR OWN EMAIL, SO NOBODY HAS TO SIGN IN FIRST.
+ *
+ * Hafsah, 18 September 2026: "add your email too so you don't have to sign-in, we will send you a
+ * login password." Somebody who has never used this should be able to fill in five things and be
+ * done; the way in arrives afterwards, by email, rather than standing between them and sending.
+ * Somebody already signed in has answered this already, so the field is filled for them.
+ */
+export function theOneEmail(typed: string): string | null {
+  const one = theEmailsIn(typed)
+  return one.length === 1 ? one[0] : null
+}
+
+type TheFields = { pasted: string; theOneLine: string; howOften: HowOften; by: string; yourEmail: string }
+
+/** Whether the fields are answered. Nothing else gates sending. */
+export function readyToSend(v: TheFields): boolean {
   if (!theEmailsIn(v.pasted).length) return false
   if (v.theOneLine.trim().length < 8) return false
   if (v.howOften === 'ONE_TIME' && !v.by.trim()) return false
+  if (!theOneEmail(v.yourEmail)) return false
   return true
 }
 
 /** What is still missing, in the order the fields appear, so the page can say it in one line. */
-export function whatIsStillNeeded(v: { pasted: string; theOneLine: string; howOften: HowOften; by: string }): string | null {
+export function whatIsStillNeeded(v: TheFields): string | null {
   if (!theEmailsIn(v.pasted).length) return 'Add at least one email address.'
   if (v.theOneLine.trim().length < 8) return 'Write the one thing you want to ask them.'
   if (v.howOften === 'ONE_TIME' && !v.by.trim()) return 'Pick the date you want it back by.'
+  if (!theOneEmail(v.yourEmail)) return 'Add your own email, so the report has somewhere to go.'
   return null
 }
