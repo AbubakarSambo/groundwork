@@ -825,8 +825,9 @@ export const SITUATION_CARDS = [
     detail: 'Ask one question, everyone answers on their own link, you get one report.',
     message: 'I want to ask my team one question and get one report back. Weekly, or however often I pick. Nothing to set up and no target to agree.',
     examples: [
-      'What are your three priorities this quarter, and what is blocking you?',
+      'Can you share an update on how sales is going for you this quarter, or if you have any blockers?',
       'What shipped this week, and what slipped?',
+      'What are your three priorities this quarter, and what is blocking you?',
     ],
   },
   {

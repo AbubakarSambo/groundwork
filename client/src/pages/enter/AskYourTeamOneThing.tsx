@@ -92,7 +92,7 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
           <div style={legend}>What</div>
           <textarea
             id="the-one-line" value={theOneLine} onChange={e => setTheOneLine(e.target.value)} rows={2}
-            placeholder="What are your three priorities this quarter, and what's blocking you?"
+            placeholder="Can you share an update on how sales is going for you this quarter, or if you have any blockers?"
             style={{ ...field, resize: 'vertical' }}
           />
           <div style={hint}>One line. They answer exactly this.</div>

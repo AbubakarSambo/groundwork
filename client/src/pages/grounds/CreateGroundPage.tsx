@@ -334,8 +334,9 @@ export const SCENARIOS: ScenarioCard[] = [
     agreed: 'Nothing. You write the question; they answer that question.',
     tests: 'Nothing over time against a target, because there is not one. Each period everyone answers your line on their own link, and the report shows what each person said, where they line up, where they do not, and what nobody is holding.',
     examples: [
-      'What are your three priorities this quarter, and what is blocking you?',
+      'Can you share an update on how sales is going for you this quarter, or if you have any blockers?',
       'What shipped this week, and what slipped?',
+      'What are your three priorities this quarter, and what is blocking you?',
       'What is the one thing you need from me before Friday?',
     ] },
   { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT,
