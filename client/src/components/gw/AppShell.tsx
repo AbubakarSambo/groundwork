@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
+import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
@@ -1323,6 +1324,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * Matched on exact paths rather than a prefix, so a future `/authorised-something`
    * cannot silently lose the rail.
    */
+  /*
+   * AND THE ONE THAT IS MARKED ON THE ADDRESS RATHER THAN BY PATH. A team update's link opens the
+   * conversation bare: no rail, no sidebar, one card. See the-link-opens-on-the-question.
+   */
+  const bare = justTheQuestion(location.search)
+
   const CHROMELESS = [
     '/auth', '/auth/sent', '/auth/google/callback',
     '/set-password', '/reset-password', '/verify-email',
@@ -1369,7 +1376,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
   const showSidebar =
-    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice
+    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare
 
   if (!showSidebar) return <main id="main">{children}</main>
 

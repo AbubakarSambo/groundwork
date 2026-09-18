@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
+import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation } from '@tanstack/react-query'
 import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
@@ -113,6 +114,8 @@ export function ChatPage() {
   const user = useAuthStore(s => s.user)
 
   const [searchParams] = useSearchParams()
+  /* Opened from a team update's link: one card, no band, nothing but the question. */
+  const bareFrame = justTheQuestion(location.search)
   const isClarificationSession = searchParams.get('clarify') === 'true'
 
   /*
@@ -810,7 +813,12 @@ export function ChatPage() {
           */}
           {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
               description but which has no objectives and no label showed nothing at all. */}
-          {brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
+          {/*
+            AND NOT IN THE BARE FRAME. A team update's link opens on the question, and the question
+            is the first message: the band above it would say the same sentence twice before
+            anybody has typed a word. See the-link-opens-on-the-question.
+          */}
+          {!bareFrame && brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
                 What this check-in is about
