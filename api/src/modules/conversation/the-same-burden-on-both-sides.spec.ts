@@ -136,6 +136,6 @@ describe('and it reaches the assembled prompt', () => {
   });
 
   it('and is joined into the prompt rather than merely computed', () => {
-    expect(SRC).toMatch(/deliveriesBlock, burden, putThisToThem, cannotBeMissed\]\.filter\(Boolean\)\.join/);
+    expect(SRC).toMatch(/deliveriesBlock, burden, putThisToThem, patternProbeBlock, cannotBeMissed\]\.filter\(Boolean\)\.join/);
   });
 });
