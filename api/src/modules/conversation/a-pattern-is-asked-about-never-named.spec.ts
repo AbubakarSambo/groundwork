@@ -48,11 +48,22 @@ describe('a pattern is asked about, never named', () => {
     expect(askAboutItBlockFor(null)).toBe('');
   });
 
-  it('tells the model not to name it, and to drop it if it does not fit', () => {
+  it('tells the model not to name it, and gives it a deadline that actually arrives', () => {
     const block = askAboutItBlockFor({ probe: 'What is the last thing you sent them?' });
     expect(block).toContain('NEVER say that it keeps happening');
     expect(block).toContain('never name the pattern');
-    expect(block).toContain('If it does not fit this conversation, leave it');
+    /*
+     * THE PERMISSION TO SKIP IS GONE, AND THAT IS THE CHANGE. "Ask this when it genuinely fits...
+     * if it does not fit this conversation, leave it" was measured across all 22 situations from
+     * both sides, with the block confirmed in the assembled prompt, and asked ZERO times. The model
+     * still picks the moment - that part was right - but the session owes the question.
+     */
+    expect(block).toContain('ASK IT WITHIN THE NEXT TWO REPLIES');
+    /* And not "before the session ends", which was the first attempt: sessions do not end. One of
+       forty-four reached a close, so that deadline never arrived and the probe was asked six times
+       out of twenty-two. */
+    expect(block).not.toContain('ASK IT BEFORE THE SESSION ENDS');
+    expect(block).not.toContain('leave it');
     expect(block).toContain('What is the last thing you sent them?');
   });
 

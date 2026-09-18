@@ -35,22 +35,30 @@ describe('the first conversation has the same guards', () => {
   });
 
   it('names the fault in the log, so it is findable without a lead reporting it', () => {
-    expect(guarded).toMatch(/this\.logger\.warn\(`entry chat: \$\{wrong\.fault\} - asking again\.`\)/);
+    expect(guarded).toMatch(/this\.logger\.warn\(`entry chat: \$\{wrong\.fault\}/);
   });
 
   /**
-   * AND IT ASKS AGAIN, RATHER THAN NOTING THAT IT WENT WRONG.
+   * AND IT NOTES THE FAULT RATHER THAN ASKING AGAIN, WHICH REVERSES WHAT THIS FILE USED TO SAY.
    *
-   * The first version of this only logged: a streamed reply has already left, so there is no second
-   * attempt to make. Watched in a browser, that was wrong in the way that matters. Four of five turns
-   * of a real setup conversation tripped a guard and the person saw every one of them, including a
-   * lecture about recall sessions that ended in the same question she had just declined.
+   * The reversal is deliberate and it is worth keeping the old argument visible, because it was a
+   * good one: a log nobody reads while somebody is on the screen is a note about a guard, not a
+   * guard. That is why the retry was built.
    *
-   * A log nobody is reading while she is on the screen is not a guard. It is a note about a guard.
+   * WHAT DECIDED IT THE OTHER WAY, on 17 September 2026, was measuring the retry instead of
+   * reasoning about it. Four fired in one live conversation and all four logged "the second try was
+   * no better; the first stands" - a full model call of latency, on the turn somebody is waiting
+   * for, buying nothing. Every one of the retries in the check-in went at the same time, and the
+   * invention gate stopped deleting on the same day and for the same reason. See
+   * DELETES_WHAT_IT_FINDS.
+   *
+   * WHAT STAYS IS THE DETECTION, asserted above, because the count is what decides whether any of
+   * this earns its place. If the log fills with real faults, the retry comes back aimed with
+   * evidence rather than built on a hunch.
    */
-  it('asks again with the fault named, rather than only logging it', () => {
+  it('notes the fault rather than spending a second model call on it', () => {
     expect(guarded).toMatch(/const wrong = whatIsWrong\(best\)/);
-    expect(guarded).toMatch(/this\.anthropic\s*\.respond\(`\$\{system\}/);
+    expect(guarded).not.toMatch(/this\.anthropic\s*\.respond\(`\$\{system\}\\n\\n\$\{wrong\.instruction\}/);
   });
 
   it('names a different instruction for each fault, not one scolding for all of them', () => {
@@ -65,14 +73,10 @@ describe('the first conversation has the same guards', () => {
     }
   });
 
-  it('keeps the second only when it is genuinely better, and never loops', () => {
-    expect(guarded).toMatch(/if \(second && !whatIsWrong\(second\)\)/);
-    /*
-     * ONE RETRY. The definition is called once on the first reply and once on the second, and never
-     * again: a flawed reply beats no reply, and a loop here would strand the person it is helping.
-     * Two calls is the whole of it, and a third would be a loop creeping in.
-     */
-    expect(guarded.match(/whatIsWrong\(/g)?.length).toBe(2);
-    expect(guarded).toMatch(/the first stands/);
+  it('and reads the reply exactly once, because there is no second one to read', () => {
+    /* One call now, where there were two: the reply and the retry's. If this ever counts two again,
+       a retry has crept back in without the evidence that would justify one. */
+    expect(guarded.match(/whatIsWrong\(/g)?.length).toBe(1);
+    expect(guarded).not.toMatch(/the first stands/);
   });
 });

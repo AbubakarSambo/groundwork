@@ -90,7 +90,12 @@ describe('and so the gate opens', () => {
     /* The field gate stays exactly as strict as it was. What changed is that it is no longer the
        only way through, because on its own it is not always answerable. */
     expect(onboardingIsReady({ mode: 'something_new', initial: 'a co-founder joining' })).toBe(false);
-    expect(SERVICE).toContain('onboardingIsReady(extracted) || stoppedAsking');
+    /* The gate is called through `theGate` now and takes the situation, because three situations
+       have no aim by design - see a-check-in-with-no-aim-has-nothing-to-read-against. What this
+       file is about is the `|| stoppedAsking`, which is unchanged: a gate that can never open is
+       shut, and a thin check-in beats stranding somebody in front of a screen with nothing to
+       click. */
+    expect(SERVICE).toContain('theGate(extracted, forThisSituation) || stoppedAsking');
   });
 
   it('and says in the log what it never got, rather than passing silently', () => {

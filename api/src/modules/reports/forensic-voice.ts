@@ -114,11 +114,35 @@ export function forensicInReport(report: Record<string, unknown>): { field: stri
  * so no meaning moves. Nothing here is a judgement call, which is exactly why it
  * belongs in code rather than in an instruction the model may or may not follow.
  */
+/**
+ * AND THE ONE THE MODEL WRITES: A PLAIN HYPHEN DOING A DASH'S JOB, WITH NO SPACES.
+ *
+ * Read on screen twice in one live setup, 17 September 2026: "the cost per delivery is down-for
+ * example, under 500 per delivery", and "the right time to set up a check-in on this-a new
+ * quarter". Both are typos as far as a reader is concerned. The prompt's own examples are written
+ * with a spaced dash and the model compresses them.
+ *
+ * TELLING IT FROM A REAL COMPOUND WITHOUT GUESSING. "check-in", "cost-per-delivery" and "follow-up"
+ * must survive untouched, so this decides on a CLOSED LIST of words that never start the second
+ * half of a compound and always start a clause. No judgement, no scoring, nothing to be wrong
+ * about - which is the whole reason it is allowed to edit a reply at all.
+ */
+/*
+ * THE LIST GREW ONCE ALREADY. The first version held the words that open a clause with a noun and
+ * missed the ones that open it with a verb: three lead setups run straight afterwards produced
+ * "your part in this situation-are you directly managing Musa" and "a check-in on this-is it
+ * because she is new". Every word here is one that never begins the second half of a compound, so
+ * check-in, follow-up, trade-off and drop-in are all still safe.
+ */
+const A_CLAUSE_NOT_A_COMPOUND =
+  /([a-z0-9])-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i|is|are|was|were|am|do|does|did|has|have|had|will|would|can|could|should|because|when|where|why|how|what|who)\b/gi;
+
 export function withoutDashes(text: string): string {
   if (!text) return text;
   return text
     // "queue—the only" and "queue — the only" both become "queue, the only".
     .replace(/\s*[\u2014\u2013]\s*/g, (m) => (/^\s*$/.test(m) ? m : ', '))
+    .replace(A_CLAUSE_NOT_A_COMPOUND, '$1, $2')
     // A comma may now be doubled where the sentence already had one.
     .replace(/,\s*,/g, ',');
 }

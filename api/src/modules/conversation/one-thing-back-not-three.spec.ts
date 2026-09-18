@@ -39,7 +39,7 @@ describe('one thing back, not three', () => {
     const src = readFileSync(`${__dirname}/conversation.service.ts`, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const theOneThingBack = oneThingBack\(\{ againstTheirNumber, alreadySaidAboutThem, roomKnows \}\)/);
-    expect(src).toMatch(/patternProbeBlock, theOneThingBack,/);
+    expect(src).toMatch(/theOneThingBack,/);
     /* The three raw blocks must not also be in the list, which is the bug this file exists for. */
     expect(src).not.toMatch(/roomKnows, againstTheirNumber, alreadySaidAboutThem,/);
   });

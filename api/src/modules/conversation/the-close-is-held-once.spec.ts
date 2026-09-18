@@ -41,9 +41,11 @@ describe('a number nobody said is dropped like a name nobody said', () => {
   it('a list marker is not a claim', () => {
     expect(numbersNobodySaid('1. What happened next?', SAID)).toEqual([]);
   });
-  it('screen() drops the sentence and says why', () => {
+  it('screen() names the sentence and says why', () => {
+    /* Noted rather than removed - see DELETES_WHAT_IT_FINDS. The check and the offending figure are
+       what this file is about, and both are asserted unchanged. */
     const r = screen('That waited 45 minutes. What happened after the email?', SAID);
-    expect(r.text).toBe('What happened after the email?');
+    expect(r.dropped).toEqual(['That waited 45 minutes. ']);
     expect(r.hits).toEqual([{ sentence: 'That waited 45 minutes. ', check: 'a number nobody said', offending: ['45'] }]);
   });
   it('the stream gate records the same hits', () => {

@@ -219,6 +219,15 @@ export enum LeadershipPattern {
   CONVERSATION_DEFERRED = 'CONVERSATION_DEFERRED',
   /** Map signals 8, 11. A quiet contributor the manager's account never names. */
   CONTRIBUTION_UNSEEN = 'CONTRIBUTION_UNSEEN',
+  /**
+   * NOT A MAP SIGNAL. THE ONE THAT IS ABOUT THE SETUP RATHER THAN THE MANAGING.
+   *
+   * The other five read how somebody leads the people in front of them. This one reads what they
+   * wrote before anybody arrived: where two accounts differ because nobody was ever told what they
+   * were checking in against, the disagreement is not between the people and naming it as one sends
+   * the lead to have the wrong conversation.
+   */
+  SETUP_NEVER_SAID = 'SETUP_NEVER_SAID',
 }
 
 export interface LeadershipPatternSpec {
@@ -272,6 +281,20 @@ export const LEADERSHIP_PATTERNS: LeadershipPatternSpec[] = [
     signature:
       "Other accounts independently credit one person for moving something, and the account of whoever leads them never names that person or that work.",
     why: 'This is the single hardest thing for a manager to learn, because nobody tells them. It is a gap in what got seen, not a failure to hold.',
+  },
+  {
+    pattern: LeadershipPattern.SETUP_NEVER_SAID,
+    pole: ManagementPole.NEITHER,
+    label: 'What people were asked to check in against was never pinned down',
+    /*
+     * BOTH HALVES, AND THE SECOND IS THE COMMON ONE. A brief can be vague, and far more often there
+     * is no brief at all: 256 of 442 check-ins in the database have none. A signature that only
+     * described ambiguity would stay silent in exactly the case that matters most, which is what
+     * happened to the first version of this idea - it fired zero times in six targeted runs.
+     */
+    signature:
+      'Two accounts describe the same work differently and neither is wrong. The setup never named the thing they differ about, or no brief was written at all. Real only where the missing instruction answers the difference, not where the people simply believe different things.',
+    why: 'This is a gap in the setup, not a gap between the people. A lead who is told it is a disagreement goes and has the wrong conversation. A lead who is told what was never pinned down can go and pin it down.',
   },
 ];
 

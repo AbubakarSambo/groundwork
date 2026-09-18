@@ -380,6 +380,8 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 
 14c. THE GAP TEXT IS MECHANICALLY CONSTRAINED. It must contain NO quotation marks of any kind, not even around two words, and NO party label - not "the lead", not "party A", not "party B", not a name. Write it as "one account ... another account ...". A two-word quote is still a quote: it tells the other person exactly what was said, which is the one thing this must never do. If you cannot state the gap without quoting or labelling, restate it in your own words until you can.
 
+14d. ONE OF THE PATTERNS IS ABOUT THE SETUP, AND IT IS THE ONLY ONE THAT IS NOT ABOUT MANAGING. SETUP_NEVER_SAID is for a difference that is answered by what nobody was ever told, rather than by what the people believe. Two tests, and both have to hold. First, read what was opened with - the brief above, which may say that none was written. Second, ask whether the difference would still exist if that had named the thing they differ about. If it would, this is a real divergence and it belongs in divergences; if it would not, it belongs here. Two more rules. It does not need more than one period: a setup either said the thing or it did not, and waiting for it to happen twice is waiting for the same absence. And it is never written as a fault of the person - state what was not pinned down, never who failed to pin it.
+
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
@@ -752,8 +754,20 @@ export class ReportsService {
     if ((ground as any).resolutionState) {
       groundContextLines.push(`PRE-AGREED RESOLUTION STATE: ${(ground as any).resolutionState}`);
     }
+    /*
+     * AND WHEN THERE IS NO BRIEF, THE CORPUS HAS TO SAY SO, OR NOBODY CAN NOTICE NOTHING.
+     *
+     * 256 of 442 check-ins in the database were opened with no brief at all. The line above only
+     * ever appeared when one existed, so the most common setup failure was invisible to the
+     * synthesis: it cannot read an absence it is never shown. SETUP_NEVER_SAID is the pattern that
+     * reads this - see coverage.ts - and this line is what makes the silent case legible to it.
+     */
     if ((ground as any).brief) {
       groundContextLines.push(`INITIATOR'S OPENING BRIEF: ${(ground as any).brief}`);
+    } else {
+      groundContextLines.push(
+        'INITIATOR\'S OPENING BRIEF: none was written. Nobody answering was told what they were checking in against, beyond the questions they were asked.',
+      );
     }
 
     /*

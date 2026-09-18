@@ -72,12 +72,18 @@ describe('a turn asks one thing', () => {
   });
 });
 
-describe('and the door holds it on both paths', () => {
+/**
+ * THE DOOR NOTICES ON BOTH PATHS. It used to remove the second question; it now writes it down and
+ * lets it go out - see DELETES_WHAT_IT_FINDS. What this file is really about is the DETECTION, which
+ * is unchanged and asserted above: knowing which sentence is a second ask is what makes the count
+ * meaningful, and a prompt rule is what stops it being written in the first place.
+ */
+describe('and the door notices on both paths', () => {
   it('the whole reply in hand', () => {
     const out = screen('What does that look like in practice? Are you rebuilding or replacing? ', []);
+    expect(out.dropped).toEqual(['Are you rebuilding or replacing? ']);
+    expect(out.hits.map((h) => h.check)).toEqual(['a second question']);
     expect(out.text).toContain('look like in practice?');
-    expect(out.text).not.toContain('rebuilding or replacing');
-    expect(out.dropped).toHaveLength(1);
   });
 
   it('and the streamed one, a sentence at a time', () => {
@@ -88,7 +94,7 @@ describe('and the door holds it on both paths', () => {
     const gate = new SentenceGate([]);
     const out =
       gate.push('What does that look like in practice? Are you rebuilding or replacing? ') + gate.flush();
+    expect(gate.hits.map((h) => h.check)).toEqual(['a second question']);
     expect(out).toContain('look like in practice?');
-    expect(out).not.toContain('rebuilding or replacing');
   });
 });

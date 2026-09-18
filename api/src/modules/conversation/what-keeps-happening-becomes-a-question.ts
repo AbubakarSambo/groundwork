@@ -73,14 +73,41 @@ export function theOneWorthAsking(rows: Recurring[]): { code: string; probe: str
  */
 export function askAboutItBlockFor(one: { probe: string } | null): string {
   if (!one) return '';
-  return `SOMETHING THAT HAS COME UP MORE THAN ONCE
+  /*
+   * THIS WAS WRITTEN AS A PERMISSION AND IT BEHAVED LIKE ONE.
+   *
+   * "Ask this when it genuinely fits... if it does not fit this conversation, leave it." Measured on
+   * 18 September 2026 across all 22 situations from both sides, with the block confirmed present in
+   * the assembled prompt at 540 characters: it was asked ZERO times. An optional instruction sitting
+   * two thirds of the way down a hundred and eighteen thousand characters is a suggestion about a
+   * suggestion.
+   *
+   * It is a question now, and it is owed within the session rather than on any particular turn - the
+   * model still picks the moment, which is the part that was right. What is gone is the standing
+   * permission to skip it, and the block goes last in the prompt rather than into the middle.
+   *
+   * WHAT DOES NOT CHANGE, because it is the reason the wording was careful in the first place: it is
+   * asked as an ordinary question about the work, the pattern is never named, and nobody is told
+   * they have a habit.
+   */
+  return `THE ONE QUESTION THIS SESSION OWES
 
-Ask this when it genuinely fits what they are telling you, in your own words, as an ordinary
-question about the work:
+Something in this person's record has come up in three separate periods. You are not going to say
+that, and you are not going to name it. You are going to ask this, in your own words, as an
+ordinary question about the work:
+
 - ${one.probe}
 
-NEVER say that it keeps happening, and never name the pattern. Do not tell them they have a habit,
-a tendency, or a recurring anything. Ask about the work; how they answer is the signal, and it is
-yours to read, not theirs to be told. If it does not fit this conversation, leave it - it will
-still be true next time.`;
+ASK IT WITHIN THE NEXT TWO REPLIES. Pick whichever of them it fits best - straight after they
+describe something it touches is ideal - but if you reach a third reply without having asked it,
+ask it then, plainly, as your question for that turn.
+
+THE DEADLINE IS TWO REPLIES AND NOT "BEFORE THE SESSION ENDS", and the difference is the whole
+reason this is worded again. Measured on 18 September 2026: told to ask before the session ended,
+it was asked in six conversations out of twenty-two - because the sessions do not end. One of
+forty-four reached a close. A deadline that never arrives is not a deadline.
+
+NEVER say that it keeps happening, never name the pattern, and never tell them they have a habit, a
+tendency or a recurring anything. Ask about the work. How they answer is the signal, and it is yours
+to read rather than theirs to be told.`;
 }

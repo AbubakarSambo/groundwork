@@ -56,11 +56,12 @@ import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invente
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
-import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
+import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
+import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
-import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from '../conversation/a-question-is-read-before-it-is-sent';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -566,13 +567,13 @@ export function overlayDraftOntoBody(
  * and other checkin, you just look at the reports". A gate that waits for a question nobody asks any
  * more would simply never open.
  */
-export function onboardingIsReady(extracted: {
-  mode?: string;
-  initial?: string;
-  decision?: string;
-}): boolean {
-  return !!(extracted.mode && extracted.initial && extracted.decision);
-}
+/*
+ * THE GATE MOVED, AND GREW THE ONE FIELD IT WAS MISSING. See
+ * a-check-in-with-no-aim-has-nothing-to-read-against for what it now asks for and for the three
+ * situations that are exempt because they have no aim by design. Re-exported here because this is
+ * where every caller has always found it.
+ */
+export { onboardingIsReady, theAimIsSettled, anAimIsOwedHere, NO_AIM_BY_DESIGN } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 
 /** Enough to fill typed fields from a short chat, not enough to sit on the turn. See AnthropicService.extract. */
 const CONVERSATION_THINKING_BUDGET_FOR_EXTRACT = 256;
@@ -1085,7 +1086,9 @@ Rules:
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
-      + (settled ? `\n\n---\n\n${settled}` : '');
+      + (settled ? `\n\n---\n\n${settled}` : '')
+      /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
+      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`;
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
@@ -1224,10 +1227,17 @@ from finishing at all.`;
      * the gate that a person can actually get past.
      */
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
-    const ready = onboardingIsReady(extracted) || stoppedAsking;
-    if (stoppedAsking && !onboardingIsReady(extracted)) {
+    /*
+     * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
+     * MEASUREMENTS THAT SAY WHY. Putting it in did not make setup ask for an aim - the screen reads
+     * `ready`, not the model - while what was added alongside it took why-now from ten out of
+     * twenty-two to two. Read that file before trying again.
+     */
+    const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
+    const ready = theGate(extracted, forThisSituation) || stoppedAsking;
+    if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
-        `Setup finished without ${whatSetupNeverGot(extracted).join(', ')} - the assistant had stopped asking.`,
+        `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
       );
     }
 
@@ -1281,9 +1291,23 @@ from finishing at all.`;
       return this.guardedReplyWithClose(FAQ_PROMPT, messages, onDelta);
     }
 
+    /*
+     * AND THE THREE THINGS GO LAST HERE TOO, WHICH THEY WERE NOT.
+     *
+     * They were appended to the SETUP prompt and this is a different prompt on the same screen: the
+     * lead's own check-in, step 2 of /start. Read live within the hour: "you just asked me that in
+     * setup. this is a waste of time" came back as "You just said this is a waste of time and that
+     * I already asked you this in setup. What makes it feel that way?" - the complaint restated,
+     * then a request that they justify it, which is the exact move rule 2 exists to stop.
+     *
+     * Third time a fix has landed on one of two paths in this file. The lesson each time is that
+     * "the entry chat" is two prompts, not one.
+     */
     const mapped = resolveScenario(scenario);
+    const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
     return this.guardedReplyWithClose(
-      buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed),
+      entrySystem,
       messages,
       onDelta,
       /* Theirs: the people they named, what they called it, and everything they typed in setup. */
@@ -1473,76 +1497,20 @@ from finishing at all.`;
       return null;
     };
 
-    let best = restored;
-    const wrong = whatIsWrong(best);
-    if (wrong) {
-      this.logger.warn(`entry chat: ${wrong.fault} - asking again.`);
-      const again = await this.anthropic
-        .respond(`${system}\n\n${wrong.instruction}`, messages)
-        .catch(() => '');
-      const secondScreened = again.trim() ? screen(again, personSaid) : null;
-      const second = secondScreened?.text?.trim() ?? '';
-      if (second && !whatIsWrong(second)) {
-        best = second;
-        this.logger.log(`entry chat: the second try was clean.`);
-      } else {
-        this.logger.warn(`entry chat: the second try was no better; the first stands.`);
-      }
-    }
-
     /*
-     * AND LAST, SOMEBODY READS IT.
-     *
-     * Everything above this line asks what SHAPE the reply is. "To start, what is the number you
-     * are working towards for these 40 shops?" passes every one of them and is incoherent, because
-     * she had just given the number. Meaning needs a reader, and the reader is given the
-     * conversation and the draft and nothing else - no engine rules, no pack, no idea what we were
-     * trying to do. See a-question-is-read-before-it-is-sent.
+     * WRITTEN DOWN, NOT ASKED AGAIN. Same decision as the check-in's four - see
+     * DELETES_WHAT_IT_FINDS in the gate. Measured live, these re-asks fired four times in one
+     * conversation and every one logged "the second try was no better; the first stands", having
+     * spent a model call of latency on the turn somebody was waiting for. The detection stays,
+     * because the count is what decides whether any of it earns its place.
      */
-    const read = await this.readBeforeSending(messages, forHumans(best), personSaid);
-    return { reply: read, closed: hadCloseMarker(best) };
+    const best = restored;
+    const wrong = whatIsWrong(best);
+    if (wrong) this.logger.warn(`entry chat: ${wrong.fault}.`);
+
+    return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }
 
-  /**
-   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
-   *
-   * Her five checks, plus the restating fault that kept getting through them. The reader may rewrite, which no guard here can do, and its rewrite goes
-   * through the same invention screen as everything else: a reader that adds a name or a figure is
-   * refused and the draft stands, because being fresh is not a licence to invent.
-   */
-  private async readBeforeSending(messages: ChatTurn[], draft: string, personSaid: string[]): Promise<string> {
-    if (!draft.trim()) return draft;
-    try {
-      const said = theTailOf(
-        (messages as { role: string; content: string }[])
-          .filter((m) => (m.content ?? '').trim())
-          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
-      );
-      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
-        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: personSaid }) },
-      ]);
-      const decided = whatTheReaderDecided(answer, draft);
-      /* Logged either way, so a run can be counted rather than argued about: how many turns the
-         reader let through and how many it rewrote is the only evidence that it is worth its call. */
-      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
-      const clean = screen(decided.text, personSaid);
-      if (clean.hits.length || !clean.text.trim()) {
-        this.logger.warn(`entry chat: the reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
-        return draft;
-      }
-      /*
-       * THE LOG SAYS IT HAPPENED, NOT WHAT WAS SAID. The first version printed the draft and the
-       * rewrite, which was useful to read live and is a message body in a log line: a rewritten
-       * question routinely carries the person's own nouns back to them.
-       */
-      this.logger.log(`entry chat: the reader rewrote it (${draft.length} chars to ${clean.text.length})`);
-      return forHumans(clean.text);
-    } catch (err: any) {
-      /* A reader that cannot be reached is not a reason to lose the reply. */
-      this.logger.warn(`entry chat: could not read the draft before sending: ${err?.message}`);
-      return draft;
-    }
-  }
 
   /**
    * Sentences go out as the model says them, through the same gate the check-in stream uses, cleaned

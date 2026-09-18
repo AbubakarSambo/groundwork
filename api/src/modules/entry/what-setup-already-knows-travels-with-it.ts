@@ -31,6 +31,8 @@
 /** The structured read of a setup conversation, as the extraction produces it. */
 export interface WhatSetupHasSoFar {
   mode?: string;
+  /** They said in words that there is no target. See a-check-in-with-no-aim-has-nothing-to-read-against. */
+  noAimAndTheySaidSo?: boolean;
   initial?: string;
   whoInvolved?: string;
   peopleNamed?: string[];
@@ -93,6 +95,10 @@ export function whatIsSettledAndWhatIsNot(soFar?: WhatSetupHasSoFar | null): str
     ...settled.map((f) => `- ${f.said}: ${asWords(soFar[f.key])}`),
   ];
 
+  if (soFar.noAimAndTheySaidSo) {
+    lines.push('- They have said there is no target to work to, and that is recorded. Do not ask for one again.');
+  }
+
   if (missing.length) {
     lines.push(
       '',
@@ -102,6 +108,20 @@ export function whatIsSettledAndWhatIsNot(soFar?: WhatSetupHasSoFar | null): str
       'what you need, and do not hand them to the next screen. Read live on the first day this block',
       'existed: knowing what was missing made the conversation shorter rather than more complete - it',
       'closed after four turns having never asked what they wanted out of it.',
+      '',
+      /*
+       * THIS HELD A PARAGRAPH ABOUT THE AIM AND IT MADE THE CONVERSATION MONOMANIACAL.
+       *
+       * Measured 18 September 2026 across all 22 situations: told loudly that the aim was the one
+       * thing it could not skip, setup hammered the aim, never reached why-now at all, and captured
+       * FEWER aims than before - what-makes-now-the-right-time went from ten out of twenty-two to
+       * zero, and the aim stayed at zero. Adding weight to an overweight prompt takes something out
+       * somewhere else, and you do not get to choose where.
+       *
+       * The aim is still in the gate, where it belongs and costs nothing to say. The prompt has to
+       * lose weight before it can be told one more thing.
+       */
+      'None of them is optional and none of them is more important than the others.',
     );
   } else {
     lines.push('', 'NOTHING IS MISSING. Setup has what it needs - stop asking and wrap it up.');
