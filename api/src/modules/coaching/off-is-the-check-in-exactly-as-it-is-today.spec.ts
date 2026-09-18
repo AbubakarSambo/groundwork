@@ -154,7 +154,16 @@ describe('with the flag on, the step reaches the assembled prompt', () => {
   it('carries the person into nothing: the block names no name', async () => {
     const { service, captured } = makeService({ enabled: true, coachingRow: OUTSTANDING });
     await service.sendMessage('ci1', 'user-1', 'hello');
-    const block = captured[0].slice(captured[0].indexOf("Last session's step"));
+    /*
+     * BOUNDED AT BOTH ENDS. This sliced to the end of the whole assembled prompt, so it was reading
+     * every block that comes after the coaching one and judging the coaching block by their words.
+     * It went green for months because nothing was appended after coaching; the three-things block
+     * now is, and "they are telling you about the question" tripped a rule about how a COACHING line
+     * may speak. The slice stops where the coaching block does.
+     */
+    const from = captured[0].indexOf("Last session's step");
+    const until = captured[0].indexOf('BEFORE ANY OF THE ABOVE', from);
+    const block = captured[0].slice(from, until === -1 ? undefined : until);
     for (const p of [/\bthey are\b/i, /\bhas failed\b/i, /\bmust\b/, /\brequired\b/i]) {
       expect({ p: String(p), hit: p.test(block) }).toMatchObject({ hit: false });
     }

@@ -21,11 +21,22 @@ import { join } from 'path';
 const SRC = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/^\s*\/\/.*$/gm, '');
-const RULES = SRC.slice(SRC.indexOf('PUSHBACK RULES:'), SRC.indexOf('REFUSAL RULE'));
+/*
+ * THE RULE MOVED, AND THE MOVE IS THE POINT. It sat under PUSHBACK RULES inside the goal-alignment
+ * section - which is the fallback for a situation with no prompt of its own, and all twenty-two
+ * have one. So on every real conversation this rule was in the prompt and never reached: the
+ * section around it is routed out before the turn is built (see only-the-rules-this-turn-needs).
+ * It is a rule about any aim anybody gives you, so it now sits with the conversation quality rules
+ * where every turn reads it. This reads it where it lives now.
+ */
+const RULES = SRC.slice(
+  SRC.indexOf('AN AIM WITH A NOUN IN IT AND NO WAY TO TELL IT IS DONE IS STILL VAGUE:'),
+  SRC.indexOf('WHEN SOMEBODY ASKS YOU FOR SOMETHING, GIVE THEM IT'),
+);
 
 describe('a noun is not a measure', () => {
   it('names the shape the earlier rule lets through', () => {
-    expect(RULES).toContain('A THING IS NOT A MEASURE');
+    expect(RULES).toContain('AN AIM WITH A NOUN IN IT AND NO WAY TO TELL IT IS DONE IS STILL VAGUE');
     expect(RULES).toContain('"Find the bugs and fix them" names a thing');
   });
 
@@ -48,9 +59,18 @@ describe('a noun is not a measure', () => {
     expect(RULES).toContain('what would have to exist at the end for it to be met');
   });
 
-  it('sits inside the pushback rules, where the rule it corrects lives', () => {
-    expect(RULES.indexOf('A THING IS NOT A MEASURE')).toBeGreaterThan(-1);
-    /* And before the refusal rules, which are a different count for a different situation. */
-    expect(SRC.indexOf('A THING IS NOT A MEASURE')).toBeLessThan(SRC.indexOf('REFUSAL RULE'));
+  /*
+   * AND IT HAS TO BE SOMEWHERE EVERY TURN READS, which is what the move was for. The goal-alignment
+   * section that used to hold it is left out of any conversation whose situation has a prompt of
+   * its own, and all twenty-two do - so a rule in there is a rule nobody gets.
+   */
+  it('sits where every turn reads it, not inside the fallback interview', () => {
+    const { ENGINE_RULES } = require('./prompt-library');
+    const { onlyTheRulesThisTurnNeeds } = require('./only-the-rules-this-turn-needs');
+    const anOrdinaryTurn = onlyTheRulesThisTurnNeeds(ENGINE_RULES, { hasASituationPack: true, sessionNumber: 3 });
+    expect(anOrdinaryTurn).toContain('AN AIM WITH A NOUN IN IT AND NO WAY TO TELL IT IS DONE IS STILL VAGUE');
+    expect(anOrdinaryTurn).toContain('NEVER CALL SUCH AN ANSWER CLEAR');
+    /* The section it came out of is the one that does not survive that routing. */
+    expect(anOrdinaryTurn).not.toContain('GOAL ALIGNMENT: the most important first conversation');
   });
 });

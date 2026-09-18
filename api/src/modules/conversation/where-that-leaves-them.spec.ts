@@ -85,7 +85,7 @@ describe('and it reaches the conversation', () => {
     expect(src).toMatch(/const againstTheirNumber = await this\.whereTheirNumberLeavesThem\(checkIn, latestMessage \?\? ''\)/);
     /* Chosen among the three by oneThingBack, and first in that order. */
     expect(src).toMatch(/oneThingBack\(\{ againstTheirNumber/);
-    expect(src).toMatch(/patternProbeBlock, theOneThingBack,/);
+    expect(src).toMatch(/theOneThingBack,/);
   });
 
   it('reads their own targets and the ground\'s, never another person\'s', () => {

@@ -49,13 +49,6 @@ describe('every reply that reaches a person goes through the guard', () => {
        * variable name survives that and reads better at the call site anyway.
        */
       if (/notAReplyToAnybody/.test(lines[i])) return;
-      /*
-       * THE READER IS THE ONE OTHER CALL, AND IT IS THE POINT OF THIS RULE RATHER THAN A HOLE IN IT.
-       * `a-question-is-read-before-it-is-sent` runs AFTER the guard, on the guard's own output, and
-       * it is the last thing that touches a reply. It is exempt because it is not a way around the
-       * screening - it is more of it. Nothing else may be added here.
-       */
-      if (/READ_IT_AS_THEY_WILL/.test(lines[i])) return;
       offenders.push(`line ${i + 1}: ${line.trim()}`);
     });
 

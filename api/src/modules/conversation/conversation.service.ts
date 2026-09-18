@@ -24,7 +24,6 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
-import { READ_IT_AS_THEY_WILL, whatTheReaderSees, whatTheReaderDecided, theTailOf } from './a-question-is-read-before-it-is-sent';
 import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
@@ -32,7 +31,7 @@ import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
-import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { buildScenarioPackForParty, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -76,6 +75,10 @@ import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
+import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
+import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
+import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
@@ -824,6 +827,20 @@ export class ConversationService {
     const correctingSession = (checkIn as any).isSelfCorrection
       ? (checkIn as any).selfCorrectionTargetSession
       : null;
+    /*
+     * THE OPENER GETS ITS OWN LAST WORD. See the-first-thing-it-says-is-its-own-job: written from
+     * the whole engine and one line of "they have arrived", twenty of twenty-two participant openers
+     * explained what the check-in was for before asking anything.
+     */
+    /*
+     * AND THE OPENER IS ROUTED HARDER THAN A TURN. See only-the-rules-this-turn-needs: most of the
+     * engine is about a conversation already underway, and an opener is written before anybody has
+     * spoken. With the whole thing behind it, a short instruction at the end was read and outweighed
+     * - thirteen of twenty-two lead openers still explained what the check-in was for.
+     */
+    const openerSystem = `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
+    this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars against a turn's ${fullSystem.length}.`);
+
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
       : correctingSession != null
@@ -853,9 +870,11 @@ export class ConversationService {
     const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
     const firstSession = checkIn.sessionNumber === 1;
-    const reply = startsSomething && notTheLead && firstSession && correctingSession == null && !(checkIn as any).isFinal
+    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre. */
+    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed);
+    const reply = startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
       ? WHO_ARE_YOU_IN_THIS
-      : await this.anthropic.respond(fullSystem, [
+      : await this.anthropic.respond(openerSystem, [
           { role: 'user', content: beginMessage },
         ]);
 
@@ -871,40 +890,7 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const openerBeforeReading = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
-
-    /*
-     * AND SOMEBODY READS IT, WHICH THE OPENER STILL WAS NOT GETTING.
-     *
-     * The reader was wired into both message paths and not into this one, and this one writes the
-     * FIRST thing a person reads in every session. Read live on session 3 of a tea check-in: "What
-     * has changed with Amina's pricing authority since then, and how many shops in Kano are stocking
-     * you today?" - two questions in the opening breath, so only the second gets answered.
-     *
-     * The transcript is empty here by definition, so what the reader is given is what they said in
-     * the sessions BEFORE this one: that is the thing an opener can repeat back at them, and the
-     * thing it must not ask for again.
-     */
-    /*
-     * THEIR OWN RECORD LINES, NOT THEIR TRANSCRIPT. The first version of this read their PERSON
-     * turns across their own check-ins, which is their own words and still the wrong door: the hard
-     * architectural rule is that turn content is loaded one check-in at a time, and a query that
-     * reaches across them is the shape that later reaches across people. participant-ground-context
-     * caught it. Record entries are already participant-scoped by design and carry the same thing
-     * the reader needs - what this person has already told us, so an opener cannot ask for it again.
-     */
-    /* Best-effort, like the reader itself: knowing less about what they already said makes the
-       reader weaker, and failing to open a session over it makes the product unusable. */
-    const whatTheySaidBefore = await this.prisma.recordEntry
-      .findMany({
-        where: { participantId: checkIn.participantId },
-        orderBy: { createdAt: 'desc' },
-        select: { text: true },
-        take: 40,
-      })
-      .then((rows) => rows.map((e) => e.text ?? '').filter(Boolean))
-      .catch(() => [] as string[]);
-    const opening = await this.readBeforeSending([], openerBeforeReading, whatTheySaidBefore);
+    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1233,18 +1219,18 @@ export class ConversationService {
       this.knownForThisTurn.delete(checkIn.id);
       const conversationSoFar = turns.map((t) => t.content ?? '');
       let screened = screen(stripped.text, known, readerName, conversationSoFar);
-      /* Only an invention is worth a second call: a second question is fixed by the drop that
-         already happened. See needsAFreshAsk. */
-      if (screened.hits.length && needsAFreshAsk(screened.hits)) {
-        /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
-           the hit named. One time. If the second try is clean it replaces the first; if not, the
-           first stands minus its dropped sentences. */
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, screened.hits, known, readerName, theirWords, checkIn.id);
-        if (again) {
-          screened = again.screened;
-          stripped.hadMarker = again.hadMarker;
-        }
-      }
+      /*
+       * IT IS WRITTEN DOWN, NOT ASKED AGAIN. See DELETES_WHAT_IT_FINDS in the gate for the whole
+       * argument. Measured live: four of these fired in one conversation and all four logged "the
+       * second try was no better; the first stands" - a model call of latency, on the turn a person
+       * is waiting for, buying nothing. The detection stays, because the count is what tells us
+       * whether any of this is worth having; the second call goes.
+       */
+      for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
+      /* Counting whether the 16,000 characters of pattern library are reaching the words at all.
+         See whether-the-pattern-library-is-doing-anything - it changes nothing. */
+      const reachedAPattern = thePatternLine(checkIn.id, screened.text);
+      if (reachedAPattern) this.logger.log(reachedAPattern);
       if (!screened.text) {
         for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
       }
@@ -1256,19 +1242,7 @@ export class ConversationService {
        * that reads oddly is better than no reply at all. See a-sentence-with-a-word-missing.ts.
        */
       if (screened.text && readsAsBroken(screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken; asking again.`);
-        const plainly = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_FOR_IT_AGAIN_PLAINLY}`, history)
-          .catch(() => '');
-        const second = plainly.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(plainly), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !readsAsBroken(second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try was whole.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken.`);
       }
       /*
        * AND A GUESS IS NOT ALLOWED TO HARDEN INTO A FACT ON THE WAY OUT.
@@ -1287,46 +1261,21 @@ export class ConversationService {
       const theirLastTurn = theirWords[theirWords.length - 1] ?? '';
       const hardened = screened.text ? hardenedAGuess(theirLastTurn, screened.text) : null;
       if (hardened) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact; asking again.`);
-        const softer = await this.anthropic
-          .respond(`${fullSystem}\n\n${DO_NOT_HARDEN_IT(hardened)}`, history)
-          .catch(() => '');
-        const second = softer.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(softer), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !hardenedAGuess(theirLastTurn, second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try kept it as their estimate.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try hardened it too; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: the reply stated "${hardened}" as fact.`);
       }
 
       /*
        * AND A REPLY THAT ASKS NOTHING AND DOES NOT CLOSE LEAVES SOMEBODY HOLDING IT.
        *
-       * Last of the three, because the two above can change the text and this reads the final one.
-       * Same shape as both: spot it, ask again with one instruction, keep the second only if it is
-       * actually better. If it is not, the first stands - a flat reply is better than no reply, and
-       * a loop here would strand the person it is trying to help.
+       * Written down like the two above rather than asked again. This is the one of the four with
+       * the best case for a retry - a reply with no question in it really does strand somebody -
+       * so if the log says it happens, it comes back as a retry aimed with evidence.
        */
       /* `textHadCloseMarker`, not the local flag of the same name: that one is set further down,
          after this runs. The alias exists for exactly this collision. */
       const closingNow = textHadCloseMarker(rawReply);
       if (isADeadEnd(screened.text, closingNow)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; asking again.`);
-        const withAQuestion = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_SOMETHING_OR_CLOSE}`, history)
-          .catch(() => '');
-        const second = withAQuestion.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withAQuestion), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !isADeadEnd(second.text, textHadCloseMarker(withAQuestion))) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try left them something to answer.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was a dead end too; the first stands.`);
-        }
+        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close.`);
       }
 
       /*
@@ -1716,17 +1665,6 @@ export class ConversationService {
       reply = screened.text || ASK_AGAIN;
 
       /*
-       * AND LAST, SOMEBODY READS IT, WHICH IS A DIFFERENT ACT FROM EVERY GUARD ABOVE.
-       *
-       * The nine guards above ask what SHAPE this reply is. Her example passes all of them and is
-       * still wrong: "what is the number you are working towards for these 40 shops", to somebody
-       * whose first sentence gave the number. Meaning needs a reader, and a reader holding this
-       * prompt is the reader that wrote the fault. So it gets the conversation and the draft and
-       * nothing else. See a-question-is-read-before-it-is-sent.
-       */
-      reply = await this.readBeforeSending(history, reply, theirWords);
-
-      /*
        * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
        *
        * See the-line-that-touches-what-they-said.ts. Where what they just said contradicts a
@@ -1862,45 +1800,6 @@ export class ConversationService {
       return null;
     }
     return { screened, hadMarker: textHadCloseMarker(second) };
-  }
-
-  /**
-   * ONE FRESH READ OF THE MESSAGE, AS THE PERSON WILL READ IT.
-   *
-   * Her five checks and the restating fault, in a call that knows nothing about this product: only the last few turns and
-   * the draft. It may rewrite, and the rewrite goes through the same invention screen as everything
-   * else - a reader that adds a name or a figure is refused and the draft stands.
-   */
-  private async readBeforeSending(
-    history: { role: 'user' | 'assistant'; content: string }[],
-    draft: string,
-    theirWords: string[],
-  ): Promise<string> {
-    if (!draft.trim()) return draft;
-    try {
-      const said = theTailOf(
-        (history ?? [])
-          .filter((m) => (m.content ?? '').trim())
-          .map((m) => ({ role: m.role === 'user' ? ('person' as const) : ('product' as const), text: m.content })),
-      );
-      const answer = await this.anthropic.respond(READ_IT_AS_THEY_WILL, [
-        { role: 'user', content: whatTheReaderSees({ said, draft, alreadySettled: theirWords }) },
-      ]);
-      const decided = whatTheReaderDecided(answer, draft);
-      /* Logged either way, so a run can be counted rather than argued about: how many turns the
-         reader let through and how many it rewrote is the only evidence that it is worth its call. */
-      if (!decided.changed) { this.logger.log(`reader: kept the turn as drafted.`); return draft; }
-      const clean = screen(decided.text, theirWords);
-      if (clean.hits.length || !clean.text.trim()) {
-        this.logger.warn(`The reader's rewrite added something nobody said; the draft stands. ${clean.hits.map((h) => `${h.check} (${h.offending.join(', ')})`).join(', ')} in ${JSON.stringify(decided.text)}`);
-        return draft;
-      }
-      this.logger.log(`The reader rewrote the turn (${draft.length} chars to ${clean.text.length}).`);
-      return forHumans(clean.text);
-    } catch (err: any) {
-      this.logger.warn(`Could not read the draft before sending: ${err?.message}`);
-      return draft;
-    }
   }
 
   /**
@@ -2099,40 +1998,21 @@ export class ConversationService {
        * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
        * somebody the model hallucinated is alarming and useless to them.
        */
-      /* On the stream the sentence is already gone by the time it is known to be wrong, so a hit is
-         dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
+      /*
+       * EVERY HIT IS WRITTEN DOWN AND NOTHING IS REMOVED. See DELETES_WHAT_IT_FINDS in the gate.
+       * The branch that used to ask the model again when NOTHING survived cannot arise now that
+       * nothing is dropped, and it went with the other three re-asks for the same reason: measured
+       * live, they fired four times and won nothing.
+       */
       let reply = shown.trim();
-      if (reply) {
-        for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
-      } else {
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, whole.hits.length ? whole.hits : gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
-        if (again) {
-          reply = again.screened.text;
-          strippedStream.hadMarker = again.hadMarker;
-        } else {
-          for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
-          reply = ASK_AGAIN;
-        }
+      for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
+      const reachedAPatternOnTheStream = thePatternLine(checkIn.id, reply);
+      if (reachedAPatternOnTheStream) this.logger.log(reachedAPatternOnTheStream);
+      if (!reply) {
+        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'nothing came back'));
+        reply = ASK_AGAIN;
         yield { type: 'delta', text: reply };
       }
-
-      /*
-       * AND THE READER RUNS HERE TOO, WHICH IS WHERE IT WAS MISSING.
-       *
-       * The reader was wired into the turn path and not this one, and this one is the path every
-       * real check-in takes: ChatPage streams. So a fix proved in the lead's setup chat reached no
-       * participant at all. Read live on a payments SDK migration, both from this path and both
-       * through all nine guards: a reply that opened by reciting the person's own sentence back to
-       * them, and one that marked their answer ("that is a clear and specific definition of what
-       * good looks like").
-       *
-       * A STREAM CANNOT BE UNSENT, so a rewrite arrives the way every other whole-reply correction
-       * on this path already does: `done` carries the corrected text and ChatPage replaces what it
-       * streamed. That mechanism is not invented here - the close-ask and the whole-reply screen
-       * both rely on it - and a reader that rewrites one turn in three is worth a replace.
-       */
-      const readOnTheStream = await this.readBeforeSending(history, reply, streamKnown);
-      if (readOnTheStream && readOnTheStream !== reply) reply = readOnTheStream;
 
       /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
@@ -2305,6 +2185,8 @@ export class ConversationService {
       participant: { partyType: any; roleAsDescribed: string | null; userId?: string | null; detectedFunction?: string | null; detectedFunctionConfidence?: number | null };
     },
     latestMessage?: string,
+    /* The opener is a different job from a turn - see only-the-rules-this-turn-needs. */
+    how?: { forTheOpener?: boolean },
   ): Promise<string> {
     /**
      * Objectives included, because the engine was reading people against a target it had not been
@@ -2352,7 +2234,7 @@ export class ConversationService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
-    const systemPrompt = await this.prompts.getActiveContent('system');
+    const wholeEngine = await this.prompts.getActiveContent('system');
 
     // Load prior session summaries for PRIOR_SESSION in the intake block.
     // For session 3+, include all prior sessions for longitudinal context (max 800 chars total).
@@ -3565,6 +3447,34 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
     /*
+     * AND ONLY THE PART OF THE ENGINE THIS TURN CAN USE. See only-the-rules-this-turn-needs.
+     *
+     * Nothing is removed from the product: a section is left out of the turns where its own text
+     * says it does not apply. The biggest is the goal-alignment fallback, 13,019 characters whose
+     * own opening calls it "the fallback for when there is none" - and every one of the twenty-two
+     * situations has a prompt of its own, so it has been riding along on every turn, never meant to
+     * run, and once demonstrably running alongside the real one.
+     *
+     * Done here rather than at the read, because whether this conversation has a situation prompt
+     * is only settled by the time the pathway is built.
+     */
+    const packForThisSituation =
+      scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any);
+    const thisTurn = {
+      hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
+      sessionNumber: checkIn.sessionNumber,
+      isTheOpener: !!how?.forTheOpener,
+    };
+    const systemPrompt = onlyTheRulesThisTurnNeeds(wholeEngine, thisTurn);
+    const leftOut = whatWasLeftOut(thisTurn);
+    /* `wholeEngine` is whatever the prompt store returned, which in a test is sometimes nothing. */
+    if (leftOut.length && wholeEngine) {
+      this.logger.log(
+        `Check-in ${checkIn.id}: engine ${wholeEngine.length} to ${(systemPrompt ?? '').length} chars, leaving out ${leftOut.join('; ')}`,
+      );
+    }
+
+    /*
      * WHAT ACTUALLY FIRED, NAMED AND SIZED. Logs and changes nothing: the prompt below is byte for
      * byte what it was. Before a single block moves out of the base prompt, this says which blocks
      * never fire, which fire every turn, and which are in play on a turn somebody complained about.
@@ -3590,7 +3500,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, patternProbeBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    /*
+     * AND THREE LINES LAST, AFTER EVERYTHING. See the-last-thing-it-reads-is-the-thing-it-must-not-
+     * miss: a rule at character 31,345 of 113,000 behaves like a suggestion, and one of them did,
+     * live, the day it was written. Position is the fix, not another guard.
+     */
+    const cannotBeMissed = theThingsThatCannotBeMissed(latestMessage, theyPushedBackOnTheQuestions(latestMessage ?? ''));
+
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, patternProbeBlock, cannotBeMissed].filter(Boolean).join('\n\n');
   }
 
   /**
