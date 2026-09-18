@@ -47,7 +47,7 @@ export function whatTheTeamGets(opts: {
    * subject." Written in the first person plural on purpose - it is the lead's trial, not ours.
    */
   const trial = opts.aTrial
-    ? 'We are trying this out as a way to see how aligned we are on priorities. Your answers go into one summary for the team.'
+    ? 'We are trying this out to see if this new tool can help us be more aligned, and your answers go into one summary that gives us a shared picture.'
     : null;
   return {
     subject: theSubjectTheTeamSees(opts.leadName),

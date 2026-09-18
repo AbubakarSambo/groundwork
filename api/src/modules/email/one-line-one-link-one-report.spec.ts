@@ -39,7 +39,8 @@ describe('what the team gets', () => {
     const { lines } = whatTheTeamGets({ leadName: 'Ada', theOneLine: THE_LINE, by: 'Friday', aTrial: true });
     const said = lines.join(' ');
     expect(said).toContain('We are trying this out');
-    expect(said).toContain('one summary for the team');
+    expect(said).toContain('help us be more aligned');
+    expect(said).toContain('one summary that gives us a shared picture');
     expect(said).not.toMatch(/Groundwork|the product|beta/i);
   });
 
