@@ -32,6 +32,20 @@
 
 /** What is true about the turn being built, and nothing else. */
 export interface WhatThisTurnIs {
+  /**
+   * THE FIRST MESSAGE OF A SESSION, WHICH IS A DIFFERENT JOB FROM A TURN.
+   *
+   * It is written before the person has said anything, so most of the engine - what to do when they
+   * are vague, how to probe a claim, how to close, what to acknowledge - is about a conversation
+   * that has not started. Measured 18 September 2026: with the whole engine behind it, thirteen of
+   * twenty-two lead openers and fifteen of twenty-two participant ones still explained what the
+   * check-in was for, in spite of a short instruction at the very end telling them not to. The
+   * instruction is read and then outweighed.
+   *
+   * So the opener is given what a first line needs - the voice, the tone, the words we do not use,
+   * the situation's own prompt and everything known about this ground - and not the rest.
+   */
+  isTheOpener?: boolean;
   /** The situation the lead picked has a prompt of its own. True for all 22 today. */
   hasASituationPack: boolean;
   /** 1 for the first session, higher afterwards. */
@@ -53,7 +67,34 @@ interface Routed {
  * the condition is structural and unarguable. Anything else stays on every turn, because the cost of
  * wrongly dropping a rule is a conversation that quietly loses a behaviour nobody notices for weeks.
  */
+/**
+ * THE SECTIONS A FIRST LINE HAS NO USE FOR. Each one is about a conversation already underway: what
+ * to do with an answer, how to probe it, what to acknowledge, how to close. None of it can apply to
+ * a message written before anybody has said anything.
+ *
+ * WHAT DELIBERATELY STAYS, because an opener is still the product talking: WHO YOU SOUND LIKE, TONE
+ * STATES, the vocabulary and the banned words, the survivable-truth principle, and every runtime
+ * block - the situation's own prompt, the brief, the people, the aim, what they said last time.
+ */
+const NOT_FOR_A_FIRST_LINE = [
+  'CONVERSATION QUALITY RULES: follow these on every exchange',
+  'POSITIVE SIGNAL DETECTION: name these when you see them',
+  'LIVE FEEDBACK RULES',
+  'QUALITY OF DELIVERY: four questions for every named deliverable',
+  'CHECK-IN ENDING: record summary, not feedback summary',
+  'ORGANISATIONAL ONTOLOGY: pattern library',
+  'INJECTION LAYER: three tiers, use as instructed',
+  'CONTRIBUTION TAXONOMY: classify every submission',
+  'THE THREE FAILURE ORIGINS: the most important diagnostic',
+  'REFUSING TO TAKE PART, AND SUSPICION OF THE TOOL',
+];
+
 export const WHAT_CAN_BE_LEFT_OUT: Routed[] = [
+  ...NOT_FOR_A_FIRST_LINE.map((heading) => ({
+    heading,
+    because: 'it is about a conversation already underway, and an opener is written before anybody has spoken',
+    needed: (t: WhatThisTurnIs) => !t.isTheOpener,
+  })),
   {
     heading: 'GOAL ALIGNMENT: the most important first conversation',
     because:

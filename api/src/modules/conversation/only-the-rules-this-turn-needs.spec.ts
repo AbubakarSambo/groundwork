@@ -80,3 +80,40 @@ describe('routing the engine prompt', () => {
     expect(said.join(' ')).toMatch(/fallback for when the situation has no prompt of its own/i);
   });
 });
+
+/**
+ * AND THE OPENER IS ROUTED HARDER THAN A TURN, because it is a different job: it is written before
+ * anybody has spoken, so every rule about what to do with an answer is about a conversation that has
+ * not started. The voice is not one of those rules, which is why it stays.
+ */
+describe('the opener prompt', () => {
+  const opener = { hasASituationPack: true, sessionNumber: 1, isTheOpener: true };
+  const turn = { hasASituationPack: true, sessionNumber: 1 };
+
+  it('is much smaller than a turn', () => {
+    const o = onlyTheRulesThisTurnNeeds(ENGINE_RULES, opener);
+    const t = onlyTheRulesThisTurnNeeds(ENGINE_RULES, turn);
+    expect(o.length).toBeLessThan(t.length / 2);
+  });
+
+  it('keeps the voice, the tone and the words we do not use', () => {
+    const o = onlyTheRulesThisTurnNeeds(ENGINE_RULES, opener);
+    for (const kept of ['WHO YOU SOUND LIKE', 'TONE STATES', 'VOCABULARY: PRODUCT VOICE', 'BANNED WORDS', 'THE SURVIVABLE TRUTH PRINCIPLE']) {
+      expect(o).toContain(kept);
+    }
+  });
+
+  it('and leaves out the rules about handling an answer nobody has given yet', () => {
+    const o = onlyTheRulesThisTurnNeeds(ENGINE_RULES, opener);
+    for (const gone of ['CONVERSATION QUALITY RULES', 'LIVE FEEDBACK RULES', 'CHECK-IN ENDING', 'QUALITY OF DELIVERY']) {
+      expect(o).not.toContain(gone);
+    }
+  });
+
+  it('while a turn keeps all of them', () => {
+    const t = onlyTheRulesThisTurnNeeds(ENGINE_RULES, turn);
+    for (const kept of ['CONVERSATION QUALITY RULES', 'LIVE FEEDBACK RULES', 'CHECK-IN ENDING', 'QUALITY OF DELIVERY']) {
+      expect(t).toContain(kept);
+    }
+  });
+});

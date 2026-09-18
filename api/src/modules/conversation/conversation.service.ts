@@ -78,6 +78,7 @@ import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causal
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
+import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
@@ -826,6 +827,20 @@ export class ConversationService {
     const correctingSession = (checkIn as any).isSelfCorrection
       ? (checkIn as any).selfCorrectionTargetSession
       : null;
+    /*
+     * THE OPENER GETS ITS OWN LAST WORD. See the-first-thing-it-says-is-its-own-job: written from
+     * the whole engine and one line of "they have arrived", twenty of twenty-two participant openers
+     * explained what the check-in was for before asking anything.
+     */
+    /*
+     * AND THE OPENER IS ROUTED HARDER THAN A TURN. See only-the-rules-this-turn-needs: most of the
+     * engine is about a conversation already underway, and an opener is written before anybody has
+     * spoken. With the whole thing behind it, a short instruction at the end was read and outweighed
+     * - thirteen of twenty-two lead openers still explained what the check-in was for.
+     */
+    const openerSystem = `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
+    this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars against a turn's ${fullSystem.length}.`);
+
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
       : correctingSession != null
@@ -855,9 +870,11 @@ export class ConversationService {
     const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
     const firstSession = checkIn.sessionNumber === 1;
-    const reply = startsSomething && notTheLead && firstSession && correctingSession == null && !(checkIn as any).isFinal
+    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre. */
+    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed);
+    const reply = startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
       ? WHO_ARE_YOU_IN_THIS
-      : await this.anthropic.respond(fullSystem, [
+      : await this.anthropic.respond(openerSystem, [
           { role: 'user', content: beginMessage },
         ]);
 
@@ -873,7 +890,7 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, fullSystem, beginMessage, forHumans(reply));
+    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -2168,6 +2185,8 @@ export class ConversationService {
       participant: { partyType: any; roleAsDescribed: string | null; userId?: string | null; detectedFunction?: string | null; detectedFunctionConfidence?: number | null };
     },
     latestMessage?: string,
+    /* The opener is a different job from a turn - see only-the-rules-this-turn-needs. */
+    how?: { forTheOpener?: boolean },
   ): Promise<string> {
     /**
      * Objectives included, because the engine was reading people against a target it had not been
@@ -3444,6 +3463,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
       sessionNumber: checkIn.sessionNumber,
+      isTheOpener: !!how?.forTheOpener,
     };
     const systemPrompt = onlyTheRulesThisTurnNeeds(wholeEngine, thisTurn);
     const leftOut = whatWasLeftOut(thisTurn);
