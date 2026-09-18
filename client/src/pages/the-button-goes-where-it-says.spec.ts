@@ -33,8 +33,13 @@ describe('destinations', () => {
     expect(choose).not.toContain("navigate('/auth')")
     expect(choose).toContain("navigate('/auth?mode=member')")
   })
+  /* The label moved inside the clip's menu when the composer was rebuilt to the shape everybody
+     knows; what this holds is the same thing, which is that it is not rendered at all with nothing
+     to attach to. A label cannot be disabled: styled as disabled it still opens the picker. */
   it('the upload control is hidden rather than styled as disabled', () => {
-    expect(read('chat/ChatPage.tsx')).toMatch(/\{groundId && \(\s*<label htmlFor="doc-upload"/)
+    const chat = read('chat/ChatPage.tsx')
+    expect(chat).toMatch(/\{groundId && attachOpen && \(/)
+    expect(chat).toMatch(/<label htmlFor="doc-upload"/)
   })
   it('no permanently disabled primary control remains on the ending fold', () => {
     const admin = read('grounds/GroundAdminPage.tsx')

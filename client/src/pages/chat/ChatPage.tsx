@@ -116,6 +116,8 @@ export function ChatPage() {
   const [searchParams] = useSearchParams()
   /* Opened from a team update's link: one card, no band, nothing but the question. */
   const bareFrame = justTheQuestion(location.search)
+  /* The clip's little menu: both ways of adding something, out of the typing row. */
+  const [attachOpen, setAttachOpen] = useState(false)
   const isClarificationSession = searchParams.get('clarify') === 'true'
 
   /*
@@ -739,13 +741,18 @@ export function ChatPage() {
         */}
       <div className="gw-hdr">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <button
-            className="gw-back"
-            onClick={() => navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')}
-            title="Leave this session. Everything you have said is already saved."
-          >
-            ← Back
-          </button>
+          {/* Not in the bare frame: somebody answering one question from their mail has no use for
+              a ground page, and the only control on the screen should not lead out of the thing
+              they came to do. See the-link-opens-on-the-question. */}
+          {!bareFrame && (
+            <button
+              className="gw-back"
+              onClick={() => navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')}
+              title="Leave this session. Everything you have said is already saved."
+            >
+              ← Back
+            </button>
+          )}
           <div style={{ minWidth: 0 }}>
             <div className="gw-logo" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundLabel || user?.firstName || 'Your session'}</div>
             <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
@@ -1294,24 +1301,45 @@ export function ChatPage() {
               </span>
             )}
           </div>
-          <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            {/* A label cannot be disabled: styled as disabled it still opened the picker and the change handler returned in silence. Hidden until there is a check-in to attach to. */}
-            {groundId && (
-            <label htmlFor="doc-upload"
-              title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: 1 }}
-            >
-              📎 <span style={{ fontSize: 11 }}>Upload doc</span>
-            </label>
+          {/*
+            THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
+            chat box is small and hard to engage, we need to make it look like you are on whatsapp."
+            Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
+            doc and Paste text sat in the same row and took it. On the card whose whole promise is
+            two minutes on a phone, that is the thing that breaks it.
+
+            So: one round attach button holding both ways of adding something, a full-width pill to
+            type in, and a round send. Nothing was removed - the two controls moved inside the clip.
+          */}
+          <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+            {groundId && attachOpen && (
+              <div style={{ position: 'absolute', bottom: 58, left: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, minWidth: 190 }}>
+                <label htmlFor="doc-upload"
+                  title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
+                  onClick={() => setAttachOpen(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
+                >
+                  📎 Upload a document
+                </label>
+                <button
+                  onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
+                  disabled={completed || declined}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
+                >
+                  📋 Paste text
+                </button>
+              </div>
             )}
-            <button
-              onClick={() => { if (groundId) setPasteMode(true) }}
-              disabled={!groundId || completed || declined}
-              title="Paste an email, Slack message, meeting notes, or any text"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId && !completed && !declined ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !completed && !declined ? 1 : 0.4, fontFamily: 'inherit' }}
-            >
-              📋 <span style={{ fontSize: 11 }}>Paste text</span>
-            </button>
+            {groundId && (
+              <button
+                onClick={() => setAttachOpen(o => !o)}
+                aria-label="Add a document or paste text"
+                aria-expanded={attachOpen}
+                style={{ width: 42, height: 42, borderRadius: '50%', flexShrink: 0, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
+              >
+                📎
+              </button>
+            )}
             <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
               const f = e.target.files?.[0]
               if (f) {
@@ -1322,17 +1350,37 @@ export function ChatPage() {
               handleFileChange(e)
             }} />
 
-            <textarea ref={taRef} placeholder="Share what you have been working on."
+            <textarea ref={taRef} placeholder="Type your answer"
               value={input} onChange={autoResize} onKeyDown={handleKeyDown}
               disabled={loading || completed || declined || !opened}
-              style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
+              rows={1}
+              style={{ flex: 1, minWidth: 0, resize: 'none', height: 42, maxHeight: 140, padding: '11px 16px', fontSize: 15, lineHeight: 1.35, border: '1px solid var(--gw-border)', borderRadius: 21, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
             />
             <button onClick={send} disabled={loading || completed || declined || !opened} aria-label="Send message"
-              style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
+              style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
             >
               ↑
             </button>
           </div>
+          {/*
+            AND A WAY BACK, WHICH THE BARE FRAME OTHERWISE HAS NONE OF.
+            "What a person now needs to login, is there a place to proceed to sign-in?" - there was
+            not. Accepting the link signed them in, and the page said nothing about it: no name, no
+            way to return on another device, no sign-in anywhere on screen. One line, under the
+            thing they are typing into, says all three.
+          */}
+          {bareFrame && (
+            <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
+              {user?.email ? `Signed in as ${user.email}. ` : ''}
+              Your link reopens this any time, or{' '}
+              <button
+                onClick={() => navigate('/auth')}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                sign in with your email
+              </button>.
+            </div>
+          )}
         </div>
       </div>
 
