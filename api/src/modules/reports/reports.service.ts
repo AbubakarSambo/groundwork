@@ -88,6 +88,7 @@ import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-reco
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
+import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
@@ -859,8 +860,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true },
+      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true },
     });
+    /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
+    const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
+    const theLeadOnlyAsks = THE_LEAD_ONLY_ASKS.includes(itsSituation?.scenario ?? '');
     // One labelling rule, shared with the read path so a stored label always
     // resolves back to the same person. See party-labels.ts.
     const labelById = labelsForParties(parties as any);
@@ -976,6 +980,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         leads: p.partyType === PartyType.INITIATOR,
         recordEntries: recordEntryCountByParty.get(p.id) ?? 0,
         charsSaid: saidByLabel.get(label) ?? 0,
+        onlyAsks: theLeadOnlyAsks && p.managingOnly,
       });
     });
     /*

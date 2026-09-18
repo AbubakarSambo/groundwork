@@ -1420,7 +1420,7 @@ export function GroundAdminPage() {
                     * and the codebase agreed before she made it: "session" appears in 159 visible
                     * strings and "round" in 25. One word, and it is session.
                     */}
-                  {roundDone} of {(ground.participants ?? []).length} checked in for session {openRound}
+                  {roundDone} of {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length} checked in for session {openRound}
                 </span>
               )}
               {roundWentBack && (

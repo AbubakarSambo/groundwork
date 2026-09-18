@@ -2,6 +2,7 @@ import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -272,6 +273,9 @@ export const SAFE_PARTICIPANT_SELECT = {
      "Invite pending" about a mail that was never sent, and the lead chases the person instead of
      the admin. See added-but-waiting-for-a-seat.ts. */
   awaitingSeat: true,
+  /* Whether this person answers at all. The roster counted a managing-only lead among the people a
+     round is waiting for, so "4 of 5 checked in" named the person it was for. */
+  managingOnly: true,
   inviteDeliveryStatus: true, // SENT | DELIVERED | BOUNCED | COMPLAINED (Resend webhook mirror)
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
@@ -4722,10 +4726,12 @@ export class GroundsService {
      */
     /* EVERYONE DOES A FIRST CHECK-IN. A managing-only lead gives session 1 like everybody else and is
        a party to that round; from session 2 they have no check-in and are not waited on. */
+    /* And in a situation where the lead only asks, they are not a party to any round of it. */
+    const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
-        ...(sessionNumber > 1 ? { managingOnly: false } : {}),
+        ...(waitsOnAManagingOnlyLead(itsSituation?.scenario, sessionNumber) ? {} : { managingOnly: false }),
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

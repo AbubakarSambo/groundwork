@@ -37,6 +37,11 @@ export type PartyOnTheRoster = {
   recordEntries: number;
   /** Characters they actually typed across their check-ins. The discriminator. */
   charsSaid: number;
+  /**
+   * They set the question and do not answer it. True only where the situation is built that way -
+   * "Get updates from your team" - and never a person who simply has not got to it yet.
+   */
+  onlyAsks?: boolean;
 };
 
 export function whatTheRosterSaysAbout(party: PartyOnTheRoster): string {
@@ -59,6 +64,22 @@ export function whatTheRosterSaysAbout(party: PartyOnTheRoster): string {
       ` NEVER write that their record is missing, absent, not present or not provided,` +
       ` and never write that they did not take part or have not checked in. Say their` +
       ` account is too brief to compare, or say nothing about them at all.`
+    );
+  }
+
+  /*
+   * AND THE ONE WHO WAS NEVER ASKED ANYTHING.
+   *
+   * The lead of a team update writes the question and the team answers it. The roster called that
+   * "has not checked in yet", and the report opened: "Only the participants have checked in; you
+   * have not." Said to the person the report is for, about a thing the product never asked them to
+   * do. Their absence from the corpus is the design, not a gap in it.
+   */
+  if (party.onlyAsks) {
+    return (
+      `${label}: set the question this round answers and does not answer it themselves.` +
+      ` NEVER write that they have not checked in, are missing, did not take part or have not` +
+      ` answered. Do not mention their absence at all - there is nothing absent.`
     );
   }
 

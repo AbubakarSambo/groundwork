@@ -77,6 +77,9 @@ function prismaWith(people: Participant[]) {
   };
 
   return {
+    /* The situation: these are the ordinary kind, where a managing lead does give session one.
+       See the-lead-who-only-asks for the one where they do not. */
+    ground: { findUnique: async () => ({ scenario: 'GOAL_ALIGNMENT' }) },
     groundParticipant: {
       findMany: async ({ where }: any) => {
         const sessionNumber = where.OR.find((c: any) => c.checkIns)?.checkIns.some.sessionNumber;
