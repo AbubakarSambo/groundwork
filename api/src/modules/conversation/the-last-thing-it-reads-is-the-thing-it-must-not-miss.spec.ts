@@ -22,7 +22,9 @@ describe('the three things', () => {
   it('are last in the check-in prompt, after every other block', () => {
     const assembly = CONVERSATION.slice(CONVERSATION.indexOf('return [systemPrompt,'));
     const line = assembly.slice(0, assembly.indexOf('\n'));
-    expect(line).toContain('cannotBeMissed]');
+    /* Last, or last but for the pattern probe - which is a question this turn owes and is written
+       to be the final word when there is one. Both are the "read this last" slot by design. */
+    expect(line).toMatch(/cannotBeMissed(, patternProbeBlock)?\]/);
   });
 
   it('and last in the setup prompt too', () => {
@@ -45,7 +47,16 @@ describe('the three things', () => {
   });
 
   it('and stay short enough to read as an instruction', () => {
-    expect(THE_THREE_THINGS.length).toBeLessThan(1200);
+    expect(THE_THREE_THINGS.length).toBeLessThan(2200);
+  });
+
+  /* "What do I do about that?" is a request too, and it was the one that got a question back:
+     answered 8 times out of 22 against a demanding lead, where "give me something I can use" was
+     answered 20 times out of 22. */
+  it('and rule one covers being asked what to do, not only being asked for an example', () => {
+    expect(THE_THREE_THINGS).toContain('OR FOR WHAT THEY SHOULD DO');
+    expect(THE_THREE_THINGS).toMatch(/You do not hand out verdicts/);
+    expect(THE_THREE_THINGS).toMatch(/A question back, as though they had not asked, is not one/);
   });
 
   it('cover answering what was asked, taking a complaint, and one ask', () => {
