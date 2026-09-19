@@ -55,3 +55,46 @@ export function isSubscribed<T extends { subscriptionPlan: unknown; subscription
 export function isKnownStatus(value: string | null | undefined): value is SubscriptionStatus {
   return !!value && (SUBSCRIPTION_STATUSES as readonly string[]).includes(value);
 }
+
+/**
+ * WHAT COVERS THIS ORGANISATION TODAY: paid, on the house, or the free tier.
+ *
+ * "We put in someone's email and their org gets free use for three months." The shortcut is to
+ * write `subscriptionStatus: 'active'` and a plan on that organisation, because every gate in the
+ * product already reads exactly those two fields. It is also how a free run becomes permanent: that
+ * pair carries no end date, so the run stops only if something remembers to stop it.
+ *
+ * So a free run is its own pair - `freeUntil` and `freePlan` - and this is the one place that reads
+ * all four fields together. It expires by arithmetic rather than by a cron, which means the failure
+ * mode of every bug in here is that somebody is charged too early rather than never charged at all.
+ *
+ * PAYING WINS. An organisation that started paying during a free run is a customer: their plan is
+ * the one they chose, not the one we gave them, and the free run simply runs out underneath.
+ */
+export type WhatCovers = 'paid' | 'on the house' | 'free tier';
+
+export function whatCoversThem<T extends {
+  subscriptionPlan: unknown;
+  subscriptionStatus: string | null | undefined;
+  freeUntil?: Date | null;
+  freePlan?: unknown;
+}>(org: T, now: Date = new Date()): { covers: WhatCovers; plan: NonNullable<T['subscriptionPlan']> | null; until: Date | null } {
+  if (isSubscribed(org)) return { covers: 'paid', plan: org.subscriptionPlan as any, until: null };
+  const until = org.freeUntil ? new Date(org.freeUntil) : null;
+  if (until && until.getTime() > now.getTime() && org.freePlan) {
+    return { covers: 'on the house', plan: org.freePlan as any, until };
+  }
+  return { covers: 'free tier', plan: null, until: null };
+}
+
+/** Whether anything at all covers them beyond the free tier. The read most gates want. */
+export function isCovered<T extends Parameters<typeof whatCoversThem>[0]>(org: T, now?: Date): boolean {
+  return whatCoversThem(org, now).covers !== 'free tier';
+}
+
+/** The last day of a free run, from the day it is taken up. Whole months, so three means three. */
+export function aFreeRunEndsOn(from: Date, months: number): Date {
+  const end = new Date(from);
+  end.setMonth(end.getMonth() + months);
+  return end;
+}

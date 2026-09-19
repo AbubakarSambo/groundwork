@@ -1,6 +1,7 @@
 import { Throttle } from '@nestjs/throttler';
 import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ThreeMonthsOnTheHouseService } from './three-months-on-the-house.service';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
 import { PricingService } from './pricing.service';
@@ -16,7 +17,25 @@ export class BillingController {
     private readonly billing: BillingService,
     private readonly stripe: StripeService,
     private readonly pricing: PricingService,
+    private readonly freeRuns: ThreeMonthsOnTheHouseService,
   ) {}
+
+  /**
+   * WHAT IS WAITING FOR THIS ADDRESS, ASKED BEFORE THERE IS AN ACCOUNT.
+   *
+   * "When they sign-up, they see it." The sign-up screen has an email and nothing else, so this is
+   * the only shape that can answer: public, throttled, and it says how long and on what plan.
+   * Nothing about who granted it, no note, and no hint about the person - an address that has been
+   * promised something is all it ever confirms.
+   */
+  @Public()
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
+  @Get('on-the-house')
+  @ApiOperation({ summary: 'Whether a free run is waiting for this email address' })
+  async onTheHouse(@Query('email') email: string) {
+    const waiting = await this.freeRuns.whatIsWaitingFor(email ?? '');
+    return waiting ?? { months: 0, plan: null };
+  }
 
   @Public()
   @Get('pricing')

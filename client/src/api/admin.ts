@@ -30,6 +30,19 @@ export interface CorrectionWindow {
   max: number
 }
 
+export interface FreeRunRow {
+  id: string
+  email: string
+  months: number
+  plan: string
+  note: string | null
+  createdAt: string
+  /** waiting: promised, nobody has signed up yet. running: in it. finished / withdrawn: over. */
+  state: 'waiting' | 'running' | 'finished' | 'withdrawn'
+  claimedAt: string | null
+  endsAt: string | null
+}
+
 export interface PricingPlanRow {
   plan: SubscriptionPlan
   /** Null for a contact-sales plan. The panel shows "Contact us" and offers no price editor. */
@@ -115,6 +128,19 @@ export const adminApi = {
   /** Whether this deployment can take money. Never the key itself. */
   getStripeStatus: () =>
     apiClient.get<{ isConfigured: boolean; says: string }>('/admin/stripe').then(r => r.data),
+
+  /**
+   * THREE MONTHS ON THE HOUSE. An address is promised a free run before there is an organisation to
+   * give it to; the clock starts when they sign up. See the API's three-months-on-the-house.
+   */
+  listFreeRuns: () =>
+    apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => r.data),
+
+  grantFreeRun: (body: { email: string; months?: number; plan?: string; note?: string }) =>
+    apiClient.post<FreeRunRow>('/admin/free-runs', body).then(r => r.data),
+
+  withdrawFreeRun: (id: string) =>
+    apiClient.post(`/admin/free-runs/${id}/withdraw`).then(r => r.data),
 
   getPricing: () =>
     apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => r.data),
