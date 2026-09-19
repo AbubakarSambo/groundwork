@@ -154,10 +154,14 @@ section.art-bg > .w, section.art-bg > .w-wide{position:relative;z-index:1}
    Hairlines rather than cards. Three cards would make three things of equal
    weight; this is one sequence. */
 .steps{display:grid}
-.step{display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:baseline;
+.step{display:grid;grid-template-columns:38px 1fr;gap:14px;align-items:baseline;
       padding:16px 0;border-top:1px solid var(--gw-border)}
 .step:last-child{border-bottom:1px solid var(--gw-border)}
-.step i{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--gw-muted)}
+/* THE NUMBERS ARE WRITTEN, NOT SET. The same drawn ring the other four pages use for a
+   sequence - see the drawn kit in global.css - so the hand on this page is not one section's. */
+.step i{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--gw-navy);
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  background:no-repeat center/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3 C 30 3, 37 11, 37 20 C 37 30, 29 37, 20 37 C 10 37, 3 29, 3 20 C 3 10, 11 4, 21 3' fill='none' stroke='%230C447C' stroke-width='2' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E")}
 .step b{font-size:16px;display:block;margin-bottom:3px}
 .step span{font-size:14px;color:var(--gw-sub);line-height:1.6}
 
@@ -347,7 +351,7 @@ details.more>summary::marker{color:var(--gw-muted)}
     <h2 class="h2">Every update you get has been through someone else first.</h2>
     <p class="lede" style="margin-bottom:14px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
     <p class="lede" style="margin-bottom:14px">Some people dominate meetings. Some avoid conflict. Some do not feel safe challenging a decision. So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
-    <p class="lede" style="margin-bottom:14px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and nobody has checked.</p>
+    <p class="lede" style="margin-bottom:14px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and <span class="gw-marker">nobody has checked.</span></p>
     <!--
       THE ANSWER TO THE PROBLEM THE SECTION JUST STATED, AND THE FIRST TIME THE PRODUCT IS NAMED.
       It also hands off into "How it works", which now follows directly.
@@ -484,7 +488,8 @@ details.more>summary::marker{color:var(--gw-muted)}
 <section class="end art-bg" style="--ground:var(--gw-dark);background-image:url(/art/seedling.png)">
   <div class="w">
     <h2>Start with something that matters.</h2>
-    <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
+    <!-- The one drawn mark on the dark ground: an arrow at the thing somebody is deciding on. -->
+    <p><span class="gw-drawn-arrow" style="margin-right:8px;transform:rotate(8deg)" aria-hidden="true"></span>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
     <div class="ctas">
       <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
       <a class="btn-2" href="/how-it-works">See how it works</a>
