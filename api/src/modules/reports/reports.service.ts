@@ -2357,6 +2357,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       movedOnTargets: held.movedOnTargets,
       blocked: held.blocked,
       waiting: held.waiting,
+      /* So the Blockers tile names the thing instead of repeating its own label. */
+      theFirstBlocker: held.theFirstBlocker,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the

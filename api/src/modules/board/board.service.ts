@@ -808,9 +808,15 @@ export class BoardService {
         const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
+        const firstDivergence = Array.isArray(reportSafe?.divergences)
+          ? (reportSafe!.divergences as any[])[0]
+          : null;
         out.quickRead = atAGlanceTiles({
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
           backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
+          /* Named rather than counted - see atAGlanceTiles. */
+          theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,
+          theBlocker: held.theFirstBlocker,
         });
       }
     }
