@@ -44,12 +44,12 @@ const firstStatementOf = (name: string) => {
 
 describe('every door into a session goes through the same door first', () => {
   it.each(['open', 'complete'])('%s opens the door before anything else', (method) => {
-    expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.openTheDoor\(checkInId, requestingUserId\);/);
+    expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.openTheDoor\(checkInId, (requestingUserId|who)\);/);
   });
 
   it.each(['sendMessage', 'sendMessageStream'])('%s requires a session already underway before anything else', (method) => {
     /** A message on a NOT_STARTED check-in was a whole session with no meter, because only open() meters. */
-    expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.aSessionUnderway\(checkInId, requestingUserId\);/);
+    expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.aSessionUnderway\(checkInId, (requestingUserId|who)\);/);
   });
 
   it('the door checks ownership, then the session, then the ground - in that order', () => {
@@ -61,7 +61,7 @@ describe('every door into a session goes through the same door first', () => {
 
   it('a session underway is the door plus one question', () => {
     const b = bodyOf('aSessionUnderway');
-    expect(b).toMatch(/await this\.openTheDoor\(checkInId, requestingUserId\)/);
+    expect(b).toMatch(/await this\.openTheDoor\(checkInId, (requestingUserId|who)\)/);
     expect(b).toMatch(/CheckInStatus\.NOT_STARTED/);
   });
 

@@ -42,6 +42,7 @@ import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
+import { AnswerFirstPage } from '@/pages/join/AnswerFirstPage'
 import { JoinConfirmPage } from '@/pages/join/JoinConfirmPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
 import OpsTargetCompaniesPage from '@/pages/ops/OpsTargetCompaniesPage'
@@ -375,6 +376,8 @@ export default function App() {
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
+            {/* The QR code's own door: answer first, say who you are at the end. */}
+            <Route path="/answer" element={<AnswerFirstPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />
 
             {/* Post-auth setup: an org admin whose org is missing contact email / stage / plan is

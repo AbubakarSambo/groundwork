@@ -279,6 +279,26 @@ export const entryApi = {
 
 // ── Join API (QR / broadcast link) ───────────────────────────────────────────
 
+/**
+ * THE OPEN LINK: ANSWER FIRST, SAY WHO YOU ARE AT THE END. The QR code a lead shares. Nobody is
+ * signed in on any of these, which is the point - see the API's the-open-link.service.
+ */
+export const openLinkApi = {
+  whatThisIs: (token: string) =>
+    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string }>(
+      '/entry/open', { params: { t: token } },
+    ).then(r => r.data),
+
+  start: (joinToken: string) =>
+    apiClient.post<{ key: string; checkInId: string; reply: string | null }>('/entry/open-start', { joinToken }).then(r => r.data),
+
+  say: (key: string, message: string) =>
+    apiClient.post<{ reply: string; sessionComplete?: boolean }>('/entry/open-say', { key, message }).then(r => r.data),
+
+  finish: (key: string, email?: string, firstName?: string) =>
+    apiClient.post<{ willGetTheReport: boolean; at: string | null }>('/entry/open-finish', { key, email, firstName }).then(r => r.data),
+}
+
 export const joinApi = {
   preview: (token: string) =>
     apiClient.get<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string }>(

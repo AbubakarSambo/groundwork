@@ -1,3 +1,4 @@
+import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
 import {
@@ -1895,9 +1896,9 @@ from finishing at all.`;
     const label = (dto.groundLabel ?? '').trim() || 'My first ground';
     const scenario = resolveScenario(dto.scenario);
 
-    if (dto.contributors.length > 20) {
-      throw new BadRequestException('Contributor count exceeds the limit of 20 per check-in. Split into multiple check-ins if needed.');
-    }
+    /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
+    const tooMany = tooManyPeopleFor(dto.contributors.length);
+    if (tooMany) throw new BadRequestException(tooMany);
 
     // Update org name if the admin filled it in.
     if (dto.orgName?.trim()) {

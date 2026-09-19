@@ -78,6 +78,12 @@ const REACHED_FROM_OUTSIDE = [
   '/auth', '/login', '/signup', '/entry', '/verify', '/reset', '/forgot',
   '/invite', '/join', '/accept', '/set-password', '/magic', '/r/', '/admin',
   /**
+   * THE QR CODE'S OWN DOOR. It is reached by pointing a phone camera at a code on a wall, a slide
+   * or a printout - the lead shares the link, and the app itself never navigates to it. The ground
+   * page builds the address (`/answer?t=`) and shows it with a QR beside it, which is the door.
+   */
+  '/answer',
+  /**
    * Linked from the MARKETING SITE's header, not from the app - a static page cannot call the auth
    * store, so signing out needs a URL. Verified: marketing/src/components/Nav.astro links to it.
    */

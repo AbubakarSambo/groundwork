@@ -270,6 +270,19 @@ export class EmailService implements OnModuleInit {
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
   ): Promise<string | undefined> {
+    /*
+     * AN ADDRESS NOBODY GAVE US IS NEVER WRITTEN TO.
+     *
+     * Somebody answering through the open link has a participant row before they have given an
+     * address, and that row carries a placeholder on a domain that cannot receive mail. Nothing
+     * should ever send to it, and "nothing should" is not a guarantee - a nudge, a report-ready
+     * mail or a reminder would each reach for it in the ordinary course of things. So the mailer
+     * refuses it by name, first, before any other rule gets a say. See the-open-link.
+     */
+    if (/@unclaimed\.invalid$/i.test(options.to ?? '')) {
+      this.logger.log(`Not sending "${options.subject}": that check-in has no address on it yet.`);
+      return undefined;
+    }
     const rather = sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null;
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing

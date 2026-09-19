@@ -291,6 +291,15 @@ Write only about what this person told you. Address them directly as "you" and "
  * participantId and must not join across parties. The only thing that crosses
  * is the synthesised report (see ReportsService), which is a new document.
  */
+/**
+ * WHO IS ASKING FOR THIS CHECK-IN: a signed-in user, or the participant row itself.
+ *
+ * The second is how somebody answers through a shared link or a QR code, before they have given a
+ * name or an address. It is not a looser check - it names one row, the way a user id does - and the
+ * secret behind it is resolved before anything in this service sees it. See the-open-link.
+ */
+export type WhoIsAsking = string | { theParticipant: string };
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -646,7 +655,7 @@ export class ConversationService {
     };
   }
 
-  async open(checkInId: string, requestingUserId: string) {
+  async open(checkInId: string, requestingUserId: WhoIsAsking) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     /**
@@ -1030,8 +1039,8 @@ export class ConversationService {
    * round per ground, after the idempotency guard that makes a second open() free. Putting it in
    * the door would charge every message.
    */
-  private async openTheDoor(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
+  private async openTheDoor(checkInId: string, who: WhoIsAsking) {
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, who);
     await this.assertGroundAcceptsInput(checkIn.groundId);
     return checkIn;
   }
@@ -1048,8 +1057,8 @@ export class ConversationService {
    * the message path would mean a second copy of the billing rule, and the audit of this plan found
    * that the obvious way to do that charges per message.
    */
-  private async aSessionUnderway(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
+  private async aSessionUnderway(checkInId: string, who: WhoIsAsking) {
+    const checkIn = await this.openTheDoor(checkInId, who);
     if (checkIn.status === CheckInStatus.NOT_STARTED) {
       throw new BadRequestException('This session has not been opened yet. Open it first, then answer.');
     }
@@ -1078,7 +1087,7 @@ export class ConversationService {
     );
   }
 
-  async sendMessage(checkInId: string, requestingUserId: string, message: string) {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string) {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
@@ -3517,17 +3526,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Best-effort, like every other block here: not knowing the last question makes this turn no
        worse than it was before the block existed, and failing to build a prompt over it would. */
     let lastAiTurn: { content: string | null } | null = null;
+    /* EVERY EARLIER TURN, not only the last one. A block that knows one turn back cannot stop the
+       third identical ask: by then it is reporting the repeat rather than preventing it. Six is
+       plenty - a session is about ten turns - and it is capped so this cannot grow with the
+       transcript. See you-asked-that-last-turn. */
+    let earlierAiTurns: { content: string | null }[] = [];
     try {
-      lastAiTurn = await this.prisma.conversationTurn.findFirst({
+      const recent = await this.prisma.conversationTurn.findMany({
         where: { checkInId: checkIn.id, role: TurnRole.AI },
         orderBy: { createdAt: 'desc' },
+        take: 7,
         select: { content: true },
       });
+      lastAiTurn = recent[0] ?? null;
+      earlierAiTurns = recent.slice(1);
     } catch {
-      /* A try rather than a .catch: a caller whose client has no findFirst throws before there is a
+      /* A try rather than a .catch: a caller whose client has no findMany throws before there is a
          promise to catch on, and this block is never worth failing a turn over. */
     }
-    const askedLastTurn = whatYouAskedLastTurn(lastAiTurn?.content ?? null);
+    const askedLastTurn = whatYouAskedLastTurn(
+      lastAiTurn?.content ?? null,
+      earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
+    );
 
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, owedBlock, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
@@ -4276,7 +4296,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
   }
 
-  async complete(checkInId: string, requestingUserId: string) {
+  async complete(checkInId: string, requestingUserId: WhoIsAsking) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
@@ -7114,8 +7134,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * wall in the name of a rule about writing. So the loader's NAME carries the distinction, and a
    * future write path gets the rule by picking the right one rather than by remembering it.
    */
-  private async loadOwnedOpenCheckIn(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+  private async loadOwnedOpenCheckIn(checkInId: string, who: WhoIsAsking) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, who);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
@@ -7125,7 +7145,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return checkIn;
   }
 
-  private async loadOwnedCheckIn(checkInId: string, requestingUserId: string) {
+  private async loadOwnedCheckIn(checkInId: string, who: WhoIsAsking) {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
       /**
@@ -7136,7 +7156,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
-    if (checkIn.participant.userId !== requestingUserId) {
+    /*
+     * TWO WAYS TO BE THE PERSON WHOSE CHECK-IN THIS IS, AND THE SECOND ONE IS NOT A WEAKENING.
+     *
+     * Signed in, it is their user id. Through the open link - the QR code a lead shares, where
+     * somebody answers before they have given any name at all - there is no user yet, so it is the
+     * participant row itself, resolved from the secret they hold before this is called. Either way
+     * the test names exactly one row, and passing the wrong one gets nothing. See the-open-link.
+     */
+    const itIsTheirs = typeof who === 'string'
+      ? checkIn.participant.userId === who
+      : checkIn.participantId === who.theParticipant;
+    if (!itIsTheirs) {
       // Never let one party read another party's conversation.
       throw new ForbiddenException('This check-in does not belong to you');
     }

@@ -1333,7 +1333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const CHROMELESS = [
     '/auth', '/auth/sent', '/auth/google/callback',
     '/set-password', '/reset-password', '/verify-email',
-    '/invite', '/join', '/login', '/org/setup',
+    '/invite', '/join', '/answer', '/login', '/org/setup',
   ]
 
   /**
