@@ -1645,6 +1645,8 @@ export class BoardService {
       movedOnTargets: held.movedOnTargets,
       blocked: held.blocked,
       waiting: held.waiting,
+      /* And the blocker itself, so the board's tile names it exactly as the report's does. */
+      theFirstBlocker: held.theFirstBlocker,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });
