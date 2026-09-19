@@ -99,6 +99,16 @@ export type ReadInput = {
    * assumes collaboration and keeps the existing behaviour.
    */
   peopleWorkTogether?: boolean;
+  /**
+   * WHETHER THIS KIND OF CHECK-IN RUNS AGAINST A ROLE AT ALL.
+   *
+   * Same shape as `peopleWorkTogether` and for the same reason: it is what the ground IS, not
+   * something to guess from the record. A team update asks everybody one question; nobody has a
+   * remit in it, and "the role was never clearly defined" read as an instruction to go and fix
+   * something that was never part of the situation. Defaults to true, so a caller that does not
+   * know keeps the existing behaviour.
+   */
+  situationHasRoles?: boolean;
 };
 
 export type NameOf = (participantId: string) => string | null;
@@ -467,6 +477,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
   // reading these needs telling that, because it is the difference between "no
   // second account agrees" and "no second account exists".
   const peopleWorkTogether = input.peopleWorkTogether !== false;
+  const theSituationHasRoles = input.situationHasRoles !== false;
   const lastSession = input.checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
 
   return input.participants
@@ -481,12 +492,23 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
           remitDefined: false,
           position: null,
           reason: null,
-          note:
-            'No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.',
+          /*
+           * AND NOT THE ROLE SENTENCE WHERE THERE IS NO ROLE IN THE SITUATION.
+           *
+           * Read on a live team update: "the role was never clearly defined, so there is no
+           * boundary to measure work against". True of the field and irrelevant to the card, which
+           * asks a team one question and never mentions a role. Telling a lead to go and define
+           * one, on a situation built not to have one, is advice about a different product.
+           */
+          note: theSituationHasRoles
+            ? 'No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.'
+            : 'No position shown. This situation does not run against a role, so there is nothing to read anyone against.',
           confidence: 0,
           evidenceCount: 0,
           shown: false,
-          basis: 'No role was defined, so there is nothing to read against.',
+          basis: theSituationHasRoles
+            ? 'No role was defined, so there is nothing to read against.'
+            : 'This situation does not run against a role.',
         };
       }
 
@@ -695,6 +717,7 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
   // the contribution read, in the language of the record rather than the language
   // of work going missing.
   const peopleWorkTogether = input.peopleWorkTogether !== false;
+  const theSituationHasRoles = input.situationHasRoles !== false;
   const reads: (CoverageRead & Partial<Confidence>)[] = [];
 
   for (const p of input.participants) {

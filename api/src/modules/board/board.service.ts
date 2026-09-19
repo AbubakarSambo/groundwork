@@ -1,3 +1,4 @@
+import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
@@ -1074,6 +1075,8 @@ export class BoardService {
     return {
       peopleWorkTogether:
         (ground as any).peopleWorkTogether ?? familyFor((ground as any).scenario) !== BoardFamily.COHORT,
+      /* A situation with no aim by design has no remit either: see a-check-in-with-no-aim. */
+      situationHasRoles: anAimIsOwedHere((ground as any).scenario),
       participants: ground.participants.map((p) => ({
         id: p.id,
         roleAsDescribed: p.roleAsDescribed ?? null,

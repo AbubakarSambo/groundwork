@@ -12,6 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
 import { isThisACascade } from '../board/is-this-a-cascade';
@@ -2580,9 +2581,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
       };
     })();
 
+    /*
+     * A SITUATION WITH NO AIM IS NOT A SITUATION MISSING ONE.
+     *
+     * Read on a live team update: section 01, "What everybody said good looks like", saying "No
+     * standard is set. The person running this has not said what success looks like, so nobody is
+     * being measured against anything yet." Nobody was ever going to. That card asks one question
+     * and collects the answers; a standard is not part of it, and telling a lead they have failed
+     * to set one is the product misreading its own design as somebody's omission.
+     *
+     * So where an aim is not owed and nobody has stated one anyway, the section is left out rather
+     * than filled with its own absence. A lead who DID state one still gets it, in every situation.
+     */
+    const anAimBelongsHere = anAimIsOwedHere((ground as any).scenario);
+    const somebodyStatedOne = !!(baseline?.successLooksLike ?? '').trim() || againstSuccess.definitions.length > 0;
+
     return {
       ...wordedShape,
-      againstSuccess,
+      againstSuccess: anAimBelongsHere || somebodyStatedOne ? againstSuccess : null,
       cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
