@@ -32,14 +32,19 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:32px;">Built by people who kept running into the same problem.</h1>
 
       <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:40px;">
-        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">We kept discovering the same thing. Problems almost never started with bad people. They started because different people quietly believed different things, and nobody realised until it became expensive. Groundwork exists so leaders don't discover misalignment months after it starts.</p>
+        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">We kept discovering the same thing. <b style="color:var(--gw-text)">Problems almost never started with bad people.</b> They started because different people quietly believed different things, and nobody realised until it became expensive. Groundwork exists so leaders don't discover misalignment months after it starts.</p>
 
         <!-- ITEM 3: first person, specific, and deliberately not polished. The
              founder is the buyer, which is a real advantage worth stating
              plainly. No claims about funding, size or customers. -->
         <p style="font-size:15px;color:var(--gw-sub);line-height:1.85;margin:20px 0 0;">We built Groundwork after repeatedly discovering problems months after they started. We hired too late. We missed disagreements that had quietly grown. We watched decisions get made from incomplete pictures, not because anyone was dishonest, but because there was no safe way to compare what everyone actually believed. Groundwork is the product we wanted.</p>
         <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">The problem was never the people. It was that there was no way to find out without a meeting, without confrontation, without someone having to say it to someone else's face.</p>
-        <p style="font-size:15px;color:var(--gw-sub);line-height:1.8;margin:0;">Groundwork is that place. You say what you need done. Your team says what they understood. You see where those two things match and where they do not. No meeting required.</p>
+        <!-- THE ONE THE PAGE IS FOR, DRAWN. Four paragraphs of first-person account, and this is
+             the sentence a reader would say back to somebody else. See the drawn kit in global.css. -->
+        <div class="gw-drawn" style="margin-top:8px;">
+          <span class="gw-bubble" aria-hidden="true"></span>
+          <p style="font-size:15px;color:var(--gw-dark);line-height:1.8;margin:0;"><span class="gw-marker">Groundwork is that place.</span> You say what you need done. Your team says what they understood. You see where those two things match and where they do not. No meeting required.</p>
+        </div>
       </div>
 
       <!--

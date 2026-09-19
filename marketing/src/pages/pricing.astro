@@ -53,10 +53,12 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Pricing</p>
       <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Pricing</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;"><span class="gw-marker" style="color:var(--gw-text)">Start free with 10 check-ins</span> for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
 
       <!-- Free tier -->
-      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:24px 26px;margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+      <!-- THE FREE PLAN IS THE ONE DRAWN. It is the only offer on the page somebody can take
+           without deciding anything, and the drawn frame is what says so without a badge. -->
+      <div class="gw-drawn" style="margin-bottom:40px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
         <div style="flex:1;min-width:220px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
             <span style="font-size:15px;font-weight:700;color:var(--gw-text);">Free</span>
