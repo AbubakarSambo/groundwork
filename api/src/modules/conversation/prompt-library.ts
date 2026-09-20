@@ -2989,6 +2989,8 @@ So ask for the shape of their own next year, and ask it as their plan rather tha
 
 WHAT NOT TO DO:
 - Do not ask them to commit to anything, to report back, or to do something for us. Their dates belong to their own plan, and nobody here is tracking them against it.
+- The two rules above about "something the next session can test" and "the central question" do not apply here. There is no next session, and there is no "between you": nobody in this room has an agreement with this person that could have gone unsaid. Never ask "what will you do about this, and by when?" and never ask "what was agreed between you that was never actually said out loud?". Run live, a research organisation was asked the second one and had no idea what it referred to.
+- Do not push a geography on somebody whose answer was not geographic. If they say where they would expand is "more buyers" or "processing", that is their answer; ask which buyers or which product once, and take it. "That is a sector, not a market" is a correction nobody asked for.
 - Do not ask what has changed recently, or what is going well. Those belong to a session about their performance.
 - Do not offer advice, a plan, or what they should do about their constraint. They did not ask.
 - Do not reference a next session. There is one session.
@@ -3614,6 +3616,8 @@ function theScenariosOwnPack(
 export interface PromptContext {
   scenario: GroundScenario;
   partyType: PartyType;
+  /** The first name of the person answering, where they have given one. Null: do not call them anything. */
+  readerName?: string | null;
   /**
    * Where in the arc this ground sits. COHORT_CHECK covers both an ongoing
    * pulse and a fixed onboarding period that ends in a decision about each
@@ -4185,6 +4189,12 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     NOT_EVERY_TURN_IS_A_QUESTION,
     '',
     `GROUND: ${ctx.groundLabel}`,
+    /*
+     * WHO IS ANSWERING. The model was told everybody's name but the answerer's, and addressed a
+     * managing partner as her new hire in the first line of her own check-in (adversarial run, 20 Sep
+     * 2026). The people in OTHER_PARTIES are the people this person is NOT.
+     */
+    `TALKING_TO: ${ctx.readerName ? ctx.readerName : 'the person answering, who has not given a name - address them by no name at all'}${ctx.partyType === PartyType.INITIATOR ? '. They set this check-in up and run it.' : '.'}${(ctx.otherParties ?? []).length ? ' Never address them by a name from OTHER_PARTIES.' : ''}`,
     `SITUATION_TYPE: ${situationType}`,
     /*
      * WHAT SETUP ALREADY SETTLED, AND THE INSTRUCTION NOT TO ASK FOR IT AGAIN.
@@ -4318,6 +4328,25 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     // read the brief back as the participant's own position, which is exactly
     // the report-echo failure (a participant's "account" that is just the
     // initiator's goals reflected back).
+    /*
+     * THE LEAD'S OWN SESSION IS ABOUT THE LEAD'S OWN PART. Four briefs, four leads, all four
+     * interviewed as if they were the person being checked on: asked to report the new hire's
+     * pipeline, pressed for individual sales numbers she does not set, run through the participant's
+     * discovery spine (adversarial run, 20 Sep 2026). What the people are doing comes from the
+     * people. What the lead owes the record is what THEY have told people, set up, decided, seen
+     * and not done - and the brief is their instruction to us, not their words.
+     */
+    ...(ctx.partyType === PartyType.INITIATOR
+      ? [
+          'THIS IS THE LEAD. Their session is about their own part, not a report on the others. Ask about: what they have actually told the people involved, in writing or out loud, and what they are assuming those people know; what they have set up, handed over or decided for them (introductions, resources, targets, a number, a definition of done) and what they have not; what they believe about how it is going and what that belief rests on; what they said they would do and have not yet; and what they would need to see to know. Where they answer about somebody else\'s work ("he knows what the role is", "the team is on track"), ask what THEY did and saw, not for more about the other person. Never ask the lead to state another person\'s figures.'
+          + (ctx.scenario === GroundScenario.DISCOVERY
+            ? ' This lead CONVENED a one-time discovery session. Do not run them through the participant spine about their own expansion. Ask what MarketView is trying to decide, what they already believe the answer is and why, what would make this session worth more than the last workshop, and what they will do with what comes back. Short.'
+            : ''),
+          ...(ctx.adminBrief
+            ? ['ADMIN_BRIEF_ATTRIBUTION: The brief above is what this person wrote at setup to tell the product what to find out. It is an instruction to YOU, not a statement of their position and not a commitment they made. Never quote it back to them as "your stated expectation" or as their words. Use it to decide what to ask them about their own part.']
+            : []),
+        ]
+      : []),
     ...(ctx.partyType !== PartyType.INITIATOR && ctx.adminBrief
       ? [
           `ADMIN_BRIEF_ATTRIBUTION: The brief above is the situation as the person who opened this ground framed it. Use it as background so this person knows what they were invited into, and to ground your questions in the actual situation. It is NOT this person's account, NOT their words, and NOT established fact - it is one party's framing, pending this person's own version. Never present the brief's goals or claims as this person's own position. Never read it back as settled. Elicit THEIR independent account of the same situation, in their words - where their version differs from the brief, that difference is the record's value, not an error to smooth over.`,

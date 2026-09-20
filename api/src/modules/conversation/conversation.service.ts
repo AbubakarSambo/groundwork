@@ -81,7 +81,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1672,7 +1672,8 @@ export class ConversationService {
         );
       }
 
-      reply = screened.text || ASK_AGAIN;
+      /* A bare "Ok." that the screen left nothing to reply to is answered, not told it did not come out right (adversarial run, 20 Sep 2026). */
+      reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);
 
       /*
        * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
@@ -1826,7 +1827,7 @@ export class ConversationService {
    */
   private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, ground: { select: { cadence: true, scenario: true } } } }),
       this.prisma.conversationTurn.findMany({
         where: { checkInId },
         orderBy: { createdAt: 'asc' },
@@ -1847,16 +1848,24 @@ export class ConversationService {
           where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
         })) > 0
       : false;
-    /* Read the last thing they SAID, not the last thing they typed. Driven live: "over the next 3
-       months", then "no, we are good" to the closing question, and the bar read the acknowledgement,
-       found nothing in it, and asked for a date they had just given. */
-    const last = lastSubstantiveTurn(personSaid);
-    const concrete = whatIsConcreteIn(last, attached);
+    /*
+     * THE WHOLE SESSION IS READ FOR THE ONE CONCRETE THING, NOT THE LAST ANSWER. Adversarial run,
+     * 20 Sep 2026: a rep who had said "N38m" and "the invoices" two turns earlier was held for a
+     * number on "No. My numbers speak for themselves", and told "It's on the system" as the answer.
+     * The hold exists to get one checkable thing into the record; once the session holds one, the
+     * question has been answered whatever the last turn was.
+     *
+     * AND A ONE-TIME SESSION IS NEVER HELD. Nobody in a discovery or snapshot session is tracked;
+     * its brief says so, and "put a date on that" to a business owner who was asked what their year
+     * looks like is the product asking for the commitment it promised not to.
+     */
+    const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;
+    const concrete = whatIsConcreteIn(personSaid.join('\n'), attached);
     const verdict = closeReadiness(personSaid, false, minTurns);
-    if (concrete.length && verdict.ready) return { ready: true };
+    if (oneTime || (concrete.length && verdict.ready)) return { ready: true };
     await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
     this.logger.log(
-      `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'the last answer carried no number, date, document or attachment'}.`,
+      `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'no answer this session carried a number, a date, a document or an attachment'}.`,
     );
     return { ready: false, ask: THE_ONE_CONCRETE_THING };
   }
@@ -2488,7 +2497,7 @@ export class ConversationService {
       this.prisma.groundObjective?.findMany({
         where: { groundId: ground.id },
         orderBy: { sortOrder: 'asc' },
-        select: { name: true, target: true, count: true, ownerParticipantId: true },
+        select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
       })?.catch(() => [] as any[]) ?? [],
       /*
        * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
@@ -2519,7 +2528,10 @@ export class ConversationService {
        undefined list is not an empty one as far as the labeller is concerned. */
     const labelOf = labelsForParties((ground.participants ?? []) as any);
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
-      targets: (objectivesOnRecord as any[]).map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId })),
+      /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
+      targets: (objectivesOnRecord as any[])
+        .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId)
+        .map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
       inTheWay: (inTheWayRows as any[]).map((d) => ({
         what: d.what,
         on: d.onParticipantId ? (labelOf.get(d.onParticipantId) ?? d.onLabel ?? null) : (d.onLabel ?? null),
@@ -2620,6 +2632,8 @@ export class ConversationService {
           }
         : null,
       partyType: checkIn.participant.partyType,
+      /* Who is answering, by first name where they have one. See TALKING_TO in the block. */
+      readerName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
       sessionNumber: checkIn.sessionNumber,
       /**
        * HOW LONG THIS RUN IS, WHICH THE PROMPT WAS GUESSING AT.
@@ -4873,7 +4887,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return { level: NOTHING_SAID, dimensions: dims };
     }
 
-    const intakes = personTurns.map(t => runIntake(t.content));
+    const all = personTurns.map(t => runIntake(t.content));
+    /*
+     * A RELUCTANT PERSON GIVES ONE FACT PER TURN, AND THE MEAN PUNISHED THEM FOR IT. "Forty tonnes a
+     * week." "October." "Six of them." were three checkable answers between six "fine"s and "no"s,
+     * and the mean over nine turns came out under the bottom cut: "managed", "nothing checkable", on
+     * a rice miller who had named his tonnage, his month and his headcount (adversarial run, 20 Sep
+     * 2026). The level is read over the turns that said anything - a bare "no" or "fine" is a turn
+     * of the conversation, not a turn of the account - and whether ANY turn was checkable is kept
+     * as its own fact, because that is the question the board asks.
+     */
+    const substantive = all.filter((r, i) => r.checkable || (personTurns[i].content ?? '').trim().split(/\s+/).length > 3);
+    const intakes = substantive.length ? substantive : all;
+    const anyCheckable = all.some((r) => r.checkable);
     const n = intakes.length;
     const avgSpecificity = intakes.reduce((s, r) => s + r.specificity, 0) / n;
 
@@ -4889,10 +4915,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       enablement: mapSpecificityLevel(avgEnablement),
       coverage:   mapSpecificityLevel(coverageScore),
       commitment: mapSpecificityLevel(commitScore),
+      /* Kept as a level so the column's type holds: 'specific' means at least one turn could be checked. */
+      checkable:  anyCheckable ? 'specific' : NOTHING_SAID,
     };
 
     return {
-      level: mapSpecificityLevel(avgSpecificity),
+      /* A session with a checkable turn in it is never "nothing checkable was said". */
+      level: anyCheckable && mapSpecificityLevel(avgSpecificity) === NOTHING_SAID ? 'vague' : mapSpecificityLevel(avgSpecificity),
       dimensions,
     };
   }
@@ -5788,6 +5817,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
+        peopleWorkTogether: true,
         participants: {
           select: {
             id: true,
@@ -5804,6 +5834,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const me = ground.participants.find((p) => p.id === participantId);
     if (!me) return;
+
+    /*
+     * WHOSE AIM IS AN AIM SAID IN A CHECK-IN. Adversarial run, 20 September 2026: a loan officer
+     * said "she is one month behind on a 150,000 NGN payment" about one borrower; it was written as
+     * an aim of the whole ground with nobody's name on it, and two other borrowers were then told
+     * "You said you need to make the 150,000 NGN payment". One person's number reached two other
+     * people's private check-ins. An aim said inside somebody's own check-in belongs to the person
+     * who said it. The one exception is the lead setting a target for a team that works together -
+     * that is what a shared target IS. In a cohort, where people do not work together, even the
+     * lead's spoken numbers stay the lead's; a target for everybody is set at setup, on the form.
+     */
+    const aimsAreShared = me.partyType === PartyType.INITIATOR && (ground as any).peopleWorkTogether !== false;
 
     /*
      * EVERYBODY'S PROMISES, NOT ONLY THE LEAD'S.
@@ -6122,7 +6164,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       .filter((a) => a.name);
     if (aims.length) {
       const existing = await this.prisma.groundObjective.findMany({
-        where: { groundId },
+        where: { groundId, ownerParticipantId: aimsAreShared ? null : participantId },
         select: { name: true, target: true },
       });
       /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units
@@ -6130,7 +6172,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const fresh = theAimsThatAreNew(aims, existing as any);
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
-          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i })),
+          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId })),
         });
         const withNumbers = fresh.filter((a) => a.target != null).length;
         this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
@@ -6178,6 +6220,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             name: t.name,
             target: t.target,
             ownerParticipantId: t.participantId,
+            /* The speaker: the lead setting "150 each" for three people, or a person naming their own. */
+            setByParticipantId: participantId,
             sortOrder: 100 + i,
           })),
         }).catch((err: any) => this.logger.warn(`Could not write per-person targets on ${groundId}: ${err?.message}`));

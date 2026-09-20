@@ -38,3 +38,18 @@ describe('an aim said twice is one aim', () => {
     expect(out).toEqual([]);
   });
 });
+
+/** Six near-copies of one target on a sales board (adversarial run, 20 Sep 2026): the currency letter survived the strip. */
+describe('a target said with its currency', () => {
+  it('is the same aim as the number', () => {
+    const existing = [{ name: 'N180m', target: 180_000_000 }];
+    expect(theAimsThatAreNew([
+      { name: 'N180m target for the quarter', target: 180_000_000 },
+      { name: 'team target', target: 180_000_000 },
+      { name: '₦180m', target: 180_000_000 },
+      { name: 'NGN 180 million', target: 180_000_000 },
+    ], existing)).toEqual([]);
+    /* And something of its own still stands. */
+    expect(theAimsThatAreNew([{ name: 'credit share under 35%', target: 35 }], existing)).toHaveLength(1);
+  });
+});

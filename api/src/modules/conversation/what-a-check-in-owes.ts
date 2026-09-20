@@ -110,6 +110,10 @@ export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   { id: 'needs-others', what: 'what they need from other people', role: ['partner', 'member'], stage: ['first', 'middle'], satisfiedBy: [T.ASK] },
 
   { id: 'moved', what: 'what has moved since last time', role: ['lead', 'member', 'partner'], stage: ['middle'], satisfiedBy: [T.PROGRESS, T.COMMITMENT, T.INTENT] },
+  /* A sales team hit its volume with 52% of it on credit and arrears at 14% against a brief that said 35% and 8%, and
+     three sessions asked only for the total (adversarial run, 20 Sep 2026). A number has a make-up - what kind, on what
+     terms, to whom - and where the aim named terms, the make-up is owed as much as the total. */
+  { id: 'how-the-number-is-made', what: 'how they are making their number. Not the total: what kind of sales or work, on what terms, with whom. This matters most where the aim set a condition on the mix.', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.PROGRESS, T.WORRY] },
   { id: 'off-track', what: 'what is off track', role: ['lead'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION] },
   { id: 'support', what: 'who needs support, and with what', role: ['lead'], stage: ['middle'], satisfiedBy: [T.ASK, T.WORRY] },
   { id: 'in-the-way', what: 'what is getting in the way', role: ['member', 'partner'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION, T.ASK] },

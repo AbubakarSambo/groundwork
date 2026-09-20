@@ -30,6 +30,8 @@ export interface TargetOnRecord {
   count: number;
   /** True where this target belongs to the person being interviewed. */
   yours?: boolean;
+  /** True where they said it themselves; false where the lead set it for them. */
+  setByThem?: boolean;
 }
 
 /** Something this person said is in their way, as the record holds it. */
@@ -124,17 +126,21 @@ export function whatTheRecordAlreadyHolds(input: {
      * The rest still go in where there are any - a person's own number means nothing without the
      * whole it is part of - but as context underneath, not as the subject.
      */
-    const mine = withNumbers.filter((t) => t.yours);
+    const mine = withNumbers.filter((t) => t.yours && t.setByThem !== false);
+    const setForThem = withNumbers.filter((t) => t.yours && t.setByThem === false);
     const theRest = withNumbers.filter((t) => !t.yours);
     parts.push(
       'WHAT IS ALREADY ON THE RECORD FOR THIS CHECK-IN. These numbers are set. Do not ask what ' +
       'this person is aiming for as though nobody has said - ask where they are against it, and ' +
       'what the next ones are by name.\n' +
       (mine.length
-        ? `Theirs: ${mine.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        ? `Theirs, said by them: ${mine.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        : '') +
+      (setForThem.length
+        ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
         : '') +
       (theRest.length
-        ? `${mine.length ? 'The rest of the check-in' : 'On this check-in'}: ` +
+        ? 'Set for the whole check-in, not said by this person - never put these to them as "you said": ' +
           theRest.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')
         : ''),
     );

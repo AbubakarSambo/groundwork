@@ -32,7 +32,7 @@ describe('the order the guards run in', () => {
   const restating = () => at('if (opensByRepeatingThem(message, screened.text))');
   const essay = () => at('if (isAnEssay(screened.text');
   const bans = () => at('const notOurWords = wordsWeDoNotUse(screened.text');
-  const ships = () => at('reply = screened.text || ASK_AGAIN;');
+  const ships = () => at('reply = screened.text || (isAnAcknowledgement(message) ?');
 
   it('the faults that change what is being said come before the ones that measure it', () => {
     expect(deadEnd()).toBeLessThan(essay());

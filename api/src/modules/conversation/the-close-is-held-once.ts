@@ -44,6 +44,8 @@ export const THE_CLOSE_WAS_HELD =
  * reads back past those to the last turn with something in it.
  */
 const AN_ACKNOWLEDGEMENT = /^\s*(no|yes|yeah|yep|ok|okay|sure|fine|good|done|that'?s (it|all|everything)|we are good|we're good|i'?m good|nothing (else|more)|no,? (we are|we're|that'?s) (good|it|all|fine)|nope|all good|ready|let'?s close( it)?)[\s.!,]*$/i;
+export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim());
+
 export function lastSubstantiveTurn(personSaid: string[]): string {
   for (let i = personSaid.length - 1; i >= 0; i--) {
     const t = (personSaid[i] ?? '').trim();

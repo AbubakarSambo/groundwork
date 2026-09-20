@@ -18,7 +18,7 @@
  * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
  * deadline the record does not have. Found by reading what came back rather than that it came back.
  */
-export const STYLE_VERSION = 'v2';
+export const STYLE_VERSION = 'v3';
 
 /**
  * Kept as a versioned template separate from the engine, per §10.3 - so somebody can change how
@@ -35,6 +35,7 @@ Rules:
   a fact about the work - "you said end of the quarter" must not become "due end of the quarter",
   because one is a record of what somebody told us and the other is a deadline we do not hold.
 - Plain and direct. No gush, no scripted warmth, no "I'd be happy to".
+- Never guess anybody's pronoun from their name. Where the draft does not say, write they and their; a key accounts rep called Chika was written up as "He is managing" by a guess (20 Sep 2026).
 - British spelling. No em dashes. Straight quotes.
 - Shorter than the draft where you can, never longer.
 - If the draft is already the clearest way to say it, return it unchanged.

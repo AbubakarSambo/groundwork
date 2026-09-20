@@ -46,10 +46,13 @@ describe('participant ground-situation context (context yes, answers never)', ()
     expect(block).toMatch(/Elicit THEIR independent account/i);
   });
 
-  it('initiator intake is unchanged - no attribution block on their own brief', () => {
+  it('initiator intake carries its own attribution: the brief is an instruction to the product, not their stated position', () => {
+    /* Adversarial run, 20 Sep 2026: a managing partner's setup brief was read back to her as "your stated
+       expectation was to Help the person develop clarity". The lead's block now says what the brief is. */
     const block = buildIntakeBlock({ ...CTX_BASE, partyType: PartyType.INITIATOR } as any);
     expect(block).toContain('ADMIN_BRIEF: Ship the first onboarding flow');
-    expect(block).not.toMatch(/ADMIN_BRIEF_ATTRIBUTION:/);
+    expect(block).toMatch(/ADMIN_BRIEF_ATTRIBUTION: The brief above is what this person wrote at setup/);
+    expect(block).not.toMatch(/NOT this person's account/);
   });
 
   it('answers never: every content-bearing turn load is check-in-scoped and the hard rule stands', () => {

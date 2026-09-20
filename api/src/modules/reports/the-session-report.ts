@@ -306,7 +306,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     ? lastSessionCommitments.filter((c) => !c.threadKey || !threadsNow.has(c.threadKey))
     : [];
 
-  const sections: SessionReportSection[] = [
+  const sectionsAsBuilt: SessionReportSection[] = [
     {
       title: 'Progress and priorities',
       about: 'what people said they are doing, and what they said matters most',
@@ -432,6 +432,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       items: input.evidence.map((e) => ({ text: e.text, who: e.who, documented: true })),
     }] : []),
   ];
+  /*
+   * "SAID INSTEAD OF ITEMS" MEANS INSTEAD. Every section carried both its list and its empty
+   * sentence, and the page hid the sentence when the list had anything in it - so on the page it
+   * held, and in the payload every consumer that is not the page (the panel, the API, a reader of
+   * the JSON) got "Nobody named a risk or a concern this session" printed above a listed risk
+   * (adversarial run, 20 Sep 2026). The payload says one thing now.
+   */
+  const sections: SessionReportSection[] = sectionsAsBuilt.map((s) => (s.items.length ? { ...s, saying: undefined } : s));
 
   /**
    * THE FOUR READS, and each one says plainly when it cannot be computed rather than showing a

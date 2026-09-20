@@ -204,6 +204,11 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
     { id: 'support-helping', what: 'what support has been given, and whether it is helping', role: ['lead', 'member'], stage: ['middle', 'last'], satisfiedBy: [T.ASK, T.COMMITMENT] },
   ],
   COHORT_CHECK: [
+    /* A borrower who repays early by hiring the tractor out while her own field went unploughed was read as the star
+       (adversarial run, 20 Sep 2026): the check-in never asked what the thing was FOR. The outcome it was taken on to
+       produce is a different fact from the obligation that came with it, and the first session owes it by name. */
+    { id: 'what-it-was-for', what: 'what they took this on to get. The asset, the loan or the programme was meant to produce something for them; get that in their own words. Repaying or attending is the obligation, not the outcome.', role: ['member'], stage: ['first'], satisfiedBy: [T.SUCCESS_DEFINITION] },
+    { id: 'against-what-it-was-for', what: 'where they stand against that original outcome. Ask this apart from whether they are repaying or attending. If the two have come apart, find out which way and why.', role: ['member'], stage: ['middle', 'last'], satisfiedBy: [T.PROGRESS, T.SUCCESS_DEFINITION] },
     { id: 'own-experience', what: 'their own experience of the role, not the group’s', role: ['member'], stage: ['first', 'middle'], satisfiedBy: [T.INTENT, T.WORRY, T.TENSION] },
     { id: 'would-make-it-work', what: 'what would make the role work better', role: ['member'], stage: ['last'], satisfiedBy: [T.ASK, T.OPERATING_DIFFERENCE] },
   ],

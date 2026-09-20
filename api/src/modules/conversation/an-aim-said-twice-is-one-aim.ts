@@ -23,8 +23,12 @@
 const WHAT_IS_LEFT = (name: string): string =>
   (name ?? '')
     .toLowerCase()
-    .replace(/\b\d[\d,.]*\s*(k|m)?\b/g, ' ')
-    .replace(/\b(units?|items?|things?|pieces?|bags?|boxes?|cases?|sales?|total|in total|overall|target|goal|objective|of|the|a|an|for|this|year|month|week|quarter|period)\b/g, ' ')
+    /* "N180m", "₦180m", "NGN 180m": the currency is part of the figure. Six near-copies of one target
+       sat on a sales board because "n180m" survived the strip as a word (adversarial run, 20 Sep 2026). */
+    .replace(/[₦$£€]/g, ' ')
+    .replace(/\b(ngn|naira|usd|gbp|eur|n)(?=\s*\d)/g, ' ')
+    .replace(/\b\d[\d,.]*\s*(k|m|bn|million|thousand)?\b/g, ' ')
+    .replace(/\b(units?|items?|things?|pieces?|bags?|boxes?|cases?|sales?|total|in total|overall|target|goal|objective|of|the|a|an|for|this|our|team|company|year|month|week|quarter|q[1-4]|period)\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim();
 

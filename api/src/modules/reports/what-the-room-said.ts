@@ -178,3 +178,47 @@ export function whatYouNamed(d: TheDirection, yourLabel: string): { line: string
     : `You named ${yours.length} things, and so far nobody else has named any of them. That is worth knowing on its own.`;
   return { line, yours };
 }
+
+/**
+ * TWENTY-FOUR ACCOUNTS ARE READ IN CHUNKS, AND THE CHUNKS ARE ONE DIRECTION.
+ *
+ * One call over the whole room either ran past the background ceiling or came back as prose with no
+ * tool call, at exactly the size the session is for. Six accounts is a read the model finishes; the
+ * chunks are merged by the thing named, so "Jigawa" named in three chunks is one item with everybody
+ * who named it, and the counts stay what they were: real, and from the labels.
+ */
+export const ACCOUNTS_PER_READ = 6;
+
+const theSameThing = (name: string): string => name.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+export function mergeDirections(parts: TheDirection[], outOf: number): TheDirection {
+  const merged = (key: keyof Omit<TheDirection, 'outOf'>): ThingTheRoomNamed[] => {
+    const byName = new Map<string, ThingTheRoomNamed>();
+    for (const part of parts) {
+      for (const item of part[key]) {
+        const k = theSameThing(item.name);
+        const have = byName.get(k);
+        if (have) {
+          have.namedBy = [...new Set([...have.namedBy, ...item.namedBy])];
+          if (!have.asSaid && item.asSaid) have.asSaid = item.asSaid;
+        } else {
+          byName.set(k, { name: item.name, namedBy: [...item.namedBy], asSaid: item.asSaid ?? null });
+        }
+      }
+    }
+    return [...byName.values()]
+      .sort((a, b) => b.namedBy.length - a.namedBy.length || a.name.localeCompare(b.name))
+      .slice(0, 12);
+  };
+  return {
+    regions: merged('regions'), markets: merged('markets'), valueChains: merged('valueChains'), actors: merged('actors'),
+    dataGaps: merged('dataGaps'), networks: merged('networks'), pilots: merged('pilots'), nextTwelveMonths: merged('nextTwelveMonths'),
+    outOf,
+  };
+}
+
+export function inChunks<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}

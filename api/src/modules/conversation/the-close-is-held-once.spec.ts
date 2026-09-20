@@ -1,4 +1,6 @@
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING } from './the-close-is-held-once';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement } from './the-close-is-held-once';
 import { numbersNobodySaid, screen, SentenceGate, askInsteadOfInventing, hitLogLine } from './nothing-invented-reaches-them';
 import { detectFunction } from '../board/function-detection';
 import { buildRoleProbeBlock, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
@@ -121,5 +123,30 @@ describe('a refused close does not keep its goodbye', () => {
     /* The turn path and the stream path append the held question separately; fixing one leaves the
        other reading exactly as it did before. */
     expect((src.match(/withoutTheGoodbye\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+/**
+ * THE WHOLE SESSION IS READ FOR THE CONCRETE THING, AND A ONE-TIME SESSION IS NEVER HELD.
+ * Adversarial run, 20 September 2026: "One more before this closes. Put a date or a number on that"
+ * went to a rep who had said "N38m" two turns earlier, to a person who had said "No.", to a business
+ * owner in a one-time discovery session, and "That did not come out right" answered a bare "Ok.".
+ */
+describe('the bar, since 20 September 2026', () => {
+  const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+  it('reads every answer of the session, not the last one', () => {
+    expect(service).toContain("const concrete = whatIsConcreteIn(personSaid.join('\\n'), attached);");
+    expect(service).not.toMatch(/whatIsConcreteIn\(last,/);
+  });
+  it('never holds a one-time session', () => {
+    expect(service).toContain('const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;');
+    expect(service).toContain('if (oneTime || (concrete.length && verdict.ready)) return { ready: true };');
+  });
+  it('answers a bare acknowledgement rather than saying it did not come out right', () => {
+    expect(service).toContain("reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);");
+    expect(isAnAcknowledgement('Ok.')).toBe(true);
+    expect(isAnAcknowledgement('No.')).toBe(true);
+    expect(isAnAcknowledgement('It is on the system.')).toBe(false);
   });
 });

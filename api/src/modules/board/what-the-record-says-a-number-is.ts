@@ -46,6 +46,60 @@ export interface AReadNumber {
   said: string;
 }
 
+/** One line as given to the model: who said it decides whether the read lands or is offered. */
+export interface ALineOnRecord {
+  text: string;
+  saidByTheLead: boolean;
+}
+
+const plain = (t: string) => (t ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/**
+ * THE LINE HAS TO BE ONE SOMEBODY SAID. A sales board carried "We are at N80m" and "Delivered N80m of
+ * a N90m target" when nobody in any session had said 80 (adversarial run, 20 Sep 2026): the model
+ * produced a line and a number together. A read whose quoted line is not in the record is dropped,
+ * and so is a read whose number does not appear in the line it claims to come from.
+ */
+export function theLineWasSaid(said: string, lines: ALineOnRecord[]): ALineOnRecord | null {
+  const s = plain(said);
+  if (!s) return null;
+  return lines.find((l) => { const t = plain(l.text); return t.includes(s) || s.includes(t); }) ?? null;
+}
+
+const SMALL: Record<string, number> = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30,
+  forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+const SCALE: Record<string, number> = { k: 1_000, thousand: 1_000, m: 1_000_000, million: 1_000_000, bn: 1_000_000_000, billion: 1_000_000_000, hundred: 100 };
+
+/** Every number a line mentions, as digits or as words, with k/m/million folded in. */
+export function numbersIn(said: string): Set<number> {
+  const out = new Set<number>();
+  const text = (said ?? '').toLowerCase();
+  for (const m of text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(k|m|bn|million|thousand|billion)?\b/g)) {
+    const n = Number(m[1].replace(/,/g, ''));
+    if (!Number.isFinite(n)) continue;
+    out.add(n);
+    if (m[2]) out.add(Math.round(n * SCALE[m[2]]));
+  }
+  /* Words: "forty", "thirty-eight", "two hundred", "eighty million". */
+  const words = text.replace(/-/g, ' ').split(/[^a-z]+/).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    if (!(words[i] in SMALL)) continue;
+    let n = SMALL[words[i]];
+    let j = i + 1;
+    if (j < words.length && words[j] in SMALL && SMALL[words[j]] < 10 && n >= 20) { n += SMALL[words[j]]; j++; }
+    out.add(n);
+    if (j < words.length && words[j] in SCALE) out.add(n * SCALE[words[j]]);
+  }
+  return out;
+}
+
+export function theNumberIsInTheLine(count: number, said: string): boolean {
+  return numbersIn(said).has(count);
+}
+
 export const WHAT_THE_RECORD_SAYS_PROMPT = `You are reading a team's own words for the current value of the numbers their lead is tracking.
 
 You will be given the targets, each with a name and the number the lead currently has recorded, and the lines people said in this round.
@@ -109,7 +163,7 @@ export function theQuestion(targets: ATarget[], said: SomethingSaid[]): string {
  * screen says "the record shows X, not Y", and offering to change 40 to 40 is a prompt about
  * nothing that trains somebody to ignore the next one.
  */
-export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[]): AReadNumber[] {
+export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[], lines?: ALineOnRecord[]): AReadNumber[] {
   const byId = new Map(targets.map((t) => [t.id, t]));
   const seen = new Set<string>();
   return read.filter((r) => {
@@ -118,9 +172,24 @@ export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[])
     if (!Number.isFinite(r.count) || !Number.isInteger(r.count) || r.count < 0) return false;
     if (r.count === t.count) return false;
     if (!r.said?.trim()) return false;
+    if (lines && !theLineWasSaid(r.said, lines)) return false;
+    if (!theNumberIsInTheLine(r.count, r.said)) return false;
     /* One suggestion per target: two readings of the same number is a choice nobody asked for. */
     if (seen.has(r.objectiveId)) return false;
     seen.add(r.objectiveId);
     return true;
   });
+}
+
+/**
+ * WHOSE READ LANDS AND WHOSE IS OFFERED. A number the LEAD said about a target nobody has yet
+ * counted is the count: offering the lead their own sentence to accept is a prompt about nothing,
+ * and while it sat unaccepted the board read "N180m: 0 now" under a manager who had said N102m
+ * (adversarial run, 20 Sep 2026). A number somebody else said stays a suggestion, as before, and a
+ * count somebody set by hand is never overwritten from here.
+ */
+export function whatToDoWithTheRead(r: AReadNumber, target: ATarget, lines: ALineOnRecord[]): 'land' | 'offer' {
+  const line = theLineWasSaid(r.said, lines);
+  const neverCounted = target.count === 0 && (target as any).prevCount === 0;
+  return line?.saidByTheLead && neverCounted ? 'land' : 'offer';
 }

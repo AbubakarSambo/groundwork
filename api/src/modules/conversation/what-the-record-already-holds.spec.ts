@@ -27,9 +27,10 @@ describe('what the record already holds', () => {
       ],
       inTheWay: [], saidLastTime: [], now: NOW,
     });
-    expect(out).toContain('Theirs: Amina - North, 2 of 21');
-    expect(out.indexOf('Theirs:')).toBeLessThan(out.indexOf('The rest of the check-in'));
-    expect(out).toContain('The rest of the check-in: Bala - Central, 3 of 40');
+    expect(out).toContain('Theirs, said by them: Amina - North, 2 of 21');
+    expect(out.indexOf('Theirs, said by them:')).toBeLessThan(out.indexOf('Set for the whole check-in'));
+    /* Since 20 Sep 2026 a number that is not theirs is named as the check-in's, and the model is told not to say "you said" about it. */
+    expect(out).toContain('never put these to them as "you said": Bala - Central, 3 of 40');
   });
 
   it('leaves out a target nobody put a number on', () => {

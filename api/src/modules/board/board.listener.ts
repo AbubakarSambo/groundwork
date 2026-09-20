@@ -11,6 +11,7 @@ import {
   theQuestion,
   onlyWhatIsWorthOffering,
   type AReadNumber,
+  whatToDoWithTheRead,
 } from './what-the-record-says-a-number-is';
 import {
   WHAT_THE_ROOM_IS_ABOUT_PROMPT,
@@ -46,7 +47,7 @@ export class BoardListener {
     try {
       const targets = await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
-        select: { id: true, name: true, target: true, count: true },
+        select: { id: true, name: true, target: true, count: true, prevCount: true },
       });
       if (!targets.length) return;
 
@@ -63,7 +64,7 @@ export class BoardListener {
           checkIn: { sessionNumber: e.sessionNumber },
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION'] as any },
         },
-        select: { text: true },
+        select: { text: true, participant: { select: { partyType: true } } },
       });
       if (!said.length) return;
 
@@ -77,22 +78,32 @@ export class BoardListener {
        * the fifth time this session that something internal has reached a page by riding inside a
        * text column. `cleanText` is the one that knows how to take it off.
        */
-      const lines = said.map((s: { text: string }) => ({ text: cleanText(s.text), who: null }));
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: null, saidByTheLead: s.participant?.partyType === 'INITIATOR' }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],
         WHAT_THE_RECORD_SAYS_SCHEMA,
       );
 
-      const worth = onlyWhatIsWorthOffering(answer?.numbers ?? [], targets);
+      const worth = onlyWhatIsWorthOffering(answer?.numbers ?? [], targets, lines);
+      let landed = 0;
       for (const n of worth) {
-        await this.prisma.groundObjective.update({
-          where: { id: n.objectiveId },
-          data: { suggestedCount: n.count, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
-        }).catch(() => undefined);
+        const target = targets.find((t) => t.id === n.objectiveId)!;
+        if (whatToDoWithTheRead(n, target, lines) === 'land') {
+          landed += 1;
+          await this.prisma.groundObjective.update({
+            where: { id: n.objectiveId },
+            data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
+          }).catch(() => undefined);
+        } else {
+          await this.prisma.groundObjective.update({
+            where: { id: n.objectiveId },
+            data: { suggestedCount: n.count, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
+          }).catch(() => undefined);
+        }
       }
       if (worth.length) {
-        this.logger.log(`Read ${worth.length} number(s) off the record for ground ${e.groundId} round ${e.sessionNumber}.`);
+        this.logger.log(`Read ${worth.length} number(s) off the record for ground ${e.groundId} round ${e.sessionNumber}; ${landed} landed as the lead's own count.`);
       }
     } catch (err: any) {
       this.logger.warn(`Reading the numbers off the record for ${e.groundId} failed: ${err?.message}`);

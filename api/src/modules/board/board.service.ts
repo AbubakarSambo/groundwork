@@ -297,7 +297,7 @@ export class BoardService {
       where: { groundId },
       select: {
         id: true, participantId: true, sessionNumber: true, status: true,
-        completedAt: true, specificityLevel: true,
+        completedAt: true, specificityLevel: true, specificityDimensions: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -673,9 +673,12 @@ export class BoardService {
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
             /* A round with a date, a number or a document in it is one somebody else can check. */
-            saidAnythingCheckable: (thisRound as any)?.specificityLevel
-              ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
-              : false,
+            /* The question as asked: did ANY turn carry a date, a number or a document. The level is a mean and a
+               reluctant person's one fact drowned in their "fine"s (adversarial run, 20 Sep 2026). */
+            saidAnythingCheckable: ((thisRound as any)?.specificityDimensions as any)?.checkable === 'specific'
+              || ((thisRound as any)?.specificityLevel
+                ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
+                : false),
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing

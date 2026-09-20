@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { onlyWhatIsWorthOffering, theQuestion, WHAT_THE_RECORD_SAYS_PROMPT } from './what-the-record-says-a-number-is';
+import { onlyWhatIsWorthOffering, theQuestion, WHAT_THE_RECORD_SAYS_PROMPT, theNumberIsInTheLine, whatToDoWithTheRead } from './what-the-record-says-a-number-is';
 
 /**
  * THE BOARD READ 0 OF 40 AT THE CLOSE OF A QUARTER THE TEAM DELIVERED.
@@ -108,5 +108,36 @@ describe('what the record says a number is', () => {
     for (const line of ['All forty migrated by Friday.', 'Nine of the forty teams are migrated.', '200 teams through']) {
       expect(WHAT_THE_RECORD_SAYS_PROMPT).not.toContain(line);
     }
+  });
+});
+
+/**
+ * A NUMBER NOBODY SAID DOES NOT REACH THE BOARD, AND THE LEAD'S OWN NUMBER LANDS. Adversarial run,
+ * 20 September 2026: a sales board carried "We are at N80m" when nobody had said 80, and read
+ * "N180m: 0 now" under a manager who had said N38m, N71m and N102m across three sessions.
+ */
+describe('what came off the record', () => {
+  const lines = [
+    { text: "We've done N38m so far. That's ahead of pace.", saidByTheLead: true },
+    { text: "I'm at 26 million.", saidByTheLead: false },
+  ];
+  const T = [{ id: 'A', name: 'N180m', target: 180_000_000, count: 0, prevCount: 0 } as any];
+
+  it('drops a read whose line was never said, and one whose number is not in its line', () => {
+    expect(onlyWhatIsWorthOffering([{ objectiveId: 'A', count: 80_000_000, said: 'We are at N80m.' }], T, lines)).toEqual([]);
+    expect(onlyWhatIsWorthOffering([{ objectiveId: 'A', count: 80_000_000, said: "We've done N38m so far. That's ahead of pace." }], T, lines)).toEqual([]);
+  });
+
+  it('keeps a read whose line was said, with the figure written as N38m or as words', () => {
+    expect(onlyWhatIsWorthOffering([{ objectiveId: 'A', count: 38_000_000, said: "We've done N38m so far." }], T, lines)).toHaveLength(1);
+    expect(theNumberIsInTheLine(38_000_000, 'thirty-eight million naira')).toBe(true);
+    expect(theNumberIsInTheLine(40, 'All forty migrated by Friday.')).toBe(true);
+    expect(theNumberIsInTheLine(26_000_000, "I'm at 26 million.")).toBe(true);
+  });
+
+  it("lands the lead's own number on a target nobody has counted, and only offers everybody else's", () => {
+    expect(whatToDoWithTheRead({ objectiveId: 'A', count: 38_000_000, said: "We've done N38m so far." }, T[0], lines)).toBe('land');
+    expect(whatToDoWithTheRead({ objectiveId: 'A', count: 26_000_000, said: "I'm at 26 million." }, T[0], lines)).toBe('offer');
+    expect(whatToDoWithTheRead({ objectiveId: 'A', count: 38_000_000, said: "We've done N38m so far." }, { ...T[0], count: 12 } as any, lines)).toBe('offer');
   });
 });

@@ -1636,6 +1636,11 @@ model GroundObjective {
   /// Null keeps the original meaning and is still the common case: a target for the whole thing,
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
+  /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
+  /// lead set for a person is put to that person as the lead's expectation; one they set themselves
+  /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the
+  /// opener set as your objective" (adversarial run, 20 Sep 2026). Null: set on the form at setup.
+  setByParticipantId String? @map("set_by_participant_id")
 
   /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
   ///
@@ -1938,6 +1943,9 @@ model Report {
   // of how they were led. Produced by the same synthesis that finds divergences,
   // so it is stated as a gap and never quotes either side.
   leadershipGaps  Json?     @map("leadership_gaps")
+  /// A discovery session's direction, read once at release and kept. It was computed on every read
+  /// and, at twenty-four accounts, timed out on every read (adversarial run, 20 Sep 2026).
+  direction       Json?
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")

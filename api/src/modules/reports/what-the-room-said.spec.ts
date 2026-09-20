@@ -1,4 +1,6 @@
-import { tidy, isItADirection, whatYouNamed, THE_LISTS, DIRECTION_SCHEMA, DIRECTION_TOOL } from './what-the-room-said';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { tidy, isItADirection, whatYouNamed, THE_LISTS, DIRECTION_SCHEMA, DIRECTION_TOOL, mergeDirections, inChunks, ACCOUNTS_PER_READ } from './what-the-room-said';
 
 /**
  * THE DIRECTION A DISCOVERY SESSION IS FOR.
@@ -100,5 +102,31 @@ describe('a label written short', () => {
   it('and their own read finds them whichever way it was written', () => {
     const d = tidy({ dataGaps: [{ name: 'Paddy price', namedBy: ['B', 'C'] }] }, ['Participant B', 'Participant C'], 2);
     expect(whatYouNamed(d, 'Participant B').yours[0].alsoNamedBy).toBe(1);
+  });
+});
+
+/**
+ * TWENTY-FOUR ACCOUNTS ARE ONE DIRECTION, READ IN CHUNKS. One call over the whole room timed out or
+ * came back as prose at exactly the size the session exists for (adversarial run, 20 Sep 2026).
+ */
+describe('a direction read in chunks', () => {
+  const one = (name: string, by: string[]) => ({ name, namedBy: by, asSaid: null });
+  const empty = { regions: [], markets: [], valueChains: [], actors: [], dataGaps: [], networks: [], pilots: [], nextTwelveMonths: [], outOf: 6 };
+  it('merges the same thing named in different chunks into one item with everybody who named it', () => {
+    const a = { ...empty, regions: [one('Jigawa', ['A', 'B']), one('Kano', ['A'])] };
+    const b = { ...empty, regions: [one('jigawa', ['E']), one('Benue', ['F'])] };
+    const m = mergeDirections([a, b], 12);
+    expect(m.outOf).toBe(12);
+    expect(m.regions[0]).toEqual({ name: 'Jigawa', namedBy: ['A', 'B', 'E'], asSaid: null });
+    expect(m.regions.map((r) => r.name)).toEqual(['Jigawa', 'Benue', 'Kano']);
+  });
+  it('cuts a room into reads the model finishes', () => {
+    expect(inChunks(Array.from({ length: 25 }, (_, i) => i), ACCOUNTS_PER_READ).map((c) => c.length)).toEqual([6, 6, 6, 6, 1]);
+  });
+  it('is read at release and served from the row, never computed on the page\'s clock', () => {
+    const svc = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(svc).toContain("if (ground.scenario === 'DISCOVERY') {\n      await this.readAndKeepTheDirection(groundId)");
+    expect(svc).toContain('const stored = ground.report?.direction as TheDirection | null | undefined;');
+    expect(svc).toMatch(/void this\.readAndKeepTheDirection\(ground\.id\)/);
   });
 });

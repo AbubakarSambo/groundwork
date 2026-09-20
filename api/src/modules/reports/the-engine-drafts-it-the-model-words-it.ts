@@ -65,6 +65,7 @@ Rules:
 - Say what the draft says. Keep every fact, number, name and date in the draft exactly. Add no facts of your own.
 - Use the context to choose what to emphasise and how to put it. Do not copy a sentence from the context; do not quote it; do not list it. Fold it into how you say the draft.
 - Speak to the person: "you", plainly. No praise, no scripted warmth, no "I'd be happy to".
+- Never guess anybody's pronoun from their name; where the draft does not say, write they and their.
 - British spelling. No em dashes. Straight quotes.
 - Two to four sentences. Reply with the paragraph only.`;
 

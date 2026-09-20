@@ -12,7 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
-import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed } from './what-the-room-said';
+import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection } from './what-the-room-said';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
@@ -386,6 +386,7 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 14d. ONE OF THE PATTERNS IS ABOUT THE SETUP, AND IT IS THE ONLY ONE THAT IS NOT ABOUT MANAGING. SETUP_NEVER_SAID is for a difference that is answered by what nobody was ever told, rather than by what the people believe. Two tests, and both have to hold. First, read what was opened with - the brief above, which may say that none was written. Second, ask whether the difference would still exist if that had named the thing they differ about. If it would, this is a real divergence and it belongs in divergences; if it would not, it belongs here. Two more rules. It does not need more than one period: a setup either said the thing or it did not, and waiting for it to happen twice is waiting for the same absence. And it is never written as a fault of the person - state what was not pinned down, never who failed to pin it.
 
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
+15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
 @Injectable()
@@ -3376,6 +3377,10 @@ happened, and what is in the way.`;
       }
     }
 
+    /* A discovery session's direction is what its report IS; read it at release, once, and keep it. */
+    if (ground.scenario === 'DISCOVERY') {
+      await this.readAndKeepTheDirection(groundId).catch((err: any) => this.logger.warn(`Direction at release failed for ${groundId}: ${err?.message}`));
+    }
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
     this.usage.emit(UsageEventType.REPORT_RELEASED, { groundId, organizationId }).catch(() => undefined);
 
@@ -4109,6 +4114,49 @@ happened, and what is in the way.`;
    */
   private async theDirectionFrom(ground: any, viewerLabel: string | null) {
     if (ground.scenario !== 'DISCOVERY') return null;
+    /*
+     * READ ONCE, SERVED FROM THE ROW. Computed on every read, a twenty-four-account direction timed out
+     * on every read and the page took two minutes (adversarial run, 20 Sep 2026). The stored read is
+     * what the release wrote; a report read before release, or whose release read failed, gets it
+     * computed in the background and null now - the page never waits on the model.
+     */
+    const stored = ground.report?.direction as TheDirection | null | undefined;
+    if (stored) return this.presentTheDirection(stored, viewerLabel);
+    if (!this.directionInFlight.has(ground.id)) {
+      this.directionInFlight.add(ground.id);
+      void this.readAndKeepTheDirection(ground.id).finally(() => this.directionInFlight.delete(ground.id));
+    }
+    return null;
+  }
+
+  private readonly directionInFlight = new Set<string>();
+
+  private presentTheDirection(direction: TheDirection, viewerLabel: string | null) {
+    const enough = isItADirection(direction);
+    return {
+      ...direction,
+      enough: enough.enough,
+      saying: enough.saying,
+      /* Their own read, which is the whole of what a one-time session can give back. */
+      yours: viewerLabel ? whatYouNamed(direction, viewerLabel) : null,
+    };
+  }
+
+  /** The read itself: every account, in chunks the model finishes, merged into one direction and kept. */
+  async readAndKeepTheDirection(groundId: string): Promise<TheDirection | null> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: { select: { id: true } } },
+    });
+    if (!ground || ground.scenario !== 'DISCOVERY' || !ground.report) return null;
+    const direction = await this.readTheDirectionInChunks(ground);
+    if (!direction) return null;
+    await this.prisma.report.update({ where: { groundId }, data: { direction: direction as any } }).catch((err: any) =>
+      this.logger.warn(`The direction for ${groundId} was read but could not be kept: ${err?.message}`));
+    return direction;
+  }
+
+  private async readTheDirectionInChunks(ground: any): Promise<TheDirection | null> {
     const labels = labelsForParties(ground.participants as any);
     const entries = await this.prisma.recordEntry.findMany({
       where: { disputedAt: null, participant: { groundId: ground.id } },
@@ -4127,27 +4175,24 @@ happened, and what is in the way.`;
     const knownLabels = [...byLabel.keys()];
     if (knownLabels.length < 2) return null;
 
-    const corpus = knownLabels
-      .map((label) => `${label}:\n${(byLabel.get(label) ?? []).map((t) => `- ${t}`).join('\n')}`)
-      .join('\n\n');
-
-    const raw = await this.anthropic
-      .extract<any>(DIRECTION_PROMPT, [{ role: 'user', content: corpus }], DIRECTION_TOOL)
-      .catch((err: any) => {
-        this.logger.warn(`The direction could not be read for ${ground.id}: ${err?.message}`);
-        return null;
-      });
-    if (!raw) return null;
-
-    const direction = tidy(raw, knownLabels, knownLabels.length);
-    const enough = isItADirection(direction);
-    return {
-      ...direction,
-      enough: enough.enough,
-      saying: enough.saying,
-      /* Their own read, which is the whole of what a one-time session can give back. */
-      yours: viewerLabel ? whatYouNamed(direction, viewerLabel) : null,
-    };
+    const parts: TheDirection[] = [];
+    for (const chunk of inChunks(knownLabels, ACCOUNTS_PER_READ)) {
+      const corpus = chunk
+        .map((label) => `${label}:\n${(byLabel.get(label) ?? []).map((t) => `- ${t}`).join('\n')}`)
+        .join('\n\n');
+      const raw = await this.anthropic
+        .extract<any>(DIRECTION_PROMPT, [{ role: 'user', content: corpus }], DIRECTION_TOOL)
+        .catch((err: any) => {
+          this.logger.warn(`The direction could not be read for ${ground.id} (${chunk.length} accounts): ${err?.message}`);
+          return null;
+        });
+      if (raw) parts.push(tidy(raw, chunk, chunk.length));
+    }
+    if (!parts.length) return null;
+    if (parts.length < inChunks(knownLabels, ACCOUNTS_PER_READ).length) {
+      this.logger.warn(`The direction for ${ground.id} was read from ${parts.length} of ${inChunks(knownLabels, ACCOUNTS_PER_READ).length} chunks; it is kept from what came back.`);
+    }
+    return mergeDirections(parts, knownLabels.length);
   }
 
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
