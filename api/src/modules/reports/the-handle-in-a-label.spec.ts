@@ -27,3 +27,20 @@ describe('the handle in a label', () => {
     expect(out).toBe('Managing Partner expects two large projects.');
   });
 });
+
+/**
+ * A LABEL THAT ENDS IN A FULL STOP. The Harvestline sales manager's role read "...some on 60-day
+ * credit." and the resolver's word boundary never matched after the stop, so her whole role stood
+ * in her own report where "you" belonged (smoke run 7, 21 Sep 2026).
+ */
+describe('a label that ends in a full stop still resolves', () => {
+  const { withNames } = require('./party-labels');
+  const label = 'Sales manager for Harvestline, an agri-inputs distributor. My team of four sells fertiliser to agro-dealers, some on 60-day credit.';
+  const stripped = label.replace(/\.$/, '');
+  it('to a name for a reader who may see it', () => {
+    expect(withNames(`${stripped} said this was for: N180m.`, new Map([[label, 'Ngozi Okafor']]), [label])).toBe('Ngozi Okafor said this was for: N180m.');
+  });
+  it('and to "you" for the reader themselves', () => {
+    expect(withNames(`${stripped} said this was for: N180m.`, new Map(), [label], { viewerLabel: label })).toBe('You said this was for: N180m.');
+  });
+});

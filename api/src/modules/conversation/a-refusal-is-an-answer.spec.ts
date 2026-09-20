@@ -4,6 +4,8 @@ import { recordAndMoveOn, whatTheAbsenceMeans, NOTHING_HERE_HAS_A_NUMBER } from 
 describe('a refusal is an answer', () => {
   it('says what the absence means, to the person', () => {
     expect(whatTheAbsenceMeans('who is responsible for which part of that plan')).toBe('Then who is responsible for which part of that plan goes on this record as not given.');
+    expect(whatTheAbsenceMeans('what is clear and what is not')).toBe('Then it goes on this record as not given: what is clear and what is not.');
+    expect(whatTheAbsenceMeans('what this is trying to achieve')).toBe('Then it goes on this record as not given: what this is trying to achieve.');
     expect(whatTheAbsenceMeans('the part of the plan that is theirs to do')).toBe('Then the part of the plan that is yours to do goes on this record as not given.');
   });
   it('and moves to the next thing: the plan\'s question, else the next owed thing, else nothing', () => {

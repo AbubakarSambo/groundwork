@@ -57,8 +57,10 @@ export function theNumbersIn(said: string): number[] {
   }
 
   const out: number[] = [];
-  for (const m of text.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k\b)?/gi)) {
-    const n = Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1);
+  for (const m of text.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k|m|mn|bn)?\b(\s(?:thousand|million|billion)\b)?/gi)) {
+    /* "13m" IS THIRTEEN MILLION. Emeka said "It's 13m now" against the team's 180,000,000 and was asked
+       whether 13 was his own part of it (smoke run 7, 21 Sep 2026). */
+    const n = Number(m[1].replace(/,/g, '')) * (({ k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, bn: 1e9, billion: 1e9 } as Record<string, number>)[(m[2] ?? (m[3] ?? '').trim()).toLowerCase()] ?? 1);
     /* Years and small counts are not targets. "2026" is a date and "2 of the biggest customers"
        is not a goal; a target somebody is working towards is bigger than a handful. */
     if (!Number.isFinite(n) || n < 10) continue;
@@ -66,6 +68,9 @@ export function theNumbersIn(said: string): number[] {
        and the manager was asked whether 18 was her own part of it (run 3, 20 Sep 2026). */
     const tail = text.slice((m.index ?? 0) + m[0].length);
     if (/^\s*(%|percent|per cent|pc\b)/i.test(tail)) continue;
+    /* A SPAN OF TIME OR A HEADCOUNT IS NOT A PART OF A TARGET. "Greenfield's terms are 30 days" was read
+       as 30 against 180,000,000 (smoke run 7). */
+    if (/^\s*(days?|weeks?|months?|years?|hours?|minutes?|people|persons?|reps?|dealers?|accounts?|customers?|clients?|calls?|visits?|farmers?|members?|staff|of (?:the|them|my|our))\b/i.test(tail)) continue;
     if (dated.has(n)) continue;
     /*
      * A FOUR-DIGIT NUMBER IN YEAR RANGE IS USUALLY A YEAR AND SOMETIMES A TARGET.

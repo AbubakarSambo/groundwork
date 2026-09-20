@@ -78,7 +78,8 @@ const CARRIES_NO_SUBJECT = new Set([
  */
 function subjectWords(text: string): Set<string> {
   return new Set(
-    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)) ?? [],
+    /* "others" is "other" and "targets" is "target": a plural is the same subject. */
+    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)).map((w) => (w.length >= 5 && /[^s]s$/.test(w) ? w.slice(0, -1) : w)) ?? [],
   );
 }
 

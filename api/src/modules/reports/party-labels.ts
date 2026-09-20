@@ -308,6 +308,7 @@ export function handleOf(label: string): string {
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const withoutTrailingStop = (s: string) => (s ?? '').trim().replace(/[.!?,;:]+$/, '');
 
 export function withNames(
   text: string,
@@ -330,7 +331,11 @@ export function withNames(
    */
   const viewerLabel = opts?.viewerLabel?.trim();
   if (viewerLabel) {
-    const esc = viewerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /* A LABEL THAT ENDS IN A FULL STOP NEVER MATCHED. The Harvestline sales manager's role read "...some
+       on 60-day credit." and `\b` after a full stop needs a word character next, so "credit. said this
+       was for" left the whole label standing in her own report (smoke run 7, 21 Sep 2026). Labels are
+       matched without their trailing punctuation; the sentence keeps its own. */
+    const esc = escapeRe(withoutTrailingStop(viewerLabel));
     /* The handle too, when it is a role of two words or more that no other party shares: "the
        Engagement Director's time" is the reader's time. A one-word handle ("Trader") is left alone. */
     const handle = handleOf(viewerLabel);
@@ -446,7 +451,7 @@ export function withNames(
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);
   for (const label of labels) {
     const name = visible.get(label)!;
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = escapeRe(withoutTrailingStop(label));
     /**
      * WORD-BOUNDED, AND THIS WAS A LIVE DEFECT. W8-73.
      *

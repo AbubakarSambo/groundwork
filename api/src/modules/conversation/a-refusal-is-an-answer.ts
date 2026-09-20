@@ -20,8 +20,12 @@ import { saidToThem } from './the-close-is-held-once';
 
 /** "Then X goes on this record as not given." X is the owed thing, said to them. */
 export function whatTheAbsenceMeans(owedWhat: string): string {
-  const x = saidToThem(owedWhat).replace(/^(what|how|where|who|which|whether)\s+/i, (m) => m.toLowerCase());
-  return `Then ${x} goes on this record as not given.`;
+  const x = saidToThem(owedWhat).replace(/^(what|how|where|who|which|whether)\s+/i, (m) => m.toLowerCase()).replace(/[.]+$/, '');
+  /* A noun phrase is the subject; a clause ("what is clear and what is not") is named after the colon,
+     because "Then what is clear and what is not goes on this record" read as a broken sentence (smoke
+     run 7, 21 Sep 2026). */
+  if (/^(the|a|an|who|your|their)\b/i.test(x) && !/\b(is|are|was|were)\b.*\b(and|or)\b/i.test(x)) return `Then ${x} goes on this record as not given.`;
+  return `Then it goes on this record as not given: ${x}.`;
 }
 
 /**

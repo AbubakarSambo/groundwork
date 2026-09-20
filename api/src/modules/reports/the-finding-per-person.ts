@@ -46,19 +46,22 @@ const latest = <T extends { session: number }>(xs: T[]): T | undefined => [...xs
 export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding | null {
   const said = p.said.filter((s) => s.text?.trim());
   if (!said.length) return null;
+  /* The label without its trailing stop, so the read can swap it for a name or "you". */
+  const who = clean(p.label);
   const sentences: string[] = [];
   let hasGap = false;
   let headline: string | null = null;
 
   /* What they said this was for: the earliest definition of success, in their words. */
   const purpose = said.filter((s) => s.type === 'SUCCESS_DEFINITION').sort((a, b) => a.session - b.session)[0];
-  if (purpose) sentences.push(`${p.label} said this was for: ${short(clean(purpose.text))}.`);
+  if (purpose) sentences.push(`${who} said this was for: ${short(clean(purpose.text))}.`);
 
   /* Where they say they stand: the latest progress line with a number in it, else the latest progress line. */
   const progress = said.filter((s) => s.type === 'PROGRESS');
   const withNumber = progress.filter((s) => /\d/.test(s.text));
   const stand = latest(withNumber) ?? latest(progress);
-  if (stand) sentences.push(`Where they say they stand now: ${short(clean(stand.text))}.`);
+  /* The lead's progress lines are mostly about other people ("Dayo has N22m"), so theirs read as a report, not a standing. */
+  if (stand) sentences.push(`${p.isLead ? 'What they report' : 'Where they say they stand now'}: ${short(clean(stand.text))}.`);
 
   /* The number set for them by the lead, and their own, where the two differ. */
   const setForThem = p.targets.filter((t) => t.yours && !t.setByThem && t.target != null);
@@ -68,7 +71,7 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
     if (theirs) {
       sentences.push(`The lead set ${fmt(lead.target as number)} for them (${clean(lead.name)}); their own number is ${fmt(theirs.target as number)} (${clean(theirs.name)}).`);
       hasGap = true;
-      headline = headline ?? `${p.label}: two numbers for one target, ${fmt(lead.target as number)} from the lead and ${fmt(theirs.target as number)} from them`;
+      headline = headline ?? `${who}: two numbers for one target, ${fmt(lead.target as number)} from the lead and ${fmt(theirs.target as number)} from them`;
     } else if (lead.count > 0) {
       sentences.push(`Against the ${fmt(lead.target as number)} the lead set, the record has ${fmt(lead.count)}.`);
     }
@@ -85,12 +88,12 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
     hasGap = true;
     if (d.kind === 'counted differently') {
       sentences.push(`${d.lines[2].replace(/^That is /, 'The count moved: ')}`);
-      headline = headline ?? `${p.label}: ${d.lines[2].replace(/^That is /, '').replace(/\.$/, '')}`;
+      headline = headline ?? `${who}: ${d.lines[2].replace(/^That is /, '').replace(/\.$/, '')}`;
     } else if (d.kind === 'what it was for has gone quiet') {
       sentences.push('Nothing they have reported since mentions the thing they said this was for.');
-      headline = headline ?? `${p.label}: what they report has moved away from what this was for`;
+      headline = headline ?? `${who}: what they report has moved away from what this was for`;
     } else if (d.kind === 'two numbers for one target' && !headline) {
-      headline = `${p.label}: two numbers for one target`;
+      headline = `${who}: two numbers for one target`;
     }
   }
 

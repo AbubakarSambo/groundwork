@@ -32,6 +32,22 @@ describe('what this session has covered', () => {
     expect(c.get('needs-others')?.state).toBe('not-asked');
   });
 
+  /* Bola, smoke run 7: "What do you need from others to move forward?" - "I'm fine for now." - then the close
+     was held on "what you need from other people". */
+  it('hears the owed thing in the words it is asked in', () => {
+    const c = whatThisSessionHasCovered(things, [
+      ...turns,
+      { role: 'AI' as const, content: 'What do you need from others to move forward?' },
+      { role: 'PERSON' as const, content: "I'm fine for now. Thanks." },
+    ]);
+    expect(c.get('needs-others')?.state).not.toBe('not-asked');
+    const plan = whatThisSessionHasCovered([{ id: 'my-part', what: 'the part of the plan that is theirs to do' }], [
+      { role: 'AI' as const, content: 'What is the next action you are taking to secure those sales, and by when?' },
+      { role: 'PERSON' as const, content: 'I have already secured them, the invoices are with the dealers.' },
+    ]);
+    expect(plan.get('my-part')?.state).not.toBe('not-asked');
+  });
+
   it('and the block says what to do with each, leaving only the unasked as still to cover', () => {
     const { notAsked, block } = sayWhatHasBeenCovered(things, whatThisSessionHasCovered(things, turns));
     expect(notAsked.map((t) => t.id)).toEqual(['needs-others']);

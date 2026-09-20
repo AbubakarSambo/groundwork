@@ -57,8 +57,26 @@ export const THEY_DECLINED_IT = `They said no to that: they do not have it, do n
 /** A short reply that is not an answer to anything: "ok", "yes", "fine". */
 const AN_ACK = /^\s*(ok(ay)?|yes|yeah|yep|no|fine|sure|good|noted|right|alright)[\s.!,]*$/i;
 
+/*
+ * THE SAME THING, ASKED IN THE WORDS PEOPLE USE. "What do you need from others to move forward?" is the
+ * owed item "what they need from other people", and the word test did not see it (others, not other),
+ * so the close was held on the very thing that had just been asked and answered (smoke run 7, 21 Sep
+ * 2026). Each owed thing has the ways it is asked in a conversation, and either test counts.
+ */
+const ALSO_ASKED_AS: [RegExp, RegExp][] = [
+  [/need from (?:other people|another team)|needs support|where somebody needs to act/i, /\b(?:need|want|require)(?:ing)? (?:anything |something |more |help )?from (?:others|other people|anyone|anybody|someone|the team|another team|finance|management|your (?:manager|lead|team))|\bwhat (?:support|help) (?:do|would) you need|\bneed (?:anything|any help|any support|support)\b|\bwho (?:owns|could|can|should) (?:the unblock|help|unblock|step in)|\banything blocking\b/i],
+  [/part of the plan that is (?:theirs|yours) to do|what they are working on|what should happen next|what they mean to do first/i, /\b(?:what|which) (?:is|are|would be) (?:the |your )?(?:next|first) (?:action|step|thing|move)|\bwhat will you do\b|\bwhat (?:are|will) you (?:be )?(?:doing|working on|taking|going to do)|\bby when\b|\byour (?:own )?part\b|\bwhat (?:do you|will you) do (?:first|next|about)/i],
+  [/how they are making their number/i, /\b(?:on credit|cash sales|credit sales|what terms|payment terms|kind of sales|how (?:much|many) of (?:that|those|your sales|it)|breakdown|percentage of your sales|split between|mix of)\b/i],
+  [/off track|getting in the way|still open or unresolved|what is not on track/i, /\b(?:off track|not on track|behind|in the way|getting in the way|blocking|blocker|stuck|challenge|unfinished|still open|unresolved|slowing)\b/i],
+  [/what has moved since|happened since/i, /\b(?:since (?:last time|then|we last|the last)|what has (?:moved|changed|happened)|where (?:are you|do things stand|are things) (?:now|today|against))\b/i],
+  [/what was achieved|where it actually landed/i, /\b(?:where did (?:things|it) (?:land|end up|actually land)|what (?:was|did you) achieve|final (?:number|figure|paid)|land(?:ed)? against|where do things stand today)\b/i],
+  [/what is clear and what is not|how they see it/i, /\b(?:what is (?:not )?clear|unclear|what (?:do|don't|do not) you understand|make sense to you|confus|what is missing)/i],
+  [/what this is trying to achieve|the main goal|the goals or targets/i, /\b(?:trying to achieve|aiming (?:for|at|to)|what (?:is|are) (?:the|your) (?:goal|target|aim|objective)|what would (?:success|done) look like|what is the number)\b/i],
+];
+
 function askedAbout(thing: AThingToCover, aiTurn: string): boolean {
-  return asksTheSameThingAgain(thing.what, aiTurn);
+  if (asksTheSameThingAgain(thing.what, aiTurn)) return true;
+  return ALSO_ASKED_AS.some(([what, asked]) => what.test(thing.what) && asked.test(aiTurn ?? ''));
 }
 
 function readTheAnswer(answer: string | undefined): { state: CoverState; answer: string | null } {

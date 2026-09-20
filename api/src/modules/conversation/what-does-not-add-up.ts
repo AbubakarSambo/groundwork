@@ -178,7 +178,11 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
     const since = said.filter((s) => s.session >= 2 && /^(PROGRESS|INTENT|COMMITMENT)$/.test(s.type));
     if (firstFor.length && since.length) {
       const sinceWords = new Set(since.flatMap((s) => [...wordsOf(s.text)]));
+      /* A PURPOSE THAT IS A NUMBER IS BEING COUNTED, NOT FORGOTTEN. "My target for Q3 is N10m" followed by
+         "Greenfield was N8m" shares no word and is the same thing being reported (smoke run 7, 21 Sep 2026). */
+      const sinceHasANumber = since.some((s) => /\d/.test(s.text));
       const quiet = firstFor.find((f) => {
+        if (sinceHasANumber && numbersWithUnits(f.text).some((n) => n.unit === 'money' || n.unit === 'percent')) return false;
         const w = [...wordsOf(f.text)];
         return w.length >= 2 && !w.some((x) => sinceWords.has(x));
       });

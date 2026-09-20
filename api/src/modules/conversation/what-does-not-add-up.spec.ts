@@ -65,6 +65,16 @@ describe('what does not add up', () => {
     expect(d[0].lines[0]).toContain('increase my income');
   });
 
+  it('a purpose that is a number, followed by numbers, is being counted, not forgotten', () => {
+    expect(whatDoesNotAddUp({
+      ...base,
+      said: [
+        { text: 'My target for Q3 is N10m', type: 'SUCCESS_DEFINITION', session: 1 },
+        { text: 'Greenfield was N8m. All on credit.', type: 'PROGRESS', session: 2 },
+      ],
+    })).toEqual([]);
+  });
+
   it('and nothing, when nothing is off', () => {
     expect(whatDoesNotAddUp({
       ...base,

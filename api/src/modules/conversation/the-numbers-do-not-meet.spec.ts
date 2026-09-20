@@ -80,6 +80,8 @@ describe('once per session, and never about a percentage', () => {
   const objectives = [{ name: '$400,000 in new business', target: 400_000, ownerParticipantId: null }];
   it('a percentage is not a part of the objective', () => {
     expect(theNumbersIn("Dayo's arrears are at 18%.")).toEqual([]);
+    expect(theNumbersIn("It's 13m now.")).toEqual([13000000]);
+    expect(theNumbersIn("Greenfield's terms are 30 days. Most of the others are 15.")).toEqual([15]);
     expect(theNumbersIn('We are at 18 percent on credit and 71,000,000 sold.')).toEqual([71_000_000]);
   });
   it('is not asked again once an earlier turn put both numbers to them', () => {
