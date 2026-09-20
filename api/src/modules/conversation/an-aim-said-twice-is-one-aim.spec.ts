@@ -52,4 +52,21 @@ describe('a target said with its currency', () => {
     /* And something of its own still stands. */
     expect(theAimsThatAreNew([{ name: 'credit share under 35%', target: 35 }], existing)).toHaveLength(1);
   });
+
+  it('a figure worded again with words added is one aim; the same figure about something else is not', () => {
+    const four = [
+      { name: 'Securing new business for the firm', target: 400000 },
+      { name: 'new business', target: 400000 },
+      { name: 'Drive revenue of around $400,000, weighted towards larger engagements.', target: 400000 },
+      { name: 'Generate $400,000 in new business.', target: 400000 },
+    ];
+    expect(theAimsThatAreNew(four, [])).toEqual([four[0], four[2], four[3]]);
+    expect(theAimsThatAreNew([{ name: 'New business, $400,000', target: 400000 }], [four[0]])).toEqual([]);
+    const small = [
+      { name: 'Bring in two large engagements', target: 2 },
+      { name: 'Two new hires', target: 2 },
+      { name: 'two large engagements', target: 2 },
+    ];
+    expect(theAimsThatAreNew(small, [])).toEqual([small[0], small[1]]);
+  });
 });

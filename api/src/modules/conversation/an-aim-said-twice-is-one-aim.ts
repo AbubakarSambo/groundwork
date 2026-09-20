@@ -28,6 +28,7 @@ const WHAT_IS_LEFT = (name: string): string =>
     .replace(/[₦$£€]/g, ' ')
     .replace(/\b(ngn|naira|usd|gbp|eur|n)(?=\s*\d)/g, ' ')
     .replace(/\b\d[\d,.]*\s*(k|m|bn|million|thousand)?\b/g, ' ')
+    .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million)\b/g, ' ')
     .replace(/\b(units?|items?|things?|pieces?|bags?|boxes?|cases?|sales?|total|in total|overall|target|goal|objective|of|the|a|an|for|this|our|team|company|year|month|week|quarter|q[1-4]|period)\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim();
@@ -45,6 +46,32 @@ export function isTheSameAimSaidAsItsNumber(fresh: AnAim, existing: AnAim[]): bo
   return existing.some((e) => e.target === fresh.target);
 }
 
+/**
+ * THE SAME FIGURE, WORDED FOUR WAYS. Rerun, 20 Sep 2026, one lead, one board: "Securing new business
+ * for the firm (400,000)", "new business (400,000)", "Drive revenue of around $400,000, weighted
+ * towards larger engagements (400,000)", "Generate $400,000 in new business (400,000)". Each
+ * extraction wrote the same target under the sentence it happened to read it from.
+ *
+ * A figure said twice is the same aim when one name is the other with words added: everything left
+ * in the shorter name, once the number and the filler are out, is in the longer one. "new business"
+ * is inside "securing new business for the firm". "Units of tea sold in Kaduna" is NOT inside "units
+ * of tea sold in Abuja" - the place is the difference - and "shops opened in Kano" shares nothing
+ * with "wholesale accounts signed", so both of those stay two aims, for the reason at the top of
+ * this file: a wrongly dropped aim is invisible.
+ */
+const wordsOf = (name: string): Set<string> => new Set(WHAT_IS_LEFT(name).split(/\s+/).filter((w) => w.length > 2));
+
+export function isTheSameFigureWordedAgain(fresh: AnAim, existing: AnAim[]): boolean {
+  if (fresh.target == null) return false;
+  const mine = wordsOf(fresh.name);
+  return existing.some((e) => {
+    if (e.target !== fresh.target) return false;
+    const theirs = wordsOf(e.name);
+    const [shorter, longer] = mine.size <= theirs.size ? [mine, theirs] : [theirs, mine];
+    return shorter.size > 0 && [...shorter].every((w) => longer.has(w));
+  });
+}
+
 /** The fresh aims worth writing, with any restatement of an existing one left out. */
 export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[]): AnAim[] {
   const already = new Set(existing.map((o) => (o.name ?? '').trim().toLowerCase()));
@@ -52,6 +79,7 @@ export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[]): AnAim[] {
   for (const aim of fresh) {
     if (already.has((aim.name ?? '').trim().toLowerCase())) continue;
     if (isTheSameAimSaidAsItsNumber(aim, [...existing, ...kept])) continue;
+    if (isTheSameFigureWordedAgain(aim, [...existing, ...kept])) continue;
     kept.push(aim);
   }
   return kept;

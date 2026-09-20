@@ -71,7 +71,7 @@ RULES, AND THEY MATTER MORE THAN COVERAGE:
 - asSaid is one short phrase from one of those accounts, under 15 words, in their words.
 - Never name a person, an organisation somebody works for, or anything that would identify who said what beyond the label.
 
-Return JSON only.`;
+Answer by calling the_direction with the eight lists. Nothing else.`;
 
 /**
  * THE TOOL, NOT A BARE SCHEMA. `extract` takes a tool with a name, a description and an

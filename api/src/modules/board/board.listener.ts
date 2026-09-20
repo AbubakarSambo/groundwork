@@ -10,6 +10,7 @@ import {
   WHAT_THE_RECORD_SAYS_SCHEMA,
   theQuestion,
   onlyWhatIsWorthOffering,
+  oneNumberLandsOnce,
   type AReadNumber,
   whatToDoWithTheRead,
 } from './what-the-record-says-a-number-is';
@@ -47,7 +48,7 @@ export class BoardListener {
     try {
       const targets = await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
-        select: { id: true, name: true, target: true, count: true, prevCount: true },
+        select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true },
       });
       if (!targets.length) return;
 
@@ -85,7 +86,7 @@ export class BoardListener {
         WHAT_THE_RECORD_SAYS_SCHEMA,
       );
 
-      const worth = onlyWhatIsWorthOffering(answer?.numbers ?? [], targets, lines);
+      const worth = oneNumberLandsOnce(onlyWhatIsWorthOffering(answer?.numbers ?? [], targets, lines), targets);
       let landed = 0;
       for (const n of worth) {
         const target = targets.find((t) => t.id === n.objectiveId)!;

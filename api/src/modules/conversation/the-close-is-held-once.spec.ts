@@ -141,7 +141,7 @@ describe('the bar, since 20 September 2026', () => {
   });
   it('never holds a one-time session', () => {
     expect(service).toContain('const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;');
-    expect(service).toContain('if (oneTime || (concrete.length && verdict.ready)) return { ready: true };');
+    expect(service).toContain('if (oneTime || concrete.length || verdict.ready) return { ready: true };');
   });
   it('answers a bare acknowledgement rather than saying it did not come out right', () => {
     expect(service).toContain("reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);");

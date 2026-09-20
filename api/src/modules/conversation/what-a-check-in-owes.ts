@@ -59,6 +59,12 @@ export interface Owed {
   /** Entry types that satisfy it. Empty means nothing typed can prove it - see `noTypeYet`. */
   satisfiedBy: RecordEntryType[];
   /**
+   * Words an entry of those types has to carry before it counts. Without this, "how the number is
+   * made" was proved by "I hit N26m" - a PROGRESS line - and the credit rep who never said the
+   * word credit in three sessions was never asked (rerun, 20 Sep 2026).
+   */
+  saidAbout?: RegExp;
+  /**
    * True where extraction has no type for this yet, so it cannot be proved from the record.
    *
    * These are asked once and then recorded as a gap rather than chased, because a slot that can
@@ -113,7 +119,7 @@ export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   /* A sales team hit its volume with 52% of it on credit and arrears at 14% against a brief that said 35% and 8%, and
      three sessions asked only for the total (adversarial run, 20 Sep 2026). A number has a make-up - what kind, on what
      terms, to whom - and where the aim named terms, the make-up is owed as much as the total. */
-  { id: 'how-the-number-is-made', what: 'how they are making their number. Not the total: what kind of sales or work, on what terms, with whom. This matters most where the aim set a condition on the mix.', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.PROGRESS, T.WORRY] },
+  { id: 'how-the-number-is-made', what: 'how they are making their number. Not the total: what kind of sales or work, on what terms, with whom. This matters most where the aim set a condition on the mix.', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.PROGRESS, T.WORRY], saidAbout: /\b(credit|cash|terms|on account|arrears|mix|repay|invoice|upfront|deposit|instal|split|proportion|percent|%)/i },
   { id: 'off-track', what: 'what is off track', role: ['lead'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION] },
   { id: 'support', what: 'who needs support, and with what', role: ['lead'], stage: ['middle'], satisfiedBy: [T.ASK, T.WORRY] },
   { id: 'in-the-way', what: 'what is getting in the way', role: ['member', 'partner'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION, T.ASK] },
@@ -199,6 +205,8 @@ export function stageOf(round: number, planned: number | null, isFinal = false):
 export interface Held {
   /** Entry types this person has on the record, for the window that counts. */
   types: RecordEntryType[];
+  /** The entries themselves, where a slot needs the words and not only the type. */
+  entries?: { type: RecordEntryType; text: string }[];
   /** Slot ids already recorded as a gap and asked to the limit. Not asked again. */
   letGo: string[];
   /** Slot ids answered at any point in the run. A gap closes the moment it is answered. */
@@ -220,6 +228,10 @@ export function whatIsStillOwed(owed: Owed[], role: Role, stage: Stage, held: He
     if (!o.role.includes(role) || !o.stage.includes(stage)) return false;
     if (held.answered.includes(o.id) || held.letGo.includes(o.id)) return false;
     if (o.satisfiedBy.length === 0) return true;
+    if (o.saidAbout) {
+      const about = o.saidAbout;
+      return !(held.entries ?? []).some((e) => o.satisfiedBy.includes(e.type) && about.test(e.text ?? ''));
+    }
     return !o.satisfiedBy.some((t) => held.types.includes(t));
   });
 }

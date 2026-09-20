@@ -613,6 +613,20 @@ export class AnthropicService implements OnApplicationBootstrap {
       }
     }
 
+    /*
+     * PROSE THAT IS THE ANSWER IS THE ANSWER. Twenty-four discovery accounts, read in chunks of six:
+     * on half the chunks the model wrote the eight lists as a JSON block in a text part instead of
+     * calling the tool, twice, and the direction came back null (rerun, 20 Sep 2026). If what came
+     * back parses and carries the tool's required fields, it is taken as the call it should have been.
+     */
+    if (!fnCall?.functionCall) {
+      const asText = this.theJsonInTheText(res, tool);
+      if (asText) {
+        this.logger.warn(`extract(): tool ${tool.name} was answered as JSON text; taking it as the call.`);
+        fnCall = { functionCall: { name: tool.name, args: asText } } as any;
+      }
+    }
+
     if (!fnCall?.functionCall) {
       this.logger.warn(`extract(): model did not call tool ${tool.name} on either attempt`);
       return null;
@@ -669,6 +683,24 @@ export class AnthropicService implements OnApplicationBootstrap {
       this.logger.warn(`extract(): the retry for empty items failed: ${err?.message ?? err}`);
     }
     return first.value;
+  }
+
+  /** A JSON object in the text parts of a response that has the tool's required fields, or null. */
+  private theJsonInTheText(res: any, tool: { input_schema?: any }): Record<string, unknown> | null {
+    const text = (res?.candidates?.[0]?.content?.parts ?? [])
+      .map((p: any) => (typeof p?.text === 'string' ? p.text : ''))
+      .join('\n');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      const required: string[] = Array.isArray(tool?.input_schema?.required) ? tool.input_schema.required : [];
+      return required.every((k) => k in parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
   }
 
   private convertTool(tool: { name: string; description: string; input_schema: any }) {

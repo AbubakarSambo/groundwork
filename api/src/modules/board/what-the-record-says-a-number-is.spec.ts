@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { onlyWhatIsWorthOffering, theQuestion, WHAT_THE_RECORD_SAYS_PROMPT, theNumberIsInTheLine, whatToDoWithTheRead } from './what-the-record-says-a-number-is';
+import { oneNumberLandsOnce, onlyWhatIsWorthOffering, theQuestion, WHAT_THE_RECORD_SAYS_PROMPT, theNumberIsInTheLine, whatToDoWithTheRead } from './what-the-record-says-a-number-is';
 
 /**
  * THE BOARD READ 0 OF 40 AT THE CLOSE OF A QUARTER THE TEAM DELIVERED.
@@ -139,5 +139,20 @@ describe('what came off the record', () => {
     expect(whatToDoWithTheRead({ objectiveId: 'A', count: 38_000_000, said: "We've done N38m so far." }, T[0], lines)).toBe('land');
     expect(whatToDoWithTheRead({ objectiveId: 'A', count: 26_000_000, said: "I'm at 26 million." }, T[0], lines)).toBe('offer');
     expect(whatToDoWithTheRead({ objectiveId: 'A', count: 38_000_000, said: "We've done N38m so far." }, { ...T[0], count: 12 } as any, lines)).toBe('offer');
+  });
+
+  it('one number said once lands on one target: the unowned one, the biggest of those', () => {
+    const targets = [
+      { id: 'team', name: "team's target", target: 180000000, count: 0, ownerParticipantId: null },
+      { id: 'hit', name: 'hit N180m', target: 180000000, count: 71000000, ownerParticipantId: null },
+      { id: 'chika', name: 'Target N60m', target: 60000000, count: 0, ownerParticipantId: 'p-chika' },
+      { id: 'dayo', name: 'Bring in at least N50m', target: 50000000, count: 0, ownerParticipantId: 'p-dayo' },
+      { id: 'emeka', name: 'Target N35m', target: 35000000, count: 0, ownerParticipantId: 'p-emeka' },
+    ];
+    const said = 'We are at N71m for the quarter.';
+    const reads = ['team', 'chika', 'dayo', 'hit'].map((objectiveId) => ({ objectiveId, count: 71000000, said }));
+    const other = { objectiveId: 'emeka', count: 26000000, said: 'I hit N26m.' };
+    const kept = oneNumberLandsOnce([...reads, other], targets);
+    expect(kept.map((r) => r.objectiveId).sort()).toEqual(['emeka', 'team']);
   });
 });

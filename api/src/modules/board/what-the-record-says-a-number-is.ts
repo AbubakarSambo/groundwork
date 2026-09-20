@@ -32,6 +32,8 @@ export interface ATarget {
   name: string;
   target: number | null;
   count: number;
+  /** Whose the target is; null is the team's. Used to decide where a total said once belongs. */
+  ownerParticipantId?: string | null;
 }
 
 export interface SomethingSaid {
@@ -179,6 +181,35 @@ export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[],
     seen.add(r.objectiveId);
     return true;
   });
+}
+
+/**
+ * ONE NUMBER, SAID ONCE, LANDS ONCE. Rerun, 20 Sep 2026: the manager said "we are at N71m" and the
+ * model read it against four targets - the team's N180m, "hit N180m", Chika's N60m and Dayo's N50m -
+ * so two reps' boards showed the whole team's total as their own count. A figure somebody said is
+ * one fact about one thing. Where the same line and the same count were read against several
+ * targets, the one it belongs to is the one with nobody's name on it (a total is the team's), and
+ * of those the biggest; the reads against the others are dropped, not offered.
+ */
+export function oneNumberLandsOnce(read: AReadNumber[], targets: ATarget[]): AReadNumber[] {
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  const groups = new Map<string, AReadNumber[]>();
+  for (const r of read) {
+    const k = `${r.count}|${(r.said ?? '').trim().toLowerCase()}`;
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+  const keep = new Set<AReadNumber>();
+  for (const rs of groups.values()) {
+    if (rs.length === 1) { keep.add(rs[0]); continue; }
+    const ranked = [...rs].sort((a, b) => {
+      const ta = byId.get(a.objectiveId) as any, tb = byId.get(b.objectiveId) as any;
+      const ownedA = ta?.ownerParticipantId ? 1 : 0, ownedB = tb?.ownerParticipantId ? 1 : 0;
+      if (ownedA !== ownedB) return ownedA - ownedB;
+      return (tb?.target ?? 0) - (ta?.target ?? 0);
+    });
+    keep.add(ranked[0]);
+  }
+  return read.filter((r) => keep.has(r));
 }
 
 /**

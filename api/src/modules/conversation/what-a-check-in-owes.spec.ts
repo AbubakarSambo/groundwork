@@ -185,4 +185,13 @@ describe('a handoff reads after the word "for"', () => {
     /* Required, not optional: an absent answer reads as null and falls back to the word lists. */
     expect(PROMPTS).toContain("required: ['what', 'status', 'namedTheThing']");
   });
+
+  it('how the number is made is not proved by the total: the entry has to say something about the terms', () => {
+    const owed = KEEP_THE_TEAM_ON_TRACK.filter((o) => o.id === 'how-the-number-is-made');
+    const base = { answered: [], letGo: [] };
+    const total = { ...base, types: [T.PROGRESS], entries: [{ type: T.PROGRESS, text: 'I hit N26m. My number is N26m.' }] };
+    expect(whatIsStillOwed(owed, 'member', 'middle', total).map((o) => o.id)).toEqual(['how-the-number-is-made']);
+    const terms = { ...base, types: [T.PROGRESS], entries: [{ type: T.PROGRESS, text: 'N26m, six of the sales on credit to the northern dealers.' }] };
+    expect(whatIsStillOwed(owed, 'member', 'middle', terms)).toEqual([]);
+  });
 });

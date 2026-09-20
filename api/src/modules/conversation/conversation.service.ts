@@ -1,5 +1,6 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
 import { aDirectiveAboutTheBurden, countWhatWasAsked, stampWhatItAskedFor } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
@@ -1166,7 +1167,17 @@ export class ConversationService {
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-      const rawReply = await this.anthropic.respond(fullSystem, history);
+      let rawReply = await this.anthropic.respond(fullSystem, history);
+      /*
+       * AN EMPTY ANSWER IS ASKED FOR AGAIN BEFORE ANYBODY IS TOLD IT DID NOT COME OUT RIGHT. Grace,
+       * the tractor owner, said "I will buy another tractor. The demand is there." and was told "That
+       * did not come out right. Say that again" - nothing was wrong with what she said; the reply
+       * came through empty (rerun, 20 Sep 2026). One more call before that line ships.
+       */
+      if (!forHumans(rawReply).trim()) {
+        this.logger.warn(`Check-in ${checkIn.id}: the model returned nothing; asking once more.`);
+        rawReply = await this.anthropic.respond(fullSystem, history).catch(() => rawReply);
+      }
       // Strip the close marker before it is stored or shown - it is machinery.
       /**
        * Through the shared boundary now, not just the marker strip. This path removed the close
@@ -1862,7 +1873,14 @@ export class ConversationService {
     const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;
     const concrete = whatIsConcreteIn(personSaid.join('\n'), attached);
     const verdict = closeReadiness(personSaid, false, minTurns);
-    if (oneTime || (concrete.length && verdict.ready)) return { ready: true };
+    /*
+     * EITHER READER LETS THEM OUT. The two readers disagreed on the rerun: "$400k" and "end of the
+     * month" satisfied whatIsConcreteIn while countCheckableSpecifics saw nothing, and the lead who
+     * had just confirmed 30 September was asked to "put a date on that". The hold's own question is
+     * for a date, a number or a document; once the session holds one, asking it is the product not
+     * having listened, whatever the other reader thinks.
+     */
+    if (oneTime || concrete.length || verdict.ready) return { ready: true };
     await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
     this.logger.log(
       `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'no answer this session carried a number, a date, a document or an attachment'}.`,
@@ -2560,7 +2578,7 @@ export class ConversationService {
       const [minePastAndPresent, gapRows] = await Promise.all([
         this.prisma.recordEntry?.findMany?.({
           where: { participantId: checkIn.participantId, disputedAt: null },
-          select: { type: true },
+          select: { type: true, text: true },
         })?.catch(() => [] as any[]) ?? [],
         this.prisma.checkInGap?.findMany?.({
           where: { participantId: checkIn.participantId },
@@ -2575,6 +2593,7 @@ export class ConversationService {
       );
       const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
         types: (minePastAndPresent as any[]).map((e) => e.type),
+        entries: (minePastAndPresent as any[]).map((e) => ({ type: e.type, text: cleanText(e.text ?? '') })),
         answered: (gapRows as any[]).filter((g) => g.answeredAt).map((g) => g.slug),
         letGo: (gapRows as any[]).filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
       });
@@ -4959,7 +4978,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const [types, gapRows] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { participantId: checkIn.participantId, disputedAt: null },
-        select: { type: true },
+        select: { type: true, text: true },
       }),
       this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId } }),
     ]);
@@ -4972,6 +4991,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const role = this.roleOfTheReaderFor(ground as any, { participant } as any);
     const held = {
       types: types.map((t) => t.type),
+      entries: types.map((t) => ({ type: t.type, text: cleanText((t as any).text ?? '') })),
       answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
       letGo: [] as string[],
     };
