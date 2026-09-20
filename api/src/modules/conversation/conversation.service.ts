@@ -912,7 +912,7 @@ export class ConversationService {
      */
     const held = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
-    const saidSoFar = await this.prisma.conversationTurn.count({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }).catch(() => 1);
+    const saidSoFar = await (this.prisma.conversationTurn?.count?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }) ?? Promise.resolve(1)).catch(() => 1);
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
     const opening = quoted.text;
