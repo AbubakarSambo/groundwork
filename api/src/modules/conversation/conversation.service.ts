@@ -1,6 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-is-told-about-this';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
 import { aDirectiveAboutTheBurden, countWhatWasAsked, stampWhatItAskedFor } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
@@ -655,7 +656,9 @@ export class ConversationService {
        * check-in, and the lead wrote it as the description of the work. The caution above is about
        * one participant's ACCOUNT reaching another, which this is not.
        */
-      says: ground.brief?.trim() || null,
+      /* The lead reads their own brief. Anybody else reads the situation and the goals they may see,
+         never the lead's instructions to the product. See what-a-participant-is-told-about-this. */
+      says: reader?.isLead ? ground.brief?.trim() || null : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown),
       objectives: maySee.shown,
       alsoSay: maySee.alsoSay,
     };

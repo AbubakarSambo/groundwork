@@ -42,6 +42,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { theSituationIn } from './what-a-participant-is-told-about-this';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
@@ -1844,7 +1845,10 @@ export class GroundsService {
       orgHasWhatsApp,
       alignment,
       daysLeft,
-      brief,
+      /* The lead and the organisation's admins read the brief they wrote. A participant reads the
+         situation and nothing that tells the product how to interview them. See
+         what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
+      brief: viewerRunsThisGround ? brief : theSituationIn(brief),
       signals,
       contextNotes,
       settingsChanges,

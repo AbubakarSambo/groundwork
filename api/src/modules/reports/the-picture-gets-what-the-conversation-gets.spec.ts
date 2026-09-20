@@ -21,7 +21,7 @@ describe('the picture gets what the conversation gets', () => {
     expect(block).toContain('the poultry farmer:');
     expect(block).toContain('down 48%');
     expect(block).not.toContain('the rice miller');
-    expect(block).toContain('never turned into "all are on track"');
+    expect(block).toContain('Never turn it into "all are on track"');
     expect(whatDoesNotAddUpPerPerson([], 1)).toBe('');
   });
 });

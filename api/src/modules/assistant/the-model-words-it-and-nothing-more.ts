@@ -118,6 +118,20 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
   for (const required of mustKeep) {
     if (required && !text.includes(required)) return false;
   }
+
+  /*
+   * AND THE PRODUCT'S OWN REASONING IS NEVER PUT IN THE READER'S MOUTH.
+   *
+   * Read on a participant's own report, 20 Sep 2026: "You described how a sales representative
+   * feels like a failure because of an internal clock that is out of sync with the buyer's
+   * process" - the role map's protect-against paragraph, reworded as something he had said. And
+   * "you say that something read once is an incident and read across sessions becomes what people
+   * expect of you" - the coaching note's rationale, as his words. He said neither. A wording that
+   * introduces "you said / you described / you say" where the draft had no such attribution is the
+   * wording inventing testimony, which is the one thing this product cannot do.
+   */
+  const ATTRIBUTES_TO_THE_READER = /\byou(?:'ve| have)? (said|say|says|described|describe|mentioned|mention|told|tell|reported|report|admitted|admit|explained|explain|noted|note|stated|state|wrote|write)\b/i;
+  if (ATTRIBUTES_TO_THE_READER.test(text) && !ATTRIBUTES_TO_THE_READER.test(draft)) return false;
   /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
      position, where the sentence-start exemption lets it through. The conversation guard was
      written with the colon in and its own test caught it there. */

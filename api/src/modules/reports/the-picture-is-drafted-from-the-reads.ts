@@ -103,7 +103,9 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   if (i.numbers?.trim()) {
     /* The line arrives written for the model with an instruction on the end of it; the picture
        wants only the fact. Everything up to the first instruction sentence is the fact. */
-    const fact = i.numbers.replace(/^THE NUMBERS:\s*/, '').split(/\s(?:Lead with this|Say so|That is worth saying)\b/)[0].trim();
+    const bare = i.numbers.replace(/^THE NUMBERS:\s*/, '').split(/\s(?:Lead with this|Say so|That is worth saying)\b/)[0].trim();
+    /* And it starts with a capital: the line was written mid-sentence for the model, and reached a page as "the objective is 400,000 and..." */
+    const fact = bare.charAt(0).toUpperCase() + bare.slice(1);
     out.push({ key: 'numbers', text: fact.endsWith('.') ? fact : `${fact}.`, mustKeep: [] });
   }
 

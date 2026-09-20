@@ -38,7 +38,7 @@ export function whatDoesNotAddUpPerPerson(people: APersonOnRecord[], thisSession
   if (!lines.length) return '';
   return (
     'WHAT DOES NOT ADD UP, PER PERSON. Worked out by the product from each person\'s own record; the words are theirs. ' +
-    'Where a person is listed here, the picture says so, in one plain sentence for that person, with both sides of it - never smoothed over, never turned into "all are on track". ' +
+    'For each person listed here, write one plain sentence that says both sides of it. Never smooth it over. Never turn it into "all are on track". ' +
     'Where a person is not listed, do not invent a gap for them.\n' +
     lines.join('\n') +
     '\n\n'
