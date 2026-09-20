@@ -189,7 +189,18 @@ export function whatYouNamed(d: TheDirection, yourLabel: string): { line: string
  */
 export const ACCOUNTS_PER_READ = 6;
 
-const theSameThing = (name: string): string => name.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+/* "Paddy / Rice" and "Paddy and Rice" sat as two items with three namers each (run 3, 20 Sep 2026):
+   joiners and plurals are not the thing named. Words sorted, so "rice and paddy" is the same too. */
+const theSameThing = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !/^(and|or|the|of|in|a|an|plus|with)$/.test(w))
+    .map((w) => w.replace(/(ies)$/, 'y').replace(/(es|s)$/, ''))
+    .sort()
+    .join(' ')
+    .trim();
 
 export function mergeDirections(parts: TheDirection[], outOf: number): TheDirection {
   const merged = (key: keyof Omit<TheDirection, 'outOf'>): ThingTheRoomNamed[] => {
@@ -232,15 +243,21 @@ export interface ASplit {
   saying: string;
 }
 
+/* "The north" against "Kano and Jigawa" is not a split; Kano is in the north, and "the north" is the
+   vague answer the pack presses past. A compass word on its own is not a place two groups disagree over. */
+const A_DIRECTION_NOT_A_PLACE = /^(the )?(north|south|east|west|north[- ]?(east|west)|south[- ]?(east|west)|northern|southern|eastern|western)( (states?|region|nigeria|zone))?$/i;
+
 export function whereTheRoomSplit(direction: TheDirection): ASplit[] {
   const out: ASplit[] = [];
   for (const list of ['regions', 'valueChains'] as const) {
-    const items = (direction[list] ?? []).filter((i) => i.namedBy.length >= 2);
+    /* Three or more on each side: two of twenty-five is one conversation and a friend, not a group. */
+    const items = (direction[list] ?? []).filter((i) => i.namedBy.length >= 3 && !A_DIRECTION_NOT_A_PLACE.test(i.name.trim()));
     const top = items[0];
     if (!top) continue;
     const topSet = new Set(top.namedBy);
     for (const other of items.slice(1)) {
       if (other.namedBy.some((n) => topSet.has(n))) continue;
+      if (theSameThing(other.name) === theSameThing(top.name)) continue;
       out.push({
         list,
         one: { name: top.name, count: top.namedBy.length },

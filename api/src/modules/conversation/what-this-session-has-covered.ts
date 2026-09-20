@@ -43,7 +43,7 @@ export interface HowItWasCovered {
  * is the one answer the next question must not ignore. Bounded to the shapes that were badgered live.
  */
 const DECLINES =
-  /\b(i (do not|don't|dont) (know|have|track|focus|count|look at|keep|measure)|how would i know|not something i|we (do not|don't|dont) (share|track|have)|no idea|i (can't|cannot) (say|tell|give)|not (going|able) to (say|share|give)|i('d| would) rather not|leave it there|move on)\b/i;
+  /\b(i (do not|don't|dont) (know|have|track|focus|count|look at|keep|measure|need to|want to|see why|deal with)|how would i know|not something i|not my (job|target|call|problem|department)|(that|this) is (finance|somebody else|someone else)'?s? (job|call|problem)|we (do not|don't|dont) (share|track|have)|no idea|i (can't|cannot) (say|tell|give)|not (going|able) to (say|share|give)|i('d| would) rather not|leave it there|move on)\b/i;
 
 /** Did this turn decline the thing asked? Exported so the reply guard and the block agree on what a decline is. */
 export const theyDeclined = (turn: string): boolean => DECLINES.test(turn ?? '');

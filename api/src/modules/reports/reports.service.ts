@@ -4159,7 +4159,10 @@ happened, and what is in the way.`;
 
   private readonly directionInFlight = new Set<string>();
 
-  private presentTheDirection(direction: TheDirection, viewerLabel: string | null) {
+  private presentTheDirection(stored: TheDirection, viewerLabel: string | null) {
+    /* Re-merged on the way out, so a stored direction picks up a better idea of what is the same thing
+       ("Paddy / Rice", "Paddy and Rice") without being read again. */
+    const direction = mergeDirections([stored], stored.outOf);
     const enough = isItADirection(direction);
     return {
       ...direction,

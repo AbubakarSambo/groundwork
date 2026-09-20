@@ -146,6 +146,10 @@ describe('where the room split', () => {
     } as any;
     const splits = whereTheRoomSplit(d);
     expect(splits).toHaveLength(1);
+    /* "The north" is not a place two groups disagree over; a pair of namers is not a group; the same thing spelt twice is one item. */
+    const noisy = { ...d, regions: [{ name: 'the north', namedBy: ['A', 'B', 'C', 'D', 'E'], asSaid: null }, { name: 'Kano and Jigawa', namedBy: ['F', 'G'], asSaid: null }], valueChains: [{ name: 'Paddy / Rice', namedBy: ['A', 'B', 'C'], asSaid: null }, { name: 'Paddy and Rice', namedBy: ['D', 'E', 'F'], asSaid: null }] };
+    expect(whereTheRoomSplit(noisy as any)).toEqual([]);
+    expect(mergeDirections([noisy as any], 24).valueChains).toEqual([{ name: 'Paddy / Rice', namedBy: ['A', 'B', 'C', 'D', 'E', 'F'], asSaid: null }]);
     expect(splits[0].saying).toBe('5 named Kano and Jigawa; 3 named Ogun and Oyo, and none of them named Kano and Jigawa. Two answers, from two groups with nobody in common.');
   });
   it('nothing when nothing is split', () => {
