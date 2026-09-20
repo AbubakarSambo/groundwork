@@ -1146,7 +1146,11 @@ export class ConversationService {
     const alreadyTheirs = theirNumbers
       .filter((o) => o.ownerParticipantId === checkIn.participantId && typeof o.target === 'number')
       .map((o) => o.target as number);
-    const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs);
+    const earlierAiTurnsForTheGap = await this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true } })
+      .then((rows) => rows.map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+    const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
     if (numbersGap) {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
@@ -5156,7 +5160,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         howTheyAnswer: howTheyAnswered((earlierTurns as any[]).map((t) => t.content ?? ''), (t) => runIntake(t).checkable, theyDeclined),
       });
       const raw = await this.anthropic.extract<any>(PLAN_PROMPT, [{ role: 'user', content: brief }], PLAN_TOOL, { fast: true });
-      plan = tidyThePlan(raw);
+      plan = tidyThePlan(raw, { coach: (patterns as any[]).length > 0 || !!(coaching as any)?.currentStep });
       if (plan) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionPlan: plan as any } }).catch(() => undefined);
         this.logger.log(`Check-in ${checkIn.id}: planned. Must establish: ${plan.mustEstablish}`);

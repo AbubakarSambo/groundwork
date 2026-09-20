@@ -70,3 +70,16 @@ describe('the plan for this session', () => {
     expect(howTheyAnswered(['one', 'two'], () => false, () => false)).toBeNull();
   });
 });
+
+describe('a plan is not a guess about the person', () => {
+  it('a stacked question keeps its first question; a coaching path with nothing seen is dropped', () => {
+    const plan = tidyThePlan({
+      mustEstablish: 'x',
+      questions: [{ ask: 'Who have you just hired and what did you bring them in to do? What does early success look like for you? What would have to exist for you to know this hire is working?', why: '' }],
+      watchFor: [], doneWhen: 'y', doNotAsk: [],
+      coachingPath: { noticed: 'A potential for vague goal setting', toward: 'authored commitments', move: 'ask' },
+    }, { coach: false })!;
+    expect(plan.questions[0].ask).toBe('Who have you just hired and what did you bring them in to do?');
+    expect(plan.coachingPath).toBeNull();
+  });
+});

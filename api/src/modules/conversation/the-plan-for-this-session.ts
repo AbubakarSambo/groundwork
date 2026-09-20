@@ -69,9 +69,9 @@ You are given everything the product holds about this person and this session. U
 WHAT TO WRITE
 - mustEstablish: the one thing this session has to establish for this person, given the situation, their role, the record so far and what does not add up. One sentence. If the record shows a gap between what they said this was for and what they report, or two numbers for one target, that is usually it.
 - openWith: the first line, to the person, one sentence, plain, in their situation's terms. It says what this conversation is about and picks up from their own last words where there are any. No greeting words, no "hope you are well", no question mark: the first question is separate.
-- questions: three to five, in the order they should come, each in the words you would say to this person. Each one earns its place: about their own work, their own numbers, their own words on record. Put the one that tests mustEstablish early. Nothing generic; nothing the record has already answered.
+- questions: three to five, in the order they should come, each in the words you would say to this person. ONE question per item, one question mark, under twenty-five words: a question with two parts is two items or one of them goes. Each one earns its place: about their own work, their own numbers, their own words on record. Put the one that tests mustEstablish early. Nothing generic; nothing the record has already answered; never the scenario's guidance copied out.
 - watchFor: two to four behaviours, in behaviour words not labels ("answers a question about the number with a statement about repayments", "says 'the north' when asked for a region"), taken from how this person answered before and from the role map's going-wrong signals. For each, what to do if it shows, in one line.
-- coachingPath: only where the record shows something recurring for this person or a coaching step is in play. What was noticed, what to coach toward (the role map's success signal), the one move for this session. Otherwise leave it out.
+- coachingPath: ONLY when you were given a BEHAVIOUR SEEN section or a COACHING STEP for this person. What was noticed (from that section, not from the role map's list of risks), what to coach toward (the role map's success signal), the one move for this session. With neither section, leave coachingPath out entirely: a "potential" is not a path.
 - doneWhen: what must be on the record at the close: the specific things, with a number or a date where one is possible.
 - doNotAsk: things not to ask this person this session, each with its reason: declined before, asked twice before, not this role's business, already on record, a one-time session that owes no commitments.
 
@@ -163,18 +163,26 @@ export function howTheyAnswered(earlierPersonTurns: string[], checkable: (t: str
 }
 
 /** What comes back, tidied: strings trimmed, lists bounded, nothing empty kept. */
-export function tidyThePlan(raw: any): ThePlan | null {
+export function tidyThePlan(raw: any, may: { coach?: boolean } = { coach: true }): ThePlan | null {
   if (!raw || typeof raw !== 'object') return null;
   const str = (v: unknown, max = 400): string => (typeof v === 'string' ? clip(v.replace(/\s+/g, ' ').trim(), max) : '');
+  /* One question per item. A stacked item ("Who did you hire? What does success look like? What would
+     have to exist?") is the pack copied out; the first question is kept and the rest go. */
+  const oneQuestion = (ask: string): string => {
+    const parts = ask.split(/(?<=\?)\s+/).filter(Boolean);
+    return parts.length > 1 ? parts.find((p) => /\?$/.test(p)) ?? parts[0] : ask;
+  };
   const questions = (Array.isArray(raw.questions) ? raw.questions : [])
-    .map((q: any) => ({ ask: str(q?.ask, 300), why: str(q?.why, 200) }))
+    .map((q: any) => ({ ask: oneQuestion(str(q?.ask, 300)), why: str(q?.why, 200) }))
     .filter((q: any) => q.ask)
     .slice(0, 5);
   const watchFor = (Array.isArray(raw.watchFor) ? raw.watchFor : [])
     .map((x: any) => ({ pattern: str(x?.pattern, 200), ifSeen: str(x?.ifSeen, 200) }))
     .filter((x: any) => x.pattern)
     .slice(0, 4);
-  const cp = raw.coachingPath && typeof raw.coachingPath === 'object' ? { noticed: str(raw.coachingPath.noticed, 200), toward: str(raw.coachingPath.toward, 200), move: str(raw.coachingPath.move, 200) } : null;
+  /* No behaviour seen and no coaching step means no coaching path, whatever the planner wrote: a path from
+     the role map's list of risks is a guess about a person, which is the thing this product refuses to make. */
+  const cp = may.coach !== false && raw.coachingPath && typeof raw.coachingPath === 'object' ? { noticed: str(raw.coachingPath.noticed, 200), toward: str(raw.coachingPath.toward, 200), move: str(raw.coachingPath.move, 200) } : null;
   const plan: ThePlan = {
     mustEstablish: str(raw.mustEstablish),
     openWith: str(raw.openWith, 300),

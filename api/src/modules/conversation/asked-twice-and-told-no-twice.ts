@@ -50,7 +50,7 @@ const A_REFUSAL =
  * These are the blunt forms, and each is a whole objection on its own rather than half of one.
  */
 const BLUNTLY =
-  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|i (?:just )?(?:told|said to) you|that'?s what i (?:just )?said|going (?:round|around) in circles|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
+  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|i (?:just )?(?:told|said to) you|that'?s what i (?:just )?said|going (?:round|around) in circles|going over (?:this|that|it) again|why are we (?:going over|back on|discussing) (?:this|that)|we(?:'ve| have) (?:covered|done|been through) (?:this|that)|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
 
 export function theyPushedBackOnTheQuestions(text: string): boolean {
   const said = text ?? '';

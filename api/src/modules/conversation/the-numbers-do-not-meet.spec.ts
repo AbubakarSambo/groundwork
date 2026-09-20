@@ -74,3 +74,17 @@ describe('and a date is never read as a target', () => {
     expect(theNumbersIn('I spoke to 2 of the biggest customers')).toEqual([]);
   });
 });
+
+describe('once per session, and never about a percentage', () => {
+  const { theNumbersDoNotMeet, theNumbersIn } = require('./the-numbers-do-not-meet');
+  const objectives = [{ name: '$400,000 in new business', target: 400_000, ownerParticipantId: null }];
+  it('a percentage is not a part of the objective', () => {
+    expect(theNumbersIn("Dayo's arrears are at 18%.")).toEqual([]);
+    expect(theNumbersIn('We are at 18 percent on credit and 71,000,000 sold.')).toEqual([71_000_000]);
+  });
+  it('is not asked again once an earlier turn put both numbers to them', () => {
+    expect(theNumbersDoNotMeet(objectives, 'A small NGO proposal, around $12,000.', [], [])).not.toBeNull();
+    const asked = ['This check-in is aiming at 400,000. You have said 12,000 - is that your own part of it, or is the 400,000 something else?'];
+    expect(theNumbersDoNotMeet(objectives, 'The $12,000 is one project.', [], asked)).toBeNull();
+  });
+});

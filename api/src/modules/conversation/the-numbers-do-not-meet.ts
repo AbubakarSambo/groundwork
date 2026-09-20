@@ -62,6 +62,10 @@ export function theNumbersIn(said: string): number[] {
     /* Years and small counts are not targets. "2026" is a date and "2 of the biggest customers"
        is not a goal; a target somebody is working towards is bigger than a handful. */
     if (!Number.isFinite(n) || n < 10) continue;
+    /* A PERCENTAGE IS A RATE, NOT A PART. "Dayo's arrears are at 18%" was read as 18 against 180,000,000
+       and the manager was asked whether 18 was her own part of it (run 3, 20 Sep 2026). */
+    const tail = text.slice((m.index ?? 0) + m[0].length);
+    if (/^\s*(%|percent|per cent|pc\b)/i.test(tail)) continue;
     if (dated.has(n)) continue;
     /*
      * A FOUR-DIGIT NUMBER IN YEAR RANGE IS USUALLY A YEAR AND SOMETIMES A TARGET.
@@ -95,9 +99,18 @@ export function theNumbersDoNotMeet(
   objectives: ANumberOnRecord[],
   theyJustSaid: string,
   theirOwnTargets: number[] = [],
+  /**
+   * WHAT THE PRODUCT HAS ALREADY ASKED THIS SESSION. "Is that your own part of it?" went out four times
+   * running to one person who had answered it three times (smoke run, 20 Sep 2026): the instruction told
+   * the model to say nothing if they had explained it, and the model copied the product's sentence
+   * instead. Once the two numbers have been put in one earlier turn, this is settled for the session.
+   */
+  earlierAiTurns: string[] = [],
 ): WhatDoesNotMeet | null {
   const whole = (objectives ?? []).find((o) => !o.ownerParticipantId && typeof o.target === 'number' && o.target! >= 10);
   if (!whole) return null;
+  const objectiveFigure = String(whole.target);
+  if ((earlierAiTurns ?? []).some((t) => (t ?? '').replace(/,/g, '').includes(objectiveFigure) && /your own part of it|something else\?/i.test(t ?? ''))) return null;
 
   const said = theNumbersIn(theyJustSaid);
   if (!said.length) return null;
