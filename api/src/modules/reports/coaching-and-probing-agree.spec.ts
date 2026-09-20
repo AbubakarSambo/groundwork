@@ -112,7 +112,7 @@ describe('recurrence is what makes a pattern', () => {
   });
 
   it('and one seen across sessions is, with the count that makes it one', () => {
-    expect(twice.showingUp).toContain('3 sessions');
+    expect(twice.showingUp).toContain('3 of your sessions');
     expect(twice.general).toBe(false);
   });
 
