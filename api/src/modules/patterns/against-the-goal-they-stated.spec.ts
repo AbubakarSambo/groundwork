@@ -13,8 +13,8 @@ describe('against the goal they stated', () => {
     expect(isAgainstAGoalTheyStated('The tractor is booked solid five days a week and brought in N420,000 in hire income.', ['Increase my own maize output, from 40 to 60 bags'])).toBe(false);
   });
 
-  it('with no stated goal there is nothing to fail against', () => {
-    expect(isAgainstAGoalTheyStated('Anything at all', [])).toBe(true);
+  it('with no stated goal there is nothing to have delivered against', () => {
+    expect(isAgainstAGoalTheyStated('Drafted two proposals for NGOs.', [])).toBe(false);
   });
 
   it('and the detector is told what the goals were', () => {

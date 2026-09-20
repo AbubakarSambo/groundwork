@@ -46,6 +46,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 ));
 import { cleanText } from './what-the-record-actually-holds';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
+import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
@@ -1214,6 +1215,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })),
     );
 
+    /* The product's own arithmetic, per person, handed to the synthesis the way it is handed to the
+       conversation. See the-picture-gets-what-the-conversation-gets. */
+    const objectivesForTheGaps = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId },
+      select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+    }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    const doesNotAddUpPerPerson = whatDoesNotAddUpPerPerson(
+      parties.map((p: any) => ({
+        participantId: p.id,
+        label: labelById.get(p.id) ?? 'a party',
+        said: records
+          .filter((r) => r.participant.id === p.id)
+          .map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1 })),
+        targets: (objectivesForTheGaps as any[])
+          .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
+          .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+      })),
+      roundNow,
+    );
+
     const corpus =
       groundContextHeader +
       roster +
@@ -1226,6 +1247,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       overAgreementNotice +
       evidenceAbsenceNotice +
       patternNotice +
+      doesNotAddUpPerPerson +
       records.map((r) => {
         const label = labelById.get(r.participant.id) ?? 'a party';
         const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
@@ -1488,6 +1510,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* Read here, on this rare path, rather than threaded from the engagement read further down. */
         const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
         (result as any).sharedPicture = previous?.sharedPicture ?? '';
+      }
+    }
+
+    /* A count of the people the product cannot verify does not ship. See the-picture-gets-what-the-conversation-gets. */
+    {
+      const alls = withoutUncountedAlls(String((result as any).sharedPicture ?? ''));
+      if (alls.cut.length) {
+        this.logger?.warn?.(`Ground ${groundId}: ${alls.cut.length} sentence(s) counting the people came out of the picture: ${alls.cut.map((c) => JSON.stringify(c.slice(0, 80))).join('; ')}`);
+        (result as any).sharedPicture = alls.text;
       }
     }
 

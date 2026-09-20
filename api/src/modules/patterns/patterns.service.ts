@@ -5,6 +5,7 @@ import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
 import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
+import { saysSomethingCheckable } from '../board/reads';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
 import { mirrorDetection } from '../detectors/mirror-a-detection';
 import { isBackedByADocument } from '../reports/backed-by-a-document';
@@ -146,9 +147,16 @@ export class PatternsService {
          * came from. The costs are not the same and the gate should not be either.
          */
         if (isPositiveCode(d.code)) {
-          /* M1 is about the goal they stated. An output about something else is not it. */
+          /* M1 is about the goal they stated. An output about something else, or with no goal on record, is not it. */
           if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
-            this.logger.log(`Check-in ${checkInId}: M1 dropped; the observation speaks to none of the goals this person stated.`);
+            this.logger.log(`Check-in ${checkInId}: M1 dropped; ${statedGoals.length ? 'the observation speaks to none of the goals this person stated' : 'no goal is on record yet to have delivered against'}.`);
+            continue;
+          }
+          /* And a good pattern needs something somebody could check. "Actively manages what their work
+             needs" with no number, date, name or document in it is a compliment, not an observation
+             (run 3, 20 Sep 2026, credited to a director whose pipeline was two drafts). */
+          if (!saysSomethingCheckable(d.observation)) {
+            this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
             continue;
           }
           await this.observePositive(

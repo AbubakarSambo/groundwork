@@ -31,10 +31,15 @@ export const wordsOf = (text: string): Set<string> =>
       .filter((w) => w.length >= 3 && !STOP.has(w)) ?? [],
   );
 
-/** Does this observation speak to any of the goals they stated? True when there are no goals to check against. */
+/**
+ * Does this observation speak to any of the goals they stated? With no goal on record there is nothing
+ * to have delivered against, so the answer is no: run 3 (20 Sep 2026) credited "delivers against
+ * stated goals" in session one, where no goal from an earlier period could exist, on the strength of
+ * two drafted proposals.
+ */
 export function isAgainstAGoalTheyStated(observation: string, statedGoals: string[]): boolean {
   const goals = (statedGoals ?? []).filter((g) => g?.trim());
-  if (!goals.length) return true;
+  if (!goals.length) return false;
   const obs = wordsOf(observation);
   return goals.some((g) => [...wordsOf(g)].some((w) => obs.has(w)));
 }
