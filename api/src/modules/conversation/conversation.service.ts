@@ -82,7 +82,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1343,7 +1343,10 @@ export class ConversationService {
             screened = { ...screened, text: withoutIt };
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
           } else {
-            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; the first stands.`);
+            /* Nothing else in it, so the product moves the conversation on itself. See takenAsSaidAndOn. */
+            const next = await this.whatThisSessionNeverAsked(checkIn.id).catch(() => [] as string[]);
+            screened = { ...screened, text: takenAsSaidAndOn(next[0] ?? null), hits: [] };
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; moved on to ${JSON.stringify(next[0] ?? 'nothing')}.`);
           }
         }
       }
@@ -1936,7 +1939,7 @@ export class ConversationService {
    * "now in your record" and "next step" closed it. Both went with the list.
    */
   private closesInOtherWords(reply: string, lastPersonTurn: string): boolean {
-    return !/\?/.test(reply) && askedToFinish([lastPersonTurn]);
+    return (!/\?/.test(reply) && askedToFinish([lastPersonTurn])) || saysGoodbye(reply);
   }
 
   /**

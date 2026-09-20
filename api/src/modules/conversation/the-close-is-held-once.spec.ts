@@ -158,3 +158,16 @@ describe('the close is held once for the thing the session was for', () => {
     expect(theOneThingNeverAsked('what they need from other people')).toContain('what you need from other people.');
   });
 });
+
+describe('a goodbye without the marker, and a thank-you', () => {
+  const { saysGoodbye, isAnAcknowledgement } = require('./the-close-is-held-once');
+  it('the farewell is the close signal', () => {
+    expect(saysGoodbye('Your report is ready now, and nothing in it needs acting on today. Speak soon.')).toBe(true);
+    expect(saysGoodbye('What connects those two things?')).toBe(false);
+    expect(saysGoodbye('Your report is ready once you answer this. What is the number?')).toBe(false);
+  });
+  it('"Ok, thank you." is an acknowledgement', () => {
+    for (const t of ['Ok, thank you.', 'Understood.', 'Thanks!', 'Yes. Thank you.', 'Alright, noted.']) expect(isAnAcknowledgement(t)).toBe(true);
+    expect(isAnAcknowledgement('Ok, but the diesel is N90,000 more a month.')).toBe(false);
+  });
+});

@@ -39,9 +39,9 @@ export const THE_ONE_CONCRETE_THING =
  * in the owed list's own words ("how it is actually going", "what they need from other people"),
  * so it is one plain line and not a question about something else.
  */
-export const theOneThingNeverAsked = (what: string): string => {
-  /* The owed list is written about them ("what they are working on"); the line is said to them. First
-     sentence only: the rest of an owed line is guidance for the model, not for the person. */
+/* The owed list is written about them ("what they are working on"); a line is said to them. First
+   sentence only: the rest of an owed line is guidance for the model, not for the person. */
+export const saidToThem = (what: string): string => {
   const first = ((what ?? '').trim().split(/(?<=[.?!])\s+/)[0] ?? '').replace(/[.?!]+$/, '');
   const toYou = first
     .replace(/\bthemselves\b/gi, 'yourself')
@@ -49,9 +49,20 @@ export const theOneThingNeverAsked = (what: string): string => {
     .replace(/\bthey are\b/gi, 'you are')
     .replace(/\bthey\b/gi, 'you')
     .replace(/\bthem\b/gi, 'you');
-  const short = toYou.length > 120 ? `${toYou.slice(0, 117).trimEnd()}...` : toYou;
-  return `One more before this closes, because it is what this check-in is for: ${short}.`;
+  return toYou.length > 120 ? `${toYou.slice(0, 117).trimEnd()}...` : toYou;
 };
+
+export const theOneThingNeverAsked = (what: string): string =>
+  `One more before this closes, because it is what this check-in is for: ${saidToThem(what)}.`;
+
+/**
+ * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
+ * 2026: "how many acres" was asked five times in five wordings, the third-ask guard fired, the retry
+ * asked it again, and the fallback shipped it because there was nothing else in the reply. This is
+ * what ships instead: the answer taken as given, and the next thing the check-in is for.
+ */
+export const takenAsSaidAndOn = (next: string | null): string =>
+  next ? `That goes down as you put it. Something else this check-in is for: ${saidToThem(next)}.` : 'That goes down as you put it.';
 
 /** The line the model gets on the turn after the hold, so it does not ask a second time. */
 export const THE_CLOSE_WAS_HELD =
@@ -62,7 +73,7 @@ export const THE_CLOSE_WAS_HELD =
  * or "yes that's everything", which carries no date because it is not an answer to anything. The bar
  * reads back past those to the last turn with something in it.
  */
-const AN_ACKNOWLEDGEMENT = /^\s*(no|yes|yeah|yep|ok|okay|sure|fine|good|done|that'?s (it|all|everything)|we are good|we're good|i'?m good|nothing (else|more)|no,? (we are|we're|that'?s) (good|it|all|fine)|nope|all good|ready|let'?s close( it)?)[\s.!,]*$/i;
+const AN_ACKNOWLEDGEMENT = /^\s*(?:(?:no|yes|yeah|yep|ok|okay|sure|fine|good|great|perfect|done|understood|noted|alright|right|that'?s (?:it|all|everything)|we are good|we're good|i'?m good|nothing (?:else|more)|no,? (?:we are|we're|that'?s) (?:good|it|all|fine)|nope|all good|ready|let'?s close(?: it)?|thank you|thanks)[\s.!,]*){1,3}$/i;
 export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim());
 
 export function lastSubstantiveTurn(personSaid: string[]): string {
@@ -97,6 +108,14 @@ export function lastSubstantiveTurn(personSaid: string[]): string {
  */
 const A_FAREWELL =
   /(\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
+
+/**
+ * A GOODBYE WITHOUT THE MARKER IS STILL A CLOSE. Smoke run, 20 Sep 2026: "Your report is ready now,
+ * and nothing in it needs acting on today. Speak soon." shipped as an ordinary turn because the model
+ * left the marker off, so the product never ruled on the close, the person said "Ok, thank you", and
+ * got "That did not come out right" with a hold underneath. The farewell IS the signal.
+ */
+export const saysGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '') && !/\?\s*$/.test((reply ?? '').trim());
 
 export function withoutTheGoodbye(reply: string): string {
   const kept = (reply.match(/[^.!?\n]+[.!?]*|\n+/g) ?? [])

@@ -153,3 +153,19 @@ describe('the question asked again comes out', () => {
     expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text\)/);
   });
 });
+
+describe('the same question word for word, straight after itself', () => {
+  const { repeatsTheLastAskWordForWord, alreadyAskedTwice, theyPushedBackOnTheQuestions } = require('./asked-twice-and-told-no-twice');
+  const q = 'How many more acres are you able to farm on your own land now, and how many are you covering for your neighbours?';
+  it('is caught on the second ask, not the third', () => {
+    expect(repeatsTheLastAskWordForWord(`You have the tractor out five days a week. ${q}`, q)).toBe(true);
+    expect(alreadyAskedTwice(q, [q])).toBe(true);
+  });
+  it('a real follow-up is not a copy', () => {
+    expect(repeatsTheLastAskWordForWord('How many acres are your own, and how many are the neighbours?', 'How much more land are you covering now, compared to before you had it?')).toBe(false);
+  });
+  it('"I told you" is pushback', () => {
+    expect(theyPushedBackOnTheQuestions('I told you, 5 days a week. It\'s busy.')).toBe(true);
+    expect(theyPushedBackOnTheQuestions("That's what I just said. 5-10.")).toBe(true);
+  });
+});

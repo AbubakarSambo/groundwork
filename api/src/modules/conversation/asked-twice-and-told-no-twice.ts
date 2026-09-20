@@ -50,7 +50,7 @@ const A_REFUSAL =
  * These are the blunt forms, and each is a whole objection on its own rather than half of one.
  */
 const BLUNTLY =
-  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|going (?:round|around) in circles|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
+  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|i (?:just )?(?:told|said to) you|that'?s what i (?:just )?said|going (?:round|around) in circles|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
 
 export function theyPushedBackOnTheQuestions(text: string): boolean {
   const said = text ?? '';
@@ -225,8 +225,25 @@ export const DO_NOT_SAY_IT_BACK = doNotSayItBack('', '');
  * it matters and nobody has answered it, it belongs in the report as still open, which is what the
  * report is for.
  */
+/**
+ * THE SAME QUESTION, WORD FOR WORD, STRAIGHT AFTER ITSELF. "How many more acres are you able to farm on
+ * your own land now, and how many are you covering for your neighbours?" went out twice in a row with
+ * one answer between (smoke run, 20 Sep 2026). Two asks share a subject at half their words; a copy
+ * shares nearly all of them, and a copy does not need a third go to be the fault.
+ */
+export function repeatsTheLastAskWordForWord(reply: string, lastAsk: string | null | undefined): boolean {
+  if (!lastAsk?.trim()) return false;
+  /* The question sentences only, flattened: a reworded second ask is allowed (see the spec next
+     door); a copy is the same sentence with the same words in the same order. */
+  const questionsIn = (t: string): string[] =>
+    (t ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).map((x) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()).filter((x) => x.split(' ').length >= 5);
+  const earlier = new Set(questionsIn(lastAsk));
+  return questionsIn(reply).some((q) => earlier.has(q));
+}
+
 export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
   const asked = (earlierAsks ?? []).filter((a) => (a ?? '').trim());
+  if (repeatsTheLastAskWordForWord(reply, asked[asked.length - 1])) return true;
   if (asked.length < 2) return false;
   /*
    * ANY TWO EARLIER TURNS, NOT THE LAST TWO. This read only the two most recent asks, so "what is
