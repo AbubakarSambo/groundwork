@@ -46,3 +46,11 @@ describe('and the streaming gate drops it, unlike its other checks', () => {
     expect(gate.hits.map((h: any) => h.check)).toContain('a number claim the record does not support');
   });
 });
+
+describe('a unit after a number is not a scale', () => {
+  const { numbersIn } = require('./a-claim-the-numbers-do-not-support');
+  it('50kg bags is fifty, N50m is fifty million', () => {
+    expect(numbersIn('We moved 50kg bags, about 120 of them.')).toEqual([50, 120]);
+    expect(numbersIn('N50m for the quarter')).toEqual([50_000_000]);
+  });
+});

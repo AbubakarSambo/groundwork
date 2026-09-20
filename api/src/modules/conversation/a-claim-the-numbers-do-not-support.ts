@@ -25,7 +25,8 @@ const SCALE: Record<string, number> = { k: 1e3, thousand: 1e3, m: 1e6, million: 
 /** Every number in a text, scaled: "N26m" is 26,000,000, "1,200" is 1200, "40%" is 40. */
 export function numbersIn(text: string): number[] {
   const out: number[] = [];
-  const re = /(\d[\d,]*(?:\.\d+)?)\s*(k|m|bn|million|thousand|billion)?\b/gi;
+  /* "50kg bags" is fifty of something, not fifty thousand: a scale letter only counts when no letter follows it. */
+  const re = /(\d[\d,]*(?:\.\d+)?)(?:\s*(k|m|bn|million|thousand|billion)(?![a-z]))?/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text ?? ''))) {
     const v = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? SCALE[m[2].toLowerCase()] ?? 1 : 1);

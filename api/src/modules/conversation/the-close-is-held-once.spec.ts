@@ -171,3 +171,13 @@ describe('a goodbye without the marker, and a thank-you', () => {
     expect(isAnAcknowledgement('Ok, but the diesel is N90,000 more a month.')).toBe(false);
   });
 });
+
+describe('no homework in a one-time session', () => {
+  const { withoutTheHomework } = require('./the-close-is-held-once');
+  it('the question comes out and the rest stands', () => {
+    const r = withoutTheHomework('Three weeks for a proposal that shapes your board\'s options. What will you do about this, and by when?');
+    expect(r.cut).toBe(true);
+    expect(r.text).toBe("Three weeks for a proposal that shapes your board's options.");
+    expect(withoutTheHomework('What would you need to have in place by March?').cut).toBe(false);
+  });
+});

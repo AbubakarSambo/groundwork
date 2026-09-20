@@ -83,7 +83,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -118,7 +118,7 @@ import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, they
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
-import { withoutTheClaimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
+import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
   whichCard, owedFor, type Owed, type Role,
@@ -1696,6 +1696,16 @@ export class ConversationService {
         this.logger.warn(`Check-in ${checkIn.id}: cut an attribution nothing supports: ${JSON.stringify(promiseNobodyMade)}`);
         const cut = withoutThePromise(screened.text, promiseNobodyMade);
         if (cut.trim()) screened = { ...screened, text: cut };
+      }
+
+      /* AND NO HOMEWORK IN A ONE-TIME SESSION. See withoutTheHomework. */
+      const cadenceHere = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { cadence: true } }).catch(() => null);
+      if (cadenceHere?.cadence === Cadence.ONE_TIME) {
+        const noHomework = withoutTheHomework(screened.text);
+        if (noHomework.cut) {
+          this.logger.warn(`Check-in ${checkIn.id}: cut "what will you do about this, and by when" from a one-time session.`);
+          screened = { ...screened, text: noHomework.text };
+        }
       }
 
       /*
@@ -6147,6 +6157,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           orderBy: { createdAt: 'asc' },
         });
     if (turns.length === 0) return;
+    /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
+    const numbersInTheirWords = new Set<number>(
+      turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .flatMap((t) => numbersInAClaim(t.content ?? ''))
+        .flatMap((n) => [n, Math.round(n)]),
+    );
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
@@ -6433,7 +6450,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         /* A target is a whole count of something. A wrong number is worse than none. */
         target: Number.isFinite(a?.target) && (a!.target as number) > 0 ? Math.round(a!.target as number) : null,
       }))
-      .filter((a) => a.name);
+      .filter((a) => a.name)
+      /*
+       * A TARGET HAS TO BE A NUMBER THEY SAID. Run 4, 20 Sep 2026: a rep said "50kg bags" and the
+       * extraction wrote him a N50m target, which the next turn then asked him about. A number that
+       * appears in none of the person's own turns, at any scale (50, 50k, 50m), is the model's,
+       * and the aim keeps its name and loses the number.
+       */
+      .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a));
     if (aims.length) {
       const existing = await this.prisma.groundObjective.findMany({
         where: { groundId, ownerParticipantId: aimsAreShared ? null : participantId },
@@ -6556,6 +6580,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       select: { role: true, content: true },
     });
     if (turns.length === 0) return;
+    /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
+    const numbersInTheirWords = new Set<number>(
+      turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .flatMap((t) => numbersInAClaim(t.content ?? ''))
+        .flatMap((n) => [n, Math.round(n)]),
+    );
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
@@ -6653,6 +6684,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       select: { role: true, content: true },
     });
     if (!turns.length) return;
+    /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
+    const numbersInTheirWords = new Set<number>(
+      turns
+        .filter((t) => t.role === TurnRole.PERSON)
+        .flatMap((t) => numbersInAClaim(t.content ?? ''))
+        .flatMap((n) => [n, Math.round(n)]),
+    );
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');

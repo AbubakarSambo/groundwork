@@ -125,3 +125,19 @@ export function withoutTheGoodbye(reply: string): string {
      the question it is about to append stands on its own better than an empty turn does. */
   return out;
 }
+
+/**
+ * NOBODY IN A ONE-TIME SESSION OWES HOMEWORK. The engine's close rule - "what will you do about
+ * this, and by when?" - reached the convener of a discovery session in run 4 (20 Sep 2026) after her
+ * plan's questions were done, and the judge scored her session 1 for it: a strategy conversation that
+ * ended on a personal to-do. The pack says not to ask it; the sentence is cut in code.
+ */
+const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
+
+export function withoutTheHomework(reply: string): { text: string; cut: boolean } {
+  const text = (reply ?? '');
+  if (!HOMEWORK.test(text)) return { text, cut: false };
+  HOMEWORK.lastIndex = 0;
+  const kept = text.replace(HOMEWORK, '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  return { text: kept || text, cut: !!kept };
+}
