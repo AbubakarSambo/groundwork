@@ -115,6 +115,8 @@ import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT } from './what-this-session-has-covered';
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
+import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
+import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
 import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
@@ -2676,6 +2678,9 @@ export class ConversationService {
 
     const owedForThis = this.whichOwedListFor(ground.scenario as any, (ground as any).brief ?? null);
     let owedBlock = '';
+    /* For the session plan: what is still owed and unasked, and what was declined or asked to the limit. */
+    let stillOwedForThePlan: string[] = [];
+    let declinedForThePlan: string[] = [];
     if (owedForThis) {
       const [minePastAndPresent, gapRows] = await Promise.all([
         this.prisma.recordEntry?.findMany?.({
@@ -2703,6 +2708,11 @@ export class ConversationService {
          once without a specific, or to be left. Only the first list is "still to cover". */
       const covered = sayWhatHasBeenCovered(still, whatThisSessionHasCovered(still, turnsThisSession));
       owedBlock = [sayWhatIsMissing(covered.notAsked as any, stage), covered.block].filter(Boolean).join('\n\n');
+      stillOwedForThePlan = covered.notAsked.map((o) => o.what);
+      declinedForThePlan = [
+        ...covered.leave.map((l) => `${l.thing.what} (${l.why} this session)`),
+        ...(gapRows as any[]).filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => `${owedForThis.find((o) => o.id === g.slug)?.what ?? g.slug} (asked ${g.asked} times before, never answered)`),
+      ];
     }
 
     const intakeBlock = buildIntakeBlock({
@@ -3617,6 +3627,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* And where the pack's own spine is, read the same way. The pack says "skip any they have already
        answered"; this says which. */
     const spineSoFar = how?.forTheOpener ? '' : whereTheSpineIs(packForThisSituation ?? '', turnsThisSession);
+
+    /*
+     * THE PLAN FOR THIS SESSION. Written once, at the opener, from everything above; read at the top of
+     * every turn with where the session has got to in it. See the-plan-for-this-session.
+     */
+    const planBlock = await this.thePlanForThisSession(checkIn, ground, {
+      forTheOpener: !!how?.forTheOpener,
+      pack: packForThisSituation ?? '',
+      recordAlreadyHolds,
+      doesNotAddUp,
+      owed: stillOwedForThePlan,
+      declined: declinedForThePlan,
+      earlier: pastEntries,
+      turnsThisSession,
+    }).catch((err: any) => {
+      this.logger.warn(`The plan for check-in ${checkIn.id} could not be read: ${err?.message}`);
+      return '';
+    });
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
       sessionNumber: checkIn.sessionNumber,
@@ -3640,7 +3668,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const inThisTurn = [
       ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
-      ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
+      ['planBlock', planBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
@@ -3696,7 +3724,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5075,6 +5103,70 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * A gap is never a mark against anybody. It is a thing the record does not have, which is a fact
    * about the record - and half the time the honest reason is that nobody could have answered it.
    */
+  /**
+   * THE PLAN FOR THIS SESSION: read from the row when it exists; written once at the opener when it does
+   * not. Everything the planner reads was already computed for the prompt; this adds the role map, the
+   * behaviour seen in earlier periods, the coaching step and how they have answered before.
+   */
+  private async thePlanForThisSession(
+    checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number; participant: any },
+    ground: any,
+    got: { forTheOpener: boolean; pack: string; recordAlreadyHolds: string; doesNotAddUp: string; owed: string[]; declined: string[]; earlier: { text: string; type: string; session: number }[]; turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] },
+  ): Promise<string> {
+    const row = await this.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { sessionPlan: true, isFinal: true } as any }).catch(() => null);
+    let plan = tidyThePlan((row as any)?.sessionPlan);
+    if (!plan && got.forTheOpener) {
+      const [patterns, coaching, earlierTurns] = await Promise.all([
+        this.prisma.patternDetection?.findMany?.({
+          where: { participantId: checkIn.participantId },
+          select: { code: true, observationText: true, periodsObserved: true },
+          orderBy: { periodsObserved: 'desc' },
+          take: 6,
+        })?.catch(() => [] as any[]) ?? [],
+        this.prisma.coachingState?.findUnique?.({ where: { participantId: checkIn.participantId }, select: { currentStep: true } })?.catch(() => null) ?? null,
+        this.prisma.conversationTurn?.findMany?.({
+          where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber ?? 1 } } },
+          select: { content: true },
+          take: 80,
+        })?.catch(() => [] as any[]) ?? [],
+      ]);
+      const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
+      const planned = totalSessionsFor(ground.timelineDays, ground.cadence) ?? null;
+      const brief = theBriefForThePlanner({
+        scenarioLabel: `${ground.scenario}${ground.label ? `: ${ground.label}` : ''}`,
+        pack: got.pack,
+        sessionNumber: checkIn.sessionNumber ?? 1,
+        sessionsPlanned: planned,
+        stage: stageOf(checkIn.sessionNumber ?? 1, planned, !!(row as any)?.isFinal),
+        oneTime: ground.cadence === Cadence.ONE_TIME,
+        person: {
+          firstName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
+          roleAsDescribed: checkIn.participant?.roleAsDescribed ?? null,
+          isLead: checkIn.participant?.partyType === PartyType.INITIATOR,
+        },
+        roleMap: roleMapFor(checkIn.participant?.detectedFunction ?? null),
+        leadBrief: ground.brief ?? null,
+        recordAlreadyHolds: got.recordAlreadyHolds,
+        doesNotAddUp: got.doesNotAddUp,
+        owed: got.owed,
+        declinedOrAskedTwice: got.declined,
+        earlier: got.earlier,
+        patterns: (patterns as any[]).map((p) => ({ code: p.code, name: codeOf(p.code)?.name ?? p.code, observation: p.observationText ?? null, periods: p.periodsObserved ?? 1, probe: codeOf(p.code)?.probe ?? null })),
+        coachingStep: (coaching as any)?.currentStep ?? null,
+        howTheyAnswer: howTheyAnswered((earlierTurns as any[]).map((t) => t.content ?? ''), (t) => runIntake(t).checkable, theyDeclined),
+      });
+      const raw = await this.anthropic.extract<any>(PLAN_PROMPT, [{ role: 'user', content: brief }], PLAN_TOOL, { fast: true });
+      plan = tidyThePlan(raw);
+      if (plan) {
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionPlan: plan as any } }).catch(() => undefined);
+        this.logger.log(`Check-in ${checkIn.id}: planned. Must establish: ${plan.mustEstablish}`);
+      } else {
+        this.logger.warn(`Check-in ${checkIn.id}: the planner returned nothing usable; the session runs without a plan.`);
+      }
+    }
+    return plan ? sayThePlan(plan, got.turnsThisSession, got.forTheOpener) : '';
+  }
+
   /**
    * WHAT THIS SESSION IS FOR AND HAS NOT YET ASKED. The close bar reads it: a session that closes
    * with a required thing never raised is the "closing too early" the judge counted thirty times
