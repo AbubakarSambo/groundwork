@@ -92,7 +92,7 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
 
   const bodyOf = (name: string) => {
     /** Generators are `async *name(`; the star is optional so the stream route is covered. */
-    const m = new RegExp(`async \\*?${name}\\(checkInId: string, requestingUserId: string`).exec(SRC);
+    const m = new RegExp(`async \\*?${name}\\(checkInId: string, requestingUserId: (string|WhoIsAsking)`).exec(SRC);
     return m ? SRC.slice(m.index, m.index + 400) : '';
   };
 

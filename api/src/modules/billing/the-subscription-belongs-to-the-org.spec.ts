@@ -61,7 +61,9 @@ describe('what /billing/status returns', () => {
      * second client map. The caps are now `pricing_plans.memberCap`, edited in the same admin
      * screen as the prices, and this pins that nothing here states a cap of its own.
      */
-    expect(GET_STATUS).toContain('this.pricing.memberCapFor(org.subscriptionPlan)');
+    /* The plan it reads is now whichever covers them - their own, or one we gave them on the
+       house - and it still comes from the table rather than a map in this file. */
+    expect(GET_STATUS).toContain('this.pricing.memberCapFor(covers.plan as any)');
     expect(GET_STATUS).not.toContain('PLAN_MEMBER_CAPS');
   });
 

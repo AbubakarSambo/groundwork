@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
@@ -7,6 +7,7 @@ import { authApi } from '@/api/auth'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
+import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
 
 /**
  * The participant invite landing. ONE PATH: accepting the invite signs the
@@ -99,7 +100,7 @@ export function InvitePage() {
         } catch { /* leaves them exactly as they were */ }
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
-        navigate(checkInId ? `/checkin/${checkInId}` : `/grounds/${groundId}/p`, { replace: true })
+        navigate(checkInId ? whereTheLinkGoes(checkInId, preview?.scenario) : `/grounds/${groundId}/p`, { replace: true })
         return
       }
       if ((res as any).emailed) {
@@ -128,7 +129,7 @@ export function InvitePage() {
         return
       }
       if (checkInId) {
-        navigate(`/checkin/${checkInId}`, {
+        navigate(whereTheLinkGoes(checkInId, preview?.scenario), {
           state: { groundId, sessionNumber: 1, groundLabel: preview?.groundLabel },
           replace: true,
         })
@@ -149,6 +150,23 @@ export function InvitePage() {
       toast.error(said)
     },
   })
+
+  /**
+   * A TEAM UPDATE OPENS ON ITS QUESTION.
+   *
+   * No accept screen, no name form, no briefing: the token says who they are, clicking the link in
+   * their own mail is the consent that screen was collecting, and the whole promise of that card is
+   * two minutes. Every other situation keeps the screen, for the reason written under it.
+   *
+   * Runs once - `accept.isIdle` - so a re-render mid-flight cannot fire a second join.
+   */
+  useEffect(() => {
+    if (preview && opensStraightOnTheQuestion(preview.scenario) && !preview.alreadyAccepted && accept.isIdle) {
+      accept.mutate()
+    }
+  }, [preview, accept])
+
+
 
   /**
    * A fresh way in has been emailed, because this is not the browser they joined
@@ -177,6 +195,17 @@ export function InvitePage() {
             You have already joined this check-in, and this is a new device or browser.
             We have sent a sign-in link to <strong>{emailedTo}</strong> so only you can pick up where you left off.
           </div>
+        </div>
+      </InviteShell>
+    )
+  }
+
+  if (preview && opensStraightOnTheQuestion(preview.scenario) && !failed && !waiting && !emailedTo) {
+    return (
+      <InviteShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Opening your question</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>One moment.</div>
         </div>
       </InviteShell>
     )

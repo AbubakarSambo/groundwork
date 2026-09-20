@@ -147,13 +147,30 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
 }
 
 /** The name to show for someone, falling back sensibly when a name is missing. */
-export function displayName(p: LabelParty): string | null {
+export function displayName(p: LabelParty, theEmailIsFair = false): string | null {
   const first = p.user?.firstName?.trim();
   const last = p.user?.lastName?.trim();
   if (first) return last ? `${first} ${last}` : first;
-  // An invited participant who has not joined yet has no name of their own. The
-  // email is theirs and already visible to the lead on the ground page, so it is
-  // a fair fallback there - but it is never worth showing to a peer.
+  /*
+   * AND THE ROSTER THAT NAMED HALF OF ITSELF.
+   *
+   * Read on a live report: "Amina Yusuf - Answered. Sahar Bello - Answered. Participant C -
+   * Answered. Participant D - Answered." Two colleagues by name and two by letter, on one line,
+   * for no reason a reader could see: C and D had simply never set a name, so their side fell
+   * back to the label the report is stored with. It reads as the product losing track of who is
+   * in the room.
+   *
+   * The lead typed these addresses and reads them on the ground page already, so for a reader
+   * entitled to their identity the address is the honest name. No first name is invented from it:
+   * a person's own name is theirs to give, and guessing "Hafsah Click" out of an address is the
+   * kind of helpfulness this codebase strips everywhere else.
+   *
+   * Never to a peer, which is what `theEmailIsFair` gates - see namesVisibleTo.
+   */
+  if (theEmailIsFair) {
+    const email = p.user?.email?.trim();
+    if (email) return email;
+  }
   return null;
 }
 
@@ -234,10 +251,12 @@ export function namesVisibleTo(
 
   for (const p of parties) {
     const label = labels.get(p.id);
-    const name = displayName(p);
+    /* The address stands in for a name only where the whole identity is already this reader's to
+       see: their own row, and the lead's view of their own team. Never peer to peer. */
+    const isSelf = p.id === viewerParticipantId;
+    const name = displayName(p, viewerIsLead || isSelf);
     if (!label || !name) continue;
 
-    const isSelf = p.id === viewerParticipantId;
     const isLead = p.partyType === PartyType.INITIATOR;
 
     if (peersVisibleToEachOther || viewerIsLead || isSelf || isLead) visible.set(label, name);

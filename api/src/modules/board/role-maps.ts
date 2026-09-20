@@ -124,7 +124,8 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     onTrackMeans: 'Named buyers with budget and authority, real pipeline moving, dated next actions.',
     goingWrongLooksLike: 'Plenty of activity and warm conversations, no named buyer who can actually decide.',
     neutralProbes: [
-      'Which of those conversations was with someone who can actually buy, budget and authority?',
+      /* Read on a live board with a word missing: "someone who can actually buy, budget and authority". */
+      'Which of those conversations was with someone who can actually decide, with the budget and the authority?',
       'Which ones specifically, by name?',
       'It went quiet, then what did you try?',
       'What is the next action on that, and by when?',

@@ -3,6 +3,8 @@ import { MARKETING_URL } from '@/lib/marketing'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
+import { billingApi } from '@/api/billing'
+import { aFreeRunLine, worthAsking } from './what-is-waiting-for-this-address'
 
 /**
  * Where the API lives, for the one navigation that cannot go through the axios
@@ -268,6 +270,21 @@ export function AuthPage() {
    * Still nothing is created until the link is opened (GW-001). This fills in the
    * pending signup, it does not make a user.
    */
+  /*
+   * Asked once the address looks like one, a beat after they stop typing, and never blocking the
+   * form: a promise we cannot look up is a line that does not appear, not a sign-up that stalls.
+   */
+  const [freeRun, setFreeRun] = useState<string | null>(null)
+  useEffect(() => {
+    if (view !== 'create' || !worthAsking(email)) { setFreeRun(null); return }
+    const at = window.setTimeout(() => {
+      billingApi.whatIsWaitingFor(email.trim().toLowerCase())
+        .then(r => setFreeRun(aFreeRunLine(r.months, r.plan)))
+        .catch(() => setFreeRun(null))
+    }, 500)
+    return () => window.clearTimeout(at)
+  }, [email, view])
+
   const createAccount = useMutation({
     mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), {
       payload: {
@@ -453,6 +470,18 @@ export function AuthPage() {
             <div className="gw-sub-t" style={{ marginBottom: 20 }}>
               No password to choose. We send you a link, and your account is made when you open it.
             </div>
+
+            {/*
+              WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
+              read it here, while they are deciding, rather than find out on their first invoice.
+              See what-is-waiting-for-this-address.ts and the API's on-the-house route.
+            */}
+            {freeRun && (
+              <div style={{ marginBottom: 18, padding: '11px 14px', borderRadius: 8,
+                            background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', fontSize: 13.5 }}>
+                {freeRun}
+              </div>
+            )}
 
             <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
               {trap.field}

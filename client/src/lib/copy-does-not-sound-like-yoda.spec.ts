@@ -27,8 +27,22 @@ import { join } from 'path'
  */
 const ROOTS = [join(__dirname, '..'), join(__dirname, '..', '..', '..', 'api', 'src')]
 
-/** Copy this pass deliberately leaves alone: model instructions, and her own words. */
-const NOT_COPY = ['prompt-library.ts', 'what-the-moat-is-made-of.ts']
+/**
+ * Copy this pass deliberately leaves alone: model instructions, and her own words.
+ *
+ * one-line-one-link-one-report.ts holds the two emails for "Get updates from your team", and the
+ * trial line in it is Hafsah's sentence, given on 18 September 2026 and quoted rather than
+ * rewritten: "We are trying this out to see if this new tool can help us be aligned, and your
+ * answers go into one summary that gives us a shared picture." It is long enough to score, and the
+ * regex does not get to edit her.
+ */
+const NOT_COPY = [
+  'prompt-library.ts',
+  'what-the-moat-is-made-of.ts',
+  /* Both hold that same sentence of hers: the email that sends it, and the form that sets it. */
+  'one-line-one-link-one-report.ts',
+  'AskYourTeamOneThing.tsx',
+]
 
 const blankComments = (src: string) =>
   src

@@ -1,3 +1,4 @@
+import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
@@ -808,9 +809,15 @@ export class BoardService {
         const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
+        const firstDivergence = Array.isArray(reportSafe?.divergences)
+          ? (reportSafe!.divergences as any[])[0]
+          : null;
         out.quickRead = atAGlanceTiles({
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
           backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
+          /* Named rather than counted - see atAGlanceTiles. */
+          theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,
+          theBlocker: held.theFirstBlocker,
         });
       }
     }
@@ -1068,6 +1075,8 @@ export class BoardService {
     return {
       peopleWorkTogether:
         (ground as any).peopleWorkTogether ?? familyFor((ground as any).scenario) !== BoardFamily.COHORT,
+      /* A situation with no aim by design has no remit either: see a-check-in-with-no-aim. */
+      situationHasRoles: anAimIsOwedHere((ground as any).scenario),
       participants: ground.participants.map((p) => ({
         id: p.id,
         roleAsDescribed: p.roleAsDescribed ?? null,
@@ -1639,6 +1648,8 @@ export class BoardService {
       movedOnTargets: held.movedOnTargets,
       blocked: held.blocked,
       waiting: held.waiting,
+      /* And the blocker itself, so the board's tile names it exactly as the report's does. */
+      theFirstBlocker: held.theFirstBlocker,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });

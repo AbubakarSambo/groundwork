@@ -1,3 +1,4 @@
+import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
 import {
@@ -1849,10 +1850,21 @@ from finishing at all.`;
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
-    // Nothing usable from either source: the old client silently skipped this
-    // case and stranded the user on /setup. Fail EXPLICITLY so the client can
-    // show "we couldn't find your session on this device".
-    if ((!dto.history || dto.history.length === 0) && !dto.lead) {
+    /*
+     * NOTHING USABLE FROM ANY SOURCE, AND THERE ARE THREE OF THEM NOW.
+     *
+     * The old client silently skipped this case and stranded the user on /setup, so it fails
+     * explicitly and the client says "we couldn't find your session on this device". A transcript
+     * was the only source when that was written, and an empty one meant the session was lost.
+     *
+     * A BRIEF IS THE THIRD SOURCE, and it is a whole setup rather than a fragment of one. "Get
+     * updates from your team" has no conversation by design - four fields, two minutes, and the
+     * lead's own line is the question everybody answers. See ask-your-team-one-thing. Refusing it
+     * for having no transcript refuses the card for working the way it was asked to work.
+     */
+    const nothingToBuildFrom =
+      (!dto.history || dto.history.length === 0) && !dto.lead && !dto.brief?.trim();
+    if (nothingToBuildFrom) {
       throw new BadRequestException('NO_ENTRY_SESSION');
     }
 
@@ -1884,9 +1896,9 @@ from finishing at all.`;
     const label = (dto.groundLabel ?? '').trim() || 'My first ground';
     const scenario = resolveScenario(dto.scenario);
 
-    if (dto.contributors.length > 20) {
-      throw new BadRequestException('Contributor count exceeds the limit of 20 per check-in. Split into multiple check-ins if needed.');
-    }
+    /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
+    const tooMany = tooManyPeopleFor(dto.contributors.length);
+    if (tooMany) throw new BadRequestException(tooMany);
 
     // Update org name if the admin filled it in.
     if (dto.orgName?.trim()) {

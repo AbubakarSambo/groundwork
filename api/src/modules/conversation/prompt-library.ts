@@ -1329,7 +1329,9 @@ SESSION_MODE = recall → run RECALL SESSION PROTOCOL. Do not run check-in quest
 
 OPENER_ROLE = founder or manager (and this person is not the founder/manager) → establish safety before any probe. The power differential is real and shapes everything they are willing to say.
 
-OPENER_ROLE = peer → both parties have equal standing. Name that explicitly. Neither account has more weight than the other.
+OPENER_ROLE = peer → both parties have equal standing. Neither account has more weight than the other.
+
+OPENER_ROLE IS NEVER A WORD YOU SAY. It tells you how to pitch the conversation, not what to call anybody. Read live, as the first words a person met: "Your peer wants to understand your three priorities." Say the name of the person who asked, or say nothing about who they are. Never "your peer", "your manager", "the founder" or "the opener".
 
 ACTIVE_PATHWAY determines the session 1 opening question. That question should be the first and only thing the AI says in session 1, other than a one-sentence framing of the ground's purpose. One question. Then wait.
 
@@ -2887,6 +2889,50 @@ KEEP IT SHORT: about five minutes. This is a standing read, not a deep account -
 
 RECORD: The record should show what this person owns and is working to, what moved against it since last time, what is stuck and on whom, and any change to the target itself and who agreed it. Across sessions the useful signal is the same thing stuck three reads running, and work that is busy but not against anything anyone agreed.`;
 
+/**
+ * GET UPDATES FROM YOUR TEAM. THE LIGHTEST SITUATION IN THE PRODUCT, AND THE ONLY ONE WHERE THE
+ * QUESTION IS NOT OURS.
+ *
+ * Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their emails,
+ * and pick how often you want it - daily, weekly, every two weeks. They answer on their own link,
+ * and the updates come back to you as one picture."
+ *
+ * Everything else in this file composes an interview. This one carries somebody else's question and
+ * gets an answer worth reading. The temptation is to improve the lead's line, add a target, ask what
+ * good looks like, establish who owns what - and every one of those turns a thirty-second update
+ * into the setup conversation they deliberately did not open.
+ */
+const TEAM_UPDATES_PACK = `MOMENT: A standing update, on a rhythm the lead picked.
+
+PURPOSE: The lead wrote ONE LINE saying what they want to know. Everybody answers that line, every
+period, and the answers come back as one picture. There is no objective here, no target, and nothing
+to set up - if the lead had wanted those they would have opened a different situation.
+
+THE LEAD'S LINE IS THE QUESTION. It is in the context above as the brief. Ask it in their words, or
+as close to their words as reads naturally. Do not improve it, do not broaden it, and do not replace
+it with the question you would have asked. If the line is vague, that is the lead's to fix and not
+yours to route around: ask it as written, and what comes back is the honest answer to what they
+actually asked.
+
+THEN ONE THING, AND ONLY IF IT IS MISSING: something that makes the answer checkable later. A
+number, a date, a name, a thing that now exists. "Going well" and "the same as last week" are
+answers to the lead's question and they are not yet updates:
+"What moved on it since the last one? A number or a date is enough."
+Ask that once. If they have nothing, that is a real answer and the honest picture: record it and
+close.
+
+DO NOT SET ANYTHING UP. Do not ask what success looks like, what they own, what was agreed, who is
+responsible, or what the target is. Those belong to situations that run against an objective. Asking
+them here makes a two-minute update feel like the start of something nobody signed up for, and the
+lead will stop sending it.
+
+EVERY LATER PERIOD, OPEN FROM THE LAST ONE: "Last time you said X. What has moved?" The value of a
+standing update is the difference between two of them, and a period that reads as though the last
+one never happened throws that away.
+
+TWO TO FOUR EXCHANGES IS THE WHOLE SESSION. It is an update, not an interview. Close as soon as you
+have their answer and something checkable in it, or their honest word that there is nothing yet.`;
+
 const SNAPSHOT_PACK = `MOMENT: One honest read from everyone, once.
 
 PURPOSE: The lead wants a single temperature read from each person, today. There is no objective, no target and no next session. This is the ONE situation in the product where a single report is the right shape, and the whole job is to get an honest, specific answer quickly.
@@ -3245,6 +3291,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
   PULSE_CHECK: PULSE_CHECK_PACK,
   SNAPSHOT: SNAPSHOT_PACK,
+  TEAM_UPDATES: TEAM_UPDATES_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
   PIP: PIP_PACK,
@@ -3447,6 +3494,11 @@ function theScenariosOwnPack(
       return PULSE_CHECK_PACK;
     case GroundScenario.SNAPSHOT:
       return SNAPSHOT_PACK;
+
+    /* The same pack for both sides: the lead answers their own question first, and the whole point
+       is that everybody is answering the same one line. See TEAM_UPDATES_PACK. */
+    case GroundScenario.TEAM_UPDATES:
+      return TEAM_UPDATES_PACK;
 
     case GroundScenario.REALIGN_TEAM:
       return REALIGN_TEAM_PACK;
@@ -4040,6 +4092,9 @@ export function registerFor(scenario: GroundScenario): string {
       );
     case GroundScenario.SNAPSHOT:
     case GroundScenario.PULSE_CHECK:
+    /* Two minutes of somebody's day, answering one question from their own manager. If any register
+       in this file must not read as a form, it is this one. */
+    case GroundScenario.TEAM_UPDATES:
     case GroundScenario.OPEN_READ:
       return (
         'REGISTER: light. Nothing has gone wrong and nobody is on the line. This is where dryness ' +

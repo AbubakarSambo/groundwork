@@ -98,6 +98,22 @@ enum GroundScenario {
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
 
+  /// ONE LINE, SOME EMAIL ADDRESSES, AND A RHYTHM. THE LIGHTEST THING IN THIS ENUM.
+  ///
+  /// Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
+  /// emails, and pick how often you want it - daily, weekly, every two weeks. They answer on their
+  /// own link, and the updates come back to you as one picture."
+  ///
+  /// WHAT MAKES IT DIFFERENT FROM EVERYTHING ELSE HERE, and it is one thing: the lead's own line IS
+  /// the question. Every other situation has the product composing the interview from a pack; this
+  /// one has a person writing the question and the product carrying it, asking for whatever it takes
+  /// to make an answer checkable, and nothing else.
+  ///
+  /// NOT PULSE_CHECK, which spends a whole first session establishing what each person owns before
+  /// it asks how anything is going. Not SNAPSHOT, which happens once. This recurs, and it never
+  /// sets anything up: somebody who wanted to set up targets would have opened a different card.
+  TEAM_UPDATES
+
   /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
   /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
   CONTRACT_REVIEW
@@ -455,6 +471,19 @@ model Organization {
   /// a fifth status would have unsubscribed the customer the moment they asked to leave later.
   subscriptionEndsAt    DateTime?         @map("subscription_ends_at")
 
+  /// THREE MONTHS ON THE HOUSE, AND WHY IT IS NOT A FAKE SUBSCRIPTION.
+  ///
+  /// We give some organisations free use for a period - a partner, a pilot, somebody we owe a
+  /// favour. The tempting shortcut is to write `subscriptionStatus: 'active'` and a plan, because
+  /// every gate already reads those two fields. It is also how an organisation ends up covered for
+  /// ever: nothing in that pair carries an end, so the free run only stops if a cron remembers to
+  /// stop it, and a cron that forgets costs money silently and for years.
+  ///
+  /// So a free run is its own pair of fields with a DATE in it, and `whatCoversThem` decides which
+  /// of the three - paid, on the house, or the free tier - applies today. It expires by arithmetic.
+  freeUntil DateTime?         @map("free_until")
+  freePlan  SubscriptionPlan? @map("free_plan")
+
   companyStage CompanyStage? @map("company_stage")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -475,7 +504,7 @@ model Organization {
   embedConfig         EmbedConfig?
   whatsappConnection  WhatsAppConnection?
   commitments         Commitment[]
-  todos       Todo[]
+  todos               Todo[]
   assistantTurns      AssistantTurn[]
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
@@ -779,11 +808,11 @@ model AdminProfile {
 /// minute. It lived in a process-local Map, so a restart or a second instance broke Google sign-in
 /// with "Invalid or expired exchange code" (fix plan B15). Deleted on use; the rest pruned daily.
 model OAuthExchangeCode {
-  id        String    @id @default(uuid())
-  code      String    @unique
-  token     String    @db.Text
-  expiresAt DateTime  @map("expires_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  code      String   @unique
+  token     String   @db.Text
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([expiresAt])
   @@map("oauth_exchange_codes")
@@ -844,7 +873,7 @@ model Ground {
   whatTheRoomIsAbout        Json? @map("what_the_room_is_about")
   whatTheRoomIsAboutSession Int?  @map("what_the_room_is_about_session")
 
-  timelineDays     Int       @map("timeline_days")
+  timelineDays     Int     @map("timeline_days")
   /// DID THE LEAD CHOOSE THIS, OR DID WE.
   ///
   /// `timelineDays` is not nullable and `cadence` has a default, so both are set on every ground from
@@ -854,11 +883,11 @@ model Ground {
   ///
   /// These say which it was. Found by trying to null the column to test the gap and discovering the
   /// constraint forbids it.
-  timelineStated   Boolean   @default(false) @map("timeline_stated")
-  cadenceStated    Boolean   @default(false) @map("cadence_stated")
-  timelineWeeks    Int?      @map("timeline_weeks")
-  cadence          Cadence   @default(FORTNIGHTLY)
-  cadenceAnchorDay Int?      @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  timelineStated   Boolean @default(false) @map("timeline_stated")
+  cadenceStated    Boolean @default(false) @map("cadence_stated")
+  timelineWeeks    Int?    @map("timeline_weeks")
+  cadence          Cadence @default(FORTNIGHTLY)
+  cadenceAnchorDay Int?    @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
 
   /// WHICH DAYS THIS TEAM WORKS. 0=Sun..6=Sat. Empty means every day, which is the honest default
   /// for a product that does not know whose week this is.
@@ -871,22 +900,22 @@ model Ground {
   /// Saturdays, and the week starts on Sunday in much of the region this is built for. So the form
   /// offers it and the empty list means nobody said, which is different from somebody saying every
   /// day - and both are rendered as what they are.
-  workingDays      Int[]     @default([]) @map("working_days")
-  startsAt         DateTime? @map("starts_at") // when the first scheduled check-in opens (start date)
-  endsAt           DateTime? @map("ends_at") // no new check-ins scheduled after this (end date)
-  endState         String?   @map("end_state") // the decision the process worked toward
-  resolutionState  String?   @map("resolution_state") // pre-agreed intended outcome set at creation
-  brief            String?   @map("brief") // initiator's opening brief, written at ground creation
-  groundAuditLog   Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
-  createdByUserId  String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
+  workingDays     Int[]     @default([]) @map("working_days")
+  startsAt        DateTime? @map("starts_at") // when the first scheduled check-in opens (start date)
+  endsAt          DateTime? @map("ends_at") // no new check-ins scheduled after this (end date)
+  endState        String?   @map("end_state") // the decision the process worked toward
+  resolutionState String?   @map("resolution_state") // pre-agreed intended outcome set at creation
+  brief           String?   @map("brief") // initiator's opening brief, written at ground creation
+  groundAuditLog  Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
+  createdByUserId String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
   // Lifecycle / billing markers
-  billingActivatedAt DateTime? @map("billing_activated_at") // admin activated report
-  billingEnabled     Boolean   @default(false) @map("billing_enabled")
-  paymentConfirmed   Boolean   @default(false) @map("payment_confirmed")
-  resolvedAt         DateTime? @map("resolved_at")
-  closedAt           DateTime? @map("closed_at")
-  pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
+  billingActivatedAt DateTime?     @map("billing_activated_at") // admin activated report
+  billingEnabled     Boolean       @default(false) @map("billing_enabled")
+  paymentConfirmed   Boolean       @default(false) @map("payment_confirmed")
+  resolvedAt         DateTime?     @map("resolved_at")
+  closedAt           DateTime?     @map("closed_at")
+  pausedAt           DateTime?     @map("paused_at") // set when status transitions to PAUSED
   /// The status a hold was placed on, so lifting it can put the ground back where it was rather
   /// than guessing ACTIVE. Written by pauseGround, cleared by resumeGround. Null on any ground
   /// paused before this column existed; resume falls back to ACTIVE for those and says so.
@@ -971,31 +1000,31 @@ model Ground {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization               Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  initiator                  User                        @relation("GroundInitiator", fields: [initiatorId], references: [id])
-  promptVersion              PromptVersion?              @relation(fields: [promptVersionId], references: [id])
-  accessCode                 ContributorCode?            @relation("GroundAccessCode", fields: [accessCodeId], references: [id])
-  participants               GroundParticipant[]
-  checkIns                   CheckIn[]
-  reportRounds               ReportRound[]
-  report                     Report?
-  patternDetections          PatternDetection[]
-  resolution                 Resolution?
-  outcome                    Outcome?
-  outcomeFeedback            OutcomeFeedback[]
-  billingEvents              BillingEvent[]
-  documents                  GroundDocument[]
-  personObjectives           PersonObjective[]
-  baselineEntries            GroundBaselineEntry[]
-  setupSignOffs              GroundSetupSignOff[]
-  leadContextNotes           LeadContextNote[]
-  reportActivations          ReportActivation[]
-  roundCompletions           RoundCompletion[]
-  objectives                 GroundObjective[]
-  gaps                       CheckInGap[]
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  initiator         User                  @relation("GroundInitiator", fields: [initiatorId], references: [id])
+  promptVersion     PromptVersion?        @relation(fields: [promptVersionId], references: [id])
+  accessCode        ContributorCode?      @relation("GroundAccessCode", fields: [accessCodeId], references: [id])
+  participants      GroundParticipant[]
+  checkIns          CheckIn[]
+  reportRounds      ReportRound[]
+  report            Report?
+  patternDetections PatternDetection[]
+  resolution        Resolution?
+  outcome           Outcome?
+  outcomeFeedback   OutcomeFeedback[]
+  billingEvents     BillingEvent[]
+  documents         GroundDocument[]
+  personObjectives  PersonObjective[]
+  baselineEntries   GroundBaselineEntry[]
+  setupSignOffs     GroundSetupSignOff[]
+  leadContextNotes  LeadContextNote[]
+  reportActivations ReportActivation[]
+  roundCompletions  RoundCompletion[]
+  objectives        GroundObjective[]
+  gaps              CheckInGap[]
   /// Whether people on this check-in see each other's numbers. Narrow unless somebody chose
   /// otherwise: a default that publishes is not a default.
-  whoSeesTargets             WhoSeesTargets @default(THEIR_OWN) @map("who_sees_targets")
+  whoSeesTargets    WhoSeesTargets        @default(THEIR_OWN) @map("who_sees_targets")
 
   /// WHETHER BEING BLOCKED IS EXPECTED TO COME WITH HAVING TRIED.
   ///
@@ -1008,7 +1037,7 @@ model Ground {
   /// else's company, a crisis check-in where the point is to hear what happened and not to coach.
   /// Asking somebody what they tried, when trying was never theirs to do, is the fastest way to
   /// make a check-in feel like an interrogation.
-  expectThemToUnblock        Boolean        @default(true) @map("expect_them_to_unblock")
+  expectThemToUnblock        Boolean                     @default(true) @map("expect_them_to_unblock")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
   poll                       GroundPoll?
@@ -1127,13 +1156,13 @@ model GroundParticipant {
   /// Board targets that are this person's own. See GroundObjective.ownerParticipantId.
   objectivesOwned            GroundObjective[] @relation("ObjectiveOwner")
   whatWorked                 WhatWorked[]
-  id                         String         @id @default(uuid())
-  groundId                   String         @map("ground_id")
+  id                         String            @id @default(uuid())
+  groundId                   String            @map("ground_id")
   /// The SHA-256 of the lower-cased address this link had before the account was erased. Erasure
   /// rewrites `email` to a deleted-... placeholder, which was the only key the retention sweep had,
   /// so an erased person's raw turns outlived the window (fix plan A16). The sweep matches this too.
-  erasedFrom                 String?        @map("erased_from")
-  userId                     String?        @map("user_id") // null until they accept the invite
+  erasedFrom                 String?           @map("erased_from")
+  userId                     String?           @map("user_id") // null until they accept the invite
   email                      String
   partyType                  PartyType
   // The lead chose "managing only" at confirm-lead: they oversee the ground but
@@ -1141,29 +1170,29 @@ model GroundParticipant {
   // NOT created a session-1 check-in and are excluded from the readiness count
   // in isSessionReadyForReport - otherwise the ground would wait forever on an
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
-  managingOnly               Boolean        @default(false) @map("managing_only")
-  roleAsDescribed            String?        @map("role_as_described") // role as the initiator described it
+  managingOnly               Boolean           @default(false) @map("managing_only")
+  roleAsDescribed            String?           @map("role_as_described") // role as the initiator described it
   /// Optional, never inferred, never guessed from an address; blank means blank. Captured beside the
   /// role at every door that adds a person (fix plan E2). A person with no department is in no
   /// department, which is "no scope", never "everyone's".
-  department                 String?        @db.VarChar(120)
+  department                 String?           @db.VarChar(120)
   /// The language this person writes in, ISO 639-1 (ha, sw, en). Read from their first message when
   /// nothing on the roster said. The conversation happens in it; the record stays in English.
-  language                   String?        @db.VarChar(8)
-  invitedAt                  DateTime?      @map("invited_at")
-  notifiedAt                 DateTime?      @map("notified_at") // never added silently
+  language                   String?           @db.VarChar(8)
+  invitedAt                  DateTime?         @map("invited_at")
+  notifiedAt                 DateTime?         @map("notified_at") // never added silently
   // Mirror of the LATEST invite-kind EmailDelivery status for this participant
   // (SENT | DELIVERED | BOUNCED | COMPLAINED) - written by the Resend webhook.
-  inviteDeliveryStatus       String?        @map("invite_delivery_status")
+  inviteDeliveryStatus       String?           @map("invite_delivery_status")
   // Magic-link invite (cleared once accepted; userId is set on accept).
-  inviteToken                String?        @unique @map("invite_token")
-  inviteTokenExpiresAt       DateTime?      @map("invite_token_expires_at")
+  inviteToken                String?           @unique @map("invite_token")
+  inviteTokenExpiresAt       DateTime?         @map("invite_token_expires_at")
   /// The two stamps of the invite-expiry sweep (grounds.cron.ts), so each mail goes once.
-  inviteExpiryWarnedAt       DateTime?      @map("invite_expiry_warned_at")
-  inviteLapsedToldAt         DateTime?      @map("invite_lapsed_told_at")
+  inviteExpiryWarnedAt       DateTime?         @map("invite_expiry_warned_at")
+  inviteLapsedToldAt         DateTime?         @map("invite_lapsed_told_at")
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
-  specificityHistory         Float[]        @default([]) @map("specificity_history")
-  lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)
+  specificityHistory         Float[]           @default([]) @map("specificity_history")
+  lastNudgedAt               DateTime?         @map("last_nudged_at") // throttles reminder emails (B1)
   /// ADDED, BUT WAITING FOR A SEAT BEFORE ANYBODY WRITES TO THEM.
   ///
   /// Every plan is priced by team size, and adding somebody to a check-in used to be refused
@@ -1176,30 +1205,30 @@ model GroundParticipant {
   /// on the check-in and that they are waiting, and the invitation goes out the moment an admin
   /// makes room. Nothing reaches the person until then: an invitation to a check-in they cannot
   /// open is worse than silence.
-  awaitingSeat               Boolean        @default(false) @map("awaiting_seat")
+  awaitingSeat               Boolean           @default(false) @map("awaiting_seat")
   /// THE WAY OUT OF BEING CHASED. The invitation tells somebody they can simply ignore it, and
   /// then the reminders arrive anyway - so the mail carries a link that needs no login and this
   /// is where it lands. Deliberately NOT a decision about taking part: their invitation still
   /// works and nothing is recorded against them, because "stop reminding me" and "no" are two
   /// different sentences and only one of them is theirs to be asked for.
   /// See conversation/ignoring-it-should-be-enough.ts.
-  remindersStoppedAt         DateTime?      @map("reminders_stopped_at")
+  remindersStoppedAt         DateTime?         @map("reminders_stopped_at")
   /// Long and random, minted the first time we write to them and kept afterwards - the invite
   /// token is cleared on accept, and the reminders outlive it.
-  stopRemindersToken         String?        @unique @map("stop_reminders_token")
+  stopRemindersToken         String?           @unique @map("stop_reminders_token")
   /// When they were last told they have missed three rounds in a row. The absence reminder used to
   /// fire on one exact day, so nothing needed to remember it; now that a passed day is still due,
   /// this is what stops the same person being told every morning. Null means never told.
-  absenceToldAt              DateTime?      @map("absence_told_at")
-  soloArtifact               String?        @map("solo_artifact") @db.Text // single-party record summary after session 1 (B2)
-  soloArtifactAt             DateTime?      @map("solo_artifact_at")
-  soloArtifactShared         Boolean        @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report
+  absenceToldAt              DateTime?         @map("absence_told_at")
+  soloArtifact               String?           @map("solo_artifact") @db.Text // single-party record summary after session 1 (B2)
+  soloArtifactAt             DateTime?         @map("solo_artifact_at")
+  soloArtifactShared         Boolean           @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report
   // Explicit "my account is accurate, I'm done" confirmation. Corrections
   // (startSelfCorrectionSession) remain possible after this is set - it does
   // not block them - but any correction session started afterward is stamped
   // CheckIn.isPostSignOff so it surfaces as a flagged, visible update rather
   // than silently reshaping a record the other party may have already seen.
-  signedOffAt                DateTime?      @map("signed_off_at")
+  signedOffAt                DateTime?         @map("signed_off_at")
   // Which function map reads this person fairly (SALES, PRODUCT, ENGINEERING, ...).
   // Detection is CONTINUOUS, not a tag set once: the stated role is only a starting
   // prior, and the engine revises this from what the person's work is actually made
@@ -1217,7 +1246,7 @@ model GroundParticipant {
   // being coached and keeps being read.
   //
   // See participation-timeline.ts, which is the arithmetic these feed.
-  joinedAt                   DateTime?      @map("joined_at") // null = present from the start
+  joinedAt                   DateTime?         @map("joined_at") // null = present from the start
   /// WHEN THIS PERSON'S WORK STARTS, WHICH IS NOT WHEN THEY JOINED THE GROUND.
   ///
   /// Five situations are set up about somebody before they begin: a hire whose first day is next
@@ -1230,19 +1259,19 @@ model GroundParticipant {
   /// every read built on countable periods counts it against them.
   ///
   /// Null means the work was already underway, which is true of every row that existed before it.
-  startsAt                   DateTime?      @map("starts_at")
-  leftAt                     DateTime?      @map("left_at") // quit, removed, or let go. Freeze, never erase.
+  startsAt                   DateTime?         @map("starts_at")
+  leftAt                     DateTime?         @map("left_at") // quit, removed, or let go. Freeze, never erase.
   // Authorized absence: the DATES ONLY.
   //
   // The engine must never store, infer, or surface the REASON. Medical,
   // parental, bereavement, sabbatical: none of it is the engine's business, all
   // of it is a liability, and "on leave" is the entire fact it needs. Shape is
   // [{ from, to }], to null while still away.
-  leavePeriods               Json?          @map("leave_periods")
+  leavePeriods               Json?             @map("leave_periods")
   coachingState              CoachingState?
-  detectedFunction           String?        @map("detected_function")
-  detectedFunctionConfidence Float?         @map("detected_function_confidence")
-  detectedFunctionAt         DateTime?      @map("detected_function_at")
+  detectedFunction           String?           @map("detected_function")
+  detectedFunctionConfidence Float?            @map("detected_function_confidence")
+  detectedFunctionAt         DateTime?         @map("detected_function_at")
   // THE COFOUNDER INTAKE IS GONE. Twelve free-text columns lived here -
   // founding/role/personal/exit intent, compensation/autonomy/recognition/
   // growth/relationship asks, financial floor, stress and relational tolerance -
@@ -1259,7 +1288,7 @@ model GroundParticipant {
   // whose landing page makes promises about what happens to what people tell it.
   // The engine already learns this in conversation, where it is probed, evidenced
   // and visible to the person in their own record.
-  createdAt                  DateTime       @default(now()) @map("created_at")
+  createdAt                  DateTime          @default(now()) @map("created_at")
 
   ground                  Ground                   @relation(fields: [groundId], references: [id], onDelete: Cascade)
   user                    User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1428,10 +1457,10 @@ model WhatWorked {
 }
 
 model RecordEntry {
-  id                   String          @id @default(uuid())
-  participantId        String          @map("participant_id")
-  checkInId            String?         @map("check_in_id")
-  type                 RecordEntryType
+  id            String          @id @default(uuid())
+  participantId String          @map("participant_id")
+  checkInId     String?         @map("check_in_id")
+  type          RecordEntryType
 
   /// HOW CHECKABLE THIS LINE IS. A COLUMN, BECAUSE IT WAS LIVING IN THE TEXT.
   ///
@@ -1446,19 +1475,19 @@ model RecordEntry {
   /// the readers parse it as a fallback. New rows keep the text clean, which is what actually ends
   /// the leak: a marker that is not in the text cannot be printed by a reader who forgot.
   verifiability        Verifiability?
-  text                 String          @db.Text // the person's exact words where possible
-  recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
-  anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
-  anchoredPassage      String?         @map("anchored_passage") @db.Text // the document's words that back it, quoted short, so a false match can be seen
-  anchoredOrigin       String?         @map("anchored_origin") @db.VarChar(24) // the backing document's origin, so generated notes do not count as a source
-  documentSays         String?         @map("document_says") @db.Text // when a document they can see states the same thing differently: what it says, quoted short
-  documentSaysId       String?         @map("document_says_id") // which document
-  dimensionThreadKey   String?         @map("dimension_thread_key") // groups entries across sessions by theme
-  anchored_question_id String?         @map("anchored_question_id") // which verbatim question produced this entry
-  createdAt            DateTime        @default(now()) @map("created_at")
+  text                 String         @db.Text // the person's exact words where possible
+  recallBased          Boolean        @default(true) @map("recall_based") // false = anchored to a document
+  anchoredDocumentId   String?        @map("anchored_document_id") // the uploaded document that backs this line, when one does
+  anchoredPassage      String?        @map("anchored_passage") @db.Text // the document's words that back it, quoted short, so a false match can be seen
+  anchoredOrigin       String?        @map("anchored_origin") @db.VarChar(24) // the backing document's origin, so generated notes do not count as a source
+  documentSays         String?        @map("document_says") @db.Text // when a document they can see states the same thing differently: what it says, quoted short
+  documentSaysId       String?        @map("document_says_id") // which document
+  dimensionThreadKey   String?        @map("dimension_thread_key") // groups entries across sessions by theme
+  anchored_question_id String?        @map("anchored_question_id") // which verbatim question produced this entry
+  createdAt            DateTime       @default(now()) @map("created_at")
   /// Set by the person this row is about when they say it is not what they said. A disputed row stays
   /// on the record and stops counting toward every read. See the-wall-between-said-and-extracted.
-  disputedAt           DateTime?       @map("disputed_at")
+  disputedAt           DateTime?      @map("disputed_at")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
@@ -1699,13 +1728,13 @@ enum BlockerKind {
 model GroundDependency {
   /// What kind of thing is in the way. Null is the ordinary state: most people describe a blocker
   /// without classifying it, and an unclassified blocker is still a blocker.
-  blockerKind       BlockerKind?     @map("blocker_kind")
-  id                String           @id @default(uuid())
-  groundId          String           @map("ground_id")
-  fromParticipantId String           @map("from_participant_id")
-  onParticipantId   String?          @map("on_participant_id") // null = waiting on someone/something outside the ground
-  onLabel           String?          @map("on_label") // free text when the blocker is not a participant
-  what              String           @db.Text // "the sales deck", "paying-user pricing"
+  blockerKind       BlockerKind? @map("blocker_kind")
+  id                String       @id @default(uuid())
+  groundId          String       @map("ground_id")
+  fromParticipantId String       @map("from_participant_id")
+  onParticipantId   String?      @map("on_participant_id") // null = waiting on someone/something outside the ground
+  onLabel           String?      @map("on_label") // free text when the blocker is not a participant
+  what              String       @db.Text // "the sales deck", "paying-user pricing"
 
   /// DID THIS PERSON NAME THE THING, OR ONLY SAY THEY WERE STUCK?
   ///
@@ -1724,11 +1753,11 @@ model GroundDependency {
   ///
   /// NULL IS UNKNOWN, not false: every row written before this column existed has one, and the
   /// readers fall back to the word-list rule for those rather than calling them all unnamed.
-  namedTheThing     Boolean?         @map("named_the_thing")
+  namedTheThing   Boolean?         @map("named_the_thing")
   // What happens once this clears. The board shows this so a handoff reads as a
   // consequence, not just a status.
-  then              String?          @db.Text
-  status            DependencyStatus @default(WAITING)
+  then            String?          @db.Text
+  status          DependencyStatus @default(WAITING)
   /// Stamped once, the first time this handoff crosses the waiting threshold and is escalated.
   /// The column is what makes the sweep fire once rather than every night for as long as the
   /// handoff stays open - a nightly repeat of the same alert is how a customer learns to filter
@@ -1740,12 +1769,12 @@ model GroundDependency {
   /// nothing in the record could tell that from somebody who had called, escalated and been
   /// refused. Their sentence, kept as they said it; the tiering is read off it at the point of use
   /// so the words stay the record and the judgement stays out of the column.
-  triedSaid         String?          @map("tried_said") @db.Text
-  escalatedAt       DateTime?        @map("escalated_at")
-  sourceCheckInId   String?          @map("source_check_in_id")
-  clearedAt         DateTime?        @map("cleared_at")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  triedSaid       String?          @map("tried_said") @db.Text
+  escalatedAt     DateTime?        @map("escalated_at")
+  sourceCheckInId String?          @map("source_check_in_id")
+  clearedAt       DateTime?        @map("cleared_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   ground          Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
   fromParticipant GroundParticipant  @relation("DependencyFrom", fields: [fromParticipantId], references: [id], onDelete: Cascade)
@@ -2244,14 +2273,14 @@ model WhatsAppSend {
 }
 
 model WhatsAppThread {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
   phone          String
   /// Null while the person has been asked which check-in and has not yet said.
-  checkInId      String?  @map("check_in_id")
+  checkInId      String?   @map("check_in_id")
   /// When the "which one?" list was sent. A typed number is a pick only while this is fresh (a-whatsapp-message-is-routed.ts).
   pickPendingAt  DateTime? @map("pick_pending_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])
   @@map("whatsapp_threads")
@@ -3264,10 +3293,10 @@ model ProductMetric {
 /// note to yourself that nobody else reads and no report weighs. Kept apart so that "buy milk" never
 /// turns up as a promise somebody slipped on.
 model Todo {
-  id               String  @id @default(uuid())
-  organizationId   String  @map("organization_id")
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
   /// The identity system's id, the same one commitments use.
-  personExternalId String  @map("person_external_id")
+  personExternalId String @map("person_external_id")
 
   text    String    @db.Text
   /// Their words for when. Kept as said.
@@ -3275,9 +3304,9 @@ model Todo {
   /// Only where a date was actually given.
   dueAt   DateTime? @map("due_at")
 
-  state TodoState @default(OPEN)
+  state  TodoState @default(OPEN)
   /// chat | api
-  source String @default("chat")
+  source String    @default("chat")
 
   createdAt DateTime  @default(now()) @map("created_at")
   doneAt    DateTime? @map("done_at")
@@ -3371,12 +3400,12 @@ model Person {
 
   /// The number they message from, E.164, from SCIM phoneNumbers[] or the people route. Matched
   /// before any number a person typed into Settings, because the roster is the customer's truth.
-  phone String?
+  phone                 String?
   /// STOP means stop, by the means the channel offers (whatsapp/a-message-outside-the-window.ts).
-  whatsappStoppedAt      DateTime? @map("whatsapp_stopped_at")
-  whatsappConsentAt      DateTime? @map("whatsapp_consent_at")
+  whatsappStoppedAt     DateTime? @map("whatsapp_stopped_at")
+  whatsappConsentAt     DateTime? @map("whatsapp_consent_at")
   /// The last time THIS person wrote to us on WhatsApp: Meta's 24-hour service window is measured from it.
-  whatsappLastInboundAt  DateTime? @map("whatsapp_last_inbound_at")
+  whatsappLastInboundAt DateTime? @map("whatsapp_last_inbound_at")
 
   /// SCIM's own signal, kept as it arrives. `deactivatedAt` is the moment it first became false.
   active        Boolean   @default(true)
@@ -4204,26 +4233,26 @@ model Difference {
 }
 
 model GroundDocument {
-  id            String  @id @default(uuid())
-  groundId      String  @map("ground_id")
-  participantId String? @map("participant_id")
-  fileName      String  @map("file_name")
-  mimeType      String  @map("mime_type")
-  content       String  @db.Text
-  assessment    Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+  id               String  @id @default(uuid())
+  groundId         String  @map("ground_id")
+  participantId    String? @map("participant_id")
+  fileName         String  @map("file_name")
+  mimeType         String  @map("mime_type")
+  content          String  @db.Text
+  assessment       Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
   /// WHAT THE PERSON WANTS LOOKED FOR IN IT, IN THEIR WORDS.
   ///
   /// A file arrives with no instructions and the session has to guess what mattered about it. In
   /// the chat the person can say so as they attach it, because there is a conversation to say it
   /// into; on the Context tab there was nowhere to put it, so a forty page architecture document
   /// went in mute. This is that sentence, kept with the document rather than turned into a turn.
-  uploaderNote  String? @map("uploader_note") @db.Text
+  uploaderNote     String? @map("uploader_note") @db.Text
   // WHAT KIND OF THING THIS IS. typed | photo | scan | screenshot | generated | pasted | conversation.
   // A typed contract is a source. A photo of a whiteboard is a source but partial. Model-generated
   // notes are somebody's recollection one step removed, and do not raise a band the way a source does.
-  origin        String? @db.VarChar(24)
+  origin           String? @db.VarChar(24)
   // The uploader described it; this is whether the file reads as what they said: { matches, reads, checkedAt }.
-  descriptionCheck Json? @map("description_check")
+  descriptionCheck Json?   @map("description_check")
 
   // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
   // filters on participantId, so every document is private to whoever uploaded
@@ -4383,10 +4412,10 @@ enum ReportActivationStatus {
 /// something was "updated after sign-off", and two rows for one round would say the same thing
 /// worse.
 model ReportRound {
-  id       String @id @default(uuid())
-  groundId String @map("ground_id")
+  id            String @id @default(uuid())
+  groundId      String @map("ground_id")
   /// The session number every party had completed when this was taken. Named for what it is (B13).
-  sessionNumber Int @map("session_number")
+  sessionNumber Int    @map("session_number")
 
   /// The report as it stood, in the same shape the live one holds.
   sharedPicture   String @map("shared_picture") @db.Text
@@ -4719,6 +4748,38 @@ enum MembershipRequestStatus {
   PENDING
   APPROVED
   DECLINED
+}
+
+/// A FREE RUN, PROMISED TO AN ADDRESS BEFORE THERE IS AN ORGANISATION TO GIVE IT TO.
+///
+/// "We put in someone's email and their org gets free use for three months, and when they sign up
+/// they see it." The grant therefore cannot hang off an organisation: at the moment it is made, the
+/// person has no account and no organisation, and the whole point is that it is waiting for them.
+///
+/// It is keyed by email, claimed once, and the clock starts at the claim rather than at the grant -
+/// so a promise made in September and taken up in November is still three whole months.
+model FreeRun {
+  id              String           @id @default(uuid())
+  /// Lowercased at the write, because an address is not case sensitive and a grant that misses is
+  /// worse than no grant: the person signs up, sees nothing, and pays or leaves.
+  email           String           @unique
+  months          Int              @default(3)
+  /// What the free run covers. Not a separate "unlimited" idea: it is one of the plans we sell, so
+  /// the caps, the wording and the upgrade path are the ones that already exist.
+  plan            SubscriptionPlan @default(GROWTH)
+  note            String?
+  grantedByUserId String?          @map("granted_by_user_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  /// Set together when somebody signs up on this address. `endsAt` is what the gates read.
+  claimedByOrganizationId String?   @map("claimed_by_organization_id")
+  claimedAt               DateTime? @map("claimed_at")
+  endsAt                  DateTime? @map("ends_at")
+  /// Withdrawn before it was taken up. Kept rather than deleted: who was promised what is a record.
+  revokedAt               DateTime? @map("revoked_at")
+
+  @@index([claimedByOrganizationId])
+  @@map("free_runs")
 }
 
 model OrganizationMembership {
@@ -5293,10 +5354,10 @@ model OpsPersonAccount {
 /// code sent to the signed-in email, good for a week, unless the session came from Google, which
 /// already did the second check. One row per user, replaced on each verification.
 model BackOfficePass {
-  userId     String   @id @map("user_id")
-  via        String
-  verifiedAt DateTime @default(now()) @map("verified_at")
-  expiresAt  DateTime @map("expires_at")
+  userId        String    @id @map("user_id")
+  via           String
+  verifiedAt    DateTime  @default(now()) @map("verified_at")
+  expiresAt     DateTime  @map("expires_at")
   /// The code in flight, hashed, and when it stops being accepted. Cleared on verification.
   codeHash      String?   @map("code_hash")
   codeExpiresAt DateTime? @map("code_expires_at")

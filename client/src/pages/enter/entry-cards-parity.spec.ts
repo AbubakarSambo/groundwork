@@ -50,6 +50,8 @@ import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 const L = SCENARIO_LABELS
 const ENTRY_COVERS: Record<string, string[]> = {
   [L.NEW_HIRE]: ['NEW_HIRE'],
+  /* One card, one scenario. Its whole pitch is one of everything. */
+  [L.TEAM_UPDATES]: ['TEAM_UPDATES'],
   [L.CONTRACT_REVIEW]: ['CONTRACT_REVIEW'],
   [L.IMPLEMENTATION_TRACKING]: ['IMPLEMENTATION_TRACKING'],
   [L.NEW_PROJECT]: ['NEW_PROJECT'],

@@ -154,10 +154,14 @@ section.art-bg > .w, section.art-bg > .w-wide{position:relative;z-index:1}
    Hairlines rather than cards. Three cards would make three things of equal
    weight; this is one sequence. */
 .steps{display:grid}
-.step{display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:baseline;
+.step{display:grid;grid-template-columns:38px 1fr;gap:14px;align-items:baseline;
       padding:16px 0;border-top:1px solid var(--gw-border)}
 .step:last-child{border-bottom:1px solid var(--gw-border)}
-.step i{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--gw-muted)}
+/* THE NUMBERS ARE WRITTEN, NOT SET. The same drawn ring the other four pages use for a
+   sequence - see the drawn kit in global.css - so the hand on this page is not one section's. */
+.step i{font-family:var(--mono);font-style:normal;font-size:12px;color:var(--gw-navy);
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  background:no-repeat center/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3 C 30 3, 37 11, 37 20 C 37 30, 29 37, 20 37 C 10 37, 3 29, 3 20 C 3 10, 11 4, 21 3' fill='none' stroke='%230C447C' stroke-width='2' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E")}
 .step b{font-size:16px;display:block;margin-bottom:3px}
 .step span{font-size:14px;color:var(--gw-sub);line-height:1.6}
 
@@ -248,6 +252,34 @@ details.more>summary::marker{color:var(--gw-muted)}
 .end p{color:rgba(255,255,255,.62);font-size:14.5px;margin:0 0 26px}
 .site-foot{padding:26px 0;border-top:1px solid var(--gw-border);font-size:12.5px;color:var(--gw-muted)}
 .site-foot a{margin-right:18px;text-decoration:none}
+
+/* ── the drawn line under the hero ────────────────────────────────────────
+   Hafsah, 19 September 2026: this paragraph, "right under the first page as a
+   cartoonish line".
+
+   WHY IT IS DRAWN AND NOT A CALLOUT. The page already has a callout box and a
+   band, and both read as the site making a claim. This one is the opposite of a
+   claim: it is the thing the product refuses to do, said in the voice somebody
+   would say it in. A wobbly hand-drawn frame and a speech bubble carry that
+   without a word of it being marketing, and it is over in one strip.
+
+   The frame is one SVG stretched to whatever the box becomes, so there is no
+   second layout to keep in step and nothing to load. Colour comes from the same
+   tokens as everything else - it is drawn, not decorated. */
+.drawn{background:var(--gw-paper);padding:34px 0 30px}
+.drawn .w{position:relative}
+.drawn-box{position:relative;padding:26px 26px 24px 30px}
+.drawn-box svg.frame{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.drawn-box .bubble{position:absolute;top:-16px;left:18px;background:var(--gw-paper);padding:0 6px}
+.drawn p{font-size:15.5px;line-height:1.65;color:var(--gw-dark);margin:0}
+.drawn .shout{font-weight:700;position:relative;white-space:nowrap}
+/* The marker stroke under the first five words. Drawn, like the frame: a straight
+   rule under them would read as a link. */
+.drawn .shout::after{content:'';position:absolute;left:-2px;right:-2px;bottom:-3px;height:7px;
+  background:no-repeat center/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 8' preserveAspectRatio='none'%3E%3Cpath d='M2 6 C40 2, 70 7, 104 4 S170 2, 198 5' fill='none' stroke='%23C1654A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E")}
+.drawn .aim{display:block;margin-top:12px;font-size:14px;color:var(--gw-sub)}
+@media(max-width:620px){ .drawn p{font-size:14.5px} .drawn .shout{white-space:normal} }
+
 @media(prefers-reduced-motion:no-preference){ .fade{opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s} .fade.in{opacity:1;transform:none} }
 </style>
 </head>
@@ -271,6 +303,40 @@ details.more>summary::marker{color:var(--gw-muted)}
   </div>
 </header>
 
+
+<!-- ═══ WHAT IT IS NOT ══════════════════════════════════════════════════════
+     Her words, 19 September 2026, and the first thing under the hero on purpose: a person who
+     has just read "independent team check-ins" is already wondering whether this reads their
+     team's messages, and every sentence after this one is read differently depending on the
+     answer. Drawn rather than boxed, because it is a person talking, not the site claiming. -->
+<section class="drawn fade">
+  <div class="w">
+    <div class="drawn-box">
+      <svg class="frame" viewBox="0 0 600 130" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M8 14 C 150 6, 300 11, 448 7 S 590 10, 593 20 C 596 52, 590 92, 592 112
+                 C 593 122, 430 118, 300 122 S 60 117, 10 121 C 4 110, 9 70, 6 40 Z"
+              fill="none" stroke="var(--gw-navy)" stroke-width="2" stroke-linecap="round" opacity=".55" />
+      </svg>
+      <span class="bubble" aria-hidden="true">
+        <svg width="30" height="24" viewBox="0 0 30 24" fill="none">
+          <path d="M3 4 C 10 1, 22 2, 27 4 C 28 9, 28 13, 26 16 C 20 18, 14 17, 10 18 L 5 22 L 6 17 C 3 15, 2 9, 3 4 Z"
+                fill="var(--gw-paper)" stroke="var(--gw-navy)" stroke-width="1.6" stroke-linejoin="round" />
+          <circle cx="10" cy="10" r="1.3" fill="var(--gw-navy)" />
+          <circle cx="15" cy="10" r="1.3" fill="var(--gw-navy)" />
+          <circle cx="20" cy="10" r="1.3" fill="var(--gw-navy)" />
+        </svg>
+      </span>
+      <p>
+        <span class="shout">Groundwork is not a monitoring tool.</span>
+        You can't read your team's conversations with Groundwork, and they can't read yours. What
+        comes back is only what those conversations added up to: where you're aligned, where you're
+        not, why, and what you can do about it together.
+        <span class="aim">The goal is a better-synced team.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ WHY LEADERS MISS PROBLEMS ═════════════════════════════════════════
      THE ARGUMENT COMES BEFORE THE MACHINERY. It sat after the reports, as the thing they
      illustrated, which put two screens of how-it-works and a worked example in front of the
@@ -285,7 +351,7 @@ details.more>summary::marker{color:var(--gw-muted)}
     <h2 class="h2">Every update you get has been through someone else first.</h2>
     <p class="lede" style="margin-bottom:14px">As the company grows you stop seeing the work yourself. You rely on meetings, written updates, chat, and the managers between you and the people doing it. Each of those is someone's summary, and every summary leaves something out.</p>
     <p class="lede" style="margin-bottom:14px">Some people dominate meetings. Some avoid conflict. Some do not feel safe challenging a decision. So the account you get is shaped by who is confident, who was in the room, and what they think you want to hear. Someone explains it brilliantly and delivers poorly. Someone else quietly does excellent work nobody records. Most people are simply trying to do a good job.</p>
-    <p class="lede" style="margin-bottom:14px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and nobody has checked.</p>
+    <p class="lede" style="margin-bottom:14px">The result is not a shortage of information. It is that everyone believes they are talking about the same thing, and <span class="gw-marker">nobody has checked.</span></p>
     <!--
       THE ANSWER TO THE PROBLEM THE SECTION JUST STATED, AND THE FIRST TIME THE PRODUCT IS NAMED.
       It also hands off into "How it works", which now follows directly.
@@ -422,7 +488,8 @@ details.more>summary::marker{color:var(--gw-muted)}
 <section class="end art-bg" style="--ground:var(--gw-dark);background-image:url(/art/seedling.png)">
   <div class="w">
     <h2>Start with something that matters.</h2>
-    <p>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
+    <!-- The one drawn mark on the dark ground: an arrow at the thing somebody is deciding on. -->
+    <p><span class="gw-drawn-arrow" style="margin-right:8px;transform:rotate(8deg)" aria-hidden="true"></span>Your first 10 check-ins are free, for teams of 5 or fewer. Each takes about ten minutes.</p>
     <div class="ctas">
       <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
       <a class="btn-2" href="/how-it-works">See how it works</a>

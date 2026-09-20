@@ -11,6 +11,7 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 describe('how many have answered', () => {
   it('a decline is an answer; somebody with a live invitation is expected; a manager is not waited on after session one', async () => {
     const prisma = {
+      ground: { findUnique: jest.fn(async () => ({ scenario: 'GOAL_ALIGNMENT' })) },
       groundParticipant: {
         findMany: jest.fn(async ({ where }: any) => {
           expect(where.managingOnly).toBe(false);
@@ -27,7 +28,10 @@ describe('how many have answered', () => {
   });
 
   it('in session one everybody is expected, managing-only included', async () => {
-    const prisma = { groundParticipant: { findMany: jest.fn(async ({ where }: any) => { expect(where.managingOnly).toBeUndefined(); return []; }) } } as any;
+    const prisma = {
+      ground: { findUnique: jest.fn(async () => ({ scenario: 'GOAL_ALIGNMENT' })) },
+      groundParticipant: { findMany: jest.fn(async ({ where }: any) => { expect(where.managingOnly).toBeUndefined(); return []; }) },
+    } as any;
     await howManyHaveAnswered(prisma, 'g', 1);
   });
 
@@ -38,5 +42,19 @@ describe('how many have answered', () => {
       expect(src).not.toMatch(/ofPeople: ground\.participants\.filter/);
       expect(src).not.toMatch(/peopleInAll: ground\.participants\.filter/);
     }
+  });
+
+  /*
+   * AND THE SITUATION WHERE THE LEAD ONLY ASKS. "Get updates from your team": the lead writes the
+   * question and the team answers it, so session one is not waiting for them either. Read live
+   * before this: "4 of 5 answered - waiting on Hafsah Lead", about the person it was for.
+   */
+  it('and in a team update, not even in session one', async () => {
+    const prisma = {
+      ground: { findUnique: jest.fn(async () => ({ scenario: 'TEAM_UPDATES' })) },
+      groundParticipant: { findMany: jest.fn(async ({ where }: any) => { expect(where.managingOnly).toBe(false); return []; }) },
+    } as any;
+    await howManyHaveAnswered(prisma, 'g', 1);
+    expect(prisma.groundParticipant.findMany).toHaveBeenCalled();
   });
 });

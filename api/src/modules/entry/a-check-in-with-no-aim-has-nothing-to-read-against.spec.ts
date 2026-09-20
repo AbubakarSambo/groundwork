@@ -41,7 +41,7 @@ describe('the gate', () => {
  */
 describe('the situations that have no aim by design', () => {
   it('are the three, and no others', () => {
-    expect([...NO_AIM_BY_DESIGN].sort()).toEqual(['OPEN_READ', 'PULSE_CHECK', 'SNAPSHOT']);
+    expect([...NO_AIM_BY_DESIGN].sort()).toEqual(['OPEN_READ', 'PULSE_CHECK', 'SNAPSHOT', 'TEAM_UPDATES']);
   });
 
   it('are known to owe no aim', () => {

@@ -1420,7 +1420,7 @@ export function GroundAdminPage() {
                     * and the codebase agreed before she made it: "session" appears in 159 visible
                     * strings and "round" in 25. One word, and it is session.
                     */}
-                  {roundDone} of {(ground.participants ?? []).length} checked in for session {openRound}
+                  {roundDone} of {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length} checked in for session {openRound}
                 </span>
               )}
               {roundWentBack && (
@@ -3270,7 +3270,12 @@ function ShareSection({ joinToken }: { joinToken: string }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const baseUrl = window.location.origin
-  const joinUrl = `${baseUrl}/join?t=${joinToken}`
+  /*
+   * THE QR CODE OPENS THE ANSWER-FIRST DOOR NOW. The old one asked for a name, an address and a
+   * role before anybody could say a word, which is three steps of admin in front of a two-minute
+   * answer. See AnswerFirstPage and the API's the-open-link.
+   */
+  const joinUrl = `${baseUrl}/answer?t=${joinToken}`
 
   useEffect(() => {
     import('qrcode').then(QRCode => {
@@ -3291,7 +3296,8 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code - anyone can check in without signing up first. They'll be asked to save their details at the end.
+        Share this link or QR code. Anyone can answer without signing up: they get your question,
+        they answer in their own words, and they are asked where to send the report at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (

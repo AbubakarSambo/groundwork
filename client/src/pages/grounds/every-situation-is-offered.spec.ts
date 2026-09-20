@@ -125,12 +125,23 @@ const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT']
 const SINGLE_ROUND_BY_DESIGN = ['SNAPSHOT']
 
 describe('every card describes a run against an objective', () => {
-  it('names the run of check-ins, not a single report', () => {
+  it('names the run, not a single report', () => {
+    /*
+     * IT SAYS THE RUN, IN WHATEVER WORDS THE CARD USES FOR IT. This tested for the literal word
+     * "check-in", which is the product's name for the thing rather than the only honest way to say
+     * it recurs. TEAM_UPDATES is written deliberately in the lead's language - "it comes back every
+     * week, or however often you pick" - because its whole pitch is one question rather than a
+     * system, and a card that has to say "check-in" to pass a test is a test choosing the copy.
+     *
+     * What the rule is actually for is unchanged: a card must not read as a single comparison when
+     * the situation behind it runs. Saying so in plain words counts.
+     */
+    const SAYS_IT_RUNS = /check-in|every (week|two weeks|day|month)|however often|each (week|period)|over time|period after period/i
     for (const c of SCENARIOS) {
       if (SINGLE_ROUND_BY_DESIGN.includes(c.cardKey)) continue
       expect(
-        /check-in/i.test(c.desc),
-        `card ${c.cardKey} never mentions a check-in, so it reads as one comparison rather than a run: "${c.desc}"`,
+        SAYS_IT_RUNS.test(c.desc),
+        `card ${c.cardKey} never says it runs, so it reads as one comparison rather than a run: "${c.desc}"`,
       ).toBe(true)
     }
   })

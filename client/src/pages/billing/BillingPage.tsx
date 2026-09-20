@@ -347,6 +347,25 @@ export function BillingPage() {
           * hidden from every organisation that had not upgraded yet. An admin working out what 160
           * people costs could not see their own headcount on the page selling them the plan.
           */}
+        {/*
+          THREE MONTHS ON THE HOUSE, SAID ON THE PAGE ABOUT MONEY.
+          Somebody inside a free run has no subscription and no card, so every other line on this
+          page reads as though they are on the free tier. This says what they actually have and the
+          day it stops, which is the number they need before it does.
+        */}
+        {billingStatus?.onTheHouse && (
+          <div style={{ marginBottom: 18, padding: '13px 16px', borderRadius: 10,
+                        background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--gw-green-t)', marginBottom: 3 }}>
+              You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+              Everything the {PLAN_LABELS[billingStatus.onTheHouse.plan as SubscriptionPlan] ?? String(billingStatus.onTheHouse.plan)} plan
+              covers, at no cost. Nothing is charged and there is no card on file. After that date the free tier applies unless you subscribe.
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           {(isSubscribed || isPaused) && (
             <Stat

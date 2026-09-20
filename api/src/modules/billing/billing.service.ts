@@ -28,7 +28,7 @@ import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, User
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
 import { SEAT_WHERE, SEAT_RELATION_COUNT } from '../../common/seats';
-import { isSubscribed, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
+import { isSubscribed, isCovered, whatCoversThem, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
  * Billing model:
@@ -86,9 +86,13 @@ export class BillingService {
     if (ground?.organizationId) {
       const org = await this.prisma.organization.findUnique({
         where: { id: ground.organizationId },
-        select: { subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true },
+        select: {
+          subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true,
+          /* A free run covers exactly what the plan it was given covers - see whatCoversThem. */
+          freeUntil: true, freePlan: true,
+        },
       });
-      if (org && isSubscribed(org)) {
+      if (org && isCovered(org)) {
         return { allowed: true, sessionsBalance: -1 }; // -1 signals unlimited
       }
 
@@ -134,12 +138,12 @@ export class BillingService {
   ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true, freeUntil: true, freePlan: true },
     });
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
-    // 1. Org has an active subscription - unlimited grounds.
-    if (isSubscribed(org)) {
+    // 1. Paying, or inside a free run we gave them: unlimited grounds either way.
+    if (isCovered(org)) {
       return { allowed: true };
     }
 
@@ -254,11 +258,16 @@ export class BillingService {
   async seatsLeft(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: SEAT_RELATION_COUNT } },
+      select: {
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
+        _count: { select: SEAT_RELATION_COUNT },
+      },
     });
     if (!org) return null;
-    const cap = isSubscribed(org)
-      ? await this.pricing.memberCapFor(org.subscriptionPlan)
+    /* Whichever covers them today decides the cap: their own plan, the one we gave them, or free. */
+    const covered = whatCoversThem(org);
+    const cap = covered.plan
+      ? await this.pricing.memberCapFor(covered.plan as any)
       : await this.pricing.getFreeMemberLimit();
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
@@ -275,11 +284,12 @@ export class BillingService {
   async seatsIncludedFor(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
     });
     if (!org) return null;
-    const cap = isSubscribed(org)
-      ? await this.pricing.memberCapFor(org.subscriptionPlan)
+    const covered = whatCoversThem(org);
+    const cap = covered.plan
+      ? await this.pricing.memberCapFor(covered.plan as any)
       : await this.pricing.getFreeMemberLimit();
     return cap ?? null;
   }
@@ -287,11 +297,16 @@ export class BillingService {
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: SEAT_RELATION_COUNT } },
+      select: {
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
+        _count: { select: SEAT_RELATION_COUNT },
+      },
     });
     if (!org) return { allowed: true };
     const count = org._count.users ?? 0;
-    const subscribed = isSubscribed(org);
+    /* Covered is covered: a free run we gave them buys the seats its plan buys. */
+    const covered = whatCoversThem(org);
+    const subscribed = covered.covers !== 'free tier';
 
     /**
      * THE FREE TIER HAS A SEAT LIMIT NOW, ENFORCED HERE RATHER THAN IN A SECOND GATE.
@@ -811,6 +826,11 @@ export class BillingService {
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
+    /**
+     * Set while an organisation is inside a free run we gave them, so the page can say it plainly:
+     * what it covers and the day it ends. Null when they are paying or on the free tier.
+     */
+    onTheHouse: { plan: SubscriptionPlan; until: Date } | null;
     /** Counts only. See the comment where these are assembled. */
     /** Admin only. Absent for anybody else - see the controller. */
     usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
@@ -827,6 +847,8 @@ export class BillingService {
         subscriptionPeriodEnd: true,
         subscriptionEndsAt: true,
         freeExtensionUsed: true,
+        freeUntil: true,
+        freePlan: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
@@ -836,9 +858,10 @@ export class BillingService {
      * THE SAME CAP THE GATE WILL APPLY. Read from the same two sources in the same order, so the
      * number on this page and the number that refuses an invitation cannot be different numbers.
      */
+    const covers = whatCoversThem(org);
     const peopleCap =
-      isSubscribed(org)
-        ? await this.pricing.memberCapFor(org.subscriptionPlan)
+      covers.plan
+        ? await this.pricing.memberCapFor(covers.plan as any)
         : await this.pricing.getFreeMemberLimit();
 
     /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
@@ -890,6 +913,10 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
+      onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan
+        ? { plan: org.freePlan, until: covers.until }
+        : null,
       /*
        * WHAT THIS ACCOUNT HAS ACTUALLY DONE, which is what makes a renewal defensible.
        *

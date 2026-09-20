@@ -30,7 +30,10 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     .gw-footer-btn{font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none;}
     .gw-footer-btn:hover{color:rgba(255,255,255,.65);}
     .p-card{background:var(--gw-card);border:1px solid var(--gw-border);border-radius:12px;padding:22px 24px;}
-    .p-num{width:28px;height:28px;background:var(--gw-navy);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;}
+    /* The drawn ring, at this page's smaller size. The kit is in global.css; only the
+       measurements are this page's. A page about what nobody can read should still look like
+       the rest of the site, which is now drawn. */
+    .p-num{width:30px;height:30px;font-size:13px;}
     @media(max-width:620px){
       .gw-nav-links{display:none !important;}
     }
@@ -43,13 +46,19 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Privacy and AI</p>
       <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Your team data is private.</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;">Groundwork staff can't read it. Public AI models don't learn from it. Groundwork gets better without exposing your organization.</p>
+      <!-- THE PAGE IN ONE SENTENCE, DRAWN. Three promises, and a reader decides here whether to
+           read the three cards under them. Drawn rather than boxed for the same reason the home
+           page's line is: this is a person saying what the product will not do. -->
+      <div class="gw-drawn" style="margin-bottom:44px;">
+        <span class="gw-bubble" aria-hidden="true"></span>
+        <p style="font-size:16px;color:var(--gw-dark);line-height:1.7;margin:0;"><span class="gw-marker">Groundwork staff can't read it.</span> Public AI models don't learn from it. Groundwork gets better without exposing your organization.</p>
+      </div>
 
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px;">
 
         <div class="p-card">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
-            <div class="p-num">1</div>
+            <div class="p-num gw-drawn-num">1</div>
             <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Your work stays private</div>
           </div>
           <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork staff cannot access your OKRs, check-ins, team performance, evidence, or underlying organizational data. We only see information you deliberately send to us, such as a complaint or support request.</p>
@@ -57,7 +66,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
         <div class="p-card">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
-            <div class="p-num">2</div>
+            <div class="p-num gw-drawn-num">2</div>
             <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Public AI models do not learn from your data</div>
           </div>
           <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork may use leading AI providers to process information, including models from OpenAI, Anthropic (Claude), Google (Gemini), and others. We use protected API infrastructure and configurations where customer data is not used to train or improve these providers' public/general-purpose models. We do not intentionally submit customer data for their model training or fine-tuning.</p>
@@ -65,7 +74,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
         <div class="p-card">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
-            <div class="p-num">3</div>
+            <div class="p-num gw-drawn-num">3</div>
             <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Groundwork can learn privately</div>
           </div>
           <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork may use permitted, privacy-preserving signals to improve Groundwork's own internal systems and models. That learning stays within Groundwork and is not contributed to OpenAI, Claude, Gemini, or other public AI models for training.</p>

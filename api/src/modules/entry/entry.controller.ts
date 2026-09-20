@@ -5,6 +5,8 @@ import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common
 import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
+import { TheOpenLinkService } from './the-open-link.service';
+import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -395,7 +397,9 @@ export class EntryCommitDto {
   @Type(() => EntryDocumentDto)
   documents?: EntryDocumentDto[];
 
+  /* The same number the service enforces, so the body and the gate cannot disagree about it. */
   @IsArray()
+  @ArrayMaxSize(HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS)
   @ValidateNested({ each: true })
   @Type(() => ContributorDto)
   contributors: ContributorDto[];
@@ -551,9 +555,31 @@ export class EntryController {
   }
 }
 
+/**
+ * THE OPEN LINK'S THREE STEPS. Every one is public, so every one is a DTO: the pipe cannot see an
+ * inline type, and `forbidNonWhitelisted` is what keeps an anonymous body to exactly these fields.
+ */
+class OpenStartDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) joinToken: string;
+}
+
+class OpenSayDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) key: string;
+  @IsString() @IsNotEmpty() @MaxLength(A_MESSAGE_MAX) message: string;
+}
+
+class OpenFinishDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) key: string;
+  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() @MaxLength(80) firstName?: string;
+}
+
 @Controller('entry')
 export class EntryCommitController {
-  constructor(private service: EntryService) {}
+  constructor(
+    private service: EntryService,
+    private readonly openLink: TheOpenLinkService,
+  ) {}
 
   @Post('commit')
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
@@ -585,5 +611,40 @@ export class EntryCommitController {
   @Post('join-confirm')
   async joinConfirm(@Body() dto: EntryJoinConfirmDto) {
     return this.service.joinConfirm(dto.token);
+  }
+
+  /**
+   * THE OPEN LINK: ANSWER FIRST, SAY WHO YOU ARE AT THE END.
+   *
+   * The QR code a lead shares. Public by necessity - the person scanning it has no account, which
+   * is the point - and throttled at every step, because every step is reachable by anybody with the
+   * link. See the-open-link.service for what the link does and does not open.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  @Get('open')
+  async openPreview(@Query('t') token: string) {
+    return this.openLink.whatThisIs(token ?? '');
+  }
+
+  @Public()
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Post('open-start')
+  async openStart(@Body() dto: OpenStartDto) {
+    return this.openLink.start(dto.joinToken);
+  }
+
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  @Post('open-say')
+  async openSay(@Body() dto: OpenSayDto) {
+    return this.openLink.say(dto.key, dto.message);
+  }
+
+  @Public()
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Post('open-finish')
+  async openFinish(@Body() dto: OpenFinishDto) {
+    return this.openLink.finish(dto.key, dto.email, dto.firstName);
   }
 }
