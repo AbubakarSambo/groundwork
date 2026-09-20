@@ -119,6 +119,7 @@ import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
+import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
 import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
   whichCard, owedFor, type Owed, type Role,
@@ -909,7 +910,12 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const opening = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
+    const held = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
+    /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
+    const saidSoFar = await this.prisma.conversationTurn.count({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }).catch(() => 1);
+    const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar);
+    if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
+    const opening = quoted.text;
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.

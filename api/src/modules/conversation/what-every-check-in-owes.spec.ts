@@ -95,3 +95,11 @@ describe('the stage is resolved, never reasoned about', () => {
     expect(stageOf(1, 1)).toBe('first');
   });
 });
+
+describe('somebody who has just started has nothing actually happening yet', () => {
+  const { everythingOwedFor } = require('./what-every-check-in-owes');
+  it('a starting situation asks what they mean to do first and how; a running one asks what is happening', () => {
+    expect(everythingOwedFor('NEW_HIRE').find((o: any) => o.id === 'actually')?.what).toMatch(/what they mean to do first/);
+    expect(everythingOwedFor('OKR_ALIGNMENT').find((o: any) => o.id === 'actually')?.what).toMatch(/what is actually happening/);
+  });
+});
