@@ -33,7 +33,7 @@ function makeService(over: {
   ];
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ({ participants })) },
-    conversationTurn: { findMany: jest.fn(async () => [{ role: TurnRole.PERSON, content: 'I expect Abubakar to own the weekly call.' }]) },
+    conversationTurn: { findMany: jest.fn(async () => [{ role: TurnRole.PERSON, content: 'I expect Abubakar to own the weekly call, and delivery end to end in 90 days.' }]) },
     /**
      * `findUnique` reads the PRIOR text, so a changed expectation can reset `seenBySubject`. Returning
      * `over.prior ?? null` lets a test say "there was already something there" and check the reset.
@@ -233,5 +233,19 @@ describe('GW-EXP-4: changed words are unseen words', () => {
     const { svc, upsert } = makeService({ prior: null });
     await svc.extractExpectations('c1', 'lead', 'g1');
     expect((upsert.mock.calls[0][0] as any).data.seenBySubject).toBe(false);
+  });
+});
+
+describe('a target the person never said is not written', () => {
+  it('keeps the aim and drops the number', async () => {
+    /* Run 4, 20 Sep 2026: "50kg bags" became a N50m target. */
+    const { svc, prisma, createMany } = makeService({
+      extraction: { groundAims: [{ name: 'N50m in sales to the northern dealers', target: 50_000_000 }], expectations: [] },
+    });
+    prisma.conversationTurn.findMany = jest.fn(async () => [{ role: TurnRole.PERSON, content: 'We moved about 50kg bags to the northern dealers.' }]);
+    await svc.extractExpectations('c1', 'lead', 'g1');
+    const written = (createMany.mock.calls[0]?.[0] as any)?.data?.[0];
+    expect(written?.name).toBe('N50m in sales to the northern dealers');
+    expect(written?.target).toBeNull();
   });
 });
