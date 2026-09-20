@@ -31,7 +31,8 @@ describe('what the record already holds', () => {
       targets: [{ name: '150,000 NGN payment', target: 150000, count: 0, yours: false }],
       inTheWay: [], saidLastTime: [], now: new Date(),
     });
-    expect(out).toContain('not said by this person - never put these to them as "you said"');
+    expect(out).toContain('not said by this person. The count on it is EVERYBODY');
+    expect(out).toContain('Never put these to them as "you said"');
     expect(out).not.toMatch(/Theirs/);
   });
 });
