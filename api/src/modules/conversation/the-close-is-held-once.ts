@@ -45,6 +45,7 @@ export const saidToThem = (what: string): string => {
   const first = ((what ?? '').trim().split(/(?<=[.?!])\s+/)[0] ?? '').replace(/[.?!]+$/, '');
   const toYou = first
     .replace(/\bthemselves\b/gi, 'yourself')
+    .replace(/\btheirs\b/gi, 'yours')
     .replace(/\btheir\b/gi, 'your')
     .replace(/\bthey are\b/gi, 'you are')
     .replace(/\bthey\b/gi, 'you')

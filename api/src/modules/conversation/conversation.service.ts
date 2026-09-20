@@ -119,6 +119,7 @@ import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
+import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER } from './a-refusal-is-an-answer';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
 import { theSentenceToThePerson, theSentenceToTheLead, sayTheDisagreementOnce } from './the-disagreement-said-once';
 import {
@@ -1359,10 +1360,10 @@ export class ConversationService {
             screened = { ...screened, text: withoutIt };
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
           } else {
-            /* Nothing else in it, so the product moves the conversation on itself. See takenAsSaidAndOn. */
-            const next = await this.whatThisSessionNeverAsked(checkIn.id).catch(() => [] as string[]);
-            screened = { ...screened, text: takenAsSaidAndOn(next[0] ?? null), hits: [] };
-            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; moved on to ${JSON.stringify(next[0] ?? 'nothing')}.`);
+            /* Nothing else in it, so the product records the absence and moves on itself. See a-refusal-is-an-answer. */
+            const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
+            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how), hits: [] };
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; recorded the absence and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
           }
         }
       }
@@ -1412,6 +1413,12 @@ export class ConversationService {
           if (second?.text && !second.hits.length && !asksTheSameThingAgain(lastAsk, second.text)) {
             screened = second;
             this.logger.log(`Check-in ${checkIn.id}: the second try let it go.`);
+          } else if (declined) {
+            /* They said no twice over and the model would ask a third time. The product records the absence
+               and moves on; a third ask is the badgering the judge counted. See a-refusal-is-an-answer. */
+            const how = await this.howToMoveOn(checkIn.id, lastAsk);
+            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how), hits: [] };
+            this.logger.warn(`Check-in ${checkIn.id}: declined twice and the model asked again; recorded the absence and moved on.`);
           } else {
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
           }
@@ -1807,7 +1814,7 @@ export class ConversationService {
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
-    const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
+    const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     if (close.ask) {
       /* The goodbye goes first. It was written before the product ruled on the close, and appending
          a question underneath it told a lead the session was over and then that it was not. */
@@ -1816,6 +1823,10 @@ export class ConversationService {
         where: { id: aiTurn.id },
         data: { content: stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask },
       });
+    } else if (close.ready && close.sayFirst) {
+      /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
+      const goodbye = aiTurn.content ?? '';
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${withoutTheGoodbye(goodbye)} ${close.sayFirst} ${goodbye.slice(withoutTheGoodbye(goodbye).length).trim()}`.replace(/\s+/g, ' ').trim() } });
     }
     /*
      * NOT WHILE IT IS STILL ASKING. A reply can carry the close marker and end in a question - the
@@ -1889,7 +1900,7 @@ export class ConversationService {
    * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
    * turn), so the hold never held. It is fed by the stamp now.
    */
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string }> {
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string }> {
     const [row, turns] = await Promise.all([
       this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, ground: { select: { cadence: true, scenario: true } } } }),
       this.prisma.conversationTurn.findMany({
@@ -1948,11 +1959,13 @@ export class ConversationService {
      * having listened, whatever the other reader thinks.
      */
     if (oneTime || concrete.length || verdict.ready) return { ready: true };
-    await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
-    this.logger.log(
-      `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'no answer this session carried a number, a date, a document or an attachment'}.`,
-    );
-    return { ready: false, ask: THE_ONE_CONCRETE_THING };
+    /*
+     * THE CLOSE CHASES NOTHING. "Put a date or a number on that" went out to people who had just said
+     * "No." (six runs, 20-21 Sep 2026), and never once produced the number. The close records that
+     * nothing here carries one, in a line the person reads, and closes. See a-refusal-is-an-answer.
+     */
+    this.logger.log(`Closing ${checkInId} with nothing checkable in it; said so rather than held.`);
+    return { ready: true, sayFirst: NOTHING_HERE_HAS_A_NUMBER };
   }
 
   /**
@@ -2149,7 +2162,7 @@ export class ConversationService {
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
       const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
-      const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
+      const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
       if (close.ask) {
         /* Same as the turn path: a refused close may not keep its goodbye. The stream has already
            put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
@@ -2160,6 +2173,10 @@ export class ConversationService {
            reply - ChatPage replaces the streamed text with it. So the delta only has to add the
            question; no second event type is invented for something the page already does. */
         yield { type: 'delta', text: `\n\n${close.ask}` };
+      } else if (close.ready && close.sayFirst) {
+        reply = `${reply}\n\n${close.sayFirst}`;
+        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
+        yield { type: 'delta', text: `\n\n${close.sayFirst}` };
       }
       yield { type: 'done', reply, sessionComplete: close.ready };
     } catch (err) {
@@ -5231,6 +5248,37 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * role and stage, only those no turn of this session came near. Asked and unanswered is not here:
    * asking a third time is the other fault.
    */
+  /**
+   * WHAT TO SAY WHEN A QUESTION HAS TO BE LET GO: which owed thing the last ask was about (so the
+   * absence can be named), and the next thing - the plan's next unasked question, else the next owed
+   * thing never asked. See a-refusal-is-an-answer.
+   */
+  private async howToMoveOn(checkInId: string, lastAsk: string): Promise<{ declinedWhat: string | null; question: string | null; owed: string | null }> {
+    const row = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionPlan: true } as any }).catch(() => null);
+    const plan = tidyThePlan((row as any)?.sessionPlan);
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true } }).catch(() => []);
+    const asTurns = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }));
+    let question: string | null = null;
+    if (plan) {
+      const things = plan.questions.map((q, i) => ({ id: `plan-${i + 1}`, what: q.ask }));
+      const covered = sayWhatHasBeenCovered(things, whatThisSessionHasCovered(things, asTurns));
+      question = covered.notAsked.find((t) => !asksTheSameThingAgain(lastAsk, t.what))?.what ?? null;
+    }
+    const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
+    const owed = neverAsked.find((w) => !asksTheSameThingAgain(lastAsk, w)) ?? null;
+    /* Which owed thing the abandoned question was about, so the line can name what goes unrecorded. */
+    const all = await this.everythingOwedHere(checkInId).catch(() => [] as string[]);
+    const declinedWhat = all.find((w) => asksTheSameThingAgain(w, lastAsk)) ?? null;
+    return { declinedWhat, question, owed };
+  }
+
+  private async everythingOwedHere(checkInId: string): Promise<string[]> {
+    const checkIn = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { groundId: true } });
+    if (!checkIn) return [];
+    const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true, brief: true } as any });
+    return (this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null) ?? []).map((o) => o.what);
+  }
+
   private async whatThisSessionNeverAsked(checkInId: string): Promise<string[]> {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
