@@ -3297,7 +3297,8 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
         target = defs.length ? defs.map(d => `- ${d.text}`).join('\n') : null;
       }
       const endStates = ground ? endStatesFor((ground as any).scenario).map(o => o.label).join(' / ') : '';
-      finalSessionContext = `FINAL SESSION - this is the CLOSING check-in for this ground. OPEN THE SESSION by saying so, plainly, in your first message - before anything else: this is their closing check-in, the last word on the record, and what they document here is what the final report weighs, so it is worth being thorough. This overrides any other opener instruction (including the returning-user opener); weave the usual continuity in AFTER naming the closing. Same conversation as always - no new format.
+      /* Not "for this ground": the word swap that keeps "ground" off the screen turned it into "your closing check-in for this check-in" (run 6, 20 Sep 2026). */
+      finalSessionContext = `FINAL SESSION - this is their CLOSING check-in, the last one of this period. OPEN THE SESSION by saying so, plainly, in your first message - before anything else: this is their closing check-in, the last word on the record, and what they document here is what the final report weighs, so it is worth being thorough. Never say "for this check-in" or "of this check-in" after "closing check-in". This overrides any other opener instruction (including the returning-user opener); weave the usual continuity in AFTER naming the closing. Same conversation as always - no new format.
 
 Work through, woven naturally into the conversation, not as a checklist:
 1. FINAL STATE vs THE TARGET. The target on record:
@@ -6459,8 +6460,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        */
       .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a));
     if (aims.length) {
+      /* Against their own aims AND the shared ones: a participant restating the check-in's $400,000 as
+         "bring in $400k of new business" is not setting a second target (run 6, 20 Sep 2026). */
       const existing = await this.prisma.groundObjective.findMany({
-        where: { groundId, ownerParticipantId: aimsAreShared ? null : participantId },
+        where: { groundId, OR: [{ ownerParticipantId: null }, ...(aimsAreShared ? [] : [{ ownerParticipantId: participantId }])] },
         select: { name: true, target: true },
       });
       /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units

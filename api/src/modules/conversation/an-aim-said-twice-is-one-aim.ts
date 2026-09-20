@@ -61,11 +61,17 @@ export function isTheSameAimSaidAsItsNumber(fresh: AnAim, existing: AnAim[]): bo
  */
 const wordsOf = (name: string): Set<string> => new Set(WHAT_IS_LEFT(name).split(/\s+/).filter((w) => w.length > 2));
 
+/* A sum of money said twice is one aim: nobody has two different objectives of exactly $400,000, and "Bring
+   in $400k of new business" next to "Achieve the $400k new business goal" was still two (run 6, 20 Sep 2026).
+   Counts stay on the subset rule: 10,000 shops opened and 10,000 accounts signed are two things. */
+const A_SUM_OF_MONEY = 100_000;
+
 export function isTheSameFigureWordedAgain(fresh: AnAim, existing: AnAim[]): boolean {
   if (fresh.target == null) return false;
   const mine = wordsOf(fresh.name);
   return existing.some((e) => {
     if (e.target !== fresh.target) return false;
+    if (Math.abs(fresh.target as number) >= A_SUM_OF_MONEY) return true;
     const theirs = wordsOf(e.name);
     const [shorter, longer] = mine.size <= theirs.size ? [mine, theirs] : [theirs, mine];
     return shorter.size > 0 && [...shorter].every((w) => longer.has(w));

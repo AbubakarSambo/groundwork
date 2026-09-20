@@ -60,7 +60,7 @@ describe('a target said with its currency', () => {
       { name: 'Drive revenue of around $400,000, weighted towards larger engagements.', target: 400000 },
       { name: 'Generate $400,000 in new business.', target: 400000 },
     ];
-    expect(theAimsThatAreNew(four, [])).toEqual([four[0], four[2], four[3]]);
+    expect(theAimsThatAreNew(four, [])).toEqual([four[0]]);
     expect(theAimsThatAreNew([{ name: 'New business, $400,000', target: 400000 }], [four[0]])).toEqual([]);
     const small = [
       { name: 'Bring in two large engagements', target: 2 },
