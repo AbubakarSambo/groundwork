@@ -140,8 +140,8 @@ export function whatTheRecordAlreadyHolds(input: {
         ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
         : '') +
       (theRest.length
-        ? 'Set for the whole check-in, not said by this person - never put these to them as "you said": ' +
-          theRest.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')
+        ? 'Set for the whole check-in, not said by this person. The count on it is EVERYBODY\'S together, never this person\'s standing: never "you are at", "the record shows you at", never a difference between it and their own number. Never put these to them as "you said": ' +
+          theRest.map((t) => `${t.name}, the whole check-in is at ${t.count} of ${t.target}`).join('; ')
         : ''),
     );
   }

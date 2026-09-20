@@ -47,6 +47,7 @@ describe('what does not add up', () => {
 
   it('behind with the run nearly over, and not when it is not nearly over', () => {
     const targets = [{ name: 'N40m', target: 40_000_000, count: 26_000_000, yours: true, setByThem: true }];
+    expect(whatDoesNotAddUp({ ...base, said: [], targets: [{ name: 'Team N180m', target: 180_000_000, count: 71_000_000, yours: false, setByThem: false }], sessionsLeft: 1 })).toEqual([]);
     expect(whatDoesNotAddUp({ ...base, said: [], targets, sessionsLeft: 1 })[0]).toMatchObject({ kind: 'behind with the run nearly over' });
     expect(whatDoesNotAddUp({ ...base, said: [], targets, sessionsLeft: 4 })).toEqual([]);
   });

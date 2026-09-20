@@ -78,7 +78,7 @@ WHAT TO WRITE
 RULES
 - The person's words are quoted as they said them, marked as theirs. Nothing is attributed to them that they did not say.
 - The lead's brief is an instruction to the product. Never treat it as this person's position.
-- Numbers said about one person stay with that person. A number set for the whole team is the team's.
+- Numbers said about one person stay with that person. A number set for the whole check-in is everybody's together: its count is never this person's standing, never "they are at N71m", never a gap between it and their own number. Only a target with this person's name on it is theirs.
 - Plain, direct English. No jargon, no "record", no "session", no scores, no verdicts on the person.
 - Answer by calling the_plan. Nothing else.`;
 

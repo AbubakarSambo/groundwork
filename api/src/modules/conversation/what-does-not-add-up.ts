@@ -155,9 +155,11 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
     break;
   }
 
-  /* 3. BEHIND, WITH THE RUN NEARLY OVER. */
+  /* 3. BEHIND, WITH THE RUN NEARLY OVER. Their own targets only: the team's N71m of N180m is not this
+        rep's standing, and putting it to him as his produced "the record shows N71m" against his N38m
+        (run 6, 20 Sep 2026). */
   if (input.sessionsLeft != null && input.sessionsLeft <= 1) {
-    for (const t of input.targets.filter((x) => x.target != null && x.target > 0 && x.count > 0 && x.count < (x.target as number))) {
+    for (const t of input.targets.filter((x) => x.yours && x.target != null && x.target > 0 && x.count > 0 && x.count < (x.target as number))) {
       const share = Math.round((t.count / (t.target as number)) * 100);
       if (share > 85) continue;
       out.push({
