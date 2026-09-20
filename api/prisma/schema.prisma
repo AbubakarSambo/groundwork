@@ -966,6 +966,11 @@ model Ground {
   // guessing it from the scenario alone is how a competent person gets read as
   // absent (see reads.ts).
   peopleWorkTogether         Boolean? @map("people_work_together")
+  /// Whether a participant is told, once, in their own session, what the lead has set for them and how
+  /// it differs from what they have said - "Funmi has said the role should bring in $400k; you have said
+  /// the first quarter is about relationships; this report will show both." The lead's expectation is
+  /// shareable by design; this decides whether the product says the disagreement out loud. Default on.
+  participantsHearTheLeadsExpectation Boolean @default(true) @map("participants_hear_the_leads_expectation")
   // Can the parties see who else is on this ground and how each is doing?
   //
   // Nullable: null means nobody has said, and the kind of ground supplies the

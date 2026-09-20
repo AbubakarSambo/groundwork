@@ -120,6 +120,7 @@ import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_P
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
+import { theSentenceToThePerson, theSentenceToTheLead, sayTheDisagreementOnce } from './the-disagreement-said-once';
 import {
   whatIsStillOwed, sayWhatIsMissing, stageOf, ASK_TWICE_THEN_LET_IT_GO,
   whichCard, owedFor, type Owed, type Role,
@@ -2314,6 +2315,8 @@ export class ConversationService {
       where: { id: checkIn.groundId },
       include: {
         objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        /* The product's finding per person, for the lead's side of the disagreement. */
+        report: { select: { findings: true } },
         /**
          * THE ROSTER, SO THE INTERVIEW CAN USE PEOPLE'S NAMES. GW-EXP-1.
          *
@@ -3669,6 +3672,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.logger.warn(`The plan for check-in ${checkIn.id} could not be read: ${err?.message}`);
       return '';
     });
+    /*
+     * THE DISAGREEMENT, SAID ONCE. See the-disagreement-said-once. To a participant: what the lead
+     * set for them, by the lead's name, against their own words. To the lead: the product's read of
+     * a person's account against what the lead set. Not on the opener; once per session.
+     */
+    const disagreementBlock = how?.forTheOpener ? '' : await (async () => {
+      const isLead = checkIn.participant.partyType === PartyType.INITIATOR;
+      const setForThem = (objectivesOnRecord as any[]).filter((o) => o.ownerParticipantId && o.setByParticipantId && o.setByParticipantId !== o.ownerParticipantId && o.name?.trim());
+      if (!setForThem.length) return '';
+      const nameOfParticipant = (pid: string) => {
+        const p = (ground.participants ?? []).find((x: any) => x.id === pid) as any;
+        return (p?.user?.firstName ?? '').trim() || (p?.roleAsDescribed ?? '').split(/[.,]/)[0].trim() || 'they';
+      };
+      if (isLead) {
+        const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
+        const gap = setForThem.map((o) => ({ o, f: findings.find((f) => f.participantId === o.ownerParticipantId && f.hasGap && f.headline) })).find((x) => x.f);
+        if (!gap) return '';
+        const sentence = theSentenceToTheLead({ leadName: '', target: { name: gap.o.name, target: gap.o.target }, theirOwn: [], personName: nameOfParticipant(gap.o.ownerParticipantId), personHeadline: String(gap.f.headline).replace(/^[^:]*:\s*/, '') });
+        return sayTheDisagreementOnce(sentence, turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content));
+      }
+      if ((ground as any).participantsHearTheLeadsExpectation === false) return '';
+      const mine = setForThem.find((o) => o.ownerParticipantId === checkIn.participantId);
+      if (!mine) return '';
+      const theirOwn = pastEntries.filter((e) => e.type === 'SUCCESS_DEFINITION' || e.type === 'INTENT').sort((a, b) => b.session - a.session).map((e) => e.text);
+      const lead = (ground.participants ?? []).find((x: any) => x.partyType === PartyType.INITIATOR) as any;
+      const leadName = (lead?.user?.firstName ?? '').trim() || 'The lead';
+      const sentence = theSentenceToThePerson({ leadName, target: { name: mine.name, target: mine.target }, theirOwn });
+      return sayTheDisagreementOnce(sentence, turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content));
+    })().catch(() => '');
+
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
       sessionNumber: checkIn.sessionNumber,
@@ -3692,7 +3725,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const inThisTurn = [
       ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
-      ['planBlock', planBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
+      ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
@@ -3748,7 +3781,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**

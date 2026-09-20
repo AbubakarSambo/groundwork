@@ -47,7 +47,9 @@ export function whatItSaysTheySaid(reply: string): string[] {
   return (reply.match(/[^.!?\n]*[.!?]?/g) ?? [])
     .map((s) => s.trim())
     .filter(Boolean)
-    .filter((s) => /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(s));
+    /* "You will send the rota by Friday" is a commitment recited as theirs, the same as "you said you
+       would": a farmer who had said nothing about a rota read it at her close (run 6, 21 Sep 2026). */
+    .filter((s) => /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(s) || /^(?:so |and )?you (?:will|are going to|have agreed to|have committed to)\b/i.test(s));
 }
 
 /**
