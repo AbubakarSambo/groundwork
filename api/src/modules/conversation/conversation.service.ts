@@ -119,7 +119,7 @@ import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
-import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER } from './a-refusal-is-an-answer';
+import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER, NO_DECISION_YET } from './a-refusal-is-an-answer';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
 import { theSentenceToThePerson, theSentenceToTheLead, sayTheDisagreementOnce } from './the-disagreement-said-once';
 import {
@@ -1936,6 +1936,16 @@ export class ConversationService {
      */
     const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;
     /*
+     * A LEAD WHO CLOSES ON "I WILL KEEP MONITORING" HAS MADE NO DECISION, AND THE RECORD SAYS SO. Six
+     * runs: "I will continue to monitor his progress" - "Understood. The report is ready now." The
+     * lead's close is a decision or a thing put in front of somebody; when it is neither, the close
+     * stands and the fact goes in front of the goodbye.
+     */
+    const leadRow = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { participant: { select: { partyType: true } } } }).catch(() => null);
+    const isLead = (leadRow as any)?.participant?.partyType === PartyType.INITIATOR;
+    const lastSaid = personSaid[personSaid.length - 1] ?? '';
+    const noDecision = isLead && /\b(keep (?:monitoring|an eye|watching)|continue to (?:monitor|watch|track)|carry on as|see how it goes|we(?:'ll| will) (?:discuss|review|revisit) (?:it|this|that) (?:at|in|then)|wait and see|leave it (?:for now|with (?:him|her|them)))\b/i.test(lastSaid);
+    /*
      * AND A SESSION DOES NOT CLOSE WITH THE THING IT WAS FOR NEVER RAISED. The hold budget is the
      * same one: once, then the next close lands whatever happened. The product writes the line, in
      * the owed list's own words, so the model cannot soften it into a fourth question about
@@ -1958,7 +1968,7 @@ export class ConversationService {
      * for a date, a number or a document; once the session holds one, asking it is the product not
      * having listened, whatever the other reader thinks.
      */
-    if (oneTime || concrete.length || verdict.ready) return { ready: true };
+    if (oneTime || concrete.length || verdict.ready) return noDecision ? { ready: true, sayFirst: NO_DECISION_YET } : { ready: true };
     /*
      * THE CLOSE CHASES NOTHING. "Put a date or a number on that" went out to people who had just said
      * "No." (six runs, 20-21 Sep 2026), and never once produced the number. The close records that

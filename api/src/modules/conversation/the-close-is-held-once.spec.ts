@@ -141,7 +141,9 @@ describe('the bar, since 20 September 2026', () => {
   });
   it('never holds a one-time session', () => {
     expect(service).toContain('const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;');
-    expect(service).toContain('if (oneTime || concrete.length || verdict.ready) return { ready: true };');
+    expect(service).toContain('if (oneTime || concrete.length || verdict.ready) return noDecision ? { ready: true, sayFirst: NO_DECISION_YET } : { ready: true };');
+    /* And the close chases nothing: no "put a date or a number on that" is appended any more. */
+    expect(service).not.toContain('return { ready: false, ask: THE_ONE_CONCRETE_THING };');
   });
   it('answers a bare acknowledgement rather than saying it did not come out right', () => {
     expect(service).toContain("reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);");

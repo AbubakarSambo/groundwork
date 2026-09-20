@@ -3849,9 +3849,18 @@ happened, and what is in the way.`;
     participant: { id: string; roleAsDescribed?: string | null },
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
   ) {
+    /* No coaching note for a discovery participant: they were asked as experts, not people being developed. */
+    if (ground.scenario === 'DISCOVERY') return null;
     const held = await this.whatTheRecordHoldsFor(groundId, ground);
     const mine = held.entries.filter((e) => e.participantId === participant.id);
     const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
+    /* Office work has documents; a tractor, a cold store and a rice mill do not. See TheirOwnRecord.documentsExpected. */
+    const documentsExpected = !['COHORT_CHECK', 'DISCOVERY', 'SNAPSHOT'].includes(String(ground.scenario));
+    /* The product's finding about this person, from the report: the first thing the note says. */
+    const myFinding = (Array.isArray(ground.report?.findings) ? (ground.report.findings as any[]) : []).find((f) => f.participantId === participant.id);
+    const findingLines: string[] = myFinding?.hasGap && myFinding.text
+      ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|Named as in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
+      : [];
     const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
@@ -3927,6 +3936,7 @@ happened, and what is in the way.`;
         })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
+      documentsExpected,
       /*
        * AND THE PART THAT IS ABOUT THIS ONE PERSON. 4.4.
        *
@@ -3944,6 +3954,8 @@ happened, and what is in the way.`;
           .filter((e: any) => String(e.kind ?? '').toUpperCase().includes('COMMIT'))
           .map((e: any) => ({ what: e.text ?? '', hasDate: !!e.dueDate || /\b(by|on)\b.{0,20}\d/i.test(e.text ?? '') })),
         anythingDocumented: mine.some((e) => !e.recallBased),
+        documentsExpected,
+        findingLines,
       }),
     });
 

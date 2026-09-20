@@ -128,6 +128,8 @@ export interface CoachingInputs {
    * thing off their own lines. See what-your-own-record-says. Empty is normal and fine.
    */
   aboutYou?: string[];
+  /** See TheirOwnRecord.documentsExpected: a farmer is not asked to bring a spreadsheet. */
+  documentsExpected?: boolean;
 }
 
 const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
@@ -353,7 +355,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     actions.push(
       !i.saidSomethingSpecific
         ? 'Pick one thing you actually did and write it with a date and who else was involved. One is enough to change what this can say.'
-        : !i.anythingDocumented
+        : !i.anythingDocumented && i.documentsExpected !== false
           ? 'Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system.'
           : last
             ? 'This is the last session. Say plainly what is still unresolved and who you think owns it, because after this the record stops.'
