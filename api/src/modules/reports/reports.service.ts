@@ -758,10 +758,20 @@ export class ReportsService {
    * completion's read is the last write.
    */
   private readonly synthesisQueue = new Map<string, Promise<unknown>>();
+  /* One waiting run is enough: it will read everything that has landed by the time it starts. Six
+     people finishing inside a minute asked for six syntheses at three minutes each; the sixth read
+     nothing the second would not have. */
+  private readonly synthesisWaiting = new Map<string, Promise<any>>();
 
   async synthesize(groundId: string) {
+    const waiting = this.synthesisWaiting.get(groundId);
+    if (waiting) return waiting;
     const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
-    const mine = after.then(() => this.synthesizeNow(groundId));
+    const mine = after.then(() => {
+      this.synthesisWaiting.delete(groundId);
+      return this.synthesizeNow(groundId);
+    });
+    if (this.synthesisQueue.has(groundId)) this.synthesisWaiting.set(groundId, mine);
     const tail = mine.catch(() => undefined);
     this.synthesisQueue.set(groundId, tail);
     try {
@@ -1454,10 +1464,31 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const stillSevere = severeFaultsIn(String((result as any).sharedPicture ?? ''));
     if (stillSevere.length) {
-      this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
-      /* Read here, on this rare path, rather than threaded from the engagement read further down. */
-      const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
-      (result as any).sharedPicture = previous?.sharedPicture ?? '';
+      /*
+       * THE SENTENCE COMES OUT, NOT THE PICTURE. Run 3, 20 Sep 2026: a fresh picture of six accounts
+       * carried "the number 33, which appears in nobody's record", so the previous picture shipped -
+       * and the previous picture had been written when one account was in: "five of the six people
+       * provided records too brief to compare". It stood on the lead's page for two rounds while
+       * everybody had fourteen to twenty-seven entries. A stale picture is a wrong picture. The
+       * sentences that carry the fault come out; the rest of the fresh picture stands. Only when
+       * nothing is left does the previous one ship.
+       */
+      const picture = String((result as any).sharedPicture ?? '');
+      const offending = stillSevere.map((f) => /number (\d+)/.exec(f)?.[1] ?? /named "([^"]+)"/.exec(f)?.[1]).filter(Boolean) as string[];
+      const kept = picture
+        .split(/(?<=[.!?])\s+/)
+        .filter((sentence) => !offending.some((o) => sentence.includes(o)))
+        .join(' ')
+        .trim();
+      if (kept && !severeFaultsIn(kept).length) {
+        this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); the sentences carrying it were taken out.`);
+        (result as any).sharedPicture = kept;
+      } else {
+        this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
+        /* Read here, on this rare path, rather than threaded from the engagement read further down. */
+        const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
+        (result as any).sharedPicture = previous?.sharedPicture ?? '';
+      }
     }
 
     // SECOND PASS: what is at stake, one gap at a time.
