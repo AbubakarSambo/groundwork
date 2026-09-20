@@ -430,6 +430,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
                       {p.isYou ? `${p.who} (you)` : p.who}
                     </div>
                     {p.saying && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{p.saying}</div>}
+                    {/* The product's own finding for this person, from the record: purpose, standing, the lead's number against theirs, the gap. */}
+                    {p.finding && <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 6, padding: '8px 10px', borderLeft: `3px solid ${p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)'}`, ...PROSE }}>{p.finding}</div>}
                     {p.lines?.length ? (
                       <div style={{ display: 'grid', gap: 8 }}>
                         {p.lines.map((l: string, j: number) => (

@@ -685,6 +685,22 @@ export class BoardService {
            rather than guessing the bar - see behindThePace. */
         (ground as any).totalSessions ?? null,
       );
+      /*
+       * AND WHAT THE RECORD SAYS ABOUT EACH OF THEM, IN THE PRODUCT'S WORDS. "Grace - nothing to do"
+       * sat on a board while Grace's own record said her maize was late and the hire income was
+       * paying the loan (run 6, 21 Sep 2026). The finding per person is written at synthesis from
+       * the record; the row carries it, with the label resolved for this reader.
+       */
+      const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
+      if (findings.length) {
+        const byId = new Map(findings.map((f) => [f.participantId, f]));
+        out.eachPerson = (out.eachPerson as any[]).map((row) => {
+          const f = byId.get(row.participantId);
+          if (!f) return row;
+          const text = String(f.text ?? '').replace(new RegExp(`^${String(f.label ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They');
+          return { ...row, finding: text, hasGap: !!f.hasGap };
+        });
+      }
     }
 
     if (has('checkInGrid')) {

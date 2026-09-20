@@ -47,6 +47,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 import { cleanText } from './what-the-record-actually-holds';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
+import { findingFor, thePictureTheProductWrites } from './the-finding-per-person';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
@@ -1951,6 +1952,31 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const priorEngagement = priorReport?.engagement as Record<string, any> | null | undefined;
     const existingGuides = priorEngagement?.postReportGuides;
 
+    /*
+     * THE PRODUCT'S HALF OF THE PICTURE GOES FIRST. See the-finding-per-person: after the guards had
+     * cut everything the model got wrong, run 6's final picture was one platitude. The finding per
+     * person is written here from the record, the overview counts what the product can count, and
+     * the model's narrative follows under it. Both halves go through the same name resolution at the
+     * read, so "the tractor owner" becomes "you" on her own page and her name on the lead's.
+     */
+    const findings = parties
+      .filter((p: any) => !p.managingOnly)
+      .map((p: any) => findingFor({
+        participantId: p.id,
+        label: labelById.get(p.id) ?? 'a party',
+        isLead: p.partyType === PartyType.INITIATOR,
+        said: records.filter((r) => r.participant.id === p.id).map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1 })),
+        targets: (objectivesForTheGaps as any[])
+          .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
+          .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+      }, roundNow))
+      .filter((f): f is NonNullable<typeof f> => !!f);
+    const productHalf = thePictureTheProductWrites(findings, findings.length);
+    if (productHalf) {
+      const modelHalf = String((result as any).sharedPicture ?? '').trim();
+      (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
+    }
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -2001,6 +2027,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           return {};
         })()),
         sharedPicture: result.sharedPicture,
+        findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
@@ -2034,6 +2061,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       },
       update: {
         sharedPicture: result.sharedPicture,
+        findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
@@ -2254,7 +2282,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true } },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true } },
         brief: true,
       },
     });
@@ -2486,6 +2514,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * person's lines and nothing else, the fragments are kept, and a decline costs nothing.
      */
     await this.fillWhatEachPersonSaid(shape.whatEachPersonSaid as any[]);
+
+    /*
+     * AND THE PRODUCT'S OWN FINDING FOR EACH PERSON, under the model's sentence. Written at synthesis
+     * from the record (see the-finding-per-person); here the label is turned into the name this
+     * reader may see, or "You" for their own row. The lead reads every row; a participant reads
+     * their own and, where peers are named on this ground, the others by name.
+     */
+    const storedFindings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
+    if (storedFindings.length) {
+      for (const row of shape.whatEachPersonSaid as any[]) {
+        const pid = ground.participants.find((p) => {
+          const label = labels.get(p.id);
+          const named = label ? nameByLabel.get(label) : undefined;
+          return (named ?? label) === row.who;
+        })?.id;
+        const f = pid ? storedFindings.find((x) => x.participantId === pid) : null;
+        if (!f) continue;
+        const esc = String(f.label ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        row.finding = String(f.text ?? '').replace(new RegExp(`^${esc}`), row.isYou ? 'You' : row.who).replace(/^You said this was for/, 'You said this was for');
+        row.hasGap = !!f.hasGap;
+      }
+    }
 
     /**
      * WHO THIS REPORT IS COUNTING, AND WHO HAS SHOWN THEIRS.

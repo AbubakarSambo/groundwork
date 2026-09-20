@@ -1950,6 +1950,10 @@ model Report {
   /// A discovery session's direction, read once at release and kept. It was computed on every read
   /// and, at twenty-four accounts, timed out on every read (adversarial run, 20 Sep 2026).
   direction       Json?
+  /// The finding per person, written by the product from the record: purpose, standing, the lead's number
+  /// against their own, worries, gaps. The half of the picture no guard can cut to a platitude. See
+  /// the-finding-per-person.
+  findings        Json?
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")
