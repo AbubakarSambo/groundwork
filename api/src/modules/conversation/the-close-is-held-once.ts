@@ -34,6 +34,25 @@ export function whatIsConcreteIn(lastTurn: string, attachedThisSession: boolean)
 export const THE_ONE_CONCRETE_THING =
   'One more before this closes. Put a date or a number on that, or name where it is written down.';
 
+/**
+ * THE OTHER HOLD: the session is closing with something it was for never raised. Product-written,
+ * in the owed list's own words ("how it is actually going", "what they need from other people"),
+ * so it is one plain line and not a question about something else.
+ */
+export const theOneThingNeverAsked = (what: string): string => {
+  /* The owed list is written about them ("what they are working on"); the line is said to them. First
+     sentence only: the rest of an owed line is guidance for the model, not for the person. */
+  const first = ((what ?? '').trim().split(/(?<=[.?!])\s+/)[0] ?? '').replace(/[.?!]+$/, '');
+  const toYou = first
+    .replace(/\bthemselves\b/gi, 'yourself')
+    .replace(/\btheir\b/gi, 'your')
+    .replace(/\bthey are\b/gi, 'you are')
+    .replace(/\bthey\b/gi, 'you')
+    .replace(/\bthem\b/gi, 'you');
+  const short = toYou.length > 120 ? `${toYou.slice(0, 117).trimEnd()}...` : toYou;
+  return `One more before this closes, because it is what this check-in is for: ${short}.`;
+};
+
 /** The line the model gets on the turn after the hold, so it does not ask a second time. */
 export const THE_CLOSE_WAS_HELD =
   'THE CLOSE WAS HELD ONCE, by the product, for a date, a number or a document. They have now answered that. Whatever they gave, do not ask for it again: it is recorded as what they said. If you were closing, close now, in the shortest turn of the session, with the marker.';

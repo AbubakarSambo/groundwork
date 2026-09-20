@@ -12,7 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
-import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection } from './what-the-room-said';
+import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection, whereTheRoomSplit } from './what-the-room-said';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
@@ -45,6 +45,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
@@ -697,9 +698,10 @@ export class ReportsService {
       'and you must not guess any of it. Never compare them to anyone. Never say whether they are',
       'doing well or badly, never praise, never fault. This is not an assessment of a person.',
       '',
-      'Third person, present tense where the lines allow: "Has the migration running on two of the',
-      'four services and expects the rest by the end of the month, with the data backfill still',
-      'unscheduled."',
+      'Third person, present tense where the lines allow, and NO pronoun for the person: start with',
+      'the verb. "Has the migration running on two of the four services and expects the rest by the',
+      'end of the month, with the data backfill still unscheduled." Never he, never she: you have not',
+      'been told, and a name is not a pronoun.',
       '',
       'If the lines are too thin or too scattered to say anything true in one sentence, return an',
       'empty string. An empty string is a correct answer here and a vague sentence is not - the',
@@ -735,7 +737,8 @@ export class ReportsService {
             [{ role: 'user', content: `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}` }],
             SAYING_SCHEMA,
           );
-          const text = res?.saying?.trim();
+          /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
+          const text = withoutAGuessedPronoun(res?.saying?.trim() ?? '');
           if (text) person.saying = text;
         } catch (err: any) {
           /* One person loses their sentence and keeps every line. The report is unaffected. */
@@ -4162,6 +4165,8 @@ happened, and what is in the way.`;
       ...direction,
       enough: enough.enough,
       saying: enough.saying,
+      /* Where two groups gave two answers to the same question. See whereTheRoomSplit. */
+      splits: whereTheRoomSplit(direction),
       /* Their own read, which is the whole of what a one-time session can give back. */
       yours: viewerLabel ? whatYouNamed(direction, viewerLabel) : null,
     };

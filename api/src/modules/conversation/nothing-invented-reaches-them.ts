@@ -20,6 +20,7 @@
  */
 
 import { OneQuestionPerTurn } from './one-question-per-turn';
+import { claimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
 import { namesWorthReporting, restoreTheirWords } from './the-record-holds-what-was-said';
 
 /**
@@ -59,7 +60,7 @@ export type Screened = {
 
 export type Hit = {
   sentence: string;
-  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | "called the reader by somebody else's name" | 'a second question' | 'an apology' | 'a pronoun with nobody named';
+  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | "called the reader by somebody else's name" | 'a second question' | 'an apology' | 'a pronoun with nobody named' | 'a number claim the record does not support';
   offending: string[];
 };
 
@@ -320,6 +321,13 @@ export class SentenceGate {
     private readonly readerName?: string | null,
     /** The conversation so far, for the pronoun check. See whyItFails. */
     private readonly conversation?: string[],
+    /**
+     * What the person has said, this session and before, for the number-claim check. Unlike the
+     * checks above this one DELETES: "you are past the N40m target" to somebody at N26m is not a
+     * suspicion to be logged, it is arithmetic, and it was said to a live person twice (adversarial
+     * run 2, 20 Sep 2026). Only the person's own words, never the prompt's.
+     */
+    private readonly theirWordsForNumbers?: string[],
   ) {}
 
   /** Feed a delta. Returns whatever complete, checked sentences are now safe to send. */
@@ -367,6 +375,14 @@ export class SentenceGate {
         this.droppedSentences.push(s);
         this.hitRows.push({ sentence: s, check: 'a second question', offending: [] });
         if (DELETES_WHAT_IT_FINDS) continue;
+      }
+      if (this.theirWordsForNumbers) {
+        const bad = claimsTheNumbersDoNotSupport(repaired, { theirWords: this.theirWordsForNumbers });
+        if (bad.length) {
+          this.droppedSentences.push(s);
+          this.hitRows.push({ sentence: s, check: 'a number claim the record does not support', offending: bad.map((b) => b.why) });
+          continue;
+        }
       }
       out.push(repaired);
     }

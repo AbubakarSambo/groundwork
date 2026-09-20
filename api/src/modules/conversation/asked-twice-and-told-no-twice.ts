@@ -228,9 +228,13 @@ export const DO_NOT_SAY_IT_BACK = doNotSayItBack('', '');
 export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
   const asked = (earlierAsks ?? []).filter((a) => (a ?? '').trim());
   if (asked.length < 2) return false;
-  /* The two most recent asks. Something raised once, several turns ago, is not this fault. */
-  const recent = asked.slice(-2);
-  return recent.every((a) => asksTheSameThingAgain(a, reply));
+  /*
+   * ANY TWO EARLIER TURNS, NOT THE LAST TWO. This read only the two most recent asks, so "what is
+   * stopping you" at turns 9, 11 and 13 with another question in between never counted, and the
+   * convener of a discovery session got it three times (adversarial run, 20 Sep 2026). A thing
+   * asked twice anywhere in the session, and now a third time, is the fault whatever sat between.
+   */
+  return asked.filter((a) => asksTheSameThingAgain(a, reply)).length >= 2;
 }
 
 export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.

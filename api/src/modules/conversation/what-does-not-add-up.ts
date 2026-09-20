@@ -1,0 +1,230 @@
+/**
+ * WHAT DOES NOT ADD UP, WORKED OUT BY THE PRODUCT AND QUOTED TO THE MODEL.
+ *
+ * Two adversarial runs (20 Sep 2026) scored "noticed what did not add up" lowest of every dimension,
+ * 2.3 of 5, and the misses were not subtle: a poultry farmer said 500 birds and 400 eggs a day in
+ * session one and 260 birds and 200 eggs in session two, and nobody said "that is half". A motorbike
+ * borrower's goal was "increase my income" in session one and "just keep paying" in session two, and
+ * the change was not named. A rep whose manager had set him N50m said his own target was N40m, and
+ * the two numbers sat one screen apart on the board without meeting. All of it was already in the
+ * record; the model was asked to notice it from a nineteen-thousand-word prompt and did not.
+ *
+ * So the product does the noticing, the way it does the arithmetic on the board. Four checks, all
+ * deterministic, all quoting the person's own lines:
+ *
+ *   1. the same thing counted differently across sessions ("220 birds" after "500 birds");
+ *   2. their own number for a target against the number set for them by the lead;
+ *   3. where they stand against a target with the run nearly over;
+ *   4. what they said this was for in the first session, when nothing they have reported since
+ *      mentions it.
+ *
+ * The model gets the differences as facts with both lines quoted, and one instruction: put ONE of
+ * them to the person, plainly, both lines side by side, as a question. Determinism owns the
+ * arithmetic and the quotation; the model owns the sentence. See [[feedback-structural-not-
+ * instructional-guardrails]].
+ */
+
+export interface AThingOnRecord {
+  text: string;
+  type: string;
+  session: number;
+}
+
+export interface ATargetTheyHold {
+  name: string;
+  target: number | null;
+  count: number;
+  /** Theirs (owned by this person), as opposed to the check-in's shared target. */
+  yours: boolean;
+  /** Said by this person, as opposed to set for them by the lead. */
+  setByThem: boolean;
+}
+
+export interface WhatToCheck {
+  said: AThingOnRecord[];
+  thisSession: number;
+  targets: ATargetTheyHold[];
+  /** Sessions planned after this one; null when the run has no fixed length. */
+  sessionsLeft: number | null;
+  /** The AI's own turns this session, so a difference already put to them is not put twice. */
+  aiTurnsThisSession: string[];
+}
+
+export interface ADifference {
+  kind: 'counted differently' | 'two numbers for one target' | 'behind with the run nearly over' | 'what it was for has gone quiet';
+  lines: string[];
+  /** The numbers or words that identify it, so a turn that already mentioned them counts as having put it. */
+  marks: string[];
+}
+
+/* ------------------------------------------------------------------------------------------------ */
+
+const SCALE: Record<string, number> = { k: 1e3, thousand: 1e3, m: 1e6, million: 1e6, bn: 1e9, billion: 1e9 };
+
+/** "220 birds", "40 tonnes a week", "N26m", "400 eggs a day": a number and the thing it counts. */
+export function numbersWithUnits(text: string): { value: number; unit: string; raw: string }[] {
+  const out: { value: number; unit: string; raw: string }[] = [];
+  const clean = (text ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '');
+  const re = /(?:[₦$£€]|\b(?:ngn|naira|usd|n))?\s?(\d[\d,]*(?:\.\d+)?)\s*(k|m|bn|million|thousand|billion)?\b(?:\s*(?:%|percent))?(?:\s+(?:a|per|each|every|of|in|on)\s+)?\s*([a-z]+)?/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(clean))) {
+    const value = parseFloat(m[1].replace(/,/g, '')) * (m[2] ? SCALE[m[2].toLowerCase()] ?? 1 : 1);
+    if (!Number.isFinite(value)) continue;
+    const money = /^[₦$£€]|^(ngn|naira|usd|n)\s?\d/i.test(m[0].trim()) || !!m[2];
+    const pct = /%|percent/i.test(m[0]);
+    const word = (m[3] ?? '').toLowerCase();
+    const unit = pct ? 'percent' : money ? 'money' : word && !/^(and|but|the|that|this|which|so|for|by|to|from|with|at|is|was|are|were|of|on|in)$/.test(word) ? word.replace(/s$/, '') : '';
+    if (!unit) continue;
+    /* A year is a date, not a count. */
+    if (!money && !pct && value >= 1900 && value <= 2100) continue;
+    out.push({ value, unit, raw: m[0].trim() });
+  }
+  return out;
+}
+
+const pct = (a: number, b: number): number => (a === 0 ? 100 : Math.round((Math.abs(b - a) / Math.abs(a)) * 100));
+
+const wordsOf = (text: string): Set<string> =>
+  new Set(
+    (text ?? '')
+      .toLowerCase()
+      .replace(/\[verifiability:\w+\]|\[inferred:[^\]]*\]/g, '')
+      .match(/[a-z]{4,}/g)
+      ?.filter((w) => !STOP.has(w)) ?? [],
+  );
+const STOP = new Set([
+  'that', 'this', 'with', 'from', 'have', 'will', 'been', 'they', 'them', 'their', 'there', 'what', 'when', 'where', 'which', 'would',
+  'could', 'should', 'about', 'into', 'over', 'more', 'most', 'some', 'than', 'then', 'also', 'just', 'like', 'make', 'making', 'sure',
+  'always', 'goal', 'target', 'main', 'thing', 'want', 'need', 'going', 'time', 'session', 'check', 'record', 'still', 'because', 'very',
+  'really', 'being', 'doing', 'done', 'well', 'good', 'much', 'many', 'every', 'each', 'other', 'only', 'even', 'back', 'down', 'right',
+]);
+
+const quote = (t: string): string => `"${(t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()}"`;
+
+const fmt = (n: number): string => (Math.abs(n) >= 1e6 ? `${+(n / 1e6).toFixed(n % 1e6 ? 1 : 0)}m` : Math.abs(n) >= 1e3 ? n.toLocaleString('en-GB') : String(n));
+
+/* ------------------------------------------------------------------------------------------------ */
+
+export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
+  const out: ADifference[] = [];
+  const said = input.said.filter((s) => s.text?.trim());
+
+  /* 1. THE SAME THING, COUNTED DIFFERENTLY ACROSS SESSIONS. Earliest against latest, per unit. */
+  const byUnit = new Map<string, { value: number; session: number; text: string }[]>();
+  for (const s of said) {
+    if (!/^(PROGRESS|SUCCESS_DEFINITION|COMMITMENT|INTENT|WORRY)$/.test(s.type)) continue;
+    for (const n of numbersWithUnits(s.text)) {
+      if (n.unit === 'money' || n.unit === 'percent') continue;
+      byUnit.set(n.unit, [...(byUnit.get(n.unit) ?? []), { value: n.value, session: s.session, text: s.text }]);
+    }
+  }
+  for (const [unit, xs] of byUnit) {
+    const sessions = [...new Set(xs.map((x) => x.session))].sort((a, b) => a - b);
+    if (sessions.length < 2) continue;
+    const first = xs.filter((x) => x.session === sessions[0]).sort((a, b) => b.value - a.value)[0];
+    const last = xs.filter((x) => x.session === sessions[sessions.length - 1]).sort((a, b) => b.value - a.value)[0];
+    if (!first || !last || first.text === last.text) continue;
+    const change = pct(first.value, last.value);
+    if (change < 20) continue;
+    out.push({
+      kind: 'counted differently',
+      lines: [
+        `Session ${first.session}: ${quote(first.text)}.`,
+        `Session ${last.session}: ${quote(last.text)}.`,
+        `That is ${fmt(first.value)} ${unit}${first.value === 1 ? '' : 's'} then ${fmt(last.value)}: ${last.value < first.value ? 'down' : 'up'} ${change}%.`,
+      ],
+      marks: [String(first.value), String(last.value)],
+    });
+  }
+
+  /* 2. TWO NUMBERS FOR ONE TARGET: the lead's for them, and their own. */
+  const setForThem = input.targets.filter((t) => t.yours && !t.setByThem && t.target != null);
+  const theirOwn = input.targets.filter((t) => t.yours && t.setByThem && t.target != null);
+  for (const lead of setForThem) {
+    const own = theirOwn.find((t) => t.target !== lead.target);
+    if (!own) continue;
+    out.push({
+      kind: 'two numbers for one target',
+      lines: [
+        `Set for them by the lead: ${quote(lead.name)}, ${fmt(lead.target as number)}.`,
+        `Their own number: ${quote(own.name)}, ${fmt(own.target as number)}.`,
+        'Neither has been put next to the other yet.',
+      ],
+      marks: [String(lead.target), String(own.target)],
+    });
+    break;
+  }
+
+  /* 3. BEHIND, WITH THE RUN NEARLY OVER. */
+  if (input.sessionsLeft != null && input.sessionsLeft <= 1) {
+    for (const t of input.targets.filter((x) => x.target != null && x.target > 0 && x.count > 0 && x.count < (x.target as number))) {
+      const share = Math.round((t.count / (t.target as number)) * 100);
+      if (share > 85) continue;
+      out.push({
+        kind: 'behind with the run nearly over',
+        lines: [`${quote(t.name)}: at ${fmt(t.count)} of ${fmt(t.target as number)}, ${share}%, with ${input.sessionsLeft === 0 ? 'no check-in' : 'one check-in'} left after this one.`],
+        marks: [String(t.count), String(t.target)],
+      });
+      break;
+    }
+  }
+
+  /* 4. WHAT IT WAS FOR HAS GONE QUIET. The first session's definition of success, against everything
+        reported since. Only from session two on, and only when there IS something reported since. */
+  if (input.thisSession >= 2) {
+    const firstFor = said.filter((s) => s.type === 'SUCCESS_DEFINITION' && s.session === 1);
+    const since = said.filter((s) => s.session >= 2 && /^(PROGRESS|INTENT|COMMITMENT)$/.test(s.type));
+    if (firstFor.length && since.length) {
+      const sinceWords = new Set(since.flatMap((s) => [...wordsOf(s.text)]));
+      const quiet = firstFor.find((f) => {
+        const w = [...wordsOf(f.text)];
+        return w.length >= 2 && !w.some((x) => sinceWords.has(x));
+      });
+      if (quiet) {
+        out.push({
+          kind: 'what it was for has gone quiet',
+          lines: [
+            `What they said this was for, session 1: ${quote(quiet.text)}.`,
+            `What they have reported since: ${since.slice(-3).map((s) => quote(s.text)).join('; ')}.`,
+            'Nothing reported since mentions the thing it was for.',
+          ],
+          marks: [...wordsOf(quiet.text)].slice(0, 3),
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+/** Has any AI turn this session already carried this difference's marks? Then it has been put. */
+export function alreadyPut(d: ADifference, aiTurns: string[]): boolean {
+  const said = (aiTurns ?? []).join('\n').toLowerCase().replace(/,/g, '');
+  const marks = d.marks.map((m) => m.toLowerCase().replace(/,/g, ''));
+  if (marks.length < 2) return marks.length === 1 && said.includes(marks[0]);
+  return marks.filter((m) => said.includes(m)).length >= 2;
+}
+
+/**
+ * THE BLOCK. Facts, quoted, with the one instruction. Differences already put this session are
+ * listed as put, so the next turn builds on the answer rather than raising it again.
+ */
+export function sayWhatDoesNotAddUp(input: WhatToCheck): string {
+  const all = whatDoesNotAddUp(input);
+  if (!all.length) return '';
+  const put = all.filter((d) => alreadyPut(d, input.aiTurnsThisSession));
+  const open = all.filter((d) => !put.includes(d));
+  const lines: string[] = ['WHAT DOES NOT ADD UP, from this person\'s own record. The product found these; the words are theirs.'];
+  if (open.length) {
+    const first = open[0];
+    lines.push(`PUT THIS ONE TO THEM THIS SESSION, once the current thread is done: ${first.kind}.`, ...first.lines.map((l) => `  ${l}`));
+    lines.push(
+      'Put both lines side by side in one plain sentence and ask which is right, or what happened between the two. A question, not a verdict; their words, not yours. If they explain it, take the explanation and let it go. Never raise a second one before this one is answered.',
+    );
+    for (const d of open.slice(1)) lines.push(`Also on record, for a later turn if this one is answered: ${d.kind} (${d.lines[0]})`);
+  }
+  if (put.length) {
+    lines.push('ALREADY PUT TO THEM THIS SESSION - do not raise again; take whatever they said about it:', ...put.map((d) => `- ${d.kind}: ${d.lines[0]}`));
+  }
+  return lines.join('\n');
+}

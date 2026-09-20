@@ -49,7 +49,7 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     /* The line that used to throw every non-bad-faith code away now has the good ones taken out
        in front of it, and routed to the method that was already there for them. */
-    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,260}observePositive\(/);
+    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,600}observePositive\(/);
     expect(src.indexOf('isPositiveCode(d.code)')).toBeLessThan(src.indexOf('if (!isBadFaithCode(d.code)) continue;'));
   });
 

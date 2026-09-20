@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement, theOneThingNeverAsked } from './the-close-is-held-once';
 import { numbersNobodySaid, screen, SentenceGate, askInsteadOfInventing, hitLogLine } from './nothing-invented-reaches-them';
 import { detectFunction } from '../board/function-detection';
 import { buildRoleProbeBlock, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
@@ -148,5 +148,13 @@ describe('the bar, since 20 September 2026', () => {
     expect(isAnAcknowledgement('Ok.')).toBe(true);
     expect(isAnAcknowledgement('No.')).toBe(true);
     expect(isAnAcknowledgement('It is on the system.')).toBe(false);
+  });
+});
+
+describe('the close is held once for the thing the session was for', () => {
+  it('says it to the person, first sentence only', () => {
+    expect(theOneThingNeverAsked('how they are making their number. Not the total: what kind of sales or work, on what terms, with whom.'))
+      .toBe('One more before this closes, because it is what this check-in is for: how you are making your number.');
+    expect(theOneThingNeverAsked('what they need from other people')).toContain('what you need from other people.');
   });
 });

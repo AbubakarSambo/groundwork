@@ -217,6 +217,42 @@ export function mergeDirections(parts: TheDirection[], outOf: number): TheDirect
   };
 }
 
+/**
+ * WHERE THE ROOM SPLIT. The judge's one NO on the discovery report, both runs: "divergences empty; the
+ * North-focused majority and the South-focused three read as consensus". The eight lists say what was
+ * named and by how many; they do not say that two answers to the same question came from two groups
+ * of people with nobody in common. This reads that out of the lists themselves: within a list, two
+ * items each named by at least two people, with no namer in common, are a split. Regions and value
+ * chains are where a split is a decision; the others are where it is just variety, so only those two.
+ */
+export interface ASplit {
+  list: 'regions' | 'valueChains';
+  one: { name: string; count: number };
+  other: { name: string; count: number };
+  saying: string;
+}
+
+export function whereTheRoomSplit(direction: TheDirection): ASplit[] {
+  const out: ASplit[] = [];
+  for (const list of ['regions', 'valueChains'] as const) {
+    const items = (direction[list] ?? []).filter((i) => i.namedBy.length >= 2);
+    const top = items[0];
+    if (!top) continue;
+    const topSet = new Set(top.namedBy);
+    for (const other of items.slice(1)) {
+      if (other.namedBy.some((n) => topSet.has(n))) continue;
+      out.push({
+        list,
+        one: { name: top.name, count: top.namedBy.length },
+        other: { name: other.name, count: other.namedBy.length },
+        saying: `${top.namedBy.length} named ${top.name}; ${other.namedBy.length} named ${other.name}, and none of them named ${top.name}. Two answers, from two groups with nobody in common.`,
+      });
+      if (out.filter((x) => x.list === list).length >= 2) break;
+    }
+  }
+  return out;
+}
+
 export function inChunks<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));

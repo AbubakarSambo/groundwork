@@ -4,6 +4,7 @@ import { whatWasSeenLastPeriod, lastPeriodBlockFor } from './the-detector-has-no
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
+import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
 import { mirrorDetection } from '../detectors/mirror-a-detection';
 import { isBackedByADocument } from '../reports/backed-by-a-document';
@@ -65,10 +66,18 @@ export class PatternsService {
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
 
-    const [turns, records] = await Promise.all([
+    const [turns, records, statedGoalRows] = await Promise.all([
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } }),
       this.prisma.recordEntry.findMany({ where: { checkInId } }),
+      /* What they said this was for, in earlier periods. See against-the-goal-they-stated. */
+      this.prisma.recordEntry.findMany({
+        where: { participantId: checkIn.participantId, disputedAt: null, type: 'SUCCESS_DEFINITION' as any, checkIn: { sessionNumber: { lt: checkIn.sessionNumber } } },
+        orderBy: { createdAt: 'asc' },
+        select: { text: true },
+        take: 12,
+      }).catch(() => [] as { text: string }[]),
     ]);
+    const statedGoals = statedGoalRows.map((r) => r.text);
 
     if (turns.length === 0 && records.length === 0) {
       await this.markAnalyzed(checkInId);
@@ -77,7 +86,7 @@ export class PatternsService {
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${checkIn.sessionNumber}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}`;
+    const content = `PERIOD ${checkIn.sessionNumber}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
 
     // --- R3 positive signal (rule-based, no AI extraction needed) ---
     const allPriorText = records.map((r) => r.text);
@@ -137,6 +146,11 @@ export class PatternsService {
          * came from. The costs are not the same and the gate should not be either.
          */
         if (isPositiveCode(d.code)) {
+          /* M1 is about the goal they stated. An output about something else is not it. */
+          if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
+            this.logger.log(`Check-in ${checkInId}: M1 dropped; the observation speaks to none of the goals this person stated.`);
+            continue;
+          }
           await this.observePositive(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
           );

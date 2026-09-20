@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { tidy, isItADirection, whatYouNamed, THE_LISTS, DIRECTION_SCHEMA, DIRECTION_TOOL, mergeDirections, inChunks, ACCOUNTS_PER_READ } from './what-the-room-said';
+import { tidy, isItADirection, whatYouNamed, THE_LISTS, DIRECTION_SCHEMA, DIRECTION_TOOL, mergeDirections, inChunks, ACCOUNTS_PER_READ, whereTheRoomSplit } from './what-the-room-said';
 
 /**
  * THE DIRECTION A DISCOVERY SESSION IS FOR.
@@ -128,5 +128,27 @@ describe('a direction read in chunks', () => {
     expect(svc).toContain("if (ground.scenario === 'DISCOVERY') {\n      await this.readAndKeepTheDirection(groundId)");
     expect(svc).toContain('const stored = ground.report?.direction as TheDirection | null | undefined;');
     expect(svc).toMatch(/void this\.readAndKeepTheDirection\(ground\.id\)/);
+  });
+});
+
+describe('where the room split', () => {
+  const empty = { markets: [], actors: [], dataGaps: [], networks: [], pilots: [], nextTwelveMonths: [], outOf: 24 };
+  it('two answers from two groups with nobody in common is a split; overlapping groups are not', () => {
+    const d = {
+      ...empty,
+      regions: [
+        { name: 'Kano and Jigawa', namedBy: ['A', 'B', 'C', 'D', 'E'], asSaid: null },
+        { name: 'Ogun and Oyo', namedBy: ['S', 'T', 'U'], asSaid: null },
+        { name: 'Katsina', namedBy: ['A', 'F'], asSaid: null },
+        { name: 'Yobe', namedBy: ['G'], asSaid: null },
+      ],
+      valueChains: [{ name: 'paddy', namedBy: ['A', 'B'], asSaid: null }, { name: 'tomatoes', namedBy: ['B', 'S'], asSaid: null }],
+    } as any;
+    const splits = whereTheRoomSplit(d);
+    expect(splits).toHaveLength(1);
+    expect(splits[0].saying).toBe('5 named Kano and Jigawa; 3 named Ogun and Oyo, and none of them named Kano and Jigawa. Two answers, from two groups with nobody in common.');
+  });
+  it('nothing when nothing is split', () => {
+    expect(whereTheRoomSplit({ ...empty, regions: [{ name: 'Kano', namedBy: ['A', 'B'], asSaid: null }], valueChains: [] } as any)).toEqual([]);
   });
 });
