@@ -356,6 +356,25 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Say where things landed.',
     },
   },
+  /**
+   * THE ONE THAT IS NOT ABOUT THE PEOPLE ANSWERING. Every other row asks somebody about their own
+   * work; this asks a room what they know, once, so that reading the answers together produces a
+   * direction. There is no second column that matters, because there is no second session.
+   */
+  [GroundScenario.DISCOVERY]: {
+    name: 'Work Out Where to Focus',
+    description: 'Ask a group what they know, once, and turn the answers into a direction.',
+    lead: {
+      first: 'See where the room says the opportunity and the gaps are.',
+      second: 'There is no second session. One conversation is the design.',
+      last: 'Set the priorities from what the group named together.',
+    },
+    participant: {
+      first: 'Say what you are trying to grow, what stops you, and where you would go.',
+      second: 'Nothing to come back to: one session is the whole of it.',
+      last: 'Your answers go in with everybody else and the picture comes back.',
+    },
+  },
   [GroundScenario.SNAPSHOT]: {
     name: 'Take the Pulse of the Team',
     description: 'Get a quick picture of how people are experiencing the work right now.',

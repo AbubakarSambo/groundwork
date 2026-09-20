@@ -109,7 +109,7 @@ describe('the signed-in situation picker', () => {
  * So the exemption stands, and it is anchored to the pack. If the pack ever starts asking for a
  * target, remove PULSE_CHECK from this list and the card will be forced to say so.
  */
-const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT']
+const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT', 'DISCOVERY']
 
 /**
  * THE ONE CARD THAT IS ALLOWED TO DESCRIBE A SINGLE REPORT.
@@ -122,7 +122,9 @@ const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT']
  * naming a run, and the exemption is narrow and named rather than a pattern loosened until it fits.
  * If a second situation ever appears here, that is the signal the flattening is coming back.
  */
-const SINGLE_ROUND_BY_DESIGN = ['SNAPSHOT']
+/* And the discovery session, which asks a room what they know once: the direction comes from
+   reading the accounts against each other, not from asking anybody a second time. */
+const SINGLE_ROUND_BY_DESIGN = ['SNAPSHOT', 'DISCOVERY']
 
 describe('every card describes a run against an objective', () => {
   it('names the run, not a single report', () => {

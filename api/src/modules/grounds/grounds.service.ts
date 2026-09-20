@@ -104,6 +104,8 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
    * the same day rather than sitting open for a month with nothing left to happen in it.
    */
   SNAPSHOT: 1,
+  /* One conversation, by design: the direction comes from reading them together, not from a second round. */
+  DISCOVERY: 1,
   /**
    * A STANDING UPDATE RUNS UNTIL SOMEBODY STOPS IT, and ninety days is the honest stand-in.
    *
@@ -185,6 +187,7 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   OPEN_READ: GroundMoment.RECOGNITION,
   /** One honest read of right now. No objective to set and none to close. */
   SNAPSHOT: GroundMoment.RECOGNITION,
+  DISCOVERY: GroundMoment.STARTING,
   /* STARTING, like the other recurring read: the enum's three moments are about where a ground sits
      in its own arc, and a standing update is always at the start of the next one. */
   TEAM_UPDATES: GroundMoment.STARTING,
@@ -245,6 +248,7 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   OPEN_READ: Cadence.FORTNIGHTLY,
   /** The only ONE_TIME in the product: one round, and no follow-up is ever scheduled. */
   SNAPSHOT: Cadence.ONE_TIME,
+  DISCOVERY: Cadence.ONE_TIME,
   /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
   TEAM_UPDATES: Cadence.WEEKLY,
 };

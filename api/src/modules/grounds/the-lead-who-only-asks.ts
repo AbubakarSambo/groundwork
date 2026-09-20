@@ -16,7 +16,7 @@
  * team has all checked in" mail, which is the moment of value that card is sold on, would never
  * send.
  */
-export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES'];
+export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES', 'DISCOVERY'];
 
 /**
  * Whether this round is waiting on a managing-only lead.

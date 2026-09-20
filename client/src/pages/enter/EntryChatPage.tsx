@@ -830,6 +830,21 @@ export const SITUATION_CARDS = [
       'What are your three priorities this quarter, and what is blocking you?',
     ],
   },
+  /**
+   * INTERROGATE A GROUP ONCE, TO TURN WHAT THEY KNOW INTO A DIRECTION. Not a read on how work is
+   * going: the people answering are not being checked on, they are being asked what they know.
+   */
+  {
+    group: 'reading',
+    scenario: 'DISCOVERY',
+    label: SCENARIO_LABELS.DISCOVERY,
+    detail: 'Ask a group what they know, once, and turn the answers into a direction.',
+    message: 'I want to ask a group of people what they are trying to grow and what is stopping them, once, so I can work out where we should focus next.',
+    examples: [
+      'Where should we expand next, and what data would we need to do it?',
+      'What is stopping our customers from growing, and where would they go if it stopped?',
+    ],
+  },
   {
     group: 'reading',
     scenario: 'SNAPSHOT',

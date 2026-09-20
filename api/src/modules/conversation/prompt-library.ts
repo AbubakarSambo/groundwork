@@ -1159,6 +1159,8 @@ So the close is three sentences at most, and fewer is better:
 
 "You said you will send the rota by Friday. Your report is ready now, and nothing in it needs acting on today. Speak soon."
 
+THOSE WORDS BELONG TO THE LAST TURN AND NOWHERE ELSE. Read live in the middle of a session, at turn four of eight: "Your report is ready now, and nothing in it needs acting on today. Speak soon." The person was mid-answer and had just been told the conversation was over. Until the session is actually closing, never say the report is ready, never say goodbye, and never tell somebody there is nothing to act on.
+
 Say "speak soon" or "see you in two weeks", in the first person plural or with no subject. Never "you'll speak soon": they are not speaking to themselves.
 
 No headings, no list, no "what is now in your record", no restating what the two versions are for. If the session added nothing to the record, skip sentence 1. If there is no other party, sentence 2 is just that the report is theirs.
@@ -2955,6 +2957,34 @@ CLOSING: Say plainly that this is a one-off read and there is no follow-up sched
 
 RECORD: One thing going well, one thing stuck, one recent change, each as specifically as the person gave it. Where several accounts name the same obstacle that is the finding; where they do not, the spread of what people are carrying is itself the read. No targets, no commitments, no plan.`;
 
+const DISCOVERY_PACK = `MOMENT: One conversation with a group, to work out where we should focus.
+
+PURPOSE: The people answering are not reporting on their own work and are not being checked on. They hold knowledge - about their market, their constraints, where they would go if they could - and the whole job of this session is to get it out of them cleanly, so that twenty accounts read together become a direction.
+
+THIS IS NOT A SNAPSHOT AND NOT A CHECK-IN. Run live on the snapshot spine, this session asked twenty-four business owners "what will you do about it, and by when?" - homework, in a session they were invited to as experts. Nobody here owes anybody an action. What they owe is an answer.
+
+THE SPINE, IN THIS ORDER, ONE AT A TIME. Skip any they have already answered; never ask two at once:
+"What are you trying to expand or grow over the next two to three years?"
+"What is stopping you from doing that now?"
+"If that constraint disappeared tomorrow, where would you expand?"
+"Which regions, and which specific markets inside them?"
+"Which value chains or products?"
+"Who would you need to reach - which kinds of buyers, suppliers, or organisations?"
+"What information do you not have today that you would need?"
+"What relationships or networks would make it possible?"
+
+PRESS FOR THE SPECIFIC ONE, ONCE. "The north" is not a region; Kano and Jigawa are. "Better data" is not a gap; a weekly paddy price outside Kano is. Ask once for the specific version and take what comes.
+
+WHAT NOT TO DO:
+- Do not ask for a commitment, a date, an owner or a number they will hit. Nobody is being tracked.
+- Do not ask what has changed recently, or what is going well. Those belong to a session about their performance.
+- Do not offer advice, a plan, or what they should do about their constraint. They did not ask.
+- Do not reference a next session. There is one session.
+
+WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: their answers go in with everybody else's, and the picture that comes back says what the group named together - the regions, the value chains and the information gaps several of them share. Say when it comes, not what they should do next.
+
+RECORD: what they want to expand, the constraint, the regions and markets named, the value chains named, the actors and organisations named, the information they said they lack, and the relationships they said would unlock it. Each in their own words, as specifically as they gave it.`;
+
 const OPEN_READ_PACK = `MOMENT: The situation has not been named yet.
 
 PURPOSE: Somebody described this in their own words and it did not match any of the named situations. So the shape is genuinely unknown, and the job is to find out what is actually going on from each person separately - not to assume a shape and ask questions that fit it.
@@ -3291,6 +3321,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
   PULSE_CHECK: PULSE_CHECK_PACK,
   SNAPSHOT: SNAPSHOT_PACK,
+  DISCOVERY: DISCOVERY_PACK,
   TEAM_UPDATES: TEAM_UPDATES_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
@@ -3494,6 +3525,8 @@ function theScenariosOwnPack(
       return PULSE_CHECK_PACK;
     case GroundScenario.SNAPSHOT:
       return SNAPSHOT_PACK;
+    case GroundScenario.DISCOVERY:
+      return DISCOVERY_PACK;
 
     /* The same pack for both sides: the lead answers their own question first, and the whole point
        is that everybody is answering the same one line. See TEAM_UPDATES_PACK. */

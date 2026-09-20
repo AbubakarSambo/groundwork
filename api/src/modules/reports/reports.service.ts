@@ -12,6 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed } from './what-the-room-said';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
@@ -4095,6 +4096,60 @@ happened, and what is in the way.`;
       .catch(() => [] as any[]);
   }
 
+
+  /**
+   * THE DIRECTION A DISCOVERY SESSION IS FOR, AND THE READ THE PERSON WHO ANSWERED GETS BACK.
+   *
+   * Only on a discovery ground, because only there is it what the session was run to produce. It is
+   * computed at the read rather than stored: the accounts it reads are already stored, and a
+   * direction that goes stale the moment somebody else answers is worse than one built when asked.
+   *
+   * Fails to null, never to a broken report. A lead whose model call times out gets the shared
+   * picture they would have got anyway; they do not get an error page.
+   */
+  private async theDirectionFrom(ground: any, viewerLabel: string | null) {
+    if (ground.scenario !== 'DISCOVERY') return null;
+    const labels = labelsForParties(ground.participants as any);
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { disputedAt: null, participant: { groundId: ground.id } },
+      orderBy: { createdAt: 'asc' },
+      select: { text: true, participantId: true },
+      take: 600,
+    });
+    if (entries.length < 2) return null;
+
+    const byLabel = new Map<string, string[]>();
+    for (const e of entries) {
+      const label = labels.get(e.participantId);
+      if (!label) continue;
+      byLabel.set(label, [...(byLabel.get(label) ?? []), cleanText(e.text)]);
+    }
+    const knownLabels = [...byLabel.keys()];
+    if (knownLabels.length < 2) return null;
+
+    const corpus = knownLabels
+      .map((label) => `${label}:\n${(byLabel.get(label) ?? []).map((t) => `- ${t}`).join('\n')}`)
+      .join('\n\n');
+
+    const raw = await this.anthropic
+      .extract<any>(DIRECTION_PROMPT, [{ role: 'user', content: corpus }], DIRECTION_TOOL)
+      .catch((err: any) => {
+        this.logger.warn(`The direction could not be read for ${ground.id}: ${err?.message}`);
+        return null;
+      });
+    if (!raw) return null;
+
+    const direction = tidy(raw, knownLabels, knownLabels.length);
+    const enough = isItADirection(direction);
+    return {
+      ...direction,
+      enough: enough.enough,
+      saying: enough.saying,
+      /* Their own read, which is the whole of what a one-time session can give back. */
+      yours: viewerLabel ? whatYouNamed(direction, viewerLabel) : null,
+    };
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -4331,6 +4386,11 @@ happened, and what is in the way.`;
       activated: true,
       postReportGuide,
       coaching,
+      /* Only a discovery session has one; everything else gets null and renders nothing. */
+      theDirection: await this.theDirectionFrom(
+        ground,
+        participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+      ).catch(() => null),
       /*
        * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
        *

@@ -114,6 +114,19 @@ enum GroundScenario {
   /// sets anything up: somebody who wanted to set up targets would have opened a different card.
   TEAM_UPDATES
 
+  /// INTERROGATE A GROUP ONCE, TO TURN WHAT THEY KNOW INTO A DIRECTION.
+  ///
+  /// The fourth use case Hafsah described on 19 September 2026, and the one that is not like the
+  /// others: "use one conversation with a group to work out where we should focus." Twenty-four
+  /// people - processors, distributors, researchers - each asked what they are trying to expand,
+  /// what stops them, and where they would go if it went. Cross-referenced once, it produces a
+  /// direction: regions, markets, value chains, actors, data gaps, networks, pilots.
+  ///
+  /// It is deliberately NOT a snapshot. A snapshot asks how things are going; this asks what they
+  /// know. Run on the snapshot spine it asked twenty-four people to commit to a date, which is a
+  /// survey with homework rather than a discovery session.
+  DISCOVERY
+
   /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
   /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
   CONTRACT_REVIEW

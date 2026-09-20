@@ -254,10 +254,42 @@ Let it go and ask about something else that matters here. Do not rephrase it and
  *  - what remains still asks them something, so this cannot create a dead end
  *  - what remains is long enough to be a reply at all
  */
+/**
+ * THE SHORT ECHO THE OVERLAP TEST CANNOT SEE.
+ *
+ * `opensByRepeatingThem` measures how much of the opening sentence is words they just used, and it
+ * needs at least three content words to say anything - which is right for a paragraph handed back,
+ * and blind to the shortest version of the same fault. Read live in a discovery session:
+ *
+ *   they  "That is all I have."
+ *   it    "That is all you have."
+ *
+ * Four words, one pronoun flipped, and it is the purest form of saying nothing. So this is a second
+ * test with a different shape: strip the pronouns that swap sides in a conversation, and if what is
+ * left is the same sentence, it is theirs handed back whatever its length.
+ */
+const SWAPS: [RegExp, string][] = [
+  [/\bi\b/g, 'you'], [/\bmy\b/g, 'your'], [/\bme\b/g, 'you'], [/\bmine\b/g, 'yours'],
+  [/\bwe\b/g, 'you'], [/\bour\b/g, 'your'], [/\bam\b/g, 'are'], [/\bi\'m\b/g, 'you are'],
+];
+
+export function isTheirOwnSentenceBack(theySaid: string, sentence: string): boolean {
+  const bare = (t: string) => {
+    let out = (t ?? '').toLowerCase().replace(/[^a-z0-9\s']/g, ' ');
+    for (const [re, to] of SWAPS) out = out.replace(re, to);
+    return out.replace(/\s+/g, ' ').trim();
+  };
+  const theirs = bare(theySaid);
+  const mine = bare(sentence);
+  if (!mine || mine.split(' ').length < 3) return false;
+  return theirs === mine || theirs.includes(mine);
+}
+
 export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string): string | null {
   const sentences = (reply ?? '').split(/(?<=[.?!])\s+/).filter((s) => s.trim());
   if (sentences.length < 2) return null;
-  if (!opensByRepeatingThem(theySaid, sentences[0])) return null;
+  /* Either shape of the same fault: the long restatement, or the four-word echo. */
+  if (!opensByRepeatingThem(theySaid, sentences[0]) && !isTheirOwnSentenceBack(theySaid, sentences[0])) return null;
 
   /*
    * UNLESS THE SENTENCE CARRIES A FIGURE THEY NEVER SAID, WHICH IS THE WHOLE JUSTIFICATION GONE.

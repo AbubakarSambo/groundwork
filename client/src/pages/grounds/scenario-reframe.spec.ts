@@ -36,6 +36,7 @@ const ENUM_KEYS = [
    * has changed since last time, so it cannot be that.
    */
   'SNAPSHOT',
+  'DISCOVERY',
 ]
 
 describe('scenario reframe is display-only', () => {
