@@ -16,7 +16,9 @@ describe('what a participant is told about this', () => {
 
   it('a brief that is all instruction leaves nothing, and a short brief comes through whole', () => {
     expect(theSituationIn('Help the person develop clarity. Do not lead them.')).toBeNull();
-    expect(theSituationIn("Tunde has just joined as Engagement Director. I want to know whether he's clear on what the role has to produce.")).toBe("Tunde has just joined as Engagement Director. I want to know whether he's clear on what the role has to produce.");
+    /* The lead's aims for the check-in, in the first person, are the lead's: a participant reads the situation only. */
+    expect(theSituationIn("Tunde has just joined us as Engagement Director. The role is there to bring in research projects. I want to know whether he's clear on what the role has to produce.")).toBe('Tunde has just joined us as Engagement Director. The role is there to bring in research projects.');
+    expect(theSituationIn("One session with 24 organisations we work with, to work out where MarketView should expand next. Last year's workshop gave us a word cloud; this time we need something the board can act on.")).toBe('One session with 24 organisations we work with, to work out where MarketView should expand next.');
   });
 
   it('and the goals they may see are said in one line after it', () => {

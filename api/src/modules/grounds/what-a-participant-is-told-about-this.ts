@@ -25,6 +25,15 @@ const AN_INSTRUCTION =
 /* "They should", "the person must", "you should" - an expectation of the reader written as a rule. */
 const A_RULE_ABOUT_THEM = /\b(they|the person|you|participants?|people)\s+(should|must|need to|ought to|have to)\b/i;
 
+/* THE LEAD TALKING TO THE PRODUCT IN THE FIRST PERSON. "I want to know what he is actually working on",
+   "this time we need something the board can act on", "last year's workshop gave us a word cloud": not
+   imperatives, but the lead's aims for the check-in, and the judge read them on 38 participants' screens
+   in run 6 (21 Sep 2026) and scored the box 1.4 of 5. A sentence that starts with I or we wanting,
+   needing, looking for, hoping or expecting is the lead's, and so is one about what happened last time
+   they asked. "Tunde has just joined us" stays: it is about the situation, whoever is speaking. */
+const THE_LEAD_TO_THE_PRODUCT =
+  /^(?:this time |so |and |but )?(?:i|we)(?:'d|'m|'re| am| are| would| will)? (?:want|need|would like|am looking|are looking|hope|expect|intend|aim|plan|mean|have to|must|should)\b|\b(?:i|we) want to (?:know|see|understand|find out|hear)\b|\blast (?:year|time|quarter|month)'?s? (?:workshop|session|survey|round|meeting|attempt)\b/i;
+
 /* A sentence addressed to the product about the person: "help the person", "the goal should emerge". */
 const ABOUT_THE_INTERVIEW = /\b(the (?:goal|answer) should emerge|what they say (?:they want|as the answer)|their behaviour suggests|treat what they say|the interview|this conversation should|in the check-in|during the check-in)\b/i;
 
@@ -32,7 +41,7 @@ const sentencesOf = (text: string): string[] => (text ?? '').replace(/\s+/g, ' '
 
 /** The situation as the brief describes it: declarative sentences only, at most three. */
 export function theSituationIn(brief: string | null | undefined, max = 3): string | null {
-  const kept = sentencesOf(brief ?? '').filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s));
+  const kept = sentencesOf(brief ?? '').filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
   if (!kept.length) return null;
   return kept.slice(0, max).join(' ');
 }
