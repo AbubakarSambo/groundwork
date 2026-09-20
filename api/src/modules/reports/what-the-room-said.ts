@@ -7,7 +7,7 @@
  * lead asked which regions, which markets, which value chains, which actors, which gaps - a ranked
  * list they can act on - and got prose about the group.
  *
- * SO THIS IS THE SHAPE THAT SESSION OWES: seven lists, each item named in the room's own words,
+ * SO THIS IS THE SHAPE THAT SESSION OWES: eight lists, each item named in the room's own words,
  * each carrying WHO said it and therefore HOW MANY. The counting is done in code from the labels
  * the model returns, not by asking a model for a number: a model asked to count will produce a
  * plausible one, and the whole value of this page is that the number is real.
@@ -35,17 +35,24 @@ export type TheDirection = {
   dataGaps: ThingTheRoomNamed[];
   networks: ThingTheRoomNamed[];
   pilots: ThingTheRoomNamed[];
+  /**
+   * WHAT THE ROOM SAYS THE NEXT TWELVE MONTHS TAKE. Her call, 20 September 2026: a date is relevant
+   * here, as part of THEIR plan - how much to buy or offload, whether they need agents on the
+   * ground, when it has to happen for next season to work. Not a commitment to us; the shape of
+   * where they are trying to get to, which is what makes the data question answerable.
+   */
+  nextTwelveMonths: ThingTheRoomNamed[];
   /** How many accounts this was read from, so a count of four out of twenty-three reads as four. */
   outOf: number;
 };
 
-export const THE_SEVEN: (keyof Omit<TheDirection, 'outOf'>)[] = [
-  'regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots',
+export const THE_LISTS: (keyof Omit<TheDirection, 'outOf'>)[] = [
+  'regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots', 'nextTwelveMonths',
 ];
 
 export const DIRECTION_PROMPT = `You are reading every account from one discovery session: a group asked, once, what they are trying to grow, what stops them, where they would expand, and what they cannot see.
 
-Produce the direction the group named together. Seven lists:
+Produce the direction the group named together. Eight lists:
 
 regions - places named as somewhere to expand into or cover.
 markets - specific markets, cities or corridors inside those places.
@@ -54,6 +61,7 @@ actors - the kinds of people or organisations somebody would need to reach.
 dataGaps - information people said they do not have and need.
 networks - relationships, bodies or organisations named as what would make expansion possible.
 pilots - anywhere somebody said they would start, test first, or go next.
+nextTwelveMonths - what somebody said their own next year takes: volumes to buy, move or sell, people on the ground they would need, and when each has to happen. Their plan, in their units, with their timing. "300 tonnes of paddy by March", "four aggregators before the rains", "double the dealer network by Q3".
 
 RULES, AND THEY MATTER MORE THAN COVERAGE:
 - Use the room's own words for a name. "Jigawa", not "northern states". "Weekly paddy price", not "better market data".
@@ -73,7 +81,7 @@ Return JSON only.`;
  */
 export const DIRECTION_SCHEMA = {
   type: 'object',
-  properties: Object.fromEntries(THE_SEVEN.map((k) => [k, {
+  properties: Object.fromEntries(THE_LISTS.map((k) => [k, {
     type: 'array',
     items: {
       type: 'object',
@@ -85,12 +93,12 @@ export const DIRECTION_SCHEMA = {
       required: ['name', 'namedBy'],
     },
   }])),
-  required: THE_SEVEN,
+  required: THE_LISTS,
 } as const;
 
 export const DIRECTION_TOOL = {
   name: 'the_direction',
-  description: 'The seven lists the room named, each item carrying the labels of everybody who named it.',
+  description: 'The eight lists the room named, each item carrying the labels of everybody who named it.',
   input_schema: DIRECTION_SCHEMA as any,
 };
 
@@ -130,14 +138,14 @@ export function tidy(raw: any, knownLabels: string[], outOf: number): TheDirecti
   return {
     regions: oneList(raw?.regions), markets: oneList(raw?.markets), valueChains: oneList(raw?.valueChains),
     actors: oneList(raw?.actors), dataGaps: oneList(raw?.dataGaps), networks: oneList(raw?.networks),
-    pilots: oneList(raw?.pilots), outOf,
+    pilots: oneList(raw?.pilots), nextTwelveMonths: oneList(raw?.nextTwelveMonths), outOf,
   };
 }
 
 /** Whether there is enough here to call a direction, which is a thing the lead has to be told. */
 export function isItADirection(d: TheDirection): { enough: boolean; saying: string } {
-  const shared = THE_SEVEN.flatMap((k) => d[k]).filter((x) => x.namedBy.length > 1).length;
-  const anything = THE_SEVEN.flatMap((k) => d[k]).length;
+  const shared = THE_LISTS.flatMap((k) => d[k]).filter((x) => x.namedBy.length > 1).length;
+  const anything = THE_LISTS.flatMap((k) => d[k]).length;
   if (!anything) return { enough: false, saying: 'Nothing came back that could be read as a direction yet.' };
   if (!shared) {
     return {
@@ -159,7 +167,7 @@ export function isItADirection(d: TheDirection): { enough: boolean; saying: stri
  * reciprocity, and it is also all this session can honestly offer them.
  */
 export function whatYouNamed(d: TheDirection, yourLabel: string): { line: string; yours: { name: string; alsoNamedBy: number }[] } {
-  const yours = THE_SEVEN.flatMap((k) => d[k])
+  const yours = THE_LISTS.flatMap((k) => d[k])
     .filter((x) => x.namedBy.some((l) => theSameLabel(l) === theSameLabel(yourLabel)))
     .map((x) => ({ name: x.name, alsoNamedBy: x.namedBy.length - 1 }))
     .sort((a, b) => b.alsoNamedBy - a.alsoNamedBy);

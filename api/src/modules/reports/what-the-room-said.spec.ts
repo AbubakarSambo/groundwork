@@ -1,4 +1,4 @@
-import { tidy, isItADirection, whatYouNamed, THE_SEVEN, DIRECTION_SCHEMA, DIRECTION_TOOL } from './what-the-room-said';
+import { tidy, isItADirection, whatYouNamed, THE_LISTS, DIRECTION_SCHEMA, DIRECTION_TOOL } from './what-the-room-said';
 
 /**
  * THE DIRECTION A DISCOVERY SESSION IS FOR.
@@ -43,8 +43,9 @@ describe('what the room said', () => {
 
   it('leaves a list empty rather than filling it, because an empty list is a finding', () => {
     expect(d.pilots).toEqual([]);
-    expect(THE_SEVEN).toEqual(['regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots']);
-    expect(Object.keys(DIRECTION_SCHEMA.properties)).toEqual(THE_SEVEN);
+    /* And what their own next twelve months takes, which is where the dates belong. */
+    expect(THE_LISTS).toEqual(['regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots', 'nextTwelveMonths']);
+    expect(Object.keys(DIRECTION_SCHEMA.properties)).toEqual(THE_LISTS);
     /* A tool, not a bare schema: the first version passed the schema alone, which type-checks at
        the boundary and fails at the call, so a session of twenty-three accounts returned nothing. */
     expect(DIRECTION_TOOL.input_schema).toBe(DIRECTION_SCHEMA);
