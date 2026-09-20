@@ -821,6 +821,8 @@ export class BoardService {
           /* Named rather than counted - see atAGlanceTiles. */
           theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,
           theBlocker: held.theFirstBlocker,
+          worries: held.worries,
+          theWorry: held.theFirstWorry,
         });
       }
     }
@@ -1653,6 +1655,8 @@ export class BoardService {
       waiting: held.waiting,
       /* And the blocker itself, so the board's tile names it exactly as the report's does. */
       theFirstBlocker: held.theFirstBlocker,
+      worries: held.worries,
+      theFirstWorry: held.theFirstWorry,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });

@@ -51,6 +51,8 @@ export interface AReadNumber {
 /** One line as given to the model: who said it decides whether the read lands or is offered. */
 export interface ALineOnRecord {
   text: string;
+  /** Who said it, where the caller knows: a line read against somebody else's own target is dropped. */
+  who?: string | null;
   saidByTheLead: boolean;
 }
 
@@ -176,6 +178,17 @@ export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[],
     if (!r.said?.trim()) return false;
     if (lines && !theLineWasSaid(r.said, lines)) return false;
     if (!theNumberIsInTheLine(r.count, r.said)) return false;
+    /*
+     * ONE PERSON'S LINE DOES NOT COUNT AGAINST ANOTHER PERSON'S OWN TARGET. Rerun, 20 Sep 2026:
+     * Dayo's "I hit N26m" was offered on Emeka's N35m. A target with somebody's name on it takes
+     * a number from that person or from the lead; anybody else's line about it is a read of the
+     * wrong row.
+     */
+    if (lines) {
+      const line = theLineWasSaid(r.said, lines);
+      const owner = (t as any).ownerParticipantId as string | null | undefined;
+      if (owner && line && line.who && line.who !== owner && !line.saidByTheLead) return false;
+    }
     /* One suggestion per target: two readings of the same number is a choice nobody asked for. */
     if (seen.has(r.objectiveId)) return false;
     seen.add(r.objectiveId);
@@ -222,5 +235,12 @@ export function oneNumberLandsOnce(read: AReadNumber[], targets: ATarget[]): ARe
 export function whatToDoWithTheRead(r: AReadNumber, target: ATarget, lines: ALineOnRecord[]): 'land' | 'offer' {
   const line = theLineWasSaid(r.said, lines);
   const neverCounted = target.count === 0 && (target as any).prevCount === 0;
-  return line?.saidByTheLead && neverCounted ? 'land' : 'offer';
+  /*
+   * AND A COUNT THE LEAD'S OWN WORDS PUT THERE IS THE LEAD'S TO CORRECT. "We are at N71m" landed in
+   * session 2; "that was a mistake, we are at N102m" in session 3 sat as an offer under a board still
+   * reading 71 (rerun, 20 Sep 2026). A landed read leaves suggestedSaid set with no suggestedCount;
+   * that is the mark that nobody typed this count by hand, so the lead's next number lands too.
+   */
+  const landedFromTheLead = (target as any).suggestedCount == null && !!(target as any).suggestedSaid && target.count > 0;
+  return line?.saidByTheLead && (neverCounted || landedFromTheLead) ? 'land' : 'offer';
 }

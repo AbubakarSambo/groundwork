@@ -745,7 +745,30 @@ export class ReportsService {
     );
   }
 
+  /**
+   * ONE SYNTHESIS AT A TIME PER GROUND, IN THE ORDER THEY WERE ASKED FOR.
+   *
+   * Five people finished a round inside the same minute and five syntheses ran at once. The one
+   * that started first, when two people's entries were in, finished last and overwrote the full
+   * picture; the board then read "three of the five people provided records too brief to compare"
+   * about three people who had each said plenty (rerun, 20 Sep 2026). Queued per ground, the last
+   * completion's read is the last write.
+   */
+  private readonly synthesisQueue = new Map<string, Promise<unknown>>();
+
   async synthesize(groundId: string) {
+    const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
+    const mine = after.then(() => this.synthesizeNow(groundId));
+    const tail = mine.catch(() => undefined);
+    this.synthesisQueue.set(groundId, tail);
+    try {
+      return await mine;
+    } finally {
+      if (this.synthesisQueue.get(groundId) === tail) this.synthesisQueue.delete(groundId);
+    }
+  }
+
+  private async synthesizeNow(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -2362,6 +2385,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       waiting: held.waiting,
       /* So the Blockers tile names the thing instead of repeating its own label. */
       theFirstBlocker: held.theFirstBlocker,
+      worries: held.worries,
+      theFirstWorry: held.theFirstWorry,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the

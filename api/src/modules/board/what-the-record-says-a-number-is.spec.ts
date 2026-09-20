@@ -155,4 +155,21 @@ describe('what came off the record', () => {
     const kept = oneNumberLandsOnce([...reads, other], targets);
     expect(kept.map((r) => r.objectiveId).sort()).toEqual(['emeka', 'team']);
   });
+
+  it("another person's line is not read against somebody's own target, and the lead's is", () => {
+    const targets = [{ id: 'emeka', name: 'Target N35m', target: 35_000_000, count: 0, prevCount: 0, ownerParticipantId: 'p-emeka' } as any];
+    const dayo = [{ text: 'I hit N26m. My number is N26m.', who: 'p-dayo', saidByTheLead: false }];
+    const lead = [{ text: 'Emeka is at N26m.', who: 'p-ngozi', saidByTheLead: true }];
+    expect(onlyWhatIsWorthOffering([{ objectiveId: 'emeka', count: 26_000_000, said: dayo[0].text }], targets, dayo)).toEqual([]);
+    expect(onlyWhatIsWorthOffering([{ objectiveId: 'emeka', count: 26_000_000, said: lead[0].text }], targets, lead)).toHaveLength(1);
+  });
+
+  it("the lead corrects a count the lead's own words landed; a hand-typed count is only offered", () => {
+    const lines = [{ text: 'That was a mistake. We are at N102m now.', who: 'p-ngozi', saidByTheLead: true }];
+    const read = { objectiveId: 'team', count: 102_000_000, said: lines[0].text };
+    const landed = { id: 'team', name: "team's target", target: 180_000_000, count: 71_000_000, prevCount: 0, suggestedCount: null, suggestedSaid: 'We are at N71m for the quarter.' } as any;
+    const typed = { id: 'team', name: "team's target", target: 180_000_000, count: 71_000_000, prevCount: 0, suggestedCount: null, suggestedSaid: null } as any;
+    expect(whatToDoWithTheRead(read, landed, lines)).toBe('land');
+    expect(whatToDoWithTheRead(read, typed, lines)).toBe('offer');
+  });
 });

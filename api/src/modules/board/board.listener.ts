@@ -48,7 +48,7 @@ export class BoardListener {
     try {
       const targets = await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
-        select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true },
+        select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, suggestedCount: true, suggestedSaid: true },
       });
       if (!targets.length) return;
 
@@ -65,7 +65,7 @@ export class BoardListener {
           checkIn: { sessionNumber: e.sessionNumber },
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION'] as any },
         },
-        select: { text: true, participant: { select: { partyType: true } } },
+        select: { text: true, participantId: true, participant: { select: { partyType: true } } },
       });
       if (!said.length) return;
 
@@ -79,7 +79,7 @@ export class BoardListener {
        * the fifth time this session that something internal has reached a page by riding inside a
        * text column. `cleanText` is the one that knows how to take it off.
        */
-      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: null, saidByTheLead: s.participant?.partyType === 'INITIATOR' }));
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR' }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],

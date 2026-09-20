@@ -10,6 +10,7 @@ import { whatThisSessionHolds } from './what-this-session-holds';
 function aPrisma(o: { checkIns: { id: string }[]; deps: any[]; objectives: any[]; snapshots: Record<number, { objectiveId: string; count: number }[]> }) {
   return {
     checkIn: { findMany: jest.fn(async () => o.checkIns) },
+    recordEntry: { findMany: jest.fn(async () => []) },
     groundDependency: {
       findMany: jest.fn(async ({ where }: any) => {
         expect(where.clearedAt).toBeNull();
