@@ -185,6 +185,8 @@ export interface SessionReportInputs {
   blocked: number;
   /** WAITING rows: somebody is waiting on somebody else, not hard-blocked. */
   waiting?: number;
+  /** The first of those, in the words it was raised in, so the tile names it. */
+  theFirstBlocker?: string | null;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
   answeredThisSession: { who: string; isYou: boolean }[];
   /** How many people the session counts in all, answered or not, for the confidence read. */
@@ -455,6 +457,9 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     backedPct, numberWasSaid: aNumberWasSaid(input),
     /* So the Differences tile stops saying somebody has not answered when everybody has. */
     stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
+    /* And so the two that have something to name, name it rather than repeating their own label. */
+    theDifference: openWithReasons[0]?.topic ?? null,
+    theBlocker: input.theFirstBlocker ?? null,
   });
 
   /**

@@ -27,6 +27,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
+import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
@@ -810,6 +811,23 @@ export const SITUATION_CARDS = [
     examples: [
       'A weekly pulse across a delivery team instead of a status meeting.',
       'You want the same few questions answered honestly every week.',
+    ],
+  },
+  /*
+   * ASK ONE QUESTION, GET ONE REPORT. The lightest card in the product, and the only one whose
+   * question belongs to the lead rather than to us. The word doing the work is "one": one line, one
+   * link, one report - the cadence and the links are how it works rather than what it is.
+   */
+  {
+    group: 'reading',
+    scenario: 'TEAM_UPDATES',
+    label: SCENARIO_LABELS.TEAM_UPDATES,
+    detail: 'Ask one question, everyone answers on their own link, you get one report.',
+    message: 'I want to ask my team one question and get one report back. Weekly, or however often I pick. Nothing to set up and no target to agree.',
+    examples: [
+      'Can you share an update on how sales is going for you this quarter, or if you have any blockers?',
+      'What shipped this week, and what slipped?',
+      'What are your three priorities this quarter, and what is blocking you?',
     ],
   },
   {
@@ -2461,6 +2479,21 @@ export function EntryChatPage() {
         </div>
       </div>
     )
+  }
+
+  /**
+   * THE ONE CARD THAT IS NOT A CONVERSATION.
+   *
+   * "Get updates from your team" promises a two-minute setup, and an interview cannot be two
+   * minutes. Four fields - who, what you want to know, how often, send - and nothing to work out,
+   * because there is no aim to agree and nobody's part to establish. See ask-your-team-one-thing.
+   *
+   * It sits here rather than on a route of its own so the card, the picker and the back link all
+   * keep working the way every other card does: the only thing that changes is what the page renders
+   * once somebody has picked.
+   */
+  if ((pickedScenario ?? scenario) === 'TEAM_UPDATES') {
+    return <AskYourTeamOneThing onBack={() => { setPickedScenario(null); navigate('/start?new=1', { replace: true }) }} />
   }
 
   return (

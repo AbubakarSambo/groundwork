@@ -12,6 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
 import { isThisACascade } from '../board/is-this-a-cascade';
@@ -88,6 +89,7 @@ import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-reco
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
+import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
@@ -859,8 +861,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true },
+      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true },
     });
+    /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
+    const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
+    const theLeadOnlyAsks = THE_LEAD_ONLY_ASKS.includes(itsSituation?.scenario ?? '');
     // One labelling rule, shared with the read path so a stored label always
     // resolves back to the same person. See party-labels.ts.
     const labelById = labelsForParties(parties as any);
@@ -976,6 +981,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         leads: p.partyType === PartyType.INITIATOR,
         recordEntries: recordEntryCountByParty.get(p.id) ?? 0,
         charsSaid: saidByLabel.get(label) ?? 0,
+        onlyAsks: theLeadOnlyAsks && p.managingOnly,
       });
     });
     /*
@@ -2352,6 +2358,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       movedOnTargets: held.movedOnTargets,
       blocked: held.blocked,
       waiting: held.waiting,
+      /* So the Blockers tile names the thing instead of repeating its own label. */
+      theFirstBlocker: held.theFirstBlocker,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the
@@ -2573,9 +2581,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
       };
     })();
 
+    /*
+     * A SITUATION WITH NO AIM IS NOT A SITUATION MISSING ONE.
+     *
+     * Read on a live team update: section 01, "What everybody said good looks like", saying "No
+     * standard is set. The person running this has not said what success looks like, so nobody is
+     * being measured against anything yet." Nobody was ever going to. That card asks one question
+     * and collects the answers; a standard is not part of it, and telling a lead they have failed
+     * to set one is the product misreading its own design as somebody's omission.
+     *
+     * So where an aim is not owed and nobody has stated one anyway, the section is left out rather
+     * than filled with its own absence. A lead who DID state one still gets it, in every situation.
+     */
+    const anAimBelongsHere = anAimIsOwedHere((ground as any).scenario);
+    const somebodyStatedOne = !!(baseline?.successLooksLike ?? '').trim() || againstSuccess.definitions.length > 0;
+
     return {
       ...wordedShape,
-      againstSuccess,
+      againstSuccess: anAimBelongsHere || somebodyStatedOne ? againstSuccess : null,
       cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
@@ -3315,8 +3338,21 @@ happened, and what is in the way.`;
       p.user?.passwordHash || !p.inviteToken
         ? reportUrl
         : `${frontend}/invite?token=${p.inviteToken}&next=${encodeURIComponent(`/grounds/${groundId}/report`)}`;
+    /*
+     * AND "GET UPDATES FROM YOUR TEAM" GETS ITS OWN, BECAUSE THAT EMAIL IS THE PRODUCT.
+     *
+     * The ordinary mail leads with "the shared picture is ready", which is our name for the thing
+     * rather than the sentence the lead is waiting for. That card promises a two-minute setup and a
+     * same-week payoff, and the payoff is this arriving. See one-line-one-link-one-report.
+     */
+    const aStandingUpdate = (ground as any).scenario === 'TEAM_UPDATES';
+    const theOneLine = ((ground as any).brief ?? '').trim();
     const emailResults = await Promise.allSettled(
-      ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, linkFor(p))),
+      ground.participants.map((p) =>
+        aStandingUpdate && theOneLine
+          ? this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p))
+          : this.email.sendReportReady(p.email, ground.label, linkFor(p)),
+      ),
     );
     /*
      * AND THE CHANNEL, IF THERE IS ONE.

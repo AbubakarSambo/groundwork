@@ -25,6 +25,11 @@ export interface BillingStatus {
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
   people: { count: number; cap: number | null }
+  /**
+   * Set while a free run we gave them is running: what it covers and the day it ends. A free run
+   * nobody can see ends as a surprise, which is the one thing it must not do.
+   */
+  onTheHouse?: { plan: SubscriptionPlan; until: string } | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
 }
@@ -189,6 +194,10 @@ export const billingApi = {
    * PLAN_PRICES above is a static fallback for while this is loading/unreachable,
    * not a second source of truth: prefer this everywhere a real price is shown.
    */
+  /** Whether a free run is waiting for this address. Public: asked at the sign-up screen. */
+  whatIsWaitingFor: (email: string) =>
+    apiClient.get<{ months: number; plan: string | null }>('/billing/on-the-house', { params: { email } }).then(r => r.data),
+
   getPricing: () =>
     apiClient.get<LivePricing>('/billing/pricing').then(r => r.data),
 

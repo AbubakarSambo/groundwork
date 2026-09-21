@@ -139,3 +139,105 @@
     padding: 0 2px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE DRAWN KIT, SHARED BY EVERY PAGE.
+
+   Hafsah, 19 September 2026: the home page got one hand-drawn line under the hero,
+   and then "can you make the rest of the pages besides the main landing page
+   cartoonish too". So the treatment stops being one section's markup and becomes a
+   vocabulary: a wobbly frame, a speech bubble, a marker stroke, and a circled
+   number that looks drawn rather than stamped.
+
+   WHY IT LIVES HERE. Nav.astro imports this file and every page includes the nav,
+   which is the one route that reaches all five (see one-palette.mjs - the home page
+   does not use the layout). One definition, no second copy to drift.
+
+   WHY IT IS BACKGROUNDS RATHER THAN MARKUP. Each shape is one SVG in a data URI,
+   stretched to whatever box it lands in. Nothing loads, nothing shifts while it
+   loads, nothing is added to the DOM to be laid out, and a page that adopts the
+   kit adds a class rather than a picture.
+
+   EVERY COLOUR IS A TOKEN, except inside the data URIs, where a var() cannot reach:
+   those carry the same two hex values the tokens hold (#0C447C navy, #C1654A clay)
+   and one-palette.mjs knows to read them as the palette rather than as literals.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* The frame: a rectangle drawn by hand, closing a little past where it started. */
+.gw-drawn {
+  position: relative;
+  padding: 26px 26px 24px 28px;
+  background:
+    no-repeat center/100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 130' preserveAspectRatio='none'%3E%3Cpath d='M8 14 C 150 6, 300 11, 448 7 S 590 10, 593 20 C 596 52, 590 92, 592 112 C 593 122, 430 118, 300 122 S 60 117, 10 121 C 4 110, 9 70, 6 40 Z' fill='none' stroke='%230C447C' stroke-width='2' stroke-linecap='round' opacity='.55'/%3E%3C/svg%3E");
+}
+
+/* The same frame in the warm line, for the one thing on a page that is a caution
+   rather than a claim. */
+.gw-drawn-clay {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 130' preserveAspectRatio='none'%3E%3Cpath d='M8 14 C 150 6, 300 11, 448 7 S 590 10, 593 20 C 596 52, 590 92, 592 112 C 593 122, 430 118, 300 122 S 60 117, 10 121 C 4 110, 9 70, 6 40 Z' fill='none' stroke='%23C1654A' stroke-width='2' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E");
+}
+
+/* The bubble that sits on the frame's top edge, so the box reads as somebody
+   talking. It carries the page's own ground so the line passes behind it. */
+.gw-bubble {
+  position: absolute;
+  top: -15px;
+  left: 18px;
+  width: 42px;
+  height: 26px;
+  padding: 0 6px;
+  background: var(--gw-paper) no-repeat center/30px 24px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 24' fill='none'%3E%3Cpath d='M3 4 C 10 1, 22 2, 27 4 C 28 9, 28 13, 26 16 C 20 18, 14 17, 10 18 L 5 22 L 6 17 C 3 15, 2 9, 3 4 Z' fill='%23EDECEA' stroke='%230C447C' stroke-width='1.6' stroke-linejoin='round'/%3E%3Ccircle cx='10' cy='10' r='1.3' fill='%230C447C'/%3E%3Ccircle cx='15' cy='10' r='1.3' fill='%230C447C'/%3E%3Ccircle cx='20' cy='10' r='1.3' fill='%230C447C'/%3E%3C/svg%3E");
+}
+/* On a white card the bubble's own ground has to be white, or it sits in a beige patch. */
+.gw-bubble-on-white { background-color: #fff; }
+
+/* The marker stroke. Two rules about where it goes, both learned on the page: never
+   under a link, where a rule reads as something to click, and never under a sentence
+   long enough to wrap, where it draws beneath one fragment and reads as a mistake. */
+.gw-marker {
+  position: relative;
+  font-weight: 700;
+}
+.gw-marker::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  bottom: -3px;
+  height: 7px;
+  background: no-repeat center/100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 8' preserveAspectRatio='none'%3E%3Cpath d='M2 6 C40 2, 70 7, 104 4 S170 2, 198 5' fill='none' stroke='%23C1654A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* A number that was written in a circle rather than set in one. The ring is drawn;
+   the digit is the page's own type, so nothing about the content changes. */
+.gw-drawn-num {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gw-navy);
+  background: no-repeat center/100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3 C 30 3, 37 11, 37 20 C 37 30, 29 37, 20 37 C 10 37, 3 29, 3 20 C 3 10, 11 4, 21 3' fill='none' stroke='%230C447C' stroke-width='2' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E");
+}
+
+/* An arrow somebody drew in the margin, for pointing at the thing that matters. */
+.gw-drawn-arrow {
+  display: inline-block;
+  width: 46px;
+  height: 22px;
+  vertical-align: middle;
+  background: no-repeat center/100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 22'%3E%3Cpath d='M2 16 C 12 6, 26 4, 42 8' fill='none' stroke='%23C1654A' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M34 4 L 43 8 L 35 13' fill='none' stroke='%23C1654A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 620px) {
+  .gw-drawn { padding: 22px 18px 20px 20px; }
+}

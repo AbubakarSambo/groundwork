@@ -61,10 +61,14 @@
  * what each PERSON owns in their own first session, because the whole read is each person against
  * their own work. Demanding one from the lead at setup asks the wrong human.
  *
+ * TEAM_UPDATES has no aim by construction rather than by omission: the lead writes one line saying
+ * what they want to know, and that line is the whole of it. Somebody who wanted a target opened a
+ * different card. Asking for one here is the setup conversation the card exists to avoid.
+ *
  * OPEN_READ is the situation whose shape is not known yet - that is its entire reason for existing,
  * and its pack says so. An aim demanded before anybody knows what this is would be invented.
  */
-export const NO_AIM_BY_DESIGN = ['SNAPSHOT', 'PULSE_CHECK', 'OPEN_READ'] as const;
+export const NO_AIM_BY_DESIGN = ['SNAPSHOT', 'PULSE_CHECK', 'OPEN_READ', 'TEAM_UPDATES'] as const;
 
 export function anAimIsOwedHere(scenario?: string | null): boolean {
   if (!scenario) return true;

@@ -337,6 +337,25 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Reflect on what needs to be addressed going forward.',
     },
   },
+  /**
+   * ONE LINE, ONE LINK, ONE REPORT. The only row whose question belongs to the lead rather than to
+   * the table: every cell below is about carrying their line and getting an answer worth reading,
+   * which is why none of them says "understand" or "set".
+   */
+  [GroundScenario.TEAM_UPDATES]: {
+    name: 'Get Updates from Your Team',
+    description: 'Ask one question, everyone answers on their own link, you get one report.',
+    lead: {
+      first: 'Ask your one question and see what comes back.',
+      second: 'See what moved since the last one.',
+      last: 'See what the answers showed over the run.',
+    },
+    participant: {
+      first: 'Answer the question you were asked, in your own words.',
+      second: 'Say what has moved since last time.',
+      last: 'Say where things landed.',
+    },
+  },
   [GroundScenario.SNAPSHOT]: {
     name: 'Take the Pulse of the Team',
     description: 'Get a quick picture of how people are experiencing the work right now.',

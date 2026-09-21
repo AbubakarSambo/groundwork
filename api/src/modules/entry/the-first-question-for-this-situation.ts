@@ -110,6 +110,15 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'Who is on the team, and what are they each working on?',
     until: 'who the people are, what each of them owns, and how often you want to hear from them',
   },
+  /*
+   * THREE THINGS AND NOT ONE MORE. Who, what you want to know in one line, and how often. There is
+   * no aim to agree and nothing to set up - somebody who wanted those opened a different card - so
+   * this is the shortest `until` in the file on purpose.
+   */
+  TEAM_UPDATES: {
+    ask: 'What is the one thing you want to ask them? Your words - they will answer exactly this.',
+    until: 'the one line they are answering, who is answering it, and how often you want it',
+  },
   REALIGN_TEAM: {
     ask: 'Who do you need to realign with, and what do you think you see differently?',
     until: 'who the other person is and what the disagreement is actually about',

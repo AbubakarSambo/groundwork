@@ -95,6 +95,9 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
     const completedCheckIns = new Set(['p-a', 'p-b']); // both real participants completed; the lead never will
 
     return {
+      /* The situation, because a lead who only asks is not waited on at all - see
+         the-lead-who-only-asks. Everything in this file is the ordinary kind, where they are. */
+      ground: { findUnique: jest.fn(async () => ({ scenario: 'GOAL_ALIGNMENT' })) },
       groundParticipant: {
         // Faithful enough re-implementation of the real where-clause semantics
         // to make this test bite if the managingOnly filter is dropped.

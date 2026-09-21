@@ -1,6 +1,10 @@
 # The scenario table
 
-**Hafsah's, given verbatim on 15 September 2026. This is the source of truth for all 22 scenarios.**
+**Hafsah's, given verbatim on 15 September 2026. This is the source of truth for all 23 scenarios.**
+
+**One row was added on 18 September 2026, also hers verbatim: "Get updates from your team". It is the only
+situation whose question belongs to the lead rather than to this table - they write one line, everybody
+answers that line, and it comes back as one report.**
 
 It exists because the card and the pack behind it were two different products. The card for
 `OKR_ALIGNMENT` promised "set goals, targets or OKRs for your team... you can see what is on track".
@@ -27,6 +31,7 @@ Yes. I'd make the three stages very clear: **first = understand**, **second = ch
 | A workplan and budget | **Build a Workplan and Budget That Makes Sense** | Bring people's plans together so the work and budget line up. | Understand what each person plans to do and what they need. | Check whether the plan and resources still make sense. | See what happened against the plan and budget. | Explain their planned work and resource needs. | Share changes, challenges, or gaps. | Reflect on what worked and what needs to change. |
 | Board or leadership strategy | **Align on Strategy** | Understand how leaders see the direction and where their views differ. | Understand how each person sees the strategy and priorities. | See where views are coming together or diverging. | Understand where the group landed and what needs to happen. | Share what they think matters and why. | Share what has changed or become clearer. | Reflect on the final direction and remaining concerns. |
 | A big decision | **Work Through a Big Decision** | Bring different views together around an important decision. | Understand each person's view and what they are weighing up. | See what has changed or become clearer. | Understand where each person stands and what needs to happen. | Share their honest view and what matters to them. | Reconsider their view as they learn more. | Share where they landed and any remaining concerns. |
+| A standing update | **Get Updates from Your Team** | Ask one question, everyone answers on their own link, you get one report. | Ask your one question and see what comes back. | See what moved since the last one. | See what the answers showed over the run. | Answer the question you were asked, in your own words. | Say what has moved since last time. | Say where things landed. |
 | A regular read on live work | **Keep a Read on Live Work** | Regularly understand how work is going while it is happening. | Get a starting picture of the work. | See what has changed and where support is needed. | See where things landed in that period. | Share how the work is going right now. | Share what has changed. | Reflect on what happened and what is next. |
 | Several people in the same role | **Check How the Same Role Is Going Across People** | Understand how people doing similar work are experiencing it. | Understand each person's experience of the role. | See common issues and differences emerging. | Understand what patterns matter and what needs to change. | Share their own experience of the role. | Share what has changed or become clearer. | Reflect on what would make the role work better. |
 | A contract or renewal | **Check In Before a Contract or Renewal** | Understand how a working relationship is going before deciding what happens next. | Understand how the relationship is working. | See what has changed and what needs attention before renewal. | Decide what should continue, change, or stop. | Share how the relationship is working from their side. | Share what they would like to change. | Say what they think should happen next. |

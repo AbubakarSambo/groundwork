@@ -140,6 +140,11 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendJoinConfirmation: 'the way back in',
   sendUserInvite: 'the way back in',
   sendParticipantInvite: 'the way back in',
+  /* It is one of the two invites, picked by the situation. Classified as the invite it delegates to. */
+  sendTheInviteThisGroundSends: 'the way back in',
+  /* Somebody's own manager asking them one question: the same kind of mail as any other invite, and
+     without it there is no link to answer on. See one-line-one-link-one-report. */
+  sendTeamUpdateAsk: 'the way back in',
   sendLeadInvite: 'the way back in',
   sendContributorCode: 'the way back in',
   /* A one-time code for an operation that cannot be undone. Nothing may stop it, and saying so
@@ -151,6 +156,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
+  /* The moment everybody has answered, which is the whole promise of that card. */
+  sendTeamUpdateAllIn: 'asked for',
   sendGroundApproved: 'asked for',
   sendGroundDeclined: 'asked for',
   /* Both are answers to something the person or their lead set in motion, so neither is a mail we

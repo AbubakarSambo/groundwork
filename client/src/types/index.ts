@@ -35,6 +35,7 @@ export interface User {
 
 export type GroundScenario =
   | 'ROLE_HANDOVER'
+  | 'TEAM_UPDATES'
   | 'CONTRACT_REVIEW'
   | 'IMPLEMENTATION_TRACKING'
   | 'NEW_HIRE'

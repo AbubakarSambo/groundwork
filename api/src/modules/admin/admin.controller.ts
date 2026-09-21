@@ -1,11 +1,13 @@
 import { Controller, Get, Patch, Post, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { IsEmail, IsInt, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator';
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PricingService } from '../billing/pricing.service';
 import { StripeService } from '../billing/stripe.service';
+import { ThreeMonthsOnTheHouseService } from '../billing/three-months-on-the-house.service';
 import { ApiAccessService } from '../public-api/api-access.service';
 /**
  * Stripe's own USD floor is 50 cents; the ceiling is a typo guard rather than a policy, set well
@@ -54,6 +56,26 @@ export class OtpGuard implements CanActivate {
 // Controller
 // ---------------------------------------------------------------------------
 
+class GrantFreeRunDto {
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  months?: number;
+
+  @IsOptional()
+  @IsString()
+  plan?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  note?: string;
+}
+
 @ApiTags('Admin')
 @ApiBearerAuth()
 @UseGuards(PlatformAdminGuard)
@@ -67,6 +89,7 @@ export class AdminController {
     private readonly pricing: PricingService,
     private readonly stripe: StripeService,
     private readonly apiAccess: ApiAccessService,
+    private readonly onTheHouse: ThreeMonthsOnTheHouseService,
   ) {}
 
   // ── Pricing (System -> Pricing) ──────────────────────────────────────────
@@ -356,6 +379,32 @@ export class AdminController {
   @ApiHeader({ name: 'X-Admin-OTP', description: 'Valid 6-digit OTP obtained from POST /admin/otp/request', required: true })
   removePlatformAdmin(@Param('userId') userId: string, @CurrentUser('id') callerId: string) {
     return this.adminService.removePlatformAdmin(userId, callerId);
+  }
+
+
+  /**
+   * THREE MONTHS ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION.
+   *
+   * Her words: "we put in someone's email and their org gets free use for three months, when they
+   * sign-up, they see it." The promise waits on the address; the clock starts when they take it up.
+   */
+  @Get('free-runs')
+  @ApiOperation({ summary: 'Every free run promised, waiting, running or finished' })
+  listFreeRuns() {
+    return this.onTheHouse.list();
+  }
+
+  @Post('free-runs')
+  @ApiOperation({ summary: 'Promise an address a free run. Re-granting a waiting one refreshes it.' })
+  grantFreeRun(@Body() dto: GrantFreeRunDto, @CurrentUser('id') callerId: string) {
+    return this.onTheHouse.grant({ email: dto.email, months: dto.months, plan: dto.plan as any, note: dto.note, byUserId: callerId });
+  }
+
+  @Post('free-runs/:id/withdraw')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Withdraw a promise nobody has taken up yet' })
+  withdrawFreeRun(@Param('id') id: string) {
+    return this.onTheHouse.revoke(id);
   }
 
 }

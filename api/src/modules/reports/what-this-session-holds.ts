@@ -42,6 +42,14 @@ export interface WhatThisSessionHolds {
   blocked: number;
   /** Dependencies raised in this session, still uncleared, waiting on somebody. */
   waiting: number;
+  /**
+   * THE FIRST ONE, IN ITS OWN WORDS.
+   *
+   * "Blockers 1 - named as holding work up" is a count and a category. The thing itself is one
+   * short line somebody typed, it is already in the row being counted, and it is the difference
+   * between a scoreboard and a read.
+   */
+  theFirstBlocker: string | null;
 }
 
 export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
@@ -51,9 +59,9 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     raisedIn.length
       ? prisma.groundDependency.findMany({
           where: { groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any }, sourceCheckInId: { in: raisedIn.map((c) => c.id) } },
-          select: { status: true, fromParticipantId: true, onParticipantId: true },
+          select: { status: true, fromParticipantId: true, onParticipantId: true, what: true, onLabel: true },
         })
-      : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null }[]),
+      : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
     prisma.groundObjective.findMany({ where: { groundId, target: { not: null } }, select: { id: true, count: true } }),
     prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber }, select: { objectiveId: true, count: true } }),
     sessionNumber > 1
@@ -63,6 +71,14 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
+  /* The hard one first, because that is the one a lead acts on. */
+  const first = real.find((d) => d.status === 'BLOCKING') ?? real[0] ?? null;
+  /* The person it sits with, unless the line already says it: "legal to look at the contract, on
+     legal" is the tile telling somebody the same word twice. */
+  const what = first?.what?.trim() ?? '';
+  const on = first?.onLabel?.trim() ?? '';
+  const alreadySaid = !!on && what.toLowerCase().includes(on.toLowerCase());
+  const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, on ${on}` : ''}` : null;
 
   /* Movement is the difference between two snapshots, and nothing at all when there is only one. A
      session still in play has no snapshot of its own yet, so its live count stands in for it. */
@@ -76,7 +92,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       return sum + ((current.get(o.id) ?? o.count) - from);
     }, 0);
   }
-  return { movedOnTargets, blocked, waiting };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -96,7 +112,22 @@ export function atAGlanceTiles(a: {
    * not about who turned up. The tile could not tell them apart because it was never told.
    */
   stillToAnswer?: number;
+  /**
+   * AND THE THING ITSELF, WHERE THERE IS ONE. Hafsah, 19 September 2026: "the quick read is too
+   * generic." Four tiles read "Differences 1 - still open, as the written report reads it" and
+   * "Blockers 1 - named as holding work up", on a page whose own sections named the difference and
+   * the blocker two screens further down. The count says how much; these say what.
+   */
+  theDifference?: string | null;
+  theBlocker?: string | null;
 }): AGlanceRead[] {
+  const shortly = (s: string | null | undefined, max = 72): string | null => {
+    const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.?!]+$/, '');
+    if (!t) return null;
+    return t.length > max ? `${t.slice(0, max - 3).trimEnd()}...` : t;
+  };
+  const theDifference = shortly(a.theDifference);
+  const theBlocker = shortly(a.theBlocker);
   return [
     {
       label: 'Differences',
@@ -107,7 +138,9 @@ export function atAGlanceTiles(a: {
        * tile with nothing in it, and now says whose reading it is counting.
        */
       sub: a.stillOpen
-        ? 'still open, as the written report reads it'
+        ? (theDifference
+          ? `${theDifference}${a.stillOpen > 1 ? `, and ${a.stillOpen - 1} more` : ''}`
+          : 'still open, as the written report reads it')
         : a.agreed ? 'no disagreement, as the written report reads it'
           : a.stillToAnswer === 0 ? 'everybody answered, and the written report names no agreement and no gap yet'
             : 'not everybody has answered yet',
@@ -149,8 +182,12 @@ export function atAGlanceTiles(a: {
          itself in consecutive lines. Both are counted, in the template's own grammar. */
       value: a.blocked ? `${a.blocked}` : (a.waiting ?? 0) > 0 ? `${a.waiting} waiting` : 'None',
       sub: a.blocked
-        ? 'named as holding work up'
-        : (a.waiting ?? 0) > 0 ? 'on someone else, nothing hard-blocked' : 'nobody named anything holding work up',
+        ? (theBlocker
+          ? `${theBlocker}${a.blocked > 1 ? `, and ${a.blocked - 1} more` : ''}`
+          : 'named as holding work up')
+        : (a.waiting ?? 0) > 0
+          ? (theBlocker ? `${theBlocker}, nothing hard-blocked` : 'on someone else, nothing hard-blocked')
+          : 'nobody named anything holding work up',
       tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 ? 'warn' : 'good',
     },
     {

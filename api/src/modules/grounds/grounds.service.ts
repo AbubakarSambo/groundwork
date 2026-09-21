@@ -2,6 +2,7 @@ import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -103,6 +104,16 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
    * the same day rather than sitting open for a month with nothing left to happen in it.
    */
   SNAPSHOT: 1,
+  /**
+   * A STANDING UPDATE RUNS UNTIL SOMEBODY STOPS IT, and ninety days is the honest stand-in.
+   *
+   * Every other number here is the length of a thing that finishes: an onboarding, a handover, a
+   * contract. This one has no finish in it - "weekly, until I say otherwise" is what the lead picked
+   * - so the number is a default horizon rather than a deadline, and the lead moves it on the Setup
+   * tab like any other. A one-off by a date is the other half of the same card and comes in with its
+   * own timeline from the date they gave.
+   */
+  TEAM_UPDATES: 90,
 };
 
 /**
@@ -174,6 +185,9 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   OPEN_READ: GroundMoment.RECOGNITION,
   /** One honest read of right now. No objective to set and none to close. */
   SNAPSHOT: GroundMoment.RECOGNITION,
+  /* STARTING, like the other recurring read: the enum's three moments are about where a ground sits
+     in its own arc, and a standing update is always at the start of the next one. */
+  TEAM_UPDATES: GroundMoment.STARTING,
   /** The case is built from a period that has already happened. */
   RECOGNITION: GroundMoment.RECOGNITION,
 
@@ -231,6 +245,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   OPEN_READ: Cadence.FORTNIGHTLY,
   /** The only ONE_TIME in the product: one round, and no follow-up is ever scheduled. */
   SNAPSHOT: Cadence.ONE_TIME,
+  /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
+  TEAM_UPDATES: Cadence.WEEKLY,
 };
 
 // All scenarios support any number of participants - the initiator decides who
@@ -257,6 +273,9 @@ export const SAFE_PARTICIPANT_SELECT = {
      "Invite pending" about a mail that was never sent, and the lead chases the person instead of
      the admin. See added-but-waiting-for-a-seat.ts. */
   awaitingSeat: true,
+  /* Whether this person answers at all. The roster counted a managing-only lead among the people a
+     round is waiting for, so "4 of 5 checked in" named the person it was for. */
+  managingOnly: true,
   inviteDeliveryStatus: true, // SENT | DELIVERED | BOUNCED | COMPLAINED (Resend webhook mirror)
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
@@ -662,7 +681,7 @@ export class GroundsService {
     // Best-effort: the ground/participant rows are already committed; a failed
     // email is logged, not rolled back, since some invites may have succeeded.
     for (const invite of pendingInvites) {
-      await this.email.sendParticipantInvite(invite.email, dto.leadName ?? 'Your lead', dto.label, invite.token, undefined, { kind: 'PARTICIPANT_INVITE', participantId: invite.participantId, groundId: ground.id }).catch((err: any) =>
+      await this.email.sendTheInviteThisGroundSends(ground, invite.email, dto.leadName ?? 'Your lead', invite.token, undefined, { kind: 'PARTICIPANT_INVITE', participantId: invite.participantId, groundId: ground.id }).catch((err: any) =>
         this.logger.error(`Participant invite email failed for ${invite.email} on ground ${ground.id}: ${err.message}`),
       );
     }
@@ -2853,10 +2872,10 @@ export class GroundsService {
         where: { id: existing.id },
         data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
       });
-      const emailResult = await this.email.sendParticipantInvite(
+      const emailResult = await this.email.sendTheInviteThisGroundSends(
+        ground,
         dto.email.toLowerCase(),
         `${initiator?.firstName ?? 'A founder'}`,
-        ground.label,
         freshToken,
         dto.note,
         { kind: 'PARTICIPANT_INVITE', participantId: existing.id, groundId: ground.id },
@@ -3054,10 +3073,10 @@ export class GroundsService {
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
     if (!startsInFuture && waitingForASeat.room) {
     try {
-      emailResult = await this.email.sendParticipantInvite(
+      emailResult = await this.email.sendTheInviteThisGroundSends(
+        ground,
         dto.email.toLowerCase(),
         `${initiator?.firstName ?? 'A founder'}`,
-        ground.label,
         token,
         dto.note,
         { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
@@ -3198,10 +3217,10 @@ export class GroundsService {
     });
 
     const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
-    await this.email.sendParticipantInvite(
+    await this.email.sendTheInviteThisGroundSends(
+      ground,
       participant.email,
       `${initiator?.firstName ?? 'A founder'}`,
-      ground.label,
       token,
       undefined,
       { kind: 'REMINDER', participantId: participant.id, groundId: ground.id },
@@ -3563,7 +3582,7 @@ export class GroundsService {
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, inviteToken: true, groundId: true,
-        ground: { select: { label: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, brief: true, initiator: { select: { firstName: true } } } },
       },
     });
     if (!waiting.length) return { sent: 0, stillWaiting: 0 };
@@ -3575,10 +3594,10 @@ export class GroundsService {
 
     for (const w of waiting.slice(0, canSend)) {
       try {
-        await this.email.sendParticipantInvite(
+        await this.email.sendTheInviteThisGroundSends(
+          { scenario: w.ground?.scenario ?? '', brief: w.ground?.brief ?? null, label: w.ground?.label ?? 'a check-in' },
           w.email,
           w.ground?.initiator?.firstName ?? 'A founder',
-          w.ground?.label ?? 'a check-in',
           w.inviteToken ?? '',
           undefined,
           /* So the "you can ignore this" line resolves to this person, as it does on a first send. */
@@ -4707,10 +4726,12 @@ export class GroundsService {
      */
     /* EVERYONE DOES A FIRST CHECK-IN. A managing-only lead gives session 1 like everybody else and is
        a party to that round; from session 2 they have no check-in and are not waited on. */
+    /* And in a situation where the lead only asks, they are not a party to any round of it. */
+    const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
-        ...(sessionNumber > 1 ? { managingOnly: false } : {}),
+        ...(waitsOnAManagingOnlyLead(itsSituation?.scenario, sessionNumber) ? {} : { managingOnly: false }),
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

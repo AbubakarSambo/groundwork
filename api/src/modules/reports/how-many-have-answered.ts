@@ -1,6 +1,7 @@
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { waitsOnAManagingOnlyLead } from '../grounds/the-lead-who-only-asks';
 
 /**
  * "N OF M ANSWERED", COMPUTED ONCE.
@@ -22,10 +23,12 @@ export interface HowManyHaveAnswered {
 }
 
 export async function howManyHaveAnswered(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<HowManyHaveAnswered> {
+  /* And a lead who only asks is not waited on at all - see the-lead-who-only-asks. */
+  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
   const expected = await prisma.groundParticipant.findMany({
     where: {
       groundId,
-      ...(sessionNumber > 1 ? { managingOnly: false } : {}),
+      ...(waitsOnAManagingOnlyLead(ground?.scenario, sessionNumber) ? {} : { managingOnly: false }),
       OR: [
         { userId: { not: null } },
         { checkIns: { some: { sessionNumber, status: { in: AN_ANSWER } } } },

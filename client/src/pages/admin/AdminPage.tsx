@@ -602,6 +602,104 @@ function PricingPanel() {
   )
 }
 
+/**
+ * THREE MONTHS ON THE HOUSE.
+ *
+ * Her words, 19 September 2026: "us to give free 3 month usage for orgs tied to some accounts. So we
+ * put in someone's email and their org gets free use for three months, when they sign-up, they see
+ * it."
+ *
+ * One field does the work, because one field is the whole idea: an address. Months and plan are
+ * here because somebody will want four months or a bigger plan one day, and both default to what
+ * she asked for. The list says which state each promise is in, because "promised" and "running" and
+ * "finished" are three different things to a person deciding whether to chase somebody.
+ */
+function FreeRunsPanel() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-free-runs'], queryFn: adminApi.listFreeRuns })
+  const [email, setEmail] = useState('')
+  const [months, setMonths] = useState(3)
+  const [plan, setPlan] = useState('GROWTH')
+  const [note, setNote] = useState('')
+  const [said, setSaid] = useState('')
+
+  const grant = useMutation({
+    mutationFn: () => adminApi.grantFreeRun({ email: email.trim(), months, plan, note: note.trim() || undefined }),
+    onSuccess: (row) => {
+      setSaid(`${row.email} has ${row.months} months waiting. It starts the day they sign up.`)
+      setEmail(''); setNote('')
+      qc.invalidateQueries({ queryKey: ['admin-free-runs'] })
+    },
+    onError: (err: any) => setSaid(err?.response?.data?.message ?? 'That did not save.'),
+  })
+  const withdraw = useMutation({
+    mutationFn: (id: string) => adminApi.withdrawFreeRun(id),
+    onSuccess: () => { setSaid('Withdrawn. Nothing is waiting for that address now.'); qc.invalidateQueries({ queryKey: ['admin-free-runs'] }) },
+    /* A withdrawal that silently fails leaves somebody believing a promise is gone when it is not. */
+    onError: (err: any) => setSaid(err?.response?.data?.message ?? 'That did not withdraw. Try again.'),
+  })
+
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="Free runs" error={error} retry={() => refetch()} />
+
+  const field: React.CSSProperties = {
+    padding: '7px 10px', border: '1px solid var(--gw-border)', borderRadius: 7,
+    fontSize: 13, fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)',
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input id="free-run-email" value={email} onChange={e => setEmail(e.target.value)}
+               placeholder="their email" style={{ ...field, flex: '1 1 220px' }} />
+        <input id="free-run-months" type="number" min={1} max={24} value={months}
+               onChange={e => setMonths(Number(e.target.value))} style={{ ...field, width: 74 }} />
+        <select id="free-run-plan" value={plan} onChange={e => setPlan(e.target.value)} style={{ ...field }}>
+          {PLAN_ORDER.filter(p => p !== 'ENTERPRISE').map(p => <option key={p} value={p}>{p.replace('_', ' ').toLowerCase()}</option>)}
+        </select>
+        <input id="free-run-note" value={note} onChange={e => setNote(e.target.value)}
+               placeholder="why, for us" style={{ ...field, flex: '1 1 160px' }} />
+        <button
+          onClick={() => grant.mutate()}
+          disabled={!email.trim() || grant.isPending}
+          style={{ padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: '#fff',
+                   fontSize: 13, fontWeight: 600, cursor: email.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+        >{grant.isPending ? 'Saving...' : 'Give them the months'}</button>
+      </div>
+      {said && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{said}</div>}
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+        Months start when they sign up, not now. They see it on the sign-up screen and on their billing page.
+      </div>
+
+      {data.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+          {data.map(r => (
+            <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 10px',
+                                     border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12.5, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600 }}>{r.email}</span>
+              <span style={{ color: 'var(--gw-sub)' }}>{r.months} months, {r.plan.replace('_', ' ').toLowerCase()}</span>
+              <span style={{ color: r.state === 'running' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                {r.state === 'waiting' ? 'waiting for them to sign up'
+                  : r.state === 'running' ? `running until ${whenItWas(r.endsAt!, 'day')}`
+                    : r.state === 'finished' ? `finished ${whenItWas(r.endsAt!, 'day')}`
+                      : 'withdrawn'}
+              </span>
+              {r.note && <span style={{ color: 'var(--gw-muted)' }}>{r.note}</span>}
+              {r.state === 'waiting' && (
+                <button onClick={() => withdraw.mutate(r.id)}
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--gw-sub)',
+                                 textDecoration: 'underline', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                  Withdraw
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SystemTab({ dash }: { dash: PlatformDashboardData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -623,6 +721,11 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
       <section>
         <div style={SL}>Pricing</div>
         <PricingPanel />
+      </section>
+
+      <section>
+        <div style={SL}>Free runs</div>
+        <FreeRunsPanel />
       </section>
 
       <section>

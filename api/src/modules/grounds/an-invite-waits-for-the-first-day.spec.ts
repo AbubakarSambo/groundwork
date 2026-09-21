@@ -87,7 +87,7 @@ describe('and the invite that was held back', () => {
      * Otherwise a provider outage leaves somebody permanently uninvited to a ground that is already
      * running, and nothing ever looks for them again.
      */
-    const send = CRON.indexOf('sendParticipantInvite');
+    const send = CRON.indexOf('sendTheInviteThisGroundSends');
     const stamp = CRON.indexOf('invitedAt: new Date(), notifiedAt: new Date()');
     expect(send).toBeGreaterThan(-1);
     expect(stamp).toBeGreaterThan(send);

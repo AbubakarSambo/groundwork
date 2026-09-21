@@ -27,7 +27,7 @@ const CHAT = strip(path.join(__dirname, '../../../../client/src/pages/chat/ChatP
 
 /** Just the completion method, so a match cannot come from somewhere else in a 4000-line file. */
 const COMPLETE = (() => {
-  const start = SERVICE.indexOf('async complete(checkInId: string, requestingUserId: string)');
+  const start = SERVICE.indexOf('async complete(checkInId: string, requestingUserId: WhoIsAsking)');
   expect(start).toBeGreaterThan(-1);
   const end = SERVICE.indexOf('scoreSessionSpecificity(checkIn.id)', start);
   expect(end).toBeGreaterThan(start);

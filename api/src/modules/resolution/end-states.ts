@@ -171,6 +171,20 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
    * been met and no follow-up to schedule. What it can do is say what the read showed, so the lead
    * knows whether to open something that runs.
    */
+  /**
+   * A STANDING UPDATE DOES NOT RESOLVE. IT STOPS, OR IT TURNS INTO SOMETHING.
+   *
+   * There is no objective to have been met - the lead wrote one line and asked for an answer to it
+   * on a rhythm. So the endings are the three honest things that happen to a standing update: it
+   * has done its job and can stop, something in the answers needs more than an update, or people
+   * stopped replying and there is nothing to read.
+   */
+  TEAM_UPDATES: [
+    { value: 'STILL_RUNNING', label: 'Keep it running' },
+    { value: 'DONE_WITH_IT', label: 'Stop it, it has done its job', description: 'The question has been answered enough times that the lead knows what they wanted to know.' },
+    { value: 'NEEDS_A_RUN', label: 'Something here needs more than an update', description: 'The answers point at something that will not settle by being asked again. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
+    { value: 'THIN_RESPONSE', label: 'People stopped answering', description: 'Too few replies for the picture to mean anything. Nothing is concluded from what did come in, and the honest read is about the rhythm rather than the people.' },
+  ],
   SNAPSHOT: [
     { value: 'READ_TAKEN', label: 'Read taken, nothing needs opening', description: 'Everyone answered and nothing in the accounts needs watching over time. The record stands as a snapshot of this week.' },
     { value: 'NEEDS_A_RUN', label: 'Something here needs watching', description: 'The accounts point at something that will not settle on its own. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
