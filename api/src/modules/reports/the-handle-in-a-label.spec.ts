@@ -44,3 +44,16 @@ describe('a label that ends in a full stop still resolves', () => {
     expect(withNames(`${stripped} said this was for: N180m.`, new Map(), [label], { viewerLabel: label })).toBe('You said this was for: N180m.');
   });
 });
+
+/** Run 8, 21 Sep 2026: a participant read the lead's whole role sentence where a name was not theirs to see. */
+describe('a label nobody may name reads as its handle', () => {
+  const { withNames } = require('./party-labels');
+  const label = 'Expansion lead at MarketView, an agricultural market intelligence platform. I am running one session with 24 organisations to decide where we expand data coverage and networks next';
+  it('in the middle of a sentence, and at the start of one', () => {
+    expect(withNames(`Nobody disagreed. ${label} said this was for: a shortlist.`, new Map(), [label])).toBe('Nobody disagreed. Expansion lead said this was for: a shortlist.');
+    expect(withNames(`What the ${label} set is open.`, new Map(), [label])).toBe('What the Expansion lead set is open.');
+  });
+  it('but a reader who may see the name gets the name', () => {
+    expect(withNames(`${label} said this was for: a shortlist.`, new Map([[label, 'Kemi Olawale']]), [label])).toBe('Kemi Olawale said this was for: a shortlist.');
+  });
+});

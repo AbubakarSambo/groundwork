@@ -26,6 +26,14 @@ export default defineConfig({
          */
         target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:3000',
         changeOrigin: true,
+        /*
+         * ONE ORIGIN FOR THE DEV CLIENT, HOWEVER IT IS ADDRESSED. The API's allow-list names
+         * localhost:5173; a page opened as 127.0.0.1:5173 is the same dev client on the same
+         * machine, and it was refused ("Origin http://127.0.0.1:5173 not allowed by CORS", 21 Sep
+         * 2026) the one time it was useful: two people signed in side by side, in one browser, to
+         * look at a check-in from both sides. The proxy presents the client's own origin.
+         */
+        headers: { origin: 'http://localhost:5173' },
       },
     },
   },

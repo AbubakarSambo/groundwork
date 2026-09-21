@@ -542,7 +542,10 @@ export function withNames(
    */
   for (const label of known) {
     if (visible.has(label)) continue;
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /* Without its trailing stop, the way the finding prints it: "...networks next said this was for" left the
+       lead's whole role sentence on a participant's card (run 8, 21 Sep 2026) because the label ended in
+       a full stop and the sentence did not. */
+    const escaped = escapeRe(withoutTrailingStop(label));
     /* A label this reader may not resolve stays a label - but a paragraph of one is printed as its
        handle, "Managing Partner", not as the person's whole self-description in the middle of a
        sentence. Only when the handle is unambiguous among the parties. */
@@ -550,8 +553,10 @@ export function withNames(
     const shared = known.filter((l) => l !== label).some((l) => handleOf(l).toLowerCase() === handle.toLowerCase());
     const printed = label.split(/\s+/).length > 5 && !shared ? handle : label;
     /* Not \b: a label that ends in a full stop has no word boundary after it. */
-    out = out.replace(new RegExp(`(?<![\\w])${escaped}(?![\\w])`, 'g'), printed);
-    out = out.replace(new RegExp(`(?<![\\w])${escaped}(?![\\w])`, 'gi'), printed);
+    /* The label's own full stop comes with it when the sentence carries on ("Director. expects"); a stop
+       that ends the sentence stays. */
+    const re = new RegExp(`(?<![\\w])${escaped}(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
+    out = out.replace(re, printed);
   }
   return out;
 }
