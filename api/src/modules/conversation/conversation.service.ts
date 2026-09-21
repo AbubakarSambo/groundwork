@@ -3698,7 +3698,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * is only settled by the time the pathway is built.
      */
     const packForThisSituation =
-      scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any);
+      scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any, undefined, undefined, checkIn.participant.roleAsDescribed ?? null);
     /* And where the pack's own spine is, read the same way. The pack says "skip any they have already
        answered"; this says which. */
     const spineSoFar = how?.forTheOpener ? '' : whereTheSpineIs(packForThisSituation ?? '', turnsThisSession);

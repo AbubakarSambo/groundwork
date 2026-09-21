@@ -81,7 +81,6 @@ describe('GW-ROSTER: the roster counts the session the check-in is on', () => {
 
 /** 21 Sep 2026: a one-session check-in everybody had finished read "waiting" beside all twenty-five names. */
 describe('there is no session after the last', () => {
-  const { whichSessionIsThisCheckInOn, hasDoneThisSession } = require('./which-session-are-we-on');
   it('caps the session at the planned count, so everyone reads as checked in', () => {
     const everyoneDidOne = [[1], [1], [1]];
     expect(whichSessionIsThisCheckInOn(everyoneDidOne)).toBe(2);

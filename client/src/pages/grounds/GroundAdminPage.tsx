@@ -404,7 +404,7 @@ export function GroundAdminPage() {
         myCheckInId: mine?.id ?? null,
         answered: parties.filter((p) => answeredIds.has(p.id)).length,
         total: parties.length,
-        closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.roundNumber === n),
+        closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
         waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
       }
     })
@@ -1201,7 +1201,7 @@ export function GroundAdminPage() {
    * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
    * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.roundNumber === openRound)
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'

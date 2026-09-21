@@ -60,7 +60,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -78,7 +78,7 @@ import { WorkspaceNotifierService } from '../workspace/workspace-notifier.servic
 import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -2282,8 +2282,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true } },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true, direction: true } },
         brief: true,
+        /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
+        cadence: true, scenario: true, id: true,
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2435,7 +2437,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })(),
       closed: !!snapshot,
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
-      divergences: (snapshot?.divergences ?? ground.report?.divergences ?? []) as unknown[],
+      /*
+       * EACH SIDE NAMED THE WAY EVERY OTHER LINE IS. The positions carried the raw label, and the page
+       * printed "Expansion lead at MarketView, an agricultural market intelligence platform. I am
+       * running one session with 24 organisations...:" as a name (run 8, 21 Sep 2026). The same rule
+       * as the rows: a name where this reader may see one, the role's handle where they may not.
+       */
+      divergences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[]).map((d) => {
+        const sides = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : null;
+        if (!sides) return d;
+        const named = sides.map((p: any) => {
+          const label = String(p?.participantLabel ?? p?.who ?? '').trim();
+          const pid = [...labels.entries()].find(([, l]) => l === label || l === label.replace(/[.]+$/, ''))?.[0];
+          const who = pid ? whoOf(pid) : null;
+          const printed = who && who !== label ? who : (label.split(/\s+/).length > 5 ? handleOf(label) : label);
+          return { ...p, participantLabel: printed, who: printed };
+        });
+        return { ...d, ...(Array.isArray(d?.positions) ? { positions: named } : {}), ...(Array.isArray(d?.perspectives) ? { perspectives: named } : {}) };
+      }),
       /*
        * `cleanText` STRIPS THE ENGINE'S OWN MARKERS BEFORE ANYBODY READS THEM.
        *
@@ -2738,9 +2757,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const anAimBelongsHere = anAimIsOwedHere((ground as any).scenario);
     const somebodyStatedOne = !!(baseline?.successLooksLike ?? '').trim() || againstSuccess.definitions.length > 0;
 
+    /*
+     * A ONE-TIME LISTENING SESSION HAS NO TILES AND NO STANDARD. "Movement: not tracked", "Blockers: 44",
+     * "All from memory" and a sixty-line list of every aim ever said sat on a discovery report (run 8,
+     * 21 Sep 2026). They measure a run of work against a stated aim; a room that met once has neither.
+     */
+    const listeningOnce = (ground as any).cadence === Cadence.ONE_TIME;
+
     return {
       ...wordedShape,
-      againstSuccess: anAimBelongsHere || somebodyStatedOne ? againstSuccess : null,
+      ...(listeningOnce ? { atAGlance: [] } : {}),
+      againstSuccess: !listeningOnce && (anAimBelongsHere || somebodyStatedOne) ? againstSuccess : null,
       cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
@@ -2850,6 +2877,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         } catch (err: any) {
           this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
         }
+        const oneTime = (ground as any).cadence === Cadence.ONE_TIME;
+        const directionForThePicture = oneTime ? await this.theDirectionAsLines(ground, me ? (labels.get(me.id) ?? null) : null) : null;
         const drafts = draftThePicture({
           /* Where two people describe the same thing differently, that is the finding. */
           differences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[])
@@ -2916,8 +2945,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
           })),
           settled: shape.whereThingsStand.settled,
           open: shape.whereThingsStand.open,
+          oneTime,
+          direction: directionForThePicture,
         });
-        const question = draftTheQuestion({
+        /* No role-map question to a room that met once; the sales map asked a discovery convener "what
+           did that turn into - pipeline, conversion, sign-ups?" (run 8, 21 Sep 2026). */
+        const question = oneTime ? null : draftTheQuestion({
           functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
           blockers: currentDeps.map((d: any) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
         });
@@ -2984,7 +3017,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
-          whyNoQuestion: question ? null : WHY_NO_QUESTION,
+          whyNoQuestion: question || oneTime ? null : WHY_NO_QUESTION,
+          /* The direction itself, for the page to draw as lists. Null off a discovery ground. */
+          direction: oneTime ? await this.theDirectionFrom({ ...(ground as any), report: ground.report }, me ? (labels.get(me.id) ?? null) : null).catch(() => null) : null,
           /*
            * The waiting list here is the still-raised one. Without this line the reader is shown a
            * shorter list and nothing tells them why it got shorter - they read it as resolved. It
@@ -4283,6 +4318,52 @@ happened, and what is in the way.`;
 
   private readonly directionInFlight = new Set<string>();
 
+  /**
+   * THE DIRECTION AS SENTENCES, for the picture of a one-time session: each list the room answered,
+   * most-named first, with the count that makes it the room's answer rather than one person's.
+   */
+  private async theDirectionAsLines(ground: any, viewerLabel: string | null): Promise<{ saying: string | null; lines: string[] } | null> {
+    const d = await this.theDirectionFrom(ground, viewerLabel).catch(() => null);
+    if (!d) return null;
+    const titles: [keyof TheDirection, string][] = [
+      ['regions', 'Regions'], ['markets', 'Markets'], ['valueChains', 'Value chains'], ['actors', 'Who to reach'],
+      ['dataGaps', 'Information people do not have'], ['networks', 'Relationships that would unlock it'],
+      ['pilots', 'Where people would start'], ['nextTwelveMonths', 'Their own next twelve months'],
+    ];
+    const lines: string[] = [];
+    for (const [key, title] of titles) {
+      const items = ((d as any)[key] ?? []) as { name: string; namedBy?: string[]; count?: number }[];
+      const top = items
+        .map((i) => ({ name: i.name, count: i.count ?? i.namedBy?.length ?? 0 }))
+        .filter((i) => i.count >= 2)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4);
+      if (top.length) lines.push(`${title}: ${top.map((i) => `${i.name} (${i.count})`).join(', ')}.`);
+    }
+    for (const split of ((d as any).splits ?? []) as { saying?: string }[]) if (split?.saying?.trim()) lines.push(split.saying.trim());
+    if (!lines.length) return null;
+    /* THE FINDING IS WHERE THE ROOM POINTS, not how many things were named. "27 of the 87 things named
+       were named by more than one person" is a statistic; "Jigawa (12 of 25), rice and paddy (6) and price
+       data (4) lead" is a direction. */
+    const lead = (key: keyof TheDirection) => {
+      const items = (((d as any)[key] ?? []) as { name: string; namedBy?: string[]; count?: number }[])
+        .map((i) => ({ name: i.name, count: i.count ?? i.namedBy?.length ?? 0 }))
+        .filter((i) => i.count >= 2)
+        .sort((a, b) => b.count - a.count);
+      return items[0] ?? null;
+    };
+    const outOf = Number((d as any).outOf ?? 0) || null;
+    const heads = [
+      lead('regions') && `${lead('regions')!.name} (${lead('regions')!.count}${outOf ? ` of ${outOf}` : ''})`,
+      lead('valueChains') && `${lead('valueChains')!.name} (${lead('valueChains')!.count})`,
+      lead('dataGaps') && `${lead('dataGaps')!.name} (${lead('dataGaps')!.count})`,
+    ].filter(Boolean) as string[];
+    const headline = heads.length
+      ? `The room points to ${heads.length === 1 ? heads[0] : `${heads.slice(0, -1).join(', ')} and ${heads[heads.length - 1]}`}.`
+      : (d as any).saying?.trim() || null;
+    return { saying: headline, lines };
+  }
+
   private presentTheDirection(stored: TheDirection, viewerLabel: string | null) {
     /* Re-merged on the way out, so a stored direction picks up a better idea of what is the same thing
        ("Paddy / Rice", "Paddy and Rice") without being read again. */
@@ -4571,10 +4652,15 @@ happened, and what is in the way.`;
      */
     const [coaching, probes] = await Promise.all([
       coachingPending,
-      this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
-        this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
-        return null;
-      }),
+      /* "What to ask each person" is for the next session. A room that met once has none: twenty-four
+         identical "Waiting for X, with no escalation on record" blocks went to a discovery convener (run
+         8, 21 Sep 2026). */
+      (ground as any).cadence === Cadence.ONE_TIME
+        ? Promise.resolve(null)
+        : this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
+          this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
+          return null;
+        }),
     ]);
     const base: any = {
       ...withoutOtherPeoplesReads(

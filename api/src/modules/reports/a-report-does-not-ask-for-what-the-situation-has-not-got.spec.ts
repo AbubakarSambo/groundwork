@@ -50,7 +50,7 @@ describe('what the situation has not got', () => {
   it('leaves out the standard section where a standard is not part of the situation', () => {
     const reports = src('reports/reports.service.ts');
     expect(reports).toContain('anAimBelongsHere');
-    expect(reports).toMatch(/againstSuccess: anAimBelongsHere \|\| somebodyStatedOne \? againstSuccess : null/);
+    expect(reports).toMatch(/againstSuccess: !listeningOnce && \(anAimBelongsHere \|\| somebodyStatedOne\) \? againstSuccess : null/);
     expect(anAimIsOwedHere('TEAM_UPDATES')).toBe(false);
     expect(anAimIsOwedHere('GOAL_ALIGNMENT')).toBe(true);
   });

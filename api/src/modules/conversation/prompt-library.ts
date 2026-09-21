@@ -2999,6 +2999,56 @@ WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: their answers go in with everybo
 
 RECORD: what they want to expand, the constraint, the regions and markets named, the value chains named, the actors and organisations named, the information they said they lack, the relationships they said would unlock it, and their own twelve-month shape: the volumes, the people on the ground and the timing they said it would take. Each in their own words, as specifically as they gave it.`;
 
+/*
+ * A RESEARCH ORGANISATION IN A DISCOVERY ROOM IS NOT EXPANDING A BUSINESS. Run 8, 21 Sep 2026: the
+ * Sahel Agricultural Research Institute was asked what it was trying to grow over the next two to
+ * three years, what was stopping it, and where it would expand if the constraint disappeared. It
+ * studies markets; what it holds is what data it needs, in what form, for which questions, and who
+ * it needs to reach to get it. Hafsah, 21 Sep 2026: "the conversations seem to think research orgs
+ * have business plans for expansion, as opposed to the types of data." Same rules as the pack
+ * above; a different spine.
+ */
+const DISCOVERY_RESEARCH_PACK = `MOMENT: One conversation with a group, to work out where we should focus. This person works at a RESEARCH ORGANISATION.
+
+PURPOSE: The people answering are not reporting on their own work and are not being checked on. They hold knowledge, and the whole job of this session is to get it out of them cleanly, so that twenty accounts read together become a direction.
+
+THIS PERSON DOES NOT EXPAND A BUSINESS. They study markets, farmers, trade or policy. Never ask what they are trying to grow, what is stopping them expanding, or where they would expand. What they hold is: what they study, what data they use and what they lack, in what form and at what frequency, for which places, and who they would need to reach to get it.
+
+THE SPINE, IN THIS ORDER, ONE AT A TIME. Skip any they have already answered; never ask two at once:
+"What are you studying or trying to answer over the next two to three years?"
+"What data do you use for that today, and where does it come from?"
+"What data do you not have that you would need?"
+"In what form would you need it - how often, at what level, for which places?"
+"Which regions and which value chains does that cover?"
+"Who would you need to reach to get it - which organisations, associations or agencies?"
+"What relationships would make that possible?"
+"Over the next twelve months, what would you need to have in place for that work, and by when?"
+
+PRESS FOR THE SPECIFIC ONE, ONCE. "Better data" is not a gap; a weekly LGA-level paddy price series for Kano and Jigawa from 2019 is. "Farmers" is not who to reach; RIFAN chapters in Jigawa are. Ask once for the specific version and take what comes.
+
+THEIR OWN PLAN IS THE POINT, AND IT HAS SHAPES AND DATES IN IT: which study, for which places, on what timeline, needing what access by when. Ask it as their plan, never as a commitment to anybody here.
+
+WHAT NOT TO DO:
+- Do not ask them to commit to anything, to report back, or to do something for us.
+- Never ask "what will you do about this, and by when?" and never ask "what was agreed between you that was never actually said out loud?".
+- Do not ask about sales, volumes, customers, dealers or margins. Those are the other groups' questions.
+- Do not ask what has changed recently, or what is going well. Do not offer advice or methodology.
+- Do not reference a next session. There is one session.
+
+WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: their answers go in with everybody else's, and the picture that comes back says what the group named together - the regions, the value chains and the information gaps several of them share. Say when it comes, not what they should do next.
+
+RECORD: what they study, the data they use, the data they lack and the form it would need to take, the regions and value chains named, the organisations and associations named, the relationships they said would unlock it, and their own twelve-month shape. Each in their own words, as specifically as they gave it.`;
+
+/** Which group a person in a discovery room belongs to, read from the role they gave. */
+export function whichDiscoveryGroup(roleAsDescribed: string | null | undefined): 'research' | 'input distributor' | 'processor' | null {
+  const r = (roleAsDescribed ?? '').toLowerCase();
+  if (!r.trim()) return null;
+  if (/\b(research|universit|institute|polic[iy]|think tank|academ|professor|prof\.?|lecturer|economics unit|centre for|center for|studies|survey)\b/.test(r)) return 'research';
+  if (/\b(input|seed|fertili[sz]er|agro-?chem|crop protection|distribut|agro-?dealer|dealer)\b/.test(r)) return 'input distributor';
+  if (/\b(agro-?process\w*|process\w*|mills?|parboil\w*|aggregat\w*|packag\w*|food)\b/.test(r)) return 'processor';
+  return null;
+}
+
 const DISCOVERY_CONVENER_PACK = `MOMENT: One conversation with a group, to work out where we should focus. This person CONVENED it.
 
 PURPOSE: They are not one of the people being asked where they would expand; they are the person who has to decide with what comes back. Their session is short, and it is about the decision: what is being decided, what they already believe, what would make this worth more than the last time they asked, and what they will do with the answer.
@@ -3386,8 +3436,12 @@ export function buildScenarioPackForParty(
   partyType: PartyType,
   moment?: GroundMoment | null,
   stage?: Stage | null,
+  /** The role this person gave, where the situation asks different groups different things. */
+  roleAsDescribed?: string | null,
 ): string {
-  const pack = theScenariosOwnPack(scenario, partyType, moment);
+  const pack = scenario === GroundScenario.DISCOVERY && partyType !== PartyType.INITIATOR && whichDiscoveryGroup(roleAsDescribed) === 'research'
+    ? DISCOVERY_RESEARCH_PACK
+    : theScenariosOwnPack(scenario, partyType, moment);
   const whatThisOneIsFor = stage ? whatThisCheckInIsFor(scenario, partyType, stage) : '';
   return whatThisOneIsFor ? `${whatThisOneIsFor}\n\n${pack}` : pack;
 }

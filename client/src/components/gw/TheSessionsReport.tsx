@@ -5,6 +5,7 @@ import { reportsApi } from '@/api/reports'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowMuchThereIsToGoOn } from './HowMuchThereIsToGoOn'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { WhereToFocus } from './where-to-focus'
 
 /**
  * ONE SESSION'S SHARED REPORT.
@@ -229,9 +230,18 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     settledBy: string | null
   }[] = d.whereThingsStand?.openWithReasons ?? []
   const definitions: { who: string | null; text: string }[] = d.againstSuccess?.definitions ?? []
-  const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
+  /*
+   * A ONE-TIME LISTENING SESSION LEADS WITH WHERE THE ROOM POINTS. The server sends `direction` for a
+   * discovery ground and drafts the finding from it; the lists are drawn under the finding, so the
+   * finding itself is the one line that says what the room named, not the eight lists in a paragraph.
+   */
+  const direction = d.direction ?? null
+  const rawFinding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
+  const finding = rawFinding && direction && rawFinding.key === 'direction'
+    ? { ...rawFinding, text: rawFinding.text.split(/(?<=[.!?])\s+/)[0] }
+    : rawFinding
   const picture: { key: string; text: string }[] = d.picture ?? (d.pictureLines ?? []).map((t: string, i: number) => ({ key: `l${i}`, text: t }))
-  const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
+  const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== 'direction' && l.key !== finding?.key)
 
   /* Numbered by what is DRAWN. Fixed numbers skip when a block has nothing, and 02 · 04 · 05 reads
      as pieces missing rather than as a report with four blocks. */
@@ -291,6 +301,13 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             </small>
           )}
         </div>
+      )}
+
+      {/* ── Where the room points, on a one-time session: the lists, most-named first, under the finding. */}
+      {direction && (
+        <Row n={next()} note="what the room named, most-named first" label="The direction">
+          <WhereToFocus direction={direction} />
+        </Row>
       )}
 
       {/* ── At a glance. Four states in a row, each a whole clause about what its number is of. */}

@@ -69,7 +69,7 @@ export interface AGoalTheyMaySee {
  * that leaves nothing falls back to the filtered brief.
  */
 export const THE_TELLING_PROMPT = [
-  'You write the two or three sentences a person taking part in a check-in reads before their first answer, under the heading "About this check-in".',
+  'Write the "About this check-in" box: two or three sentences for a person taking part, read before their first answer.',
   'You are given what the person who set the check-in up wrote. It is addressed to the product, in their voice, and may include instructions on how to interview people. None of that is for the participant.',
   'Write, addressed to the participant as "you":',
   '  1. One sentence on the situation this check-in sits in, in plain words, without naming or listing other people or their affairs.',
