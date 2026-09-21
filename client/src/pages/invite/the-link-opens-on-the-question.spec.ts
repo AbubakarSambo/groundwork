@@ -20,3 +20,17 @@ describe('the link opens on the question', () => {
     expect(justTheQuestion('')).toBe(false)
   })
 })
+
+/** 21 Sep 2026: opened from an inbox in a browser with no session, the one-line link spun on "Opening your question" for ever. */
+describe('the one-line link opens the question on every visit', () => {
+  it('accept() is called whether or not the link was accepted before, and the spinner ends with the mutation', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'InvitePage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).toMatch(/if \(preview && opensStraightOnTheQuestion\(preview\.scenario\) && accept\.isIdle\) \{\s*accept\.mutate\(\)/);
+    expect(src).not.toMatch(/&& !preview\.alreadyAccepted && accept\.isIdle/);
+    expect(src).toMatch(/opensStraightOnTheQuestion\(preview\.scenario\) && !failed && !waiting && !emailedTo && \(accept\.isPending \|\| accept\.isIdle \|\| accept\.isSuccess\)/);
+  });
+  it('and the server signs the link\'s own recipient in again for that situation', () => {
+    const svc = require('fs').readFileSync(require('path').join(__dirname, '../../../../api/src/modules/participants/participants.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(svc).toMatch(/if \(user && ground\.scenario === GroundScenario\.TEAM_UPDATES && theirOpenCheckIn\) \{\s*const accessToken = this\.jwt\.sign\(sessionClaims\(user, 'link'\)\);/);
+  });
+});

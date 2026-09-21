@@ -4851,15 +4851,18 @@ export class GroundsService {
     });
     const sessionNumber = lastAnswered._max.sessionNumber ?? newestOpen._max.sessionNumber ?? 1;
 
+    /* THE SAME PEOPLE THE RELEASE RULE WAITS ON. A managing-only lead gives session 1 like everybody else
+       and is waited on for it (isSessionReadyForReport, waitsOnAManagingOnlyLead); this excluded them
+       outright, so Hafsah's own ground read "1 of 1 checked in" beside a roster of two, and "everyone is
+       in" while her session 1 sat untouched (21 Sep 2026). From session 2 they are not a party, and the
+       denominator no longer carries a number nobody will reach. */
+    /* Optional-chained: the unit specs mock groundParticipant and checkIn only. With no ground read, the rule
+       falls back to what it did before: managing-only leads are out. */
+    const itsScenario = await (this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } }) ?? Promise.resolve(null)).catch(() => null);
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
-        /**
-         * A managing-only lead is not counted. They give no account by design, so including them made
-         * the denominator a number that could never be reached - "2 of 3" forever on a ground where
-         * everybody who was ever going to answer already had.
-         */
-        managingOnly: false,
+        ...(itsScenario && waitsOnAManagingOnlyLead((itsScenario as any).scenario, sessionNumber) ? {} : { managingOnly: false }),
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

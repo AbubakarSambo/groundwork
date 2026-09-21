@@ -160,8 +160,15 @@ export function InvitePage() {
    *
    * Runs once - `accept.isIdle` - so a re-render mid-flight cannot fire a second join.
    */
+  /*
+   * THE ONE-LINE LINK OPENS THE QUESTION WHETHER OR NOT IT HAS BEEN OPENED BEFORE. Hafsah, 21 Sep 2026:
+   * the link from "Hafsah asked you for a quick update", opened in a browser with no session, spun on
+   * "Opening your question" for ever. `alreadyAccepted` kept this from calling accept(), and the
+   * branch below drew the spinner anyway. accept() is what opens the question - the server signs the
+   * link's own recipient in again for this situation - so it is called either way.
+   */
   useEffect(() => {
-    if (preview && opensStraightOnTheQuestion(preview.scenario) && !preview.alreadyAccepted && accept.isIdle) {
+    if (preview && opensStraightOnTheQuestion(preview.scenario) && accept.isIdle) {
       accept.mutate()
     }
   }, [preview, accept])
@@ -200,7 +207,7 @@ export function InvitePage() {
     )
   }
 
-  if (preview && opensStraightOnTheQuestion(preview.scenario) && !failed && !waiting && !emailedTo) {
+  if (preview && opensStraightOnTheQuestion(preview.scenario) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
     return (
       <InviteShell>
         <div style={{ textAlign: 'center' }}>

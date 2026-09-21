@@ -346,6 +346,11 @@ export function withoutTheMark(text: string): string {
  * account was settled", "account for the difference" - is ordinary English and is left alone.
  */
 const OURS_NOT_THEIRS: [RegExp, string][] = [
+  /* "It is your baseline. I'll use this when we check in on progress." was recited to a rep from a scripted line
+     in the pack (21 Sep 2026). Baseline is our word for what they said would show the goal was met. */
+  [/\b(?:it is|that is|this is) your (?:evidence )?baseline\b/gi, 'that goes on your record'],
+  [/\byour (?:evidence )?baseline\b/gi, 'what you said would show it'],
+  [/\bthe (?:evidence )?baseline\b/gi, 'what you said would show it'],
   [/\byour accounts\b/gi, 'what you said'],
   [/\byour account\b/gi, 'what you said'],
   [/\btheir accounts\b/gi, 'what they said'],

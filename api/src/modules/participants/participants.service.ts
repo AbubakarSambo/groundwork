@@ -10,7 +10,7 @@ import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
+import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -114,6 +114,25 @@ export class ParticipantsService {
         orderBy: { sessionNumber: 'asc' },
         select: { id: true },
       });
+      /*
+       * "GET UPDATES FROM YOUR TEAM" PROMISES NO SIGN-UP AND NO SIGN-IN. Hafsah, 21 Sep 2026: "this
+       * is not meant to require people to login. This only works if you are logged in." The one-line
+       * link went to her inbox, she opened it in a browser holding no session, and the page spun on
+       * "Opening your question" for ever. The link in the inbox IS the credential this flow was
+       * designed around - the same trust as the magic link this branch would have emailed instead.
+       * So for a situation that opens straight on the question, the link signs its own recipient in
+       * again and opens the question. Every other situation keeps the emailed way in.
+       */
+      if (user && ground.scenario === GroundScenario.TEAM_UPDATES && theirOpenCheckIn) {
+        const accessToken = this.jwt.sign(sessionClaims(user, 'link'));
+        return {
+          accessToken,
+          user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role },
+          groundId: participant.groundId,
+          checkInId: theirOpenCheckIn.id,
+          existingAccount: true as const,
+        };
+      }
       if (user) {
         const magicToken = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({

@@ -1,5 +1,6 @@
 import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -749,7 +750,7 @@ export function GroundParticipantPage() {
               can never release one - the rule refuses outright below two - and the page said
               "forming" for ever. The truth, and who can change it (fix plan B17).
             */}
-            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+            {whoIsInRound((ground.participants ?? []) as any[], (ground as any).sessionProgress?.sessionNumber ?? 1, (ground as any).scenario).length < 2 && (
               <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
                 The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
               </div>

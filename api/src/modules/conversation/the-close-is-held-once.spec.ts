@@ -214,3 +214,13 @@ describe('the homework question, budgeted', () => {
     expect(again.text).toBe('That is a real answer.');
   });
 });
+
+/** 21 Sep 2026, live: a close held twice recited "You said you will do some research online..." three times. */
+describe('a held close does not recite what was already said', () => {
+  const { withoutWhatWasAlreadySaid } = require('./the-close-is-held-once');
+  it('drops a sentence already in an earlier turn and keeps the rest', () => {
+    const earlier = ['You will do some research online to find these people, and that will be done by October 31, 2026.\n\nOne more before this closes, because it is what this check-in is for: what you are answerable for.'];
+    expect(withoutWhatWasAlreadySaid('The signed contracts. You said you will do some research online to find these people, and that will be done by October 31, 2026.', earlier)).toBe('The signed contracts.');
+    expect(withoutWhatWasAlreadySaid('You will do some research online to find these people, and that will be done by October 31, 2026.', earlier)).toBe('');
+  });
+});
