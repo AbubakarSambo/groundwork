@@ -10,7 +10,10 @@
  * The person sees a question. Never a form, never a rule read back to them.
  */
 
-const A_NUMBER = /\b\d+([.,:]\d+)?%?\b|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|half|dozen)\b/i;
+/* A DIGIT ANYWHERE. This used to be \b\d+\b, and "N38m", "$400k" and "N180m" have no word boundary before
+   the digit, so a rep who said "I hit N38m" three times was told nothing he said carried a number (run 7,
+   21 Sep 2026). Every number this product's people say has a currency letter on the front of it. */
+const A_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million|half|dozen)\b/i;
 const A_DATE =
   /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b(tomorrow|tonight|next (week|month|quarter|monday|tuesday|wednesday|thursday|friday)|end of (the )?(week|month|quarter|day)|by the \d+|this (week|month|quarter)|q[1-4])\b/i;
 const A_DOCUMENT =

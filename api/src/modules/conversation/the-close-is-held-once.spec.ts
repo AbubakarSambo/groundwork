@@ -12,6 +12,8 @@ describe('the close bar reads the last answer for one concrete thing', () => {
   it('a date, a number, a document or an attachment each count', () => {
     expect(whatIsConcreteIn('I will send it by Friday', false)).toContain('a date');
     expect(whatIsConcreteIn('two transfers waited', false)).toContain('a number');
+    expect(whatIsConcreteIn('My number is N38m.', false)).toContain('a number');
+    expect(whatIsConcreteIn('Value would be around $400,000 in the first year.', false)).toContain('a number');
     expect(whatIsConcreteIn('it is in the tracker', false)).toContain('a document');
     expect(whatIsConcreteIn('here you go', true)).toEqual(['an attachment']);
   });
