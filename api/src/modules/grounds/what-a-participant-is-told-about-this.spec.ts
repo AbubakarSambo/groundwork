@@ -27,3 +27,26 @@ describe('what a participant is told about this', () => {
     expect(whatAParticipantIsToldAboutThis('Do not lead them.', [])).toBeNull();
   });
 });
+
+/** Run 7, 21 Sep 2026: the box scored 1.2 to 2.0 because the situation was still the lead's sentence to the product. */
+describe('the product writes what a participant is told, once, and checks it', () => {
+  const { theTellingHolds } = require('./what-a-participant-is-told-about-this');
+  it('keeps plain sentences addressed to the participant', () => {
+    const t = theTellingHolds('You took an asset loan this year to get somewhere with your business. This check-in is for seeing how that asset is working for you, not only whether you are paying. A few short check-ins, in your own words, build a record you can read.', { otherNames: ['Grace', 'Aisha'] });
+    expect(t).toMatch(/^You took an asset loan/);
+    expect(t?.split(/(?<=[.!?])\s+/).length).toBe(3);
+  });
+  it('drops the lead\'s voice, instructions, figures and other people\'s names', () => {
+    expect(theTellingHolds('We want to know how the asset is working. Ask them about repayments. Grace has a tractor. Your loan is for N2m. This check-in is about how your business is going.', { otherNames: ['Grace'] }))
+      .toBe('This check-in is about how your business is going.');
+    expect(theTellingHolds('The lead wants to see where each rep stands. Do not lead them.', {})).toBeNull();
+    expect(theTellingHolds('', {})).toBeNull();
+  });
+  it('and the block says their own goal before the check-in\'s', () => {
+    const t = whatAParticipantIsToldAboutThis('Help the person.', [
+      { name: 'Hit N180m', target: 180_000_000, ownerParticipantId: null },
+      { name: 'N30m this quarter', target: 30_000_000, ownerParticipantId: 'bola' },
+    ], { told: 'Your team is working to a sales target this quarter.', readerParticipantId: 'bola' })!;
+    expect(t).toBe('Your team is working to a sales target this quarter. Your goal: N30m this quarter (30,000,000). The goal for the whole check-in: Hit N180m (180,000,000).');
+  });
+});

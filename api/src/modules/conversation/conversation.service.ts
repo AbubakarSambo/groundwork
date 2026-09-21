@@ -661,7 +661,9 @@ export class ConversationService {
        */
       /* The lead reads their own brief. Anybody else reads the situation and the goals they may see,
          never the lead's instructions to the product. See what-a-participant-is-told-about-this. */
-      says: reader?.isLead ? ground.brief?.trim() || null : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown),
+      says: reader?.isLead
+        ? ground.brief?.trim() || null
+        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null }),
       objectives: maySee.shown,
       alsoSay: maySee.alsoSay,
     };
