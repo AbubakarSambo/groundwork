@@ -53,4 +53,10 @@ describe('a unit after a number is not a scale', () => {
     expect(numbersIn('We moved 50kg bags, about 120 of them.')).toEqual([50, 120]);
     expect(numbersIn('N50m for the quarter')).toEqual([50_000_000]);
   });
+
+  it('a count of how often they did something is a claim, and stands only in their words', () => {
+    const said = { theirWords: ['I need to follow up with a more detailed capabilities deck.'], record: [] } as any;
+    expect(claimsTheNumbersDoNotSupport('You have asked for that before, three times, and you have not received it. What is your plan now?', said)).toHaveLength(1);
+    expect(claimsTheNumbersDoNotSupport('You have asked twice, you said. What changed?', { ...said, theirWords: ['I asked them twice already.'] })).toEqual([]);
+  });
 });

@@ -57,7 +57,16 @@ export function claimsTheNumbersDoNotSupport(reply: string, said: WhatTheyHaveSa
     .flatMap(numbersIn);
   const theirMax = reached.length ? Math.max(...reached) : 0;
   const out: { sentence: string; why: string }[] = [];
+  const theirs = said.theirWords.join('\n').toLowerCase();
   for (const s of sentencesOf(reply)) {
+    /* "YOU HAVE ASKED FOR THAT BEFORE, THREE TIMES" to a man who had asked once, in the conversation it was
+       said in (run 7, 21 Sep 2026). A count of how often THEY did something is a claim about the record; it
+       stands only where they said the count themselves. */
+    const howOften = /\byou(?:'ve| have)? (?:asked|said|told|raised|mentioned|tried|chased|followed up|reminded)\b[^.!?]*\b(twice|three times|four times|five times|several times|many times|\d+ times)\b/i.exec(s);
+    if (howOften && !theirs.includes(howOften[1].toLowerCase())) {
+      out.push({ sentence: s, why: `says they did that ${howOften[1]}, which they never said` });
+      continue;
+    }
     const nums = numbersIn(s);
     if (!nums.length) continue;
     if (CLAIMS_TO_BE_PAST.test(s)) {
