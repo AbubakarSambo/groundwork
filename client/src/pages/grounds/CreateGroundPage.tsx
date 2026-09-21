@@ -328,6 +328,24 @@ export const SCENARIOS: ScenarioCard[] = [
    * first session working out what each person owns before it asks how anything is going. This one
    * asks the lead's own question, on a rhythm, and sets nothing up.
    */
+  /**
+   * INTERROGATE A GROUP ONCE, TO TURN WHAT THEY KNOW INTO A DIRECTION.
+   *
+   * The one card here that is not about the people answering. They are not being checked on and are
+   * not reporting on their work: they hold knowledge about their own market, and one session with
+   * twenty of them, read together, says where to go next. Run as a snapshot it asked twenty-four
+   * business owners what they would do about it and by when, which is a survey with homework.
+   */
+  { cardKey: 'DISCOVERY', scenario: 'DISCOVERY', label: SCENARIO_LABELS.DISCOVERY,
+    desc: 'Ask a group what they know, once, and read the answers together. Each person is taken through what they are trying to grow, what stops them, and where they would go if it went. The report comes back as a direction: the regions, markets, value chains, actors and data gaps the room named, and how many named each.',
+    moment: 'You have a decision to make about where to focus, and the people who know are not in your team.',
+    agreed: 'Nothing. Nobody is committing to anything and nobody is being tracked.',
+    tests: 'Nothing over time. There is one session, and the value is in reading twenty accounts against each other rather than in asking anybody twice.',
+    examples: [
+      'Where should we expand next, and what data would we need to do it?',
+      'Which value chains matter most to the people who actually trade in them?',
+      'What is stopping our customers from growing, and where would they go if it stopped?',
+    ] },
   { cardKey: 'TEAM_UPDATES', scenario: 'TEAM_UPDATES', label: SCENARIO_LABELS.TEAM_UPDATES,
     desc: 'Ask one question, everyone answers on their own link, you get one report. It comes back every week, or however often you pick. Two minutes to set up: who, the one line you want answered, and how often. No target to agree and nothing to set up.',
     moment: 'You want to know one thing from your team, regularly, without booking a meeting.',

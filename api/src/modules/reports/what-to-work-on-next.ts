@@ -1,3 +1,4 @@
+import { runsTheirOwnBusiness } from '../board/function-detection';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
@@ -128,6 +129,8 @@ export interface CoachingInputs {
    * thing off their own lines. See what-your-own-record-says. Empty is normal and fine.
    */
   aboutYou?: string[];
+  /** See TheirOwnRecord.documentsExpected: a farmer is not asked to bring a spreadsheet. */
+  documentsExpected?: boolean;
 }
 
 const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
@@ -255,7 +258,11 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   /* First on the page and first here: the part that could only have been written for this reader. */
   const aboutYou = i.aboutYou ?? [];
-  const { map, why: whyNoRoleMap } = whichRoleMap(i.detectedFunction, i.functionConfidence);
+  /* Somebody who runs their own business has no office map to be read against, and does not need to be told
+     that "what kind of work this is has not been read yet": the note is about where they are. */
+  const { map, why: whyNoRoleMap } = runsTheirOwnBusiness(i.role)
+    ? { map: null, why: null }
+    : whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
   const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   /*
@@ -267,9 +274,12 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
    * preposition badly: "in operations and people" was read back off the page as wrong, and it is.
    * They sit after "work" instead, which is the only position that holds for all ten.
    */
+  /* The role as a handle, not the whole sentence: "your work as poultry farmer in kaduna, battery cages on a
+     tijara loan." was a sentence nobody would write. The first clause, up to five words. */
+  const roleHandle = (i.role ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
   const about = map
     ? `${map.label.toLowerCase()} work`
-    : i.role?.trim() ? `your work as ${i.role.trim().toLowerCase()}` : 'this work';
+    : roleHandle ? `your work as ${roleHandle.replace(/^(a|an|the)\s+/, '')}` : 'this work';
 
   const early = i.sessionNumber <= 2;
   const last = i.isFinalSession === true || (i.totalSessions != null && i.sessionNumber >= i.totalSessions);
@@ -333,7 +343,9 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
       aboutYou,
-      showingUp: `${entry.signal} Read across ${recurring.periodsObserved} sessions, not once.`,
+      /* Says where it comes from: the same shape came up in N of their own sessions. "Read across 3 sessions"
+         read as a verdict handed down rather than a count of their own record (20 Sep 2026). */
+      showingUp: `${entry.signal} This came up in ${recurring.periodsObserved} of your sessions, not once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
       whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
@@ -351,7 +363,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     actions.push(
       !i.saidSomethingSpecific
         ? 'Pick one thing you actually did and write it with a date and who else was involved. One is enough to change what this can say.'
-        : !i.anythingDocumented
+        : !i.anythingDocumented && i.documentsExpected !== false
           ? 'Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system.'
           : last
             ? 'This is the last session. Say plainly what is still unresolved and who you think owns it, because after this the record stops.'

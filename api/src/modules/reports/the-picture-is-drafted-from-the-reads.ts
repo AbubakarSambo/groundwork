@@ -59,6 +59,18 @@ export interface PictureInput {
    * except the arithmetic: a number that does not add up is still the bigger fact.
    */
   sinceLastTime?: string | null;
+  /**
+   * A LISTENING SESSION IS NOT A RUN OF WORK. Run 8, 21 Sep 2026, the discovery report's finding read
+   * "You, Ifeoma Okonkwo, Adamu Tanko, ... and Dr Folake Adeyemi are waiting for 54 things, starting
+   * with confirmed interest from partners... with no escalation on record", and under it the same
+   * "1 check-in on record. Nothing named so far could be checked... Read against Project
+   * management" ten times. Information a person said they lack is the answer a discovery session
+   * asks for, not a blocker; there is no "so far" in one session; nobody is read against a role. So
+   * a one-time session drafts from the differences and the direction only.
+   */
+  oneTime?: boolean;
+  /** The direction the room points, already worded by the product (see what-the-room-said). */
+  direction?: { saying?: string | null; lines: string[] } | null;
 }
 
 const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
@@ -74,7 +86,7 @@ const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[
  * the tile line, which outranks the settled-and-open line. The basis line never leads; it goes
  * underneath the finding, small.
  */
-const FINDING_RANK: [RegExp, number][] = [[/^numbers$/, -1], [/^moved$/, -0.5], [/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
+const FINDING_RANK: [RegExp, number][] = [[/^direction$/, -2], [/^numbers$/, -1], [/^moved$/, -0.5], [/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
 export function pickTheFinding(keys: string[]): string | null {
   const ranked = keys
     .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
@@ -84,12 +96,18 @@ export function pickTheFinding(keys: string[]): string | null {
 }
 
 export function hasAnEngineBasis(i: PictureInput): boolean {
-  return i.answered > 0 || i.patterns.length > 0 || i.coverage.length > 0 || i.contribution.length > 0 || i.blockers.length > 0;
+  return i.answered > 0 || i.patterns.length > 0 || i.coverage.length > 0 || i.contribution.length > 0 || i.blockers.length > 0 || !!i.direction?.lines?.length;
 }
 
 export function draftThePicture(i: PictureInput): Drafted[] {
   if (!hasAnEngineBasis(i)) return [];
   const out: Drafted[] = [];
+
+  /* WHERE THE ROOM POINTS, first, on a one-time session. Product-worded already; nothing to reword. */
+  if (i.direction?.lines?.length) {
+    const text = [i.direction.saying?.trim(), ...i.direction.lines].filter(Boolean).join(' ');
+    out.push({ key: 'direction', text, mustKeep: [...i.direction.lines] });
+  }
 
   /*
    * THE NUMBERS FIRST, where there are any. It leads the picture and it takes the finding slot,
@@ -103,7 +121,9 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   if (i.numbers?.trim()) {
     /* The line arrives written for the model with an instruction on the end of it; the picture
        wants only the fact. Everything up to the first instruction sentence is the fact. */
-    const fact = i.numbers.replace(/^THE NUMBERS:\s*/, '').split(/\s(?:Lead with this|Say so|That is worth saying)\b/)[0].trim();
+    const bare = i.numbers.replace(/^THE NUMBERS:\s*/, '').split(/\s(?:Lead with this|Say so|That is worth saying)\b/)[0].trim();
+    /* And it starts with a capital: the line was written mid-sentence for the model, and reached a page as "the objective is 400,000 and..." */
+    const fact = bare.charAt(0).toUpperCase() + bare.slice(1);
     out.push({ key: 'numbers', text: fact.endsWith('.') ? fact : `${fact}.`, mustKeep: [] });
   }
 
@@ -131,7 +151,7 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       mustKeep: sides.map((x) => lower(theThing(x.says))),
     });
   }
-  if (i.blockers.length) {
+  if (i.blockers.length && !i.oneTime) {
     const byKind = new Map<string, typeof i.blockers>();
     for (const b of i.blockers) byKind.set(b.kind ?? '', [...(byKind.get(b.kind ?? '') ?? []), b]);
     for (const [kind, bs] of byKind) {
@@ -190,8 +210,9 @@ export function draftThePicture(i: PictureInput): Drafted[] {
     }
   }
 
-  /* What keeps showing up. The library's sentence, and the count that makes it a pattern. */
-  for (const p of i.patterns) {
+  /* What keeps showing up. The library's sentence, and the count that makes it a pattern. A pattern
+     needs more than one session; a one-time session has none. */
+  for (const p of i.oneTime ? [] : i.patterns) {
     out.push({
       key: `pattern-${p.who}-${p.signal.slice(0, 16)}`,
       /* Three endings, because there are three kinds of pattern and the middle one is neither
@@ -213,18 +234,30 @@ export function draftThePicture(i: PictureInput): Drafted[] {
    */
   const grouped = (rows: { name: string; text: string }[], prefix: string) => {
     const byText = new Map<string, string[]>();
-    for (const r of rows) byText.set(r.text, [...(byText.get(r.text) ?? []), r.name]);
+    /* THE ROLE TAIL IS NOT PART OF THE CLAIM. "...Read against Project management: on track here means
+       blockers driven to cleared..." made ten identical reads into ten different texts, so nothing
+       grouped, and the keys below (the first 24 characters) then collided, so the model's wording of
+       one person's line was printed under one name ten times (run 8, 21 Sep 2026). */
+    const withoutTheRoleTail = (t: string) => t.replace(/\s*Read against [^.]+:.*$/s, '').trim();
+    for (const r of rows) {
+      const text = withoutTheRoleTail(r.text);
+      if (!text) continue;
+      byText.set(text, [...(byText.get(text) ?? []), r.name]);
+    }
     for (const [text, names] of byText) {
       const all = names.length === i.ofPeople && i.ofPeople > 1;
       out.push({
-        key: `${prefix}-${text.slice(0, 24)}`,
+        /* The whole text keys the line, so two lines that begin the same way never share one wording. */
+        key: `${prefix}-${text.slice(0, 24)}-${[...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`,
         text: all ? `For everybody here: ${lower(text)}` : `${andList(names)}: ${lower(text)}`,
         mustKeep: [lower(text)],
       });
     }
   };
-  grouped(i.coverage.map((c) => ({ name: c.name, text: c.reasonText })), 'cov');
-  grouped(i.contribution.map((c) => ({ name: c.name, text: c.reason })), 'con');
+  if (!i.oneTime) {
+    grouped(i.coverage.map((c) => ({ name: c.name, text: c.reasonText })), 'cov');
+    grouped(i.contribution.map((c) => ({ name: c.name, text: c.reason })), 'con');
+  }
 
   /*
    * THE WRITTEN REPORT'S OWN ITEMS, LABELLED AS ITS. No engine produces "agreed" and "open", so they

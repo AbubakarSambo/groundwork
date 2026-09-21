@@ -1,0 +1,120 @@
+/**
+ * WHAT A PARTICIPANT IS TOLD ABOUT THIS CHECK-IN: THE SITUATION AND THE GOALS, NEVER THE INSTRUCTION.
+ *
+ * Hafsah, 20 September 2026, looking at a participant's page: "the about-the-check-in is way too
+ * long and pulling direct words." Under "About this check-in" the person read the lead's whole
+ * brief, verbatim - including "Do not begin by asking them to define their goals", "Follow up on
+ * their answers; probe what is unclear", "Pay attention to the difference between what they say they
+ * want and what their behaviour suggests". Those sentences are the lead telling the product how to
+ * interview this person. The person was reading them before their first answer.
+ *
+ * The block exists for a fair reason: nobody should be read against a target they were never shown.
+ * That reason covers the SITUATION and the GOALS. It does not cover the interviewing instructions,
+ * and the lead's own words about the person are the lead's, not a shared fact.
+ *
+ * So a participant gets: the sentences of the brief that describe the situation (declaratives), the
+ * goals that apply to them, and nothing that tells anybody what to do. Decided in code: an
+ * imperative is an imperative whatever it is about. The lead still sees their full brief on Setup
+ * and Context.
+ */
+
+/* A sentence that tells somebody what to do. The verb comes first, or right after "please" / "then". */
+const AN_INSTRUCTION =
+  /^(?:please\s+|then\s+|also\s+|and\s+)?(?:do not|don't|never|always|help|ask|probe|follow|explore|pay|treat|find|discover|understand|make|get|use|check|look|surface|notice|interrogate|connect|record|note|capture|keep|start|begin|end|avoid|ensure|focus|push|press|challenge|compare|hold|tell|say|give|show|read|watch|listen|see|think|remember|try|consider|identify|establish|determine|confirm|clarify|track|by the end)\b/i;
+
+/* "They should", "the person must", "you should" - an expectation of the reader written as a rule. */
+const A_RULE_ABOUT_THEM = /\b(they|the person|you|participants?|people)\s+(should|must|need to|ought to|have to)\b/i;
+
+/* THE LEAD TALKING TO THE PRODUCT IN THE FIRST PERSON. "I want to know what he is actually working on",
+   "this time we need something the board can act on", "last year's workshop gave us a word cloud": not
+   imperatives, but the lead's aims for the check-in, and the judge read them on 38 participants' screens
+   in run 6 (21 Sep 2026) and scored the box 1.4 of 5. A sentence that starts with I or we wanting,
+   needing, looking for, hoping or expecting is the lead's, and so is one about what happened last time
+   they asked. "Tunde has just joined us" stays: it is about the situation, whoever is speaking. */
+const THE_LEAD_TO_THE_PRODUCT =
+  /^(?:this time |so |and |but )?(?:i|we)(?:'d|'m|'re| am| are| would| will)? (?:want|need|would like|am looking|are looking|hope|expect|intend|aim|plan|mean|have to|must|should)\b|\b(?:i|we) want to (?:know|see|understand|find out|hear)\b|\blast (?:year|time|quarter|month)'?s? (?:workshop|session|survey|round|meeting|attempt)\b/i;
+
+/* A sentence addressed to the product about the person: "help the person", "the goal should emerge". */
+const ABOUT_THE_INTERVIEW = /\b(the (?:goal|answer) should emerge|what they say (?:they want|as the answer)|their behaviour suggests|treat what they say|the interview|this conversation should|in the check-in|during the check-in)\b/i;
+
+const sentencesOf = (text: string): string[] => (text ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+
+/** The situation as the brief describes it: declarative sentences only, at most three. */
+export function theSituationIn(brief: string | null | undefined, max = 3): string | null {
+  const kept = sentencesOf(brief ?? '').filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
+  if (!kept.length) return null;
+  return kept.slice(0, max).join(' ');
+}
+
+export interface AGoalTheyMaySee {
+  name: string;
+  target: number | null;
+  /** Whose goal it is; null for the whole check-in's. */
+  ownerParticipantId?: string | null;
+}
+
+/*
+ * THE PRODUCT WRITES WHAT A PARTICIPANT IS TOLD, ONCE, FROM THE BRIEF.
+ *
+ * Run 7, 21 Sep 2026: participants read the declarative sentences of the lead's brief, and the judge
+ * scored the box 1.2 to 2.0 for the same reason Hafsah had given the day before: "a brief but not
+ * verbatim, just key like goals". The situation in the lead's sentences is still the lead's sentence
+ * to the product ("Five clients in Kano and Kaduna who took asset loans from us this year - a tractor,
+ * a cold store, a delivery motorbike..."), listing the other people's loans to each of them.
+ *
+ * So the model rewrites the brief for the people taking part, once, when the brief is written, and the
+ * product keeps the result on the ground. The rewrite is checked here before it is kept: the same
+ * filters that guard the raw brief, plus nothing addressed to the product and nothing that names
+ * another person on the check-in. What fails the check is dropped sentence by sentence; a rewrite
+ * that leaves nothing falls back to the filtered brief.
+ */
+export const THE_TELLING_PROMPT = [
+  'Write the "About this check-in" box: two or three sentences for a person taking part, read before their first answer.',
+  'You are given what the person who set the check-in up wrote. It is addressed to the product, in their voice, and may include instructions on how to interview people. None of that is for the participant.',
+  'Write, addressed to the participant as "you":',
+  '  1. One sentence on the situation this check-in sits in, in plain words, without naming or listing other people or their affairs.',
+  '  2. One sentence on what the check-in is for, as its purpose, not as the lead\'s wish ("This check-in is for seeing how the loan is working for your business, not only whether you are paying" - never "the lead wants to know").',
+  '  3. Optionally one sentence on what taking part involves: short check-ins, in your own words, that build a record you can read.',
+  'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',
+].join('\n');
+
+const ADDRESSED_TO_THE_PRODUCT = /\b(the product|groundwork|the model|the interviewer|the assistant|the lead wants|the lead would like|the lead needs|the manager wants)\b/i;
+
+/** The model's rewrite, checked sentence by sentence; null when nothing survives. */
+export function theTellingHolds(rewrite: string | null | undefined, opts?: { otherNames?: string[]; max?: number }): string | null {
+  const names = (opts?.otherNames ?? []).map((n) => n.trim()).filter((n) => n.length >= 3);
+  const namesAName = (t: string) => names.some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
+  /* The heading is already on the page; the model repeats it ("About this check-in: This check-in is for..."). */
+  const kept = sentencesOf((rewrite ?? '').replace(/^["'\s]+|["'\s]+$/g, '').replace(/^about this check-in:?\s*/i, ''))
+    .filter((t) => !AN_INSTRUCTION.test(t) && !A_RULE_ABOUT_THEM.test(t) && !ABOUT_THE_INTERVIEW.test(t) && !THE_LEAD_TO_THE_PRODUCT.test(t))
+    .filter((t) => !ADDRESSED_TO_THE_PRODUCT.test(t) && !/\b(i|we|my|our|us)\b/i.test(t) && !namesAName(t))
+    /* Numbers are shown separately, as the goals; a figure in the telling is a claim nobody checked. */
+    .filter((t) => !/\d/.test(t));
+  if (!kept.length) return null;
+  return kept.slice(0, opts?.max ?? 3).join(' ');
+}
+
+/**
+ * The whole block for a participant: what they are told (the product's rewrite where there is one,
+ * else the situation in the brief), then the goals they may see: theirs first, then the check-in's.
+ * `goals` is already filtered by whose-number-is-whose-business; this only says them.
+ */
+export function whatAParticipantIsToldAboutThis(
+  brief: string | null | undefined,
+  goals: AGoalTheyMaySee[],
+  opts?: { told?: string | null; readerParticipantId?: string | null },
+): string | null {
+  const parts: string[] = [];
+  const told = (opts?.told ?? '').trim();
+  const situation = told || theSituationIn(brief);
+  if (situation) parts.push(situation);
+  const say = (g: AGoalTheyMaySee) => (g.target != null ? `${g.name.trim().replace(/[.]+$/, '')} (${g.target.toLocaleString('en-GB')})` : g.name.trim().replace(/[.]+$/, ''));
+  const named = (goals ?? []).filter((g) => g?.name?.trim());
+  const mine = opts?.readerParticipantId ? named.filter((g) => g.ownerParticipantId === opts.readerParticipantId) : [];
+  const shared = named.filter((g) => !mine.includes(g));
+  if (mine.length) parts.push(`${mine.length === 1 ? 'Your goal' : 'Your goals'}: ${mine.slice(0, 4).map(say).join('; ')}.`);
+  if (shared.length) {
+    parts.push(`${shared.length === 1 ? (mine.length ? 'The goal for the whole check-in' : 'The goal on this check-in') : (mine.length ? 'The goals for the whole check-in' : 'The goals on this check-in')}: ${shared.slice(0, 4).map(say).join('; ')}.`);
+  }
+  return parts.length ? parts.join(' ') : null;
+}

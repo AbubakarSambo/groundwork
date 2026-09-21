@@ -297,7 +297,7 @@ export class BoardService {
       where: { groundId },
       select: {
         id: true, participantId: true, sessionNumber: true, status: true,
-        completedAt: true, specificityLevel: true,
+        completedAt: true, specificityLevel: true, specificityDimensions: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -673,15 +673,34 @@ export class BoardService {
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
             /* A round with a date, a number or a document in it is one somebody else can check. */
-            saidAnythingCheckable: (thisRound as any)?.specificityLevel
-              ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
-              : false,
+            /* The question as asked: did ANY turn carry a date, a number or a document. The level is a mean and a
+               reluctant person's one fact drowned in their "fine"s (adversarial run, 20 Sep 2026). */
+            saidAnythingCheckable: ((thisRound as any)?.specificityDimensions as any)?.checkable === 'specific'
+              || ((thisRound as any)?.specificityLevel
+                ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
+                : false),
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing
            rather than guessing the bar - see behindThePace. */
         (ground as any).totalSessions ?? null,
       );
+      /*
+       * AND WHAT THE RECORD SAYS ABOUT EACH OF THEM, IN THE PRODUCT'S WORDS. "Grace - nothing to do"
+       * sat on a board while Grace's own record said her maize was late and the hire income was
+       * paying the loan (run 6, 21 Sep 2026). The finding per person is written at synthesis from
+       * the record; the row carries it, with the label resolved for this reader.
+       */
+      const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
+      if (findings.length) {
+        const byId = new Map(findings.map((f) => [f.participantId, f]));
+        out.eachPerson = (out.eachPerson as any[]).map((row) => {
+          const f = byId.get(row.participantId);
+          if (!f) return row;
+          const text = String(f.text ?? '').replace(new RegExp(`^${String(f.label ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They');
+          return { ...row, finding: text, hasGap: !!f.hasGap };
+        });
+      }
     }
 
     if (has('checkInGrid')) {
@@ -818,6 +837,8 @@ export class BoardService {
           /* Named rather than counted - see atAGlanceTiles. */
           theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,
           theBlocker: held.theFirstBlocker,
+          worries: held.worries,
+          theWorry: held.theFirstWorry,
         });
       }
     }
@@ -1650,6 +1671,8 @@ export class BoardService {
       waiting: held.waiting,
       /* And the blocker itself, so the board's tile names it exactly as the report's does. */
       theFirstBlocker: held.theFirstBlocker,
+      worries: held.worries,
+      theFirstWorry: held.theFirstWorry,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });

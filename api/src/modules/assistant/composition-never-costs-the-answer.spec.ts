@@ -63,7 +63,7 @@ describe('composition never costs the answer', () => {
     const { service } = svc(async () => reply);
     const r = await ask(service);
     expect(r.composedBy).toBe('model');
-    expect(r.styleVersion).toBe('v2');
+    expect(r.styleVersion).toBe('v3');
     expect((r.blocks[0] as any).body).toBe(reply);
   });
 

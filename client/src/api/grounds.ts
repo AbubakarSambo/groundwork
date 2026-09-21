@@ -14,6 +14,7 @@ export interface Delivery {
 
 export type GroundScenario =
   | 'TEAM_UPDATES'
+  | 'DISCOVERY'
   | 'NEW_HIRE' | 'ROLE_HANDOVER' | 'NEW_COFOUNDER' | 'NEW_ADVISOR'
   | 'CONTRACT_REVIEW' | 'IMPLEMENTATION_TRACKING'
   | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL'

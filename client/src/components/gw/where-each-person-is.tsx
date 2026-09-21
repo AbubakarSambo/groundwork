@@ -28,6 +28,9 @@ export interface Row {
   count: number
   reason: Reason
   ask: string | null
+  /** The product's finding for this person, written from the record. See the-finding-per-person on the API. */
+  finding?: string | null
+  hasGap?: boolean
 }
 
 /** What the word means, said once here rather than left for the reader to infer from a colour. */
@@ -78,6 +81,11 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
               padded with something to say. */}
           {r.ask && (
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', marginTop: 7, lineHeight: 1.55 }}>{r.ask}</div>
+          )}
+          {/* What the record says about them, in the product's words. "Nothing to do" over a farmer whose
+              maize had failed was the row without this (run 6, 21 Sep 2026). */}
+          {r.finding && (
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8, lineHeight: 1.55, paddingLeft: 10, borderLeft: `3px solid ${r.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)'}` }}>{r.finding}</div>
           )}
         </div>
       ))}

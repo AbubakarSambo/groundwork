@@ -42,11 +42,12 @@ describe('how many situations the page claims', () => {
   /* 23 since "Get Updates from Your Team" was added on 18 September 2026 - one line, one link, one
      report, and the lightest card here. */
   it('matches what the catalogue actually holds', () => {
-    expect(HOW_MANY_SITUATIONS).toBe(23)
+    /* Twenty-four: the twenty-third was the team update, the twenty-fourth the discovery session. */
+    expect(HOW_MANY_SITUATIONS).toBe(24)
   })
 
   it('and the picker quotes the NAMED count, not the one that includes the escape hatch', () => {
-    expect(HOW_MANY_NAMED_SITUATIONS).toBe(22)
+    expect(HOW_MANY_NAMED_SITUATIONS).toBe(23)
     expect(HOW_MANY_NAMED_SITUATIONS).toBe(HOW_MANY_SITUATIONS - 1)
   })
 
@@ -65,7 +66,9 @@ describe('how many situations the page claims', () => {
     const page = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
     const cards = [...page.matchAll(/cardKey:\s*'[A-Z_]+',\s*scenario:\s*'([A-Z_]+)'/g)].map(m => m[1])
     const named = cards.filter(s => s !== 'OPEN_READ')
-    expect(named.length).toBe(24)
+    /* 25 since the discovery session got its own card: twenty-three scenarios with a card each,
+       plus the second cohort card and the second goal card. */
+    expect(named.length).toBe(25)
     expect(new Set(named).size).toBe(HOW_MANY_NAMED_SITUATIONS)
   })
 })

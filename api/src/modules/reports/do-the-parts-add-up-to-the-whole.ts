@@ -30,12 +30,20 @@ export interface ATarget {
 }
 
 /** The last noun in a target's name: "10,000 units of tea" -> "tea", "Carry 150 contracts" -> "contracts". */
+/* Words that end an objective's name without counting anything: "$12k coming in" is not counted in
+   "coming" (read on a participant's report, 20 Sep 2026: "different terms (coming, revenue, engagement)"). */
+const NOT_A_UNIT = new Set([
+  'carry', 'sell', 'the', 'of', 'a', 'an', 'to', 'in', 'my', 'our', 'each', 'total', 'coming', 'going', 'doing', 'first', 'next', 'this',
+  'year', 'month', 'quarter', 'week', 'day', 'time', 'now', 'soon', 'end', 'start', 'by', 'for', 'per', 'on', 'at', 'with', 'from', 'and',
+  'more', 'least', 'about', 'around', 'up', 'down', 'over', 'under', 'target', 'goal', 'objective', 'period', 'q1', 'q2', 'q3', 'q4',
+]);
+
 function whatIsBeingCounted(name: string): string | null {
   const words = (name ?? '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w && !/^\d+$/.test(w) && !['carry', 'sell', 'the', 'of', 'a', 'to', 'in', 'my', 'our', 'each', 'total'].includes(w));
+    .filter((w) => w && !/^\d+[km]?$/.test(w) && !/^n\d/.test(w) && !NOT_A_UNIT.has(w) && !/ing$/.test(w));
   return words.length ? words[words.length - 1].replace(/s$/, '') : null;
 }
 

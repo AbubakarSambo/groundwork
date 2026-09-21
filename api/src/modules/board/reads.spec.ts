@@ -172,11 +172,11 @@ describe('restating last month\'s win is not this month\'s work', () => {
     // exercised withoutRepeats directly. One customer counted three times is
     // invisible from here unless the read itself is asserted.
     const con = buildContribution(realRun(), nameOf).find((x) => x.participantId === 'kavon')!;
-    const named = /(\d+) of (\d+) things named/.exec(con.reason ?? '');
+    const named = /(\d+) lines? taken from what they said, (\d+) with a name/.exec(con.reason ?? '');
     expect(named).toBeTruthy();
     // 14 entries are on record for this person; two of them are the same close
     // restated, so the read must work from 12.
-    expect(Number(named![2])).toBeLessThan(realRun().entries.filter((e) => e.participantId === 'kavon').length);
+    expect(Number(named![1])).toBeLessThan(realRun().entries.filter((e) => e.participantId === 'kavon').length);
   });
 
   it('keeps genuinely different things said in the same session', () => {

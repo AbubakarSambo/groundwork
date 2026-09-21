@@ -185,6 +185,18 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'NEEDS_A_RUN', label: 'Something here needs more than an update', description: 'The answers point at something that will not settle by being asked again. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
     { value: 'THIN_RESPONSE', label: 'People stopped answering', description: 'Too few replies for the picture to mean anything. Nothing is concluded from what did come in, and the honest read is about the rhythm rather than the people.' },
   ],
+  /**
+   * A DISCOVERY SESSION ENDS ON A DIRECTION OR ON TOO LITTLE TO CALL ONE.
+   *
+   * Nothing here is an outcome for the people who answered: they were asked what they know, not
+   * held to anything. So the end states are about what the group produced, which is the only thing
+   * this session was for.
+   */
+  DISCOVERY: [
+    { value: 'DIRECTION_SET', label: 'The direction is clear enough to act on', description: 'Enough accounts named the same regions, value chains and gaps that the priorities can be set from them.' },
+    { value: 'NEEDS_MORE_VOICES', label: 'Not enough of the room answered', description: 'What came in points somewhere, and too few people answered for it to carry a decision. Ask the rest before setting anything.' },
+    { value: 'NO_CLEAR_DIRECTION', label: 'No direction came out of it', description: 'The accounts point in different directions and nothing is shared enough to prioritise. That is a finding, and it is recorded as one.' },
+  ],
   SNAPSHOT: [
     { value: 'READ_TAKEN', label: 'Read taken, nothing needs opening', description: 'Everyone answered and nothing in the accounts needs watching over time. The record stands as a snapshot of this week.' },
     { value: 'NEEDS_A_RUN', label: 'Something here needs watching', description: 'The accounts point at something that will not settle on its own. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },

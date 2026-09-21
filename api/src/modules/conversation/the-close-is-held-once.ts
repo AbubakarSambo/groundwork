@@ -10,7 +10,10 @@
  * The person sees a question. Never a form, never a rule read back to them.
  */
 
-const A_NUMBER = /\b\d+([.,:]\d+)?%?\b|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|half|dozen)\b/i;
+/* A DIGIT ANYWHERE. This used to be \b\d+\b, and "N38m", "$400k" and "N180m" have no word boundary before
+   the digit, so a rep who said "I hit N38m" three times was told nothing he said carried a number (run 7,
+   21 Sep 2026). Every number this product's people say has a currency letter on the front of it. */
+const A_NUMBER = /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million|half|dozen)\b/i;
 const A_DATE =
   /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b(tomorrow|tonight|next (week|month|quarter|monday|tuesday|wednesday|thursday|friday)|end of (the )?(week|month|quarter|day)|by the \d+|this (week|month|quarter)|q[1-4])\b/i;
 const A_DOCUMENT =
@@ -34,6 +37,37 @@ export function whatIsConcreteIn(lastTurn: string, attachedThisSession: boolean)
 export const THE_ONE_CONCRETE_THING =
   'One more before this closes. Put a date or a number on that, or name where it is written down.';
 
+/**
+ * THE OTHER HOLD: the session is closing with something it was for never raised. Product-written,
+ * in the owed list's own words ("how it is actually going", "what they need from other people"),
+ * so it is one plain line and not a question about something else.
+ */
+/* The owed list is written about them ("what they are working on"); a line is said to them. First
+   sentence only: the rest of an owed line is guidance for the model, not for the person. */
+export const saidToThem = (what: string): string => {
+  const first = ((what ?? '').trim().split(/(?<=[.?!])\s+/)[0] ?? '').replace(/[.?!]+$/, '');
+  const toYou = first
+    .replace(/\bthemselves\b/gi, 'yourself')
+    .replace(/\btheirs\b/gi, 'yours')
+    .replace(/\btheir\b/gi, 'your')
+    .replace(/\bthey are\b/gi, 'you are')
+    .replace(/\bthey\b/gi, 'you')
+    .replace(/\bthem\b/gi, 'you');
+  return toYou.length > 120 ? `${toYou.slice(0, 117).trimEnd()}...` : toYou;
+};
+
+export const theOneThingNeverAsked = (what: string): string =>
+  `One more before this closes, because it is what this check-in is for: ${saidToThem(what)}.`;
+
+/**
+ * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
+ * 2026: "how many acres" was asked five times in five wordings, the third-ask guard fired, the retry
+ * asked it again, and the fallback shipped it because there was nothing else in the reply. This is
+ * what ships instead: the answer taken as given, and the next thing the check-in is for.
+ */
+export const takenAsSaidAndOn = (next: string | null): string =>
+  next ? `That goes down as you put it. Something else this check-in is for: ${saidToThem(next)}.` : 'That goes down as you put it.';
+
 /** The line the model gets on the turn after the hold, so it does not ask a second time. */
 export const THE_CLOSE_WAS_HELD =
   'THE CLOSE WAS HELD ONCE, by the product, for a date, a number or a document. They have now answered that. Whatever they gave, do not ask for it again: it is recorded as what they said. If you were closing, close now, in the shortest turn of the session, with the marker.';
@@ -43,7 +77,9 @@ export const THE_CLOSE_WAS_HELD =
  * or "yes that's everything", which carries no date because it is not an answer to anything. The bar
  * reads back past those to the last turn with something in it.
  */
-const AN_ACKNOWLEDGEMENT = /^\s*(no|yes|yeah|yep|ok|okay|sure|fine|good|done|that'?s (it|all|everything)|we are good|we're good|i'?m good|nothing (else|more)|no,? (we are|we're|that'?s) (good|it|all|fine)|nope|all good|ready|let'?s close( it)?)[\s.!,]*$/i;
+const AN_ACKNOWLEDGEMENT = /^\s*(?:(?:no|yes|yeah|yep|ok|okay|sure|fine|good|great|perfect|done|understood|noted|alright|right|that'?s (?:it|all|everything)|we are good|we're good|i'?m good|nothing (?:else|more)|no,? (?:we are|we're|that'?s) (?:good|it|all|fine)|nope|all good|ready|let'?s close(?: it)?|thank you|thanks)[\s.!,]*){1,3}$/i;
+export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim());
+
 export function lastSubstantiveTurn(personSaid: string[]): string {
   for (let i = personSaid.length - 1; i >= 0; i--) {
     const t = (personSaid[i] ?? '').trim();
@@ -77,6 +113,14 @@ export function lastSubstantiveTurn(personSaid: string[]): string {
 const A_FAREWELL =
   /(\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
 
+/**
+ * A GOODBYE WITHOUT THE MARKER IS STILL A CLOSE. Smoke run, 20 Sep 2026: "Your report is ready now,
+ * and nothing in it needs acting on today. Speak soon." shipped as an ordinary turn because the model
+ * left the marker off, so the product never ruled on the close, the person said "Ok, thank you", and
+ * got "That did not come out right" with a hold underneath. The farewell IS the signal.
+ */
+export const saysGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '') && !/\?\s*$/.test((reply ?? '').trim());
+
 export function withoutTheGoodbye(reply: string): string {
   const kept = (reply.match(/[^.!?\n]+[.!?]*|\n+/g) ?? [])
     .filter((piece) => !A_FAREWELL.test(piece));
@@ -84,4 +128,58 @@ export function withoutTheGoodbye(reply: string): string {
   /* Never hand back nothing. A reply that was ALL farewell is a close that the product refused, and
      the question it is about to append stands on its own better than an empty turn does. */
   return out;
+}
+
+/**
+ * NOBODY IN A ONE-TIME SESSION OWES HOMEWORK. The engine's close rule - "what will you do about
+ * this, and by when?" - reached the convener of a discovery session in run 4 (20 Sep 2026) after her
+ * plan's questions were done, and the judge scored her session 1 for it: a strategy conversation that
+ * ended on a personal to-do. The pack says not to ask it; the sentence is cut in code.
+ */
+const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
+
+/** Does this turn ask the homework question at all? */
+export const asksForHomework = (text: string): boolean => {
+  HOMEWORK.lastIndex = 0;
+  const yes = HOMEWORK.test(text ?? '');
+  HOMEWORK.lastIndex = 0;
+  return yes;
+};
+
+/**
+ * THE LEAD'S CLOSE IS A DECISION, IN CODE. The lead block says it and the model asked Funmi "what will
+ * you do about this, and by when?" anyway, in every session of run 7 (21 Sep 2026). The homework
+ * sentence to a lead becomes the decision question, once a session; after that it is cut.
+ */
+export const THE_LEADS_DECISION = 'From what is on this record, what have you decided?';
+
+/**
+ * A HOMEWORK BUDGET. The pack allows the question once and "once more for their own part"; Halima
+ * had it four times in one closing session. The third time, the sentence comes out and the rest of the
+ * turn stands; where nothing else was in it, the record line goes instead.
+ */
+export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[], isLead: boolean): { text: string; changed: 'kept' | 'cut' | 'decision' } {
+  const text = reply ?? '';
+  if (!asksForHomework(text)) return { text, changed: 'kept' };
+  const earlier = (earlierAiTurns ?? []).filter((t) => asksForHomework(t)).length;
+  if (isLead) {
+    const decisionAsked = (earlierAiTurns ?? []).some((t) => (t ?? '').includes(THE_LEADS_DECISION));
+    HOMEWORK.lastIndex = 0;
+    const swapped = decisionAsked ? withoutTheHomework(text).text : text.replace(HOMEWORK, THE_LEADS_DECISION).replace(/[ \t]{2,}/g, ' ').trim();
+    HOMEWORK.lastIndex = 0;
+    if (decisionAsked && swapped === text) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+    return { text: swapped, changed: decisionAsked ? 'cut' : 'decision' };
+  }
+  if (earlier < 2) return { text, changed: 'kept' };
+  const without = withoutTheHomework(text);
+  if (!without.cut) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+  return { text: without.text, changed: 'cut' };
+}
+
+export function withoutTheHomework(reply: string): { text: string; cut: boolean } {
+  const text = (reply ?? '');
+  if (!HOMEWORK.test(text)) return { text, cut: false };
+  HOMEWORK.lastIndex = 0;
+  const kept = text.replace(HOMEWORK, '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  return { text: kept || text, cut: !!kept };
 }

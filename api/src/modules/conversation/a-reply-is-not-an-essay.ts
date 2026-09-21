@@ -74,7 +74,7 @@ export function isAnEssay(text: string, closing: boolean): boolean {
 /** The close has its own instruction, because "shorter" does not say what a close is FOR. */
 export const A_CLOSE_IS_THREE_SENTENCES = `That is the closing turn and it is too long. They are about to be shown their whole record, everybody's, in full - so reading it back to them first is saying the same thing twice.
 
-Three sentences at most, and fewer is better. One: the thing THEY said they would do, in their own words, with its date if they gave one. Two: the report is theirs now and nothing in it needs acting on today. Three: goodbye. Nothing else.`;
+Three sentences at most, and fewer is better. One: the thing THEY said they would do, in their own words, with its date if they gave one. Two: the report is theirs now. Never say nothing in it needs acting on; you cannot know that. Three: goodbye. Nothing else.`;
 
 export const SAY_IT_SHORTER = `That reply is far longer than it needs to be. Somebody typing one sentence into a box and getting five back knows what has happened, however good the five are.
 

@@ -60,13 +60,14 @@ describe('the record that scored nothing', () => {
     expect(agreeing.confidence).toBeGreaterThan(silent.confidence);
   });
 
-  it('and the account still wins when the title is wrong', () => {
-    // The designed behaviour, unchanged: somebody titled account executive whose
-    // week is all queue work is functionally doing support, held more tentatively
-    // because the two disagree.
+  it('and the stated role stands when the title and the account disagree, held provisional', () => {
+    // Reversed 21 Sep 2026 (see GW-ROLEDETECT-02): somebody titled account executive whose week
+    // is all queue work is still answerable as sales; the support read is kept in the basis and
+    // the confidence sits below the coaching line, so nobody is coached against either map.
     const read = detectFunction('Account executive', THE_RECORD);
-    expect(read.fn).toBe(RoleFunction.SUPPORT);
-    expect(read.basis).toMatch(/does not bear out/);
+    expect(read.fn).toBe(RoleFunction.SALES);
+    expect(read.basis).toMatch(/reads more like support work/);
+    expect(read.confidence).toBeLessThan(0.5);
   });
 });
 

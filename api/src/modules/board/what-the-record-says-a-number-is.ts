@@ -32,6 +32,8 @@ export interface ATarget {
   name: string;
   target: number | null;
   count: number;
+  /** Whose the target is; null is the team's. Used to decide where a total said once belongs. */
+  ownerParticipantId?: string | null;
 }
 
 export interface SomethingSaid {
@@ -44,6 +46,62 @@ export interface AReadNumber {
   objectiveId: string;
   count: number;
   said: string;
+}
+
+/** One line as given to the model: who said it decides whether the read lands or is offered. */
+export interface ALineOnRecord {
+  text: string;
+  /** Who said it, where the caller knows: a line read against somebody else's own target is dropped. */
+  who?: string | null;
+  saidByTheLead: boolean;
+}
+
+const plain = (t: string) => (t ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/**
+ * THE LINE HAS TO BE ONE SOMEBODY SAID. A sales board carried "We are at N80m" and "Delivered N80m of
+ * a N90m target" when nobody in any session had said 80 (adversarial run, 20 Sep 2026): the model
+ * produced a line and a number together. A read whose quoted line is not in the record is dropped,
+ * and so is a read whose number does not appear in the line it claims to come from.
+ */
+export function theLineWasSaid(said: string, lines: ALineOnRecord[]): ALineOnRecord | null {
+  const s = plain(said);
+  if (!s) return null;
+  return lines.find((l) => { const t = plain(l.text); return t.includes(s) || s.includes(t); }) ?? null;
+}
+
+const SMALL: Record<string, number> = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30,
+  forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+const SCALE: Record<string, number> = { k: 1_000, thousand: 1_000, m: 1_000_000, million: 1_000_000, bn: 1_000_000_000, billion: 1_000_000_000, hundred: 100 };
+
+/** Every number a line mentions, as digits or as words, with k/m/million folded in. */
+export function numbersIn(said: string): Set<number> {
+  const out = new Set<number>();
+  const text = (said ?? '').toLowerCase();
+  for (const m of text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(k|m|bn|million|thousand|billion)?\b/g)) {
+    const n = Number(m[1].replace(/,/g, ''));
+    if (!Number.isFinite(n)) continue;
+    out.add(n);
+    if (m[2]) out.add(Math.round(n * SCALE[m[2]]));
+  }
+  /* Words: "forty", "thirty-eight", "two hundred", "eighty million". */
+  const words = text.replace(/-/g, ' ').split(/[^a-z]+/).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    if (!(words[i] in SMALL)) continue;
+    let n = SMALL[words[i]];
+    let j = i + 1;
+    if (j < words.length && words[j] in SMALL && SMALL[words[j]] < 10 && n >= 20) { n += SMALL[words[j]]; j++; }
+    out.add(n);
+    if (j < words.length && words[j] in SCALE) out.add(n * SCALE[words[j]]);
+  }
+  return out;
+}
+
+export function theNumberIsInTheLine(count: number, said: string): boolean {
+  return numbersIn(said).has(count);
 }
 
 export const WHAT_THE_RECORD_SAYS_PROMPT = `You are reading a team's own words for the current value of the numbers their lead is tracking.
@@ -109,7 +167,7 @@ export function theQuestion(targets: ATarget[], said: SomethingSaid[]): string {
  * screen says "the record shows X, not Y", and offering to change 40 to 40 is a prompt about
  * nothing that trains somebody to ignore the next one.
  */
-export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[]): AReadNumber[] {
+export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[], lines?: ALineOnRecord[]): AReadNumber[] {
   const byId = new Map(targets.map((t) => [t.id, t]));
   const seen = new Set<string>();
   return read.filter((r) => {
@@ -118,9 +176,71 @@ export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[])
     if (!Number.isFinite(r.count) || !Number.isInteger(r.count) || r.count < 0) return false;
     if (r.count === t.count) return false;
     if (!r.said?.trim()) return false;
+    if (lines && !theLineWasSaid(r.said, lines)) return false;
+    if (!theNumberIsInTheLine(r.count, r.said)) return false;
+    /*
+     * ONE PERSON'S LINE DOES NOT COUNT AGAINST ANOTHER PERSON'S OWN TARGET. Rerun, 20 Sep 2026:
+     * Dayo's "I hit N26m" was offered on Emeka's N35m. A target with somebody's name on it takes
+     * a number from that person or from the lead; anybody else's line about it is a read of the
+     * wrong row.
+     */
+    if (lines) {
+      const line = theLineWasSaid(r.said, lines);
+      const owner = (t as any).ownerParticipantId as string | null | undefined;
+      if (owner && line && line.who && line.who !== owner && !line.saidByTheLead) return false;
+    }
     /* One suggestion per target: two readings of the same number is a choice nobody asked for. */
     if (seen.has(r.objectiveId)) return false;
     seen.add(r.objectiveId);
     return true;
   });
+}
+
+/**
+ * ONE NUMBER, SAID ONCE, LANDS ONCE. Rerun, 20 Sep 2026: the manager said "we are at N71m" and the
+ * model read it against four targets - the team's N180m, "hit N180m", Chika's N60m and Dayo's N50m -
+ * so two reps' boards showed the whole team's total as their own count. A figure somebody said is
+ * one fact about one thing. Where the same line and the same count were read against several
+ * targets, the one it belongs to is the one with nobody's name on it (a total is the team's), and
+ * of those the biggest; the reads against the others are dropped, not offered.
+ */
+export function oneNumberLandsOnce(read: AReadNumber[], targets: ATarget[]): AReadNumber[] {
+  const byId = new Map(targets.map((t) => [t.id, t]));
+  const groups = new Map<string, AReadNumber[]>();
+  for (const r of read) {
+    const k = `${r.count}|${(r.said ?? '').trim().toLowerCase()}`;
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+  const keep = new Set<AReadNumber>();
+  for (const rs of groups.values()) {
+    if (rs.length === 1) { keep.add(rs[0]); continue; }
+    const ranked = [...rs].sort((a, b) => {
+      const ta = byId.get(a.objectiveId) as any, tb = byId.get(b.objectiveId) as any;
+      const ownedA = ta?.ownerParticipantId ? 1 : 0, ownedB = tb?.ownerParticipantId ? 1 : 0;
+      if (ownedA !== ownedB) return ownedA - ownedB;
+      return (tb?.target ?? 0) - (ta?.target ?? 0);
+    });
+    keep.add(ranked[0]);
+  }
+  return read.filter((r) => keep.has(r));
+}
+
+/**
+ * WHOSE READ LANDS AND WHOSE IS OFFERED. A number the LEAD said about a target nobody has yet
+ * counted is the count: offering the lead their own sentence to accept is a prompt about nothing,
+ * and while it sat unaccepted the board read "N180m: 0 now" under a manager who had said N102m
+ * (adversarial run, 20 Sep 2026). A number somebody else said stays a suggestion, as before, and a
+ * count somebody set by hand is never overwritten from here.
+ */
+export function whatToDoWithTheRead(r: AReadNumber, target: ATarget, lines: ALineOnRecord[]): 'land' | 'offer' {
+  const line = theLineWasSaid(r.said, lines);
+  const neverCounted = target.count === 0 && (target as any).prevCount === 0;
+  /*
+   * AND A COUNT THE LEAD'S OWN WORDS PUT THERE IS THE LEAD'S TO CORRECT. "We are at N71m" landed in
+   * session 2; "that was a mistake, we are at N102m" in session 3 sat as an offer under a board still
+   * reading 71 (rerun, 20 Sep 2026). A landed read leaves suggestedSaid set with no suggestedCount;
+   * that is the mark that nobody typed this count by hand, so the lead's next number lands too.
+   */
+  const landedFromTheLead = (target as any).suggestedCount == null && !!(target as any).suggestedSaid && target.count > 0;
+  return line?.saidByTheLead && (neverCounted || landedFromTheLead) ? 'land' : 'offer';
 }

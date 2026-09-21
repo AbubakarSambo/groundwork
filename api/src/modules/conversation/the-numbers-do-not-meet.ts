@@ -57,11 +57,22 @@ export function theNumbersIn(said: string): number[] {
   }
 
   const out: number[] = [];
-  for (const m of text.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k\b)?/gi)) {
-    const n = Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1);
+  /* NOT \b BEFORE THE DIGIT: "N6.2m" has no word boundary after the N, so the match began at ".2m" and Bola
+     was told she had said 2,000,000 (run 8, 21 Sep 2026). A digit or a dot before it is what rules a start out. */
+  for (const m of text.matchAll(/(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k|m|mn|bn)?\b(\s(?:thousand|million|billion)\b)?/gi)) {
+    /* "13m" IS THIRTEEN MILLION. Emeka said "It's 13m now" against the team's 180,000,000 and was asked
+       whether 13 was his own part of it (smoke run 7, 21 Sep 2026). */
+    const n = Number(m[1].replace(/,/g, '')) * (({ k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, bn: 1e9, billion: 1e9 } as Record<string, number>)[(m[2] ?? (m[3] ?? '').trim()).toLowerCase()] ?? 1);
     /* Years and small counts are not targets. "2026" is a date and "2 of the biggest customers"
        is not a goal; a target somebody is working towards is bigger than a handful. */
     if (!Number.isFinite(n) || n < 10) continue;
+    /* A PERCENTAGE IS A RATE, NOT A PART. "Dayo's arrears are at 18%" was read as 18 against 180,000,000
+       and the manager was asked whether 18 was her own part of it (run 3, 20 Sep 2026). */
+    const tail = text.slice((m.index ?? 0) + m[0].length);
+    if (/^\s*(%|percent|per cent|pc\b)/i.test(tail)) continue;
+    /* A SPAN OF TIME OR A HEADCOUNT IS NOT A PART OF A TARGET. "Greenfield's terms are 30 days" was read
+       as 30 against 180,000,000 (smoke run 7). */
+    if (/^\s*(days?|weeks?|months?|years?|hours?|minutes?|people|persons?|reps?|dealers?|accounts?|customers?|clients?|calls?|visits?|farmers?|members?|staff|of (?:the|them|my|our))\b/i.test(tail)) continue;
     if (dated.has(n)) continue;
     /*
      * A FOUR-DIGIT NUMBER IN YEAR RANGE IS USUALLY A YEAR AND SOMETIMES A TARGET.
@@ -95,9 +106,18 @@ export function theNumbersDoNotMeet(
   objectives: ANumberOnRecord[],
   theyJustSaid: string,
   theirOwnTargets: number[] = [],
+  /**
+   * WHAT THE PRODUCT HAS ALREADY ASKED THIS SESSION. "Is that your own part of it?" went out four times
+   * running to one person who had answered it three times (smoke run, 20 Sep 2026): the instruction told
+   * the model to say nothing if they had explained it, and the model copied the product's sentence
+   * instead. Once the two numbers have been put in one earlier turn, this is settled for the session.
+   */
+  earlierAiTurns: string[] = [],
 ): WhatDoesNotMeet | null {
   const whole = (objectives ?? []).find((o) => !o.ownerParticipantId && typeof o.target === 'number' && o.target! >= 10);
   if (!whole) return null;
+  const objectiveFigure = String(whole.target);
+  if ((earlierAiTurns ?? []).some((t) => (t ?? '').replace(/,/g, '').includes(objectiveFigure) && /your own part of it|something else\?/i.test(t ?? ''))) return null;
 
   const said = theNumbersIn(theyJustSaid);
   if (!said.length) return null;

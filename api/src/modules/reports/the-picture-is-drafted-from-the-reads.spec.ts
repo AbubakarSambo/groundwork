@@ -117,3 +117,32 @@ describe('the conversation worth having', () => {
     expect(WHY_NO_QUESTION).toMatch(/No question yet/);
   });
 });
+
+/** Run 8, 21 Sep 2026: the discovery report led with a 24-name blocker sentence and printed one person's coverage line ten times. */
+describe('a one-time session drafts from the differences and the direction', () => {
+  const { draftThePicture, pickTheFinding } = require('./the-picture-is-drafted-from-the-reads');
+  const ten = Array.from({ length: 10 }, (_, i) => ({
+    name: `Person ${i}`,
+    reason: `1 check-in on record. Nothing named so far could be checked by anyone else. Read against ${['Project management', 'Sales', 'Research'][i % 3]}: on track here means something different.`,
+  }));
+  it('the direction leads, and blockers, patterns and reads are left out', () => {
+    const drafts = draftThePicture({
+      ...base, oneTime: true, contribution: ten,
+      direction: { saying: 'Twenty-four accounts named where to go next.', lines: ['Regions: Kano and Jigawa (11), Benue (4).', 'Information missing: weekly farmgate prices (9).'] },
+    });
+    const keys = drafts.map((d: any) => d.key);
+    expect(keys[0]).toBe('direction');
+    expect(pickTheFinding(keys)).toBe('direction');
+    expect(keys.some((k: string) => /^(block|pattern|cov|con)-/.test(k))).toBe(false);
+    expect(drafts[0].text).toContain('weekly farmgate prices (9)');
+  });
+  it('and on a run, ten reads that differ only by the role tail are one line naming everybody, keyed apart from other lines', () => {
+    const drafts = draftThePicture({ ...base, ofPeople: 10, contribution: ten, coverage: [], blockers: [], patterns: [] });
+    const con = drafts.filter((d: any) => d.key.startsWith('con-'));
+    expect(con).toHaveLength(1);
+    expect(con[0].text).toMatch(/^For everybody here: 1 check-in on record/);
+    expect(con[0].text).not.toMatch(/Read against/);
+    const other = draftThePicture({ ...base, ofPeople: 10, contribution: [{ name: 'A', reason: '1 check-in on record. Nothing named so far could be checked by anyone else, but a date was given.' }], coverage: [], blockers: [], patterns: [] });
+    expect(other.find((d: any) => d.key.startsWith('con-')).key).not.toBe(con[0].key);
+  });
+});

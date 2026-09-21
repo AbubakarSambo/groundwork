@@ -187,6 +187,8 @@ export interface SessionReportInputs {
   waiting?: number;
   /** The first of those, in the words it was raised in, so the tile names it. */
   theFirstBlocker?: string | null;
+  worries?: number;
+  theFirstWorry?: string | null;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
   answeredThisSession: { who: string; isYou: boolean }[];
   /** How many people the session counts in all, answered or not, for the confidence read. */
@@ -306,7 +308,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     ? lastSessionCommitments.filter((c) => !c.threadKey || !threadsNow.has(c.threadKey))
     : [];
 
-  const sections: SessionReportSection[] = [
+  const sectionsAsBuilt: SessionReportSection[] = [
     {
       title: 'Progress and priorities',
       about: 'what people said they are doing, and what they said matters most',
@@ -432,6 +434,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       items: input.evidence.map((e) => ({ text: e.text, who: e.who, documented: true })),
     }] : []),
   ];
+  /*
+   * "SAID INSTEAD OF ITEMS" MEANS INSTEAD. Every section carried both its list and its empty
+   * sentence, and the page hid the sentence when the list had anything in it - so on the page it
+   * held, and in the payload every consumer that is not the page (the panel, the API, a reader of
+   * the JSON) got "Nobody named a risk or a concern this session" printed above a listed risk
+   * (adversarial run, 20 Sep 2026). The payload says one thing now.
+   */
+  const sections: SessionReportSection[] = sectionsAsBuilt.map((s) => (s.items.length ? { ...s, saying: undefined } : s));
 
   /**
    * THE FOUR READS, and each one says plainly when it cannot be computed rather than showing a
@@ -460,6 +470,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     /* And so the two that have something to name, name it rather than repeating their own label. */
     theDifference: openWithReasons[0]?.topic ?? null,
     theBlocker: input.theFirstBlocker ?? null,
+    worries: input.worries ?? 0,
+    theWorry: input.theFirstWorry ?? null,
   });
 
   /**
@@ -507,8 +519,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       who: p.who,
       isYou: p.isYou,
       lines,
+      /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
+         specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
+         to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: 'Answered, and nothing specific enough to record came out of it.' }
+        ? { saying: !input.closed && !p.isYou ? 'Answered. What they said opens to you when the report releases.' : 'Answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });

@@ -37,7 +37,7 @@ import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
-import { scenarioLabel } from '@/lib/scenario-catalog'
+import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -404,7 +404,7 @@ export function GroundAdminPage() {
         myCheckInId: mine?.id ?? null,
         answered: parties.filter((p) => answeredIds.has(p.id)).length,
         total: parties.length,
-        closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.roundNumber === n),
+        closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
         waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
       }
     })
@@ -1201,7 +1201,7 @@ export function GroundAdminPage() {
    * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
    * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.roundNumber === openRound)
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
@@ -1654,7 +1654,9 @@ export function GroundAdminPage() {
                    *
                    * `openRound` is the counter's own number. One session, named once.
                    */
-                  const current = openRound
+                  /* And there is no session after the last: when everybody has finished a one-session check-in,
+                     the roster is judged against that session, not against a second that does not exist. */
+                  const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
                   const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
                     name: nameOfParticipant(p.id) ?? 'A participant',
@@ -2917,18 +2919,11 @@ export function GroundAdminPage() {
                 onChange={e => setGroundScenario(e.target.value)}
                 style={{ background: 'white' }}
               >
-                {([
-                  ['NEW_HIRE', 'New hire'],
-                  ['NEW_PROJECT', 'New project'],
-                  ['NEW_ADVISOR', 'New board member'],
-                  ['NEW_COFOUNDER', 'New partner'],
-                  ['CONTRACT_RENEWAL', 'Contract renewal'],
-                  ['PIP', 'PIP'],
-                  ['OKR_ALIGNMENT', 'Goals & planning'],
-                  ['PULSE_CHECK', 'Pulse check'],
-                  ['DRIFT', 'New direction'],
-                ] as [string, string][]).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
+                {/* EVERY SITUATION, BY ITS CATALOGUE NAME. This listed nine of the twenty-four, so a discovery
+                    check-in's Setup card read "New hire" (21 Sep 2026): a select shows its first option for a
+                    value it does not have. The catalogue is the one list. */}
+                {SCENARIO_KEYS.map((val) => (
+                  <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>
                 ))}
               </select>
               <button

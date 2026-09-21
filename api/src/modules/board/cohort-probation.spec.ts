@@ -127,7 +127,7 @@ describe('the two who delivered read as having delivered', () => {
   it.each(['adam', 'nate'])('shows a specific, confident read for %s', (key) => {
     const r = find(contribution(), key);
     expect(r.shown).toBe(true);
-    expect(r.reason).toMatch(/specific enough to check later/);
+    expect(r.reason).toMatch(/with a name, a number or a date in/);
   });
 
   it('does not read the one blocked by a regulator as the one who stopped', () => {

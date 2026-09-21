@@ -18,7 +18,7 @@
  * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
  * deadline the record does not have. Found by reading what came back rather than that it came back.
  */
-export const STYLE_VERSION = 'v2';
+export const STYLE_VERSION = 'v3';
 
 /**
  * Kept as a versioned template separate from the engine, per §10.3 - so somebody can change how
@@ -35,6 +35,7 @@ Rules:
   a fact about the work - "you said end of the quarter" must not become "due end of the quarter",
   because one is a record of what somebody told us and the other is a deadline we do not hold.
 - Plain and direct. No gush, no scripted warmth, no "I'd be happy to".
+- Never guess anybody's pronoun from their name. Where the draft does not say, write they and their; a key accounts rep called Chika was written up as "He is managing" by a guess (20 Sep 2026).
 - British spelling. No em dashes. Straight quotes.
 - Shorter than the draft where you can, never longer.
 - If the draft is already the clearest way to say it, return it unchanged.
@@ -117,6 +118,21 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
   for (const required of mustKeep) {
     if (required && !text.includes(required)) return false;
   }
+
+  /*
+   * AND THE PRODUCT'S OWN REASONING IS NEVER PUT IN THE READER'S MOUTH.
+   *
+   * Read on a participant's own report, 20 Sep 2026: "You described how a sales representative
+   * feels like a failure because of an internal clock that is out of sync with the buyer's
+   * process" - the role map's protect-against paragraph, reworded as something he had said. And
+   * "you say that something read once is an incident and read across sessions becomes what people
+   * expect of you" - the coaching note's rationale, as his words. He said neither. A wording that
+   * introduces "you said / you described / you say" where the draft had no such attribution is the
+   * wording inventing testimony, which is the one thing this product cannot do.
+   */
+  /* "you expect that no pattern will emerge from work like this" (run 6, 20 Sep 2026): a belief, not a word, put in the reader's mouth. */
+  const ATTRIBUTES_TO_THE_READER = /\byou(?:'ve| have)? (said|say|says|described|describe|mentioned|mention|told|tell|reported|report|admitted|admit|explained|explain|noted|note|stated|state|wrote|write|expect|expected|believe|believed|think|thought|feel|felt|hope|hoped|assume|assumed|acknowledge|acknowledged|agree|agreed)\b/i;
+  if (ATTRIBUTES_TO_THE_READER.test(text) && !ATTRIBUTES_TO_THE_READER.test(draft)) return false;
   /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
      position, where the sentence-start exemption lets it through. The conversation guard was
      written with the colon in and its own test caught it there. */

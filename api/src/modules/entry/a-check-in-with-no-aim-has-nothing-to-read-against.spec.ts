@@ -40,8 +40,9 @@ describe('the gate', () => {
  * exists precisely because nobody knows the shape yet.
  */
 describe('the situations that have no aim by design', () => {
-  it('are the three, and no others', () => {
-    expect([...NO_AIM_BY_DESIGN].sort()).toEqual(['OPEN_READ', 'PULSE_CHECK', 'SNAPSHOT', 'TEAM_UPDATES']);
+  it('are the five, and no others', () => {
+    /* And DISCOVERY, which asks a room what they know: nobody in it is being read against anything. */
+    expect([...NO_AIM_BY_DESIGN].sort()).toEqual(['DISCOVERY', 'OPEN_READ', 'PULSE_CHECK', 'SNAPSHOT', 'TEAM_UPDATES']);
   });
 
   it('are known to owe no aim', () => {

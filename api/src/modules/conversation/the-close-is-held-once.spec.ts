@@ -1,4 +1,6 @@
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING } from './the-close-is-held-once';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement, theOneThingNeverAsked } from './the-close-is-held-once';
 import { numbersNobodySaid, screen, SentenceGate, askInsteadOfInventing, hitLogLine } from './nothing-invented-reaches-them';
 import { detectFunction } from '../board/function-detection';
 import { buildRoleProbeBlock, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
@@ -10,6 +12,8 @@ describe('the close bar reads the last answer for one concrete thing', () => {
   it('a date, a number, a document or an attachment each count', () => {
     expect(whatIsConcreteIn('I will send it by Friday', false)).toContain('a date');
     expect(whatIsConcreteIn('two transfers waited', false)).toContain('a number');
+    expect(whatIsConcreteIn('My number is N38m.', false)).toContain('a number');
+    expect(whatIsConcreteIn('Value would be around $400,000 in the first year.', false)).toContain('a number');
     expect(whatIsConcreteIn('it is in the tracker', false)).toContain('a document');
     expect(whatIsConcreteIn('here you go', true)).toEqual(['an attachment']);
   });
@@ -77,14 +81,16 @@ describe('the role map is there from turn one, provisionally', () => {
     expect(read.confidence).toBeLessThan(MIN_COACHING_CONFIDENCE);
     expect(buildRoleProbeBlock(read.fn, read.confidence)).toMatch(/PROVISIONAL/);
   });
-  it('when the words disagree with the stated role, the words win and it is held more tentatively', () => {
+  it('when the words disagree with the stated role, the stated role stands and the read is held provisional', () => {
+    /* Reversed 21 Sep 2026, see GW-ROLEDETECT-02: a sales rep full of invoices read as finance for three sessions. */
     const stated = detectFunction('Project manager', [], null);
     const withWords = detectFunction('Project manager', [
       'I closed the deal with the buyer and sent the proposal to procurement. The pipeline has three qualified leads.',
       'Renewal call with the decision maker is booked, contract sent.',
     ], { fn: stated.fn, confidence: stated.confidence });
-    expect(withWords.fn).toBe('SALES');
-    expect(withWords.basis).toMatch(/does not bear out/);
+    expect(withWords.fn).toBe('PROJECT_MANAGEMENT');
+    expect(withWords.basis).toMatch(/reads more like sales work/);
+    expect(withWords.confidence).toBeLessThan(MIN_COACHING_CONFIDENCE);
   });
 });
 
@@ -121,5 +127,90 @@ describe('a refused close does not keep its goodbye', () => {
     /* The turn path and the stream path append the held question separately; fixing one leaves the
        other reading exactly as it did before. */
     expect((src.match(/withoutTheGoodbye\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+/**
+ * THE WHOLE SESSION IS READ FOR THE CONCRETE THING, AND A ONE-TIME SESSION IS NEVER HELD.
+ * Adversarial run, 20 September 2026: "One more before this closes. Put a date or a number on that"
+ * went to a rep who had said "N38m" two turns earlier, to a person who had said "No.", to a business
+ * owner in a one-time discovery session, and "That did not come out right" answered a bare "Ok.".
+ */
+describe('the bar, since 20 September 2026', () => {
+  const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+  it('reads every answer of the session, not the last one', () => {
+    expect(service).toContain("const concrete = whatIsConcreteIn(personSaid.join('\\n'), attached);");
+    expect(service).not.toMatch(/whatIsConcreteIn\(last,/);
+  });
+  it('never holds a one-time session', () => {
+    expect(service).toContain('const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;');
+    expect(service).toContain('if (oneTime || concrete.length || verdict.ready) return noDecision ? { ready: true, sayFirst: NO_DECISION_YET } : { ready: true };');
+    /* And the close chases nothing: no "put a date or a number on that" is appended any more. */
+    expect(service).not.toContain('return { ready: false, ask: THE_ONE_CONCRETE_THING };');
+  });
+  it('answers a bare acknowledgement rather than saying it did not come out right', () => {
+    expect(service).toContain("reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);");
+    expect(isAnAcknowledgement('Ok.')).toBe(true);
+    expect(isAnAcknowledgement('No.')).toBe(true);
+    expect(isAnAcknowledgement('It is on the system.')).toBe(false);
+  });
+});
+
+describe('the close is held once for the thing the session was for', () => {
+  it('says it to the person, first sentence only', () => {
+    expect(theOneThingNeverAsked('how they are making their number. Not the total: what kind of sales or work, on what terms, with whom.'))
+      .toBe('One more before this closes, because it is what this check-in is for: how you are making your number.');
+    expect(theOneThingNeverAsked('what they need from other people')).toContain('what you need from other people.');
+  });
+});
+
+describe('a goodbye without the marker, and a thank-you', () => {
+  const { saysGoodbye, isAnAcknowledgement } = require('./the-close-is-held-once');
+  it('the farewell is the close signal', () => {
+    expect(saysGoodbye('Your report is ready now, and nothing in it needs acting on today. Speak soon.')).toBe(true);
+    expect(saysGoodbye('What connects those two things?')).toBe(false);
+    expect(saysGoodbye('Your report is ready once you answer this. What is the number?')).toBe(false);
+  });
+  it('"Ok, thank you." is an acknowledgement', () => {
+    for (const t of ['Ok, thank you.', 'Understood.', 'Thanks!', 'Yes. Thank you.', 'Alright, noted.']) expect(isAnAcknowledgement(t)).toBe(true);
+    expect(isAnAcknowledgement('Ok, but the diesel is N90,000 more a month.')).toBe(false);
+  });
+});
+
+describe('no homework in a one-time session', () => {
+  const { withoutTheHomework } = require('./the-close-is-held-once');
+  it('the question comes out and the rest stands', () => {
+    const r = withoutTheHomework('Three weeks for a proposal that shapes your board\'s options. What will you do about this, and by when?');
+    expect(r.cut).toBe(true);
+    expect(r.text).toBe("Three weeks for a proposal that shapes your board's options.");
+    expect(withoutTheHomework('What would you need to have in place by March?').cut).toBe(false);
+  });
+});
+
+/**
+ * THE HOMEWORK QUESTION HAS A BUDGET, AND THE LEAD'S IS A DECISION. Run 7, 21 Sep 2026: Funmi was asked
+ * "what will you do about this, and by when?" in every session; Halima had it four times in one.
+ */
+describe('the homework question, budgeted', () => {
+  const { withinTheHomeworkBudget, THE_LEADS_DECISION } = require('./the-close-is-held-once');
+  const ask = 'That is a real answer. What will you do about this, and by when?';
+  it('a participant keeps it twice and loses it the third time', () => {
+    expect(withinTheHomeworkBudget(ask, [], false)).toEqual({ text: ask, changed: 'kept' });
+    expect(withinTheHomeworkBudget(ask, ['Before we close: what will you do about this, and by when?'], false).changed).toBe('kept');
+    const third = withinTheHomeworkBudget(ask, ['What will you do about this, and by when?', 'So what is the first thing you will do about that, and when?'], false);
+    expect(third.changed).toBe('cut');
+    expect(third.text).toBe('That is a real answer.');
+  });
+  it('a bare third ask becomes the record line', () => {
+    expect(withinTheHomeworkBudget('What will you do about this, and by when?', ['what will you do about this, and by when?', 'what will you do about it and by when?'], false).text).toBe('That goes on this record as you put it.');
+  });
+  it('the lead gets the decision question once, then nothing', () => {
+    const first = withinTheHomeworkBudget(ask, [], true);
+    expect(first.changed).toBe('decision');
+    expect(first.text).toBe(`That is a real answer. ${THE_LEADS_DECISION}`);
+    const again = withinTheHomeworkBudget(ask, [first.text], true);
+    expect(again.changed).toBe('cut');
+    expect(again.text).toBe('That is a real answer.');
   });
 });

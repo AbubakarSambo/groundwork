@@ -12,6 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection, whereTheRoomSplit, withTheNumbersTheModelMissed } from './what-the-room-said';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
@@ -44,6 +45,9 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
+import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
+import { findingFor, thePictureTheProductWrites } from './the-finding-per-person';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
@@ -56,7 +60,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -74,7 +78,7 @@ import { WorkspaceNotifierService } from '../workspace/workspace-notifier.servic
 import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -385,6 +389,7 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 14d. ONE OF THE PATTERNS IS ABOUT THE SETUP, AND IT IS THE ONLY ONE THAT IS NOT ABOUT MANAGING. SETUP_NEVER_SAID is for a difference that is answered by what nobody was ever told, rather than by what the people believe. Two tests, and both have to hold. First, read what was opened with - the brief above, which may say that none was written. Second, ask whether the difference would still exist if that had named the thing they differ about. If it would, this is a real divergence and it belongs in divergences; if it would not, it belongs here. Two more rules. It does not need more than one period: a setup either said the thing or it did not, and waiting for it to happen twice is waiting for the same absence. And it is never written as a fault of the person - state what was not pinned down, never who failed to pin it.
 
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
+15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
 
 @Injectable()
@@ -695,9 +700,10 @@ export class ReportsService {
       'and you must not guess any of it. Never compare them to anyone. Never say whether they are',
       'doing well or badly, never praise, never fault. This is not an assessment of a person.',
       '',
-      'Third person, present tense where the lines allow: "Has the migration running on two of the',
-      'four services and expects the rest by the end of the month, with the data backfill still',
-      'unscheduled."',
+      'Third person, present tense where the lines allow, and NO pronoun for the person: start with',
+      'the verb. "Has the migration running on two of the four services and expects the rest by the',
+      'end of the month, with the data backfill still unscheduled." Never he, never she: you have not',
+      'been told, and a name is not a pronoun.',
       '',
       'If the lines are too thin or too scattered to say anything true in one sentence, return an',
       'empty string. An empty string is a correct answer here and a vague sentence is not - the',
@@ -733,7 +739,8 @@ export class ReportsService {
             [{ role: 'user', content: `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}` }],
             SAYING_SCHEMA,
           );
-          const text = res?.saying?.trim();
+          /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
+          const text = withoutAGuessedPronoun(res?.saying?.trim() ?? '');
           if (text) person.saying = text;
         } catch (err: any) {
           /* One person loses their sentence and keeps every line. The report is unaffected. */
@@ -743,7 +750,40 @@ export class ReportsService {
     );
   }
 
+  /**
+   * ONE SYNTHESIS AT A TIME PER GROUND, IN THE ORDER THEY WERE ASKED FOR.
+   *
+   * Five people finished a round inside the same minute and five syntheses ran at once. The one
+   * that started first, when two people's entries were in, finished last and overwrote the full
+   * picture; the board then read "three of the five people provided records too brief to compare"
+   * about three people who had each said plenty (rerun, 20 Sep 2026). Queued per ground, the last
+   * completion's read is the last write.
+   */
+  private readonly synthesisQueue = new Map<string, Promise<unknown>>();
+  /* One waiting run is enough: it will read everything that has landed by the time it starts. Six
+     people finishing inside a minute asked for six syntheses at three minutes each; the sixth read
+     nothing the second would not have. */
+  private readonly synthesisWaiting = new Map<string, Promise<any>>();
+
   async synthesize(groundId: string) {
+    const waiting = this.synthesisWaiting.get(groundId);
+    if (waiting) return waiting;
+    const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
+    const mine = after.then(() => {
+      this.synthesisWaiting.delete(groundId);
+      return this.synthesizeNow(groundId);
+    });
+    if (this.synthesisQueue.has(groundId)) this.synthesisWaiting.set(groundId, mine);
+    const tail = mine.catch(() => undefined);
+    this.synthesisQueue.set(groundId, tail);
+    try {
+      return await mine;
+    } finally {
+      if (this.synthesisQueue.get(groundId) === tail) this.synthesisQueue.delete(groundId);
+    }
+  }
+
+  private async synthesizeNow(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -1176,6 +1216,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })),
     );
 
+    /* The product's own arithmetic, per person, handed to the synthesis the way it is handed to the
+       conversation. See the-picture-gets-what-the-conversation-gets. */
+    const objectivesForTheGaps = await (this.prisma.groundObjective?.findMany?.({
+      where: { groundId },
+      select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+    }) ?? Promise.resolve([])).catch(() => [] as any[]);
+    const doesNotAddUpPerPerson = whatDoesNotAddUpPerPerson(
+      parties.map((p: any) => ({
+        participantId: p.id,
+        label: labelById.get(p.id) ?? 'a party',
+        said: records
+          .filter((r) => r.participant.id === p.id)
+          .map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1 })),
+        targets: (objectivesForTheGaps as any[])
+          .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
+          .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+      })),
+      roundNow,
+    );
+
     const corpus =
       groundContextHeader +
       roster +
@@ -1188,6 +1248,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       overAgreementNotice +
       evidenceAbsenceNotice +
       patternNotice +
+      doesNotAddUpPerPerson +
       records.map((r) => {
         const label = labelById.get(r.participant.id) ?? 'a party';
         const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
@@ -1426,10 +1487,40 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const stillSevere = severeFaultsIn(String((result as any).sharedPicture ?? ''));
     if (stillSevere.length) {
-      this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
-      /* Read here, on this rare path, rather than threaded from the engagement read further down. */
-      const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
-      (result as any).sharedPicture = previous?.sharedPicture ?? '';
+      /*
+       * THE SENTENCE COMES OUT, NOT THE PICTURE. Run 3, 20 Sep 2026: a fresh picture of six accounts
+       * carried "the number 33, which appears in nobody's record", so the previous picture shipped -
+       * and the previous picture had been written when one account was in: "five of the six people
+       * provided records too brief to compare". It stood on the lead's page for two rounds while
+       * everybody had fourteen to twenty-seven entries. A stale picture is a wrong picture. The
+       * sentences that carry the fault come out; the rest of the fresh picture stands. Only when
+       * nothing is left does the previous one ship.
+       */
+      const picture = String((result as any).sharedPicture ?? '');
+      const offending = stillSevere.map((f) => /number (\d+)/.exec(f)?.[1] ?? /named "([^"]+)"/.exec(f)?.[1]).filter(Boolean) as string[];
+      const kept = picture
+        .split(/(?<=[.!?])\s+/)
+        .filter((sentence) => !offending.some((o) => sentence.includes(o)))
+        .join(' ')
+        .trim();
+      if (kept && !severeFaultsIn(kept).length) {
+        this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); the sentences carrying it were taken out.`);
+        (result as any).sharedPicture = kept;
+      } else {
+        this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
+        /* Read here, on this rare path, rather than threaded from the engagement read further down. */
+        const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
+        (result as any).sharedPicture = previous?.sharedPicture ?? '';
+      }
+    }
+
+    /* A count of the people the product cannot verify does not ship. See the-picture-gets-what-the-conversation-gets. */
+    {
+      const alls = withoutUncountedAlls(String((result as any).sharedPicture ?? ''));
+      if (alls.cut.length) {
+        this.logger?.warn?.(`Ground ${groundId}: ${alls.cut.length} sentence(s) counting the people came out of the picture: ${alls.cut.map((c) => JSON.stringify(c.slice(0, 80))).join('; ')}`);
+        (result as any).sharedPicture = alls.text;
+      }
     }
 
     // SECOND PASS: what is at stake, one gap at a time.
@@ -1861,6 +1952,31 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const priorEngagement = priorReport?.engagement as Record<string, any> | null | undefined;
     const existingGuides = priorEngagement?.postReportGuides;
 
+    /*
+     * THE PRODUCT'S HALF OF THE PICTURE GOES FIRST. See the-finding-per-person: after the guards had
+     * cut everything the model got wrong, run 6's final picture was one platitude. The finding per
+     * person is written here from the record, the overview counts what the product can count, and
+     * the model's narrative follows under it. Both halves go through the same name resolution at the
+     * read, so "the tractor owner" becomes "you" on her own page and her name on the lead's.
+     */
+    const findings = parties
+      .filter((p: any) => !p.managingOnly)
+      .map((p: any) => findingFor({
+        participantId: p.id,
+        label: labelById.get(p.id) ?? 'a party',
+        isLead: p.partyType === PartyType.INITIATOR,
+        said: records.filter((r) => r.participant.id === p.id).map((r) => ({ text: cleanText(r.text), type: String(r.type), session: r.checkIn?.sessionNumber ?? 1 })),
+        targets: (objectivesForTheGaps as any[])
+          .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === p.id)
+          .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
+      }, roundNow))
+      .filter((f): f is NonNullable<typeof f> => !!f);
+    const productHalf = thePictureTheProductWrites(findings, findings.length);
+    if (productHalf) {
+      const modelHalf = String((result as any).sharedPicture ?? '').trim();
+      (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
+    }
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -1911,6 +2027,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           return {};
         })()),
         sharedPicture: result.sharedPicture,
+        findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
@@ -1944,6 +2061,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       },
       update: {
         sharedPicture: result.sharedPicture,
+        findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
         centralQuestion: theQuestionOnly(result.centralQuestion) ?? result.centralQuestion,
@@ -2164,8 +2282,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true } },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true, direction: true } },
         brief: true,
+        /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
+        cadence: true, scenario: true, id: true,
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2317,7 +2437,24 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })(),
       closed: !!snapshot,
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
-      divergences: (snapshot?.divergences ?? ground.report?.divergences ?? []) as unknown[],
+      /*
+       * EACH SIDE NAMED THE WAY EVERY OTHER LINE IS. The positions carried the raw label, and the page
+       * printed "Expansion lead at MarketView, an agricultural market intelligence platform. I am
+       * running one session with 24 organisations...:" as a name (run 8, 21 Sep 2026). The same rule
+       * as the rows: a name where this reader may see one, the role's handle where they may not.
+       */
+      divergences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[]).map((d) => {
+        const sides = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : null;
+        if (!sides) return d;
+        const named = sides.map((p: any) => {
+          const label = String(p?.participantLabel ?? p?.who ?? '').trim();
+          const pid = [...labels.entries()].find(([, l]) => l === label || l === label.replace(/[.]+$/, ''))?.[0];
+          const who = pid ? whoOf(pid) : null;
+          const printed = who && who !== label ? who : (label.split(/\s+/).length > 5 ? handleOf(label) : label);
+          return { ...p, participantLabel: printed, who: printed };
+        });
+        return { ...d, ...(Array.isArray(d?.positions) ? { positions: named } : {}), ...(Array.isArray(d?.perspectives) ? { perspectives: named } : {}) };
+      }),
       /*
        * `cleanText` STRIPS THE ENGINE'S OWN MARKERS BEFORE ANYBODY READS THEM.
        *
@@ -2360,6 +2497,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       waiting: held.waiting,
       /* So the Blockers tile names the thing instead of repeating its own label. */
       theFirstBlocker: held.theFirstBlocker,
+      worries: held.worries,
+      theFirstWorry: held.theFirstWorry,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the
@@ -2394,6 +2533,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * person's lines and nothing else, the fragments are kept, and a decline costs nothing.
      */
     await this.fillWhatEachPersonSaid(shape.whatEachPersonSaid as any[]);
+
+    /*
+     * AND THE PRODUCT'S OWN FINDING FOR EACH PERSON, under the model's sentence. Written at synthesis
+     * from the record (see the-finding-per-person); here the label is turned into the name this
+     * reader may see, or "You" for their own row. The lead reads every row; a participant reads
+     * their own and, where peers are named on this ground, the others by name.
+     */
+    const storedFindings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
+    if (storedFindings.length) {
+      for (const row of shape.whatEachPersonSaid as any[]) {
+        const pid = ground.participants.find((p) => {
+          const label = labels.get(p.id);
+          const named = label ? nameByLabel.get(label) : undefined;
+          return (named ?? label) === row.who;
+        })?.id;
+        const f = pid ? storedFindings.find((x) => x.participantId === pid) : null;
+        if (!f) continue;
+        const esc = String(f.label ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        row.finding = String(f.text ?? '').replace(new RegExp(`^${esc}`), row.isYou ? 'You' : row.who).replace(/^You said this was for/, 'You said this was for');
+        row.hasGap = !!f.hasGap;
+      }
+    }
 
     /**
      * WHO THIS REPORT IS COUNTING, AND WHO HAS SHOWN THEIRS.
@@ -2596,9 +2757,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const anAimBelongsHere = anAimIsOwedHere((ground as any).scenario);
     const somebodyStatedOne = !!(baseline?.successLooksLike ?? '').trim() || againstSuccess.definitions.length > 0;
 
+    /*
+     * A ONE-TIME LISTENING SESSION HAS NO TILES AND NO STANDARD. "Movement: not tracked", "Blockers: 44",
+     * "All from memory" and a sixty-line list of every aim ever said sat on a discovery report (run 8,
+     * 21 Sep 2026). They measure a run of work against a stated aim; a room that met once has neither.
+     */
+    const listeningOnce = (ground as any).cadence === Cadence.ONE_TIME;
+
     return {
       ...wordedShape,
-      againstSuccess: anAimBelongsHere || somebodyStatedOne ? againstSuccess : null,
+      ...(listeningOnce ? { atAGlance: [] } : {}),
+      againstSuccess: !listeningOnce && (anAimBelongsHere || somebodyStatedOne) ? againstSuccess : null,
       cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
@@ -2708,6 +2877,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         } catch (err: any) {
           this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
         }
+        const oneTime = (ground as any).cadence === Cadence.ONE_TIME;
+        const directionForThePicture = oneTime ? await this.theDirectionAsLines(ground, me ? (labels.get(me.id) ?? null) : null) : null;
         const drafts = draftThePicture({
           /* Where two people describe the same thing differently, that is the finding. */
           differences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[])
@@ -2774,8 +2945,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
           })),
           settled: shape.whereThingsStand.settled,
           open: shape.whereThingsStand.open,
+          oneTime,
+          direction: directionForThePicture,
         });
-        const question = draftTheQuestion({
+        /* No role-map question to a room that met once; the sales map asked a discovery convener "what
+           did that turn into - pipeline, conversion, sign-ups?" (run 8, 21 Sep 2026). */
+        const question = oneTime ? null : draftTheQuestion({
           functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
           blockers: currentDeps.map((d: any) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
         });
@@ -2842,7 +3017,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
-          whyNoQuestion: question ? null : WHY_NO_QUESTION,
+          whyNoQuestion: question || oneTime ? null : WHY_NO_QUESTION,
+          /* The direction itself, for the page to draw as lists. Null off a discovery ground. */
+          direction: oneTime ? await this.theDirectionFrom({ ...(ground as any), report: ground.report }, me ? (labels.get(me.id) ?? null) : null).catch(() => null) : null,
           /*
            * The waiting list here is the still-raised one. Without this line the reader is shown a
            * shorter list and nothing tells them why it got shorter - they read it as resolved. It
@@ -3375,6 +3552,10 @@ happened, and what is in the way.`;
       }
     }
 
+    /* A discovery session's direction is what its report IS; read it at release, once, and keep it. */
+    if (ground.scenario === 'DISCOVERY') {
+      await this.readAndKeepTheDirection(groundId).catch((err: any) => this.logger.warn(`Direction at release failed for ${groundId}: ${err?.message}`));
+    }
     const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
     this.usage.emit(UsageEventType.REPORT_RELEASED, { groundId, organizationId }).catch(() => undefined);
 
@@ -3703,9 +3884,18 @@ happened, and what is in the way.`;
     participant: { id: string; roleAsDescribed?: string | null },
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
   ) {
+    /* No coaching note for a discovery participant: they were asked as experts, not people being developed. */
+    if (ground.scenario === 'DISCOVERY') return null;
     const held = await this.whatTheRecordHoldsFor(groundId, ground);
     const mine = held.entries.filter((e) => e.participantId === participant.id);
     const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
+    /* Office work has documents; a tractor, a cold store and a rice mill do not. See TheirOwnRecord.documentsExpected. */
+    const documentsExpected = !['COHORT_CHECK', 'DISCOVERY', 'SNAPSHOT'].includes(String(ground.scenario));
+    /* The product's finding about this person, from the report: the first thing the note says. */
+    const myFinding = (Array.isArray(ground.report?.findings) ? (ground.report.findings as any[]) : []).find((f) => f.participantId === participant.id);
+    const findingLines: string[] = myFinding?.hasGap && myFinding.text
+      ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|Named as in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
+      : [];
     const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
@@ -3781,6 +3971,7 @@ happened, and what is in the way.`;
         })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
+      documentsExpected,
       /*
        * AND THE PART THAT IS ABOUT THIS ONE PERSON. 4.4.
        *
@@ -3798,6 +3989,8 @@ happened, and what is in the way.`;
           .filter((e: any) => String(e.kind ?? '').toUpperCase().includes('COMMIT'))
           .map((e: any) => ({ what: e.text ?? '', hasDate: !!e.dueDate || /\b(by|on)\b.{0,20}\d/i.test(e.text ?? '') })),
         anythingDocumented: mine.some((e) => !e.recallBased),
+        documentsExpected,
+        findingLines,
       }),
     });
 
@@ -4095,6 +4288,152 @@ happened, and what is in the way.`;
       .catch(() => [] as any[]);
   }
 
+
+  /**
+   * THE DIRECTION A DISCOVERY SESSION IS FOR, AND THE READ THE PERSON WHO ANSWERED GETS BACK.
+   *
+   * Only on a discovery ground, because only there is it what the session was run to produce. It is
+   * computed at the read rather than stored: the accounts it reads are already stored, and a
+   * direction that goes stale the moment somebody else answers is worse than one built when asked.
+   *
+   * Fails to null, never to a broken report. A lead whose model call times out gets the shared
+   * picture they would have got anyway; they do not get an error page.
+   */
+  private async theDirectionFrom(ground: any, viewerLabel: string | null) {
+    if (ground.scenario !== 'DISCOVERY') return null;
+    /*
+     * READ ONCE, SERVED FROM THE ROW. Computed on every read, a twenty-four-account direction timed out
+     * on every read and the page took two minutes (adversarial run, 20 Sep 2026). The stored read is
+     * what the release wrote; a report read before release, or whose release read failed, gets it
+     * computed in the background and null now - the page never waits on the model.
+     */
+    const stored = ground.report?.direction as TheDirection | null | undefined;
+    if (stored) return this.presentTheDirection(stored, viewerLabel);
+    if (!this.directionInFlight.has(ground.id)) {
+      this.directionInFlight.add(ground.id);
+      void this.readAndKeepTheDirection(ground.id).finally(() => this.directionInFlight.delete(ground.id));
+    }
+    return null;
+  }
+
+  private readonly directionInFlight = new Set<string>();
+
+  /**
+   * THE DIRECTION AS SENTENCES, for the picture of a one-time session: each list the room answered,
+   * most-named first, with the count that makes it the room's answer rather than one person's.
+   */
+  private async theDirectionAsLines(ground: any, viewerLabel: string | null): Promise<{ saying: string | null; lines: string[] } | null> {
+    const d = await this.theDirectionFrom(ground, viewerLabel).catch(() => null);
+    if (!d) return null;
+    const titles: [keyof TheDirection, string][] = [
+      ['regions', 'Regions'], ['markets', 'Markets'], ['valueChains', 'Value chains'], ['actors', 'Who to reach'],
+      ['dataGaps', 'Information people do not have'], ['networks', 'Relationships that would unlock it'],
+      ['pilots', 'Where people would start'], ['nextTwelveMonths', 'Their own next twelve months'],
+    ];
+    const lines: string[] = [];
+    for (const [key, title] of titles) {
+      const items = ((d as any)[key] ?? []) as { name: string; namedBy?: string[]; count?: number }[];
+      const top = items
+        .map((i) => ({ name: i.name, count: i.count ?? i.namedBy?.length ?? 0 }))
+        .filter((i) => i.count >= 2)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4);
+      if (top.length) lines.push(`${title}: ${top.map((i) => `${i.name} (${i.count})`).join(', ')}.`);
+    }
+    for (const split of ((d as any).splits ?? []) as { saying?: string }[]) if (split?.saying?.trim()) lines.push(split.saying.trim());
+    if (!lines.length) return null;
+    /* THE FINDING IS WHERE THE ROOM POINTS, not how many things were named. "27 of the 87 things named
+       were named by more than one person" is a statistic; "Jigawa (12 of 25), rice and paddy (6) and price
+       data (4) lead" is a direction. */
+    const lead = (key: keyof TheDirection) => {
+      const items = (((d as any)[key] ?? []) as { name: string; namedBy?: string[]; count?: number }[])
+        .map((i) => ({ name: i.name, count: i.count ?? i.namedBy?.length ?? 0 }))
+        .filter((i) => i.count >= 2)
+        .sort((a, b) => b.count - a.count);
+      return items[0] ?? null;
+    };
+    const outOf = Number((d as any).outOf ?? 0) || null;
+    const heads = [
+      lead('regions') && `${lead('regions')!.name} (${lead('regions')!.count}${outOf ? ` of ${outOf}` : ''})`,
+      lead('valueChains') && `${lead('valueChains')!.name} (${lead('valueChains')!.count})`,
+      lead('dataGaps') && `${lead('dataGaps')!.name} (${lead('dataGaps')!.count})`,
+    ].filter(Boolean) as string[];
+    const headline = heads.length
+      ? `The room points to ${heads.length === 1 ? heads[0] : `${heads.slice(0, -1).join(', ')} and ${heads[heads.length - 1]}`}.`
+      : (d as any).saying?.trim() || null;
+    return { saying: headline, lines };
+  }
+
+  private presentTheDirection(stored: TheDirection, viewerLabel: string | null) {
+    /* Re-merged on the way out, so a stored direction picks up a better idea of what is the same thing
+       ("Paddy / Rice", "Paddy and Rice") without being read again. */
+    const direction = mergeDirections([stored], stored.outOf);
+    const enough = isItADirection(direction);
+    return {
+      ...direction,
+      enough: enough.enough,
+      saying: enough.saying,
+      /* Where two groups gave two answers to the same question. See whereTheRoomSplit. */
+      splits: whereTheRoomSplit(direction),
+      /* Their own read, which is the whole of what a one-time session can give back. */
+      yours: viewerLabel ? whatYouNamed(direction, viewerLabel) : null,
+    };
+  }
+
+  /** The read itself: every account, in chunks the model finishes, merged into one direction and kept. */
+  async readAndKeepTheDirection(groundId: string): Promise<TheDirection | null> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: { select: { id: true } } },
+    });
+    if (!ground || ground.scenario !== 'DISCOVERY' || !ground.report) return null;
+    const direction = await this.readTheDirectionInChunks(ground);
+    if (!direction) return null;
+    await this.prisma.report.update({ where: { groundId }, data: { direction: direction as any } }).catch((err: any) =>
+      this.logger.warn(`The direction for ${groundId} was read but could not be kept: ${err?.message}`));
+    return direction;
+  }
+
+  private async readTheDirectionInChunks(ground: any): Promise<TheDirection | null> {
+    const labels = labelsForParties(ground.participants as any);
+    const entries = await this.prisma.recordEntry.findMany({
+      where: { disputedAt: null, participant: { groundId: ground.id } },
+      orderBy: { createdAt: 'asc' },
+      select: { text: true, participantId: true },
+      take: 600,
+    });
+    if (entries.length < 2) return null;
+
+    const byLabel = new Map<string, string[]>();
+    for (const e of entries) {
+      const label = labels.get(e.participantId);
+      if (!label) continue;
+      byLabel.set(label, [...(byLabel.get(label) ?? []), cleanText(e.text)]);
+    }
+    const knownLabels = [...byLabel.keys()];
+    if (knownLabels.length < 2) return null;
+
+    const parts: TheDirection[] = [];
+    for (const chunk of inChunks(knownLabels, ACCOUNTS_PER_READ)) {
+      const corpus = chunk
+        .map((label) => `${label}:\n${(byLabel.get(label) ?? []).map((t) => `- ${t}`).join('\n')}`)
+        .join('\n\n');
+      const raw = await this.anthropic
+        .extract<any>(DIRECTION_PROMPT, [{ role: 'user', content: corpus }], DIRECTION_TOOL)
+        .catch((err: any) => {
+          this.logger.warn(`The direction could not be read for ${ground.id} (${chunk.length} accounts): ${err?.message}`);
+          return null;
+        });
+      if (raw) parts.push(tidy(raw, chunk, chunk.length));
+    }
+    if (!parts.length) return null;
+    if (parts.length < inChunks(knownLabels, ACCOUNTS_PER_READ).length) {
+      this.logger.warn(`The direction for ${ground.id} was read from ${parts.length} of ${inChunks(knownLabels, ACCOUNTS_PER_READ).length} chunks; it is kept from what came back.`);
+    }
+    /* And the plans with a number and a when in them that the model's read left out. See what-the-room-said. */
+    return withTheNumbersTheModelMissed(mergeDirections(parts, knownLabels.length), byLabel);
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -4314,10 +4653,15 @@ happened, and what is in the way.`;
      */
     const [coaching, probes] = await Promise.all([
       coachingPending,
-      this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
-        this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
-        return null;
-      }),
+      /* "What to ask each person" is for the next session. A room that met once has none: twenty-four
+         identical "Waiting for X, with no escalation on record" blocks went to a discovery convener (run
+         8, 21 Sep 2026). */
+      (ground as any).cadence === Cadence.ONE_TIME
+        ? Promise.resolve(null)
+        : this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
+          this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
+          return null;
+        }),
     ]);
     const base: any = {
       ...withoutOtherPeoplesReads(
@@ -4331,6 +4675,11 @@ happened, and what is in the way.`;
       activated: true,
       postReportGuide,
       coaching,
+      /* Only a discovery session has one; everything else gets null and renders nothing. */
+      theDirection: await this.theDirectionFrom(
+        ground,
+        participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+      ).catch(() => null),
       /*
        * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
        *

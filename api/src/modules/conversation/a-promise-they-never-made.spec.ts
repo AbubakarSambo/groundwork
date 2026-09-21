@@ -66,3 +66,24 @@ describe('a promise they never made', () => {
     expect(src).toMatch(/aPromiseTheyNeverMade\(screened\.text, \[\.\.\.theirWords, \.\.\.known\]\)/);
   });
 });
+
+describe('a commitment recited as theirs is checked the same as "you said"', () => {
+  const { aPromiseTheyNeverMade } = require('./a-promise-they-never-made');
+  it('"You will send the rota by Friday" to somebody who never mentioned a rota is cut', () => {
+    const theirs = ['The cold store is working well. I caught up half the payment I owed. The solar quote was too much.', 'There is nothing to do. The power is still bad. I still pay 90k for diesel.'];
+    expect(aPromiseTheyNeverMade('You will send the rota by Friday. Your report is ready now.', theirs)).toBe('You will send the rota by Friday.');
+    expect(aPromiseTheyNeverMade('You will keep the diesel paid until the power improves. Your report is ready now.', theirs)).toBeNull();
+  });
+});
+
+/** Run 10, 21 Sep 2026. */
+describe('a recited example and a half-true recall', () => {
+  const { aPromiseTheyNeverMade } = require('./a-promise-they-never-made');
+  it('"That you will send the rota by Friday is also noted" is nobody\'s promise', () => {
+    expect(aPromiseTheyNeverMade('That is your number, and your date. That you will send the rota by Friday is also noted.', ['My target is N10m. All cash. End of Q3.'])).toMatch(/rota/);
+  });
+  it('one shared word does not make a recall theirs', () => {
+    expect(aPromiseTheyNeverMade('Last time, you mentioned you had signed N30m worth of contracts with new dealers.', ['The number is N30m. For the quarter.', 'I am working towards my target.'])).toMatch(/N30m worth of contracts/);
+    expect(aPromiseTheyNeverMade('Last time you said your target is N30m for the quarter.', ['The number is N30m. For the quarter.'])).toBeNull();
+  });
+});

@@ -114,6 +114,19 @@ enum GroundScenario {
   /// sets anything up: somebody who wanted to set up targets would have opened a different card.
   TEAM_UPDATES
 
+  /// INTERROGATE A GROUP ONCE, TO TURN WHAT THEY KNOW INTO A DIRECTION.
+  ///
+  /// The fourth use case Hafsah described on 19 September 2026, and the one that is not like the
+  /// others: "use one conversation with a group to work out where we should focus." Twenty-four
+  /// people - processors, distributors, researchers - each asked what they are trying to expand,
+  /// what stops them, and where they would go if it went. Cross-referenced once, it produces a
+  /// direction: regions, markets, value chains, actors, data gaps, networks, pilots.
+  ///
+  /// It is deliberately NOT a snapshot. A snapshot asks how things are going; this asks what they
+  /// know. Run on the snapshot spine it asked twenty-four people to commit to a date, which is a
+  /// survey with homework rather than a discovery session.
+  DISCOVERY
+
   /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
   /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
   CONTRACT_REVIEW
@@ -906,6 +919,11 @@ model Ground {
   endState        String?   @map("end_state") // the decision the process worked toward
   resolutionState String?   @map("resolution_state") // pre-agreed intended outcome set at creation
   brief           String?   @map("brief") // initiator's opening brief, written at ground creation
+  /// What a participant reads under "About this check-in": the situation and what it is for, in the
+  /// product's words, addressed to them. Written once from the brief at creation and again when the
+  /// brief changes; guarded in code so no instruction to the product and none of the lead's first
+  /// person reaches them. Null falls back to the declarative sentences of the brief.
+  toldToParticipants String? @map("told_to_participants")
   groundAuditLog  Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
   createdByUserId String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
@@ -953,6 +971,11 @@ model Ground {
   // guessing it from the scenario alone is how a competent person gets read as
   // absent (see reads.ts).
   peopleWorkTogether         Boolean? @map("people_work_together")
+  /// Whether a participant is told, once, in their own session, what the lead has set for them and how
+  /// it differs from what they have said - "Funmi has said the role should bring in $400k; you have said
+  /// the first quarter is about relationships; this report will show both." The lead's expectation is
+  /// shareable by design; this decides whether the product says the disagreement out loud. Default on.
+  participantsHearTheLeadsExpectation Boolean @default(true) @map("participants_hear_the_leads_expectation")
   // Can the parties see who else is on this ground and how each is doing?
   //
   // Nullable: null means nobody has said, and the kind of ground supplies the
@@ -1380,6 +1403,10 @@ model CheckIn {
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
   closeHeldAt                 DateTime?     @map("close_held_at") // set once, the one time the close was held for a date, a number or a document
+  /// The plan for this session, written by the product before the first question from everything the record
+  /// holds about this person: what must be established, the questions in order, what to watch for, the coaching
+  /// path, when it is done. Context for every turn, never a script. See the-plan-for-this-session.
+  sessionPlan                 Json?         @map("session_plan")
   selfCorrectionTargetSession Int?          @map("self_correction_target_session") // the session number being corrected
   // True when this self-correction session was started AFTER the participant
   // had already signed off (GroundParticipant.signedOffAt). Not a block - just
@@ -1623,6 +1650,11 @@ model GroundObjective {
   /// Null keeps the original meaning and is still the common case: a target for the whole thing,
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
+  /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
+  /// lead set for a person is put to that person as the lead's expectation; one they set themselves
+  /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the
+  /// opener set as your objective" (adversarial run, 20 Sep 2026). Null: set on the form at setup.
+  setByParticipantId String? @map("set_by_participant_id")
 
   /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
   ///
@@ -1925,6 +1957,13 @@ model Report {
   // of how they were led. Produced by the same synthesis that finds divergences,
   // so it is stated as a gap and never quotes either side.
   leadershipGaps  Json?     @map("leadership_gaps")
+  /// A discovery session's direction, read once at release and kept. It was computed on every read
+  /// and, at twenty-four accounts, timed out on every read (adversarial run, 20 Sep 2026).
+  direction       Json?
+  /// The finding per person, written by the product from the record: purpose, standing, the lead's number
+  /// against their own, worries, gaps. The half of the picture no guard can cut to a platitude. See
+  /// the-finding-per-person.
+  findings        Json?
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")

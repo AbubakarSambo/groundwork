@@ -71,9 +71,11 @@ describe('every situation has a rhythm somebody chose', () => {
   });
 
   describe('the one-off read', () => {
-    it('is the only ONE_TIME situation', () => {
+    /* Two situations run once: a snapshot, which asks how things are, and a discovery session,
+       which asks a room what they know. Both are finished when everybody has answered once. */
+    it('and the discovery session are the ONE_TIME situations', () => {
       const oneTime = ALL.filter(s => RECOMMENDED_CADENCE[s] === Cadence.ONE_TIME);
-      expect(oneTime).toEqual([GroundScenario.SNAPSHOT]);
+      expect(oneTime.sort()).toEqual([GroundScenario.DISCOVERY, GroundScenario.SNAPSHOT].sort());
     });
 
     it('renders no board, because every section reads across sessions', () => {

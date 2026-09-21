@@ -47,7 +47,13 @@ export function whatItSaysTheySaid(reply: string): string[] {
   return (reply.match(/[^.!?\n]*[.!?]?/g) ?? [])
     .map((s) => s.trim())
     .filter(Boolean)
-    .filter((s) => /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(s));
+    /* "You will send the rota by Friday" is a commitment recited as theirs, the same as "you said you
+       would": a farmer who had said nothing about a rota read it at her close (run 6, 21 Sep 2026). */
+    .filter((s) => /\byou (said|told me|mentioned|committed|promised|agreed)\b/i.test(s)
+      || /^(?:so |and )?you (?:will|are going to|have agreed to|have committed to)\b/i.test(s)
+      /* "That you will send the rota by Friday is also noted" went to a rep who had said nothing about a rota: the
+         pack's own example sentence, recited as his (run 10, 21 Sep 2026). */
+      || /\bthat you (?:will|are going to|would|have agreed to)\b/i.test(s));
 }
 
 /**
@@ -61,7 +67,14 @@ export function aPromiseTheyNeverMade(reply: string, theirs: string[]): string |
   for (const sentence of whatItSaysTheySaid(reply)) {
     const said = wordsIn(sentence).filter(carries);
     if (!said.length) continue;
-    if (!said.some((w) => ground.has(w))) return sentence;
+    const shared = said.filter((w) => ground.has(w)).length;
+    if (!shared) return sentence;
+    /* ONE SHARED WORD IS NOT A RECALL. "Last time you mentioned you had signed N30m worth of contracts" shared
+       "n30m" with a woman who had said her target was N30m and nothing about contracts (run 10). A recall of
+       four or more carrying words needs two of them to be hers. A restatement of a plan in other words
+       ("you will keep the diesel paid") is not held to that; paraphrase is allowed there. */
+    const isARecall = /\b(last (?:time|session|week)|previously|earlier|before,? you|you (?:said|mentioned|told me))\b/i.test(sentence);
+    if (isARecall && said.length >= 4 && shared < 2) return sentence;
   }
   return null;
 }

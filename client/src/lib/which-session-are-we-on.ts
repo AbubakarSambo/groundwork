@@ -66,8 +66,13 @@ export function hasDoneThisSession(
  */
 export function whichSessionIsThisCheckInOn(
   partiesCompletedSessions: number[][],
+  /** How many sessions the check-in has in total, when known. There is no session after the last. */
+  plannedSessions?: number | null,
 ): number {
   if (!partiesCompletedSessions.length) return 1;
   const finishedEach = partiesCompletedSessions.map(sessions => new Set(sessions).size);
-  return Math.min(...finishedEach) + 1;
+  const next = Math.min(...finishedEach) + 1;
+  /* A ONE-SESSION CHECK-IN EVERYBODY HAD FINISHED read "waiting" beside all twenty-five names (21 Sep
+     2026): the roster was judged against session two, which does not exist. */
+  return plannedSessions && plannedSessions > 0 ? Math.min(next, plannedSessions) : next;
 }

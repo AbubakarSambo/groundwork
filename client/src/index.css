@@ -1140,17 +1140,27 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-fb-confirm { padding: 24px 14px; text-align: center; font-size: 13px; color: var(--gw-text); font-weight: 500; }
 .gw-fb-error { font-size: 11.5px; color: #c0392b; margin-top: 6px; text-align: center; }
 
-/* ── PRINT (PDF export via window.print()) ───────────────── */
+/* ── PRINT (the only export there is: Cmd/Ctrl-P on a report page) ─────────────────
+ * 21 Sep 2026: this block named classes no page used, so a printed report came out as the screen
+ * layout - navy rail down the left, feedback button, "What now?" buttons. The rail, the mobile bar,
+ * the fixed buttons, the buttons in the page and the "What now?" block are not part of a report on
+ * paper; the record is. Targets the shell's own elements, so no page has to remember a class. */
 @media print {
-  /* Show the print transcript (hidden on screen) */
   .gw-print-transcript { display: block !important; }
-  /* Hide UI elements that should not appear in the PDF */
   .gw-print-hidden,
   .gw-hdr,
   .gw-chat-msgs,
   .gw-chat-actions,
-  .gw-chat-bar { display: none !important; }
-  /* Reset page margins */
+  .gw-chat-bar,
+  html body aside.gw-sidebar-desktop,
+  .gw-feedback-btn,
+  .gw-print-none,
+  nav,
+  button { display: none !important; }
+  .gw-main-content { margin-left: 0 !important; padding: 0 !important; max-width: none !important; }
+  main, body { background: white !important; color: black !important; }
+  a { color: inherit !important; text-decoration: none !important; }
+  section, .gw-card { break-inside: avoid; border-color: #bbb !important; box-shadow: none !important; }
   @page { margin: 1.5cm 2cm; }
 }
 
