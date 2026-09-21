@@ -140,7 +140,9 @@ export class BoardService {
         objectives: { orderBy: { sortOrder: 'asc' } },
         dependencies: { orderBy: { createdAt: 'asc' } },
         /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true } },
+        /* participantId too: the glance counts who has answered this round by it, and without it the board read
+           "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true } },
         reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },

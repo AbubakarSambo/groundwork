@@ -300,7 +300,16 @@ export function ChatPage() {
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
-    onSuccess: () => setCompleted(true),
+    /*
+     * THE ONE-LINE QUESTION ENDS ON THE BOARD. Hafsah, 21 Sep 2026: "I check in on the update scenario...
+     * then it should take me to the team board." Somebody who came through the one-line link has one
+     * thing to see once they have answered: the board that everybody's answers build. Everybody else
+     * gets the finished screen below, with the board as its first button.
+     */
+    onSuccess: () => {
+      setCompleted(true)
+      if (bareFrame && groundId) navigate(`/grounds/${groundId}/board`, { replace: true })
+    },
     /**
      * ALREADY COMPLETE IS NOT A FAILURE.
      *
@@ -1203,9 +1212,18 @@ export function ChatPage() {
                   It is rendered above this block too - but above a screen's worth of transcript,
                   which is why it kept reading as gone. This opens the same report by itself.
                 */}
+                {/* The board first: the whole run in one place, and where the Report tab now leads too. */}
+                {groundId && (
+                  <button
+                    onClick={() => navigate(`/grounds/${groundId}/board`)}
+                    style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Open the team board →
+                  </button>
+                )}
                 <button
                   onClick={() => navigate(`/checkin/${checkInId}/report`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open my report
                 </button>

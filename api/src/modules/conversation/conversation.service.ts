@@ -5023,7 +5023,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true, timelineDays: true },
     });
 
     /*
@@ -5058,8 +5058,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
       cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null, ground?.workingDays ?? []);
-    // Respect the end date: do not schedule a next session past it.
-    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
+    /*
+     * THE RUN HAS AS MANY SESSIONS AS IT SAYS. A 90-day quarterly check-in reads "Session 1 of 1", and
+     * when its one session closed a second was created for day 90 - the end date itself - so the
+     * board opened on round 2 and read "0 of 2 answered this round" to a woman who had just answered
+     * (Hafsah, 21 Sep 2026). The planned count is the same arithmetic the header uses; a session past
+     * it, or opening on or after the end, is not made.
+     */
+    const planned = totalSessionsFor((ground as any)?.timelineDays ?? null, cadence);
+    if (planned != null && sessionNumber >= planned) {
+      this.logger.log(`No next session for ${participantId}: session ${sessionNumber} of ${planned} was the last planned.`);
+      return;
+    }
+    // Respect the end date: do not schedule a next session on or past it.
+    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom >= ground.endsAt;
     if (!pastEnd) {
       await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
     }
