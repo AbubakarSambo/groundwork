@@ -290,6 +290,26 @@ export function viewerLabelOf(
   return labelsForParties(parties).get(viewerParticipantId) ?? null;
 }
 
+/**
+ * THE HANDLE IN A LABEL. A label is the role as the person described it, and people describe it in a
+ * paragraph: "Managing Partner of Sable Behavioural, a behavioural science firm working across
+ * Africa. I hired the new Engagement Director." The model, sensibly, writes "the Managing Partner".
+ * The exact-label substitution then matches nothing, so the reader was called by their own role in
+ * the third person on their own report, and on a difference card the other side was captioned with
+ * the whole paragraph, in capitals (20 Sep 2026). The handle is the role phrase: up to the first
+ * full stop, comma, "at", "of", "for", "in" or dash, without a leading "I am".
+ */
+export function handleOf(label: string): string {
+  const first = (label ?? '').trim().split(/[.,;:(]|\s+-\s+/)[0] ?? '';
+  const cut = first.split(/\s+(?:at|of|for|in|with|who|and)\s+/i)[0];
+  const words = cut.replace(/^(?:i am|i'm|i work as|the)\s+(?:a|an|the)?\s*/i, '').trim().split(/\s+/).filter(Boolean);
+  const handle = words.slice(0, 4).join(' ');
+  return handle || (label ?? '').trim();
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const withoutTrailingStop = (s: string) => (s ?? '').trim().replace(/[.!?,;:]+$/, '');
+
 export function withNames(
   text: string,
   visible: Map<string, string>,
@@ -311,12 +331,28 @@ export function withNames(
    */
   const viewerLabel = opts?.viewerLabel?.trim();
   if (viewerLabel) {
-    const esc = viewerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /* A LABEL THAT ENDS IN A FULL STOP NEVER MATCHED. The Harvestline sales manager's role read "...some
+       on 60-day credit." and `\b` after a full stop needs a word character next, so "credit. said this
+       was for" left the whole label standing in her own report (smoke run 7, 21 Sep 2026). Labels are
+       matched without their trailing punctuation; the sentence keeps its own. */
+    const esc = escapeRe(withoutTrailingStop(viewerLabel));
+    /* The handle too, when it is a role of two words or more that no other party shares: "the
+       Engagement Director's time" is the reader's time. A one-word handle ("Trader") is left alone. */
+    const handle = handleOf(viewerLabel);
+    const others = [...(allLabels ?? [])].filter((l) => l !== viewerLabel).map((l) => handleOf(l).toLowerCase());
+    const handleToo = handle.split(' ').length >= 2 && handle.toLowerCase() !== viewerLabel.toLowerCase() && !others.includes(handle.toLowerCase());
+    const hesc = escapeRe(handle);
     text = text
       .replace(new RegExp(`\\bthe ${esc}'s\\b`, 'gi'), 'your')
       .replace(new RegExp(`\\b${esc}'s\\b`, 'gi'), 'your')
       .replace(new RegExp(`\\bthe ${esc}\\b`, 'gi'), 'you')
-      .replace(new RegExp(`\\b${esc}\\b`, 'gi'), 'you')
+      .replace(new RegExp(`\\b${esc}\\b`, 'gi'), 'you');
+    if (handleToo) {
+      text = text
+        .replace(new RegExp(`\\bthe ${hesc}'s\\b`, 'gi'), 'your')
+        .replace(new RegExp(`\\bthe ${hesc}\\b`, 'gi'), 'you');
+    }
+    text = text
       /**
        * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
        *
@@ -415,7 +451,7 @@ export function withNames(
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);
   for (const label of labels) {
     const name = visible.get(label)!;
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = escapeRe(withoutTrailingStop(label));
     /**
      * WORD-BOUNDED, AND THIS WAS A LIVE DEFECT. W8-73.
      *
@@ -506,9 +542,21 @@ export function withNames(
    */
   for (const label of known) {
     if (visible.has(label)) continue;
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'g'), label);
-    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), label);
+    /* Without its trailing stop, the way the finding prints it: "...networks next said this was for" left the
+       lead's whole role sentence on a participant's card (run 8, 21 Sep 2026) because the label ended in
+       a full stop and the sentence did not. */
+    const escaped = escapeRe(withoutTrailingStop(label));
+    /* A label this reader may not resolve stays a label - but a paragraph of one is printed as its
+       handle, "Managing Partner", not as the person's whole self-description in the middle of a
+       sentence. Only when the handle is unambiguous among the parties. */
+    const handle = handleOf(label);
+    const shared = known.filter((l) => l !== label).some((l) => handleOf(l).toLowerCase() === handle.toLowerCase());
+    const printed = label.split(/\s+/).length > 5 && !shared ? handle : label;
+    /* Not \b: a label that ends in a full stop has no word boundary after it. */
+    /* The label's own full stop comes with it when the sentence carries on ("Director. expects"); a stop
+       that ends the sentence stays. */
+    const re = new RegExp(`(?<![\\w])${escaped}(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
+    out = out.replace(re, printed);
   }
   return out;
 }

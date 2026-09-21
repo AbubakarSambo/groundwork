@@ -363,6 +363,24 @@ const tierOf = (text: string, stored?: 'HIGH' | 'MEDIUM' | 'LOW' | null): 'HIGH'
 };
 
 /**
+ * "SPECIFIC ENOUGH TO CHECK LATER" HAS TO HOLD SOMETHING SOMEBODY COULD CHECK. Rerun, 20 Sep 2026:
+ * a borrower who said only "the payments are being made", "my income is improving" and "the main
+ * thing is the loan is being paid" was read as "6 of 7 items are specific enough to check later",
+ * because extraction had marked those lines HIGH. The mark is the model's opinion; this asks the
+ * line. A number, a date, a name that is not the first word, or a thing that can be opened counts.
+ * "Always on time" does not.
+ */
+const A_NAMED_THING = /[^.!?]\s([A-Z][a-z]{2,})\b/;
+const A_THING_TO_OPEN = /\b(invoice|receipt|contract|ledger|report|spreadsheet|sheet|document|deck|email|message|photo|screenshot|record|statement|form|order|proposal|tracker|dashboard|system)s?\b/i;
+/* "All fourteen", "two candidates", "week seven": a number written as a word is still a number. */
+const A_NUMBER_IN_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|fourteenth|nineteenth|twentieth)\b/i;
+export const saysSomethingCheckable = (text: string): boolean => {
+  const t = body(text);
+  if (!t || ADMITS_ABSENCE.test(t)) return false;
+  return CARRIES_SOMETHING_TO_CHECK.test(t) || A_NUMBER_IN_WORDS.test(t) || A_NAMED_THING.test(t) || A_THING_TO_OPEN.test(t);
+};
+
+/**
  * Drop the echoes of an achievement already on the record.
  *
  * In the live run "I closed Loop this week" was stored as a fresh HIGH entry in
@@ -518,13 +536,14 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
       const myEntries = entries.filter((e) => e.participantId === p.id);
-      const high = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'HIGH').length;
-      const medium = myEntries.filter((e) => tierOf(e.text, e.verifiability) === 'MEDIUM').length;
+      const worthChecking = myEntries.filter((e) => tierOf(e.text, e.verifiability) !== 'LOW' && saysSomethingCheckable(e.text));
+      const high = worthChecking.filter((e) => tierOf(e.text, e.verifiability) === 'HIGH').length;
+      const medium = worthChecking.length - high;
       const checkable = high + medium;
       const bySession = new Map<number, number>();
       for (const e of myEntries) {
         if (e.sessionNumber == null) continue;
-        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (tierOf(e.text, e.verifiability) === 'LOW' ? 0 : 1));
+        bySession.set(e.sessionNumber, (bySession.get(e.sessionNumber) ?? 0) + (worthChecking.includes(e) ? 1 : 0));
       }
 
       // CORROBORATION, not counting. (R1)
@@ -565,7 +584,10 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
       } else {
         reasonParts.push(
-          `${completed} check-in${completed === 1 ? '' : 's'} on record. ${checkable} of ${myEntries.length} things named are specific enough to check later${high ? `, ${high} backed by something concrete` : ''}.`,
+          /* Says what it counted. "4 of 19 things named" read as an invented number to the judge of run 10 (21 Sep
+             2026); "19 lines taken from what they said, 4 with a name, a number or a date in them" is the same count
+             with its source in the sentence, and the lines are on the page to check it against. */
+          `${completed} check-in${completed === 1 ? '' : 's'} on record. ${myEntries.length} line${myEntries.length === 1 ? '' : 's'} taken from what they said, ${checkable} with a name, a number or a date in ${checkable === 1 ? 'it' : 'them'}${high ? `, ${high} backed by a document` : ''}.`,
         );
         const shape = shapeOf(bySession, lastSession);
         // The same protection the coverage read gives the quiet load-bearer has

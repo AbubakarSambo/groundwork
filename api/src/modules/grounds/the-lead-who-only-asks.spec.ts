@@ -20,6 +20,7 @@ describe('the lead who only asks', () => {
   });
 
   it('and the list of those situations is short and named', () => {
-    expect(THE_LEAD_ONLY_ASKS).toEqual(['TEAM_UPDATES']);
+    /* Both of the situations where the lead asks a room a question rather than answering one. */
+    expect(THE_LEAD_ONLY_ASKS).toEqual(['TEAM_UPDATES', 'DISCOVERY']);
   });
 });

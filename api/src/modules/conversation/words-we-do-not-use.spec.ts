@@ -106,7 +106,7 @@ describe('and it is the last guard, so it reads what actually ships', () => {
 
   it('and nothing reads the reply after it except the line that sends it', () => {
     const banAt = src.indexOf('const notOurWords = wordsWeDoNotUse(screened.text');
-    const shipsAt = src.indexOf('reply = screened.text || ASK_AGAIN;');
+    const shipsAt = src.indexOf('reply = screened.text || (isAnAcknowledgement(message) ?');
     expect(shipsAt).toBeGreaterThan(banAt);
     const between = src.slice(banAt, shipsAt);
     expect(between).not.toMatch(/screened = second;[\s\S]*screened = second;[\s\S]*screened = second;/);

@@ -1034,16 +1034,16 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendActivationRevealReminder');
   }
 
-  /** Participant checked in. Admin notified so they know to come back. */
-  async sendParticipantCheckedIn(adminEmail: string, participantEmail: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
+  /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
+  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
     const pendingNote = stillPending && stillPending > 0
       ? `<p>${stillPending} ${stillPending === 1 ? 'party has' : 'parties have'} not yet checked in. The report generates once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
-      subject: `${participantEmail} has checked in on ${groundLabel}`,
+      subject: `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${escapeHtml(participantEmail)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
+        `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and everybody in it is told the moment the picture is ready.</p>`,

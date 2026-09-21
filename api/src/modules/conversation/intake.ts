@@ -54,6 +54,8 @@ export interface IntakeResult {
   meetingScore: number;
   isAdvisoryOnly: boolean;
   hasIndependentOutput: boolean;
+  /** A date, a number or a verifiable claim in this one turn: something somebody else could check. */
+  checkable: boolean;
   positiveSignal?: string;
 }
 
@@ -66,7 +68,7 @@ const NUMBER_WORDS =
   /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|dozen|half|twice|first|second|third)\b/i;
 
 export function runIntake(text: string): IntakeResult {
-  if (!text) return { types: ['noise'], factualClaims: [], specificity: 0, vagueLanguage: [], thinkingScore: 0, outputScore: 0, meetingScore: 0, isAdvisoryOnly: false, hasIndependentOutput: false };
+  if (!text) return { types: ['noise'], factualClaims: [], specificity: 0, vagueLanguage: [], thinkingScore: 0, outputScore: 0, meetingScore: 0, isAdvisoryOnly: false, hasIndependentOutput: false, checkable: false };
   const lower = text.toLowerCase();
 
   const types: string[] = [];
@@ -102,7 +104,8 @@ export function runIntake(text: string): IntakeResult {
    * a calendar date does.
    */
   const hasDate =
-    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(text) ||
+    /* The full month name too: "October" alone did not read as a date (adversarial run, 20 Sep 2026). */
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(text) ||
     /\d{1,2}\/\d{1,2}/.test(text) ||
     /\b(?:every|each|per|by|within|since|last|next|this)\s+(?:day|week|fortnight|month|quarter|year)\b/i.test(text) ||
     /\b(?:day|week|fortnight|month|quarter|year)s?\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text) ||
@@ -148,6 +151,7 @@ export function runIntake(text: string): IntakeResult {
     meetingScore,
     isAdvisoryOnly: thinkingScore > 0.3 && outputScore < 0.2,
     hasIndependentOutput: outputScore > 0.3 && factualClaims.some((c) => c.verifiable),
+    checkable: hasNumbers || hasDate || factualClaims.some((c) => c.verifiable),
     positiveSignal,
   };
 }

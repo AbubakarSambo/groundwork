@@ -132,10 +132,20 @@ describe('what each person said they did', () => {
     /* Dropping the row would hide the single most useful line on the page for whoever runs it. */
     const out = theSessionReport({
       ...base,
+      closed: true,
       answeredThisSession: [{ who: 'Ellie', isYou: false }],
     });
     expect(out.whatEachPersonSaid[0].lines).toEqual([]);
     expect(out.whatEachPersonSaid[0].saying).toContain('nothing specific enough to record');
+  });
+
+  it('but before release, another person\'s empty row is the wall, not an absence', () => {
+    const out = theSessionReport({
+      ...base,
+      closed: false,
+      answeredThisSession: [{ who: 'Ellie', isYou: false }],
+    });
+    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report releases');
   });
 });
 

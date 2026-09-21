@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
+import { WhereToFocus } from '@/components/gw/where-to-focus'
 import { TwoAccountsSideBySide, Folded } from '@/components/gw/two-accounts-side-by-side'
 import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -1386,6 +1387,9 @@ export function ReportBody({
                 the page, so the one sentence a lead most needs before walking into the room was
                 the last thing they reached. It is the same sentence from the same field.
               */}
+              {/* A discovery session's whole point, drawn where the lead reads first. See where-to-focus. */}
+              <WhereToFocus direction={(report as any).theDirection} />
+
               {report.centralQuestion && (
                 <div style={{ marginBottom: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '12px 14px' }}>
                   <WhatToSettleTogether question={report.centralQuestion} />

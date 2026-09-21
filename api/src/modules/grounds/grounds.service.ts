@@ -42,6 +42,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
@@ -104,6 +105,8 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
    * the same day rather than sitting open for a month with nothing left to happen in it.
    */
   SNAPSHOT: 1,
+  /* One conversation, by design: the direction comes from reading them together, not from a second round. */
+  DISCOVERY: 1,
   /**
    * A STANDING UPDATE RUNS UNTIL SOMEBODY STOPS IT, and ninety days is the honest stand-in.
    *
@@ -185,6 +188,7 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   OPEN_READ: GroundMoment.RECOGNITION,
   /** One honest read of right now. No objective to set and none to close. */
   SNAPSHOT: GroundMoment.RECOGNITION,
+  DISCOVERY: GroundMoment.STARTING,
   /* STARTING, like the other recurring read: the enum's three moments are about where a ground sits
      in its own arc, and a standing update is always at the start of the next one. */
   TEAM_UPDATES: GroundMoment.STARTING,
@@ -245,6 +249,7 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   OPEN_READ: Cadence.FORTNIGHTLY,
   /** The only ONE_TIME in the product: one round, and no follow-up is ever scheduled. */
   SNAPSHOT: Cadence.ONE_TIME,
+  DISCOVERY: Cadence.ONE_TIME,
   /* Her default of the three offered - daily, weekly, every two weeks. The other two are a click. */
   TEAM_UPDATES: Cadence.WEEKLY,
 };
@@ -349,6 +354,32 @@ export class GroundsService {
    *   the reason it is a parameter rather than a lookup is that the controller already
    *   has it on the token and a second read could disagree with the guard.
    */
+  /**
+   * WHAT A PARTICIPANT IS TOLD, WRITTEN ONCE FROM THE BRIEF. See what-a-participant-is-told-about-this.
+   * Awaited with a ceiling, so a slow model costs a few seconds at setup and never a hang; a failure or
+   * an empty rewrite leaves the column null and the read falls back to the filtered brief.
+   */
+  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
+    const text = (brief ?? '').trim();
+    try {
+      if (!text) {
+        await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: null } as any });
+        return;
+      }
+      const people = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { user: { select: { firstName: true, lastName: true } } } });
+      const otherNames = people.flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '']).filter((n) => n.trim().length >= 3);
+      const raw = await Promise.race([
+        this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What the person who set this up wrote:\n\n${text}` }] as any),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
+      ]);
+      const told = theTellingHolds(raw, { otherNames });
+      await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
+      this.logger.log(`Ground ${groundId}: what participants are told ${told ? 'written' : 'left to the filtered brief'}.`);
+    } catch (err: any) {
+      this.logger.warn(`Ground ${groundId}: what participants are told could not be written: ${err?.message}`);
+    }
+  }
+
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
     // --- Billing gate ---
     // Resolve whether this org may create a ground right now, and how.
@@ -526,6 +557,7 @@ export class GroundsService {
 
       return ground;
     });
+    await this.tellParticipantsAboutThis(ground.id, dto.brief);
 
     // GW-19: no-verdict expectation contract - set at creation so the initiator
     // sees this before they invite anyone or pay. "Evidence both of you can stand
@@ -720,6 +752,7 @@ export class GroundsService {
     );
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief);
 
     return ground;
   }
@@ -775,6 +808,7 @@ export class GroundsService {
         ...(edits?.brief !== undefined ? { brief: edits.brief } : {}),
       },
     });
+    if (edits?.brief !== undefined) await this.tellParticipantsAboutThis(groundId, edits.brief);
 
     if (managingOnly) {
       /**
@@ -1840,7 +1874,10 @@ export class GroundsService {
       orgHasWhatsApp,
       alignment,
       daysLeft,
-      brief,
+      /* The lead and the organisation's admins read the brief they wrote. A participant reads the
+         situation and nothing that tells the product how to interview them. See
+         what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
+      brief: viewerRunsThisGround ? brief : ((ground as any).toldToParticipants?.trim() || theSituationIn(brief)),
       signals,
       contextNotes,
       settingsChanges,
@@ -3873,7 +3910,7 @@ export class GroundsService {
       });
     }
 
-    return this.prisma.ground.update({
+    const updated = await this.prisma.ground.update({
       where: { id: groundId },
       data: {
         /**
@@ -3904,6 +3941,8 @@ export class GroundsService {
         groundAuditLog: auditData,
       },
     });
+    if (dto.brief !== undefined) await this.tellParticipantsAboutThis(groundId, dto.brief);
+    return updated;
   }
 
   /**

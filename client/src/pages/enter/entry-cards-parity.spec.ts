@@ -52,6 +52,8 @@ const ENTRY_COVERS: Record<string, string[]> = {
   [L.NEW_HIRE]: ['NEW_HIRE'],
   /* One card, one scenario. Its whole pitch is one of everything. */
   [L.TEAM_UPDATES]: ['TEAM_UPDATES'],
+  /* And the one that asks a room what they know rather than how their work is going. */
+  [L.DISCOVERY]: ['DISCOVERY'],
   [L.CONTRACT_REVIEW]: ['CONTRACT_REVIEW'],
   [L.IMPLEMENTATION_TRACKING]: ['IMPLEMENTATION_TRACKING'],
   [L.NEW_PROJECT]: ['NEW_PROJECT'],

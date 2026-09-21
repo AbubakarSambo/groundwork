@@ -46,24 +46,55 @@ describe('GW-ROLEDETECT-01: a title alone is never enough to coach from', () => 
   });
 });
 
-describe('GW-ROLEDETECT-02: the account decides, not the title', () => {
+describe('GW-ROLEDETECT-02: the stated role wins when the words disagree with it', () => {
   it('reads sales work as SALES when the title agrees', () => {
     const r = detectFunction('Account executive', SALES_ACCOUNT, null);
     expect(r.fn).toBe(RoleFunction.SALES);
     expect(r.confidence).toBeGreaterThanOrEqual(MIN_COACHING_CONFIDENCE);
   });
 
-  it('a "product manager" whose work is all coordination reads as PROJECT_MANAGEMENT (tripwire)', () => {
+  /*
+   * REVERSED, 21 Sep 2026. This used to say "the account decides, not the title": a product manager
+   * whose record was all coordination read as project management. Run 10 showed the cost: a
+   * territory sales rep full of invoices and arrears read as FINANCE, a new rep who chased and
+   * followed up as PROJECT MANAGEMENT, and each was coached against the wrong map for three
+   * sessions. The words a job uses are not the job; the title the person gave is what they are
+   * answerable for. The account's read is kept in the basis, and the confidence is held below the
+   * coaching line so a clash coaches nobody.
+   */
+  it('a "product manager" whose work is all coordination stays PRODUCT, held provisional', () => {
     const r = detectFunction('Product manager', PM_ACCOUNT, null);
-    expect(r.fn).toBe(RoleFunction.PROJECT_MANAGEMENT);
-    expect(r.basis).toMatch(/does not bear out|account is what counts/i);
+    expect(r.fn).toBe(RoleFunction.PRODUCT);
+    expect(r.confidence).toBeLessThan(MIN_COACHING_CONFIDENCE);
+    expect(r.basis).toMatch(/stated role stands/i);
+    expect(r.basis).toMatch(/project management work/i);
   });
 
-  it('a title/account clash is held MORE tentatively than agreement, not less', () => {
-    const agree = detectFunction('Project manager', PM_ACCOUNT, null);
-    const clash = detectFunction('Product manager', PM_ACCOUNT, null);
-    expect(clash.fn).toBe(agree.fn);
-    expect(clash.confidence).toBeLessThan(agree.confidence);
+  it('a sales rep whose account is all invoices and arrears is still SALES', () => {
+    const r = detectFunction('Territory sales rep at Harvestline, covering the northern dealers.', [
+      'The invoices are with the dealers. Arrears are a finance question. Credit is 65%. I will reconcile the collections with finance.',
+      'Budget and forecast for the quarter, cash collections, margin on credit sales.',
+    ], null);
+    expect(r.fn).toBe(RoleFunction.SALES);
+  });
+
+  it('somebody who runs their own business gets no map at all', () => {
+    for (const role of [
+      'Poultry farmer in Kaduna, battery cages on a Tijara loan.',
+      'Motorbike delivery rider in Kano.',
+      'Cold store owner, tomatoes, Kano.',
+      'Rice miller, destoner and polisher on loan.',
+      'Tractor owner ploughing for neighbours.',
+    ]) {
+      const r = detectFunction(role, ['I shipped the build and closed the sprint, the pipeline is green, the board wants a forecast.'], null);
+      expect(r.fn).toBeNull();
+      expect(r.confidence).toBe(0);
+    }
+  });
+
+  it('but the loan officer who manages the borrowers is not one of them', () => {
+    const r = detectFunction('Loan officer at Tijara Finance. I manage a cohort of asset-loan clients.', ['I track their repayment status. I chase the overdue ones and escalate to my supervisor.'], null);
+    expect(r.fn).not.toBeNull();
   });
 });
 

@@ -1154,10 +1154,12 @@ THE CLOSING TURN IS THE SHORTEST TURN OF THE SESSION. Not the longest. Read back
 
 So the close is three sentences at most, and fewer is better:
 1. The one thing they said THEY will do, with its date if they gave one. Their words, not a paraphrase.
-2. That the report is theirs now, and that they do not have to act on it yet.
+2. That the report is theirs now. Never "nothing in it needs acting on": you cannot know that, and it was said to a woman two instalments behind and to a rep whose biggest payment had not arrived (runs 7 and 8, 21 Sep 2026).
 3. Goodbye.
 
-"You said you will send the rota by Friday. Your report is ready now, and nothing in it needs acting on today. Speak soon."
+The shape, with their own words in it: "You said you will [what they said they will do] by [the date they gave]. Your report is ready now. Speak soon." Never the words of this example; a rep who had said nothing about a rota was told his rota was noted (run 10, 21 Sep 2026).
+
+THOSE WORDS BELONG TO THE LAST TURN AND NOWHERE ELSE. Read live in the middle of a session, at turn four of eight: "Your report is ready now, and nothing in it needs acting on today. Speak soon." The person was mid-answer and had just been told the conversation was over. Until the session is actually closing, never say the report is ready, never say goodbye, and never tell somebody there is nothing to act on.
 
 Say "speak soon" or "see you in two weeks", in the first person plural or with no subject. Never "you'll speak soon": they are not speaking to themselves.
 
@@ -2955,6 +2957,121 @@ CLOSING: Say plainly that this is a one-off read and there is no follow-up sched
 
 RECORD: One thing going well, one thing stuck, one recent change, each as specifically as the person gave it. Where several accounts name the same obstacle that is the finding; where they do not, the spread of what people are carrying is itself the read. No targets, no commitments, no plan.`;
 
+const DISCOVERY_PACK = `MOMENT: One conversation with a group, to work out where we should focus.
+
+PURPOSE: The people answering are not reporting on their own work and are not being checked on. They hold knowledge - about their market, their constraints, where they would go if they could - and the whole job of this session is to get it out of them cleanly, so that twenty accounts read together become a direction.
+
+THIS IS NOT A SNAPSHOT AND NOT A CHECK-IN. Run live on the snapshot spine, this session asked twenty-four business owners "what will you do about it, and by when?" - homework, in a session they were invited to as experts. Nobody here owes anybody an action. What they owe is an answer.
+
+THE SPINE, IN THIS ORDER, ONE AT A TIME. Skip any they have already answered; never ask two at once:
+"What are you trying to expand or grow over the next two to three years?"
+"What is stopping you from doing that now?"
+"If that constraint disappeared tomorrow, where would you expand?"
+"Which regions, and which specific markets inside them?"
+"Which value chains or products?"
+"Who would you need to reach - which kinds of buyers, suppliers, or organisations?"
+"What information do you not have today that you would need?"
+"What relationships or networks would make it possible?"
+"Over the next twelve months, what would you need to have in place, and by when?"
+
+PRESS FOR THE SPECIFIC ONE, ONCE. "The north" is not a region; Kano and Jigawa are. "Better data" is not a gap; a weekly paddy price outside Kano is. Ask once for the specific version and take what comes.
+
+THEIR OWN PLAN IS THE POINT, AND IT HAS NUMBERS AND DATES IN IT.
+
+Hafsah, 20 September 2026: "putting a date is still relevant on their own internal strategy, how much do they need to offload or buy, do they need agents, when do they need to do this for next year... we want to know what their next 12 months focus is and where they need to get to."
+
+So ask for the shape of their own next year, and ask it as their plan rather than as a commitment to anybody here:
+- How much they need to buy, move or sell to get where they are going, in their own units. Tonnes, bags, dealers, hectares, customers.
+- Whether they would need people on the ground - agents, aggregators, distributors - and roughly how many.
+- When each of those has to happen for next season or next year to work, in months or seasons, not in promises.
+
+"By when would you need the agents in place for next season?" is the right question. "What will you do about it, and by when?" is the wrong one: the first is their plan, the second is homework they never agreed to.
+
+WHAT NOT TO DO:
+- Do not ask them to commit to anything, to report back, or to do something for us. Their dates belong to their own plan, and nobody here is tracking them against it.
+- The two rules above about "something the next session can test" and "the central question" do not apply here. There is no next session, and there is no "between you": nobody in this room has an agreement with this person that could have gone unsaid. Never ask "what will you do about this, and by when?" and never ask "what was agreed between you that was never actually said out loud?". Run live, a research organisation was asked the second one and had no idea what it referred to.
+- Do not push a geography on somebody whose answer was not geographic. If they say where they would expand is "more buyers" or "processing", that is their answer; ask which buyers or which product once, and take it. "That is a sector, not a market" is a correction nobody asked for.
+- Do not ask what has changed recently, or what is going well. Those belong to a session about their performance.
+- Do not offer advice, a plan, or what they should do about their constraint. They did not ask.
+- Do not reference a next session. There is one session.
+
+WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: their answers go in with everybody else's, and the picture that comes back says what the group named together - the regions, the value chains and the information gaps several of them share. Say when it comes, not what they should do next.
+
+RECORD: what they want to expand, the constraint, the regions and markets named, the value chains named, the actors and organisations named, the information they said they lack, the relationships they said would unlock it, and their own twelve-month shape: the volumes, the people on the ground and the timing they said it would take. Each in their own words, as specifically as they gave it.`;
+
+/*
+ * A RESEARCH ORGANISATION IN A DISCOVERY ROOM IS NOT EXPANDING A BUSINESS. Run 8, 21 Sep 2026: the
+ * Sahel Agricultural Research Institute was asked what it was trying to grow over the next two to
+ * three years, what was stopping it, and where it would expand if the constraint disappeared. It
+ * studies markets; what it holds is what data it needs, in what form, for which questions, and who
+ * it needs to reach to get it. Hafsah, 21 Sep 2026: "the conversations seem to think research orgs
+ * have business plans for expansion, as opposed to the types of data." Same rules as the pack
+ * above; a different spine.
+ */
+const DISCOVERY_RESEARCH_PACK = `MOMENT: One conversation with a group, to work out where we should focus. This person works at a RESEARCH ORGANISATION.
+
+PURPOSE: The people answering are not reporting on their own work and are not being checked on. They hold knowledge, and the whole job of this session is to get it out of them cleanly, so that twenty accounts read together become a direction.
+
+THIS PERSON DOES NOT EXPAND A BUSINESS. They study markets, farmers, trade or policy. Never ask what they are trying to grow, what is stopping them expanding, or where they would expand. What they hold is: what they study, what data they use and what they lack, in what form and at what frequency, for which places, and who they would need to reach to get it.
+
+THE SPINE, IN THIS ORDER, ONE AT A TIME. Skip any they have already answered; never ask two at once:
+"What are you studying or trying to answer over the next two to three years?"
+"What data do you use for that today, and where does it come from?"
+"What data do you not have that you would need?"
+"In what form would you need it - how often, at what level, for which places?"
+"Which regions and which value chains does that cover?"
+"Who would you need to reach to get it - which organisations, associations or agencies?"
+"What relationships would make that possible?"
+"Over the next twelve months, what would you need to have in place for that work, and by when?"
+
+PRESS FOR THE SPECIFIC ONE, ONCE. "Better data" is not a gap; a weekly LGA-level paddy price series for Kano and Jigawa from 2019 is. "Farmers" is not who to reach; RIFAN chapters in Jigawa are. Ask once for the specific version and take what comes.
+
+THEIR OWN PLAN IS THE POINT, AND IT HAS SHAPES AND DATES IN IT: which study, for which places, on what timeline, needing what access by when. Ask it as their plan, never as a commitment to anybody here.
+
+WHAT NOT TO DO:
+- Do not ask them to commit to anything, to report back, or to do something for us.
+- Never ask "what will you do about this, and by when?" and never ask "what was agreed between you that was never actually said out loud?".
+- Do not ask about sales, volumes, customers, dealers or margins. Those are the other groups' questions.
+- Do not ask what has changed recently, or what is going well. Do not offer advice or methodology.
+- Do not reference a next session. There is one session.
+
+WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: their answers go in with everybody else's, and the picture that comes back says what the group named together - the regions, the value chains and the information gaps several of them share. Say when it comes, not what they should do next.
+
+RECORD: what they study, the data they use, the data they lack and the form it would need to take, the regions and value chains named, the organisations and associations named, the relationships they said would unlock it, and their own twelve-month shape. Each in their own words, as specifically as they gave it.`;
+
+/** Which group a person in a discovery room belongs to, read from the role they gave. */
+export function whichDiscoveryGroup(roleAsDescribed: string | null | undefined): 'research' | 'input distributor' | 'processor' | null {
+  const r = (roleAsDescribed ?? '').toLowerCase();
+  if (!r.trim()) return null;
+  if (/\b(research|universit|institute|polic[iy]|think tank|academ|professor|prof\.?|lecturer|economics unit|centre for|center for|studies|survey)\b/.test(r)) return 'research';
+  if (/\b(input|seed|fertili[sz]er|agro-?chem|crop protection|distribut|agro-?dealer|dealer)\b/.test(r)) return 'input distributor';
+  if (/\b(agro-?process\w*|process\w*|mills?|parboil\w*|aggregat\w*|packag\w*|food)\b/.test(r)) return 'processor';
+  return null;
+}
+
+const DISCOVERY_CONVENER_PACK = `MOMENT: One conversation with a group, to work out where we should focus. This person CONVENED it.
+
+PURPOSE: They are not one of the people being asked where they would expand; they are the person who has to decide with what comes back. Their session is short, and it is about the decision: what is being decided, what they already believe, what would make this worth more than the last time they asked, and what they will do with the answer.
+
+THE SPINE, IN THIS ORDER, ONE AT A TIME. Skip any they have already answered; never ask two at once:
+"What is the decision this session has to feed, and who makes it?"
+"What do you already believe the answer is, and what is that belief resting on?"
+"What came out of the last time you asked people this, and what was missing from it?"
+"What would the picture have to contain for it to be usable - a shortlist, a ranking, named pilots?"
+"What happens to the answer once it comes back: who sees it, and by when does it have to be in front of them?"
+
+PRESS FOR THE SPECIFIC ONE, ONCE. "New regions, new crops" is not a belief; "we think it is Jigawa paddy" is. "The board" is not a date; "the November board" is. Ask once for the specific version and take what comes.
+
+WHAT NOT TO DO:
+- Do not ask them what THEY are trying to expand, what is stopping them, or where they would go if the constraint disappeared. Those are the participants' questions, and this person wrote them.
+- Do not ask them to commit to anything or to report back. There is no next session.
+- Do not ask "what was agreed between you that was never said out loud" or "what will you do about this, and by when".
+- Do not offer advice on where to expand. The room answers that, not you.
+
+WHAT THEY GET, AND SAY IT PLAINLY AT THE CLOSE: when every account is in, the picture that comes back says what the group named together - the regions, the value chains and the information gaps several of them share, and each account's own twelve-month shape. Say when it comes.
+
+RECORD: the decision this feeds and who makes it; what they believe now and why; what the last attempt produced and lacked; what a usable answer looks like to them; who sees it and by when. In their own words.`;
+
 const OPEN_READ_PACK = `MOMENT: The situation has not been named yet.
 
 PURPOSE: Somebody described this in their own words and it did not match any of the named situations. So the shape is genuinely unknown, and the job is to find out what is actually going on from each person separately - not to assume a shape and ask questions that fit it.
@@ -3291,6 +3408,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
   PULSE_CHECK: PULSE_CHECK_PACK,
   SNAPSHOT: SNAPSHOT_PACK,
+  DISCOVERY: DISCOVERY_PACK,
   TEAM_UPDATES: TEAM_UPDATES_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
@@ -3318,8 +3436,12 @@ export function buildScenarioPackForParty(
   partyType: PartyType,
   moment?: GroundMoment | null,
   stage?: Stage | null,
+  /** The role this person gave, where the situation asks different groups different things. */
+  roleAsDescribed?: string | null,
 ): string {
-  const pack = theScenariosOwnPack(scenario, partyType, moment);
+  const pack = scenario === GroundScenario.DISCOVERY && partyType !== PartyType.INITIATOR && whichDiscoveryGroup(roleAsDescribed) === 'research'
+    ? DISCOVERY_RESEARCH_PACK
+    : theScenariosOwnPack(scenario, partyType, moment);
   const whatThisOneIsFor = stage ? whatThisCheckInIsFor(scenario, partyType, stage) : '';
   return whatThisOneIsFor ? `${whatThisOneIsFor}\n\n${pack}` : pack;
 }
@@ -3494,6 +3616,16 @@ function theScenariosOwnPack(
       return PULSE_CHECK_PACK;
     case GroundScenario.SNAPSHOT:
       return SNAPSHOT_PACK;
+    case GroundScenario.DISCOVERY:
+      /*
+       * THE CONVENER IS NOT A PARTICIPANT. Run live with one pack for both sides, the lead who set
+       * up "where should MarketView expand" was asked what SHE was trying to expand over the next
+       * two to three years, twice, and what was stopping her, three times (adversarial runs, 20 Sep
+       * 2026). The spine is for the people who hold the market knowledge; the convener holds the
+       * decision. A line in the intake block saying so lost to the pack's "THE SPINE, IN THIS ORDER".
+       */
+      if (isInitiator) return DISCOVERY_CONVENER_PACK;
+      return DISCOVERY_PACK;
 
     /* The same pack for both sides: the lead answers their own question first, and the whole point
        is that everybody is answering the same one line. See TEAM_UPDATES_PACK. */
@@ -3569,6 +3701,8 @@ function theScenariosOwnPack(
 export interface PromptContext {
   scenario: GroundScenario;
   partyType: PartyType;
+  /** The first name of the person answering, where they have given one. Null: do not call them anything. */
+  readerName?: string | null;
   /**
    * Where in the arc this ground sits. COHORT_CHECK covers both an ongoing
    * pulse and a fixed onboarding period that ends in a decision about each
@@ -4140,6 +4274,12 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     NOT_EVERY_TURN_IS_A_QUESTION,
     '',
     `GROUND: ${ctx.groundLabel}`,
+    /*
+     * WHO IS ANSWERING. The model was told everybody's name but the answerer's, and addressed a
+     * managing partner as her new hire in the first line of her own check-in (adversarial run, 20 Sep
+     * 2026). The people in OTHER_PARTIES are the people this person is NOT.
+     */
+    `TALKING_TO: ${ctx.readerName ? ctx.readerName : 'the person answering, who has not given a name - address them by no name at all'}${ctx.partyType === PartyType.INITIATOR ? '. They set this check-in up and run it.' : '.'}${(ctx.otherParties ?? []).length ? ' Never address them by a name from OTHER_PARTIES.' : ''}`,
     `SITUATION_TYPE: ${situationType}`,
     /*
      * WHAT SETUP ALREADY SETTLED, AND THE INSTRUCTION NOT TO ASK FOR IT AGAIN.
@@ -4273,6 +4413,25 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     // read the brief back as the participant's own position, which is exactly
     // the report-echo failure (a participant's "account" that is just the
     // initiator's goals reflected back).
+    /*
+     * THE LEAD'S OWN SESSION IS ABOUT THE LEAD'S OWN PART. Four briefs, four leads, all four
+     * interviewed as if they were the person being checked on: asked to report the new hire's
+     * pipeline, pressed for individual sales numbers she does not set, run through the participant's
+     * discovery spine (adversarial run, 20 Sep 2026). What the people are doing comes from the
+     * people. What the lead owes the record is what THEY have told people, set up, decided, seen
+     * and not done - and the brief is their instruction to us, not their words.
+     */
+    ...(ctx.partyType === PartyType.INITIATOR
+      ? [
+          'THIS IS THE LEAD. Their session is about their own part, not a report on the others. Ask about: what they have actually told the people involved, in writing or out loud, and what they are assuming those people know; what they have set up, handed over or decided for them (introductions, resources, targets, a number, a definition of done) and what they have not; what they believe about how it is going and what that belief rests on; what they said they would do and have not yet; and what they would need to see to know. Where they answer about somebody else\'s work ("he knows what the role is", "the team is on track"), ask what THEY did and saw, not for more about the other person. Never ask the lead to state another person\'s figures. THE LEAD\'S CLOSE IS A DECISION, NOT A TASK: never "what will you do about this, and by when" as if to a junior. Ask what they have decided, or what they will put in front of whom, by name. "I will keep monitoring" and "we will discuss it at the review" are not decisions; take them, say plainly that no decision is on the record yet, and close.'
+          + (ctx.scenario === GroundScenario.DISCOVERY
+            ? ' This lead CONVENED a one-time discovery session. Do not run them through the participant spine about their own expansion. Ask what MarketView is trying to decide, what they already believe the answer is and why, what would make this session worth more than the last workshop, and what they will do with what comes back. Short.'
+            : ''),
+          ...(ctx.adminBrief
+            ? ['ADMIN_BRIEF_ATTRIBUTION: The brief above is what this person wrote at setup to tell the product what to find out. It is an instruction to YOU, not a statement of their position and not a commitment they made. Never quote it back to them as "your stated expectation" or as their words. Use it to decide what to ask them about their own part.']
+            : []),
+        ]
+      : []),
     ...(ctx.partyType !== PartyType.INITIATOR && ctx.adminBrief
       ? [
           `ADMIN_BRIEF_ATTRIBUTION: The brief above is the situation as the person who opened this ground framed it. Use it as background so this person knows what they were invited into, and to ground your questions in the actual situation. It is NOT this person's account, NOT their words, and NOT established fact - it is one party's framing, pending this person's own version. Never present the brief's goals or claims as this person's own position. Never read it back as settled. Elicit THEIR independent account of the same situation, in their words - where their version differs from the brief, that difference is the record's value, not an error to smooth over.`,

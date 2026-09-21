@@ -50,7 +50,7 @@ const A_REFUSAL =
  * These are the blunt forms, and each is a whole objection on its own rather than half of one.
  */
 const BLUNTLY =
-  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|going (?:round|around) in circles|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
+  /\b(?:waste of (?:my )?time|wasting my time|this is stupid|that is stupid|stupid question|pointless|you (?:already )?asked (?:me )?(?:that|this)|already (?:told|said|answered)|i (?:just )?(?:told|said to) you|that'?s what i (?:just )?said|going (?:round|around) in circles|going over (?:this|that|it) again|why are we (?:going over|back on|discussing) (?:this|that)|we(?:'ve| have) (?:covered|done|been through) (?:this|that)|not (?:what|why) (?:i|we)|missing the point|beside the point)\b/i;
 
 export function theyPushedBackOnTheQuestions(text: string): boolean {
   const said = text ?? '';
@@ -67,6 +67,9 @@ const CARRIES_NO_SUBJECT = new Set([
   'that', 'these', 'those', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'but', 'with', 'as', 'at',
   'by', 'from', 'would', 'could', 'can', 'will', 'be', 'been', 'have', 'has', 'had', 'there', 'here',
   'so', 'if', 'then', 'now', 'else', 'able', 'name', 'tell', 'say', 'about',
+  /* "Last time" is when, not what: it matched "what has moved since last time" to a question about what
+     almost went wrong (run 8, 21 Sep 2026). */
+  'last', 'time', 'since', 'next', 'one', 'thing', 'something', 'anything', 'specific', 'specifically', 'today', 'period',
 ]);
 
 /**
@@ -78,7 +81,8 @@ const CARRIES_NO_SUBJECT = new Set([
  */
 function subjectWords(text: string): Set<string> {
   return new Set(
-    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)) ?? [],
+    /* "others" is "other" and "targets" is "target": a plural is the same subject. */
+    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)).map((w) => (w.length >= 5 && /[^s]s$/.test(w) ? w.slice(0, -1) : w)) ?? [],
   );
 }
 
@@ -225,12 +229,48 @@ export const DO_NOT_SAY_IT_BACK = doNotSayItBack('', '');
  * it matters and nobody has answered it, it belongs in the report as still open, which is what the
  * report is for.
  */
+/**
+ * THE SAME QUESTION, WORD FOR WORD, STRAIGHT AFTER ITSELF. "How many more acres are you able to farm on
+ * your own land now, and how many are you covering for your neighbours?" went out twice in a row with
+ * one answer between (smoke run, 20 Sep 2026). Two asks share a subject at half their words; a copy
+ * shares nearly all of them, and a copy does not need a third go to be the fault.
+ */
+export function repeatsTheLastAskWordForWord(reply: string, lastAsk: string | null | undefined): boolean {
+  if (!lastAsk?.trim()) return false;
+  /* The question sentences only, flattened: a reworded second ask is allowed (see the spec next
+     door); a copy is the same sentence with the same words in the same order. */
+  const questionsIn = (t: string): string[] =>
+    (t ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).map((x) => x.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()).filter((x) => x.split(' ').length >= 5);
+  const earlier = new Set(questionsIn(lastAsk));
+  return questionsIn(reply).some((q) => earlier.has(q));
+}
+
 export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean {
   const asked = (earlierAsks ?? []).filter((a) => (a ?? '').trim());
+  if (repeatsTheLastAskWordForWord(reply, asked[asked.length - 1])) return true;
   if (asked.length < 2) return false;
-  /* The two most recent asks. Something raised once, several turns ago, is not this fault. */
-  const recent = asked.slice(-2);
-  return recent.every((a) => asksTheSameThingAgain(a, reply));
+  /*
+   * ANY TWO EARLIER TURNS, NOT THE LAST TWO. This read only the two most recent asks, so "what is
+   * stopping you" at turns 9, 11 and 13 with another question in between never counted, and the
+   * convener of a discovery session got it three times (adversarial run, 20 Sep 2026). A thing
+   * asked twice anywhere in the session, and now a third time, is the fault whatever sat between.
+   */
+  /*
+   * TWO EARLIER ASKS NEED LESS OVERLAP EACH. "What specific numbers are you now tracking for how the
+   * asset is working" went to Ibrahim four times in one session, reworded each time, and no pair
+   * reached half (run 7, 21 Sep 2026). Two earlier turns sharing two fifths of a question's subject is
+   * the same question three times.
+   */
+  return asked.filter((a) => asksTheSameThingAgain(a, reply) || asksMuchTheSameThing(a, reply)).length >= 2;
+}
+
+function asksMuchTheSameThing(earlier: string, now: string): boolean {
+  const a = subjectWords(earlier);
+  const b = subjectWords(now);
+  if (a.size < 4 || b.size < 4) return false;
+  let shared = 0;
+  for (const w of b) if (a.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.4;
 }
 
 export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.
@@ -254,10 +294,42 @@ Let it go and ask about something else that matters here. Do not rephrase it and
  *  - what remains still asks them something, so this cannot create a dead end
  *  - what remains is long enough to be a reply at all
  */
+/**
+ * THE SHORT ECHO THE OVERLAP TEST CANNOT SEE.
+ *
+ * `opensByRepeatingThem` measures how much of the opening sentence is words they just used, and it
+ * needs at least three content words to say anything - which is right for a paragraph handed back,
+ * and blind to the shortest version of the same fault. Read live in a discovery session:
+ *
+ *   they  "That is all I have."
+ *   it    "That is all you have."
+ *
+ * Four words, one pronoun flipped, and it is the purest form of saying nothing. So this is a second
+ * test with a different shape: strip the pronouns that swap sides in a conversation, and if what is
+ * left is the same sentence, it is theirs handed back whatever its length.
+ */
+const SWAPS: [RegExp, string][] = [
+  [/\bi\b/g, 'you'], [/\bmy\b/g, 'your'], [/\bme\b/g, 'you'], [/\bmine\b/g, 'yours'],
+  [/\bwe\b/g, 'you'], [/\bour\b/g, 'your'], [/\bam\b/g, 'are'], [/\bi\'m\b/g, 'you are'],
+];
+
+export function isTheirOwnSentenceBack(theySaid: string, sentence: string): boolean {
+  const bare = (t: string) => {
+    let out = (t ?? '').toLowerCase().replace(/[^a-z0-9\s']/g, ' ');
+    for (const [re, to] of SWAPS) out = out.replace(re, to);
+    return out.replace(/\s+/g, ' ').trim();
+  };
+  const theirs = bare(theySaid);
+  const mine = bare(sentence);
+  if (!mine || mine.split(' ').length < 3) return false;
+  return theirs === mine || theirs.includes(mine);
+}
+
 export function withoutTheSentenceThatSaysItBack(theySaid: string, reply: string): string | null {
   const sentences = (reply ?? '').split(/(?<=[.?!])\s+/).filter((s) => s.trim());
   if (sentences.length < 2) return null;
-  if (!opensByRepeatingThem(theySaid, sentences[0])) return null;
+  /* Either shape of the same fault: the long restatement, or the four-word echo. */
+  if (!opensByRepeatingThem(theySaid, sentences[0]) && !isTheirOwnSentenceBack(theySaid, sentences[0])) return null;
 
   /*
    * UNLESS THE SENTENCE CARRIES A FIGURE THEY NEVER SAID, WHICH IS THE WHOLE JUSTIFICATION GONE.

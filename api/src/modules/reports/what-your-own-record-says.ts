@@ -34,6 +34,15 @@ export interface TheirOwnRecord {
   promises?: { what: string; hasDate: boolean }[];
   /** Did anything they said point at something another person could open. */
   anythingDocumented?: boolean;
+  /**
+   * WHETHER ANYBODY IN THIS SITUATION HAS DOCUMENTS. "Everything in your session came from memory, so
+   * there is nothing here that anybody else could open and check" was said to five borrowers who own a
+   * tractor, a cold store and a bike (run 6, 21 Sep 2026). A cohort of business owners and a room of
+   * discovery experts are not office work; the line is for the situations where a document is normal.
+   */
+  documentsExpected?: boolean;
+  /** The product's own finding about this person, already in their terms: the first thing to say. */
+  findingLines?: string[];
 }
 
 const n = (v: number) => Math.round(v).toLocaleString('en-US');
@@ -47,6 +56,9 @@ const theThing = (what: string): string =>
  */
 export function whatYourOwnRecordSays(r: TheirOwnRecord): string[] {
   const out: string[] = [];
+
+  /* THE FINDING FIRST: the gap the record itself shows for this person, in the product's words. */
+  for (const line of (r.findingLines ?? []).filter((l) => l?.trim()).slice(0, 2)) out.push(line.trim());
 
   /*
    * CARRYING A PART OF SOMETHING NOBODY HAS DIVIDED. Her own example, and the one fact on the page
@@ -67,7 +79,7 @@ export function whatYourOwnRecordSays(r: TheirOwnRecord): string[] {
   }
 
   /* NOTHING ANYBODY ELSE COULD OPEN, which is what makes the next session worth less than this one. */
-  if (r.anythingDocumented === false) {
+  if (r.anythingDocumented === false && r.documentsExpected !== false) {
     out.push('Everything in your session came from memory, so there is nothing here that anybody else could open and check.');
   }
 

@@ -179,3 +179,12 @@ describe('the four things mounting it exposed', () => {
     expect(CODE).not.toMatch(/Opened for: \{MOMENT_LABELS/)
   })
 })
+
+/** 21 Sep 2026: a released report read "Ready to release" because the page compared `roundNumber` and the server sends `sessionNumber`. */
+describe('a round completion is keyed by sessionNumber, the name the server uses', () => {
+  it('the page never reads roundNumber', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
+    expect(src).not.toMatch(/\broundNumber\b/);
+    expect(src).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
+  });
+});

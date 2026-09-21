@@ -204,6 +204,11 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
     { id: 'support-helping', what: 'what support has been given, and whether it is helping', role: ['lead', 'member'], stage: ['middle', 'last'], satisfiedBy: [T.ASK, T.COMMITMENT] },
   ],
   COHORT_CHECK: [
+    /* A borrower who repays early by hiring the tractor out while her own field went unploughed was read as the star
+       (adversarial run, 20 Sep 2026): the check-in never asked what the thing was FOR. The outcome it was taken on to
+       produce is a different fact from the obligation that came with it, and the first session owes it by name. */
+    { id: 'what-it-was-for', what: 'what they took this on to get. The asset, the loan or the programme was meant to produce something for them; get that in their own words. Repaying or attending is the obligation, not the outcome.', role: ['member'], stage: ['first'], satisfiedBy: [T.SUCCESS_DEFINITION] },
+    { id: 'against-what-it-was-for', what: 'where they stand against that original outcome. Ask this apart from whether they are repaying or attending. If the two have come apart, find out which way and why.', role: ['member'], stage: ['middle', 'last'], satisfiedBy: [T.PROGRESS, T.SUCCESS_DEFINITION] },
     { id: 'own-experience', what: 'their own experience of the role, not the group’s', role: ['member'], stage: ['first', 'middle'], satisfiedBy: [T.INTENT, T.WORRY, T.TENSION] },
     { id: 'would-make-it-work', what: 'what would make the role work better', role: ['member'], stage: ['last'], satisfiedBy: [T.ASK, T.OPERATING_DIFFERENCE] },
   ],
@@ -218,7 +223,23 @@ export const WHAT_EACH_SITUATION_ADDS: Record<string, Owed[]> = {
    */
 };
 
+/**
+ * SOMEBODY WHO HAS JUST STARTED HAS NOTHING "ACTUALLY HAPPENING" YET. Hafsah, 21 September 2026, on
+ * a new hire's first session: "asking a new person what they are doing versus what they intend to do
+ * versus approach". The spine's first-stage item "what is actually happening" turned into "what
+ * specific projects are you working on right now" for a man in his first weeks. At a start, the
+ * honest first-stage questions are what they mean to do first and how they mean to go about it.
+ */
+const STARTING = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'ROLE_HANDOVER']);
+const AT_A_START: Owed = {
+  id: 'actually',
+  what: 'what they mean to do first, and how they intend to go about it - their approach, not a list of things already done',
+  role: ['lead', 'member', 'partner'], stage: ['first'],
+  satisfiedBy: [T.INTENT, T.COMMITMENT, T.WORRY, T.TENSION],
+};
+
 /** The spine, plus whatever this situation adds. */
 export function everythingOwedFor(scenario: string): Owed[] {
-  return [...THE_SPINE, ...(WHAT_EACH_SITUATION_ADDS[scenario] ?? [])];
+  const spine = STARTING.has(scenario) ? THE_SPINE.map((o) => (o.id === 'actually' ? AT_A_START : o)) : THE_SPINE;
+  return [...spine, ...(WHAT_EACH_SITUATION_ADDS[scenario] ?? [])];
 }

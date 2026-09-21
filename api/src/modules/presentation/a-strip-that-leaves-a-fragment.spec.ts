@@ -40,3 +40,25 @@ describe('the other meaning of accounts', () => {
     expect(forHumans('Their account of the meeting is different.')).toContain('hat they said');
   });
 });
+
+/**
+ * AND THE REPLY THAT ARRIVED OPENING MID-SENTENCE, with nothing of ours having cut it. Read live in
+ * a discovery session: "expand into Jigawa and Kebbi if the paddy supply bottleneck is resolved
+ * makes sense given your goal. What will you do to address the dry season paddy supply, and by
+ * when?" The question was what the person needed; the first six words were debris.
+ */
+describe('a reply that opens mid-sentence', () => {
+  it('drops the fragment and keeps the rest', () => {
+    const out = forHumans('expand into Jigawa and Kebbi if the bottleneck is resolved makes sense. What will you do about the supply?');
+    expect(out).toBe('What will you do about the supply?');
+  });
+
+  it('and keeps a reply that is only a fragment, because a turn with nothing in it is worse', () => {
+    expect(forHumans('is a real answer.')).toBe('is a real answer.');
+  });
+
+  it('and leaves an ordinary opening alone', () => {
+    const fine = 'That is a real block. What has to happen for it to move?';
+    expect(forHumans(fine)).toBe(fine);
+  });
+});

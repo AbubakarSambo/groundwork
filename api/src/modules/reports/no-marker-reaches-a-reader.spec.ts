@@ -49,3 +49,11 @@ describe('no machine marker reaches a reader', () => {
     expect(cleanText('It went to HR and IT.')).toBe('It went to HR and IT.');
   });
 });
+
+describe('a one-word filler the extraction put in brackets loses its brackets', () => {
+  const { cleanText } = require('./what-the-record-actually-holds');
+  it('"not [given] a specific date" reads as theirs', () => {
+    expect(cleanText("not [given] a specific date, but it's expected soon.")).toBe("not given a specific date, but it's expected soon.");
+    expect(cleanText('I sent the [draft] over on Tuesday.')).toBe('I sent the [draft] over on Tuesday.');
+  });
+});

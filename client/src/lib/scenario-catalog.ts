@@ -113,6 +113,7 @@ export const SCENARIO_LABELS = {
    * reports are how it works rather than what it is, so none of them is in the name.
    */
   TEAM_UPDATES: 'Get Updates from Your Team',
+  DISCOVERY: 'Work Out Where to Focus',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
@@ -375,6 +376,10 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
      so the only decisions are who, what, and how often. */
   TEAM_UPDATES:     { group: 'reading',  cadence: 'Weekly',        timelineDays: 90, ongoing: true,
                       notThisOneIf: 'You need people held to something. Then pick that situation, so there is an aim to read the work against.' },
+  /* Interrogate a group once, to turn what they know into a direction. One session by design: the
+     direction comes from reading the accounts together, not from asking anybody a second time. */
+  DISCOVERY:        { group: 'reading',  cadence: 'One time',      timelineDays: 1,
+                      notThisOneIf: 'You want to know how the work is going. This asks a room what they know so you can decide where to go next, which is a different question.' },
   SNAPSHOT:         { group: 'reading',  cadence: 'One time',      timelineDays: 1,
                       notThisOneIf: 'There is a specific thing you need people held to. Then pick that situation, so there is something to measure against.' },
 
@@ -430,6 +435,7 @@ export const RECOMMENDED_MOMENT: Record<ScenarioKey, MomentValue> = {
   REALIGN_TEAM: 'RECOGNITION',
   OPEN_READ: 'RECOGNITION',
   TEAM_UPDATES: 'STARTING',
+  DISCOVERY: 'STARTING',
   SNAPSHOT: 'RECOGNITION',
   RECOGNITION: 'RECOGNITION',
 

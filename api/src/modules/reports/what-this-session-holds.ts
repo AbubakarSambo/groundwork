@@ -1,3 +1,4 @@
+import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -50,12 +51,21 @@ export interface WhatThisSessionHolds {
    * between a scoreboard and a read.
    */
   theFirstBlocker: string | null;
+  /**
+   * WORRIES ARE NOT BLOCKERS, AND "NONE" WAS STILL WRONG. Rerun, 20 Sep 2026, loan cohort: Halima
+   * had lost 220 birds and missed a payment, Aisha's diesel was N90,000 a month over, Musa was
+   * turning farmers away, and the tile read "Blockers: None - nobody named anything holding work
+   * up". Nobody had raised a dependency on anybody, which is what the count counts. What they had
+   * said was a worry, and the tile now says how many and names the first.
+   */
+  worries: number;
+  theFirstWorry: string | null;
 }
 
 export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
   /* A dependency knows which check-in raised it (sourceCheckInId); the check-in knows its session. */
   const raisedIn = await prisma.checkIn.findMany({ where: { groundId, sessionNumber }, select: { id: true } });
-  const [deps, objectives, now, before] = await Promise.all([
+  const [deps, objectives, now, before, worried] = await Promise.all([
     raisedIn.length
       ? prisma.groundDependency.findMany({
           where: { groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any }, sourceCheckInId: { in: raisedIn.map((c) => c.id) } },
@@ -67,7 +77,16 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     sessionNumber > 1
       ? prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber: sessionNumber - 1 }, select: { objectiveId: true, count: true } })
       : Promise.resolve([] as { objectiveId: string; count: number }[]),
+    raisedIn.length
+      ? prisma.recordEntry.findMany({
+          where: { disputedAt: null, checkInId: { in: raisedIn.map((c) => c.id) }, type: { in: ['WORRY', 'TENSION'] as any } },
+          select: { text: true },
+          orderBy: { createdAt: 'asc' },
+        })
+      : Promise.resolve([] as { text: string }[]),
   ]);
+  const worries = worried.length;
+  const theFirstWorry = worried[0]?.text ? cleanText(worried[0].text) : null;
   const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
@@ -92,7 +111,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       return sum + ((current.get(o.id) ?? o.count) - from);
     }, 0);
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -120,6 +139,9 @@ export function atAGlanceTiles(a: {
    */
   theDifference?: string | null;
   theBlocker?: string | null;
+  /** Worries said this round, for when nothing is blocked: the tile says so instead of "None". */
+  worries?: number;
+  theWorry?: string | null;
 }): AGlanceRead[] {
   const shortly = (s: string | null | undefined, max = 72): string | null => {
     const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.?!]+$/, '');
@@ -128,6 +150,8 @@ export function atAGlanceTiles(a: {
   };
   const theDifference = shortly(a.theDifference);
   const theBlocker = shortly(a.theBlocker);
+  const theWorry = shortly(a.theWorry);
+  const worries = a.worries ?? 0;
   return [
     {
       label: 'Differences',
@@ -180,15 +204,17 @@ export function atAGlanceTiles(a: {
       /* BLOCKING rows are blockers. WAITING rows are not, but a tile saying "None" over a finding that
          says two people are waiting on a third for five things read as the report contradicting
          itself in consecutive lines. Both are counted, in the template's own grammar. */
-      value: a.blocked ? `${a.blocked}` : (a.waiting ?? 0) > 0 ? `${a.waiting} waiting` : 'None',
+      value: a.blocked ? `${a.blocked}` : (a.waiting ?? 0) > 0 ? `${a.waiting} waiting` : worries ? `${worries} worr${worries === 1 ? 'y' : 'ies'}` : 'None',
       sub: a.blocked
         ? (theBlocker
           ? `${theBlocker}${a.blocked > 1 ? `, and ${a.blocked - 1} more` : ''}`
           : 'named as holding work up')
         : (a.waiting ?? 0) > 0
           ? (theBlocker ? `${theBlocker}, nothing hard-blocked` : 'on someone else, nothing hard-blocked')
-          : 'nobody named anything holding work up',
-      tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 ? 'warn' : 'good',
+          : worries
+            ? (theWorry ? `${theWorry}${worries > 1 ? `, and ${worries - 1} more` : ''}; nobody is waiting on anybody` : 'said, though nobody is waiting on anybody')
+            : 'nobody named anything holding work up',
+      tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 || worries ? 'warn' : 'good',
     },
     {
       /* "Solid - 0% evidence backed" put a positive label over a zero. This counts one thing and

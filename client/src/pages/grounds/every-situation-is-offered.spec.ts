@@ -109,7 +109,7 @@ describe('the signed-in situation picker', () => {
  * So the exemption stands, and it is anchored to the pack. If the pack ever starts asking for a
  * target, remove PULSE_CHECK from this list and the card will be forced to say so.
  */
-const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT']
+const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT', 'DISCOVERY']
 
 /**
  * THE ONE CARD THAT IS ALLOWED TO DESCRIBE A SINGLE REPORT.
@@ -122,7 +122,9 @@ const NO_OBJECTIVE_BY_DESIGN = ['DESCRIBE_OWN', 'PULSE_CHECK', 'SNAPSHOT']
  * naming a run, and the exemption is narrow and named rather than a pattern loosened until it fits.
  * If a second situation ever appears here, that is the signal the flattening is coming back.
  */
-const SINGLE_ROUND_BY_DESIGN = ['SNAPSHOT']
+/* And the discovery session, which asks a room what they know once: the direction comes from
+   reading the accounts against each other, not from asking anybody a second time. */
+const SINGLE_ROUND_BY_DESIGN = ['SNAPSHOT', 'DISCOVERY']
 
 describe('every card describes a run against an objective', () => {
   it('names the run, not a single report', () => {
@@ -180,3 +182,14 @@ describe('every card describes a run against an objective', () => {
     expect(pulse.desc).toMatch(/pick (that situation instead|one of the others)/i)
   })
 })
+
+/** 21 Sep 2026: the Setup card's scenario select listed nine situations, so a discovery check-in read "New hire". */
+describe('the Setup card offers every situation', () => {
+  it('reads the select from the catalogue, not a list of its own', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
+    const i = src.indexOf('Save scenario');
+    const before = src.slice(Math.max(0, i - 1500), i);
+    expect(before).toMatch(/SCENARIO_KEYS\.map/);
+    expect(before).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
+  });
+});

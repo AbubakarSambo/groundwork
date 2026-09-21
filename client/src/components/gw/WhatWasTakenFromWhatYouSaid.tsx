@@ -33,7 +33,7 @@ const KIND: Record<string, string> = {
   /* A thing that happened. Without it this row read as the raw enum. */
   PROGRESS: 'something you got done',
   WORRY: 'a worry', TENSION: 'a tension', SUCCESS_DEFINITION: 'what good looks like',
-  TIMEFRAME: 'a timeframe', TOLERANCE: 'a tolerance', OPERATING_DIFFERENCE: 'how this is actually done',
+  TIMEFRAME: 'a timeframe', TOLERANCE: 'what you can live with', OPERATING_DIFFERENCE: 'how this is actually done',
 }
 
 export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {

@@ -66,3 +66,15 @@ describe('the draft reaches the model as data', () => {
     expect(STYLE).toMatch(/Change nothing factual/i);
   });
 });
+
+describe("the product's reasoning is never put in the reader's mouth", () => {
+  const { safeToUse } = require('./the-model-words-it-and-nothing-more');
+  it('a wording that introduces "you described" where the draft had none is refused', () => {
+    const draft = 'Where this kind of work gets misread: a sales rep can feel like a failure. Their internal clock is out of sync with the buyer\'s process. That process takes weeks and is invisible to them.';
+    expect(safeToUse(draft, 'You described how a sales representative feels like a failure because of an internal clock that is out of sync with the buyer\'s process.')).toBe(false);
+    expect(safeToUse(draft, 'Sales work gets misread when the buyer\'s process takes weeks and stays invisible; silence is usually a stage, not a no.')).toBe(true);
+  });
+  it('but a draft that already carries the attribution keeps it', () => {
+    expect(safeToUse('You said you would send the proposal by Wednesday.', 'You said the proposal goes out by Wednesday.')).toBe(true);
+  });
+});

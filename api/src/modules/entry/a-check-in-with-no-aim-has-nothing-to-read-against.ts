@@ -68,7 +68,7 @@
  * OPEN_READ is the situation whose shape is not known yet - that is its entire reason for existing,
  * and its pack says so. An aim demanded before anybody knows what this is would be invented.
  */
-export const NO_AIM_BY_DESIGN = ['SNAPSHOT', 'PULSE_CHECK', 'OPEN_READ', 'TEAM_UPDATES'] as const;
+export const NO_AIM_BY_DESIGN = ['SNAPSHOT', 'PULSE_CHECK', 'OPEN_READ', 'TEAM_UPDATES', 'DISCOVERY'] as const;
 
 export function anAimIsOwedHere(scenario?: string | null): boolean {
   if (!scenario) return true;

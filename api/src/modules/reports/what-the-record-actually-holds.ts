@@ -255,10 +255,14 @@ const A_MACHINE_MARKER = /\s*\[[A-Z][A-Z_]{2,}(?::|\s)[^\]]*\]/g;
  * and already handled, and telling them apart is what stops this eating "[Q3]" or "[draft]".
  */
 const AN_EDITORIAL_INSERTION = /\s*\[(?=[^\]]*[a-z])[^\]]{6,}\]/g;
+/* And a one-word insertion - "not [given] a specific date" (a participant's report, 20 Sep 2026) - is
+   too short for the rule above, so the brackets come off and the word stays: it reads as theirs either
+   way, and "not a specific date" is the worse sentence. */
+const A_ONE_WORD_INSERTION = /\[(given|said|done|sent|made|told|asked|agreed|set|the|a|an|to|of|it|them|him|her|that|this|these|those|by|from|with|on|in|for|is|was|are|were|has|have|had|be|been|not|no|yet|still|and|or|but|so|then|now|there|here|they|we|i|you|he|she|my|our|their|its|his)\]/gi;
 
 export function cleanText(text: string): string {
   const withoutMarkers = (text ?? '').replace(VERIFIABILITY, '').replace(A_MACHINE_MARKER, '');
-  const withoutEditorial = withoutMarkers.replace(AN_EDITORIAL_INSERTION, '');
+  const withoutEditorial = withoutMarkers.replace(AN_EDITORIAL_INSERTION, '').replace(A_ONE_WORD_INSERTION, '$1');
   /* Never hand back nothing: an entry that was ONLY an insertion keeps its original text, because
      an empty line on a report is worse than a clumsy one. */
   return (withoutEditorial.trim() || withoutMarkers.trim());

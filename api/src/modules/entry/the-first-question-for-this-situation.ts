@@ -152,6 +152,10 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'What is going on? Tell me in your own words - a couple of sentences is plenty.',
     until: 'enough of the situation to know what it is, who is in it, and why it matters now',
   },
+  DISCOVERY: {
+    ask: 'What are you trying to work out, and who are you asking?',
+    until: 'the decision this is meant to inform, and roughly who is in the room',
+  },
 };
 
 /**

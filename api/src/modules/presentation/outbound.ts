@@ -244,6 +244,16 @@ export function aFragmentNotASentence(sentence: string): boolean {
   return false;
 }
 
+export function withoutAFragmentAtTheFront(text: string): string {
+  const sentences = sentencesIn(text);
+  if (sentences.length < 2) return text;
+  const first = sentences[0].trim();
+  /* A reply that opens on a small letter opens mid-sentence: nothing writes that on purpose. */
+  const startsMidSentence = /^[a-z]/.test(first);
+  if (!startsMidSentence && !aFragmentNotASentence(first)) return text;
+  return sentences.slice(1).join(' ').trim() || text;
+}
+
 export function withoutRecordNarration(text: string): string {
   const sentences = sentencesIn(text);
   const kept = sentences.map((sentence) => {
@@ -464,6 +474,19 @@ export function forHumans(text: string | null | undefined): string {
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */
   out = withoutTheMark(out);
+  /*
+   * AND A REPLY THAT OPENS MID-SENTENCE.
+   *
+   * Read live in a discovery session: "expand into Jigawa and Kebbi if the paddy supply bottleneck
+   * is resolved makes sense given your goal. What will you do to address the dry season paddy
+   * supply, and by when?" The first word is missing, so the reply opens on a verb with nothing in
+   * front of it. The question after it was fine, and it is what the person needed.
+   *
+   * Only the FIRST sentence, only when something else follows it, and only the shapes
+   * `aFragmentNotASentence` already names. A reply that is one fragment keeps it: a turn with
+   * nothing in it is worse than a turn that reads oddly.
+   */
+  out = withoutAFragmentAtTheFront(out);
   /** Collapse whatever the removals left behind, without touching paragraph breaks. */
   return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }

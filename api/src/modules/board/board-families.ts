@@ -155,6 +155,8 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
    * for everyone. See the mode note there.
    */
   SNAPSHOT: BoardFamily.SNAPSHOT,
+  /* One session, no target, nothing to track over time - the same board shape a snapshot gets. */
+  DISCOVERY: BoardFamily.SNAPSHOT,
 };
 
 /** Every board section that can exist. A family opts in per section. */
