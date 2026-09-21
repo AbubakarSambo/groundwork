@@ -84,7 +84,8 @@ const ADDRESSED_TO_THE_PRODUCT = /\b(the product|groundwork|the model|the interv
 export function theTellingHolds(rewrite: string | null | undefined, opts?: { otherNames?: string[]; max?: number }): string | null {
   const names = (opts?.otherNames ?? []).map((n) => n.trim()).filter((n) => n.length >= 3);
   const namesAName = (t: string) => names.some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
-  const kept = sentencesOf((rewrite ?? '').replace(/^["'\s]+|["'\s]+$/g, ''))
+  /* The heading is already on the page; the model repeats it ("About this check-in: This check-in is for..."). */
+  const kept = sentencesOf((rewrite ?? '').replace(/^["'\s]+|["'\s]+$/g, '').replace(/^about this check-in:?\s*/i, ''))
     .filter((t) => !AN_INSTRUCTION.test(t) && !A_RULE_ABOUT_THEM.test(t) && !ABOUT_THE_INTERVIEW.test(t) && !THE_LEAD_TO_THE_PRODUCT.test(t))
     .filter((t) => !ADDRESSED_TO_THE_PRODUCT.test(t) && !/\b(i|we|my|our|us)\b/i.test(t) && !namesAName(t))
     /* Numbers are shown separately, as the goals; a figure in the telling is a claim nobody checked. */

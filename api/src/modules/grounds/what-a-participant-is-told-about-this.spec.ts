@@ -41,6 +41,7 @@ describe('the product writes what a participant is told, once, and checks it', (
       .toBe('This check-in is about how your business is going.');
     expect(theTellingHolds('The lead wants to see where each rep stands. Do not lead them.', {})).toBeNull();
     expect(theTellingHolds('', {})).toBeNull();
+    expect(theTellingHolds('About this check-in: This check-in is for understanding how sales are progressing.', {})).toBe('This check-in is for understanding how sales are progressing.');
   });
   it('and the block says their own goal before the check-in\'s', () => {
     const t = whatAParticipantIsToldAboutThis('Help the person.', [
