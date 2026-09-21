@@ -70,3 +70,18 @@ describe('a target said with its currency', () => {
     expect(theAimsThatAreNew(small, [])).toEqual([small[0], small[1]]);
   });
 });
+
+/** Run 7, 21 Sep 2026: "Hit N180m (180,000,000); get to N180m" on one About box. */
+describe('a figure in the name is the target the aim did not carry', () => {
+  const { theAimsThatAreNew, theFigureInTheName } = require('./an-aim-said-twice-is-one-aim');
+  it('reads N180m, 400k and 180,000,000', () => {
+    expect(theFigureInTheName('get to N180m')).toBe(180_000_000);
+    expect(theFigureInTheName('Bring in $400k')).toBe(400_000);
+    expect(theFigureInTheName('reach 180,000,000 in sales')).toBe(180_000_000);
+    expect(theFigureInTheName('more dealers')).toBeNull();
+  });
+  it('so the restatement is not a second aim', () => {
+    expect(theAimsThatAreNew([{ name: 'get to N180m', target: null } as any], [{ name: 'Hit N180m', target: 180_000_000 } as any])).toEqual([]);
+    expect(theAimsThatAreNew([{ name: 'Open 40 more dealers', target: null } as any], [{ name: 'Hit N180m', target: 180_000_000 } as any])).toHaveLength(1);
+  });
+});

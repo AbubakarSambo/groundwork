@@ -78,14 +78,25 @@ export function isTheSameFigureWordedAgain(fresh: AnAim, existing: AnAim[]): boo
   });
 }
 
+/* "get to N180m" arrived with no target, beside "Hit N180m (180,000,000)", and the About box listed both
+   (run 7, 21 Sep 2026). The figure in the name is the target it did not carry. */
+const SCALE: Record<string, number> = { k: 1e3, m: 1e6, mn: 1e6, bn: 1e9, thousand: 1e3, million: 1e6, billion: 1e9 };
+export function theFigureInTheName(name: string | null | undefined): number | null {
+  const m = /(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|m|mn|bn|thousand|million|billion)?\b/i.exec(name ?? '');
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, '')) * (SCALE[(m[2] ?? '').toLowerCase()] ?? 1);
+  return Number.isFinite(n) && n >= 10 ? n : null;
+}
+
 /** The fresh aims worth writing, with any restatement of an existing one left out. */
 export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[]): AnAim[] {
   const already = new Set(existing.map((o) => (o.name ?? '').trim().toLowerCase()));
   const kept: AnAim[] = [];
   for (const aim of fresh) {
     if (already.has((aim.name ?? '').trim().toLowerCase())) continue;
-    if (isTheSameAimSaidAsItsNumber(aim, [...existing, ...kept])) continue;
-    if (isTheSameFigureWordedAgain(aim, [...existing, ...kept])) continue;
+    const withFigure = aim.target == null && theFigureInTheName(aim.name) != null ? { ...aim, target: theFigureInTheName(aim.name) } : aim;
+    if (isTheSameAimSaidAsItsNumber(withFigure, [...existing, ...kept])) continue;
+    if (isTheSameFigureWordedAgain(withFigure, [...existing, ...kept])) continue;
     kept.push(aim);
   }
   return kept;

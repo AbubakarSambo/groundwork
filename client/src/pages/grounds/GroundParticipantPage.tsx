@@ -488,8 +488,13 @@ export function GroundParticipantPage() {
                   ) : (
                     <span>· Session {completedCheckIns.length + 1}</span>
                   )}
-                  {(ground as any).daysLeft != null && (
+                  {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
+                      had done (21 Sep 2026); the count is for a run that is still going. */}
+                  {(ground as any).daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && (ground as any).daysLeft > 0 && (
                     <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+                  )}
+                  {totalSessions != null && completedCheckIns.length >= totalSessions && (
+                    <span>· every session done</span>
                   )}
                 </>
               )}
