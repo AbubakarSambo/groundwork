@@ -24,7 +24,8 @@ export function whatTheAbsenceMeans(owedWhat: string): string {
   /* A noun phrase is the subject; a clause ("what is clear and what is not") is named after the colon,
      because "Then what is clear and what is not goes on this record" read as a broken sentence (smoke
      run 7, 21 Sep 2026). */
-  if (/^(the|a|an|who|your|their)\b/i.test(x) && !/\b(is|are|was|were)\b.*\b(and|or)\b/i.test(x)) return `Then ${x} goes on this record as not given.`;
+  /* One shape for every owed thing: "the goals or targets, as numbers or dates goes on this record" read as
+     a broken sentence too (run 8). */
   return `Then it goes on this record as not given: ${x}.`;
 }
 

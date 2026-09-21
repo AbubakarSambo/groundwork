@@ -67,6 +67,9 @@ const CARRIES_NO_SUBJECT = new Set([
   'that', 'these', 'those', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'but', 'with', 'as', 'at',
   'by', 'from', 'would', 'could', 'can', 'will', 'be', 'been', 'have', 'has', 'had', 'there', 'here',
   'so', 'if', 'then', 'now', 'else', 'able', 'name', 'tell', 'say', 'about',
+  /* "Last time" is when, not what: it matched "what has moved since last time" to a question about what
+     almost went wrong (run 8, 21 Sep 2026). */
+  'last', 'time', 'since', 'next', 'one', 'thing', 'something', 'anything', 'specific', 'specifically', 'today', 'period',
 ]);
 
 /**

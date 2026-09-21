@@ -57,7 +57,9 @@ export function theNumbersIn(said: string): number[] {
   }
 
   const out: number[] = [];
-  for (const m of text.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k|m|mn|bn)?\b(\s(?:thousand|million|billion)\b)?/gi)) {
+  /* NOT \b BEFORE THE DIGIT: "N6.2m" has no word boundary after the N, so the match began at ".2m" and Bola
+     was told she had said 2,000,000 (run 8, 21 Sep 2026). A digit or a dot before it is what rules a start out. */
+  for (const m of text.matchAll(/(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(k|m|mn|bn)?\b(\s(?:thousand|million|billion)\b)?/gi)) {
     /* "13m" IS THIRTEEN MILLION. Emeka said "It's 13m now" against the team's 180,000,000 and was asked
        whether 13 was his own part of it (smoke run 7, 21 Sep 2026). */
     const n = Number(m[1].replace(/,/g, '')) * (({ k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, bn: 1e9, billion: 1e9 } as Record<string, number>)[(m[2] ?? (m[3] ?? '').trim()).toLowerCase()] ?? 1);

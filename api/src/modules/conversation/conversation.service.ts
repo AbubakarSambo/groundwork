@@ -228,6 +228,9 @@ export function countCheckableSpecifics(text: string): number {
 const WHAT_THE_BRIEF_IS_READ_FROM = {
   label: true,
   brief: true,
+  /* What a participant is told, written by the product. Run 8 (21 Sep 2026) wrote it for every ground and
+     showed nobody, because this select did not read it. */
+  toldToParticipants: true,
   scenario: true,
   initiatorId: true,
   whoSeesTargets: true,
@@ -1159,8 +1162,14 @@ export class ConversationService {
     const alreadyTheirs = theirNumbers
       .filter((o) => o.ownerParticipantId === checkIn.participantId && typeof o.target === 'number')
       .map((o) => o.target as number);
+    /* ONCE PER GROUND. Bola was asked whether 8,000,000 was her own part of the 180,000,000 in session two and
+       again in session three (run 8, 21 Sep 2026); she had answered the first time. Every check-in of hers counts. */
+    const herOwnCheckIns = await this.prisma.checkIn
+      .findMany({ where: { participantId: checkIn.participantId }, select: { id: true } })
+      .then((rows) => rows.map((r) => r.id))
+      .catch(() => [checkIn.id]);
     const earlierAiTurnsForTheGap = await this.prisma.conversationTurn
-      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true } })
+      .findMany({ where: { checkInId: { in: herOwnCheckIns }, role: TurnRole.AI }, select: { content: true } })
       .then((rows) => rows.map((r) => r.content ?? ''))
       .catch(() => [] as string[]);
     const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
@@ -1364,7 +1373,10 @@ export class ConversationService {
           } else {
             /* Nothing else in it, so the product records the absence and moves on itself. See a-refusal-is-an-answer. */
             const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
-            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how), hits: [] };
+            /* Asked three times is not declined: they answered, just not with what the model wanted. "Then it
+               goes on this record as not given: what has moved since last time" went to Bola after she had
+               said what moved (run 8, 21 Sep 2026). The answer stands as given; only a refusal is an absence. */
+            screened = { ...screened, text: recordAndMoveOn(null, how), hits: [] };
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; recorded the absence and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
           }
         }
