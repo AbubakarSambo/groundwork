@@ -1297,3 +1297,10 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-legend > summary:hover { color: var(--gw-text); }
 .gw-legend > div { padding-bottom: 6px; }
 @media (max-width: 760px) { .gw-legend > div { grid-template-columns: 1fr !important; } }
+
+/* A folded list under the board says it can open. The native marker is off (listStyle none) so the
+   row can carry two ends; the arrow does the marker's job. */
+details > summary.gw-fold-summary { list-style: none; }
+details > summary.gw-fold-summary::-webkit-details-marker { display: none; }
+details > summary.gw-fold-summary > span:first-child::before { content: '▸ '; color: var(--gw-muted); }
+details[open] > summary.gw-fold-summary > span:first-child::before { content: '▾ '; }

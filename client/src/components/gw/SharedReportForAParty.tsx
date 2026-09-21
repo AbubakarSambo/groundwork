@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { Sec } from './kit'
 import { TheSharedPictureAPartyReads } from './the-shared-picture-a-party-reads'
 import { howCheckable } from './how-checkable-was-that-session'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -129,10 +128,16 @@ export function SharedReportForAParty({
             The duplicate is still gone. This is the list now, and My record links here rather than
             holding its own copy.
           */}
+          {/* FOLDED UNDER THE BOARD where a board renders, open where none does yet. Hafsah, 21 Sep 2026: the
+              board is the page; each session's report is one click behind a summary. See
+              TheReportIsAListOfSessions for the lead's side of the same rule. */}
           {mySessions.length > 0 && (
-            <>
-              <Sec title="Your sessions" src="each one has its own report" />
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+            <details open={!(ground as any).boardRenders} style={{ marginBottom: 12 }}>
+              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Your sessions · {mySessions.length}</span>
+                <span style={{ fontSize: 11.5 }}>each one has its own report</span>
+              </summary>
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
                 {mySessions.map((ci: any, i: number) => (
                   <button
                     key={ci.id}
@@ -155,7 +160,7 @@ export function SharedReportForAParty({
                   </button>
                 ))}
               </div>
-            </>
+            </details>
           )}
           {/*
             THE HEADING GOES. The tab is called Report, the row above it opens the board, and the
@@ -244,7 +249,19 @@ export function SharedReportForAParty({
               The lead-only blocks are stripped by the server before this payload is built, and that
               is where they must stay stripped. See the component.
             */
-            <TheSharedPictureAPartyReads report={report} />
+            /* FOLDED WHERE A BOARD RENDERS. Hafsah, 21 Sep 2026: the board is the page and the rest is minimised;
+               the picture stays one click away, and open where there is no board to stand in for it. */
+            (ground as any).boardRenders ? (
+              <details style={{ marginTop: 4 }}>
+                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>The shared picture</span>
+                  <span style={{ fontSize: 11.5 }}>the written report, everyone's</span>
+                </summary>
+                <div style={{ marginTop: 6 }}><TheSharedPictureAPartyReads report={report} /></div>
+              </details>
+            ) : (
+              <TheSharedPictureAPartyReads report={report} />
+            )
           )}
     </>
   )

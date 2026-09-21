@@ -38,6 +38,7 @@ import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -385,13 +386,15 @@ export function GroundAdminPage() {
    * were never going to answer.
    */
   const sessionRows: SessionRow[] = (() => {
-    const parties = (((ground as any)?.participants ?? []) as any[]).filter((p) => !p.managingOnly)
+    const everybody = (((ground as any)?.participants ?? []) as any[])
     const checkIns = ((ground as any)?.checkIns ?? []) as any[]
     const numbers = [...new Set(checkIns.filter((c) => !c.isSetup).map((c) => c.sessionNumber as number))]
       .filter((n) => checkIns.some((c) => c.sessionNumber === n && c.status === 'COMPLETED'))
       .sort((a, b) => b - a)
 
     return numbers.map((n) => {
+      /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round. */
+      const parties = whoIsInRound(everybody, n, (ground as any)?.scenario)
       const answeredIds = new Set(
         checkIns.filter((c) => c.sessionNumber === n && c.status === 'COMPLETED').map((c) => c.participantId),
       )
@@ -1426,7 +1429,7 @@ export function GroundAdminPage() {
                     * and the codebase agreed before she made it: "session" appears in 159 visible
                     * strings and "round" in 25. One word, and it is session.
                     */}
-                  {roundDone} of {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length} checked in for session {openRound}
+                  {roundDone} of {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length} checked in for session {openRound}
                 </span>
               )}
               {roundWentBack && (
@@ -1738,7 +1741,7 @@ export function GroundAdminPage() {
                 iHaveCheckedIn: mySessionsDone > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
                 parties: (ground as any)?.sessionProgress?.total
-                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                  ?? whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length,
                 /* The lead sees who is on their own check-in, so no fallback is needed here. */
                 waitingOn: (ground.participants ?? [])
                   .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
@@ -2348,7 +2351,7 @@ export function GroundAdminPage() {
         {tab === 'report' && (
           <div>
             {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
-            {(ground.participants ?? []).filter((p: any) => !p.managingOnly).length < 2 && (
+            {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length < 2 && (
               <div role="status" style={{ marginBottom: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
                 The shared report compares two accounts. Add somebody and this will build.{' '}
                 <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
@@ -2373,8 +2376,11 @@ export function GroundAdminPage() {
               exists only to cut a round short and publish what there is, so it says that, and it
               only appears while a round is genuinely open.
             */}
+            {/* Folded, under the board and the session list: it is the exception, not the page. */}
             {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
-              <div style={{ marginTop: 14, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
+              <details style={{ marginTop: 14 }}>
+                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px' }}><span>Closing a round early</span></summary>
+              <div style={{ marginTop: 6, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                   When the last person answers, the report goes out to everybody on its own - you do
                   not have to do anything. If you need to stop waiting, you can close this round now
@@ -2415,6 +2421,7 @@ export function GroundAdminPage() {
                   </div>
                 )}
               </div>
+              </details>
             )}
           </div>
         )}
