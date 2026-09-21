@@ -75,7 +75,7 @@ const ALSO_ASKED_AS: [RegExp, RegExp][] = [
   [/what has moved since|happened since/i, /\b(?:since (?:last time|then|we last|the last)|what has (?:moved|changed|happened)|where (?:are you|do things stand|are things) (?:now|today|against))\b/i],
   [/what was achieved|where it actually landed/i, /\b(?:where did (?:things|it) (?:land|end up|actually land)|what (?:was|did you) achieve|final (?:number|figure|paid)|land(?:ed)? against|where do things stand today)\b/i],
   [/what is clear and what is not|how they see it/i, /\b(?:what is (?:not )?clear|unclear|what (?:do|don't|do not) you understand|make sense to you|confus|what is missing)/i],
-  [/understood they were meant to do|what they are answerable for/i, /\b(?:what did you understand|your understanding of|understand (?:your|the) role|meant to do|expected of you|what (?:is|was) the (?:role|job) (?:for|there to do)|in your own words, before)\b/i],
+  [/understood they were meant to do|what they are answerable for/i, /\b(?:what did you understand|your understanding of|understand (?:your|the) role|meant to do|expected of you|what (?:is|was) the (?:role|job) (?:for|there to do)|in your own words, before|what are you (?:looking|trying|aiming) to (?:achieve|do|deliver)|what are you (?:answerable|responsible) for|what is (?:your|the) target)\b/i],
   [/what this is trying to achieve|the main goal|the goals or targets/i, /\b(?:trying to achieve|aiming (?:for|at|to)|what (?:is|are) (?:the|your) (?:goal|target|aim|objective)|what would (?:success|done) look like|what is the number)\b/i],
 ];
 

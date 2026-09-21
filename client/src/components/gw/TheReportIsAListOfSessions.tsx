@@ -62,12 +62,26 @@ export function TheReportIsAListOfSessions({
         </button>
       )}
 
+      {/*
+        THE BOARD IS THE PAGE; THE SESSION LIST FOLDS UNDER IT. Hafsah, 21 Sep 2026: "keep the team board
+        on this page and minimize the other things, since we can assess the session reports via the team
+        boards." Every session's report is still one click away, behind a summary that says how many
+        there are and how many are released; where no board renders yet, the list stays open so a person
+        with no board loses nothing.
+      */}
       {rows.length === 0 ? (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          No session has finished yet. Each one gets its own report here as it completes.
-        </div>
+        !boardRenders && (
+          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            No session has finished yet. Each one gets its own report here as it completes.
+          </div>
+        )
       ) : (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+        <details open={!boardRenders} style={{ marginTop: 4 }}>
+          <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Session reports · {rows.length}{rows.filter((r) => r.closed).length ? `, ${rows.filter((r) => r.closed).length} released` : ''}</span>
+            <span style={{ fontSize: 11.5 }}>each session's own report</span>
+          </summary>
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
           {rows.map((r, i) => (
             <button
               key={r.sessionNumber}
@@ -117,6 +131,7 @@ export function TheReportIsAListOfSessions({
             </button>
           ))}
         </div>
+        </details>
       )}
     </div>
   )

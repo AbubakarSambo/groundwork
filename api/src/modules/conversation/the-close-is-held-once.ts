@@ -121,6 +121,21 @@ const A_FAREWELL =
  */
 export const saysGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '') && !/\?\s*$/.test((reply ?? '').trim());
 
+/**
+ * A HELD CLOSE DOES NOT RECITE THE RECAP AGAIN. On a live check-in (21 Sep 2026) the close was held
+ * twice and the person read "You said you will do some research online to find these people, and
+ * that will be done by October 31, 2026" three times in a row, once per attempt. What survives a
+ * refused close is what has not been said before this session: a sentence already in an earlier
+ * turn, word for word, comes out with the goodbye.
+ */
+export function withoutWhatWasAlreadySaid(reply: string, earlierAiTurns: string[]): string {
+  /* "You will do X" and "You said you will do X" are one recital. */
+  const core = (x: string) => x.trim().toLowerCase().replace(/^(?:so |and |that is |you said (?:that )?|you told me (?:that )?)+/, '').replace(/[.!?\s]+$/, '');
+  const said = new Set((earlierAiTurns ?? []).flatMap((t) => (t ?? '').match(/[^.!?\n]+[.!?]*/g) ?? []).map(core).filter((x) => x.length > 20));
+  const kept = (reply.match(/[^.!?\n]+[.!?]*|\n+/g) ?? []).filter((piece) => !said.has(core(piece)));
+  return kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function withoutTheGoodbye(reply: string): string {
   const kept = (reply.match(/[^.!?\n]+[.!?]*|\n+/g) ?? [])
     .filter((piece) => !A_FAREWELL.test(piece));

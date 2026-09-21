@@ -16,7 +16,8 @@ const read = (f: string) => strip(readFileSync(join(__dirname, f), 'utf8'))
 describe('a check-in with one person on it', () => {
   it('is told on the party page that the shared report compares two accounts', () => {
     const page = read('GroundParticipantPage.tsx')
-    expect(page).toMatch(/filter\(\(p: any\) => !p\.managingOnly\)\.length < 2 && \(/)
+    /* Counted the way the server counts a round: a managing-only lead is in session 1 (see who-is-in-this-round). */
+    expect(page).toMatch(/whoIsInRound\(\(ground\.participants \?\? \[\]\) as any\[\],[\s\S]{0,140}?\)\.length < 2 && \(/)
     expect(page).toContain('The shared report compares two accounts.')
   })
 

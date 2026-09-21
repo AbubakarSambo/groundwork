@@ -1083,6 +1083,15 @@ export function ContextPage({
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
               {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
+              {/* THIS IS SETUP, NOT THE CHECK-IN. Hafsah, 21 Sep 2026: she finished the context conversation on
+                  her own ground and waited for the first report. Nothing here writes a report; check-ins do,
+                  and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
+              {contextEnabled && isTheLead && (
+                <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
+                  <a href={`/grounds/${id}?tab=chat`} style={{ color: 'var(--gw-navy)' }}>Check-in tab</a>.
+                </div>
+              )}
             </div>
     </div>
   )

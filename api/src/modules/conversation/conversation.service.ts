@@ -83,7 +83,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1884,7 +1884,8 @@ export class ConversationService {
     if (close.ask) {
       /* The goodbye goes first. It was written before the product ruled on the close, and appending
          a question underneath it told a lead the session was over and then that it was not. */
-      const stillOpen = withoutTheGoodbye(aiTurn.content ?? '');
+      const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: aiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
+      const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(aiTurn.content ?? ''), earlierAi);
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
         data: { content: stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask },
@@ -2259,7 +2260,8 @@ export class ConversationService {
       if (close.ask) {
         /* Same as the turn path: a refused close may not keep its goodbye. The stream has already
            put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
-        const stillOpen = withoutTheGoodbye(reply);
+        const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: streamAiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
+        const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(reply), earlierAi);
         reply = stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask;
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         /* The farewell is already on the screen by now, and `done` carries the whole corrected
@@ -5021,7 +5023,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true, timelineDays: true },
     });
 
     /*
@@ -5056,8 +5058,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // next round is not auto-scheduled (availableFrom stays null until triggered).
     const ownAvailableFrom =
       cadence === Cadence.SEQUENTIAL ? null : this.cadenceToDate(cadence, ground?.cadenceAnchorDay ?? null, ground?.workingDays ?? []);
-    // Respect the end date: do not schedule a next session past it.
-    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom > ground.endsAt;
+    /*
+     * THE RUN HAS AS MANY SESSIONS AS IT SAYS. A 90-day quarterly check-in reads "Session 1 of 1", and
+     * when its one session closed a second was created for day 90 - the end date itself - so the
+     * board opened on round 2 and read "0 of 2 answered this round" to a woman who had just answered
+     * (Hafsah, 21 Sep 2026). The planned count is the same arithmetic the header uses; a session past
+     * it, or opening on or after the end, is not made.
+     */
+    const planned = totalSessionsFor((ground as any)?.timelineDays ?? null, cadence);
+    if (planned != null && sessionNumber >= planned) {
+      this.logger.log(`No next session for ${participantId}: session ${sessionNumber} of ${planned} was the last planned.`);
+      return;
+    }
+    // Respect the end date: do not schedule a next session on or past it.
+    const pastEnd = ground?.endsAt && ownAvailableFrom && ownAvailableFrom >= ground.endsAt;
     if (!pastEnd) {
       await this.createNextIfAbsent(groundId, participantId, sessionNumber + 1, ownAvailableFrom);
     }
@@ -5434,7 +5448,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       entries: types.map((t) => ({ type: t.type, text: cleanText((t as any).text ?? '') })),
       answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
       letGo: gapRows.filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
-    }).filter((o) => !o.noTypeYet);
+    });
+    /*
+     * A THING NOTHING ON THE RECORD CAN PROVE IS STILL A THING TO ASK. `noTypeYet` items were dropped
+     * here, so "the wider objective theirs sits under" was never in the plan and never held for, and a
+     * goals check-in took a rep from "$50,000 in signed contracts" to the close without once asking
+     * what that sat under, beside a $1,000,000 team target on his own screen (Abubakar, 21 Sep 2026).
+     * Coverage reads the turns, not the record, so it can see whether such a thing was asked. It asks,
+     * it does not insist: the hold is one ask, capped at two, and a decline ends it.
+     */
     return sayWhatHasBeenCovered(
       still,
       whatThisSessionHasCovered(still, turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }))),
