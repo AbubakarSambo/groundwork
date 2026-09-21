@@ -83,7 +83,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1719,6 +1719,13 @@ export class ConversationService {
         if (noHomework.cut) {
           this.logger.warn(`Check-in ${checkIn.id}: cut "what will you do about this, and by when" from a one-time session.`);
           screened = { ...screened, text: noHomework.text };
+        }
+      } else {
+        /* AND THE HOMEWORK QUESTION HAS A BUDGET, AND THE LEAD'S IS A DECISION. See withinTheHomeworkBudget. */
+        const budget = withinTheHomeworkBudget(screened.text, earlierAsks, (checkIn as any).participant?.partyType === PartyType.INITIATOR);
+        if (budget.changed !== 'kept') {
+          this.logger.warn(`Check-in ${checkIn.id}: the homework question was ${budget.changed === 'decision' ? 'made the lead\'s decision question' : 'cut, over budget'}.`);
+          screened = { ...screened, text: budget.text };
         }
       }
 
@@ -3708,6 +3715,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const isLead = checkIn.participant.partyType === PartyType.INITIATOR;
       const setForThem = (objectivesOnRecord as any[]).filter((o) => o.ownerParticipantId && o.setByParticipantId && o.setByParticipantId !== o.ownerParticipantId && o.name?.trim());
       if (!setForThem.length) return '';
+      /* ONCE PER GROUND, NOT PER SESSION. Tunde heard "Funmi has set this for you: $400,000" in session two
+         and again in session three (run 7, 21 Sep 2026). The earlier sessions' AI turns count as said. */
+      const ownEarlierCheckIns = await this.prisma.checkIn.findMany({
+        where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber ?? 1 } },
+        select: { id: true },
+      }).catch(() => [] as { id: string }[]);
+      const aiTurnsSoFar = [
+        ...(await this.prisma.conversationTurn.findMany({
+          where: { checkInId: { in: ownEarlierCheckIns.map((c) => c.id) }, role: TurnRole.AI },
+          select: { content: true },
+          take: 200,
+        }).catch(() => [] as { content: string | null }[])).map((t) => t.content ?? ''),
+        ...turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content),
+      ];
       const nameOfParticipant = (pid: string) => {
         const p = (ground.participants ?? []).find((x: any) => x.id === pid) as any;
         return (p?.user?.firstName ?? '').trim() || (p?.roleAsDescribed ?? '').split(/[.,]/)[0].trim() || 'they';
@@ -3717,16 +3738,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         const gap = setForThem.map((o) => ({ o, f: findings.find((f) => f.participantId === o.ownerParticipantId && f.hasGap && f.headline) })).find((x) => x.f);
         if (!gap) return '';
         const sentence = theSentenceToTheLead({ leadName: '', target: { name: gap.o.name, target: gap.o.target }, theirOwn: [], personName: nameOfParticipant(gap.o.ownerParticipantId), personHeadline: String(gap.f.headline).replace(/^[^:]*:\s*/, '') });
-        return sayTheDisagreementOnce(sentence, turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content));
+        return sayTheDisagreementOnce(sentence, aiTurnsSoFar);
       }
       if ((ground as any).participantsHearTheLeadsExpectation === false) return '';
       const mine = setForThem.find((o) => o.ownerParticipantId === checkIn.participantId);
       if (!mine) return '';
-      const theirOwn = pastEntries.filter((e) => e.type === 'SUCCESS_DEFINITION' || e.type === 'INTENT').sort((a, b) => b.session - a.session).map((e) => e.text);
+      /* Their definition of success first; an intent only when it is more than a date ("We're looking at end of
+         next week now" was read back to Tunde as his side of the $400,000, run 7). */
+      const notADate = (t: string) => !/\b(end of (?:next |this )?(?:week|month)|next week|by (?:friday|monday)|tomorrow)\b/i.test(t) && t.trim().split(/\s+/).length >= 6;
+      const byRecency = (a: { session: number }, b: { session: number }) => b.session - a.session;
+      const theirOwn = [
+        ...pastEntries.filter((e) => e.type === 'SUCCESS_DEFINITION').sort(byRecency),
+        ...pastEntries.filter((e) => e.type === 'INTENT' && notADate(e.text)).sort(byRecency),
+      ].map((e) => e.text);
       const lead = (ground.participants ?? []).find((x: any) => x.partyType === PartyType.INITIATOR) as any;
       const leadName = (lead?.user?.firstName ?? '').trim() || 'The lead';
       const sentence = theSentenceToThePerson({ leadName, target: { name: mine.name, target: mine.target }, theirOwn });
-      return sayTheDisagreementOnce(sentence, turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content));
+      return sayTheDisagreementOnce(sentence, aiTurnsSoFar);
     })().catch(() => '');
 
     const thisTurn = {

@@ -135,6 +135,44 @@ export function withoutTheGoodbye(reply: string): string {
  */
 const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
 
+/** Does this turn ask the homework question at all? */
+export const asksForHomework = (text: string): boolean => {
+  HOMEWORK.lastIndex = 0;
+  const yes = HOMEWORK.test(text ?? '');
+  HOMEWORK.lastIndex = 0;
+  return yes;
+};
+
+/**
+ * THE LEAD'S CLOSE IS A DECISION, IN CODE. The lead block says it and the model asked Funmi "what will
+ * you do about this, and by when?" anyway, in every session of run 7 (21 Sep 2026). The homework
+ * sentence to a lead becomes the decision question, once a session; after that it is cut.
+ */
+export const THE_LEADS_DECISION = 'From what is on this record, what have you decided?';
+
+/**
+ * A HOMEWORK BUDGET. The pack allows the question once and "once more for their own part"; Halima
+ * had it four times in one closing session. The third time, the sentence comes out and the rest of the
+ * turn stands; where nothing else was in it, the record line goes instead.
+ */
+export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[], isLead: boolean): { text: string; changed: 'kept' | 'cut' | 'decision' } {
+  const text = reply ?? '';
+  if (!asksForHomework(text)) return { text, changed: 'kept' };
+  const earlier = (earlierAiTurns ?? []).filter((t) => asksForHomework(t)).length;
+  if (isLead) {
+    const decisionAsked = (earlierAiTurns ?? []).some((t) => (t ?? '').includes(THE_LEADS_DECISION));
+    HOMEWORK.lastIndex = 0;
+    const swapped = decisionAsked ? withoutTheHomework(text).text : text.replace(HOMEWORK, THE_LEADS_DECISION).replace(/[ \t]{2,}/g, ' ').trim();
+    HOMEWORK.lastIndex = 0;
+    if (decisionAsked && swapped === text) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+    return { text: swapped, changed: decisionAsked ? 'cut' : 'decision' };
+  }
+  if (earlier < 2) return { text, changed: 'kept' };
+  const without = withoutTheHomework(text);
+  if (!without.cut) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+  return { text: without.text, changed: 'cut' };
+}
+
 export function withoutTheHomework(reply: string): { text: string; cut: boolean } {
   const text = (reply ?? '');
   if (!HOMEWORK.test(text)) return { text, cut: false };

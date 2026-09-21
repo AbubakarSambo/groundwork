@@ -22,7 +22,7 @@
  * ground can turn the participant side off (participantsHearTheLeadsExpectation); the lead side is
  * always on, because it is their own expectation being read back to them.
  *
- * Once said, it is not said again: the coverage read marks it by the number it carries.
+ * Once said, it is not said again in any session of the ground: the coverage read marks it by the number it carries.
  */
 
 export interface AGapToSay {
@@ -68,7 +68,7 @@ export function alreadySaid(sentence: string, aiTurns: string[]): boolean {
 /** The block the model reads: the exact sentence, and the rule around it. */
 export function sayTheDisagreementOnce(sentence: string | null, aiTurns: string[]): string {
   if (!sentence) return '';
-  if (alreadySaid(sentence, aiTurns)) return 'THE DISAGREEMENT HAS BEEN SAID THIS SESSION. Do not say it again; build on whatever they said back.';
+  if (alreadySaid(sentence, aiTurns)) return 'THE DISAGREEMENT HAS BEEN SAID, in this check-in or an earlier one. Do not say it again; build on whatever they said back.';
   return [
     'THE DISAGREEMENT TO SAY OUT LOUD, ONCE, THIS SESSION. The product wrote this sentence from the record; say it word for word, once, at the point the conversation reaches what they are working to - not as the opener, not as the close. Then ask what they make of it, and take the answer.',
     `  "${sentence}"`,

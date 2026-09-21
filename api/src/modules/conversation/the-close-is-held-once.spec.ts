@@ -183,3 +183,30 @@ describe('no homework in a one-time session', () => {
     expect(withoutTheHomework('What would you need to have in place by March?').cut).toBe(false);
   });
 });
+
+/**
+ * THE HOMEWORK QUESTION HAS A BUDGET, AND THE LEAD'S IS A DECISION. Run 7, 21 Sep 2026: Funmi was asked
+ * "what will you do about this, and by when?" in every session; Halima had it four times in one.
+ */
+describe('the homework question, budgeted', () => {
+  const { withinTheHomeworkBudget, THE_LEADS_DECISION } = require('./the-close-is-held-once');
+  const ask = 'That is a real answer. What will you do about this, and by when?';
+  it('a participant keeps it twice and loses it the third time', () => {
+    expect(withinTheHomeworkBudget(ask, [], false)).toEqual({ text: ask, changed: 'kept' });
+    expect(withinTheHomeworkBudget(ask, ['Before we close: what will you do about this, and by when?'], false).changed).toBe('kept');
+    const third = withinTheHomeworkBudget(ask, ['What will you do about this, and by when?', 'So what is the first thing you will do about that, and when?'], false);
+    expect(third.changed).toBe('cut');
+    expect(third.text).toBe('That is a real answer.');
+  });
+  it('a bare third ask becomes the record line', () => {
+    expect(withinTheHomeworkBudget('What will you do about this, and by when?', ['what will you do about this, and by when?', 'what will you do about it and by when?'], false).text).toBe('That goes on this record as you put it.');
+  });
+  it('the lead gets the decision question once, then nothing', () => {
+    const first = withinTheHomeworkBudget(ask, [], true);
+    expect(first.changed).toBe('decision');
+    expect(first.text).toBe(`That is a real answer. ${THE_LEADS_DECISION}`);
+    const again = withinTheHomeworkBudget(ask, [first.text], true);
+    expect(again.changed).toBe('cut');
+    expect(again.text).toBe('That is a real answer.');
+  });
+});

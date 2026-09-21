@@ -43,7 +43,7 @@ export interface HowItWasCovered {
  * is the one answer the next question must not ignore. Bounded to the shapes that were badgered live.
  */
 const DECLINES =
-  /\b(i (do not|don't|dont) (know|have|track|focus|count|look at|keep|measure|need to|want to|see why|deal with)|how would i know|not something i|not my (job|target|call|problem|department)|(that|this) is (finance|somebody else|someone else)'?s? (job|call|problem)|we (do not|don't|dont) (share|track|have)|no idea|i (can't|cannot) (say|tell|give)|not (going|able) to (say|share|give)|i('d| would) rather not|leave it there|move on)\b/i;
+  /\b(i (do not|don't|dont) (know|have|track|focus|count|look at|keep|measure|need to|want to|see why|deal with)|how would i know|not something i|not my (job|target|call|problem|department)|(that|this) is (finance|somebody else|someone else)'?s? (job|call|problem)|we (do not|don't|dont) (share|track|have)|no idea|i (can't|cannot) (say|tell|give)|not (going|able) to (say|share|give)|i('d| would) rather not|leave it there|move on|you('d| would) have to ask|i haven'?t asked|too early|i (cannot|can't) say when|when i can|i('m| am) not sure (of|what|which|exactly)|it varies|nothing (is )?(getting in|in) the way|nothing is (stopping|blocking))\b|^\s*nothing[.!]?\s*$/i;
 
 /** Did this turn decline the thing asked? Exported so the reply guard and the block agree on what a decline is. */
 export const theyDeclined = (turn: string): boolean => DECLINES.test(turn ?? '');
@@ -71,6 +71,7 @@ const ALSO_ASKED_AS: [RegExp, RegExp][] = [
   [/what has moved since|happened since/i, /\b(?:since (?:last time|then|we last|the last)|what has (?:moved|changed|happened)|where (?:are you|do things stand|are things) (?:now|today|against))\b/i],
   [/what was achieved|where it actually landed/i, /\b(?:where did (?:things|it) (?:land|end up|actually land)|what (?:was|did you) achieve|final (?:number|figure|paid)|land(?:ed)? against|where do things stand today)\b/i],
   [/what is clear and what is not|how they see it/i, /\b(?:what is (?:not )?clear|unclear|what (?:do|don't|do not) you understand|make sense to you|confus|what is missing)/i],
+  [/understood they were meant to do|what they are answerable for/i, /\b(?:what did you understand|your understanding of|understand (?:your|the) role|meant to do|expected of you|what (?:is|was) the (?:role|job) (?:for|there to do)|in your own words, before)\b/i],
   [/what this is trying to achieve|the main goal|the goals or targets/i, /\b(?:trying to achieve|aiming (?:for|at|to)|what (?:is|are) (?:the|your) (?:goal|target|aim|objective)|what would (?:success|done) look like|what is the number)\b/i],
 ];
 

@@ -184,7 +184,9 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
       const quiet = firstFor.find((f) => {
         if (sinceHasANumber && numbersWithUnits(f.text).some((n) => n.unit === 'money' || n.unit === 'percent')) return false;
         const w = [...wordsOf(f.text)];
-        return w.length >= 2 && !w.some((x) => sinceWords.has(x));
+        /* Three content words at least: "to keep them healthy" was quoted back to Halima as what the loan was
+           for, twice (run 7). A fragment is not a purpose to hold anyone to. */
+        return w.length >= 3 && !w.some((x) => sinceWords.has(x));
       });
       if (quiet) {
         out.push({
@@ -225,7 +227,7 @@ export function sayWhatDoesNotAddUp(input: WhatToCheck): string {
     const first = open[0];
     lines.push(`PUT THIS ONE TO THEM THIS SESSION, once the current thread is done: ${first.kind}.`, ...first.lines.map((l) => `  ${l}`));
     lines.push(
-      'Put both lines side by side in one plain sentence and ask which is right, or what happened between the two. A question, not a verdict; their words, not yours. If they explain it, take the explanation and let it go. Never raise a second one before this one is answered.',
+      'Put both lines side by side in one plain sentence and ask which one stands now. A question, not a verdict; their words, not yours. Never the phrase "what happened between" - it went out five times in one run. If they explain it, take the explanation and let it go. Never raise a second one before this one is answered.',
     );
     for (const d of open.slice(1)) lines.push(`Also on record, for a later turn if this one is answered: ${d.kind} (${d.lines[0]})`);
   }

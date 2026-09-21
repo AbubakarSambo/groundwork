@@ -252,7 +252,22 @@ export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean
    * convener of a discovery session got it three times (adversarial run, 20 Sep 2026). A thing
    * asked twice anywhere in the session, and now a third time, is the fault whatever sat between.
    */
-  return asked.filter((a) => asksTheSameThingAgain(a, reply)).length >= 2;
+  /*
+   * TWO EARLIER ASKS NEED LESS OVERLAP EACH. "What specific numbers are you now tracking for how the
+   * asset is working" went to Ibrahim four times in one session, reworded each time, and no pair
+   * reached half (run 7, 21 Sep 2026). Two earlier turns sharing two fifths of a question's subject is
+   * the same question three times.
+   */
+  return asked.filter((a) => asksTheSameThingAgain(a, reply) || asksMuchTheSameThing(a, reply)).length >= 2;
+}
+
+function asksMuchTheSameThing(earlier: string, now: string): boolean {
+  const a = subjectWords(earlier);
+  const b = subjectWords(now);
+  if (a.size < 4 || b.size < 4) return false;
+  let shared = 0;
+  for (const w of b) if (a.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.4;
 }
 
 export const ASKED_IT_TWICE_ALREADY = `You have now asked this same thing three turns running. They have answered each time, just not with what you were looking for, and asking again is what makes a check-in feel like it is going nowhere.

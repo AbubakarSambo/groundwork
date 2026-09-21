@@ -20,6 +20,6 @@ describe('the disagreement, said once', () => {
     const sentence = theSentenceToThePerson(g)!;
     expect(sayTheDisagreementOnce(sentence, [])).toContain('say it word for word, once');
     expect(alreadySaid(sentence, ['Funmi has set this for you: Bring in $400k of new business (400,000). You have said: "...". This report will show both, side by side.'])).toBe(true);
-    expect(sayTheDisagreementOnce(sentence, ['...This report will show both, side by side.'])).toContain('HAS BEEN SAID THIS SESSION');
+    expect(sayTheDisagreementOnce(sentence, ['...This report will show both, side by side.'])).toContain('HAS BEEN SAID');
   });
 });
