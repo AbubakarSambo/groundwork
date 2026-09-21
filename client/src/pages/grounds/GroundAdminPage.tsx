@@ -1202,11 +1202,17 @@ export function GroundAdminPage() {
    * printing and is not the same claim as "the round has closed".
    */
   const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
+  /*
+   * NOTHING IS BEING WRITTEN UNTIL SOMEBODY HAS CHECKED IN. Hafsah, 21 Sep 2026, on her own ground: "0 of
+   * 1 checked in for session 1 · report being written", after the setup conversation and before any
+   * check-in - and she read it as a report on its way. A report row exists from setup; a report is
+   * written from check-ins. With none in this session, the header says whose turn it is.
+   */
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
       : (ground as any).report
-        ? (everyoneIn ? 'everyone is in, report on its way' : 'report being written')
+        ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
         : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -2859,10 +2865,30 @@ export function GroundAdminPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select className="gw-input" aria-label="Timeframe" value={timelineDaysDraft}
                     onChange={(e) => setTimelineDaysDraft(Number(e.target.value))} style={{ background: 'white' }}>
-                    {[7, 14, 21, 30, 60, 90, 180, 365].map((d) => (
+                    {[...new Set([7, 14, 21, 30, 60, 90, 180, 365, timelineDaysDraft])].sort((a, b) => a - b).map((d) => (
                       <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 21 ? '3 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
                     ))}
                   </select>
+                  {/* OR AN END DATE. "There's no place to set end date" (Hafsah, 21 Sep 2026): a length in days is
+                      the same fact as an end date, and a lead thinks in dates. The date sets the days, counted
+                      from the start on record (today where none is set); the Save below saves both. */}
+                  <input
+                    type="date"
+                    className="gw-input"
+                    aria-label="Ends on"
+                    title="Ends on"
+                    value={(() => {
+                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
+                      const end = new Date(from.getTime() + timelineDaysDraft * 86_400_000);
+                      return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : '';
+                    })()}
+                    onChange={(e) => {
+                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
+                      const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000);
+                      if (Number.isFinite(days) && days >= 1) setTimelineDaysDraft(days);
+                    }}
+                    style={{ background: 'white', maxWidth: 170 }}
+                  />
                   <select className="gw-input" aria-label="Session cadence" value={cadenceDraft}
                     onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
                     {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
