@@ -182,3 +182,14 @@ describe('every card describes a run against an objective', () => {
     expect(pulse.desc).toMatch(/pick (that situation instead|one of the others)/i)
   })
 })
+
+/** 21 Sep 2026: the Setup card's scenario select listed nine situations, so a discovery check-in read "New hire". */
+describe('the Setup card offers every situation', () => {
+  it('reads the select from the catalogue, not a list of its own', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
+    const i = src.indexOf('Save scenario');
+    const before = src.slice(Math.max(0, i - 1500), i);
+    expect(before).toMatch(/SCENARIO_KEYS\.map/);
+    expect(before).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
+  });
+});

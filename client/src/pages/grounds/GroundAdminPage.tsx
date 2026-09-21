@@ -37,7 +37,7 @@ import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
-import { scenarioLabel } from '@/lib/scenario-catalog'
+import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -2917,18 +2917,11 @@ export function GroundAdminPage() {
                 onChange={e => setGroundScenario(e.target.value)}
                 style={{ background: 'white' }}
               >
-                {([
-                  ['NEW_HIRE', 'New hire'],
-                  ['NEW_PROJECT', 'New project'],
-                  ['NEW_ADVISOR', 'New board member'],
-                  ['NEW_COFOUNDER', 'New partner'],
-                  ['CONTRACT_RENEWAL', 'Contract renewal'],
-                  ['PIP', 'PIP'],
-                  ['OKR_ALIGNMENT', 'Goals & planning'],
-                  ['PULSE_CHECK', 'Pulse check'],
-                  ['DRIFT', 'New direction'],
-                ] as [string, string][]).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
+                {/* EVERY SITUATION, BY ITS CATALOGUE NAME. This listed nine of the twenty-four, so a discovery
+                    check-in's Setup card read "New hire" (21 Sep 2026): a select shows its first option for a
+                    value it does not have. The catalogue is the one list. */}
+                {SCENARIO_KEYS.map((val) => (
+                  <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>
                 ))}
               </select>
               <button
