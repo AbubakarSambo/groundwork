@@ -134,18 +134,18 @@ export function sayWhatHasBeenCovered(things: AThingToCover[], covered: Map<stri
   notAsked: AThingToCover[];
   answered: { thing: AThingToCover; answer: string }[];
   vague: { thing: AThingToCover; answer: string }[];
-  leave: { thing: AThingToCover; why: 'declined' | 'asked twice' }[];
+  leave: { thing: AThingToCover; why: 'declined' | 'asked twice'; answer?: string | null }[];
   block: string;
 } {
   const notAsked: AThingToCover[] = [];
   const answered: { thing: AThingToCover; answer: string }[] = [];
   const vague: { thing: AThingToCover; answer: string }[] = [];
-  const leave: { thing: AThingToCover; why: 'declined' | 'asked twice' }[] = [];
+  const leave: { thing: AThingToCover; why: 'declined' | 'asked twice'; answer?: string | null }[] = [];
   for (const thing of things) {
     const c = covered.get(thing.id) ?? { state: 'not-asked' as CoverState, askedTimes: 0, answer: null };
-    if (c.state === 'declined') leave.push({ thing, why: 'declined' });
+    if (c.state === 'declined') leave.push({ thing, why: 'declined', answer: c.answer });
     else if (c.state === 'answered') answered.push({ thing, answer: c.answer ?? '' });
-    else if (c.askedTimes >= 2) leave.push({ thing, why: 'asked twice' });
+    else if (c.askedTimes >= 2) leave.push({ thing, why: 'asked twice', answer: c.answer });
     else if (c.state === 'answered-vaguely') vague.push({ thing, answer: c.answer ?? '' });
     else if (c.state === 'asked-not-answered' && c.askedTimes >= 1) vague.push({ thing, answer: '' });
     else notAsked.push(thing);

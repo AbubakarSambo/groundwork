@@ -1514,6 +1514,21 @@ export class ConversationService {
       }
 
       /*
+       * THE LAST WORD ON A REPEATED QUESTION, AFTER EVERY RETRY. Run 11 (21 Sep 2026): "What is stopping
+       * you from doing that now?" went to Adamu eight times, word for word. The third-ask guard runs
+       * above and caught nothing to cut because the whole reply was the question; then the
+       * restatement retry below it asked the model again and got the same question back, after
+       * the guard had had its turn. Whatever the retries produced, a reply that repeats the last
+       * question word for word, or asks a thing already asked twice, does not ship: the record line
+       * and the next thing this check-in is for go instead.
+       */
+      if (earlierAsks.length && alreadyAskedTwice(screened.text, earlierAsks)) {
+        const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
+        screened = { ...screened, text: recordAndMoveOn(null, how), hits: [] };
+        this.logger.warn(`Check-in ${checkIn.id}: the reply still repeated a question after every retry; recorded and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
+      }
+
+      /*
        * LENGTH IS JUDGED AFTER THE RESTATEMENT HAS GONE, NOT BEFORE.
        *
        * This ran three guards earlier. Reading every reply that shipped over the bar in nineteen
@@ -5388,7 +5403,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   /** What this person has answered this session, with the answer, so a second ask can be stopped at the reply. */
   private async whatThisSessionHasAnswered(checkInId: string): Promise<{ thing: AThingToCover; answer: string }[]> {
     const covered = await this.theCoverageFor(checkInId);
-    return covered ? covered.answered : [];
+    if (!covered) return [];
+    /* A vague answer given to a thing already asked twice is an answer too: the pack allows one more ask for
+       the specific, and after that "No reliable weekly paddy price" is what they said (run 11). */
+    const askedTwice = covered.leave.filter((v) => v.why === 'asked twice').map((v) => ({ thing: v.thing, answer: v.answer ?? 'what they said the first two times' }));
+    return [...covered.answered, ...askedTwice];
   }
 
   private async theCoverageFor(checkInId: string): Promise<ReturnType<typeof sayWhatHasBeenCovered> | null> {
