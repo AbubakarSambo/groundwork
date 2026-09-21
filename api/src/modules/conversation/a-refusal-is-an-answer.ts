@@ -16,7 +16,7 @@
  * And the close chases nothing. "Put a date or a number on that" went out to people who had said
  * "No." The close now records that nothing here carries a date or a number, and closes.
  */
-import { saidToThem } from './the-close-is-held-once';
+import { saidToThem, asAQuestion } from './the-close-is-held-once';
 
 /** "Then X goes on this record as not given." X is the owed thing, said to them. */
 export function whatTheAbsenceMeans(owedWhat: string): string {
@@ -26,7 +26,9 @@ export function whatTheAbsenceMeans(owedWhat: string): string {
      run 7, 21 Sep 2026). */
   /* One shape for every owed thing: "the goals or targets, as numbers or dates goes on this record" read as
      a broken sentence too (run 8). */
-  return `Then it goes on this record as not given: ${x}.`;
+  /* No colon: "Then it goes on this record as not given: what is clear and what is not" was one of the weird
+     colons (21 Sep 2026). One sentence, the thing named inside it. */
+  return `Then this record shows nothing on ${x}.`;
 }
 
 /**
@@ -37,7 +39,7 @@ export function whatTheAbsenceMeans(owedWhat: string): string {
 export function recordAndMoveOn(declinedWhat: string | null, next: { question?: string | null; owed?: string | null }): string {
   const first = declinedWhat ? whatTheAbsenceMeans(declinedWhat) : 'That goes on this record as you put it.';
   if (next.question?.trim()) return `${first} ${next.question.trim()}`;
-  if (next.owed?.trim()) return `${first} The other thing this check-in is for: ${saidToThem(next.owed)}.`;
+  if (next.owed?.trim()) return `${first} ${asAQuestion(next.owed)}`;
   return first;
 }
 
