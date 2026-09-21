@@ -484,7 +484,7 @@ export default function SessionReportPage() {
         The primary action is the question. Opening a follow-up is how that conversation gets a
         time and a place in this product, so that is the button. The link stays, quieter.
       */}
-      <div style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
+      <div className="gw-print-none" style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
           Pick the open thing that matters most and agree who owns it. Nobody can do that part for

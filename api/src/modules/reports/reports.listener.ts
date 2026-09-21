@@ -6,7 +6,7 @@ import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
-import { GroundStatus, PartyType, ReportActivationStatus } from '@prisma/client';
+import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
 import { hasEnded, isHeld } from '../grounds/a-ground-that-has-ended';
 
 /**
@@ -157,22 +157,38 @@ export class ReportsListener {
   }
 
   private async notifyAdminOnCheckIn(event: CheckInCompletedEvent): Promise<void> {
+    /*
+     * BY NAME, AND WITH THE TRUE COUNT. The lead read "adamu@r1789...adversarial.test has checked in",
+     * twenty-four times, each one ending "Everyone has now checked in. The shared report is ready to
+     * go out" - because the person's name was never fetched and the pending count was never passed
+     * (21 Sep 2026). The name is the one the roster shows; the count is who has no completed check-in
+     * for this session yet, leaving out anybody who only manages.
+     */
     const ground = await this.prisma.ground.findUnique({
       where: { id: event.groundId },
       select: {
         label: true,
         initiator: { select: { email: true } },
-        participants: { where: { id: event.participantId }, select: { user: { select: { email: true } } } },
+        participants: {
+          select: {
+            id: true, managingOnly: true,
+            user: { select: { email: true, firstName: true, lastName: true } },
+            checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+          },
+        },
       },
     });
     if (!ground?.initiator?.email) return;
 
-    const participantEmail = ground.participants[0]?.user?.email;
+    const who = ground.participants.find((p) => p.id === event.participantId);
+    const participantEmail = who?.user?.email;
     if (!participantEmail || participantEmail === ground.initiator.email) return;
+    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim()).join(' ').trim() || participantEmail;
+    const stillPending = ground.participants.filter((p) => !p.managingOnly && p.checkIns.length === 0).length;
 
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
-    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantEmail, ground.label, groundUrl);
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending);
   }
 
   /**
