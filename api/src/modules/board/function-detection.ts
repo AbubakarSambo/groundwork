@@ -132,7 +132,7 @@ export interface DetectionResult {
  * happens to share with the signal lists. Their role, as they gave it, says so; the read stops there.
  */
 const RUNS_THEIR_OWN_BUSINESS =
-  /\b(farmer|farm|poultry|birds?|eggs?|layers?|tractor|plough|harvest|hectares?|acres?|maize|paddy|rice mill|miller|destoner|parboil|cold ?store|cold ?chain|motor ?bike|okada|rider|courier|deliver(?:y|ies) business|trader|market woman|market stall|shop ?keeper|kiosk|dealer|agro-?dealer|aggregator|borrower|loan|client of|cooperative|co-op|smallholder|processor|agribusiness owner|owner[- ]operator|sole trader|my (?:own )?business|runs? (?:a|my|her|his) (?:own )?(?:business|shop|farm))\b/i;
+  /\b(farmer|farm|poultry|birds?|eggs?|layers?|tractor|plough|harvest|hectares?|acres?|maize|paddy|rice mill|miller|destoner|parboil|cold ?store|cold ?chain|motor ?bike|okada|rider|courier|deliver(?:y|ies) business|trader|market woman|market stall|shop ?keeper|kiosk|agro-?dealer|aggregator|borrower|(?:took|taking|got|on|with) a loan|smallholder|agribusiness owner|owner[- ]operator|sole trader|my (?:own )?(?:business|mill|shop|farm|store)|runs? (?:a|my|her|his) (?:own )?(?:business|shop|farm|mill))\b/i;
 
 export function runsTheirOwnBusiness(roleAsDescribed: string | null | undefined): boolean {
   return RUNS_THEIR_OWN_BUSINESS.test(roleAsDescribed ?? '');

@@ -91,6 +91,11 @@ describe('GW-ROLEDETECT-02: the stated role wins when the words disagree with it
       expect(r.confidence).toBe(0);
     }
   });
+
+  it('but the loan officer who manages the borrowers is not one of them', () => {
+    const r = detectFunction('Loan officer at Tijara Finance. I manage a cohort of asset-loan clients.', ['I track their repayment status. I chase the overdue ones and escalate to my supervisor.'], null);
+    expect(r.fn).not.toBeNull();
+  });
 });
 
 describe('GW-ROLEDETECT-03: it does not force a bucket it cannot see', () => {
