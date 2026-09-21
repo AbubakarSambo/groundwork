@@ -51,3 +51,28 @@ describe('the finding, per person, written by the product', () => {
     expect(findingFor({ participantId: 'x', label: 'x', isLead: false, said: [], targets: [] }, 1)).toBeNull();
   });
 });
+
+/** Run 10, 21 Sep 2026: "$400,000 in new business" on the board as shared, and "no gap", for a man who had never said the figure. */
+describe('a number set for them that they have never said', () => {
+  const { findingFor, everMentioned } = require('./the-finding-per-person');
+  it('is a gap of its own kind', () => {
+    const f = findingFor({
+      participantId: 't', label: 'Engagement Director', isLead: false,
+      said: [{ text: 'Building relationships and warming up the pipeline.', type: 'SUCCESS_DEFINITION', session: 1 }, { text: 'Proposals for two NGOs, out by Friday.', type: 'PROGRESS', session: 1 }],
+      targets: [{ name: 'New business in the first year', target: 400_000, count: 0, yours: true, setByThem: false }],
+    }, 1);
+    expect(f.hasGap).toBe(true);
+    expect(f.headline).toBe('Engagement Director: 400,000 set by the lead, not yet said by them');
+    expect(f.text).toMatch(/nothing they have said mentions that figure/);
+  });
+  it('and not when they have said it, in any shape', () => {
+    expect(everMentioned([{ text: 'The $400k was not a figure I was aware of.', type: 'INTENT', session: 2 }], 400_000)).toBe(true);
+    expect(everMentioned([{ text: 'We are at N38m.', type: 'PROGRESS', session: 2 }], 180_000_000)).toBe(false);
+    const f = findingFor({
+      participantId: 't', label: 'Rep', isLead: false,
+      said: [{ text: 'My target is N45m for the quarter.', type: 'SUCCESS_DEFINITION', session: 1 }],
+      targets: [{ name: 'Hit N45m', target: 45_000_000, count: 0, yours: true, setByThem: false }],
+    }, 1);
+    expect(f.hasGap).toBe(false);
+  });
+});

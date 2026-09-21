@@ -55,10 +55,11 @@ describe('the product writes what a participant is told, once, and checks it', (
 /** Run 8, 21 Sep 2026: written for every ground, read by nobody. The About block's select must carry it. */
 describe('what the product wrote is what the About block reads', () => {
   it('the brief select carries the telling and the block prefers it', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, '../conversation/conversation.service.ts'), 'utf8');
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const src = strip(require('fs').readFileSync(require('path').join(__dirname, '../conversation/conversation.service.ts'), 'utf8'));
     expect(src).toMatch(/const WHAT_THE_BRIEF_IS_READ_FROM = \{[\s\S]{0,400}toldToParticipants: true/);
     expect(src).toMatch(/told: \(ground as any\)\.toldToParticipants/);
-    const grounds = require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8');
+    const grounds = strip(require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8'));
     expect(grounds).toMatch(/toldToParticipants\?\.trim\(\) \|\| theSituationIn\(brief\)/);
   });
 });

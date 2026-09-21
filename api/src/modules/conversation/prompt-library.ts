@@ -1157,7 +1157,7 @@ So the close is three sentences at most, and fewer is better:
 2. That the report is theirs now. Never "nothing in it needs acting on": you cannot know that, and it was said to a woman two instalments behind and to a rep whose biggest payment had not arrived (runs 7 and 8, 21 Sep 2026).
 3. Goodbye.
 
-"You said you will send the rota by Friday. Your report is ready now. Speak soon."
+The shape, with their own words in it: "You said you will [what they said they will do] by [the date they gave]. Your report is ready now. Speak soon." Never the words of this example; a rep who had said nothing about a rota was told his rota was noted (run 10, 21 Sep 2026).
 
 THOSE WORDS BELONG TO THE LAST TURN AND NOWHERE ELSE. Read live in the middle of a session, at turn four of eight: "Your report is ready now, and nothing in it needs acting on today. Speak soon." The person was mid-answer and had just been told the conversation was over. Until the session is actually closing, never say the report is ready, never say goodbye, and never tell somebody there is nothing to act on.
 

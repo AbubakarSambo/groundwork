@@ -114,7 +114,7 @@ import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
-import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT } from './what-this-session-has-covered';
+import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT, askedAbout, theyAlreadyAnsweredThat, type AThingToCover } from './what-this-session-has-covered';
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
@@ -1383,6 +1383,36 @@ export class ConversationService {
       }
 
       /*
+       * ASKED AGAIN AFTER A REAL ANSWER. The two guards above catch a third ask and a refusal. Run 10 (21
+       * Sep 2026): "repeated question" 18 times among participants, most of them a second ask about a
+       * thing the person had answered. The coverage read knows which owed things this session has
+       * answered, and what was said; a reply that asks about one of them is told so once, and if it
+       * asks again the question comes out. See what-this-session-has-covered.
+       */
+      if (earlierAsks.length) {
+        const answeredHere = await this.whatThisSessionHasAnswered(checkIn.id).catch(() => [] as { thing: AThingToCover; answer: string }[]);
+        const askedAgain = answeredHere.find((a) => askedAbout(a.thing, screened.text) && /\?/.test(screened.text));
+        if (askedAgain) {
+          this.logger.warn(`Check-in ${checkIn.id}: asked again about ${JSON.stringify(askedAgain.thing.what)} after it was answered; asking for another turn.`);
+          const moved = await this.anthropic
+            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`, history)
+            .catch(() => '');
+          const second = moved.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !askedAbout(askedAgain.thing, second.text)) {
+            screened = second;
+          } else {
+            const withoutIt = withoutTheQuestionAskedAgain(screened.text, [askedAgain.thing.what]);
+            if (withoutIt.trim() && withoutIt !== screened.text) {
+              screened = { ...screened, text: withoutIt };
+              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
+            }
+          }
+        }
+      }
+
+      /*
        * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
        *
        * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
@@ -1936,7 +1966,24 @@ export class ConversationService {
       this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
       return { ready: false };
     }
+    /*
+     * THE HOLD BUDGET IS TWO, ONE PER THING NEVER ASKED, AND NONE AFTER A REFUSAL. Run 10 (21 Sep 2026):
+     * "closing too early" was the commonest fault among participants, 21 times; the close was held
+     * once and then landed with two of the session's owed things never raised. A second hold, for a
+     * second unasked thing, is one more question, not a form. Somebody who has just declined is not
+     * held at all: a hold after a no is the badgering this file exists to stop.
+     */
+    const holdsSoFar = turns.filter((t) => t.role === TurnRole.AI && /One more before this closes/.test(t.content ?? '')).length;
+    const justDeclined = theyDeclined(personSaid[personSaid.length - 1] ?? '');
+    if (row?.closeHeldAt && (holdsSoFar >= 2 || justDeclined || this.oneTimeCadenceIs((row as any)?.ground?.cadence))) {
+      return { ready: closeReadiness(personSaid, true, minTurns).ready };
+    }
     if (row?.closeHeldAt) {
+      const stillNeverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
+      if (stillNeverAsked.length) {
+        this.logger.log(`Holding the close a second time on ${checkInId}: never asked about ${JSON.stringify(stillNeverAsked[0])}.`);
+        return { ready: false, ask: theOneThingNeverAsked(stillNeverAsked[0]) };
+      }
       return { ready: closeReadiness(personSaid, true, minTurns).ready };
     }
     const attached = row
@@ -1972,7 +2019,7 @@ export class ConversationService {
      * the owed list's own words, so the model cannot soften it into a fourth question about
      * something else. A one-time session has no owed list to hold on.
      */
-    if (!oneTime) {
+    if (!oneTime && !justDeclined) {
       const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
       if (neverAsked.length) {
         await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
@@ -5331,18 +5378,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return (this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null) ?? []).map((o) => o.what);
   }
 
+  private oneTimeCadenceIs(cadence: unknown): boolean { return cadence === Cadence.ONE_TIME; }
+
   private async whatThisSessionNeverAsked(checkInId: string): Promise<string[]> {
+    const covered = await this.theCoverageFor(checkInId);
+    return covered ? covered.notAsked.map((o) => o.what) : [];
+  }
+
+  /** What this person has answered this session, with the answer, so a second ask can be stopped at the reply. */
+  private async whatThisSessionHasAnswered(checkInId: string): Promise<{ thing: AThingToCover; answer: string }[]> {
+    const covered = await this.theCoverageFor(checkInId);
+    return covered ? covered.answered : [];
+  }
+
+  private async theCoverageFor(checkInId: string): Promise<ReturnType<typeof sayWhatHasBeenCovered> | null> {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
       select: { groundId: true, participantId: true, sessionNumber: true, isFinal: true, participant: { select: { userId: true, roleAsDescribed: true, partyType: true } } },
     });
-    if (!checkIn) return [];
+    if (!checkIn) return null;
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true } as any,
     });
     const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
-    if (!owed) return [];
+    if (!owed) return null;
     const [types, gapRows, turns] = await Promise.all([
       this.prisma.recordEntry.findMany({ where: { participantId: checkIn.participantId, disputedAt: null }, select: { type: true, text: true } }),
       this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId }, select: { slug: true, asked: true, answeredAt: true } }),
@@ -5356,11 +5416,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
       letGo: gapRows.filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
     }).filter((o) => !o.noTypeYet);
-    const covered = sayWhatHasBeenCovered(
+    return sayWhatHasBeenCovered(
       still,
       whatThisSessionHasCovered(still, turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }))),
     );
-    return covered.notAsked.map((o) => o.what);
   }
 
   private async settleTheGaps(checkIn: any): Promise<void> {

@@ -156,3 +156,28 @@ describe('where the room split', () => {
     expect(whereTheRoomSplit({ ...empty, regions: [{ name: 'Kano', namedBy: ['A', 'B'], asSaid: null }], valueChains: [] } as any)).toEqual([]);
   });
 });
+
+/** Run 10, 21 Sep 2026: "By the next harvest, October, we would need six aggregators on the ground" never reached the twelve-month list. */
+describe('the numbers the model missed reach the twelve-month list', () => {
+  const { theTwelveMonthShapeIn, withTheNumbersTheModelMissed } = require('./what-the-room-said');
+  const byLabel = new Map([
+    ['Adamu Tanko, Tanko Rice Mills (agroprocessor)', ['We would need to bring in 40 tonnes a week. By the next harvest, October, we would need six aggregators on the ground.', 'Paddy. Always paddy.']],
+    ['Ngozi Eze, Eze Agro Foods (agroprocessor)', ['200 tonnes stored before the dry season. A second parboiling line by March.']],
+  ]);
+  it('finds a quantity with a when', () => {
+    const found = theTwelveMonthShapeIn(byLabel);
+    expect(found.map((f: any) => f.name)).toEqual(expect.arrayContaining([
+      expect.stringMatching(/six aggregators on the ground/),
+      expect.stringMatching(/200 tonnes stored before the dry season/),
+    ]));
+    expect(found.some((f: any) => /Always paddy/.test(f.name))).toBe(false);
+  });
+  it('adds them under the person, unless the list already carries that figure of theirs', () => {
+    const direction: any = { regions: [], markets: [], valueChains: [], actors: [], dataGaps: [], networks: [], pilots: [], outOf: 2,
+      nextTwelveMonths: [{ name: 'double weekly intake to 40 tonnes/week', namedBy: ['Adamu Tanko, Tanko Rice Mills (agroprocessor)'], asSaid: null }] };
+    const out = withTheNumbersTheModelMissed(direction, byLabel);
+    const names = out.nextTwelveMonths.map((x: any) => x.name);
+    expect(names).toEqual(expect.arrayContaining([expect.stringMatching(/six aggregators/), expect.stringMatching(/200 tonnes/)]));
+    expect(names.filter((n: string) => /40 tonnes/.test(n))).toHaveLength(1);
+  });
+});

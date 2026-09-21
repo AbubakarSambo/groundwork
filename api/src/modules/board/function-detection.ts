@@ -122,11 +122,30 @@ export interface DetectionResult {
  * @param accountTexts    this person's own record entries, across sessions
  * @param previous        the profile currently stored, if any
  */
+/*
+ * SOMEBODY WHO RUNS THEIR OWN BUSINESS HAS NO OFFICE FUNCTION. Run 10, 21 Sep 2026, read off the
+ * individual reports: a poultry farmer was coached as a software engineer ("This is session 3 of
+ * engineering work"), a motorbike courier as project management, a cold-store owner as a founder or
+ * CEO, a rice miller as sales and expansion. The maps below describe functions inside an
+ * organisation - what on track means for a salesperson, an engineer, a finance lead. A farmer, a
+ * trader, a driver, a miller or a borrower is not any of those, whatever words their account
+ * happens to share with the signal lists. Their role, as they gave it, says so; the read stops there.
+ */
+const RUNS_THEIR_OWN_BUSINESS =
+  /\b(farmer|farm|poultry|birds?|eggs?|layers?|tractor|plough|harvest|hectares?|acres?|maize|paddy|rice mill|miller|destoner|parboil|cold ?store|cold ?chain|motor ?bike|okada|rider|courier|deliver(?:y|ies) business|trader|market woman|market stall|shop ?keeper|kiosk|dealer|agro-?dealer|aggregator|borrower|loan|client of|cooperative|co-op|smallholder|processor|agribusiness owner|owner[- ]operator|sole trader|my (?:own )?business|runs? (?:a|my|her|his) (?:own )?(?:business|shop|farm))\b/i;
+
+export function runsTheirOwnBusiness(roleAsDescribed: string | null | undefined): boolean {
+  return RUNS_THEIR_OWN_BUSINESS.test(roleAsDescribed ?? '');
+}
+
 export function detectFunction(
   roleAsDescribed: string | null | undefined,
   accountTexts: string[],
   previous?: { fn: string | null; confidence: number | null } | null,
 ): DetectionResult {
+  if (runsTheirOwnBusiness(roleAsDescribed)) {
+    return { fn: null, confidence: 0, basis: 'Runs their own business; no office function applies, so nothing is read against a role map.' };
+  }
   const prior = priorFunctionFromRole(roleAsDescribed);
 
   if (accountTexts.length === 0) {
@@ -169,8 +188,18 @@ export function detectFunction(
   // confidence rather than confidently overriding on thin evidence.
   const basisParts: string[] = [`Account shows ${topFn.toLowerCase().replace(/_/g, ' ')} work most (${topHits} signals of ${total}).`];
   if (prior && prior.fn !== topFn) {
-    confidence -= 0.1;
-    basisParts.push(`The stated role suggested ${prior.fn.toLowerCase().replace(/_/g, ' ')}, which the account does not bear out. The account is what counts, but this is held more tentatively because the two disagree.`);
+    /*
+     * THE STATED ROLE WINS WHEN THE WORDS DISAGREE WITH IT. Run 10: a territory sales rep whose account
+     * was full of invoices, credit and arrears read as FINANCE; a new sales rep who talked about
+     * chasing and following up read as PROJECT MANAGEMENT; and each was coached against the wrong
+     * map for three sessions. The words a job uses are not the job. The title the person gave is
+     * what they are answerable for; the account's function is kept as the basis, held low.
+     */
+    return {
+      fn: prior.fn,
+      confidence: Math.min(prior.confidence, 0.45),
+      basis: `Stated role is ${prior.fn.toLowerCase().replace(/_/g, ' ')}; the account reads more like ${topFn.toLowerCase().replace(/_/g, ' ')} work (${topHits} signals of ${total}). The stated role stands, held provisional.`,
+    };
   } else if (prior && prior.fn === topFn) {
     confidence += 0.1;
     basisParts.push('The stated role agrees with the account.');

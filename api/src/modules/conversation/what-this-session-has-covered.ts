@@ -52,6 +52,10 @@ export const theyDeclined = (turn: string): boolean => DECLINES.test(turn ?? '')
  * What the model is told when they declined and it asked again anyway. Names what happened; the words
  * of the next turn are the model's.
  */
+/** The line the model gets when it asks again about a thing this person has already answered this session. */
+export const theyAlreadyAnsweredThat = (what: string, answer: string): string =>
+  `THEY HAVE ALREADY ANSWERED THIS, THIS SESSION. You asked about ${what} and they said: "${answer.slice(0, 240)}". Your reply asks for it again. Do not. Build on what they said, or move to something else this check-in is for. Never ask for the same thing twice in one session when they have answered it.`;
+
 export const THEY_DECLINED_IT = `They said no to that: they do not have it, do not track it or will not give it. Your reply asked for it again in other words. A no is an answer. Say in one short sentence that it goes down as they put it. Then move to something else this check-in is for. Never ask for the same thing again in any form. Never explain why you wanted it.`;
 
 /** A short reply that is not an answer to anything: "ok", "yes", "fine". */
@@ -75,7 +79,7 @@ const ALSO_ASKED_AS: [RegExp, RegExp][] = [
   [/what this is trying to achieve|the main goal|the goals or targets/i, /\b(?:trying to achieve|aiming (?:for|at|to)|what (?:is|are) (?:the|your) (?:goal|target|aim|objective)|what would (?:success|done) look like|what is the number)\b/i],
 ];
 
-function askedAbout(thing: AThingToCover, aiTurn: string): boolean {
+export function askedAbout(thing: AThingToCover, aiTurn: string): boolean {
   if (asksTheSameThingAgain(thing.what, aiTurn)) return true;
   return ALSO_ASKED_AS.some(([what, asked]) => what.test(thing.what) && asked.test(aiTurn ?? ''));
 }

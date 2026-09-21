@@ -12,7 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
-import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection, whereTheRoomSplit } from './what-the-room-said';
+import { DIRECTION_PROMPT, DIRECTION_TOOL, tidy, isItADirection, whatYouNamed, mergeDirections, inChunks, ACCOUNTS_PER_READ, TheDirection, whereTheRoomSplit, withTheNumbersTheModelMissed } from './what-the-room-said';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
@@ -4430,7 +4430,8 @@ happened, and what is in the way.`;
     if (parts.length < inChunks(knownLabels, ACCOUNTS_PER_READ).length) {
       this.logger.warn(`The direction for ${ground.id} was read from ${parts.length} of ${inChunks(knownLabels, ACCOUNTS_PER_READ).length} chunks; it is kept from what came back.`);
     }
-    return mergeDirections(parts, knownLabels.length);
+    /* And the plans with a number and a when in them that the model's read left out. See what-the-room-said. */
+    return withTheNumbersTheModelMissed(mergeDirections(parts, knownLabels.length), byLabel);
   }
 
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

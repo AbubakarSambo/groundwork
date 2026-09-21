@@ -54,6 +54,10 @@ export function theSentenceToThePerson(g: AGapToSay): string | null {
 export function theSentenceToTheLead(g: AGapToSay): string | null {
   if (!g.target?.name?.trim() || !g.personName || !g.personHeadline?.trim()) return null;
   const number = g.target.target != null ? ` (${fmt(g.target.target)})` : '';
+  /* The figure they have never said: the sentence names that, rather than reading a headline back as an account. */
+  if (/set by the lead, not yet said by them/.test(g.personHeadline)) {
+    return `${g.personName} has not said the ${g.target.target != null ? fmt(g.target.target) : 'figure'} you set for them, in anything on this record so far. That is the gap this report will show.`;
+  }
   return `${g.personName}'s own account reads: ${clean(g.personHeadline)}. You set ${clean(g.target.name)}${number} for them. That is the gap this report will show.`;
 }
 

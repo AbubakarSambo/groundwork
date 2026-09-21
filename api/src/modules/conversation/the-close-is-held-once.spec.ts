@@ -81,14 +81,16 @@ describe('the role map is there from turn one, provisionally', () => {
     expect(read.confidence).toBeLessThan(MIN_COACHING_CONFIDENCE);
     expect(buildRoleProbeBlock(read.fn, read.confidence)).toMatch(/PROVISIONAL/);
   });
-  it('when the words disagree with the stated role, the words win and it is held more tentatively', () => {
+  it('when the words disagree with the stated role, the stated role stands and the read is held provisional', () => {
+    /* Reversed 21 Sep 2026, see GW-ROLEDETECT-02: a sales rep full of invoices read as finance for three sessions. */
     const stated = detectFunction('Project manager', [], null);
     const withWords = detectFunction('Project manager', [
       'I closed the deal with the buyer and sent the proposal to procurement. The pipeline has three qualified leads.',
       'Renewal call with the decision maker is booked, contract sent.',
     ], { fn: stated.fn, confidence: stated.confidence });
-    expect(withWords.fn).toBe('SALES');
-    expect(withWords.basis).toMatch(/does not bear out/);
+    expect(withWords.fn).toBe('PROJECT_MANAGEMENT');
+    expect(withWords.basis).toMatch(/reads more like sales work/);
+    expect(withWords.confidence).toBeLessThan(MIN_COACHING_CONFIDENCE);
   });
 });
 

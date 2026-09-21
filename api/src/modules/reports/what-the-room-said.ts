@@ -275,3 +275,51 @@ export function inChunks<T>(items: T[], size: number): T[][] {
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
+
+/*
+ * THE NUMBERS THE MODEL MISSED. Adamu said "By the next harvest, October, we would need six aggregators on
+ * the ground", and the twelve-month list did not have it (run 10, 21 Sep 2026). A plan with a quantity
+ * and a time in it is exactly what that list is for, and the product can find those without a model: a
+ * sentence in somebody's record that carries a number with a unit and a when. Added under their label
+ * where the model's list does not already carry that figure.
+ */
+const A_QUANTITY = /\b(\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|forty|fifty|hundred)\s?(k|m|bn|tonnes?|tons?|bags?|hectares?|acres?|dealers?|aggregators?|agents?|birds?|eggs?|farmers?|cooperatives?|trucks?|lines?|stores?|warehouses?|enumerators?|staff|people|percent|%|per cent|units?|litres?|kg|customers?|accounts?|outlets?|markets?)\b/i;
+const A_WHEN = /\b(by|before|within|in|next|this)\s+(?:the\s+)?(?:next\s+)?(january|february|march|april|may|june|july|august|september|october|november|december|q[1-4]|\d{4}|(?:\w+\s+)?(?:harvest|season|rains|quarter|year|month|planting|dry season|wet season))\b|\b(?:end of|start of)\s+(?:the\s+)?(?:year|quarter|season|month)\b|\btwelve months\b|\b12 months\b/i;
+const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fifty: 50, hundred: 100 };
+const figureOf = (m: RegExpMatchArray): number => {
+  const raw = m[1].toLowerCase();
+  const n = NUMBER_WORDS[raw] ?? Number(raw.replace(/,/g, ''));
+  const scale = /^k$/i.test(m[2]) ? 1e3 : /^m$/i.test(m[2]) ? 1e6 : /^bn$/i.test(m[2]) ? 1e9 : 1;
+  return n * scale;
+};
+
+export function theTwelveMonthShapeIn(byLabel: Map<string, string[]>): ThingTheRoomNamed[] {
+  const out: ThingTheRoomNamed[] = [];
+  for (const [label, texts] of byLabel) {
+    for (const text of texts) {
+      for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+        const q = A_QUANTITY.exec(sentence);
+        if (!q || !A_WHEN.test(sentence)) continue;
+        const name = sentence.trim().replace(/[.]+$/, '').slice(0, 90);
+        out.push({ name, namedBy: [label], asSaid: sentence.trim().slice(0, 140) });
+      }
+    }
+  }
+  return out;
+}
+
+/** The model's list with the product's finds added, unless the list already carries that person's figure. */
+export function withTheNumbersTheModelMissed(direction: TheDirection, byLabel: Map<string, string[]>): TheDirection {
+  const found = theTwelveMonthShapeIn(byLabel);
+  if (!found.length) return direction;
+  const have = direction.nextTwelveMonths ?? [];
+  const figuresIn = (t: string) => [...t.matchAll(new RegExp(A_QUANTITY.source, 'gi'))].map((m) => figureOf(m as RegExpMatchArray));
+  const added: ThingTheRoomNamed[] = [];
+  for (const f of found) {
+    const figs = figuresIn(f.name);
+    const already = have.some((h) => h.namedBy.includes(f.namedBy[0]) && figuresIn(`${h.name} ${h.asSaid ?? ''}`).some((x) => figs.includes(x)))
+      || added.some((a) => a.namedBy[0] === f.namedBy[0] && figuresIn(a.name).some((x) => figs.includes(x)));
+    if (!already) added.push(f);
+  }
+  return { ...direction, nextTwelveMonths: [...have, ...added] };
+}

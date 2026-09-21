@@ -7,7 +7,8 @@ import { join } from 'path';
  * fetched and the pending count never passed.
  */
 describe('the lead is told who checked in, by name, with the true count', () => {
-  const src = readFileSync(join(__dirname, 'reports.listener.ts'), 'utf8');
+  const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const src = strip(readFileSync(join(__dirname, 'reports.listener.ts'), 'utf8'));
   it('fetches the name and counts who has no completed check-in this session', () => {
     expect(src).toMatch(/firstName: true, lastName: true/);
     expect(src).toMatch(/checkIns: \{ where: \{ sessionNumber: event\.sessionNumber, status: CheckInStatus\.COMPLETED \}/);
@@ -15,7 +16,7 @@ describe('the lead is told who checked in, by name, with the true count', () => 
     expect(src).toMatch(/sendParticipantCheckedIn\(ground\.initiator\.email, participantName, ground\.label, groundUrl, stillPending\)/);
   });
   it('and the mail takes a name, not an address', () => {
-    const mail = readFileSync(join(__dirname, '../email/email.service.ts'), 'utf8');
+    const mail = strip(readFileSync(join(__dirname, '../email/email.service.ts'), 'utf8'));
     expect(mail).toMatch(/async sendParticipantCheckedIn\(adminEmail: string, participantName: string/);
   });
 });

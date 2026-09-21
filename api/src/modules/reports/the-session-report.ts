@@ -519,8 +519,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       who: p.who,
       isYou: p.isYou,
       lines,
+      /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
+         specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
+         to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: 'Answered, and nothing specific enough to record came out of it.' }
+        ? { saying: !input.closed && !p.isYou ? 'Answered. What they said opens to you when the report releases.' : 'Answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });

@@ -43,6 +43,18 @@ const short = (t: string, max = 160): string => (t.length > max ? `${t.slice(0, 
 const fmt = (n: number): string => (Math.abs(n) >= 1e6 ? `${+(n / 1e6).toFixed(n % 1e6 ? 1 : 0)}m` : Math.abs(n) >= 1e3 ? n.toLocaleString('en-GB') : String(n));
 const latest = <T extends { session: number }>(xs: T[]): T | undefined => [...xs].sort((a, b) => b.session - a.session)[0];
 
+/** Has this person said the figure, in any of its shapes: 400,000, 400k, $400,000, 0.4m? */
+const SCALE: Record<string, number> = { k: 1e3, m: 1e6, mn: 1e6, bn: 1e9, thousand: 1e3, million: 1e6, billion: 1e9 };
+export function everMentioned(said: AThingOnRecord[], figure: number): boolean {
+  for (const s of said) {
+    for (const m of (s.text ?? '').matchAll(/(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|m|mn|bn|thousand|million|billion)?\b/gi)) {
+      const n = Number(m[1].replace(/,/g, '')) * (SCALE[(m[2] ?? '').toLowerCase()] ?? 1);
+      if (Number.isFinite(n) && Math.abs(n - figure) < Math.max(1, figure * 0.005)) return true;
+    }
+  }
+  return false;
+}
+
 export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding | null {
   const said = p.said.filter((s) => s.text?.trim());
   if (!said.length) return null;
@@ -72,6 +84,14 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
       sentences.push(`The lead set ${fmt(lead.target as number)} for them (${clean(lead.name)}); their own number is ${fmt(theirs.target as number)} (${clean(theirs.name)}).`);
       hasGap = true;
       headline = headline ?? `${who}: two numbers for one target, ${fmt(lead.target as number)} from the lead and ${fmt(theirs.target as number)} from them`;
+    } else if (!own.length && !everMentioned(said, lead.target as number)) {
+      /* A NUMBER SET FOR THEM THAT THEY HAVE NEVER SAID IS A GAP OF ITS OWN KIND. The new-hire board showed
+         "$400,000 in new business" as a shared objective and "no gap" (run 10, 21 Sep 2026), because Tunde
+         had no number of his own to differ with. He had never said the figure at all; Funmi had said "he
+         knows". Set by the lead, not yet said by them: that is the finding. */
+      sentences.push(`The lead set ${fmt(lead.target as number)} for them (${clean(lead.name)}); nothing they have said mentions that figure.`);
+      hasGap = true;
+      headline = headline ?? `${who}: ${fmt(lead.target as number)} set by the lead, not yet said by them`;
     } else if (lead.count > 0) {
       sentences.push(`Against the ${fmt(lead.target as number)} the lead set, the record has ${fmt(lead.count)}.`);
     }
