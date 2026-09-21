@@ -611,6 +611,7 @@ export function GroundParticipantPage() {
                         .filter((c) => c.status === 'COMPLETED')
                         .map((c) => c.sessionNumber ?? 0),
                     ),
+                  totalSessions,
                 )
                 return {
                   name: participantLabel(p),

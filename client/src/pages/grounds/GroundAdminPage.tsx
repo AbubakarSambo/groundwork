@@ -1654,7 +1654,9 @@ export function GroundAdminPage() {
                    *
                    * `openRound` is the counter's own number. One session, named once.
                    */
-                  const current = openRound
+                  /* And there is no session after the last: when everybody has finished a one-session check-in,
+                     the roster is judged against that session, not against a second that does not exist. */
+                  const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
                   const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
                     name: nameOfParticipant(p.id) ?? 'A participant',
