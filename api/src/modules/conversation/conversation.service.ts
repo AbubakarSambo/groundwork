@@ -5448,7 +5448,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       entries: types.map((t) => ({ type: t.type, text: cleanText((t as any).text ?? '') })),
       answered: gapRows.filter((g) => g.answeredAt).map((g) => g.slug),
       letGo: gapRows.filter((g) => !g.answeredAt && g.asked >= ASK_TWICE_THEN_LET_IT_GO).map((g) => g.slug),
-    }).filter((o) => !o.noTypeYet);
+    });
+    /*
+     * A THING NOTHING ON THE RECORD CAN PROVE IS STILL A THING TO ASK. `noTypeYet` items were dropped
+     * here, so "the wider objective theirs sits under" was never in the plan and never held for, and a
+     * goals check-in took a rep from "$50,000 in signed contracts" to the close without once asking
+     * what that sat under, beside a $1,000,000 team target on his own screen (Abubakar, 21 Sep 2026).
+     * Coverage reads the turns, not the record, so it can see whether such a thing was asked. It asks,
+     * it does not insist: the hold is one ask, capped at two, and a decline ends it.
+     */
     return sayWhatHasBeenCovered(
       still,
       whatThisSessionHasCovered(still, turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }))),
