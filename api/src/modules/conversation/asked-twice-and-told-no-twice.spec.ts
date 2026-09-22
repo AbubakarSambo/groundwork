@@ -192,3 +192,12 @@ describe('the same question straight back, after it was answered', () => {
     expect(asksItAgainAfterTheAnswer('', 'What are you doing?')).toBe(false);
   });
 });
+
+describe('the same question again is read on the question, not the preamble', () => {
+  it('catches the Q3 target asked three times behind three different preambles (run 12, Emeka)', () => {
+    expect(asksTheSameThingAgain(
+      'That simplifies the credit sales and arrears part of the target for your contribution. What is your sales target for Q3?',
+      '"You just sell" is a clear way to put it, and it tells me where you are. The record needs a number for your Q3 sales, even if it is your current run rate. What is the specific number you are working towards for Q3?',
+    )).toBe(true);
+  });
+});
