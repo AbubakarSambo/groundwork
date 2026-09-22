@@ -82,6 +82,10 @@ export interface GroundParticipant {
   partyType: PartyType
   userId: string | null
   roleAsDescribed?: string | null
+  /** The name they typed at the end of an open-link check-in; they have no sign-in to carry one. */
+  nameGiven?: string | null
+  /** Whether they asked for the report. Null where nobody asked them. */
+  wantsTheReport?: boolean | null
   // display name of the linked user (null for a not-yet-accepted invite)
   user?: { firstName: string | null; lastName: string | null } | null
   // "my account is accurate" confirmation - the deadline for corrections, in

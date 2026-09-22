@@ -130,7 +130,7 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true,
+            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true,
             managingOnly: true, signedOffAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
             user: { select: { firstName: true, lastName: true } },
@@ -343,7 +343,7 @@ export class BoardService {
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
-      const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
+      const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
       return n || aNameOrNothing(p.roleAsDescribed) || null;
     };

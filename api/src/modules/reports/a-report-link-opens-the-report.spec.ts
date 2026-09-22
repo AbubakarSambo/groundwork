@@ -14,9 +14,14 @@ const invite = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'clien
 
 describe('the report-ready mail', () => {
   it('gives a participant with no password their invite link with the report as next, and everybody else the report', () => {
-    const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async release(') + 3000);
-    expect(release).toMatch(/p\.user\?\.passwordHash \|\| !p\.inviteToken\s*\? reportUrl\s*: `\$\{frontend\}\/invite\?token=\$\{p\.inviteToken\}&next=\$\{encodeURIComponent\(`\/grounds\/\$\{groundId\}\/report`\)\}`/);
-    expect(release).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\)\)/);
+    /* The mails moved out of release() into tellThemTheReportIsReady, and link to the round's page. */
+    const tell = reports.slice(reports.indexOf('async tellThemTheReportIsReady('), reports.indexOf('async tellThemTheReportIsReady(') + 4000);
+    expect(tell).toMatch(/p\.user\?\.passwordHash \|\| !p\.inviteToken\s*\? `\$\{frontend\}\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\s*: `\$\{frontend\}\/invite\?token=\$\{p\.inviteToken\}&next=\$\{encodeURIComponent\(`\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\)\}`/);
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\)\)/);
+    /* And release() sends through it, not on its own. */
+    const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));
+    expect(release).toContain('await this.tellThemTheReportIsReady(groundId, roundNow)');
+    expect(release).not.toContain('sendReportReady(');
   });
   it('and the invite page honours next only for a report path', () => {
     expect(invite).toMatch(/const next = /);

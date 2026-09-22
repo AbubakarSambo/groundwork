@@ -31,6 +31,9 @@ export function AnswerFirstPage() {
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>('reading')
   const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  /* Whether they want the report: asked outright, and the answer kept either way. */
+  const [wantsIt, setWantsIt] = useState<boolean | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -72,11 +75,13 @@ export function AnswerFirstPage() {
 
   async function finish(withEmail: boolean) {
     if (!key || busy) return
+    if (withEmail && !name.trim()) { setProblem('Your name, so the lead knows whose answer this is.'); return }
     if (withEmail && !looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return }
     setBusy(true)
     setProblem('')
     try {
-      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined)
+      /* The name goes either way; the address and the wish for the report only where they said yes. */
+      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail)
       setSentTo(done.at)
       setPhase('done')
     } catch (err: any) {
@@ -171,28 +176,57 @@ export function AnswerFirstPage() {
           </div>
         )}
 
+        {/*
+          WHO THEY ARE, AND WHETHER THEY WANT THE REPORT. Hafsah, 22 Sep 2026: "we need to have the names
+          of the people and their emails so we can release the report to them ... they need to say if they
+          want the report or not." The question is asked outright, and either answer finishes.
+        */}
         {phase === 'address' && (
           <div style={{ marginTop: 16, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Where should we send the report?</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Do you want the report?</div>
             <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 12px' }}>
               When everybody has answered, one report goes out: what each person said, where you line
-              up, where you do not. Leave this blank if you would rather not have it. Your answers
-              stay on the record either way.
+              up, where you do not. Your answers stay on the record either way.
             </p>
-            <input id="open-email" type="email" autoComplete="email" value={email}
-              onChange={e => { setEmail(e.target.value); setProblem('') }}
-              placeholder="you@work.com" style={field} />
-            {problem && <div style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
-            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => finish(true)} disabled={busy || !email.trim()}
-                style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() ? .5 : 1 }}>
-                Send me the report
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }} role="radiogroup" aria-label="Do you want the report?">
+              <button role="radio" aria-checked={wantsIt === true} onClick={() => { setWantsIt(true); setProblem('') }}
+                style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid', borderColor: wantsIt === true ? 'var(--gw-navy)' : 'var(--gw-border)', background: wantsIt === true ? 'var(--gw-blue-bg)' : 'white', color: 'var(--gw-text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Yes, send it to me
               </button>
-              <button onClick={() => finish(false)} disabled={busy}
-                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Finish without it
+              <button role="radio" aria-checked={wantsIt === false} onClick={() => { setWantsIt(false); setProblem('') }}
+                style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid', borderColor: wantsIt === false ? 'var(--gw-navy)' : 'var(--gw-border)', background: wantsIt === false ? 'var(--gw-blue-bg)' : 'white', color: 'var(--gw-text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                No, thanks
               </button>
             </div>
+            {wantsIt === true && (
+              <div style={{ display: 'grid', gap: 8 }}>
+                <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name</label>
+                <input id="open-name" type="text" autoComplete="name" value={name}
+                  onChange={e => { setName(e.target.value); setProblem('') }}
+                  placeholder="Your name" style={field} />
+                <label htmlFor="open-email" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Where to send it</label>
+                <input id="open-email" type="email" autoComplete="email" value={email}
+                  onChange={e => { setEmail(e.target.value); setProblem('') }}
+                  placeholder="you@work.com" style={field} />
+              </div>
+            )}
+            {wantsIt === false && (
+              <div style={{ display: 'grid', gap: 8 }}>
+                <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name, so the lead knows whose answer this is (you can leave it blank)</label>
+                <input id="open-name" type="text" autoComplete="name" value={name}
+                  onChange={e => { setName(e.target.value); setProblem('') }}
+                  placeholder="Your name" style={field} />
+              </div>
+            )}
+            {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
+            {wantsIt !== null && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+                <button onClick={() => finish(wantsIt)} disabled={busy || (wantsIt && (!email.trim() || !name.trim()))}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || (wantsIt && (!email.trim() || !name.trim())) ? .5 : 1 }}>
+                  {wantsIt ? 'Send me the report' : 'Finish'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -202,7 +236,7 @@ export function AnswerFirstPage() {
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
               {sentTo
                 ? `The report goes to ${sentTo} when everybody has answered.`
-                : 'You did not leave an address, so nothing will be sent to you. What you said still counts.'}
+                : 'You asked not to be sent the report, so nothing will come to you. What you said still counts.'}
             </p>
           </div>
         )}

@@ -44,6 +44,11 @@ export class ParticipantsService {
       roleAsDescribed: participant.roleAsDescribed,
       email: participant.email,
       alreadyAccepted: !!participant.userId,
+      /* Somebody who answered through an open link has no sign-in yet, and has already done the thing
+         the arrival screen describes. A link that brings them to their report should not read "wants
+         to hear your version" - see InvitePage, which goes straight through on this. */
+      hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
+      nameGiven: (participant as any).nameGiven ?? null,
     };
   }
 
@@ -161,7 +166,9 @@ export class ParticipantsService {
     }
 
     const email = participant.email.toLowerCase();
-    const [firstName, lastName] = this.resolveName(email, names);
+    /* The name they gave at the end of an open link is the name their sign-in gets, where the arrival form asked for none. */
+    const given = ((participant as any).nameGiven ?? '').trim();
+    const [firstName, lastName] = this.resolveName(email, names?.firstName ? names : given ? { firstName: given.split(/\s+/)[0], lastName: given.split(/\s+/).slice(1).join(' ') } : names);
 
     let existingAccount = false;
     /* Set inside the transaction, read after it, so the caller can tell somebody they are waiting

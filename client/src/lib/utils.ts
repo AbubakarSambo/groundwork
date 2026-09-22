@@ -56,13 +56,15 @@ export function personLabel(p: {
   user?: { firstName?: string | null; lastName?: string | null } | null
   roleAsDescribed?: string | null
   email?: string | null
+  /** The name typed at the end of an open-link check-in, where there is no sign-in to carry one. */
+  nameGiven?: string | null
 } | null | undefined): string {
-  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
+  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim()
   if (name) return name
   /* The address before the role: "runs the connect page · waiting" in a list of people reads as a
      job title, and an address is at least somebody. */
   const email = p?.email?.trim()
-  if (email) return email
+  if (email && !email.endsWith('@unclaimed.invalid')) return email
   const role = p?.roleAsDescribed?.trim()
   if (role) return role
   return 'a teammate'

@@ -2035,25 +2035,18 @@ export class ConversationService {
       return { ready: false };
     }
     /*
-     * THE HOLD BUDGET IS TWO, ONE PER THING NEVER ASKED, AND NONE AFTER A REFUSAL. Run 10 (21 Sep 2026):
-     * "closing too early" was the commonest fault among participants, 21 times; the close was held
-     * once and then landed with two of the session's owed things never raised. A second hold, for a
-     * second unasked thing, is one more question, not a form. Somebody who has just declined is not
-     * held at all: a hold after a no is the badgering this file exists to stop.
+     * THE HOLD BUDGET IS ONE. Run 10 (21 Sep 2026) raised it to two, one per thing never asked, because
+     * "closing too early" was the commonest fault among the personas. Then a real person met it
+     * (Hafsah, 22 Sep 2026, a live team): the model wrote "One last thing before we close", the product
+     * followed with "One more before this closes: what is clear and what is not", she answered
+     * "everything is clear", and it followed with "One more before this closes: what you need from
+     * other people". Three last things in a row is a session that will not end. One hold, and the
+     * close lands whatever the record looks like; what was never asked is the report's to say.
      */
-    const holdsSoFar = turns.filter((t) => t.role === TurnRole.AI && /One more before this closes/.test(t.content ?? '')).length;
-    const justDeclined = theyDeclined(personSaid[personSaid.length - 1] ?? '');
-    if (row?.closeHeldAt && (holdsSoFar >= 2 || justDeclined || this.oneTimeCadenceIs((row as any)?.ground?.cadence))) {
-      return { ready: closeReadiness(personSaid, true, minTurns).ready };
-    }
     if (row?.closeHeldAt) {
-      const stillNeverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
-      if (stillNeverAsked.length) {
-        this.logger.log(`Holding the close a second time on ${checkInId}: never asked about ${JSON.stringify(stillNeverAsked[0])}.`);
-        return { ready: false, ask: theOneThingNeverAsked(stillNeverAsked[0]) };
-      }
       return { ready: closeReadiness(personSaid, true, minTurns).ready };
     }
+    const justDeclined = theyDeclined(personSaid[personSaid.length - 1] ?? '');
     const attached = row
       ? (await this.prisma.groundDocument.count({
           where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
@@ -4714,7 +4707,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
   }
 
-  async complete(checkInId: string, requestingUserId: WhoIsAsking) {
+  /**
+   * @param how `theyAskedToFinish`: the person pressed the thing that says they are done - the open
+   *   link's "I am done" - which is the same sentence as "that's everything from me", said with a
+   *   button. The turn floor lets that sentence out (see the floor below); it lets the button out too.
+   *   Read live, 22 Sep 2026: three answers on an open-link discovery, "I am done", and "a few more
+   *   exchanges are needed" - the pop-up Hafsah had reported that morning, on the other path.
+   */
+  async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean } = {}) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
@@ -4755,7 +4755,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const scenarioOfThis = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } }).then((g) => g?.scenario ?? null).catch(() => null);
     const minTurns = theFloorFor(!!checkIn.isSelfCorrection, scenarioOfThis);
-    if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
+    if (personTurnRows.length < minTurns && !how.theyAskedToFinish && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException({
         message:
           'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
@@ -5461,7 +5461,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return (this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null) ?? []).map((o) => o.what);
   }
 
-  private oneTimeCadenceIs(cadence: unknown): boolean { return cadence === Cadence.ONE_TIME; }
 
   private async whatThisSessionNeverAsked(checkInId: string): Promise<string[]> {
     const covered = await this.theCoverageFor(checkInId);

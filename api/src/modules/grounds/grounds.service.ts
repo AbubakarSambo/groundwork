@@ -272,6 +272,10 @@ export const SAFE_PARTICIPANT_SELECT = {
   partyType: true,
   userId: true,
   roleAsDescribed: true,
+  /* The name somebody gave at the end of an open link, and whether they asked for the report. The lead's
+     roster reads both; the send-to-everyone button says who it will reach. */
+  nameGiven: true,
+  wantsTheReport: true,
   invitedAt: true,
   notifiedAt: true,
   /* On the check-in with nothing sent to them, waiting on a seat. Without this the roster reads

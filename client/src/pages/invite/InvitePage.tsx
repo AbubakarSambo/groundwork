@@ -167,11 +167,18 @@ export function InvitePage() {
    * branch below drew the spinner anyway. accept() is what opens the question - the server signs the
    * link's own recipient in again for this situation - so it is called either way.
    */
+  /*
+   * AND A REPORT LINK FOR SOMEBODY WHO HAS ALREADY ANSWERED GOES STRAIGHT THROUGH. Read live, 22 Sep
+   * 2026: the report-ready mail to an open-link answerer landed on "Ada wants to hear your version ...
+   * about ten minutes", about a conversation she had finished an hour before. Their name is the one
+   * they gave at the end; the server signs them in on it and `next` takes them to the report.
+   */
+  const straightToTheReport = !!preview && !!preview.hasAnswered && !preview.alreadyAccepted && next.startsWith('/grounds/')
   useEffect(() => {
-    if (preview && opensStraightOnTheQuestion(preview.scenario) && accept.isIdle) {
+    if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && accept.isIdle) {
       accept.mutate()
     }
-  }, [preview, accept])
+  }, [preview, accept, straightToTheReport])
 
 
 
@@ -224,11 +231,11 @@ export function InvitePage() {
     )
   }
 
-  if (preview && opensStraightOnTheQuestion(preview.scenario) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
+  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
     return (
       <InviteShell>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Opening your question</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{straightToTheReport ? 'Opening your report' : 'Opening your question'}</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>One moment.</div>
         </div>
       </InviteShell>

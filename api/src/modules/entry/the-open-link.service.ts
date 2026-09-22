@@ -102,12 +102,21 @@ export class TheOpenLinkService {
    * gives a real address gets the report; somebody who does not still leaves their account on the
    * record, because the lead asked a question and they answered it.
    */
-  async finish(key: string, email?: string, firstName?: string) {
+  async finish(key: string, email?: string, firstName?: string, wantsTheReport?: boolean) {
     const row = await this.theirRow(key);
     const checkIn = row.checkIns[0];
     if (!checkIn) throw new BadRequestException('Open the link again to start.');
 
     const at = (email ?? '').trim().toLowerCase();
+    /* THE NAME THEY GAVE, AND WHETHER THEY WANT THE REPORT, kept whether or not an address came with them.
+       A name with no address still names their line on the lead's report. */
+    const name = (firstName ?? '').trim().slice(0, 120) || null;
+    if (name || wantsTheReport != null) {
+      await this.prisma.groundParticipant.update({
+        where: { id: row.id },
+        data: { ...(name ? { nameGiven: name } : {}), ...(wantsTheReport != null ? { wantsTheReport } : {}) },
+      });
+    }
     if (at) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(at)) throw new BadRequestException('That is not an email address.');
       /* Somebody already on this check-in keeps their row: two rows for one person would split
@@ -117,12 +126,10 @@ export class TheOpenLinkService {
         select: { id: true },
       });
       if (already) throw new BadRequestException('That address is already on this check-in. Use the link from your email instead.');
-      await this.prisma.groundParticipant.update({
-        where: { id: row.id },
-        data: { email: at, roleAsDescribed: firstName?.trim() ? null : undefined },
-      });
+      await this.prisma.groundParticipant.update({ where: { id: row.id }, data: { email: at } });
     }
-    const done = await this.conversation.complete(checkIn.id, { theParticipant: row.id });
+    /* "I am done" is asking to finish. See complete(): the floor lets the sentence out, and the button. */
+    const done = await this.conversation.complete(checkIn.id, { theParticipant: row.id }, { theyAskedToFinish: true });
     return { ...(done as any), willGetTheReport: !!at, at: at || null };
   }
 }

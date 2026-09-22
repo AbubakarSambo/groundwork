@@ -5,7 +5,7 @@ export type BoardSection =
   | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
   | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
 
-export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
+export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT' | 'UPDATE'
 export type CoverageVariant = 'text' | 'bar'
 
 /** A private-mode or sensing-family ground has no board, and says why. */

@@ -1010,7 +1010,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>
-            <Sec title="Who owns what" src="extracted from check-ins" />
+            {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
+            {b.family === 'UPDATE'
+              ? <Sec title="What each person said" src="their answers to the question, in their words" />
+              : <Sec title="Who owns what" src="extracted from check-ins" />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1025,12 +1028,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said anything about this yet.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
                         <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>
+                          {/* Record types are the goal vocabulary; an update's answers are not "success definitions". */}
+                          {b.family !== 'UPDATE' && <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>}
                           {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>session {it.sessionNumber}</span>}
                         </div>
                       </div>

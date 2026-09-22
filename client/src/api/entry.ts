@@ -295,8 +295,8 @@ export const openLinkApi = {
   say: (key: string, message: string) =>
     apiClient.post<{ reply: string; sessionComplete?: boolean }>('/entry/open-say', { key, message }).then(r => r.data),
 
-  finish: (key: string, email?: string, firstName?: string) =>
-    apiClient.post<{ willGetTheReport: boolean; at: string | null }>('/entry/open-finish', { key, email, firstName }).then(r => r.data),
+  finish: (key: string, email?: string, firstName?: string, wantsTheReport?: boolean) =>
+    apiClient.post<{ willGetTheReport: boolean; at: string | null }>('/entry/open-finish', { key, email, firstName, wantsTheReport }).then(r => r.data),
 }
 
 export const joinApi = {

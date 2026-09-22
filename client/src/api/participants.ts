@@ -8,6 +8,9 @@ export interface InvitePreview {
   roleAsDescribed: string | null
   email: string
   alreadyAccepted: boolean
+  /** They answered through an open link and have no sign-in yet; a report link should go straight through. */
+  hasAnswered?: boolean
+  nameGiven?: string | null
 }
 
 export interface AcceptInviteResponse {

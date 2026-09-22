@@ -1030,6 +1030,7 @@ model Ground {
   participants      GroundParticipant[]
   checkIns          CheckIn[]
   reportRounds      ReportRound[]
+  reportNotices     ReportNotice[]
   report            Report?
   patternDetections PatternDetection[]
   resolution        Resolution?
@@ -1195,6 +1196,14 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean           @default(false) @map("managing_only")
   roleAsDescribed            String?           @map("role_as_described") // role as the initiator described it
+  /// THE NAME THEY GAVE. Somebody who answers through an open link has no sign-in and so no User
+  /// row to carry a name; this is the name they typed at the end, beside where to send the report.
+  /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the
+  /// people and their emails so we can release the report to them."
+  nameGiven                  String?           @map("name_given") @db.VarChar(120)
+  /// Whether they asked for the report. Null where nobody asked them (invited by the lead); true or
+  /// false where the open link asked at the end. The release goes to those who said yes.
+  wantsTheReport             Boolean?          @map("wants_the_report")
   /// Optional, never inferred, never guessed from an address; blank means blank. Captured beside the
   /// role at every door that adds a person (fix plan E2). A person with no department is in no
   /// department, which is "no scope", never "everyone's".
@@ -4490,6 +4499,26 @@ model ReportRound {
   @@unique([groundId, sessionNumber])
   @@index([groundId, sessionNumber])
   @@map("report_rounds")
+}
+
+/// WHO HAS BEEN TOLD A ROUND'S REPORT IS READY, ONCE EACH.
+///
+/// release() mailed everybody the first time a report released and never again: `releasedAt` is
+/// stamped once, so session two's report told nobody, and with an open link the round released at
+/// the first two answers and the forty-eight who answered afterwards got nothing. One row per person
+/// per round, written when their mail goes; the send is skipped where a row exists. Hafsah, 22 Sep
+/// 2026: "we want people to get a link to the report."
+model ReportNotice {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  sessionNumber Int      @map("session_number")
+  sentAt        DateTime @default(now()) @map("sent_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, participantId, sessionNumber])
+  @@map("report_notices")
 }
 
 model ReportActivation {

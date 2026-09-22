@@ -43,6 +43,7 @@ import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayA
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -2361,6 +2362,14 @@ export function GroundAdminPage() {
                 The shared report compares two accounts. Add somebody and this will build.{' '}
                 <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
               </div>
+            )}
+            {/* The lead's one press to get this round's report to everyone who answered and asked for it. */}
+            {isInitiator && (
+              <SendTheReportToEveryone
+                groundId={id!}
+                participants={(ground.participants ?? []) as any[]}
+                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
+              />
             )}
             {/* What success looks like is deliberately NOT here - see the note in
                 SharedReportForAParty, which carried the same block and lost it for the same

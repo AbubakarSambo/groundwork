@@ -68,7 +68,20 @@ export class ReportsListener {
       );
 
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
-      if (!allDone) return;
+      /*
+       * SOMEBODY WHO ANSWERS AFTER THE REPORT HAS RELEASED STILL GETS THEIR LINK. An open link releases
+       * at the first answers that make a round; the forty-eight who answer afterwards were told nothing.
+       * The report they were promised exists, so it goes to them now. See tellThemTheReportIsReady.
+       */
+      if (!allDone) {
+        const rep = await this.prisma.report.findUnique({ where: { groundId: event.groundId }, select: { releasedAt: true } });
+        if (rep?.releasedAt && event.participantId) {
+          await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber, event.participantId).catch((err: any) =>
+            this.logger.warn(`Telling a late answerer on ${event.groundId} failed: ${err?.message}`),
+          );
+        }
+        return;
+      }
 
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
@@ -76,6 +89,10 @@ export class ReportsListener {
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
+        /* release() returns early once releasedAt is stamped, so a later round's mails go from here. Once per person per round. */
+        await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
+          this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
+        );
         /*
          * THE REPORT OF THE LAST SESSION MUST NOT REOPEN THE GROUND. Releasing normally means the
          * ground is live, and for the closing session it is the opposite: the report lands after

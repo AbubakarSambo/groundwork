@@ -6,6 +6,8 @@ export type LabelParty = {
   roleAsDescribed?: string | null;
   /** The address on their row: the one the lead typed, and the only handle a person who has not joined yet has. */
   email?: string | null;
+  /** The name they typed at the end of an open-link check-in; they have no User row to carry one. */
+  nameGiven?: string | null;
   user?: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
 };
 
@@ -153,6 +155,8 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
   const first = p.user?.firstName?.trim();
   const last = p.user?.lastName?.trim();
   if (first) return last ? `${first} ${last}` : first;
+  /* The name they gave at the end of an open link is theirs to be read by, the same as a sign-in's. */
+  if (p.nameGiven?.trim()) return p.nameGiven.trim();
   /*
    * AND THE ROSTER THAT NAMED HALF OF ITSELF.
    *

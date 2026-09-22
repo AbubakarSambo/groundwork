@@ -84,6 +84,18 @@ export class ReportsController {
     return this.reports.release(groundId, organizationId);
   }
 
+  /**
+   * THE PLACE TO SEND THE REPORT TO EVERYONE, AT THE END. Hafsah, 22 Sep 2026: "I need a place to
+   * release the report to everyone at the end." Whoever runs the check-in presses it: the report is
+   * synthesised and released if it is not yet, and everybody who answered and asked for it gets the
+   * link to this round's report, once. Pressing it again sends to anyone who answered since.
+   */
+  @Post('send-to-everyone')
+  @ApiOperation({ summary: 'Send this round\'s report to everyone who answered and asked for it' })
+  async sendToEveryone(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.reports.sendToEveryone(groundId, userId, organizationId);
+  }
+
   @Post('activate')
   @ApiOperation({ summary: 'Participant shows their report to the others (takes effect when everyone has)' })
   async activate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {

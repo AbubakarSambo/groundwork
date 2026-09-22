@@ -80,7 +80,8 @@ describe('one floor, read in both places', () => {
     const out = mayClose.indexOf('if (askedToFinish(personSaid)) return { ready: true };');
     expect(out).toBeGreaterThan(-1);
     expect(out).toBeLessThan(mayClose.indexOf('theFloorFor('));
-    expect(out).toBeLessThan(mayClose.indexOf('One more before this closes'));
+    /* The one hold there is - see the budget note in mayClose - comes after the way out. */
+    expect(out).toBeLessThan(mayClose.indexOf('Holding the close once'));
   });
 
   /*
@@ -90,5 +91,17 @@ describe('one floor, read in both places', () => {
   it('a team update has no owed spine to open with or hold for', () => {
     const which = SRC.slice(SRC.indexOf('private whichOwedListFor('), SRC.indexOf('private roleOfTheReaderFor('));
     expect(which).toContain("if (scenario === 'TEAM_UPDATES') return null;");
+  });
+});
+
+/*
+ * THE BUTTON IS THE SENTENCE. The open link's "I am done" reached complete() as nothing, so three
+ * answers and a press met "a few more exchanges are needed" (22 Sep 2026). Pressing it is asking.
+ */
+describe('a press of "I am done" is asking to finish', () => {
+  it('the floor lets the button out the way it lets the sentence out', () => {
+    expect(SRC).toMatch(/personTurnRows\.length < minTurns && !how\.theyAskedToFinish && !askedToFinish\(/);
+    const openLink = strip(readFileSync(join(__dirname, '..', 'entry', 'the-open-link.service.ts'), 'utf8'));
+    expect(openLink).toContain('{ theyAskedToFinish: true }');
   });
 });
