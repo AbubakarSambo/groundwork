@@ -167,7 +167,10 @@ export function atAGlanceTiles(a: {
           : 'still open, as the written report reads it')
         : a.agreed ? 'no disagreement, as the written report reads it'
           : a.stillToAnswer === 0 ? 'everybody answered, and the written report names no agreement and no gap yet'
-            : 'not everybody has answered yet',
+            /* And where nobody passed a count, say what is true of the report rather than guess at the
+               roster: "not everybody has answered yet" went out on boards where everybody had. */
+            : a.stillToAnswer == null ? 'the written report names no agreement and no gap yet'
+              : `${a.stillToAnswer} ${a.stillToAnswer === 1 ? 'person has' : 'people have'} still to answer`,
       tone: a.stillOpen ? 'warn' : a.agreed ? 'good' : 'flat',
     },
     {

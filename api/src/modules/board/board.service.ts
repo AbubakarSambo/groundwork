@@ -843,7 +843,15 @@ export class BoardService {
         out.quickRead = sessionShape.atAGlance;
       } else {
         const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
-        const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
+        /*
+         * THE DIFFERENCE THE PAGE IS SHOWING IS THE DIFFERENCE THE TILE COUNTS. Read live, 22 Sep
+         * 2026: the tile said "Nothing to compare yet" on a board whose own session report, one
+         * click away, named "the definition of a 'verified' supplier" and what would settle it. The
+         * tile counted the live report's divergences; the section under it renders the round's. They
+         * are two readings of one round and the tile takes whichever has found something.
+         */
+        const openHere = Array.isArray(sessionShape?.whereThingsStand?.open) ? sessionShape!.whereThingsStand!.open.length : 0;
+        const divCount = Math.max(openHere, Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0);
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
         const firstDivergence = Array.isArray(reportSafe?.divergences)
@@ -851,6 +859,9 @@ export class BoardService {
           : null;
         out.quickRead = atAGlanceTiles({
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
+          /* How many have still to answer, from the one counter - the tile said "not everybody has
+             answered yet" on every board because this was never passed and undefined is not zero. */
+          stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
           backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
           /* Named rather than counted - see atAGlanceTiles. */
           theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,

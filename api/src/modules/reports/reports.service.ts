@@ -2965,6 +2965,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
         const question = oneTime ? null : draftTheQuestion({
           functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
           blockers: currentDeps.map((d: any) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+          /* The difference this round found, and what the report says settles it - see draftTheQuestion. */
+          differences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[])
+            .filter((d) => d?.topic)
+            .map((d) => ({ topic: String(d.topic), settledBy: d.settledBy ?? d.atStake ?? null })),
         });
         /* Two wording passes that do not depend on each other, in parallel. Measured serial: this
            endpoint took ten seconds and the page waited on it before drawing the shared half. */
@@ -2976,7 +2980,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* Keyed as well, so the page can lead with the finding and leave out the lines the tiles and
            the settled-and-open section already carry. */
         const picture = drafts.map((d) => ({ key: d.key, text: worded[d.key] ?? d.text }));
-        const findingKey = pickTheFinding(drafts.map((d) => d.key));
+        /* With the drafts' own words, so a coverage line that says nothing is happening cannot be the
+           sentence the round is named by. See pickTheFinding. */
+        const findingKey = pickTheFinding(drafts.map((d) => d.key), Object.fromEntries(drafts.map((d) => [d.key, d.text])));
         /**
          * WHEN THIS WOULD HAVE COME UP ON ITS OWN.
          *

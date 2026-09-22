@@ -87,10 +87,25 @@ const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[
  * underneath the finding, small.
  */
 const FINDING_RANK: [RegExp, number][] = [[/^direction$/, -2], [/^numbers$/, -1], [/^moved$/, -0.5], [/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
-export function pickTheFinding(keys: string[]): string | null {
+/**
+ * AN ABSENCE IS NOT A FINDING.
+ *
+ * Read on a live session report, 22 September 2026, the headline: "Sahar Jamal and Catherine
+ * Kinyanjui: their responsibilities are staying with them. Nothing is leaking out or piling in, so
+ * there is nothing here to read into." Four lines below it the same page carried the actual finding:
+ * one of them was selling tractors and the other subscriptions, against one shared number.
+ *
+ * The rank already puts a difference above a coverage read. What it could not do was refuse a
+ * coverage read that says nothing is happening - which is not a smaller finding than a difference,
+ * it is the opposite of one. Those lines stay in the picture, where "nothing is leaking" is worth
+ * knowing; they are simply never the sentence the round is named by.
+ */
+const SAYS_NOTHING_IS_HAPPENING = /nothing (here )?to read into|nothing is (leaking|piling)|staying with them|no boundary to measure/i;
+export function pickTheFinding(keys: string[], texts?: Record<string, string>): string | null {
   const ranked = keys
     .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
     .filter((x) => x.r < 9)
+    .filter((x) => !(texts?.[x.k] && SAYS_NOTHING_IS_HAPPENING.test(texts[x.k])))
     .sort((a, b) => a.r - b.r);
   return ranked[0]?.k ?? null;
 }
@@ -275,12 +290,43 @@ export function draftThePicture(i: PictureInput): Drafted[] {
  * one. With no confident function in the round and no kinded blocker there is no question, and the
  * section says so rather than asking the model for one.
  */
+export interface ADifferenceOnRecord {
+  topic: string;
+  /** What the report says would settle it, where it said. */
+  settledBy?: string | null;
+}
+
 export interface QuestionInput {
   functions: { fn: string | null; confidence: number | null }[];
   blockers: { what: string; kind: Kind | null }[];
+  /** What the round found people describing differently, and what the report says would settle it. */
+  differences?: ADifferenceOnRecord[];
 }
 
 export function draftTheQuestion(i: QuestionInput): Drafted | null {
+  /*
+   * A DIFFERENCE ON THE SAME PAGE IS THE CONVERSATION WORTH HAVING.
+   *
+   * Read live, 22 September 2026: section 01 of a session report named the difference - one person
+   * selling tractors, the other subscriptions - and said what would settle it. Section 06, four
+   * inches below, said "No question yet. One comes from what kind of thing is in the way, or from
+   * the kind of work this is. Neither is on record here." Both sentences from the same report.
+   *
+   * This only ever looked at blockers and the role map. Where the round found a difference and the
+   * report said what settles it, that IS the question, and it goes first: it is the one thing on the
+   * page that two people have to sit down about.
+   */
+  const difference = (i.differences ?? []).find((d) => d?.topic?.trim());
+  if (difference) {
+    const settles = (difference.settledBy ?? '').trim().replace(/\s+/g, ' ');
+    return {
+      key: 'question',
+      text: settles
+        ? `${settles.replace(/[.]+$/, '')}. That is what settles ${lower(difference.topic.trim().replace(/[.]+$/, ''))}.`
+        : `Settle ${lower(difference.topic.trim().replace(/[.]+$/, ''))} between the people who described it differently.`,
+      mustKeep: [difference.topic.trim(), ...(settles ? [settles] : [])],
+    };
+  }
   const kinded = i.blockers.find((b) => b.kind);
   if (kinded) {
     const k = kinded.kind as Kind;
