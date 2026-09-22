@@ -142,6 +142,8 @@ import { asksItAgainAfterTheAnswer, theyPushedBackOnTheQuestions, asksTheSameThi
 import { totalSessionsFor } from '../grounds/session-count';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
+import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, aPlaceToLook, whatTheyHedged, keepTheirHedge } from './what-the-context-already-holds';
+import { NOT_SETTLED_OPENS, MY_READ_OF_THEM_OPENS, ASK_THEM_THIS_OPENS, BETWEEN_THEM_OPENS } from '../grounds/a-dump-is-many-things';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
 /**
@@ -3482,6 +3484,8 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
      * with a summary of the conversation - see when-this-is-over.ts. Three facts already on the
      * ground; none of them had ever reached the model.
      */
+    /* Their hedge, kept, on the turn they make one - see keepTheirHedge. */
+    const theirHedge = keepTheirHedge(whatTheyHedged(latestMessage));
     /* And the one line that says they just asked, last of all - see when-this-is-over.ts. */
     const askedWhenThisEnds = theyAskedWhenThisIsOver(latestMessage) ? THE_RUN_IS_WHAT_THEY_ASKED_ABOUT : '';
     const howLongThisRuns = whenThisIsOver({
@@ -3489,6 +3493,61 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
       endsOn: deadlineOf(ground as any),
     });
+
+    /*
+     * WHAT THE CONTEXT ALREADY HOLDS, IN THE CONVERSATION THAT ASKS ABOUT IT.
+     *
+     * Her instruction, 22 September 2026: "make sure it is used as context in the conversations." A
+     * lead had pasted a quarter in - actions, questions for named people, what sits between two of
+     * them, a list of what is explicitly not settled - and a check-in could see none of it. Each
+     * piece arrives with the rule that keeps it honest; the rules are in what-the-context-already-holds.
+     */
+    const isTheLead = checkIn.participant.partyType === PartyType.INITIATOR;
+    const commitmentRows = await (this.prisma.groundCommitment?.findMany?.({
+      where: { groundId: checkIn.groundId },
+      select: { text: true, whenSaid: true, explicit: true, participantId: true, status: true },
+      orderBy: { createdAt: 'asc' },
+      take: 40,
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const mine = (commitmentRows as any[]).filter((c) => c.participantId === checkIn.participantId && c.status === 'UNKNOWN');
+    const ownerless = (commitmentRows as any[]).filter((c) => !c.participantId && c.status === 'UNKNOWN').map((c) => c.text as string);
+    const theirCommitments = whatTheySaidTheyWouldDo(mine.map((c) => ({ text: c.text, when: c.whenSaid, explicit: c.explicit })));
+    /* The unowned list is the lead's to place, and nobody else's to be asked about. */
+    const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : '';
+
+    /* The lead's own notes, by the kind each one opens with - see a-dump-is-many-things. */
+    const contextNotes = await (this.prisma.leadContextNote?.findMany?.({
+      where: { groundId: checkIn.groundId },
+      select: { text: true, participantId: true },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const linesUnder = (text: string): string[] =>
+      (text ?? '').split('\n').slice(1).map((l) => l.replace(/^[-\s]+/, '').trim()).filter(Boolean);
+    const notSettledLines = (contextNotes as any[])
+      .filter((n) => !n.participantId && (n.text ?? '').trimStart().startsWith(NOT_SETTLED_OPENS))
+      .flatMap((n) => linesUnder(n.text));
+    const askThemLines = (contextNotes as any[])
+      .filter((n) => n.participantId === checkIn.participantId && (n.text ?? '').trimStart().startsWith(ASK_THEM_THIS_OPENS))
+      .flatMap((n) => linesUnder(n.text));
+    /* A pair note names both people in its opening line, so this person's own name is the test. */
+    const myName = [
+      (checkIn.participant as any).user?.firstName,
+      (checkIn.participant as any).user?.lastName,
+      (checkIn.participant as any).nameGiven,
+    ].map((n) => (n ?? '').trim()).filter((n) => n.length >= 3);
+    const betweenLines = (contextNotes as any[])
+      .filter((n) => !n.participantId && (n.text ?? '').trimStart().startsWith(BETWEEN_THEM_OPENS))
+      .filter((n) => isTheLead || myName.some((n2) => (n.text ?? '').toLowerCase().includes(n2.toLowerCase())))
+      .map((n) => (n.text ?? '').trim());
+    const myReadLines = (contextNotes as any[])
+      .filter((n) => n.participantId === checkIn.participantId && (n.text ?? '').trimStart().startsWith(MY_READ_OF_THEM_OPENS))
+      .map((n) => (n.text ?? '').replace(MY_READ_OF_THEM_OPENS, '').trim());
+    const notSettledBlock = whatIsNotSettled(notSettledLines);
+    const leadsQuestions = theQuestionsTheLeadWants(askThemLines);
+    const betweenBlock = whatSitsBetweenPeople(betweenLines);
+    /* Never in the person's own session as a description of them - see aPlaceToLook. */
+    const placeToLook = isTheLead ? '' : aPlaceToLook(myReadLines);
 
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
@@ -3964,7 +4023,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge],
+      ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
+      ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['placeToLook', placeToLook],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
@@ -4007,7 +4068,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, askedWhenThisEnds, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, burden, putThisToThem, askedWhenThisEnds, theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**

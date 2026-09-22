@@ -357,7 +357,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    * page next. Left off when this family was written, 22 September 2026, and found the same evening:
    * thirteen targets on the Context page, and the board said "No target set".
    */
-  [BoardFamily.UPDATE]: ['quickRead', 'objectives', 'checkInGrid', 'whoOwnsWhat', 'divergence', 'patterns'],
+  [BoardFamily.UPDATE]: ['quickRead', 'objectives', 'checkInGrid', 'whoOwnsWhat', 'divergence', 'decisions', 'patterns'],
   [BoardFamily.RECURRING]: [
     'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
     'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',

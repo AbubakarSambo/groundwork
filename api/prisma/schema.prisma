@@ -1042,6 +1042,8 @@ model Ground {
   baselineEntries   GroundBaselineEntry[]
   setupSignOffs     GroundSetupSignOff[]
   leadContextNotes  LeadContextNote[]
+  commitments       GroundCommitment[]
+  pastesTaken       GroundPaste[]
   reportActivations ReportActivation[]
   roundCompletions  RoundCompletion[]
   objectives        GroundObjective[]
@@ -1332,6 +1334,7 @@ model GroundParticipant {
   documents               GroundDocument[]
   personObjectives        PersonObjective[]
   leadContextNotes        LeadContextNote[]
+  commitments       GroundCommitment[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[]       @relation("DependencyFrom")
@@ -4426,6 +4429,72 @@ model LeadContextNote {
 
   @@index([groundId])
   @@map("lead_context_notes")
+}
+
+
+/// WHAT SOMEBODY SAID THEY WOULD DO, AND WHETHER ANYBODY KNOWS IF IT HAPPENED.
+///
+/// Hafsah, 22 September 2026, after pasting a quarter into the context chat: thirteen outstanding
+/// items and six personal commitments came out of the read and had nowhere to go. The product kept
+/// every number and dropped every action, because a target is a row and an action was not.
+///
+/// STATUS IS NEVER INFERRED. It starts UNKNOWN and only a person moves it: her whole point about
+/// accountability is that "did you do your task" is the wrong question and "did the thing happen"
+/// is the right one, and a status the product guessed would answer neither. An item with no owner
+/// keeps `participantId` null rather than being attached to the nearest name.
+/// A PASTE IS TAKEN ONCE.
+///
+/// Read live, 22 September 2026: a lead said yes to the list, then said yes again a minute later
+/// because nothing on screen told them it had landed. The second read of the same text renamed
+/// things - "document the top 10 questions" became "create a list of the top 10 questions" - so the
+/// dedupe on words could not see they were the same, and the list carried both.
+///
+/// Matching text will always be imperfect. Matching the PASTE is exact: its hash is kept here on a
+/// full yes, and a second yes to the same text writes nothing and says so. A partial yes ("yes, but
+/// not the 12m") deliberately does NOT land here, because the part left out may still be taken later.
+model GroundPaste {
+  id        String   @id @default(uuid())
+  groundId  String   @map("ground_id")
+  /// SHA-256 of the trimmed paste. The text itself is not kept: it is already on the record as what it wrote.
+  hash      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, hash])
+  @@map("ground_pastes")
+}
+
+model GroundCommitment {
+  id            String  @id @default(uuid())
+  groundId      String  @map("ground_id")
+  /// Whose it is. Null where the paste named an action and no owner - which is most of them.
+  participantId String? @map("participant_id")
+  /// The action, in the words it was written in.
+  text          String  @db.Text
+  /// What it is for, where that was said. Never invented.
+  outcome       String? @db.Text
+  /// The timing in its own words ("this week", "friday", "before Thursday") - never parsed to a date.
+  whenSaid      String? @map("when_said")
+  /// True where the person said it themselves; false where the lead is the one saying they will.
+  explicit      Boolean @default(true)
+  /// UNKNOWN until somebody says. DONE, NOT_DONE and DROPPED are only ever set by a person.
+  status        String  @default("UNKNOWN")
+  /// Where it came from: PASTE, CHECK_IN, LEAD.
+  source        String  @default("PASTE")
+  authorUserId  String? @map("author_user_id")
+  /// The check-in this was last put to somebody in, so it is not raised again every session.
+  carriedIntoCheckInId String? @map("carried_into_check_in_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@index([participantId])
+  @@map("ground_commitments")
 }
 
 // ---------------------------------------------------------------------------

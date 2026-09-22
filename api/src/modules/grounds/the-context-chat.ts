@@ -65,6 +65,16 @@ export interface ContextGaps {
   partyCount: number;
   /** Whether anybody has said what each person is individually trying to achieve. */
   perPersonObjectiveCount: number;
+  /**
+   * HOW MANY PEOPLE HAVE SOMETHING EXPECTED OF THEM AT ALL, seen or not.
+   *
+   * `perPersonObjectiveCount` counts only what may be READ AGAINST, which is right for reading and
+   * wrong for asking. A lead who has just recorded an expectation for all six people was asked "what
+   * is each person actually trying to achieve?" on the very next turn, because none of the six had
+   * been seen by the person it is about yet - they cannot be, nobody has checked in. The product
+   * asked again for what it had just written down.
+   */
+  perPersonAnyCount?: number;
   /** Documents everybody in the ground can work from. */
   openDocumentCount: number;
   /**
@@ -164,10 +174,16 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
     });
   }
 
-  if (g.perPersonObjectiveCount < g.partyCount) {
+  /* Asked about the people who have nothing, and not at all where everybody has something - an
+     expectation nobody has seen yet is not a missing expectation, it is an unseen one. */
+  const haveSomething = Math.max(g.perPersonObjectiveCount, g.perPersonAnyCount ?? g.perPersonObjectiveCount);
+  if (haveSomething < g.partyCount) {
+    const without = g.partyCount - haveSomething;
     gaps.push({
       key: 'objectives',
-      ask: 'What is each person actually trying to achieve? Without that, the report can only speak about the whole thing, not about how anybody is doing against their own part of it.',
+      ask: without === g.partyCount
+        ? 'What is each person actually trying to achieve? Without that, the report can only speak about the whole thing, not about how anybody is doing against their own part of it.'
+        : `${without === 1 ? 'One person has' : `${without} people have`} nothing expected of them yet. What are they trying to achieve? Without it, the report can speak about the whole thing and not about their part of it.`,
       suggests: 'their job description, objectives, or the message where the work was handed over',
     });
   }

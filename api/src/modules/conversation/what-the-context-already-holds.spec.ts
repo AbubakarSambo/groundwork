@@ -1,0 +1,95 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import {
+  whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants,
+  whatSitsBetweenPeople, aPlaceToLook, whatTheyHedged, keepTheirHedge,
+} from './what-the-context-already-holds';
+
+/**
+ * "MAKE SURE IT IS USED AS CONTEXT IN THE CONVERSATIONS."
+ *
+ * Her instruction, 22 September 2026, after a quarter's context landed on the Context page and the
+ * check-ins could see none of it but the numbers.
+ */
+describe('what the context already holds', () => {
+  it('puts an action as a question and never as a finding', () => {
+    const b = whatTheySaidTheyWouldDo([
+      { text: 'send the Client B proposal', when: 'this week' },
+      { text: 'ask Client D who signs the budget', explicit: false },
+    ]);
+    expect(b).toContain('Nobody has said whether any of it happened, and you do not know either');
+    expect(b).toContain('- send the Client B proposal (said: this week)');
+    expect(b).toContain('they may never have agreed to it');
+    expect(b).toContain('Never state that something is done, late or dropped');
+    expect(whatTheySaidTheyWouldDo([])).toBe('');
+  });
+
+  it('asks who owns what nobody owns, and assigns nothing', () => {
+    const b = thingsNobodyOwns(['Client C escalation', 'CRM cleanup']);
+    expect(b).toContain('2 THINGS HAVE NO OWNER');
+    expect(b).toContain('Never assign them to anybody yourself');
+    expect(thingsNobodyOwns(['one'])).toContain('ONE THING HAS');
+  });
+
+  it('treats what is not settled as a reason to ask, not a correction', () => {
+    const b = whatIsNotSettled(['whether the Client B proposal was sent', 'whether 12m is signed or recognised']);
+    expect(b).toContain('do not correct them and do not accept it either');
+    expect(b).toContain('keep the hedge in what you say back');
+    expect(b).toContain('Never tell them the record says otherwise');
+  });
+
+  it("asks the lead's questions in the interviewer's own words, without saying whose they are", () => {
+    const b = theQuestionsTheLeadWants(['which accounts actually have a buying process?']);
+    expect(b).toContain('Ask them in your own words');
+    expect(b).toContain('Never say who wants them asked');
+  });
+
+  it('holds a pair as a pair, and blames neither', () => {
+    const b = whatSitsBetweenPeople(['Between Amina and David: a feature was promised that is not ready']);
+    expect(b).toContain('not a fact about either of them');
+    expect(b).toContain('never put it to this person as something they did wrong');
+  });
+
+  it("and the lead's read of somebody is a place to look, nothing more", () => {
+    const b = aPlaceToLook(['does not ask for the deal']);
+    expect(b).toContain('Their read, not a fact');
+    expect(b).toContain('never quoted, never attributed');
+    expect(b).toContain('If what they tell you does not show it, it was not there');
+  });
+});
+
+/**
+ * A HEDGE STAYS A HEDGE. Amina: "The proposal, I think it went out last week." The next line said
+ * "The proposal is out" - a thing nobody knows, said back to her as settled.
+ */
+describe('a hedge stays a hedge', () => {
+  it('finds the hedged sentence in their own words', () => {
+    expect(whatTheyHedged('The proposal, I think it went out last week.')).toEqual(['The proposal, I think it went out last week.']);
+    expect(whatTheyHedged('Client B signed on Tuesday. I am not sure the invoice went out.'))
+      .toEqual(['I am not sure the invoice went out.']);
+    expect(whatTheyHedged('Client B signed on Tuesday for 4m.')).toEqual([]);
+    expect(whatTheyHedged('')).toEqual([]);
+  });
+
+  it('and says to keep it rather than to correct them', () => {
+    const b = keepTheirHedge(['I think it went out last week']);
+    expect(b).toContain('AND RIGHT NOW: they hedged');
+    expect(b).toContain('Do not repeat any of it back as settled');
+    expect(b).toContain('Never tell them what the record says instead');
+    expect(keepTheirHedge([])).toBe('');
+  });
+
+  it('every one of them is in the assembled prompt, and the hedge is near the end', () => {
+    const src = fs.readFileSync(path.join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const join = src.slice(src.indexOf('return [systemPrompt, theirLanguage'));
+    for (const name of ['theirCommitments', 'nobodyOwns', 'notSettledBlock', 'leadsQuestions', 'betweenBlock', 'placeToLook', 'theirHedge']) {
+      expect(join).toContain(name);
+    }
+    /* The three things stay last; the hedge sits with the other right-now blocks in front of them. */
+    expect(join).toMatch(/theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    /* Never the lead's read of themselves, and the unowned list is the lead's alone. */
+    expect(src).toContain("const placeToLook = isTheLead ? '' : aPlaceToLook(myReadLines)");
+    expect(src).toContain("const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : ''");
+  });
+});

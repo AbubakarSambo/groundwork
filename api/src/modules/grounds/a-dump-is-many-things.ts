@@ -42,6 +42,12 @@ export interface ADumpRead {
   notSettled?: string[] | null;
   /** What the lead says about one named person that is not a number or a job: an observation, theirs. */
   aboutPeople?: { personName: string; observation: string }[] | null;
+  /** Something somebody is to do. `personName` absent where the paste names no owner. */
+  commitments?: { personName?: string | null; action: string; outcome?: string | null; when?: string | null; theySaidIt?: boolean | null }[] | null;
+  /** Something the lead wants asked of one person in their own check-in. */
+  questionsForPeople?: { personName: string; question: string }[] | null;
+  /** Something between two named people, which belongs to neither of them alone. */
+  betweenPeople?: { people: string[]; issue: string }[] | null;
 }
 
 /**
@@ -57,7 +63,7 @@ export const looksLikeADump = (text: string): boolean => (text ?? '').trim().len
 
 export const A_DUMP_PROMPT = `Somebody running a team check-in has pasted everything they have about it. Read it once and take out only what a check-in keeps.
 
-WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. If no sentence in the paste says what a good period looks like, leave this out.
+WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. Nor is a remark about check-ins, accountability or this product itself - a paste often contains notes addressed to whoever set the check-in up, and none of those say what the work should look like. If no sentence in the paste says what a good period looks like, leave this out.
 
 NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180.
 
@@ -72,6 +78,12 @@ HOW THIS TEAM WORKS. The rules and practices the paste lists as how things are d
 WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One line each, as a decision, not as a task.
 
 WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, or says explicitly not to treat as fact or as a target: two numbers for the same thing, a figure somebody mentioned but nobody approved, a task nobody knows is finished. Say the competing versions where the paste gives both.
+
+WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
+
+QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written.
+
+WHAT IS BETWEEN TWO PEOPLE. Where the paste describes something that involves two named people and belongs to neither alone - one promised what the other cannot build, one commits dates the other has to keep - name both people and say the thing in the paste's words.
 
 WHAT THEY SAY ABOUT EACH PERSON THAT IS NOT A NUMBER OR A JOB. The lead's read of somebody: how they work, what they are good at, what they keep doing. One entry per person, their words. This is an observation, never a fact about the person, and it is kept where only the lead can read it.
 
@@ -124,6 +136,31 @@ export const A_DUMP_SCHEMA = {
         description: "The lead's read of one person, where it is not a number or a job for them.",
         items: { type: 'object', properties: { personName: { type: 'string' }, observation: { type: 'string' } }, required: ['personName', 'observation'] },
       },
+      commitments: {
+        type: 'array',
+        description: 'Every action the paste names. Person only where the paste says whose it is.',
+        items: {
+          type: 'object',
+          properties: {
+            personName: { type: ['string', 'null'], description: 'Whose it is, exactly as the paste writes the name. Null where the paste does not say.' },
+            action: { type: 'string' },
+            outcome: { type: ['string', 'null'], description: 'What it is for, where the paste says.' },
+            when: { type: ['string', 'null'], description: "The timing in the paste's own words." },
+            theySaidIt: { type: ['boolean', 'null'], description: 'True where the person said they would; false where the lead says it needs doing.' },
+          },
+          required: ['action'],
+        },
+      },
+      questionsForPeople: {
+        type: 'array',
+        description: 'A question the paste writes for one named person.',
+        items: { type: 'object', properties: { personName: { type: 'string' }, question: { type: 'string' } }, required: ['personName', 'question'] },
+      },
+      betweenPeople: {
+        type: 'array',
+        description: 'Something involving two named people that belongs to neither alone.',
+        items: { type: 'object', properties: { people: { type: 'array', items: { type: 'string' } }, issue: { type: 'string' } }, required: ['people', 'issue'] },
+      },
     },
     required: [],
   },
@@ -144,6 +181,12 @@ export interface WhatAPasteGives {
   notSettled: string[];
   /** The lead's read of one person, kept where only the lead reads it. */
   aboutPeople: { who: string; participantId: string; observation: string }[];
+  /** Actions. `participantId` is null where the paste named no owner, which is left as it is. */
+  commitments: { who: string | null; participantId: string | null; action: string; outcome: string | null; when: string | null; theySaidIt: boolean }[];
+  /** A question the lead wants put to one person, in their own check-in. */
+  questionsForPeople: { who: string; participantId: string; question: string }[];
+  /** Something between two of them, which is neither person's alone. */
+  betweenPeople: { who: string[]; participantIds: string[]; issue: string }[];
 }
 
 /**
@@ -155,7 +198,8 @@ export interface WhatAPasteGives {
  */
 export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean } = {}): string | null {
   const anything = got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
-    || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length;
+    || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length
+    || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length;
   if (!anything) return null;
   const lines: string[] = ['Here is what I took from that.'];
   if (got.success) lines.push('', `What doing well looks like: "${got.success}"`);
@@ -193,8 +237,44 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
     lines.push('', 'What you said about each person that is not a number. Kept where only you read it, and never quoted to them or in a report:');
     for (const a of got.aboutPeople) lines.push(`- ${a.who}: "${a.observation}"`);
   }
+  if (got.commitments?.length) {
+    const owned = got.commitments.filter((c) => c.participantId);
+    const nobodys = got.commitments.filter((c) => !c.participantId);
+    if (owned.length) {
+      lines.push('', 'What people are down as doing. Nobody is marked as having done or not done any of it until they say:');
+      for (const c of owned) lines.push(`- ${c.who}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
+    }
+    if (nobodys.length) {
+      lines.push('', `${nobodys.length === 1 ? 'One thing has' : `${nobodys.length} things have`} no owner. Kept as they are rather than put on the nearest person:`);
+      for (const c of nobodys) lines.push(`- ${c.action}${c.when ? ` (${c.when})` : ''}`);
+    }
+  }
+  if (got.questionsForPeople?.length) {
+    lines.push('', 'Questions you want asked. Each one goes into that person\'s own check-in, asked in their own words:');
+    for (const q of got.questionsForPeople) lines.push(`- ${q.who}: ${q.question}`);
+  }
+  if (got.betweenPeople?.length) {
+    lines.push('', 'Between two people, so it sits with neither of them alone. Kept for you, never quoted to either:');
+    for (const b of got.betweenPeople) lines.push(`- ${b.who.join(' and ')}: ${b.issue}`);
+  }
   if (got.unmatched.length) {
     lines.push('', `${got.unmatched.length === 1 ? 'One name is' : `${got.unmatched.length} names are`} not on this check-in: ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
+  }
+  /*
+   * AND WHAT THE PASTE DID NOT SETTLE, SAID OUT LOUD.
+   *
+   * Her list, 22 September 2026: "say what the paste left open - items with no owner, people with no
+   * number, no success sentence". The product knew all three and said none of them, so a lead read a
+   * long confident list and could not see what was still missing from it.
+   */
+  const open: string[] = [];
+  if (!got.success) open.push('nothing in it says what doing well looks like, so nothing is set as the yardstick');
+  const noOwner = (got.commitments ?? []).filter((c) => !c.participantId).length;
+  if (noOwner) open.push(`${noOwner} thing${noOwner === 1 ? '' : 's'} to do with nobody's name on ${noOwner === 1 ? 'it' : 'them'}`);
+  const withoutANumber = (got.forPeople ?? []).filter((p) => !p.targets.length).map((p) => p.who);
+  if (withoutANumber.length) open.push(`${withoutANumber.join(', ')} ${withoutANumber.length === 1 ? 'has' : 'have'} something expected of them and no number to measure it by`);
+  if (open.length) {
+    lines.push('', `What this does not settle: ${open.join('; ')}.`);
   }
   lines.push('', opts.asking ? 'Record all of this?' : 'Nothing else from it is kept.');
   return lines.join('\n');
@@ -218,6 +298,78 @@ export const THE_LIST_OPENS_WITH = 'Here is what I took from that.';
 
 /** Their answer to "Record all of this?", with nothing else in it. Anything longer is a new instruction. */
 const A_PLAIN_YES = /^(yes|yep|yeah|yup|ok|okay|sure|go ahead|do it|please do|confirm(ed)?|record (it|that|all of (it|that|this))|save (it|that)|take (it|that|the rest)|all of it|that is right|correct)\b[\s\S]{0,60}$/i;
+
+/*
+ * A YES WITH ONE THING TAKEN OUT OF IT.
+ *
+ * Her list, 22 September 2026: "yes, but 12m is not agreed" should take the rest and leave that.
+ * Today the yes is all or nothing, so a lead with one objection either re-pastes the whole thing or
+ * accepts a number they have just said is not agreed.
+ *
+ * The exception has to be matched to something in the list, and where it cannot be, nothing is
+ * written and the chat asks which one they mean. Guessing which line "not the pipeline one" refers
+ * to would be the product deciding what the lead agreed to.
+ */
+const A_YES_WITH_AN_EXCEPTION =
+  /^(?:yes|yep|yeah|ok|okay|sure|record (?:it|that|all of (?:it|that|this))|save (?:it|that)|take (?:it|that))\b[\s,.]*(?:but|except|apart from|other than|just not|not the|minus|without)\s+([\s\S]{2,120})$/i;
+
+export interface AYesWithAnException {
+  /** What they said to leave out, in their words. */
+  notThis: string;
+}
+
+/** The exception in a "yes, but not X", or null where the yes is plain. */
+export function whatTheYesLeavesOut(said: string | null | undefined): AYesWithAnException | null {
+  const t = (said ?? '').trim().replace(/\s+/g, ' ');
+  const m = A_YES_WITH_AN_EXCEPTION.exec(t);
+  if (!m) return null;
+  /* "yes, but not the 12m" - the words that only mean "leave it out" are not part of what to leave out. */
+  const notThis = (m[1] ?? '').trim()
+    .replace(/^(?:not|just|only|also|for)\s+/i, '')
+    .replace(/^the\s+/i, '')
+    .replace(/[.?!]+$/, '')
+    .trim();
+  return notThis ? { notThis } : null;
+}
+
+/**
+ * What the exception matches in the list, so a lead is told what will be left out before it is.
+ *
+ * Matched on words and on numbers as they are written - "12m" against a target of 12000000 - because
+ * a lead objects in the words of the paste, not in the words of the record.
+ */
+export function whatThatLeavesOut(got: WhatAPasteGives, notThis: string): { teamTargets: string[]; people: string[]; commitments: string[] } {
+  const said = notThis.toLowerCase();
+  const asWritten = (n: number | null | undefined): string[] => {
+    if (n == null) return [];
+    const out = [String(n)];
+    if (n >= 1e6) out.push(`${+(n / 1e6).toFixed(n % 1e6 ? 1 : 0)}m`);
+    if (n >= 1e3) out.push(`${+(n / 1e3).toFixed(n % 1e3 ? 1 : 0)}k`, n.toLocaleString('en-GB'));
+    return out;
+  };
+  const hits = (text: string, numbers: (number | null | undefined)[]): boolean => {
+    const words = text.toLowerCase();
+    if (said.length > 3 && words.includes(said)) return true;
+    const saidWords = said.split(/[^a-z0-9.]+/).filter((w) => w.length > 3);
+    if (saidWords.length && saidWords.every((w) => words.includes(w))) return true;
+    return numbers.some((n) => asWritten(n).some((form) => said.includes(form.toLowerCase())));
+  };
+  return {
+    teamTargets: got.teamTargets.filter((t) => hits(t.name, [t.target])).map((t) => t.name),
+    people: got.forPeople.filter((p) => hits(`${p.who} ${p.expectation}`, p.targets.map((t) => t.number))).map((p) => p.who),
+    commitments: (got.commitments ?? []).filter((c) => hits(`${c.who ?? ''} ${c.action}`, [])).map((c) => c.action),
+  };
+}
+
+/** The same paste with what the lead objected to taken out of it. */
+export function withoutWhatTheyLeftOut(got: WhatAPasteGives, leaves: { teamTargets: string[]; people: string[]; commitments: string[] }): WhatAPasteGives {
+  return {
+    ...got,
+    teamTargets: got.teamTargets.filter((t) => !leaves.teamTargets.includes(t.name)),
+    forPeople: got.forPeople.filter((p) => !leaves.people.includes(p.who)),
+    commitments: (got.commitments ?? []).filter((c) => !leaves.commitments.includes(c.action)),
+  };
+}
 
 /**
  * The paste a yes is answering, or null. `history` is oldest first, as the chat sends it.
@@ -250,8 +402,29 @@ export function thePasteThisYesIsFor(
  * has to be long enough to say something.
  */
 const FEW_ENOUGH_WORDS_TO_BE_A_SLOGAN = 6;
+/*
+ * AND A REMARK ABOUT THIS PRODUCT IS NOT A PICTURE OF THE WORK EITHER.
+ *
+ * Third read of the same paste, 22 September 2026: "everyone says they want accountability but then
+ * accountability becomes 'did you do your task' rather than 'did we achieve the thing'" was written
+ * to the baseline as what doing well looks like. It is her sentence about what this product should
+ * catch - a note to us, in a paste addressed to us - and it is not what a good quarter looks like
+ * for a sales and delivery team.
+ */
+const ABOUT_THE_PRODUCT_OR_THE_TALKING =
+  /\b(groundwork|check-?ins?|the product|the tool|accountability|everyone says|people say|people keep saying|we keep saying|this exercise|need .{0,20}to catch)\b/i;
+
 const A_RULE_RATHER_THAN_A_PICTURE =
-  /^(?:no |never |always |dont |don't |do not |stop |start |keep |celebrate |avoid |need |needs |escalate |follow up|one owner|monday|friday)/i;
+  /^(?:no |never |always |dont |don't |do not |stop |start |keep |celebrate |avoid |need |needs |escalate |follow up|one owner|monday|friday|sell |ask |call |send |get |make |build |measure |track |use |aim |push |move |focus |package )/i;
+
+/*
+ * A SLASH LIST IS A NOTE TO SELF, NOT A SENTENCE.
+ *
+ * Fourth read of the same paste: "sell knowing whats happening / fewer surprises / better decisions"
+ * went to the baseline. It is how she talks about positioning, jotted with slashes, and no team's
+ * quarter is measured against it.
+ */
+const A_LIST_WITH_SLASHES = (t: string): boolean => (t.match(/\s\/\s/g) ?? []).length >= 2;
 
 /** What doing well looks like, or null where the paste only had rules and slogans. */
 export function aSuccessStatementHolds(text: string | null | undefined): string | null {
@@ -259,6 +432,8 @@ export function aSuccessStatementHolds(text: string | null | undefined): string 
   if (!t) return null;
   if (t.split(' ').length < FEW_ENOUGH_WORDS_TO_BE_A_SLOGAN) return null;
   if (A_RULE_RATHER_THAN_A_PICTURE.test(t)) return null;
+  if (ABOUT_THE_PRODUCT_OR_THE_TALKING.test(t)) return null;
+  if (A_LIST_WITH_SLASHES(t)) return null;
   return t;
 }
 
@@ -311,3 +486,6 @@ export const HOW_THE_TEAM_WORKS_OPENS = 'How the team works, as I wrote it down 
 export const STILL_TO_DECIDE_OPENS = 'Still to decide:';
 export const NOT_SETTLED_OPENS = 'Not settled - do not treat any of this as a fact or a target:';
 export const MY_READ_OF_THEM_OPENS = 'What I think about how they are working (my read, not a fact):';
+
+export const ASK_THEM_THIS_OPENS = 'Ask them this:';
+export const BETWEEN_THEM_OPENS = 'Between';

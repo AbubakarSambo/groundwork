@@ -40,6 +40,8 @@ import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well'
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
+import { NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS } from '../grounds/a-dump-is-many-things';
+import { theLinesUnder, whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -536,8 +538,26 @@ export class BoardService {
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
 
+      /*
+       * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
+       *
+       * "signed 12m" read as agreed while the lead's own note said nobody had decided whether the
+       * 12m is signed or recognised revenue. A reader cannot tell an agreed number from a typed one,
+       * so the number carries it - see a-target-nobody-has-defined.
+       */
+      const notSettledLines = await (this.prisma.leadContextNote?.findMany?.({
+        where: { groundId, participantId: null },
+        select: { text: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }) ?? Promise.resolve([] as { text: string }[]))
+        .then((rows: { text: string }[]) => rows.filter((n) => (n.text ?? '').trimStart().startsWith(NOT_SETTLED_OPENS)).flatMap((n) => theLinesUnder(n.text)))
+        .catch(() => [] as string[]);
+
       out.objectives = ground.objectives.map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
+        /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
+        notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         /*
          * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
@@ -808,6 +828,14 @@ export class BoardService {
         Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]) : [],
         ground.dependencies,
         nameOf,
+        /*
+         * AND WHAT THE LEAD WROTE DOWN AS STILL TO DECIDE, once they have shared it.
+         *
+         * Six decisions nobody had made came out of one paste and lived on a page only the lead
+         * opens. They are decisions about the work, not about a person, which is exactly what this
+         * section is - so they belong here the moment the lead shares the note.
+         */
+        await this.whatTheLeadSaysIsStillToDecide(groundId),
       );
     }
 
@@ -1057,10 +1085,30 @@ export class BoardService {
    * is what turns the board from a status read into a meeting agenda. Nothing
    * new is detected here - it is a view over things already established.
    */
+  /**
+   * The open decisions the lead wrote down, and only where they chose to share the note. A private
+   * note is private: the audience is the lead's choice and this reads it rather than deciding it.
+   */
+  private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<string[]> {
+    const notes = await (this.prisma.leadContextNote?.findMany?.({
+      where: { groundId, participantId: null, audience: 'EVERYONE' as any },
+      select: { text: true },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
+    return (notes as { text: string }[])
+      .filter((n) => (n.text ?? '').trimStart().startsWith(STILL_TO_DECIDE_OPENS))
+      .flatMap((n) => (n.text ?? '').split('\n').slice(1))
+      .map((l) => l.replace(/^[-\s]+/, '').trim())
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
   private deriveDecisions(
     divergences: any[],
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
+    stillToDecide: string[] = [],
   ) {
     const fromDivergence = divergences.map((d) => ({
       question: d.topic ? `Settle: ${d.topic}` : 'Settle this difference between accounts',
@@ -1080,8 +1128,16 @@ export class BoardService {
       }));
 
     // Same decision phrased slightly differently is one decision.
+    /* The lead's own, said as theirs: nobody agreed these, one person wrote them down. */
+    const fromTheLead = stillToDecide.map((q) => ({
+      question: q,
+      why: 'The person running this check-in wrote this down as still to decide.',
+      owner: 'Lead and team',
+      source: 'lead' as const,
+    }));
+
     const seen = new Set<string>();
-    const deduped = [...fromBlockers, ...fromDivergence].filter((d) => {
+    const deduped = [...fromBlockers, ...fromDivergence, ...fromTheLead].filter((d) => {
       const k = d.question.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (seen.has(k)) return false;
       seen.add(k);

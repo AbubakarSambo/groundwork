@@ -64,6 +64,6 @@ describe('when this is over', () => {
     const src = withoutComments(fs.readFileSync(path.join(__dirname, 'conversation.service.ts'), 'utf8'));
     expect(src).toMatch(/const askedWhenThisEnds = theyAskedWhenThisIsOver\(latestMessage\)/);
     /* The three things stay last - see the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
-    expect(src).toMatch(/putThisToThem, askedWhenThisEnds, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    expect(src).toMatch(/putThisToThem, askedWhenThisEnds, .*cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
   });
 });

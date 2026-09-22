@@ -82,6 +82,14 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/grounds/grounds.service.ts:userId',
   /*
+   * The same kind of collision, one table along. `if (!c.participantId)` and `!same.participantId`
+   * in the paste writer are `GroundCommitment.participantId`, which is `String?` on purpose: an
+   * action nobody owns keeps no owner rather than being attached to the nearest name, and placing
+   * an owner on one later is the branch this guards. The audit matched `CheckIn.participantId`,
+   * which is non-nullable, on the name alone.
+   */
+  'modules/grounds/grounds.service.ts:participantId',
+  /*
    * THE THIRD SITE OF THE SAME COLLISION. Counting how many check-ins each person on the People
    * page is on walks `GroundParticipant` rows, and `userId` there is `String?` - null for anybody
    * still holding an invitation, which is exactly who must not be counted as a member. Matched

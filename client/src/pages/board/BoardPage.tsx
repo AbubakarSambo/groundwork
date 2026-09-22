@@ -849,6 +849,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             people's, and the board listed them exactly as it listed the team's. */}
                         {o.owner && <span style={{ marginLeft: 7, fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12 }}>· {o.owner}</span>}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
+                        {/*
+                          A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
+                          "signed 12m" read as settled while the lead's own note, one page away, said
+                          nobody had decided whether the 12m is signed or recognised revenue. The
+                          sentence is the lead's own; it does not change or block the target.
+                        */}
+                        {o.notSettled && <span style={{ marginLeft: 7 }}><Pill tone="warn">definition not settled</Pill></span>}
                       </div>
                       {/*
                         NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
@@ -876,6 +883,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
                       )}
                     </div>
+                    {o.notSettled && (
+                      <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 5, lineHeight: 1.55, maxWidth: '68ch' }}>{o.notSettled}</div>
+                    )}
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button

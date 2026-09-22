@@ -186,6 +186,14 @@ export const groundsApi = {
   addLeadContext: (groundId: string, body: { participantId?: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) =>
     apiClient.post(`/grounds/${groundId}/lead-context`, body).then(r => r.data),
 
+  /**
+   * Share one private note with everybody on the check-in. One note, one deliberate act: what a
+   * paste writes is the lead's own words, and "we sort of agreed" must not become the team's rules
+   * by accident. The server refuses a note about one named person.
+   */
+  shareLeadContext: (groundId: string, noteId: string) =>
+    apiClient.post(`/grounds/${groundId}/lead-context/${noteId}/share`).then(r => r.data),
+
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),
 

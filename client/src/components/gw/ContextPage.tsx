@@ -205,6 +205,18 @@ export function ContextPage({
    * IS THERE ANYTHING ON THIS PAGE YET? Used to decide whether the write boxes open by default,
    * which is only kind when the person would otherwise be looking at nothing.
    */
+  /* Sharing one note with the team. Its own mutation so the failure is about that note. */
+  const share = useMutation({
+    mutationFn: (noteId: string) => groundsApi.shareLeadContext(id, noteId),
+    onSuccess: () => { toast.success('Shared. Everybody on this check-in can read it now.'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('That did not share. Try again in a moment.'),
+  })
+
+  /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
+  const commitments = [...((ground as any).commitments ?? [])].sort(
+    (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
+  )
+
   /** The lead's own steers: private by audience, and never the shared framing note. */
   const privateSteers = (ground.leadContextNotes ?? []).filter(
     (n: any) => n.audience !== 'EVERYONE',
@@ -883,6 +895,35 @@ export function ContextPage({
               the block was shut. In the design this is a band of its own, and each steer carries the
               promise that limits it.
             */}
+            {/*
+              WHAT PEOPLE ARE DOWN AS DOING, WITH NOBODY MARKED AS HAVING DONE IT.
+              
+              A paste hands over the actions as well as the numbers, and until now they had a table
+              and no surface: a lead could read thirteen targets and none of the nineteen things
+              somebody was supposed to do. The ones with no owner are listed as having none, because
+              that is the fact and it is the one worth acting on.
+            */}
+            {commitments.length > 0 && (
+              <>
+                <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 6 }}>
+                  {commitments.map((c: any, i: number) => {
+                    const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
+                    return (
+                      <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
+                          {c.participantId ? personLabel(p) : 'nobody owns this'}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
+                        {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
+                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
             {isTheLead && privateSteers.length > 0 && (
               <>
                 <Sec n={band()} title="Only you see this" src="steers what gets asked &middot; never quoted" />
@@ -902,7 +943,23 @@ export function ContextPage({
                             about {n.participantId ? personLabel(p) : 'the check-in'}
                           </span>
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{n.text}</div>
+                        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{n.text}</div>
+                        {/*
+                          SHARING IS ONE ACT, ON ONE NOTE, BY THE PERSON WHOSE WORDS THEY ARE.
+                          A paste writes the ways of working and the open decisions as private notes,
+                          so the team board held none of them. The answer is not a default: "we sort
+                          of agreed" must not become the team's rules because a product decided it.
+                          A note about one person cannot be shared at all - the server refuses it.
+                        */}
+                        {!n.participantId && (
+                          <button
+                            onClick={() => share.mutate(n.id)}
+                            disabled={share.isPending}
+                            style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                          >
+                            Share this with the team
+                          </button>
+                        )}
                       </div>
                     )
                   })}

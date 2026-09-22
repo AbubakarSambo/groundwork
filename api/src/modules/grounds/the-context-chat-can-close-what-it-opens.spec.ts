@@ -100,7 +100,9 @@ describe('and the service writes only after a yes', () => {
      * An endpoint that accepts `timelineDays` from the client is an edit endpoint with a
      * confirmation-shaped name. It takes what they said and reads it again.
      */
-    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 3000);
+    /* To the end of the method, not a character count: the method grew past 3,000 characters on
+       22 September 2026 and the pin silently stopped covering the line it names. */
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('private async writeWhatThePasteGave('));
     /* `history` joined `said` so a pronoun can be resolved - "give her 3,000 units" names nobody on
        its own, and the target was being lost. What the rule is really about is unchanged and is
        what is checked: sentences go in, no id and no value. */

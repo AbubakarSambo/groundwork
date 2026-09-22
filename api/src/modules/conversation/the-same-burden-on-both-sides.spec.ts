@@ -139,7 +139,7 @@ describe('and it reaches the assembled prompt', () => {
      used to quote the whole tail, which made every later block that belongs in the middle of that
      tail look like a regression - see when-this-is-over.ts, 22 September 2026. */
   it('and is joined into the prompt rather than merely computed', () => {
-    expect(SRC).toMatch(/deliveriesBlock, burden, putThisToThem,/);
+    expect(SRC).toMatch(/deliveriesBlock, .*burden, putThisToThem,/);
     expect(SRC).toMatch(/cannotBeMissed, askedLastTurn, patternProbeBlock\]\.filter\(Boolean\)\.join/);
   });
 });

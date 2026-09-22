@@ -292,6 +292,16 @@ export class GroundsController {
     return this.grounds.addLeadContext(id, userId, dto);
   }
 
+  /**
+   * The other half of a private note: sharing it, one note at a time, by the lead. See
+   * shareLeadContext - a note about one person is refused rather than published.
+   */
+  @Post(':id/lead-context/:noteId/share')
+  @ApiOperation({ summary: "Share one of the lead's notes with everybody on the check-in" })
+  async shareLeadContext(@Param('id') id: string, @Param('noteId') noteId: string, @CurrentUser('id') userId: string) {
+    return this.grounds.shareLeadContext(id, userId, noteId);
+  }
+
   @Patch(':id/chasing')
   @ApiOperation({ summary: 'Initiator-only: which days this check-in reminds people on, whether it reminds at all, and whether the lead hears who never started' })
   async setChasing(

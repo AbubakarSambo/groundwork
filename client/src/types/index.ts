@@ -195,6 +195,12 @@ export interface Ground {
   contextNotes?: string[]
   participants: GroundParticipant[]
   leadContextNotes?: LeadContextNote[]
+  /**
+   * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what
+   * comes out of a paste and is left as it is rather than put on the nearest person. `status` is
+   * UNKNOWN until a person says otherwise - nothing here is the product's judgement.
+   */
+  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null
