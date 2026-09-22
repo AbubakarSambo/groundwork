@@ -1030,6 +1030,7 @@ model Ground {
   participants      GroundParticipant[]
   checkIns          CheckIn[]
   reportRounds      ReportRound[]
+  reportNotices     ReportNotice[]
   report            Report?
   patternDetections PatternDetection[]
   resolution        Resolution?
@@ -1041,6 +1042,9 @@ model Ground {
   baselineEntries   GroundBaselineEntry[]
   setupSignOffs     GroundSetupSignOff[]
   leadContextNotes  LeadContextNote[]
+  commitments       GroundCommitment[]
+  contextItems      GroundContextItem[]
+  pastesTaken       GroundPaste[]
   reportActivations ReportActivation[]
   roundCompletions  RoundCompletion[]
   objectives        GroundObjective[]
@@ -1195,6 +1199,14 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean           @default(false) @map("managing_only")
   roleAsDescribed            String?           @map("role_as_described") // role as the initiator described it
+  /// THE NAME THEY GAVE. Somebody who answers through an open link has no sign-in and so no User
+  /// row to carry a name; this is the name they typed at the end, beside where to send the report.
+  /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the
+  /// people and their emails so we can release the report to them."
+  nameGiven                  String?           @map("name_given") @db.VarChar(120)
+  /// Whether they asked for the report. Null where nobody asked them (invited by the lead); true or
+  /// false where the open link asked at the end. The release goes to those who said yes.
+  wantsTheReport             Boolean?          @map("wants_the_report")
   /// Optional, never inferred, never guessed from an address; blank means blank. Captured beside the
   /// role at every door that adds a person (fix plan E2). A person with no department is in no
   /// department, which is "no scope", never "everyone's".
@@ -1323,6 +1335,8 @@ model GroundParticipant {
   documents               GroundDocument[]
   personObjectives        PersonObjective[]
   leadContextNotes        LeadContextNote[]
+  commitments       GroundCommitment[]
+  contextItems      GroundContextItem[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[]       @relation("DependencyFrom")
@@ -4279,6 +4293,14 @@ model GroundDocument {
   mimeType         String  @map("mime_type")
   content          String  @db.Text
   assessment       Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+  /// WHAT THIS DOCUMENT HOLDS: the numbers, the dates and the one line saying what it is, read once at
+  /// upload. Kept because four surfaces read it - the chat, the Context tab, the list and the board's
+  /// targets - and a read done per surface is four different answers to one question. See
+  /// what-a-document-holds.ts.
+  holds            Json?
+  /// When the chat said what this document holds. Null until it has; the conversation opens with it
+  /// once and never again, the way a note carried into a session is raised once.
+  holdsSaidAt      DateTime? @map("holds_said_at")
   /// WHAT THE PERSON WANTS LOOKED FOR IN IT, IN THEIR WORDS.
   ///
   /// A file arrives with no instructions and the session has to guess what mattered about it. In
@@ -4411,6 +4433,135 @@ model LeadContextNote {
   @@map("lead_context_notes")
 }
 
+
+/// WHAT SOMEBODY SAID THEY WOULD DO, AND WHETHER ANYBODY KNOWS IF IT HAPPENED.
+///
+/// Hafsah, 22 September 2026, after pasting a quarter into the context chat: thirteen outstanding
+/// items and six personal commitments came out of the read and had nowhere to go. The product kept
+/// every number and dropped every action, because a target is a row and an action was not.
+///
+/// STATUS IS NEVER INFERRED. It starts UNKNOWN and only a person moves it: her whole point about
+/// accountability is that "did you do your task" is the wrong question and "did the thing happen"
+/// is the right one, and a status the product guessed would answer neither. An item with no owner
+/// keeps `participantId` null rather than being attached to the nearest name.
+/// WHAT THIS CHECK-IN KNOWS, ONE LINE AT A TIME.
+///
+/// Hafsah, 22 September 2026, looking at the Context page after a paste landed: "this context page
+/// is a mess, it is meant collate resources and context... the content needs to be parsed and
+/// paraphrased in sections - we should have strategy bucket, or notes/tips etc. those sections are
+/// so bulky." And: "the 'only you see this bit' shouldnt exist."
+///
+/// The paste used to write four long notes, each one a list inside a single blob of text. A blob
+/// cannot be edited, shared, retired or asked about, so the page could only ever print it. A line is
+/// a row now: it has a kind, so it can sit in a named bucket; an audience, so the team can read the
+/// ones about the work; and an id, so "drop that one" is a sentence rather than a form.
+///
+/// WHAT IS NEVER SHARED. A line ABOUT a person, a question for them, or a thing between two of them
+/// is the lead's read and stays the lead's - shown to nobody else, quoted to nobody, ever. That is
+/// enforced where it is written, not left to whoever reads it.
+enum ContextItemKind {
+  /// How this team wins work and what it leads with.
+  STRATEGY
+  /// A rule or practice: "no proposal before qualification".
+  WAY_OF_WORKING
+  /// Something still to decide, and nobody has.
+  DECISION
+  /// Two versions of one fact, a figure nobody approved, a task nobody knows is finished.
+  UNSETTLED
+  /// Anything else worth keeping.
+  NOTE
+  /// The lead's read of one person. Never shared, never quoted.
+  ABOUT_A_PERSON
+  /// A question the lead wants put to one person in their own check-in.
+  QUESTION_FOR_PERSON
+  /// Something involving two named people that belongs to neither alone.
+  BETWEEN_PEOPLE
+}
+
+model GroundContextItem {
+  id            String          @id @default(uuid())
+  groundId      String          @map("ground_id")
+  kind          ContextItemKind
+  /// The line as the page shows it: short, plain, paraphrased.
+  text          String          @db.Text
+  /// What the lead actually wrote, where the line is a paraphrase of it. Retrievable in the chat.
+  saidAs        String?         @map("said_as") @db.Text
+  /// Who reads it. The three person-kinds above are always LEAD_ONLY, whatever is passed.
+  audience      ContextNoteAudience @default(EVERYONE)
+  /// Whose it is, for the person-kinds. Null for everything about the work.
+  aboutParticipantId String?    @map("about_participant_id")
+  /// PASTE, CHAT or LEAD.
+  source        String          @default("PASTE")
+  authorUserId  String?         @map("author_user_id")
+  /// When it stopped being live - a decision made, a rule dropped. Kept rather than deleted.
+  closedAt      DateTime?       @map("closed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [aboutParticipantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@index([aboutParticipantId])
+  @@map("ground_context_items")
+}
+
+/// A PASTE IS TAKEN ONCE.
+///
+/// Read live, 22 September 2026: a lead said yes to the list, then said yes again a minute later
+/// because nothing on screen told them it had landed. The second read of the same text renamed
+/// things - "document the top 10 questions" became "create a list of the top 10 questions" - so the
+/// dedupe on words could not see they were the same, and the list carried both.
+///
+/// Matching text will always be imperfect. Matching the PASTE is exact: its hash is kept here on a
+/// full yes, and a second yes to the same text writes nothing and says so. A partial yes ("yes, but
+/// not the 12m") deliberately does NOT land here, because the part left out may still be taken later.
+model GroundPaste {
+  id        String   @id @default(uuid())
+  groundId  String   @map("ground_id")
+  /// SHA-256 of the trimmed paste. The text itself is not kept: it is already on the record as what it wrote.
+  hash      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, hash])
+  @@map("ground_pastes")
+}
+
+model GroundCommitment {
+  id            String  @id @default(uuid())
+  groundId      String  @map("ground_id")
+  /// Whose it is. Null where the paste named an action and no owner - which is most of them.
+  participantId String? @map("participant_id")
+  /// The action, in the words it was written in.
+  text          String  @db.Text
+  /// What it is for, where that was said. Never invented.
+  outcome       String? @db.Text
+  /// The timing in its own words ("this week", "friday", "before Thursday") - never parsed to a date.
+  whenSaid      String? @map("when_said")
+  /// True where the person said it themselves; false where the lead is the one saying they will.
+  explicit      Boolean @default(true)
+  /// UNKNOWN until somebody says. DONE, NOT_DONE and DROPPED are only ever set by a person.
+  status        String  @default("UNKNOWN")
+  /// Where it came from: PASTE, CHECK_IN, LEAD.
+  source        String  @default("PASTE")
+  authorUserId  String? @map("author_user_id")
+  /// The check-in this was last put to somebody in, so it is not raised again every session.
+  carriedIntoCheckInId String? @map("carried_into_check_in_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@index([participantId])
+  @@map("ground_commitments")
+}
+
 // ---------------------------------------------------------------------------
 // Compliance — disclaimer acknowledgement gate before first session.
 // ---------------------------------------------------------------------------
@@ -4490,6 +4641,26 @@ model ReportRound {
   @@unique([groundId, sessionNumber])
   @@index([groundId, sessionNumber])
   @@map("report_rounds")
+}
+
+/// WHO HAS BEEN TOLD A ROUND'S REPORT IS READY, ONCE EACH.
+///
+/// release() mailed everybody the first time a report released and never again: `releasedAt` is
+/// stamped once, so session two's report told nobody, and with an open link the round released at
+/// the first two answers and the forty-eight who answered afterwards got nothing. One row per person
+/// per round, written when their mail goes; the send is skipped where a row exists. Hafsah, 22 Sep
+/// 2026: "we want people to get a link to the report."
+model ReportNotice {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  sessionNumber Int      @map("session_number")
+  sentAt        DateTime @default(now()) @map("sent_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, participantId, sessionNumber])
+  @@map("report_notices")
 }
 
 model ReportActivation {

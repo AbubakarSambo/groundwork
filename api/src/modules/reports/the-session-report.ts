@@ -181,6 +181,8 @@ export interface SessionReportInputs {
   centralQuestion: string | null;
   /** How many named targets moved this session, for the movement read. Null when none are set. */
   movedOnTargets: number | null;
+  /** How many targets exist, so the Movement tile says "none moved" rather than "none set". */
+  targetsSet?: number;
   /** How many things are recorded as hard-blocked and waiting on somebody else. */
   blocked: number;
   /** WAITING rows: somebody is waiting on somebody else, not hard-blocked. */
@@ -464,6 +466,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
   const atAGlance: AGlanceRead[] = atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
+    targetsSet: input.targetsSet ?? 0,
     backedPct, numberWasSaid: aNumberWasSaid(input),
     /* So the Differences tile stops saying somebody has not answered when everybody has. */
     stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),

@@ -571,7 +571,10 @@ class OpenSayDto {
 class OpenFinishDto {
   @IsString() @IsNotEmpty() @MaxLength(200) key: string;
   @IsOptional() @IsEmail() email?: string;
-  @IsOptional() @IsString() @MaxLength(80) firstName?: string;
+  /** Their name, as they typed it. The whole name in one box; nobody is asked to split it. */
+  @IsOptional() @IsString() @MaxLength(120) firstName?: string;
+  /** Whether they want the report. Absent where the older page did not ask. */
+  @IsOptional() @IsBoolean() wantsTheReport?: boolean;
 }
 
 @Controller('entry')
@@ -645,6 +648,6 @@ export class EntryCommitController {
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @Post('open-finish')
   async openFinish(@Body() dto: OpenFinishDto) {
-    return this.openLink.finish(dto.key, dto.email, dto.firstName);
+    return this.openLink.finish(dto.key, dto.email, dto.firstName, dto.wantsTheReport);
   }
 }

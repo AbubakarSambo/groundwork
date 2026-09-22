@@ -59,7 +59,7 @@ describe('the board answers "is there one" before "who are you"', () => {
      * gate down is only safe while nothing between the two gates touches a participant's words.
      */
     const authz = get.indexOf("throw new ForbiddenException('You are not a participant in this check-in')");
-    const sections = get.indexOf('const sections = sectionsFor(');
+    const sections = get.indexOf('const sections = sectionsForARunOf(');
     expect(sections).toBeGreaterThan(-1);
     expect(authz).toBeLessThan(sections);
   });

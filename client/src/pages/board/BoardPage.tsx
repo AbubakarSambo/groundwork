@@ -1,7 +1,8 @@
 import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
@@ -109,6 +110,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     enabled: !!id,
   })
   const user = useAuthStore((st) => st.user)
+  const [searchParams] = useSearchParams()
+  const justAnswered = searchParams.get('done') === '1'
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
@@ -244,6 +247,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const groundEnded = hasEnded((b as any)?.groundStatus)
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
+  /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
+  const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
 
   /**
    * A HEADING WITH NOTHING UNDER IT. W-UX-7.
@@ -328,6 +333,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </button>
         </div>
 
+        {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
+        {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
+
         {/* header + phase spine */}
         <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
@@ -377,9 +385,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* Counted the way the exit gate below counts it: sessions everybody has finished.
                         `currentSession` is the highest number any row carries, and the next row is
                         created the moment one completes, so it ran ahead of the run. */}
+                    {/* ONCE, NOT TWICE. "0 sessions done" sat three inches above "Progress 0 of 6
+                        rounds" on the same header - the same fact, in two vocabularies, and the
+                        progress line is the one that says how many there are to do. */}
                     {(() => {
                       const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
-                      return `${done} ${done === 1 ? 'session' : 'sessions'} done`
+                      return done > 0 ? `${done} ${done === 1 ? 'session' : 'sessions'} done` : null
                     })()}
                   </span>
                 ) : null}
@@ -427,7 +438,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const face = (
                     <>
                       {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
+                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? ` · opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
                     </>
                   )
                   const skin = {
@@ -501,6 +512,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </div>
 
         {/*
+          A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
+
+          The check-ins list carries this as a chip and a party's report tab carries it as a note.
+          The board, which is the shared picture itself, carried nothing: with one person on the
+          ground it drew "Nothing cross-referenced yet", an empty grid and a quick read of one, and
+          left the reader to work out that no amount of waiting would change it. The rule refuses a
+          shared report below two people, so the page says the same thing the rule does, and names
+          who can change it.
+        */}
+        {onlyOnePersonHere && (
+          <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 12, padding: '12px 14px', marginTop: 12, fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+            This board compares accounts, and there is one person on this check-in.{' '}
+            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+          </div>
+        )}
+
+        {/*
           WHERE PEOPLE DIFFER, FIRST.
 
           It sat in "Against the plan", four zones and roughly two screens down, under the objectives
@@ -517,7 +545,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Sec title="Where people differ" src="cross-referenced" />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
+                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
+                   more than one person has checked in" on a round where everybody had, three inches
+                   under a tile that said so. The server computes it from the one counter. */
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'Nothing to cross-reference yet.' : (b.divergence.whyNothingYet ?? 'Nothing cross-referenced yet. This fills in once more than one person has answered.')}</div></Row>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
@@ -814,7 +845,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
                         {o.name}
+                        {/* WHOSE NUMBER IT IS, on the row. Nine rows read from one sheet are nine
+                            people's, and the board listed them exactly as it listed the team's. */}
+                        {o.owner && <span style={{ marginLeft: 7, fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12 }}>· {o.owner}</span>}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
+                        {/*
+                          A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
+                          "signed 12m" read as settled while the lead's own note, one page away, said
+                          nobody had decided whether the 12m is signed or recognised revenue. The
+                          sentence is the lead's own; it does not change or block the target.
+                        */}
+                        {o.notSettled && <span style={{ marginLeft: 7 }}><Pill tone="warn">definition not settled</Pill></span>}
                       </div>
                       {/*
                         NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
@@ -842,6 +883,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
                       )}
                     </div>
+                    {o.notSettled && (
+                      <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 5, lineHeight: 1.55, maxWidth: '68ch' }}>{o.notSettled}</div>
+                    )}
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button
@@ -1004,7 +1048,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>
-            <Sec title="Who owns what" src="extracted from check-ins" />
+            {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
+            {b.family === 'UPDATE'
+              ? <Sec title="What each person said" src="their answers to the question, in their words" />
+              : <Sec title="Who owns what" src="extracted from check-ins" />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1019,12 +1066,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said anything about this yet.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
                         <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>
+                          {/* Record types are the goal vocabulary; an update's answers are not "success definitions". */}
+                          {b.family !== 'UPDATE' && <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>}
                           {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>session {it.sessionNumber}</span>}
                         </div>
                       </div>

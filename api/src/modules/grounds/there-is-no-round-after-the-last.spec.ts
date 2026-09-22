@@ -9,7 +9,7 @@ describe('there is no round after the last planned one', () => {
   it('the board counts the last planned round, not a stray row after it', () => {
     const going = howACheckInIsGoing({
       timelineDays: 90, cadence: Cadence.ONE_TIME, sharedPicture: null, dependencies: [],
-      participants: [{ id: 'h' }, { id: 'a' }],
+      participants: [{ id: 'h', userId: 'u-h' }, { id: 'a', userId: 'u-a' }],
       checkIns: [
         { participantId: 'h', sessionNumber: 1, status: CheckInStatus.COMPLETED },
         { participantId: 'a', sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
@@ -31,6 +31,6 @@ describe('there is no round after the last planned one', () => {
 describe('the board hands the glance who answered', () => {
   it('selects participantId on the check-ins it counts', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../board/board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toMatch(/checkIns: \{ select: \{ sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true \} \}/);
+    expect(src).toMatch(/checkIns: \{ select: \{ sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true \} \}/);
   });
 });

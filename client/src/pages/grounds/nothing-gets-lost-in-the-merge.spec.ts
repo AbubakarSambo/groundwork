@@ -75,7 +75,13 @@ const OPERATIONS: Record<string, string[]> = {
   people: ['addParticipant(', 'getParticipantInviteUrl(', 'participantsApi.updateEmail(', 'participantsApi.updateRole('],
   requests: ['participantRequestsApi.list(', 'participantRequestsApi.update(', 'participantRequestsApi.create('],
   documents: ['documentsApi.list(', 'documentsApi.upload(', 'documentsApi.remove(', 'documentsApi.setVisibility('],
-  context: ['addLeadContext('],
+  /*
+   * `addLeadContext(` was here. The three write boxes it served were removed on 22 September 2026 -
+   * "that section needs to go since you can all do everything from the context chat" - so the page's
+   * write path is the conversation and one call per line of the record. The server route stays, for
+   * the API and for anything that still posts a note.
+   */
+  context: ['changeContextLine('],
   'privacy switches': ['setExternalVisibility(', 'setPeopleWorkTogether('],
   /*
    * `activationStatus(` was here and is gone as a CALL, not as a capability: who has shown theirs

@@ -39,6 +39,8 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
     vi.clearAllMocks()
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 1, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
       turns: [
         { id: 't1', role: 'AI', content: 'What is starting?' },
         { id: 't2', role: 'PERSON', content: 'A new analytics project.' },

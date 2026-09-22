@@ -79,3 +79,37 @@ describe('three months on the house', () => {
     expect(await svc.whatIsWaitingFor('a@b.com')).toEqual({ months: 3, plan: 'GROWTH' });
   });
 });
+
+/** Hafsah, 22 Sep 2026: "it didn't actually give them free, it is saying waiting for them to sign up" - about people who had. */
+describe('somebody who has already signed up is not waiting to', () => {
+  function serviceWithAUser(user: any) {
+    const state: any = { row: null as any, org: null as any };
+    const prisma: any = {
+      freeRun: {
+        findUnique: jest.fn(async () => state.row),
+        upsert: jest.fn(async ({ create }: any) => { state.row = { id: 'fr1', claimedAt: null, revokedAt: null, ...create }; return state.row; }),
+        update: jest.fn(async ({ data }: any) => { state.row = { ...state.row, ...data }; return state.row; }),
+      },
+      user: { findUnique: jest.fn(async () => user) },
+      organization: { update: jest.fn(async ({ where, data }: any) => { state.org = { where, data }; return data; }) },
+      $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
+    };
+    return { svc: new ThreeMonthsOnTheHouseService(prisma), prisma, state };
+  }
+
+  it('lands the months on their organisation the moment the promise is made', async () => {
+    const { svc, state } = serviceWithAUser({ organizationId: 'org-ilri' });
+    const row: any = await svc.grant({ email: 'hafsah@coamana.com', months: 1 });
+    expect(row.claimedAt).toBeInstanceOf(Date);
+    expect(row.claimedByOrganizationId).toBe('org-ilri');
+    expect(state.org.where).toEqual({ id: 'org-ilri' });
+    expect(state.org.data.freeUntil).toBeInstanceOf(Date);
+  });
+
+  it('and still waits for somebody who has not', async () => {
+    const { svc, state } = serviceWithAUser(null);
+    const row: any = await svc.grant({ email: 'new@person.test' });
+    expect(row.claimedAt).toBeNull();
+    expect(state.org).toBeNull();
+  });
+});

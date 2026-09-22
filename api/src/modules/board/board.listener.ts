@@ -63,7 +63,10 @@ export class BoardListener {
           disputedAt: null,
           participant: { groundId: e.groundId },
           checkIn: { sessionNumber: e.sessionNumber },
-          type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION'] as any },
+          /* And WORRY and TENSION: "arrears are at 14%, it's the market" is a worry, and it is also where the
+             number is (run 11, 22 Sep 2026, a board reading "0 so far" beside it). The prompt's own rule -
+             only where a line reports the value - is what keeps a worry with no figure out. */
+          type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
         select: { text: true, participantId: true, participant: { select: { partyType: true } } },
       });

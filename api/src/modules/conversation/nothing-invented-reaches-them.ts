@@ -22,6 +22,7 @@
 import { OneQuestionPerTurn } from './one-question-per-turn';
 import { claimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
 import { namesWorthReporting, restoreTheirWords } from './the-record-holds-what-was-said';
+import { inYourPerson } from './their-words-in-your-person';
 
 /**
  * Sentence boundaries, keeping the terminator AND the space after it.
@@ -269,7 +270,8 @@ function callsTheReaderSomebodyElse(sentence: string): string | null {
 export const DELETES_WHAT_IT_FINDS = false;
 
 export function screen(reply: string, personSaid: string[], readerName?: string | null, conversation?: string[]): Screened {
-  const repaired = restoreTheirWords(reply, personSaid);
+  /* Their own words restored, then said back in the right person. See their-words-in-your-person. */
+  const repaired = inYourPerson(restoreTheirWords(reply, personSaid), personSaid);
   const dropped: string[] = [];
   const hits: Hit[] = [];
   const kept: string[] = [];
@@ -365,7 +367,7 @@ export class SentenceGate {
   private check(sentences: string[]): string {
     const out: string[] = [];
     for (const s of sentences) {
-      const repaired = restoreTheirWords(s, this.personSaid);
+      const repaired = inYourPerson(restoreTheirWords(s, this.personSaid), this.personSaid);
       const why = whyItFails(repaired, this.personSaid, this.readerName, this.conversation ? [...this.conversation, ...out] : undefined);
       if (why) {
         this.droppedSentences.push(s);

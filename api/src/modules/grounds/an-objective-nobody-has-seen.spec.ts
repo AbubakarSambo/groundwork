@@ -177,7 +177,10 @@ describe('and the state travels with the text', () => {
      */
     expect(CODE).not.toMatch(/perPersonObjectiveCount: ground\.objectives\.length/);
     expect(CODE).toMatch(/perPersonObjectiveCount: perPersonObjectives/);
-    expect(CODE).toMatch(/\)\.filter\(o => mayBeReadAgainst\(\{/);
+    /* The rows are read once and then filtered, since 22 September 2026: the gap also needs to know
+       how many people have ANYTHING expected of them, so it stops asking for what it just wrote. */
+    expect(CODE).toMatch(/objectiveRowsForGaps\.filter\(o => mayBeReadAgainst\(\{/);
+    expect(CODE).toMatch(/perPersonAnyCount: perPersonAny/);
   });
 
   /**

@@ -33,6 +33,16 @@ export const A_CHECK_IN_IS_NOT_DONE_IN = 5;
  */
 export const A_CORRECTION_IS_NOT_DONE_IN = 1;
 
-export function theFloorFor(isSelfCorrection: boolean): number {
-  return isSelfCorrection ? A_CORRECTION_IS_NOT_DONE_IN : A_CHECK_IN_IS_NOT_DONE_IN;
+/**
+ * A TEAM UPDATE IS SHORTER AGAIN. Hafsah, 22 September 2026, on an update she had just given: "at
+ * the end of the update session I just got 'a few more exchanges are needed' as a pop, so I couldn't
+ * end the session." An update is the lead's one question, answered - the open link promises "about
+ * two minutes" - and five answers to it is the product arguing with somebody who has said their
+ * piece. Three: the question, what it needs, and the one thing the product asks back.
+ */
+export const AN_UPDATE_IS_NOT_DONE_IN = 3;
+
+export function theFloorFor(isSelfCorrection: boolean, scenario?: string | null): number {
+  if (isSelfCorrection) return A_CORRECTION_IS_NOT_DONE_IN;
+  return scenario === 'TEAM_UPDATES' ? AN_UPDATE_IS_NOT_DONE_IN : A_CHECK_IN_IS_NOT_DONE_IN;
 }

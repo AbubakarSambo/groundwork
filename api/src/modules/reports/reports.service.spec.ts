@@ -10,8 +10,15 @@ import { ReportsService } from './reports.service';
 describe('ReportsService.release - org scoping (GW-02)', () => {
   function makeService(groundRow: any) {
     const prisma: any = {
-      ground: { findFirst: jest.fn(async (args: any) => (groundRow && groundRow.organizationId === args.where.organizationId ? groundRow : null)) },
+      ground: {
+        findFirst: jest.fn(async (args: any) => (groundRow && groundRow.organizationId === args.where.organizationId ? groundRow : null)),
+        /* tellThemTheReportIsReady reads the ground again, by id, with everyone's address on it. */
+        findUnique: jest.fn(async () => groundRow),
+      },
       report: { findUnique: jest.fn(async () => null), update: jest.fn(async () => ({ releasedAt: new Date() })) },
+      /* Who has been told, once each: nobody yet. */
+      reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({})) },
+      checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) },
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };

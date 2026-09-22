@@ -89,6 +89,8 @@ describe('and it is wired', () => {
 
   it('appends them after the refusals rather than before', () => {
     /* The rules about what this conversation may not do stay the first thing the model reads. */
-    expect(SRC).toContain('${contextChatPrompt(ground.label, ground.scenario, gaps)}${expectationRule}\\n\\n${documentBlock}');
+    /* `alreadyHolds` joined the call on 22 September 2026 so the opener says what is here rather
+       than greeting somebody who has just pasted a quarter in. The order is what this pins. */
+    expect(SRC).toContain('${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds)}${expectationRule}\\n\\n${documentBlock}');
   });
 });

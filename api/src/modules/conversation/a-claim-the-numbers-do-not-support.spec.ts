@@ -60,3 +60,22 @@ describe('a unit after a number is not a scale', () => {
     expect(claimsTheNumbersDoNotSupport('You have asked twice, you said. What changed?', { ...said, theirWords: ['I asked them twice already.'] })).toEqual([]);
   });
 });
+
+describe('a shortfall the model inferred is cut; one they said, or their figures show, stands', () => {
+  const { claimsTheNumbersDoNotSupport: claims } = require('./a-claim-the-numbers-do-not-support');
+  const said = (...w: string[]) => ({ theirWords: w } as any);
+
+  it('"some farmers waiting means you did not hit the 40 farmers goal", to a miller who had said no count, comes out', () => {
+    const r = claims('Some farmers waiting means you did not hit the 40 farmers a season goal. What was the actual count for this season?', said('Still one operator. Some farmers had to wait.', 'To mill for 40 farmers a season.'));
+    expect(r).toHaveLength(1);
+    expect(r[0].why).toMatch(/fell short of 40/);
+  });
+
+  it('stands when they said a figure below it', () => {
+    expect(claims('So you did not reach the 40 farmers goal this season.', said('We milled for 31 farmers this season.', 'The goal was 40.'))).toEqual([]);
+  });
+
+  it('and stands when they said in their own words that they fell short', () => {
+    expect(claims('You missed the 40 farmers goal.', said('We missed it. Not 40 this time.'))).toEqual([]);
+  });
+});

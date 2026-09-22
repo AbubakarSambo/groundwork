@@ -75,13 +75,76 @@ export const THE_TELLING_PROMPT = [
   '  1. One sentence on the situation this check-in sits in, in plain words, without naming or listing other people or their affairs.',
   '  2. One sentence on what the check-in is for, as its purpose, not as the lead\'s wish ("This check-in is for seeing how the loan is working for your business, not only whether you are paying" - never "the lead wants to know").',
   '  3. Optionally one sentence on what taking part involves: short check-ins, in your own words, that build a record you can read.',
+  'The first sentence must name what this check-in is about, in the words of the situation itself: the work, the place, the product, the decision.',
+  'A sentence like "This check-in is for understanding your current business situation" names nothing. It fits any check-in ever set up. Somebody reading it before their first answer still does not know why they were asked.',
   'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',
 ].join('\n');
 
 const ADDRESSED_TO_THE_PRODUCT = /\b(the product|groundwork|the model|the interviewer|the assistant|the lead wants|the lead would like|the lead needs|the manager wants)\b/i;
 
+/*
+ * A TELLING THAT WOULD FIT ANY CHECK-IN EVER SET UP IS NOT ABOUT THIS ONE.
+ *
+ * Read live on an open link, 22 September 2026. The brief named the states, the farmers, traders and
+ * distributors, the products and the seasons. The box above the first question said: "This check-in
+ * is for understanding your current business situation. Your responses will help build a picture of
+ * your needs over time." Every sentence passed every filter here - no instruction, no first person,
+ * no name, no number - and said nothing. The rewrite had dropped the subject.
+ *
+ * So the rewrite has to share at least one distinctive word with what the lead actually wrote. The
+ * words this product says about every check-in do not count towards that: a telling that matches the
+ * brief only on "business" or "update" is the same filler. Nothing shared means the rewrite is not
+ * kept, and the read falls back to the lead's own sentences, which are at least about the subject.
+ */
+const A_WORD_ANY_CHECK_IN_COULD_HOLD = new Set([
+  'about', 'check', 'business', 'situation', 'picture', 'needs', 'update', 'team', 'work', 'working',
+  'session', 'response', 'answer', 'question', 'progress', 'goal', 'target', 'people', 'person',
+  'thing', 'where', 'their', 'these', 'those', 'which', 'would', 'could', 'should', 'other',
+  'something', 'anything', 'everything', 'taking', 'share', 'shared', 'sharing', 'word', 'record',
+  'report', 'month', 'week', 'over', 'next', 'first', 'last', 'ground', 'current', 'help', 'build',
+  'better', 'understand', 'understanding', 'happening', 'moment', 'today', 'right', 'along', 'given',
+  'needs', 'wants', 'knows', 'tracking', 'others', 'yours', 'their', 'refer', 'short', 'regular',
+  /* How often is not what about: a telling that matches the brief only on "weekly" names nothing. */
+  'weekly', 'monthly', 'daily', 'fortnightly', 'quarterly', 'support', 'progressing', 'review', 'period',
+]);
+
+/*
+ * A word long enough to carry a subject, singular-stemmed so "markets" and "market" are one word.
+ *
+ * FIVE LETTERS, NOT FOUR. Read live on a sales and delivery check-in: "It is for tracking what is
+ * working, what is not, and what you need from others" was kept, because the brief also contains
+ * "need". A four-letter word this common is not the subject of anything.
+ */
+const theWordsThatNameSomething = (text: string): Set<string> => {
+  const out = new Set<string>();
+  for (const raw of (text ?? '').toLowerCase().match(/[a-z][a-z-]{4,}/g) ?? []) {
+    const w = raw.length > 5 && raw.endsWith('s') && !raw.endsWith('ss') ? raw.slice(0, -1) : raw;
+    if (w.length < 5 || A_WORD_ANY_CHECK_IN_COULD_HOLD.has(w)) continue;
+    out.add(w);
+  }
+  return out;
+};
+
+/*
+ * AND A ONE-OFF READ IS NOT DESCRIBED AS A HABIT.
+ *
+ * Read live, 22 September 2026, on a check-in with exactly one round: "It involves short, regular
+ * questions in your own words that build a record you can read at any time." Nothing is regular
+ * about it - the person is asked once, and the sentence quietly promises them a subscription.
+ */
+const A_PROMISE_OF_MORE =
+  /\b(regular|regularly|each week|each month|weekly|monthly|fortnightly|ongoing|over time|every week|every month|future sessions?|next session|from time to time|as the weeks)\b/i;
+
+/** Whether the rewrite says anything the lead's own words say. True when there is nothing to check against. */
+export function itNamesWhatThisIsAbout(told: string | null | undefined, about: string | null | undefined): boolean {
+  const theirs = theWordsThatNameSomething(about ?? '');
+  if (!theirs.size) return true;
+  for (const w of theWordsThatNameSomething(told ?? '')) if (theirs.has(w)) return true;
+  return false;
+}
+
 /** The model's rewrite, checked sentence by sentence; null when nothing survives. */
-export function theTellingHolds(rewrite: string | null | undefined, opts?: { otherNames?: string[]; max?: number }): string | null {
+export function theTellingHolds(rewrite: string | null | undefined, opts?: { otherNames?: string[]; max?: number; about?: string | null; rounds?: number | null }): string | null {
   const names = (opts?.otherNames ?? []).map((n) => n.trim()).filter((n) => n.length >= 3);
   const namesAName = (t: string) => names.some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
   /* The heading is already on the page; the model repeats it ("About this check-in: This check-in is for..."). */
@@ -89,9 +152,14 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
     .filter((t) => !AN_INSTRUCTION.test(t) && !A_RULE_ABOUT_THEM.test(t) && !ABOUT_THE_INTERVIEW.test(t) && !THE_LEAD_TO_THE_PRODUCT.test(t))
     .filter((t) => !ADDRESSED_TO_THE_PRODUCT.test(t) && !/\b(i|we|my|our|us)\b/i.test(t) && !namesAName(t))
     /* Numbers are shown separately, as the goals; a figure in the telling is a claim nobody checked. */
-    .filter((t) => !/\d/.test(t));
+    .filter((t) => !/\d/.test(t))
+    /* One round is one conversation, and the telling does not promise a second - see A_PROMISE_OF_MORE. */
+    .filter((t) => !(opts?.rounds != null && opts.rounds <= 1 && A_PROMISE_OF_MORE.test(t)));
   if (!kept.length) return null;
-  return kept.slice(0, opts?.max ?? 3).join(' ');
+  const told = kept.slice(0, opts?.max ?? 3).join(' ');
+  /* Checked against the subject as a whole, not sentence by sentence: only one sentence has to name it. */
+  if (opts?.about !== undefined && !itNamesWhatThisIsAbout(told, opts.about)) return null;
+  return told;
 }
 
 /**

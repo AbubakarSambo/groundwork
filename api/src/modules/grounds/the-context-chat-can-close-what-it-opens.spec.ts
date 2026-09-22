@@ -89,7 +89,9 @@ describe('what the model can reach', () => {
 
 describe('and the service writes only after a yes', () => {
   it('the chat returns a proposal rather than changing anything', () => {
-    const chat = CODE.slice(CODE.indexOf('async contextChat('), CODE.indexOf('async applyContextProposal('));
+    /* To the first helper rather than to the next public method: the helpers between them include
+       the one write a confirmed change makes, which is called from the confirmation and never here. */
+    const chat = CODE.slice(CODE.indexOf('async contextChat('), CODE.indexOf('private async whatThisCheckInAlreadyHolds('));
     expect(chat).toMatch(/proposal: proposal\.kind === 'none' \? null :/);
     // The whole bug: not one write in this path. It must stay that way.
     expect(chat).not.toMatch(/prisma\.\w+\.(update|create)/);
@@ -100,7 +102,9 @@ describe('and the service writes only after a yes', () => {
      * An endpoint that accepts `timelineDays` from the client is an edit endpoint with a
      * confirmation-shaped name. It takes what they said and reads it again.
      */
-    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 3000);
+    /* To the end of the method, not a character count: the method grew past 3,000 characters on
+       22 September 2026 and the pin silently stopped covering the line it names. */
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('private async writeWhatThePasteGave('));
     /* `history` joined `said` so a pronoun can be resolved - "give her 3,000 units" names nobody on
        its own, and the target was being lost. What the rule is really about is unchanged and is
        what is checked: sentences go in, no id and no value. */
@@ -139,9 +143,15 @@ describe('and the panel has the yes it always promised', () => {
     'utf8',
   ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  it('it already said nothing is saved until you say so', () => {
-    // The sentence was there before the mechanism. It is true now.
-    expect(PANEL).toMatch(/nothing is saved until you say so/);
+  it('still says nothing is written until you say so', () => {
+    /*
+     * The sentence was there before the mechanism, and it is still true. What went with it on
+     * 22 September 2026 was the half that was not: "nothing here reaches a report". Everything in
+     * this conversation guides the check-ins and the coaching, which is what it is for.
+     */
+    expect(PANEL).toMatch(/[Nn]othing is written until you say so/);
+    expect(PANEL).not.toMatch(/Nothing here reaches a report/);
+    expect(PANEL).toMatch(/guides the check-ins/);
   });
 
   it('and now there is a way to say it', () => {

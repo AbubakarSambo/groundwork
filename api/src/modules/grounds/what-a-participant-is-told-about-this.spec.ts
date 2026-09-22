@@ -63,3 +63,51 @@ describe('what the product wrote is what the About block reads', () => {
     expect(grounds).toMatch(/toldToParticipants\?\.trim\(\) \|\| theSituationIn\(brief\)/);
   });
 });
+
+/**
+ * A TELLING THAT NAMES NOTHING IS NOT KEPT.
+ *
+ * Read live on an open link, 22 September 2026. The brief named the states, the farmers, traders and
+ * distributors, the products, the volumes and the seasons. The box above the first question said:
+ * "This check-in is for understanding your current business situation. Your responses will help
+ * build a picture of your needs over time." No instruction, no first person, no name, no number - it
+ * passed every filter there was, and told the person nothing about why they had been asked.
+ */
+describe('the telling has to be about this check-in', () => {
+  const { itNamesWhatThisIsAbout, theTellingHolds: holds } = require('./what-a-participant-is-told-about-this');
+  const brief =
+    'We want to learn where MarketView can be most useful over the next 12 months: the states and markets you are growing in, the farmers, traders and distributors you want to reach, and the products, volumes and seasons that matter to you.';
+
+  it('rejects the sentence that would fit any check-in ever set up', () => {
+    const filler = 'This check-in is for understanding your current business situation. Your responses will help build a picture of your needs over time.';
+    expect(itNamesWhatThisIsAbout(filler, brief)).toBe(false);
+    expect(holds(filler, { about: brief })).toBeNull();
+  });
+
+  it('keeps one that names the subject in the lead\'s own words', () => {
+    const real = 'This check-in is about where your business is growing and which markets and products matter to you. It is for building a shared picture of what you are trying to reach over the next year.';
+    expect(itNamesWhatThisIsAbout(real, brief)).toBe(true);
+    expect(holds(real, { about: brief })).toContain('markets');
+  });
+
+  it('matching only on the words this product says about every check-in is not naming it', () => {
+    /* "business", "picture", "needs", "update", "report": the vocabulary of the product, not of the work. */
+    expect(itNamesWhatThisIsAbout('This check-in is a business update, and the report builds a picture of the team.', brief)).toBe(false);
+  });
+
+  it('and with nothing to check against, the rewrite still holds', () => {
+    expect(itNamesWhatThisIsAbout('This check-in is for whatever.', '')).toBe(true);
+    expect(holds('This check-in is about how the loan is working.', {})).toBe('This check-in is about how the loan is working.');
+  });
+
+  it('does not promise a second conversation to somebody who will be asked once', () => {
+    const told = holds(
+      'This check-in is about where your markets are growing. It involves short, regular questions in your own words that build a record you can read.',
+      { rounds: 1 },
+    );
+    expect(told).toBe('This check-in is about where your markets are growing.');
+    /* The same sentence stands where there really are more rounds coming. */
+    expect(holds('This check-in is about where your markets are growing. It involves short, regular questions in your own words.', { rounds: 6 }))
+      .toContain('regular questions');
+  });
+});

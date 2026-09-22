@@ -292,6 +292,31 @@ export class GroundsController {
     return this.grounds.addLeadContext(id, userId, dto);
   }
 
+  /**
+   * The other half of a private note: sharing it, one note at a time, by the lead. See
+   * shareLeadContext - a note about one person is refused rather than published.
+   */
+  @Post(':id/lead-context/:noteId/share')
+  @ApiOperation({ summary: "Share one of the lead's notes with everybody on the check-in" })
+  async shareLeadContext(@Param('id') id: string, @Param('noteId') noteId: string, @CurrentUser('id') userId: string) {
+    return this.grounds.shareLeadContext(id, userId, noteId);
+  }
+
+  /**
+   * One line of what this check-in knows: reworded, shared, made private, or retired. See
+   * changeContextLine - a line about a person can never be shared.
+   */
+  @Patch(':id/context/:itemId')
+  @ApiOperation({ summary: 'Change one line of what this check-in knows' })
+  async changeContextLine(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean },
+  ) {
+    return this.grounds.changeContextLine(id, userId, itemId, dto ?? {});
+  }
+
   @Patch(':id/chasing')
   @ApiOperation({ summary: 'Initiator-only: which days this check-in reminds people on, whether it reminds at all, and whether the lead hears who never started' })
   async setChasing(

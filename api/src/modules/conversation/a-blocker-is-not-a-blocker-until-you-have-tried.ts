@@ -110,10 +110,37 @@ export function stillToAsk(s: Standing): string[] {
  * reads as a telling-off it stops working. These are the four moves that actually shift a stuck
  * approval, in the order most people have not tried them.
  */
+/**
+ * A PRODUCT IS NOT SOMEBODY YOU CAN SPEAK TO.
+ *
+ * Read on a live board, 22 September 2026: "Ask them to speak to MarketView rather than write to
+ * them." MarketView is the software the whole check-in was about; somebody had said they wanted one
+ * and it had been recorded as a thing they were waiting on. The extraction no longer takes a wish
+ * for a handoff (see the dependency prompt), and this is the second line of defence: where what is
+ * named is a thing rather than a person, the advice stops assuming there is somebody to talk to.
+ *
+ * Deliberately a short list of the words that name a system rather than a person, not a guess at
+ * what a name looks like: "Finance", "the bank" and "the client's legal team" are all things you can
+ * genuinely speak to, and a rule clever enough to exclude a product would exclude those too.
+ */
+const NAMES_A_SYSTEM = /\b(platform|layer|system|tool|app|dashboard|software|portal|database|api|integration|feature|module|website|site)\b/i;
+export const aThingRatherThanSomebody = (owner: string | null | undefined): boolean => {
+  const o = (owner ?? '').trim();
+  if (!o) return false;
+  return NAMES_A_SYSTEM.test(o);
+};
+
 export function waysThrough(s: Standing): string[] {
   const who = s.owner?.trim() || 'whoever owns it';
   const out: string[] = [];
   if (!s.owner?.trim()) out.push('Find out who owns this by name. Everything else needs that first.');
+  if (aThingRatherThanSomebody(s.owner)) {
+    /* Nobody owes this yet, so the move is to find the person who could, not to chase a system. */
+    return [
+      `Find out who owns ${who} and whether anybody has promised it.`,
+      'Ask what can move without it, so the work is not waiting on something nobody has committed to.',
+    ];
+  }
   if (s.tried === 'nothing' || s.tried === 'asked-once' || s.tried === 'asked-again') {
     out.push(`Speak to ${who} rather than write to them.`);
     out.push(`Put a date on it in writing: what you need, by when, and what happens if it slips.`);

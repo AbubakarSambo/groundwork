@@ -12,19 +12,98 @@ import { waitsOnAManagingOnlyLead } from '../grounds/the-lead-who-only-asks';
  * one the release rule waits on (isSessionReadyForReport - everybody gives a first check-in, and from
  * session two a managing-only lead is not waited on; somebody still holding a live invitation is
  * expected), and "answered" is what an-answer-includes-a-refusal.ts says it is.
+ *
+ * AND IT HAPPENED AGAIN, BECAUSE THE RULE ONLY EXISTED AS A QUERY. Read on one live check-in, 22
+ * September 2026: the board's header said "4 of 8 answered this round", the session report's masthead
+ * said "7 of 8 answered", the finding under it said "2 of 5 people have answered this session", and
+ * the lead's own page said "0 of 5 checked in". Four numbers, one session. The two counters that got
+ * it wrong were pure functions that could not run a query, so they counted what they had - every row
+ * on the roster, and only the COMPLETED ones.
+ *
+ * So the rule is a PREDICATE as well as a query. `whoIsExpected` decides the population from rows
+ * somebody already holds; `howManyHaveAnswered` is that predicate with the query in front of it.
+ * Nothing counts for itself any more.
  */
+
+/** What either half needs of a person to decide whether this session waits on them. */
+export interface SomebodyWhoMightAnswer {
+  id: string;
+  managingOnly?: boolean | null;
+  userId?: string | null;
+  invitedAt?: Date | string | null;
+  inviteTokenExpiresAt?: Date | string | null;
+  /** This session's rows for them, whatever the state. */
+  checkIns?: { status: string; sessionNumber?: number }[];
+}
+
+const theyAnswered = (p: SomebodyWhoMightAnswer, sessionNumber: number): boolean =>
+  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status));
+
+/**
+ * WHO THIS SESSION WAITS ON. The release rule, as a predicate over rows.
+ *
+ * Joined, or has answered, or is still holding a live invitation. A managing-only lead answers the
+ * first session like everybody else and is not waited on after it. Somebody whose invitation ran out
+ * without ever being opened drops out, which is what stops one unopened mail holding a round for ever.
+ */
+export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
+  people: T[],
+  sessionNumber: number,
+  scenario?: string | null,
+  now: Date = new Date(),
+): T[] {
+  const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
+  return (people ?? []).filter((p) => {
+    if (p.managingOnly && !waitsOnTheLead) return false;
+    if (p.userId) return true;
+    if (theyAnswered(p, sessionNumber)) return true;
+    /*
+     * INVITED AND NOT YET LAPSED. Where the expiry is not in hand - the roster the ground page is
+     * served from does not carry it, and must not: it sits beside the invite token on the list of
+     * things that never leave the server - an invitation counts as live. Being waited on until
+     * proved lapsed is the honest way round: the cost is one screen holding a round open a little
+     * longer, and the other way round is telling a lead everybody answered when somebody never did.
+     */
+    if (!p.invitedAt) return false;
+    if (p.inviteTokenExpiresAt === undefined) return true;
+    const until = p.inviteTokenExpiresAt ? new Date(p.inviteTokenExpiresAt) : null;
+    return !!until && until.getTime() > now.getTime();
+  });
+}
+
+/** Of the people this session waits on, how many have answered - a decline being an answer. */
+export function howManyOfThemAnswered<T extends SomebodyWhoMightAnswer>(
+  people: T[],
+  sessionNumber: number,
+  scenario?: string | null,
+  now: Date = new Date(),
+): { answered: number; expected: number; waitingOn: string[] } {
+  const expected = whoIsExpected(people, sessionNumber, scenario, now);
+  const answered = expected.filter((p) => theyAnswered(p, sessionNumber));
+  return {
+    answered: answered.length,
+    expected: expected.length,
+    waitingOn: expected.filter((p) => !theyAnswered(p, sessionNumber)).map((p) => p.id),
+  };
+}
 export interface HowManyHaveAnswered {
   answered: number;
   expected: number;
+  /** Everybody this session waits on, in row order. */
+  expectedIds: string[];
   /** Participant ids still expected. Names are the caller's business; this file knows none. */
   waitingOn: string[];
   /** Of those who answered, how many gave an account (COMPLETED) rather than declining. */
   completed: number;
+  /** Who said no. A decline is an answer and is never counted as an account given. */
+  declinedIds: string[];
 }
 
 export async function howManyHaveAnswered(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<HowManyHaveAnswered> {
   /* And a lead who only asks is not waited on at all - see the-lead-who-only-asks. */
-  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
+  /* Optional-chained the way the rest of this codebase reaches a model a test double may not carry:
+     with no ground read, the rule falls back to what it did before - managing-only leads are out. */
+  const ground = await (prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } }) ?? Promise.resolve(null)).catch(() => null);
   const expected = await prisma.groundParticipant.findMany({
     where: {
       groundId,
@@ -41,7 +120,11 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
   return {
     answered: answeredRows.length,
     expected: expected.length,
+    expectedIds: expected.map((p) => p.id),
     waitingOn: expected.filter((p) => p.checkIns.length === 0).map((p) => p.id),
     completed: answeredRows.filter((p) => p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED)).length,
+    declinedIds: expected
+      .filter((p) => p.checkIns.length > 0 && !p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED))
+      .map((p) => p.id),
   };
 }

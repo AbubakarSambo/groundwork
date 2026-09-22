@@ -51,7 +51,37 @@ export class ThreeMonthsOnTheHouseService {
       update: { months, plan: input.plan ?? SubscriptionPlan.GROWTH, note: input.note?.trim() || null, grantedByUserId: input.byUserId ?? null, revokedAt: null },
     });
     this.logger.log(`Free run promised: ${months} months on ${row.plan} for ${email}`);
+    /*
+     * SOMEBODY WHO HAS ALREADY SIGNED UP IS NOT WAITING TO. Hafsah, 22 Sep 2026, on a live demo:
+     * "when I added the team to the free tier, it didn't actually give them free, it is saying waiting
+     * for them to sign up." The promise only ever landed at sign-up (a-promise-kept-at-sign-up), so an
+     * address that already had an account sat as "waiting" for a moment that had already happened.
+     * Where the address is a user with an organisation, the months start now, on that organisation.
+     */
+    /* Optional-chained the way the rest of this codebase reaches a model a test double may not carry. */
+    const already = await (this.prisma.user?.findUnique?.({ where: { email }, select: { organizationId: true } }) ?? Promise.resolve(null)).catch(() => null);
+    if (already?.organizationId) {
+      const taken = await this.claimFor(email, already.organizationId);
+      if (taken) {
+        this.logger.log(`Free run for ${email} taken up at once: they had already signed up, so it lands on ${already.organizationId}.`);
+        return (await this.prisma.freeRun.findUnique({ where: { email } })) ?? row;
+      }
+    }
     return row;
+  }
+
+  /**
+   * THE PROMISES ALREADY WAITING ON PEOPLE WHO HAD ALREADY SIGNED UP. The check above in grant() is
+   * new; two rows on the live console were made before it existed and would have waited for ever.
+   * Read on the way into the list, so the page that showed them "waiting" is the page that settles
+   * them. A write on a read, deliberately and only here: the alternative was a migration for two rows.
+   */
+  private async settleWhatIsWaiting(): Promise<void> {
+    const waiting = await (this.prisma.freeRun.findMany?.({ where: { claimedAt: null, revokedAt: null }, select: { email: true } }) ?? Promise.resolve([])).catch(() => [] as { email: string }[]);
+    for (const w of waiting ?? []) {
+      const user = await (this.prisma.user?.findUnique?.({ where: { email: w.email }, select: { organizationId: true } }) ?? Promise.resolve(null)).catch(() => null);
+      if (user?.organizationId) await this.claimFor(w.email, user.organizationId);
+    }
   }
 
   /** Withdraw a promise that has not been taken up. Kept as a row: who was promised what is a record. */
@@ -63,6 +93,7 @@ export class ThreeMonthsOnTheHouseService {
   }
 
   async list() {
+    await this.settleWhatIsWaiting();
     const rows = await this.prisma.freeRun.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
     const now = new Date();
     return rows.map((r) => ({

@@ -81,7 +81,7 @@ describe('releasing a report leaves a held ground alone', () => {
   const listener = (status: GroundStatus) => {
     const prisma: any = { ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', status })), update: jest.fn() } };
     const grounds: any = { isSessionReadyForReport: jest.fn(async () => true) };
-    const reports: any = { synthesize: jest.fn(), release: jest.fn() };
+    const reports: any = { synthesize: jest.fn(), release: jest.fn(), tellThemTheReportIsReady: jest.fn(async () => ({ attempted: 0, failed: 0 })) };
     const l = new ReportsListener(prisma, grounds, reports, {} as any, { get: () => undefined } as any);
     return { l, prisma, reports };
   };

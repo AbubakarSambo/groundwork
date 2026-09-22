@@ -17,7 +17,7 @@ describe('what does not add up', () => {
 
   const base = { thisSession: 2, targets: [], sessionsLeft: 1, aiTurnsThisSession: [] as string[] };
 
-  it('the same thing counted differently across sessions, with the change worked out', () => {
+  it('the same thing counted differently across sessions, with the change worked out, and an aim is not a count', () => {
     const d = whatDoesNotAddUp({
       ...base,
       said: [
@@ -28,7 +28,8 @@ describe('what does not add up', () => {
     const birds = d.find((x) => x.lines[2]?.includes('bird'));
     expect(birds?.kind).toBe('counted differently');
     expect(birds?.lines[2]).toBe('That is 500 birds then 260: down 48%.');
-    expect(d.find((x) => x.lines[2]?.includes('egg'))?.lines[2]).toBe('That is 400 eggs then 200: down 50%.');
+    /* "aiming for 400 eggs" is the aim, not an earlier count of eggs: nothing to compare 200 against (run 11). */
+    expect(d.find((x) => x.lines[2]?.includes('egg'))).toBeUndefined();
   });
 
   it("the lead's number for them against their own", () => {
@@ -112,5 +113,30 @@ describe('what does not add up', () => {
     expect(block).toContain('PUT THIS ONE TO THEM THIS SESSION');
     expect(block).toContain('Also on record, for a later turn');
     expect(block).toContain('A question, not a verdict');
+  });
+});
+
+/** Run 11, 22 Sep 2026: "400 eggs then 220: down 45%" on a report about a flock that was rebuilding. The 400 was the aim. */
+describe('an aim is not the earlier count of anything', () => {
+  it('"To have 500 layers, get 400 eggs a day" against "220 eggs a day" is no difference', () => {
+    const d = whatDoesNotAddUp({
+      thisSession: 2, targets: [], sessionsLeft: 1, aiTurnsThisSession: [],
+      said: [
+        { text: 'To have 500 layers, get 400 eggs a day.', type: 'SUCCESS_DEFINITION', session: 1 },
+        { text: 'Around 200 to 220 eggs a day.', type: 'PROGRESS', session: 2 },
+      ],
+    });
+    expect(d.filter((x) => x.kind === 'counted differently')).toEqual([]);
+  });
+
+  it('while a count that was a count still compares', () => {
+    const d = whatDoesNotAddUp({
+      thisSession: 2, targets: [], sessionsLeft: 1, aiTurnsThisSession: [],
+      said: [
+        { text: 'I have 500 birds now.', type: 'PROGRESS', session: 1 },
+        { text: '260 birds left after the outbreak.', type: 'PROGRESS', session: 2 },
+      ],
+    });
+    expect(d.find((x) => x.kind === 'counted differently')?.lines[2]).toBe('That is 500 birds then 260: down 48%.');
   });
 });

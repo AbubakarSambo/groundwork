@@ -167,11 +167,18 @@ export function InvitePage() {
    * branch below drew the spinner anyway. accept() is what opens the question - the server signs the
    * link's own recipient in again for this situation - so it is called either way.
    */
+  /*
+   * AND A REPORT LINK FOR SOMEBODY WHO HAS ALREADY ANSWERED GOES STRAIGHT THROUGH. Read live, 22 Sep
+   * 2026: the report-ready mail to an open-link answerer landed on "Ada wants to hear your version ...
+   * about ten minutes", about a conversation she had finished an hour before. Their name is the one
+   * they gave at the end; the server signs them in on it and `next` takes them to the report.
+   */
+  const straightToTheReport = !!preview && !!preview.hasAnswered && !preview.alreadyAccepted && next.startsWith('/grounds/')
   useEffect(() => {
-    if (preview && opensStraightOnTheQuestion(preview.scenario) && accept.isIdle) {
+    if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && accept.isIdle) {
       accept.mutate()
     }
-  }, [preview, accept])
+  }, [preview, accept, straightToTheReport])
 
 
 
@@ -198,20 +205,37 @@ export function InvitePage() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check your email</div>
+          {/*
+           * WHICH LINK TO USE FROM HERE, SAID PLAINLY. Hafsah, 22 Sep 2026: "someone got a sign-in link and
+           * a check-in link but their check-in link stopped working." It had not stopped: opened where they
+           * had no session - a different app's browser, a new phone - it does exactly this, every time, and
+           * from their side that is a link that no longer works. So this says what the check-in link now
+           * does, which link takes them in, how long it lasts, and offers it again.
+           */}
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            You have already joined this check-in, and this is a new device or browser.
-            We have sent a sign-in link to <strong>{emailedTo}</strong> so only you can pick up where you left off.
+            You have already joined this check-in, and this device or browser is not signed in, so the
+            check-in link on its own cannot open it here. We have sent a sign-in link to{' '}
+            <strong>{emailedTo}</strong>. Open that one: it takes you straight to your check-in and works
+            for 24 hours. After that, the check-in link works on this device too.
           </div>
+          <button
+            className="gw-btn"
+            style={{ display: 'inline-block', width: 'auto', padding: '8px 16px', marginTop: 14, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }}
+            disabled={accept.isPending}
+            onClick={() => accept.mutate()}
+          >
+            {accept.isPending ? 'Sending…' : 'Send it again'}
+          </button>
         </div>
       </InviteShell>
     )
   }
 
-  if (preview && opensStraightOnTheQuestion(preview.scenario) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
+  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
     return (
       <InviteShell>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Opening your question</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{straightToTheReport ? 'Opening your report' : 'Opening your question'}</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>One moment.</div>
         </div>
       </InviteShell>

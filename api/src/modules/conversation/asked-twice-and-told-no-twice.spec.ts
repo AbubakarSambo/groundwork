@@ -169,3 +169,35 @@ describe('the same question word for word, straight after itself', () => {
     expect(theyPushedBackOnTheQuestions("That's what I just said. 5-10.")).toBe(true);
   });
 });
+
+describe('the same question straight back, after it was answered', () => {
+  const { asksItAgainAfterTheAnswer } = require('./asked-twice-and-told-no-twice');
+
+  it('catches the reworded second ask Halima got', () => {
+    expect(asksItAgainAfterTheAnswer(
+      'stay healthy is certainly key. What specific thing are you doing to keep them healthy right now?',
+      'That is the kind of specific target that helps. What specific thing are you doing to keep your 260 hens healthy right now?',
+    )).toBe(true);
+  });
+
+  it('lets a follow-up on the same subject through', () => {
+    expect(asksItAgainAfterTheAnswer(
+      'What moved on the Kano invoice since the last update? A number or a date is enough.',
+      'Twice, and nothing yet. What would you need to get that Kano invoice moving?',
+    )).toBe(false);
+  });
+
+  it('and needs a question in the reply and a subject in both', () => {
+    expect(asksItAgainAfterTheAnswer('What are you doing to keep them healthy?', 'Vaccinating them goes on the record.')).toBe(false);
+    expect(asksItAgainAfterTheAnswer('', 'What are you doing?')).toBe(false);
+  });
+});
+
+describe('the same question again is read on the question, not the preamble', () => {
+  it('catches the Q3 target asked three times behind three different preambles (run 12, Emeka)', () => {
+    expect(asksTheSameThingAgain(
+      'That simplifies the credit sales and arrears part of the target for your contribution. What is your sales target for Q3?',
+      '"You just sell" is a clear way to put it, and it tells me where you are. The record needs a number for your Q3 sales, even if it is your current run rate. What is the specific number you are working towards for Q3?',
+    )).toBe(true);
+  });
+});

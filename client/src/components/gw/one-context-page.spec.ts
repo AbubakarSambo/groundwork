@@ -68,8 +68,13 @@ describe('there is one context page', () => {
   it('and asks who runs it separately from whose it is', () => {
     expect(CONTEXT).toMatch(/const isLead = role === 'lead' \|\| role === 'admin'/)
     expect(CONTEXT).toMatch(/const isTheLead = role === 'lead'/)
-    /* The band that must never widen: the lead's own private steers. */
-    expect(CONTEXT).toMatch(/\{isTheLead && privateSteers\.length > 0 && \(/)
+    /*
+     * The thing that must never widen: the lead's own read of a person. The band called "Only you
+     * see this" was removed on 22 September 2026 and those lines moved onto the person they are
+     * about, so what is pinned now is the gate that decides whether they are drawn at all.
+     */
+    expect(CONTEXT).toMatch(/yoursAlone=\{isTheLead \? \(pid: string\) =>/)
+    expect(CONTEXT).toMatch(/ABOUT_A_PERSON/)
   })
 
   it('and both pages pass one', () => {

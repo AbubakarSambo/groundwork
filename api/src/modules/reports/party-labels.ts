@@ -4,6 +4,10 @@ export type LabelParty = {
   id: string;
   partyType: PartyType;
   roleAsDescribed?: string | null;
+  /** The address on their row: the one the lead typed, and the only handle a person who has not joined yet has. */
+  email?: string | null;
+  /** The name they typed at the end of an open-link check-in; they have no User row to carry one. */
+  nameGiven?: string | null;
   user?: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
 };
 
@@ -151,6 +155,8 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
   const first = p.user?.firstName?.trim();
   const last = p.user?.lastName?.trim();
   if (first) return last ? `${first} ${last}` : first;
+  /* The name they gave at the end of an open link is theirs to be read by, the same as a sign-in's. */
+  if (p.nameGiven?.trim()) return p.nameGiven.trim();
   /*
    * AND THE ROSTER THAT NAMED HALF OF ITSELF.
    *
@@ -168,7 +174,11 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
    * Never to a peer, which is what `theEmailIsFair` gates - see namesVisibleTo.
    */
   if (theEmailIsFair) {
-    const email = p.user?.email?.trim();
+    /* THE ROW'S ADDRESS TOO, NOT ONLY THE SIGN-IN'S. Hafsah, 22 Sep 2026, reading a session report as the
+       lead: "it still calls people participant A and participant B". Those two had not joined yet, so
+       there was no user to take an address from; the address the lead typed is on the row, and the lead
+       is reading. */
+    const email = p.user?.email?.trim() || p.email?.trim();
     if (email) return email;
   }
   return null;

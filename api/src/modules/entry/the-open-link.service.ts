@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { theSituationIn } from '../grounds/what-a-participant-is-told-about-this';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,7 +37,7 @@ export class TheOpenLinkService {
   async whatThisIs(joinToken: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
-      select: { id: true, label: true, brief: true, scenario: true, status: true, initiator: { select: { firstName: true } } },
+      select: { id: true, label: true, brief: true, toldToParticipants: true, scenario: true, status: true, initiator: { select: { firstName: true } } },
     });
     if (!ground) throw new NotFoundException('That link does not open anything.');
     if (['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes(ground.status)) {
@@ -44,8 +45,19 @@ export class TheOpenLinkService {
     }
     return {
       groundLabel: ground.label,
-      /* The lead's own line is the question, which is the one thing worth showing before they start. */
-      theQuestion: ground.brief ?? null,
+      /*
+       * THE LEAD'S OWN LINE, AND ONLY AS MUCH OF IT AS SOMEBODY READS BEFORE ANSWERING.
+       *
+       * Read live, 22 September 2026: a two-hundred-word brief printed whole at the top of the
+       * phone screen, then the first question underneath repeating the half of it that was a
+       * question. The whole card promises two minutes.
+       *
+       * `toldToParticipants` is the product's own short read of the brief, written once and used in
+       * every "About this check-in" box; where it exists it is what this shows, and otherwise the
+       * first few sentences of the brief that are about the situation rather than about how to run
+       * the interview. See what-a-participant-is-told-about-this.
+       */
+      theQuestion: ((ground as any).toldToParticipants?.trim() || theSituationIn(ground.brief) || ground.brief) ?? null,
       askedBy: ground.initiator?.firstName ?? null,
       scenario: ground.scenario,
     };
@@ -102,27 +114,61 @@ export class TheOpenLinkService {
    * gives a real address gets the report; somebody who does not still leaves their account on the
    * record, because the lead asked a question and they answered it.
    */
-  async finish(key: string, email?: string, firstName?: string) {
+  async finish(key: string, email?: string, firstName?: string, wantsTheReport?: boolean) {
     const row = await this.theirRow(key);
     const checkIn = row.checkIns[0];
     if (!checkIn) throw new BadRequestException('Open the link again to start.');
 
     const at = (email ?? '').trim().toLowerCase();
+    /* THE NAME THEY GAVE, AND WHETHER THEY WANT THE REPORT, kept whether or not an address came with them.
+       A name with no address still names their line on the lead's report. */
+    const name = (firstName ?? '').trim().slice(0, 120) || null;
+    if (name || wantsTheReport != null) {
+      await this.prisma.groundParticipant.update({
+        where: { id: row.id },
+        data: { ...(name ? { nameGiven: name } : {}), ...(wantsTheReport != null ? { wantsTheReport } : {}) },
+      });
+    }
     if (at) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(at)) throw new BadRequestException('That is not an email address.');
-      /* Somebody already on this check-in keeps their row: two rows for one person would split
-         their account in the report, which is the one thing the report cannot recover from. */
+      /*
+       * ONE PERSON, ONE ROW - AND THE ANSWER MOVES TO THE ROW THEY ALREADY HAVE.
+       *
+       * This refused: "that address is already on this check-in, use the link from your email
+       * instead." Read on a live board, 22 September 2026: the check-in showed "Ehi Okosun" with
+       * "nobody has said anything about this yet" beside an unnamed card holding everything he had
+       * said. He had been invited by mail AND had answered on the shared link, so the ground held two
+       * rows for him - one named and empty, one anonymous and full - and the board, the report and
+       * every count read them as two people.
+       *
+       * Refusing was the wrong half of the right instinct. Two rows for one person is the thing to
+       * avoid, and by the time somebody is typing their address the work is already done: the answer
+       * exists, it is theirs, and the only question is which row it hangs on. So it moves onto the
+       * row that was invited, and the row the link made goes. Nothing they said is lost, and the
+       * person who was invited is now the person who answered.
+       */
       const already = await this.prisma.groundParticipant.findFirst({
         where: { groundId: row.groundId, email: at, id: { not: row.id } },
         select: { id: true },
       });
-      if (already) throw new BadRequestException('That address is already on this check-in. Use the link from your email instead.');
-      await this.prisma.groundParticipant.update({
-        where: { id: row.id },
-        data: { email: at, roleAsDescribed: firstName?.trim() ? null : undefined },
-      });
+      if (already) {
+        await this.prisma.$transaction([
+          this.prisma.checkIn.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          this.prisma.recordEntry.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          this.prisma.groundDocument.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          ...(name ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { nameGiven: name } })] : []),
+          ...(wantsTheReport != null ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { wantsTheReport } })] : []),
+          this.prisma.groundParticipant.delete({ where: { id: row.id } }),
+        ]);
+        this.logger.log(`Ground ${row.groundId}: an open-link answer joined the row already invited as ${at}.`);
+        const theirs = await this.prisma.checkIn.findFirst({ where: { id: checkIn.id }, select: { id: true } });
+        const done = await this.conversation.complete(theirs!.id, { theParticipant: already.id }, { theyAskedToFinish: true });
+        return { ...(done as any), willGetTheReport: true, at };
+      }
+      await this.prisma.groundParticipant.update({ where: { id: row.id }, data: { email: at } });
     }
-    const done = await this.conversation.complete(checkIn.id, { theParticipant: row.id });
+    /* "I am done" is asking to finish. See complete(): the floor lets the sentence out, and the button. */
+    const done = await this.conversation.complete(checkIn.id, { theParticipant: row.id }, { theyAskedToFinish: true });
     return { ...(done as any), willGetTheReport: !!at, at: at || null };
   }
 }

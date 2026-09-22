@@ -82,6 +82,10 @@ export interface GroundParticipant {
   partyType: PartyType
   userId: string | null
   roleAsDescribed?: string | null
+  /** The name they typed at the end of an open-link check-in; they have no sign-in to carry one. */
+  nameGiven?: string | null
+  /** Whether they asked for the report. Null where nobody asked them. */
+  wantsTheReport?: boolean | null
   // display name of the linked user (null for a not-yet-accepted invite)
   user?: { firstName: string | null; lastName: string | null } | null
   // "my account is accurate" confirmation - the deadline for corrections, in
@@ -184,11 +188,19 @@ export interface Ground {
    */
   peopleWorkTogether?: boolean | null
   daysLeft?: number | null
+  /** The day this ends, from the start on record and how long it runs; null where it has no fixed length. */
+  endsOn?: string | null
   checkInsToday?: number
   overdue?: number
   contextNotes?: string[]
   participants: GroundParticipant[]
   leadContextNotes?: LeadContextNote[]
+  /**
+   * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what
+   * comes out of a paste and is left as it is rather than put on the nearest person. `status` is
+   * UNKNOWN until a person says otherwise - nothing here is the product's judgement.
+   */
+  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null

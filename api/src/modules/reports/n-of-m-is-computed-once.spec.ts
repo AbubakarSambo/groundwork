@@ -24,7 +24,9 @@ describe('how many have answered', () => {
       },
     } as any;
     const r = await howManyHaveAnswered(prisma, 'g', 2);
-    expect(r).toEqual({ answered: 2, expected: 3, waitingOn: ['c'], completed: 1 });
+    /* `expectedIds` and `declinedIds` joined the shape when getSessionProgress stopped keeping its own
+       copy of the population clause - see how-many-have-answered. */
+    expect(r).toEqual({ answered: 2, expected: 3, expectedIds: ['a', 'b', 'c'], waitingOn: ['c'], completed: 1, declinedIds: ['b'] });
   });
 
   it('in session one everybody is expected, managing-only included', async () => {

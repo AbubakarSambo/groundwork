@@ -45,10 +45,14 @@ describe('who the denominator counts', () => {
      * from session 2 they give no account and counting them made "2 of 3" unreachable. Read off
      * Hafsah's own ground, 21 Sep 2026: "1 of 1 checked in" beside a roster of two.
      */
-    expect(fn).toMatch(/waitsOnAManagingOnlyLead\(\(itsScenario as any\)\.scenario, sessionNumber\) \? \{\} : \{ managingOnly: false \}/);
+    /* Asked of how-many-have-answered now rather than copied here; the clause lives there. */
+    expect(fn).toContain('await howManyHaveAnswered(this.prisma, groundId, sessionNumber)');
+    const theRule = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8');
+    expect(theRule).toMatch(/waitsOnAManagingOnlyLead\(ground\?\.scenario, sessionNumber\) \? \{\} : \{ managingOnly: false \}/);
   });
 
   it('and still counts anyone who has actually completed this round', () => {
-    expect(fn).toMatch(/checkIns: \{ some: \{ sessionNumber, status: CheckInStatus\.COMPLETED \} \}/);
+    const theRuleToo = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8');
+    expect(theRuleToo).toMatch(/checkIns: \{ some: \{ sessionNumber, status: \{ in: AN_ANSWER \} \} \}/);
   });
 });

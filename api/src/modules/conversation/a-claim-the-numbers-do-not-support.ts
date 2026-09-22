@@ -39,6 +39,16 @@ const sentencesOf = (text: string): string[] => (text ?? '').split(/(?<=[.!?])\s
 
 const CLAIMS_TO_BE_PAST = /\b(past|ahead of|above|beyond|exceed(?:ed|s)?|surpass(?:ed|es)?|over|cleared|hit|reached|met)\b[^.!?]*\b(target|goal|number|figure|mark)\b|\b(target|goal)\b[^.!?]*\b(exceeded|met|hit|reached|cleared|surpassed)\b/i;
 
+/*
+ * AND THE OTHER DIRECTION. "Some farmers waiting means you did not hit the 40 farmers a season goal" -
+ * to a miller who had milled for 46 (run 11, 22 Sep 2026). A shortfall the model inferred from a
+ * sentence with no number in it. A sentence that says they MISSED, FELL SHORT OF or DID NOT HIT a
+ * number stands only when they have said a figure below it, or said in their own words that they
+ * fell short.
+ */
+const CLAIMS_TO_HAVE_MISSED = /\b(?:did not|didn't|have not|haven't|never|not)\s+(?:hit|reach(?:ed)?|meet|met|make|made|get to|got to)\b[^.!?]*\b(?:target|goal|number|figure|mark)\b|\b(?:missed|fell short of|short of|below|under|behind on)\b[^.!?]*\b(?:target|goal|number|figure|mark)\b/i;
+const SAID_THEY_FELL_SHORT = /\b(missed|short|behind|below|under|did not (?:hit|reach|make|meet)|didn't (?:hit|reach|make|meet)|not (?:hit|reached|met|made))\b/i;
+
 const RECALLS = /^(last (time|session|week|month)|previously|earlier|before,? you|you (said|mentioned|told|gave|named)|at the (start|beginning)|when we (last|first) spoke|the last time)/i;
 
 export interface WhatTheyHaveSaid {
@@ -73,6 +83,13 @@ export function claimsTheNumbersDoNotSupport(reply: string, said: WhatTheyHaveSa
       const claimed = Math.max(...nums);
       if (theirMax < claimed) {
         out.push({ sentence: s, why: `says they are past ${claimed} and the most they have said is ${theirMax}` });
+        continue;
+      }
+    }
+    if (CLAIMS_TO_HAVE_MISSED.test(s) && !SAID_THEY_FELL_SHORT.test(theirs)) {
+      const target = Math.max(...nums);
+      if (!reached.some((n) => n < target)) {
+        out.push({ sentence: s, why: `says they fell short of ${target} and they have said no figure below it, nor that they fell short` });
         continue;
       }
     }

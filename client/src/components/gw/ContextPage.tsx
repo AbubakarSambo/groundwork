@@ -168,46 +168,64 @@ export function ContextPage({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
   })
 
-  const [ctxNote, setCtxNote] = useState('')
-  const [noteSaved, setNoteSaved] = useState(false)
-  const addNote = useMutation({
-    mutationFn: (note: string) => groundsApi.update(id, { contextNote: note }),
-    onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('The note did not save. It is still in the box - try again.'),
-  })
-
-  /**
-   * THE SHARED NOTE. Separate mutation from the private one on purpose: they differ in the single
-   * most consequential way a piece of context can differ - who reads it - and a shared control with
-   * a checkbox is how somebody publishes a private note by mistake.
+  /*
+   * THE THREE WRITE MUTATIONS WENT WITH THEIR BOXES - the running log, the shared note and the
+   * private steer. Everything they did is said in the conversation now. What replaces them is one
+   * mutation per LINE, because a line of the record is the thing a lead actually wants to change.
    */
-  const [sharedNoteText, setSharedNoteText] = useState('')
-  const [sharedNoteSaved, setSharedNoteSaved] = useState(false)
-  const addSharedNoteMut = useMutation({
-    mutationFn: () => groundsApi.addLeadContext(id, { text: sharedNoteText.trim(), audience: 'EVERYONE' }),
-    onSuccess: () => { setSharedNoteText(''); setSharedNoteSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('The note did not save. It is still in the box - try again.'),
+  /* A note written before the buckets existed has its own share route, and no id in the new table. */
+  const shareOlderNote = useMutation({
+    mutationFn: (noteId: string) => groundsApi.shareLeadContext(id, noteId),
+    onSuccess: () => { toast.success('Shared. Everybody on this check-in can read it now.'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('That did not share. Try again in a moment.'),
   })
 
-  const [leadCtxText, setLeadCtxText] = useState('')
-  const [leadCtxTarget, setLeadCtxTarget] = useState('')
-  const [leadCtxSaved, setLeadCtxSaved] = useState(false)
-  const addLeadContextMut = useMutation({
-    mutationFn: () => groundsApi.addLeadContext(id, {
-      participantId: leadCtxTarget || undefined,
-      text: leadCtxText.trim(),
-    }),
-    onSuccess: () => { setLeadCtxText(''); setLeadCtxSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('That did not save. Your text is still here - try again.'),
+  const changeLine = useMutation({
+    mutationFn: ({ itemId, ...change }: { itemId: string; text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
+      groundsApi.changeContextLine(id, itemId, change),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. Try again in a moment.'),
   })
 
   /**
    * IS THERE ANYTHING ON THIS PAGE YET? Used to decide whether the write boxes open by default,
    * which is only kind when the person would otherwise be looking at nothing.
    */
-  /** The lead's own steers: private by audience, and never the shared framing note. */
-  const privateSteers = (ground.leadContextNotes ?? []).filter(
-    (n: any) => n.audience !== 'EVERYONE',
+  /*
+   * THE BUCKETS, IN THE ORDER THE PAGE DRAWS THEM. Kept in step with THE_BUCKETS on the server by
+   * name rather than by import, because this list is also the page's copy order.
+   */
+  const BUCKETS: { kind: string; title: string; sub: string }[] = [
+    { kind: 'STRATEGY', title: 'The strategy', sub: 'how we win work and what we lead with' },
+    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: 'the rules, as the lead wrote them' },
+    { kind: 'DECISION', title: 'Still to decide', sub: 'nobody has decided these yet' },
+    { kind: 'UNSETTLED', title: 'Not settled', sub: 'not treated as fact or as a target' },
+    { kind: 'NOTE', title: 'Notes', sub: 'kept because somebody said it' },
+  ]
+  const contextLines: any[] = (ground as any).contextItems ?? []
+  /*
+   * AND THE NOTES THAT PREDATE THE BUCKETS, read into Notes rather than lost. Everything typed into
+   * the three write boxes before they were removed is still somebody's context.
+   */
+  const olderNotes: any[] = ((ground as any).leadContextNotes ?? [])
+    .filter((n: any) => !n.participantId)
+    /* `legacy` because it is a note, not a line: it is shared through its own route and cannot be
+       reworded or retired by id. Marked rather than hidden - it is still somebody's context. */
+    .map((n: any) => ({ id: n.id, kind: 'NOTE', text: n.text, audience: n.audience, legacy: true }))
+  const theBuckets = BUCKETS.map((b) => ({
+    ...b,
+    lines: [
+      ...contextLines.filter((l) => l.kind === b.kind),
+      ...(b.kind === 'NOTE' ? olderNotes : []),
+    ],
+  }))
+  /** A line about one person, for their own row in the band above. The lead's, and nobody else's. */
+  const linesAbout = (participantId: string, kind: 'ABOUT_A_PERSON' | 'QUESTION_FOR_PERSON') =>
+    contextLines.filter((l) => l.kind === kind && l.aboutParticipantId === participantId)
+
+  /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
+  const commitments = [...((ground as any).commitments ?? [])].sort(
+    (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
   )
 
   /**
@@ -254,6 +272,20 @@ export function ContextPage({
               A band with nothing in it still renders its heading and says what would go there, because
               "nothing yet" is a fact about this check-in and a blank space is not.
             */}
+
+            <div id="gw-context-chat">
+              {/* The lead's own conversation about their own check-in. An admin reads the page. */}
+              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
+              {/* THIS IS SETUP, NOT THE CHECK-IN. Hafsah, 21 Sep 2026: she finished the context conversation on
+                  her own ground and waited for the first report. Nothing here writes a report; check-ins do,
+                  and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
+              {contextEnabled && isTheLead && (
+                <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
+                  <a href={`/grounds/${id}?tab=chat`} style={{ color: 'var(--gw-navy)' }}>Check-in tab</a>.
+                </div>
+              )}
+            </div>
 
             {/* 1 - WHAT THIS CHECK-IN IS FOR */}
             {/*
@@ -359,50 +391,53 @@ export function ContextPage({
                 </div>
               </div>
             )}
+            {/*
+              THIRTEEN TARGETS WERE THIRTEEN CARDS, AND EACH ONE REPEATED THE SAME SENTENCE.
+              
+              Hafsah, 22 September 2026, on a page holding a quarter's numbers: "i feel like the
+              targets i see are not real targets and they can all be in one box... those sections are
+              so bulky." Every card carried "how we'd know: a number crosses a line", which is true of
+              every target ever set and told her nothing, and the team's numbers sat in the same
+              stack as one person's, so nine rows read as nine things everybody was held to.
+              
+              One table. The team's first, then each person's under their name, and the figure in a
+              column a reader can run their eye down.
+            */}
             {objectives.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-                {objectives.map((o: any) => (
-                  <div key={o.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                    <span style={{
-                      display: 'inline-block', fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em',
-                      padding: '1px 7px', borderRadius: 10, marginBottom: 4,
-                      color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                    }}>
-                      {o.target == null ? 'goal' : 'target'}
-                    </span>
-                    <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>{o.name}</div>
-                    {o.target != null && (
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
-                        how we&rsquo;d know: a number crosses a line &middot; target {o.target}
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8, maxWidth: 720 }}>
+                {(() => {
+                  const nameOf = (pid: string | null | undefined) =>
+                    pid ? personLabel(ground.participants?.find((x: any) => x.id === pid)) : null
+                  const theTeams = objectives.filter((o: any) => !o.ownerParticipantId)
+                  const theirs = objectives.filter((o: any) => o.ownerParticipantId)
+                  const groups: { who: string | null; rows: any[] }[] = []
+                  if (theTeams.length) groups.push({ who: null, rows: theTeams })
+                  for (const o of theirs) {
+                    const who = nameOf(o.ownerParticipantId) ?? 'somebody'
+                    const at = groups.find((g) => g.who === who)
+                    if (at) at.rows.push(o); else groups.push({ who, rows: [o] })
+                  }
+                  return groups.map((g, gi) => (
+                    <div key={g.who ?? 'team'}>
+                      <div style={{ padding: '7px 13px 5px', background: 'var(--gw-bg)', borderTop: gi === 0 ? 'none' : '1px solid var(--gw-border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub)' }}>
+                        {g.who ?? 'The whole check-in'}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {g.rows.map((o: any, i: number) => (
+                        <div key={o.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
+                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
+                            {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                })()}
               </div>
             ) : (
-              /*
-                AN EMPTY BAND IS A LINE, NOT A CARD.
-
-                This was a full bordered panel, so the first thing anybody met on the Context page
-                was a box about absence, drawn with the same weight as the expectations below it. A
-                band with nothing in it should still say what would go there - that has not changed -
-                but it should not be the loudest thing on the page while it does.
-              */
-              /* Only when there is genuinely nothing - a brief alone is not nothing. */
-              /*
-               * THE SAME SHAPE AS EVERY OTHER "NOTHING YET" ON THIS PAGE.
-               *
-               * There were three of them in three shapes: bare grey text here, a bordered panel for
-               * the expectations below, and a dashed drop-zone for documents. Same idea, three
-               * weights, so the page looked like a pile of unrelated states rather than one thing
-               * with sections that are not filled in.
-               *
-               * The bordered panel is the one that wins, because it is the one that reads as a slot
-               * waiting for something rather than as an apology.
-               */
               !theBrief && (
                 <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
-                  Nothing yet. This comes out of the lead&rsquo;s own check-in.
+                  Nothing yet. Say what this is counted by in the conversation below and it lands here.
                 </div>
               )
             )}
@@ -455,6 +490,12 @@ export function ContextPage({
               parties={(ground.participants ?? []) as any[]}
               viewerUserId={viewerUserId}
               hasChat={isTheLead && contextEnabled}
+              /* The lead's own read of each person, on that person's row. Not passed on anybody
+                 else's page, and the server does not send these lines to anybody else either. */
+              yoursAlone={isTheLead ? (pid: string) => ({
+                read: linesAbout(pid, 'ABOUT_A_PERSON').map((l: any) => l.text),
+                questions: linesAbout(pid, 'QUESTION_FOR_PERSON').map((l: any) => l.text),
+              }) : undefined}
             />
 
             {/*
@@ -744,6 +785,25 @@ export function ContextPage({
                       {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
                     </div>
                   )}
+                  {/*
+                    AND THE NUMBERS IT HOLDS, WHOSE THEY ARE, AND THE DATES - the same words the chat
+                    says, from the same read (the API's what-a-document-holds). Hafsah, 22 Sep 2026:
+                    "context tab as well as the reports and board. It can pull the targets." A card
+                    that says a file was read and not what it gave is the locker this page is not.
+                  */}
+                  {doc.theContextWeHave && (
+                    <div style={{ marginTop: 8, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '9px 11px' }}>
+                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--gw-navy)', fontWeight: 700 }}>The context we have from it</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 4 }}>
+                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                      </div>
+                      {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                          These are on the board and in the report, against the people who hold them.
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {/* WHO CAN READ THIS, stated on the row rather than in a
@@ -844,46 +904,51 @@ export function ContextPage({
 
 
             {/*
-              THE THREE WRITE BOXES, FOLDED AWAY.
+              "ONLY YOU SEE THIS" IS GONE AS A SECTION, AND ITS CONTENT DID NOT GO WITH IT.
               
-              The design has no form for any of this: you say it in the chat and it lands on the page.
-              These are how it is done today, and deleting them before the chat can write a shared note
-              or a private steer would remove something people use to fix a page they cannot otherwise
-              fix - so they are still here, one click down, rather than three textareas competing with
-              the record for the top of the page.
+              Hafsah, 22 September 2026: "the 'only you see this bit' shouldnt exist... the content
+              needs to be parsed and paraphrased in sections." It was a band of raw blobs at the
+              bottom of the page, drawn in red, which made the steers that shape every question in
+              this check-in look like something to be ashamed of - and made them the hardest thing
+              on the page to read.
               
-              Open by default when there is nothing on the page yet, because that is the state where a
-              person most needs a way in and the chat may not have reached them.
+              What the lead wrote is now lines in named buckets below, and a line about a person sits
+              under that person in the band above, marked as theirs to see and nobody else's. Nothing
+              is hidden from the lead and nothing about a person reaches anybody else.
             */}
             {/*
-              WHAT ONLY THE LEAD SEES, AS CONTENT RATHER THAN AS A FORM.
-
-              These existed only as a list at the bottom of a collapsed "or write it yourself" block,
-              underneath the textarea that makes them - so the steers already shaping every question
-              in this check-in were the hardest thing on the page to find, and were invisible whenever
-              the block was shut. In the design this is a band of its own, and each steer carries the
-              promise that limits it.
+              THE THREE WRITE BOXES ARE GONE: the running log, the note everyone reads, and the
+              private steer.
+              
+              Hafsah, 22 September 2026: "that section needs to go since you can all do everything
+              from the context chat." They were three textareas and about nine hundred pixels of
+              form, competing with the record for the page, and each one did something the
+              conversation above already does better - it asks, it proposes, and it writes on a yes.
+              A form that duplicates the conversation teaches people the conversation is optional.
+              
+              Nothing that was written through them is lost: every note already on a check-in is read
+              back into the buckets below.
             */}
-            {isTheLead && privateSteers.length > 0 && (
+            {/*
+              WHAT PEOPLE ARE DOWN AS DOING, WITH NOBODY MARKED AS HAVING DONE IT.
+              
+              A paste hands over the actions as well as the numbers. The ones with no owner are
+              listed as having none, because that is the fact and it is the one worth acting on.
+            */}
+            {commitments.length > 0 && (
               <>
-                <Sec n={band()} title="Only you see this" src="steers what gets asked &middot; never quoted" />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-                  {privateSteers.map((n: any) => {
-                    const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
+                <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
+                  {commitments.map((c: any, i: number) => {
+                    const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
                     return (
-                      <div key={n.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                          {/* The limit travels with the steer. A note that shapes what somebody is
-                              asked, sitting on a page with no statement of what it cannot do, is the
-                              thing people are right to be afraid of. */}
-                          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-red-t)', background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)' }}>
-                            never quoted
-                          </span>
-                          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--gw-muted)' }}>
-                            about {n.participantId ? personLabel(p) : 'the check-in'}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{n.text}</div>
+                      <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
+                          {c.participantId ? personLabel(p) : 'nobody owns this'}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
+                        {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
+                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
                       </div>
                     )
                   })}
@@ -892,145 +957,65 @@ export function ContextPage({
             )}
 
             {/*
-              LEAD ONLY, ALL OF IT. These write the framing everybody reads and the private steer
-              nobody but the lead sees; the API refuses them from anyone else, so rendering them to a
-              participant would only ever be a form that fails on submit.
-            */}
-            {/*
-              * THE DISCLOSURE IS GONE, AND WITH IT A NUMBERED SECTION THAT LIVED INSIDE IT.
-              *
-              * "Or write it yourself instead of saying it in the chat" was a summary floating between
-              * the numbered bands, and folded inside it were the running log AND section five, "What
-              * everyone here reads" - so the page counted 1, 2, 3 and then hid 5 behind a triangle.
-              * Somebody looking for where to write the framing everybody reads had to guess that a
-              * one-line disclosure was where a numbered section went.
-              *
-              * It was collapsed for a good reason - it used to open three textareas and nine hundred
-              * pixels of form on a page that was already full - but the answer to "too much form" is
-              * fewer boxes with clearer jobs, not the same boxes behind a door.
-              *
-              * THE TWO WRITE BANDS ARE NOT MERGED, and that is deliberate rather than unfinished.
-              * They look identical and they are not: one appends to a running log of what changed,
-              * the other is the lead's standing framing with an audience. Different stores, different
-              * lifetimes. Making them one control would have meant dropping one of them on my own
-              * judgement. What they needed was to stop looking the same, which is a line each.
-              */}
-            {isTheLead && (
-            <div style={{ marginTop: 16 }}>
-              <Sec n={band()} title="What has changed since setup" src="a running log &middot; everyone here reads it" />
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: 620 }}>
-                Short entries, added as things move. Each one is dated and kept; nothing is replaced.
-              </div>
-              <div className="gw-fld">
-                <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => { setCtxNote(e.target.value.slice(0, 500)); setNoteSaved(false) }} placeholder="Add a context note: changed scope, revised goal, new constraint…" maxLength={500} />
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{ctxNote.length}/500</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                {/*
-                  A DEAD BUTTON SAYS WHY IT IS DEAD.
-                  
-                  All three of these grey out on an empty box and gave no reason - so somebody who had
-                  clicked into the wrong field, or typed only spaces, met a control that refused and
-                  said nothing. The hover says what to do, and each says what happens after, because
-                  the three differ in the one way that matters: who ends up reading it.
-                */}
-                <button onClick={() => { if (ctxNote.trim()) addNote.mutate(ctxNote.trim(), { onSuccess: () => setNoteSaved(true) }) }}
-                  disabled={addNote.isPending || !ctxNote.trim()}
-                  title={!ctxNote.trim() ? 'Write something first, then this adds it.' : undefined}
-                  style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: ctxNote.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: ctxNote.trim() ? 1 : 0.5 }}>
-                  {addNote.isPending ? 'Saving…' : 'Add note'}
-                </button>
-                {noteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
-              </div>
-              {(ground.contextNotes ?? []).map((n: any, i: number) => (
-                <div key={i} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
-              ))}
-            </div>
-            )}
-
-            {/*
-              LABELLED BY WHO READS IT, WHICH IS THE ONLY DIFFERENCE THAT MATTERS.
+              WHAT WE KNOW, IN NAMED BUCKETS, ONE LINE EACH.
               
-              The page had two near-identical textareas whose only real difference was the audience,
-              and that difference lived in the small print above each rather than in the heading. So
-              this one leads with the readership and the private one below leads with its promise.
+              This is what replaced four walls of text and a red band at the bottom of the page. Each
+              line is a row with an id, so it can be reworded, shared, made private or retired in a
+              sentence - and the two controls that do it sit on the line rather than in a form.
+              
+              The work buckets are the team's by default. A line about somebody is never here: it is
+              under that person, above, and it is the lead's alone.
             */}
-            {isTheLead && (
-              <div style={{ marginTop: 20 }}>
-                <Sec n={band()} title="What everyone here reads" src="your framing, never quoted as a finding" />
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                  About the whole check-in, not about one person. Everyone sees it with your name on
-                  it, and it is never quoted as a finding about anybody.
+            {theBuckets.some((b) => b.lines.length > 0) && (
+              <>
+                <Sec n={band()} title="What we know" src={isTheLead ? 'from the conversation \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>
+                  {theBuckets.filter((b) => b.lines.length > 0).map((b) => (
+                    <div key={b.kind} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ padding: '8px 13px 6px', background: 'var(--gw-bg)', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{b.title}</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{b.sub}</span>
+                      </div>
+                      {b.lines.map((l: any, i: number) => (
+                        <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
+                          {l.audience !== 'EVERYONE' && (
+                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>only you</span>
+                          )}
+                          {isTheLead && l.legacy && l.audience !== 'EVERYONE' && (
+                            <button
+                              onClick={() => shareOlderNote.mutate(l.id)}
+                              disabled={shareOlderNote.isPending}
+                              style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                              Share with the team
+                            </button>
+                          )}
+                          {isTheLead && !l.legacy && (
+                            <>
+                              <button
+                                onClick={() => changeLine.mutate({ itemId: l.id, audience: l.audience === 'EVERYONE' ? 'LEAD_ONLY' : 'EVERYONE' })}
+                                disabled={changeLine.isPending}
+                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
+                              </button>
+                              {/* Retired, not deleted: a decision that was made is not one that never existed. */}
+                              <button
+                                onClick={() => changeLine.mutate({ itemId: l.id, closed: true })}
+                                disabled={changeLine.isPending}
+                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                Done with it
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-                <div className="gw-fld">
-                  <textarea className="gw-ta" rows={3} value={sharedNoteText}
-                    onChange={e => { setSharedNoteText(e.target.value.slice(0, 4000)); setSharedNoteSaved(false) }}
-                    placeholder="e.g. We are deciding whether to renew, and all three of us should see what the others said."
-                    maxLength={4000} />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{sharedNoteText.length}/4000</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <button onClick={() => { if (sharedNoteText.trim()) addSharedNoteMut.mutate() }}
-                    disabled={addSharedNoteMut.isPending || !sharedNoteText.trim()}
-                    title={!sharedNoteText.trim() ? 'Write something first, then everyone here can read it.' : undefined}
-                    style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: sharedNoteText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: sharedNoteText.trim() ? 1 : 0.5 }}>
-                    {addSharedNoteMut.isPending ? 'Saving…' : 'Share this with everyone'}
-                  </button>
-                  {sharedNoteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Everyone here can read this now</span>}
-                </div>
-
-                {/*
-                  THE LINE WHERE THE PAGE STOPS BEING SHARED.
-
-                  "Put a line between the private steer section and everything above, so we say
-                  everything below can't be seen by your team, only the items above."
-
-                  Until here, every band on this page is read by everybody on the check-in - that
-                  is the point of it. From here down it is the lead's alone. The two were separated
-                  only by a heading in the same weight as every other heading, on a page whose
-                  whole job is telling people who reads what.
-                */}
-                <div style={{ borderTop: '2px solid var(--gw-border)', marginTop: 26, paddingTop: 14, marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-clay)', marginBottom: 4 }}>
-                    From here down, only you
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    Everything above this line is read by everybody on this check-in. Nothing below
-                    it is: not by them, and not by anybody else in your organisation.
-                  </div>
-                </div>
-
-                {/* 4 - ONLY YOU SEE THIS. Steers what a session looks at; never quoted, never shown. */}
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A private steer, never quoted</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                  Only you ever read this. It decides what gets looked at first, and is never the
-                  reason given for anything.
-                </div>
-                <div className="gw-fld">
-                  {/* LABELLED. It sat above a textarea with no label of its own, so "About the
-                      whole check-in" read as a statement about the page rather than as the current
-                      value of a control you can change. */}
-                  <label className="gw-label" htmlFor="ctx-audience">Who this is about</label>
-                  <select id="ctx-audience" className="gw-input" value={leadCtxTarget} onChange={e => { setLeadCtxTarget(e.target.value); setLeadCtxSaved(false) }} style={{ marginBottom: 8 }}>
-                    <option value="">About the whole check-in</option>
-                    {ground.participants.map((p: any) => (
-                      <option key={p.id} value={p.id}>About {personLabel(p)}</option>
-                    ))}
-                  </select>
-                  <textarea className="gw-ta" rows={3} value={leadCtxText} onChange={e => { setLeadCtxText(e.target.value.slice(0, 4000)); setLeadCtxSaved(false) }} placeholder="e.g. Ben has been carrying the on-call rotation solo since March." maxLength={4000} />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{leadCtxText.length}/4000</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <button onClick={() => { if (leadCtxText.trim()) addLeadContextMut.mutate() }}
-                    disabled={addLeadContextMut.isPending || !leadCtxText.trim()}
-                    title={!leadCtxText.trim() ? 'Write something first, then only you will see it.' : undefined}
-                    style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: leadCtxText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadCtxText.trim() ? 1 : 0.5 }}>
-                    {addLeadContextMut.isPending ? 'Saving…' : 'Add context'}
-                  </button>
-                  {leadCtxSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Saved</span>}
-                </div>
-              </div>
+              </>
             )}
 
             {/*
@@ -1080,19 +1065,15 @@ export function ContextPage({
               </div>
             )}
 
-            <div id="gw-context-chat">
-              {/* The lead's own conversation about their own check-in. An admin reads the page. */}
-              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
-              {/* THIS IS SETUP, NOT THE CHECK-IN. Hafsah, 21 Sep 2026: she finished the context conversation on
-                  her own ground and waited for the first report. Nothing here writes a report; check-ins do,
-                  and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
-              {contextEnabled && isTheLead && (
-                <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
-                  <a href={`/grounds/${id}?tab=chat`} style={{ color: 'var(--gw-navy)' }}>Check-in tab</a>.
-                </div>
-              )}
-            </div>
+            {/*
+              THE CHAT IS AT THE TOP NOW, BECAUSE IT IS THE WAY IN.
+              
+              It was at the foot of the page - below seven bands, two of which were forms - and
+              Hafsah, looking for it on 22 September 2026, scrolled past all of them: "the chat
+              doesnt seem to flow like a conversation to help you with these things." A page where
+              the only control is last reads as a document. The record is what you scroll THROUGH;
+              the conversation is what you arrive at.
+            */}
     </div>
   )
 }

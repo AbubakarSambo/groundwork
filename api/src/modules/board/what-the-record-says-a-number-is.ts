@@ -121,6 +121,8 @@ For each, give the number the line reports the target is AT NOW.
 - "we're at just over 4,000 users" against "Paying users" is 4000.
 - "I want us at fifty by March" is a hope, not a count. Do not read a number from it.
 - "support handled nine tickets" against "Sites onboarded" is about tickets. Do not force a match.
+- "credit is running at 52% of sales" against "Credit sales under 35%" is 52 - a rate is reported as its percentage, whatever the target says it should be under.
+- "we are three weeks late on the audit" against "Arrears under 8%" is about time, not the rate. Do not force a match.
 
 Only where a line genuinely reports the current value of that target. Where nothing does, leave the target out. An empty answer is a correct answer, and a wrong number is worse than none - a lead is being asked to accept this.
 

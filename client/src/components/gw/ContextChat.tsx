@@ -191,9 +191,9 @@ export function ContextChat({ groundId }: { groundId: string }) {
           The context chat
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11 }}>
-          Talk through what this check-in is for and what is expected of each person, and it fills in
-          this page as you go. It is about setting the check-in up, not about anybody in it: nothing
-          you say here is your account, and nothing is saved until you say so.
+          Talk through what this check-in is for, what each person is working to, and what you know
+          about how it is going - or paste it all in at once. It fills in this page as you go, and
+          what lands here guides the check-ins and the coaching. Nothing is written until you say so.
         </div>
         <button
           onClick={start}
@@ -220,13 +220,22 @@ export function ContextChat({ groundId }: { groundId: string }) {
       </div>
 
       {/*
-        SAID ONCE, AT THE TOP. A person typing into something on a page about a team
-        needs to know this is not a check-in and is not where things about people go.
-        Saying it in the chat itself would mean saying it every turn.
+        WHAT THIS IS FOR, SAID ONCE, AND SAID TRUTHFULLY.
+        
+        It used to read "About setting the check-in up, not about anybody in it. Nothing here reaches
+        a report, and nothing is saved until you say so." Hafsah, 22 September 2026: that has to go -
+        "everything in the context chat can be used to guide and coach the team and also help them
+        where they are going wrong". It is what the context is FOR, and the old line promised the
+        opposite of the product's own behaviour: what is written here already shapes what each person
+        is asked and the coaching they get.
+        
+        What stays true and is worth saying: nothing is written until you say so, and nothing you
+        write about a person is ever quoted to them or in a report.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-        About setting the check-in up, not about anybody in it. Nothing here reaches a report, and
-        nothing is saved until you say so.
+        Everything here guides the check-ins: what each person is asked, where the coaching looks
+        first, and what the board reads against. Nothing is written until you say so, and nothing
+        you say about a person is quoted to them or in a report.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>

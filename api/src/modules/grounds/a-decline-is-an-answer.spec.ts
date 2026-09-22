@@ -24,7 +24,13 @@ import { CheckInStatus } from '@prisma/client';
  *   - not in `completed` -> the report never claims an account it does not hold
  */
 function makeService(rows: { participantId: string; status: CheckInStatus }[]) {
-  const participants = [...new Set(rows.map((r) => r.participantId))].map((id) => ({ id }));
+  /* The rows the population rule reads: joined, with this session's answers attached. getSessionProgress
+     asks how-many-have-answered for both halves now rather than keeping its own copy of the clause. */
+  const participants = [...new Set(rows.map((r) => r.participantId))].map((id) => ({
+    id,
+    userId: `u-${id}`,
+    checkIns: rows.filter((r) => r.participantId === id && (r.status === CheckInStatus.COMPLETED || r.status === CheckInStatus.DECLINED)).map((r) => ({ status: r.status })),
+  }));
   const prisma: any = {
     checkIn: {
       aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })),

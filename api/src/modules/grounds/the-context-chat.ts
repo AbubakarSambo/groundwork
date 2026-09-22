@@ -65,6 +65,16 @@ export interface ContextGaps {
   partyCount: number;
   /** Whether anybody has said what each person is individually trying to achieve. */
   perPersonObjectiveCount: number;
+  /**
+   * HOW MANY PEOPLE HAVE SOMETHING EXPECTED OF THEM AT ALL, seen or not.
+   *
+   * `perPersonObjectiveCount` counts only what may be READ AGAINST, which is right for reading and
+   * wrong for asking. A lead who has just recorded an expectation for all six people was asked "what
+   * is each person actually trying to achieve?" on the very next turn, because none of the six had
+   * been seen by the person it is about yet - they cannot be, nobody has checked in. The product
+   * asked again for what it had just written down.
+   */
+  perPersonAnyCount?: number;
   /** Documents everybody in the ground can work from. */
   openDocumentCount: number;
   /**
@@ -164,10 +174,16 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
     });
   }
 
-  if (g.perPersonObjectiveCount < g.partyCount) {
+  /* Asked about the people who have nothing, and not at all where everybody has something - an
+     expectation nobody has seen yet is not a missing expectation, it is an unseen one. */
+  const haveSomething = Math.max(g.perPersonObjectiveCount, g.perPersonAnyCount ?? g.perPersonObjectiveCount);
+  if (haveSomething < g.partyCount) {
+    const without = g.partyCount - haveSomething;
     gaps.push({
       key: 'objectives',
-      ask: 'What is each person actually trying to achieve? Without that, the report can only speak about the whole thing, not about how anybody is doing against their own part of it.',
+      ask: without === g.partyCount
+        ? 'What is each person actually trying to achieve? Without that, the report can only speak about the whole thing, not about how anybody is doing against their own part of it.'
+        : `${without === 1 ? 'One person has' : `${without} people have`} nothing expected of them yet. What are they trying to achieve? Without it, the report can speak about the whole thing and not about their part of it.`,
       suggests: 'their job description, objectives, or the message where the work was handed over',
     });
   }
@@ -192,18 +208,41 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
  * specific and every one of them is a version of "this stopped being about the work
  * and became about a person".
  */
-export function contextChatPrompt(groundLabel: string, scenario: string, gaps: ContextGap[]): string {
+export function contextChatPrompt(
+  groundLabel: string,
+  scenario: string,
+  gaps: ContextGap[],
+  /**
+   * WHAT IT ALREADY HAS, so the first thing it says is not a cold greeting.
+   *
+   * Hafsah, 22 September 2026: "the chat doesnt seem to flow like a conversation to help you with
+   * these things." She had pasted a quarter in - thirteen targets, six people, twelve rules - and
+   * the next thing the chat said was "Hello! We're setting up the Groundwork ground...". A
+   * conversation that cannot see what is on the page it sits on has to open by asking, every time.
+   */
+  holds?: { what: string; count: number }[],
+): string {
   const gapList = gaps.length
     ? gaps.map((g) => `- ${g.key}: ${g.ask}${g.suggests ? ` (worth asking for: ${g.suggests})` : ''}`).join('\n')
     : '- nothing is missing that this conversation can fix.';
+  const hasList = (holds ?? []).filter((h) => h.count > 0);
 
   return [
     `You are helping somebody set up a Groundwork ground called "${groundLabel}" (${scenario.replace(/_/g, ' ').toLowerCase()}).`,
     '',
     'A ground collects each person\'s own private account of a piece of work over several sessions, then shows where those accounts agree and differ. Your job here is the SETUP, not the accounts.',
     '',
+    ...(hasList.length ? [
+      'WHAT THIS CHECK-IN ALREADY HOLDS, which you can see and they can too:',
+      ...hasList.map((h) => `- ${h.count} ${h.what}`),
+      '',
+      'OPEN ON THAT, NOT ON A GREETING. Your first message in a conversation that already has something recorded says what is here in one short line, then asks for the most important missing thing. Never introduce yourself, never explain what a ground is, and never ask for something this list says you already have.',
+      '',
+    ] : []),
     'WHAT IS STILL MISSING, in the order it matters:',
     gapList,
+    '',
+    'THEY CAN ALSO CHANGE WHAT IS HERE, and that is part of this conversation rather than a different one. "Drop the 30-day rule", "the 12m is signed not collected", "Client C is Hassan\'s", "that one is decided" - take it, say back exactly which line you would change and how, and change it when they say yes. If you cannot tell which line they mean, ask which one.',
     '',
     'HOW TO ASK. One thing at a time, in your own words, shortest useful question first. Take what they give you and move on - if they answer a different question than you asked, that answer still counts. Never ask twice for something they have already told you.',
     '',

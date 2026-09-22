@@ -18,6 +18,15 @@ import { GroundScenario, GroundMode } from '@prisma/client';
 export enum BoardFamily {
   /** Small group, interlocking work. The board at its fullest, shared. */
   DELIVERY = 'DELIVERY',
+  /**
+   * ONE LINE, ONE LINK, ONE REPORT - AND ONE SMALL BOARD. Hafsah, 22 Sep 2026, after running a team
+   * update live: "the update check-in looks nothing like what we had here." It had sat in RECURRING,
+   * so its board carried targets to add, a standard of success nobody had set, who owns what by
+   * record type, dependencies read out of a sentence about MarketView, and a contribution read. An
+   * update produces the question, who answered, what each person said, and where those differ.
+   * That is the board. Nothing here invites the lead to set anything up.
+   */
+  UPDATE = 'UPDATE',
   /** Many people, one shared bar. Wide but simpler: no who-is-blocked-on-whom. */
   COHORT = 'COHORT',
   /**
@@ -115,7 +124,7 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
    */
   PULSE_CHECK: BoardFamily.RECURRING,
   /* Same board as the other recurring read: what each person said, period after period. */
-  TEAM_UPDATES: BoardFamily.RECURRING,
+  TEAM_UPDATES: BoardFamily.UPDATE,
 
   // Sensing the mood: transparency would poison these.
   /**
@@ -340,6 +349,15 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
    * `contribution` reads a run, and `objectives` cannot show a target this situation does not have.
    */
   [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
+  /* See the enum note. `whoOwnsWhat` is the per-person lines, headed "What each person said" on the
+     page for this family; `patterns` because a standing update is the one place three periods do
+     accrue. No objectives, no dependencies, no contribution, no poll: the cadence is the lead's line. */
+  /*
+   * TARGETS ON AN UPDATE BOARD, because a lead who has just handed the team six numbers reads this
+   * page next. Left off when this family was written, 22 September 2026, and found the same evening:
+   * thirteen targets on the Context page, and the board said "No target set".
+   */
+  [BoardFamily.UPDATE]: ['quickRead', 'objectives', 'checkInGrid', 'whoOwnsWhat', 'divergence', 'decisions', 'patterns'],
   [BoardFamily.RECURRING]: [
     'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
     'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
@@ -400,6 +418,27 @@ export function boardRendersFor(scenario: GroundScenario): boolean {
    */
   const sections = FAMILY_SECTIONS[familyFor(scenario)];
   return !!sections && sections.length > 0;
+}
+
+/**
+ * A ONE-ROUND READ DOES NOT WEAR A RECURRING BOARD.
+ *
+ * Read live, 22 September 2026, on a check-in set up to ask twenty-four organisations one question:
+ * the board carried "who owns what" per person, a success standard nobody had set, an empty "what
+ * we are aiming for" inviting the lead to add targets, and a patterns section that needs three
+ * periods. Every one of those reads across rounds, and there is one round.
+ *
+ * The family says what a SITUATION holds. This says what a single round can actually show, which is
+ * the same three things the snapshot family holds: what came back, where independent accounts of one
+ * moment differ, and who answered. A run that later gets more rounds gets its own sections back,
+ * because this is read from the planned count rather than stored anywhere.
+ */
+export const WHAT_ONE_ROUND_CAN_SHOW: BoardSection[] = ['quickRead', 'divergence', 'checkInGrid'];
+
+export function sectionsForARunOf(scenario: GroundScenario, roundsPlanned: number | null): BoardSection[] {
+  const all = sectionsFor(scenario);
+  if (roundsPlanned !== 1) return all;
+  return all.filter((s) => (WHAT_ONE_ROUND_CAN_SHOW as string[]).includes(s));
 }
 
 export function sectionsFor(scenario: GroundScenario): BoardSection[] {

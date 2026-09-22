@@ -99,6 +99,11 @@ const STOP = new Set([
   'really', 'being', 'doing', 'done', 'well', 'good', 'much', 'many', 'every', 'each', 'other', 'only', 'even', 'back', 'down', 'right',
 ]);
 
+const clean = (t: string): string => (t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').trim();
+const AN_AIM = /\b(aim(?:ing)?(?: for)?|target|goal|hope|hoping|plan(?:ning)?|want(?:ed)? to|need(?:ed)? to|should|by the end|to have|to get|to reach)\b/i;
+/** The text with its aim clauses taken out: "500 birds, aiming for 400 eggs a day" leaves "500 birds". */
+const whatIsNotAnAimIn = (t: string): string => clean(t).split(/[,;]|\b(?:and|but)\b/i).filter((c) => !AN_AIM.test(c)).join(', ');
+
 const quote = (t: string): string => `"${(t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()}"`;
 
 const fmt = (n: number): string => (Math.abs(n) >= 1e6 ? `${+(n / 1e6).toFixed(n % 1e6 ? 1 : 0)}m` : Math.abs(n) >= 1e3 ? n.toLocaleString('en-GB') : String(n));
@@ -112,8 +117,13 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
   /* 1. THE SAME THING, COUNTED DIFFERENTLY ACROSS SESSIONS. Earliest against latest, per unit. */
   const byUnit = new Map<string, { value: number; session: number; text: string }[]>();
   for (const s of said) {
+    /* WHAT HAPPENED, NOT WHAT WAS AIMED AT. "To have 500 layers, get 400 eggs a day" is the aim; "around 220
+       eggs a day" is the count. Read together they produced "400 eggs then 220: down 45%" on a report about a
+       woman whose flock was rebuilding (run 11, 22 Sep 2026). An aim, an intention or a commitment is not the
+       earlier count of anything; only a report of what is, or a worry about what happened, carries one. */
     if (!/^(PROGRESS|SUCCESS_DEFINITION|COMMITMENT|INTENT|WORRY)$/.test(s.type)) continue;
-    for (const n of numbersWithUnits(s.text)) {
+    if (/^\s*(to|aiming|aim|hoping|planning|target|goal)\b/i.test(clean(s.text))) continue;
+    for (const n of numbersWithUnits(whatIsNotAnAimIn(s.text))) {
       if (n.unit === 'money' || n.unit === 'percent') continue;
       byUnit.set(n.unit, [...(byUnit.get(n.unit) ?? []), { value: n.value, session: s.session, text: s.text }]);
     }

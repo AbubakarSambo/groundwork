@@ -1,0 +1,128 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ } from './what-a-document-holds';
+
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+const DOCS = strip(readFileSync(join(__dirname, 'documents.service.ts'), 'utf8'));
+const CONVO = strip(readFileSync(join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8'));
+
+/**
+ * "We need the best document reader ever, and once read, the conversation should go into the chat as
+ * here is the context we have. Also the context tab, as well as the reports and board. It can pull
+ * the targets." (Hafsah, 22 Sep 2026.)
+ */
+describe('what a document holds', () => {
+  const held = {
+    fileName: 'Sales team Q3 2026.xlsx',
+    whatItIs: 'A quarterly sales target sheet, by rep.',
+    forOnePerson: [
+      { who: 'Dayo Adebayo', what: 'Q3 sales', target: 45_000_000, by: null },
+      { who: 'Chika Nwosu', what: 'new dealers signed', target: 12, by: 'end of Q3' },
+    ],
+    forEverybody: [
+      { what: 'Team sales', target: 153_000_000, kind: 'to reach', by: null },
+      { what: 'Credit ceiling', target: 35, kind: 'not to exceed', by: null },
+    ],
+    dates: [{ what: 'Quarter ends', when: '30 September' }],
+    unmatched: ['Musa Bello'],
+  };
+
+  it('says what we have, whose each number is, and which are the whole check-in’s', () => {
+    const said = theContextWeHave(held)!;
+    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx - A quarterly sales target sheet, by rep.')).toBe(true);
+    expect(said).toContain('For the whole check-in:');
+    expect(said).toContain('- Team sales: 153m');
+    expect(said).toContain('- Credit ceiling: 35, not to be passed');
+    expect(said).toContain('Against the person who holds it:');
+    expect(said).toContain('- Dayo Adebayo: Q3 sales, 45m');
+    expect(said).toContain('- Chika Nwosu: new dealers signed, 12, by end of Q3');
+    expect(said).toContain('Dates it sets:');
+    expect(said).toContain('- Quarter ends: 30 September');
+    expect(said).toContain('One name in it is not on this check-in: Musa Bello.');
+  });
+
+  it('asks whether that is right in the chat, and states it on a page', () => {
+    expect(theContextWeHave(held, { asking: true })!.trimEnd().endsWith('Is that right?')).toBe(true);
+    expect(theContextWeHave(held)).not.toContain('Is that right?');
+  });
+
+  it('and says nothing about a document that holds nothing', () => {
+    expect(theContextWeHave({ fileName: 'notes.docx', forOnePerson: [], forEverybody: [], dates: [], unmatched: [] })).toBeNull();
+  });
+
+  it('the prompt takes targets and leaves progress, totals rows and month splits alone', () => {
+    expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('TOTAL, SUM, TEAM or ALL is not a person');
+    expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('A column of progress so far, a percentage complete, or last year');
+    expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('take the total only');
+    expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('an empty answer is a correct answer');
+    expect(MOST_OF_A_DOCUMENT_WE_READ).toBeGreaterThanOrEqual(60_000);
+  });
+
+  it('is read once, at upload, on every path a file arrives by', () => {
+    /* The chat's upload, and an invite-link upload. Both await it, because the caller shows what was read. */
+    expect(DOCS.match(/await this\.whatItHolds\(/g)).toHaveLength(2);
+    /* Only the lead may set somebody else's number; a participant's file is read for their own rows and the group's. */
+    expect(DOCS).toContain('(isLead || p.id === participantId)');
+    /* A name that matches nobody is carried back, never guessed onto the nearest person. */
+    expect(DOCS).toContain('if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }');
+    /* A number already on the board is never overwritten from here. */
+    expect(DOCS).toContain("held.has(`${who.id}::${name.toLowerCase()}`)");
+    expect(DOCS).toContain('await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } })');
+  });
+
+  it('and every surface reads the same stored answer', () => {
+    /* The card, so the Context tab says what the chat said. */
+    expect(DOCS).toContain('theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null');
+    expect(DOCS.match(/holds: true/g)!.length).toBeGreaterThanOrEqual(3);
+    /* The chat, once: stamped as the words go out. */
+    expect(CONVO).toContain('data: { holdsSaidAt: new Date() }');
+    expect(CONVO).toContain('holdsSaidAt: null');
+    /* In front of the opener, in front of an ordinary reply, and in front of the stream. */
+    expect(CONVO.match(/theContextNotYetSaid\(/g)!.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+/** One name-matching rule, in one place: two copies is two answers to "is this Dayo". */
+describe('who a name in a document is', () => {
+  const { whoThisNameIs, theNameWeUseFor } = require('./what-a-document-holds');
+  const dayo = { id: 'p1', email: 'dayo.adebayo@x.test', user: { firstName: 'Dayo', lastName: 'Adebayo' } };
+  const chika = { id: 'p2', email: 'chika@x.test', user: { firstName: 'Chika', lastName: 'Nwosu' } };
+  const openLink = { id: 'p3', email: 'open-abc@unclaimed.invalid', nameGiven: 'Sade Ogunleye', user: null };
+  const byRole = { id: 'p4', email: 'x@y.test', roleAsDescribed: 'Head of Logistics', user: null };
+  const people = [dayo, chika, openLink, byRole];
+
+  it('matches a full name, a first name, the name they gave, the address and the role', () => {
+    expect(whoThisNameIs('Dayo Adebayo', people)?.id).toBe('p1');
+    expect(whoThisNameIs('  dayo  ', people)?.id).toBe('p1');
+    expect(whoThisNameIs('dayo.adebayo', people)?.id).toBe('p1');
+    expect(whoThisNameIs('Sade Ogunleye', people)?.id).toBe('p3');
+    expect(whoThisNameIs('head of logistics', people)?.id).toBe('p4');
+    expect(whoThisNameIs('Musa Bello', people)).toBeNull();
+    expect(whoThisNameIs('', people)).toBeNull();
+  });
+
+  it('and a first name two people share matches neither, because the wrong person is worse than nobody', () => {
+    const twoDayos = [dayo, { id: 'p9', email: 'dayo.k@x.test', user: { firstName: 'Dayo', lastName: 'Kalu' } }];
+    expect(whoThisNameIs('Dayo', twoDayos)).toBeNull();
+    expect(whoThisNameIs('Dayo Adebayo', twoDayos)?.id).toBe('p1');
+  });
+
+  it('names somebody back by their own name, the one they gave, else their address', () => {
+    expect(theNameWeUseFor(dayo)).toBe('Dayo Adebayo');
+    expect(theNameWeUseFor(openLink)).toBe('Sade Ogunleye');
+    expect(theNameWeUseFor(byRole)).toBe('x@y.test');
+  });
+});
+
+/** "Add them and their numbers go on too" - a promise nothing kept until the retry existed. */
+describe('the numbers waiting for a name to arrive', () => {
+  it('are retried against the roster as it now is, and only by the lead', () => {
+    const fn = CONVO.slice(CONVO.indexOf('private async whatTheNewPeopleClaim('), CONVO.indexOf('private async theContextNotYetSaid('));
+    expect(fn).toContain('if (!isLead) return null;');
+    expect(fn).toContain('whoThisNameIs(name, people as any)');
+    expect(fn).toContain('await this.putOwnedTargetsOnTheRecord(');
+    /* A name that lands comes off the list, so it is not offered twice. */
+    expect(fn).toContain('data: { holds: { ...holds, unmatched: stillWaiting } as any }');
+    expect(CONVO).toContain('const nowMatched = await this.whatTheNewPeopleClaim(');
+  });
+});

@@ -33,9 +33,13 @@ describe('who is in this round', () => {
   const progress = bodyOf('getSessionProgress');
 
   it('is one definition, and the counter uses it', () => {
+    /* The counter stopped carrying its own copy of the clause on 22 September 2026 - three copies is
+       three answers waiting to happen - and asks how-many-have-answered, which holds the one. */
+    expect(progress).toContain('await howManyHaveAnswered(this.prisma, groundId, sessionNumber)');
+    const theRule = fs.readFileSync(path.join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     for (const clause of ['managingOnly: false', 'userId: { not: null }', 'invitedAt: { not: null }', 'inviteTokenExpiresAt: { gt: new Date() }']) {
       expect(release).toContain(clause);
-      expect(progress).toContain(clause);
+      expect(theRule).toContain(clause);
     }
   });
 });
