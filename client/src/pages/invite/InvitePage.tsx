@@ -198,10 +198,27 @@ export function InvitePage() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check your email</div>
+          {/*
+           * WHICH LINK TO USE FROM HERE, SAID PLAINLY. Hafsah, 22 Sep 2026: "someone got a sign-in link and
+           * a check-in link but their check-in link stopped working." It had not stopped: opened where they
+           * had no session - a different app's browser, a new phone - it does exactly this, every time, and
+           * from their side that is a link that no longer works. So this says what the check-in link now
+           * does, which link takes them in, how long it lasts, and offers it again.
+           */}
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            You have already joined this check-in, and this is a new device or browser.
-            We have sent a sign-in link to <strong>{emailedTo}</strong> so only you can pick up where you left off.
+            You have already joined this check-in, and this device or browser is not signed in, so the
+            check-in link on its own cannot open it here. We have sent a sign-in link to{' '}
+            <strong>{emailedTo}</strong>. Open that one: it takes you straight to your check-in and works
+            for 24 hours. After that, the check-in link works on this device too.
           </div>
+          <button
+            className="gw-btn"
+            style={{ display: 'inline-block', width: 'auto', padding: '8px 16px', marginTop: 14, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }}
+            disabled={accept.isPending}
+            onClick={() => accept.mutate()}
+          >
+            {accept.isPending ? 'Sending…' : 'Send it again'}
+          </button>
         </div>
       </InviteShell>
     )

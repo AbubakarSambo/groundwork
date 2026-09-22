@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api/participants'
 import { useAuthStore } from '@/stores/auth'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { YourNextCheckIn } from '@/components/gw/YourNextCheckIn'
 
 /**
  * THE END OF AN UPDATE, FOR THE PERSON WHO JUST GAVE IT.
@@ -43,6 +44,7 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
           : 'When everybody has answered, one report goes out with what each person said.'}
         {' '}Below is the team board, which fills in as the others answer.
       </p>
+      <YourNextCheckIn groundId={groundId} />
       {!editing && (
         <button
           onClick={() => { setEditing(true); setProblem('') }}

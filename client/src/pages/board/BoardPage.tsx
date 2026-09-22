@@ -433,7 +433,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const face = (
                     <>
                       {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
+                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? ` · opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
                     </>
                   )
                   const skin = {

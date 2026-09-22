@@ -274,7 +274,7 @@ export const groundsApi = {
       .get<{
         participantId: string
         partyType: string
-        checkIns: { id: string; sessionNumber: number; status: string; completedAt: string | null }[]
+        checkIns: { id: string; sessionNumber: number; status: string; completedAt: string | null; availableFrom?: string | null }[]
         latestStatus: string | null
         latestSessionNumber: number | null
       }>(`/grounds/${groundId}/my-checkin-status`, {

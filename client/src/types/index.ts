@@ -184,6 +184,8 @@ export interface Ground {
    */
   peopleWorkTogether?: boolean | null
   daysLeft?: number | null
+  /** The day this ends, from the start on record and how long it runs; null where it has no fixed length. */
+  endsOn?: string | null
   checkInsToday?: number
   overdue?: number
   contextNotes?: string[]

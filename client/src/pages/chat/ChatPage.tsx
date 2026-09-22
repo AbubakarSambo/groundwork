@@ -7,6 +7,7 @@ import { conversationApi, streamMessage, type CheckInBrief } from '@/api/convers
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
+import { YourNextCheckIn } from '@/components/gw/YourNextCheckIn'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
@@ -1183,6 +1184,8 @@ export function ChatPage() {
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
               <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
+              {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
+              <YourNextCheckIn groundId={groundId} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}
               {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
               {/*

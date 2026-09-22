@@ -142,7 +142,7 @@ export class BoardService {
         /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true } },
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true } },
         reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
@@ -470,10 +470,15 @@ export class BoardService {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
+          /* WHEN IT OPENS, FOR A SESSION NOBODY HAS DONE. The team "complained about not knowing when the
+             next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
+             The earliest availableFrom across that session's check-ins is the day it opens. */
+          const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
           return {
             n,
             state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
+            opensOn: opens,
           };
         }),
       };

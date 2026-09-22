@@ -31,6 +31,6 @@ describe('there is no round after the last planned one', () => {
 describe('the board hands the glance who answered', () => {
   it('selects participantId on the check-ins it counts', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../board/board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toMatch(/checkIns: \{ select: \{ sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true \} \}/);
+    expect(src).toMatch(/checkIns: \{ select: \{ sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true \} \}/);
   });
 });

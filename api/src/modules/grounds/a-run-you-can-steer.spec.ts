@@ -52,7 +52,7 @@ describe('the end of a check-in', () => {
   });
 
   it('beside the arithmetic, because that is the number it is the end of', () => {
-    const at = LEAD.indexOf('sessions over {timelineDaysDraft} days');
+    const at = LEAD.indexOf('{timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session');
     expect(at).toBeGreaterThan(-1);
     expect(LEAD.slice(at, at + 600)).toContain('how this should close');
   });

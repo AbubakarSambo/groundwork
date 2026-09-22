@@ -20,7 +20,10 @@ vi.mock('@tanstack/react-query', () => ({
     isPending: false,
     mutate: () => mutationFn().then(onSuccess, onError),
   }),
+  /* YourNextCheckIn reads the next session; nothing loaded here, so it renders nothing. */
+  useQuery: () => ({ data: undefined }),
 }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { getMyCheckinStatus: vi.fn() } }))
 
 import { ThatIsOnTheRecord } from './ThatIsOnTheRecord'
 

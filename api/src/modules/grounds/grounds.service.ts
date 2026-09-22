@@ -1384,6 +1384,10 @@ export class GroundsService {
     /* From the start date when there is one - see when-the-clock-starts.ts. This read createdAt, so
        a check-in set up three weeks before the person arrives spent three weeks counting down. */
     const daysLeft = daysRemaining(ground as any, new Date());
+    /* AND THE DAY IT ENDS, AS A DATE. Hafsah, 22 Sep 2026: the check-in set up from the entry chat "still
+       doesn't have an end date" - it had one, as a count of days from a start nobody could see, and the
+       header only spoke up in the last three of them. The same clock, read as a date, for every check-in. */
+    const endsOn = deadlineOf(ground as any);
 
     /*
      * BRIEF: the ground's own opening brief, or the released report's summary when there is none.
@@ -1874,6 +1878,7 @@ export class GroundsService {
       orgHasWhatsApp,
       alignment,
       daysLeft,
+      endsOn,
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
@@ -4626,7 +4631,8 @@ export class GroundsService {
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
       orderBy: { sessionNumber: 'asc' },
-      select: { id: true, sessionNumber: true, status: true, completedAt: true },
+      /* availableFrom: the day the next one opens, which the finished screen tells the person. */
+      select: { id: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true },
     });
 
     const latest = checkIns[checkIns.length - 1];
