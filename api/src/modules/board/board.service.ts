@@ -40,8 +40,7 @@ import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well'
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
-import { NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS } from '../grounds/a-dump-is-many-things';
-import { theLinesUnder, whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
+import { whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -545,13 +544,13 @@ export class BoardService {
        * 12m is signed or recognised revenue. A reader cannot tell an agreed number from a typed one,
        * so the number carries it - see a-target-nobody-has-defined.
        */
-      const notSettledLines = await (this.prisma.leadContextNote?.findMany?.({
-        where: { groundId, participantId: null },
+      const notSettledLines = await (this.prisma.groundContextItem?.findMany?.({
+        where: { groundId, kind: 'UNSETTLED' as any, closedAt: null },
         select: { text: true },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
+        orderBy: { createdAt: 'asc' },
+        take: 20,
       }) ?? Promise.resolve([] as { text: string }[]))
-        .then((rows: { text: string }[]) => rows.filter((n) => (n.text ?? '').trimStart().startsWith(NOT_SETTLED_OPENS)).flatMap((n) => theLinesUnder(n.text)))
+        .then((rows: { text: string }[]) => rows.map((r) => (r.text ?? '').trim()).filter(Boolean))
         .catch(() => [] as string[]);
 
       out.objectives = ground.objectives.map((o) => ({
@@ -1090,18 +1089,13 @@ export class BoardService {
    * note is private: the audience is the lead's choice and this reads it rather than deciding it.
    */
   private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<string[]> {
-    const notes = await (this.prisma.leadContextNote?.findMany?.({
-      where: { groundId, participantId: null, audience: 'EVERYONE' as any },
+    const lines = await (this.prisma.groundContextItem?.findMany?.({
+      where: { groundId, kind: 'DECISION' as any, audience: 'EVERYONE' as any, closedAt: null },
       select: { text: true },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
+      orderBy: { createdAt: 'asc' },
+      take: 8,
     }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
-    return (notes as { text: string }[])
-      .filter((n) => (n.text ?? '').trimStart().startsWith(STILL_TO_DECIDE_OPENS))
-      .flatMap((n) => (n.text ?? '').split('\n').slice(1))
-      .map((l) => l.replace(/^[-\s]+/, '').trim())
-      .filter(Boolean)
-      .slice(0, 8);
+    return (lines as { text: string }[]).map((l) => (l.text ?? '').trim()).filter(Boolean);
   }
 
   private deriveDecisions(

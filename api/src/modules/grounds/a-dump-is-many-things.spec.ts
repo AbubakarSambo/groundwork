@@ -30,6 +30,8 @@ describe('a dump is many things at once', () => {
     commitments: [],
     questionsForPeople: [],
     betweenPeople: [],
+    strategy: [],
+    notes: [],
   };
 
   it('knows a paste from an answer, by length and nothing cleverer', () => {
@@ -54,7 +56,7 @@ describe('a dump is many things at once', () => {
   it('asks for a yes in the chat and states the receipt afterwards', () => {
     expect(whatWeTookFromThat(got, { asking: true })!.trimEnd().endsWith('Record all of this?')).toBe(true);
     expect(whatWeTookFromThat(got)!.trimEnd().endsWith('Nothing else from it is kept.')).toBe(true);
-    expect(whatWeTookFromThat({ success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: [], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [] })).toBeNull();
+    expect(whatWeTookFromThat({ success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: [], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [], strategy: [], notes: [] })).toBeNull();
   });
 
   it('names measures in words, takes every number a person was given, and leaves opinions out', () => {
@@ -190,7 +192,7 @@ describe('one paste read twice is one set of numbers', () => {
 describe('the parts of a paste that are words', () => {
   const { whatWeTookFromThat: took, A_DUMP_PROMPT: PROMPT, A_DUMP_SCHEMA: SCHEMA } = require('./a-dump-is-many-things');
   const got = {
-    success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], commitments: [], questionsForPeople: [], betweenPeople: [],
+    success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], commitments: [], questionsForPeople: [], betweenPeople: [], strategy: [], notes: [],
     waysOfWorking: ['no proposal before qualification', 'follow up 48 hours after a demo'],
     openDecisions: ['whether the target stays at 12m'],
     notSettled: ['12m may be signed or recognised, nobody has said which', 'someone mentioned 15m for Q4, not approved'],
@@ -209,7 +211,7 @@ describe('the parts of a paste that are words', () => {
 
   it('and listed back with what will be done with it', () => {
     const said = took(got);
-    expect(said).toContain('How this team works, as you wrote it. Kept as your note on the check-in, never quoted as a rule anybody agreed');
+    expect(said).toContain('How this team works. Everybody sees these, said as yours rather than as anything agreed');
     expect(said).toContain('- follow up 48 hours after a demo');
     expect(said).toContain('Still to decide, kept for you:');
     expect(said).toContain('Not settled, so nothing here is treated as a fact or a target:');
@@ -219,24 +221,26 @@ describe('the parts of a paste that are words', () => {
   });
 
   it('a paste that is only words is still worth taking', () => {
-    expect(took({ success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: ['one owner per opportunity'], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [] }))
+    expect(took({ success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: ['one owner per opportunity'], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [], strategy: [], notes: [] }))
       .toContain('one owner per opportunity');
   });
 
-  it('every one of them is written private to the lead, and an observation is about a person', () => {
+  /*
+   * REWRITTEN 22 SEPTEMBER 2026, when the four blobs became lines in buckets. What it holds to
+   * account is unchanged in substance and stricter in form: the work buckets are the team's, a line
+   * about a person is the lead's, and the writer decides that from the KIND rather than from a
+   * caller's argument.
+   */
+  it('the work buckets are the team\'s and a line about a person is the lead\'s, decided by kind', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    const writer = src.slice(src.indexOf('private async writeWhatThePasteGave('), src.indexOf('async shareLeadContext('));
-    expect(writer).toContain('audience: ContextNoteAudience.LEAD_ONLY');
-    expect(writer).not.toContain('ContextNoteAudience.EVERYONE');
-    expect(writer).toContain('got.waysOfWorking.length');
-    expect(writer).toContain('got.openDecisions.length');
-    expect(writer).toContain('got.notSettled.length');
-    expect(writer).toContain('for (const a of got.aboutPeople) await note(');
-    /* One note per kind: a second read of one paste rewords its lists, so an exact-text match wrote
-       a second version of each. Eighteen notes for nine things, said yes twice. */
-    expect(writer).toContain("(h.text ?? '').trimStart().startsWith(opensWith)");
-    expect(writer).toContain('await this.prisma.leadContextNote.update(');
+    const writer = src.slice(src.indexOf('private async writeWhatThePasteGave('), src.indexOf('async changeContextLine('));
+    expect(writer).toContain('audience: ABOUT_SOMEBODY.has(kind) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE');
+    for (const kind of ['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE', 'ABOUT_A_PERSON', 'QUESTION_FOR_PERSON', 'BETWEEN_PEOPLE']) {
+      expect(writer).toContain(`ContextItemKind.${kind}`);
+    }
+    /* One line, not one blob, and the same line said at a different length is not a second line. */
+    expect(writer).toContain("theSameMeasure(h.text ?? '', clean)");
   });
 });
 
@@ -249,7 +253,7 @@ describe('the parts of a paste that are words', () => {
  */
 describe('actions, questions and pairs', () => {
   const { whatWeTookFromThat: took, A_DUMP_PROMPT: PROMPT, A_DUMP_SCHEMA: SCHEMA, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut } = require('./a-dump-is-many-things');
-  const base = { success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: [], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [] };
+  const base = { success: null, teamTargets: [], forPeople: [], dates: [], unmatched: [], waysOfWorking: [], openDecisions: [], notSettled: [], aboutPeople: [], commitments: [], questionsForPeople: [], betweenPeople: [], strategy: [], notes: [] };
 
   it('the read asks for all three, and for the owner only where it is given', () => {
     expect(PROMPT).toContain('WHAT IS TO BE DONE');

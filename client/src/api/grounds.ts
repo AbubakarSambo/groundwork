@@ -178,13 +178,14 @@ export const groundsApi = {
   addParticipant: (groundId: string, body: AddParticipantBody) =>
     apiClient.post(`/grounds/${groundId}/participants`, body).then(r => r.data),
 
-  /**
-   * `audience` is WHO READS IT and nothing else. EVERYONE is the lead's framing of the situation,
-   * read by the whole check-in and still never quotable - the same rule as a private note, with a
-   * different readership. Omitted means LEAD_ONLY, which is what every note was before this existed.
+  /*
+   * `addLeadContext` IS GONE FROM THE CLIENT, and the route is not.
+   *
+   * It served the three write boxes on the Context page, removed on 22 September 2026: "that section
+   * needs to go since you can all do everything from the context chat." The conversation writes
+   * context now, and one line of it is changed by `changeContextLine`. The server route stays for
+   * the API and for the notes already written through it, which the page still reads.
    */
-  addLeadContext: (groundId: string, body: { participantId?: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) =>
-    apiClient.post(`/grounds/${groundId}/lead-context`, body).then(r => r.data),
 
   /**
    * Share one private note with everybody on the check-in. One note, one deliberate act: what a
@@ -193,6 +194,13 @@ export const groundsApi = {
    */
   shareLeadContext: (groundId: string, noteId: string) =>
     apiClient.post(`/grounds/${groundId}/lead-context/${noteId}/share`).then(r => r.data),
+
+  /**
+   * One line of what a check-in knows: reworded, shared, made private, or retired. A line about a
+   * person can never be shared - the server refuses that rather than trusting the screen.
+   */
+  changeContextLine: (groundId: string, itemId: string, change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
+    apiClient.patch(`/grounds/${groundId}/context/${itemId}`, change).then(r => r.data),
 
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),

@@ -12,7 +12,8 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 const SRC = strip(fs.readFileSync(path.join(__dirname, 'grounds.service.ts'), 'utf8'));
 
 describe('one note, shared on purpose', () => {
-  const body = SRC.slice(SRC.indexOf('async shareLeadContext('), SRC.indexOf('async addLeadContext('));
+  /* To the next method, which is now changeContextLine: a line of a bucket, changed by id. */
+  const body = SRC.slice(SRC.indexOf('async shareLeadContext('), SRC.indexOf('async changeContextLine('));
 
   it('is the lead\'s, or an admin of their organisation', () => {
     expect(body).toContain('ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)');
@@ -37,10 +38,12 @@ describe('one note, shared on purpose', () => {
     expect(ctrl).toContain("@Post(':id/lead-context/:noteId/share')");
   });
 
-  it('and the board reads only what was shared', () => {
+  it('and the board reads only the decisions that were shared', () => {
     const board = strip(fs.readFileSync(path.join(__dirname, '..', 'board', 'board.service.ts'), 'utf8'));
     const reads = board.slice(board.indexOf('private async whatTheLeadSaysIsStillToDecide('), board.indexOf('private deriveDecisions('));
     expect(reads).toContain("audience: 'EVERYONE' as any");
-    expect(reads).toContain('STILL_TO_DECIDE_OPENS');
+    /* By kind since the blobs became lines, so nothing depends on an opening sentence. */
+    expect(reads).toContain("kind: 'DECISION' as any");
+    expect(reads).toContain('closedAt: null');
   });
 });

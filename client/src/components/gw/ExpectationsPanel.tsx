@@ -312,6 +312,7 @@ export function ExpectationsPanel({
   parties,
   viewerUserId,
   hasChat = false,
+  yoursAlone,
 }: {
   groundId: string
   parties: Party[]
@@ -323,6 +324,15 @@ export function ExpectationsPanel({
    * "say something about this in the chat" button came to do nothing at all.
    */
   hasChat?: boolean
+  /**
+   * WHAT THE LEAD HAS WRITTEN ABOUT THIS PERSON, FOR THE LEAD'S EYES.
+   *
+   * It used to live in a red band at the foot of the page called "Only you see this", which Hafsah
+   * asked to be rid of on 22 September 2026: the content belongs with the person it is about, and
+   * the band made a steer look like a confession. Passed in rather than fetched so the wall stays
+   * where it is decided - the server never sends these to anybody but the lead.
+   */
+  yoursAlone?: (participantId: string) => { read: string[]; questions: string[] }
 }) {
   /**
    * EVERY EXPECTATION EACH PERSON IS HELD TO, not one each.
@@ -562,6 +572,34 @@ export function ExpectationsPanel({
                 a way in that goes nowhere is worse than offering none: the sentence under this list
                 already tells them the real route, which is to say it in their own check-in.
               */}
+              {/*
+                THE LEAD'S OWN READ OF THIS PERSON, AND THE QUESTIONS THEY WANT ASKED, HERE.
+                
+                Only ever rendered for the lead: `yoursAlone` is not passed on anybody else's page,
+                and the server does not send these lines to anybody else either. Said plainly, in
+                plain grey, with what it does and does not do - it steers what gets asked and it is
+                never quoted to them.
+              */}
+              {(() => {
+                /* Once per person, on their first row: their steer is theirs, not their objective's. */
+                const mine = idx === 0 ? yoursAlone?.(p.id) : null
+                if (!mine || (!mine.read.length && !mine.questions.length)) return null
+                return (
+                  <div style={{ marginTop: 9, paddingTop: 8, borderTop: '1px dashed var(--gw-border)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 4 }}>
+                      Yours alone &middot; steers what they are asked, never quoted to them
+                    </div>
+                    {mine.read.map((t, i) => (
+                      <div key={`r${i}`} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 3 }}>{t}</div>
+                    ))}
+                    {mine.questions.map((t, i) => (
+                      <div key={`q${i}`} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 3 }}>
+                        <span style={{ color: 'var(--gw-muted)' }}>to ask: </span>{t}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {hasChat && (
                 <button
                   onClick={() => scrollToId('gw-context-chat')}

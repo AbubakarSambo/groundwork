@@ -130,3 +130,20 @@ export function keepTheirHedge(hedged: string[]): string {
     'Do not repeat any of it back as settled. Keep their hedge in your own sentence ("you think it went out"), or ask the one thing that would settle it - who would know, what would show it, when they could check. Never tell them what the record says instead.',
   ].join('\n');
 }
+
+/**
+ * HOW THIS TEAM SAYS IT SELLS AND WORKS, in the session that is asking about the work.
+ *
+ * The strategy and the rules are the two buckets a person answering benefits from most: somebody
+ * explaining a stalled deal should be asked about it against "no proposal before qualification", not
+ * in the abstract. Shared by design - these are about the work, not about anybody.
+ */
+export function howThisTeamWorks(lines: string[]): string {
+  const rows = (lines ?? []).map((l) => (l ?? '').trim()).filter(Boolean);
+  if (!rows.length) return '';
+  return [
+    'HOW THIS TEAM SAYS IT SELLS AND WORKS. The person running this check-in wrote these down, and everybody here can read them:',
+    ...rows.slice(0, 14).map((r) => `- ${r}`),
+    'Use them to ask about the work as this team actually does it. They are what the lead wrote, not something everybody has agreed, so never tell somebody they broke a rule - ask what happened.',
+  ].join('\n');
+}

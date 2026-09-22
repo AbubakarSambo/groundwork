@@ -1043,6 +1043,7 @@ model Ground {
   setupSignOffs     GroundSetupSignOff[]
   leadContextNotes  LeadContextNote[]
   commitments       GroundCommitment[]
+  contextItems      GroundContextItem[]
   pastesTaken       GroundPaste[]
   reportActivations ReportActivation[]
   roundCompletions  RoundCompletion[]
@@ -1335,6 +1336,7 @@ model GroundParticipant {
   personObjectives        PersonObjective[]
   leadContextNotes        LeadContextNote[]
   commitments       GroundCommitment[]
+  contextItems      GroundContextItem[]
   resolutionConfirmations ResolutionConfirmation[]
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[]       @relation("DependencyFrom")
@@ -4442,6 +4444,69 @@ model LeadContextNote {
 /// accountability is that "did you do your task" is the wrong question and "did the thing happen"
 /// is the right one, and a status the product guessed would answer neither. An item with no owner
 /// keeps `participantId` null rather than being attached to the nearest name.
+/// WHAT THIS CHECK-IN KNOWS, ONE LINE AT A TIME.
+///
+/// Hafsah, 22 September 2026, looking at the Context page after a paste landed: "this context page
+/// is a mess, it is meant collate resources and context... the content needs to be parsed and
+/// paraphrased in sections - we should have strategy bucket, or notes/tips etc. those sections are
+/// so bulky." And: "the 'only you see this bit' shouldnt exist."
+///
+/// The paste used to write four long notes, each one a list inside a single blob of text. A blob
+/// cannot be edited, shared, retired or asked about, so the page could only ever print it. A line is
+/// a row now: it has a kind, so it can sit in a named bucket; an audience, so the team can read the
+/// ones about the work; and an id, so "drop that one" is a sentence rather than a form.
+///
+/// WHAT IS NEVER SHARED. A line ABOUT a person, a question for them, or a thing between two of them
+/// is the lead's read and stays the lead's - shown to nobody else, quoted to nobody, ever. That is
+/// enforced where it is written, not left to whoever reads it.
+enum ContextItemKind {
+  /// How this team wins work and what it leads with.
+  STRATEGY
+  /// A rule or practice: "no proposal before qualification".
+  WAY_OF_WORKING
+  /// Something still to decide, and nobody has.
+  DECISION
+  /// Two versions of one fact, a figure nobody approved, a task nobody knows is finished.
+  UNSETTLED
+  /// Anything else worth keeping.
+  NOTE
+  /// The lead's read of one person. Never shared, never quoted.
+  ABOUT_A_PERSON
+  /// A question the lead wants put to one person in their own check-in.
+  QUESTION_FOR_PERSON
+  /// Something involving two named people that belongs to neither alone.
+  BETWEEN_PEOPLE
+}
+
+model GroundContextItem {
+  id            String          @id @default(uuid())
+  groundId      String          @map("ground_id")
+  kind          ContextItemKind
+  /// The line as the page shows it: short, plain, paraphrased.
+  text          String          @db.Text
+  /// What the lead actually wrote, where the line is a paraphrase of it. Retrievable in the chat.
+  saidAs        String?         @map("said_as") @db.Text
+  /// Who reads it. The three person-kinds above are always LEAD_ONLY, whatever is passed.
+  audience      ContextNoteAudience @default(EVERYONE)
+  /// Whose it is, for the person-kinds. Null for everything about the work.
+  aboutParticipantId String?    @map("about_participant_id")
+  /// PASTE, CHAT or LEAD.
+  source        String          @default("PASTE")
+  authorUserId  String?         @map("author_user_id")
+  /// When it stopped being live - a decision made, a rule dropped. Kept rather than deleted.
+  closedAt      DateTime?       @map("closed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [aboutParticipantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId])
+  @@index([aboutParticipantId])
+  @@map("ground_context_items")
+}
+
 /// A PASTE IS TAKEN ONCE.
 ///
 /// Read live, 22 September 2026: a lead said yes to the list, then said yes again a minute later

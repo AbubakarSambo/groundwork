@@ -53,7 +53,10 @@ describe('the brief answers this band own question', () => {
 
   it('objectives still render alongside it - neither replaces the other', () => {
     expect(BAND).toContain('objectives.length > 0')
-    expect(BAND).toContain('objectives.map')
+    /* One table since 22 September 2026, grouped by whose number it is: thirteen cards, each
+       repeating "a number crosses a line", was the bulk she asked to be rid of. */
+    expect(BAND).toContain('const theTeams = objectives.filter')
+    expect(BAND).toContain('The whole check-in')
   })
 
   it('the source line names what is actually there rather than claiming both', () => {

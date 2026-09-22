@@ -23,7 +23,7 @@ import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { GroundworkEvents, GroundActivatedEvent } from '../../common';
 import { createHash } from 'node:crypto';
-import { GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
+import { ContextItemKind, GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
@@ -44,6 +44,11 @@ import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
+import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
+import {
+  A_CHANGE_PROMPT, A_CHANGE_SCHEMA, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
+  type AChangeHeard, type AThingOnRecord, type WhatTheyWant,
+} from './what-the-lead-wants-changed';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
@@ -1315,7 +1320,9 @@ export class GroundsService {
          * per-person expectations, and never read back until now - so the Context page had a band
          * for "what this check-in is for" and nothing to put in it.
          */
-        objectives: { select: { id: true, name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        /* Whose number it is, so the page can group them rather than stack nine of one person's
+           beside the team's - see the target table on the Context page. */
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
         /**
          * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
          * them this endpoint could only ever report null, so the ground page said "No read yet"
@@ -1366,7 +1373,9 @@ export class GroundsService {
              * mismatch because both assign to one variable - which is the only reason this second
              * copy is survivable.
              */
-            objectives: { select: { id: true, name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+            /* Whose number it is, so the page can group them rather than stack nine of one person's
+           beside the team's - see the target table on the Context page. */
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
             /**
              * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
              * without them in the select it could only ever return null - so the ground page said
@@ -1810,6 +1819,20 @@ export class GroundsService {
         });
 
     /*
+     * WHAT THIS CHECK-IN KNOWS, AS LINES, FILTERED FOR WHOEVER IS READING.
+     *
+     * The lead sees every line including their own read of each person; everybody else sees the work
+     * buckets that were shared and nothing about anybody. One rule, in one module, so the page and
+     * the prompt cannot disagree about it - see what-this-check-in-knows.
+     */
+    const contextLines = await (this.prisma.groundContextItem?.findMany?.({
+      where: { groundId: id },
+      select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const contextItems = theLinesFor(contextLines as any, { isTheLead: isInitiatorViewer || viewerAdminsThisOrg });
+
+    /*
      * WHAT PEOPLE ARE DOWN AS DOING, ON THE PAGE THE LEAD READS.
      *
      * The actions a paste writes had a table and no surface: a lead could see thirteen targets and
@@ -1840,6 +1863,8 @@ export class GroundsService {
       ...rest,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
       commitments,
+      /* The buckets. Already filtered above: a participant is never sent a line about anybody. */
+      contextItems,
       /*
        * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
        *
@@ -2144,7 +2169,9 @@ export class GroundsService {
     const expectationRule = ground.participants.filter((p) => !p.managingOnly).length > 1
       ? `\n\n${WHAT_RECORDING_IT_MEANS}`
       : '';
-    const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps)}${expectationRule}\n\n${documentBlock}`;
+    /* What it already holds, counted, so it opens on the page rather than on a greeting. */
+    const alreadyHolds = await this.whatThisCheckInAlreadyHolds(groundId, perPersonAny).catch(() => []);
+    const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds)}${expectationRule}\n\n${documentBlock}`;
     const raw = await this.anthropic.respond(
       systemPrompt,
       history.length
@@ -2211,7 +2238,32 @@ export class GroundsService {
       const say = whatWeTookFromThat(fromAPaste, { asking: true });
       if (say) proposal = { kind: 'everything', say } as any;
     }
-    if (!fromAPaste && lastFromLead && openGap) {
+    /*
+     * AND A CHANGE TO SOMETHING ALREADY HERE, which this conversation could not hear at all.
+     *
+     * "Drop the 30-day rule", "the 12m is signed not collected", "Client C is Hassan's" were each
+     * answered with the next gap question, because the only thing the chat could do was ask for what
+     * was MISSING. It proposes the change now and writes nothing until the lead says yes - see
+     * what-the-lead-wants-changed.
+     */
+    let changeSay: string | null = null;
+    if (!fromAPaste && lastFromLead) {
+      const wants = await this.whatTheyWantChanged(groundId, lastFromLead).catch(() => null);
+      if (wants) {
+        changeSay = wants.say;
+        /*
+         * A change they asked for is the whole of this turn, whether it can be placed or not. The
+         * first version left the open gap's proposal standing underneath an "I cannot tell which one
+         * you mean", so a lead saying yes to the question set what doing well looks like to the word
+         * "yes" - and was refused for being too short, which is the only reason it was seen.
+         */
+        proposal = wants.apply
+          ? ({ kind: 'change', say: wants.say } as any)
+          : ({ kind: 'none', why: 'Waiting to hear which one they mean.' } as any);
+      }
+    }
+    /* A change they asked for is this turn's business; the gap flow would overwrite the proposal. */
+    if (!fromAPaste && !changeSay && lastFromLead && openGap) {
       try {
         const heard = await this.anthropic.extract<Heard>(
           'Read ONLY what the person just said in answer to the question they were asked. Omit any field they did not answer. Never infer a sensible default.',
@@ -2262,8 +2314,15 @@ export class GroundsService {
      * `forHumans` is where markdown, control markers, em dashes, house style and the product's own
      * noun are all settled. Skipping it did not just cost the word: this surface had none of it.
      */
+    /*
+     * AND WHERE THEY ASKED TO CHANGE SOMETHING, THAT IS THE ANSWER TO THEIR MESSAGE.
+     *
+     * The model's reply was written against the open gap, so a lead who said "drop the 30-day rule"
+     * got the next gap question and the change offered underneath it, as though they had said two
+     * things. What they said was one thing, and it is the reply.
+     */
     return {
-      reply: forHumans(reply),
+      reply: forHumans(changeSay ?? reply),
       gaps: gaps.map((g: { key: string }) => g.key),
       done: gaps.length === 0,
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
@@ -2278,6 +2337,141 @@ export class GroundsService {
    * both halves use - the chat, to show the lead what it took, and the confirmation, to write it from
    * their own words rather than from a value the screen sent back.
    */
+
+
+  /**
+   * WHAT IS ON THIS CHECK-IN ALREADY, COUNTED, for the first thing the conversation says.
+   *
+   * Counts rather than content: the opener needs to know there are thirteen targets, not what they
+   * are, and a prompt that carries every line is a prompt that quotes them back.
+   */
+  private async whatThisCheckInAlreadyHolds(groundId: string, peopleWithAnExpectation: number): Promise<{ what: string; count: number }[]> {
+    const [targets, lines, actions, docs] = await Promise.all([
+      this.prisma.groundObjective.count({ where: { groundId } }).catch(() => 0),
+      this.prisma.groundContextItem?.count?.({ where: { groundId, closedAt: null } })?.catch(() => 0) ?? Promise.resolve(0),
+      this.prisma.groundCommitment?.count?.({ where: { groundId, status: 'UNKNOWN' } })?.catch(() => 0) ?? Promise.resolve(0),
+      this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' as any } }).catch(() => 0),
+    ]);
+    return [
+      { what: 'targets, for the team and for people', count: targets },
+      { what: 'people with something expected of them', count: peopleWithAnExpectation },
+      { what: 'lines of context: the strategy, the rules, what is still to decide, what is not settled', count: lines },
+      { what: 'things somebody is down to do', count: actions },
+      { what: 'documents every check-in reads', count: docs },
+    ];
+  }
+
+  /**
+   * EVERYTHING ON THIS CHECK-IN A LEAD CAN CHANGE BY TALKING ABOUT IT.
+   *
+   * One list, read by both halves of the conversation: the chat proposes against it and the
+   * confirmation applies against it, so the two cannot disagree about which thing was meant.
+   */
+  private async whatThisCheckInHolds(groundId: string): Promise<AThingOnRecord[]> {
+    const [lines, targets, actions] = await Promise.all([
+      this.prisma.groundContextItem?.findMany?.({
+        where: { groundId, closedAt: null },
+        select: { id: true, text: true, kind: true },
+      })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+      this.prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, target: true } }).catch(() => [] as any[]),
+      this.prisma.groundCommitment?.findMany?.({
+        where: { groundId, status: 'UNKNOWN' },
+        select: { id: true, text: true, participantId: true, participant: { select: { email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
+      })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+    ]);
+    const out: AThingOnRecord[] = [];
+    for (const l of lines as any[]) out.push({ id: l.id, what: 'line', text: l.text ?? '', kind: l.kind ?? null });
+    for (const t of targets as any[]) out.push({ id: t.id, what: 'target', text: t.name ?? '', number: t.target ?? null });
+    for (const a of actions as any[]) {
+      out.push({
+        id: a.id,
+        what: 'action',
+        text: a.text ?? '',
+        who: a.participantId ? theNameWeUseFor(a.participant as any) : null,
+      });
+    }
+    return out.filter((o) => o.text.trim());
+  }
+
+  /**
+   * WHAT THE LEAD IS ASKING TO CHANGE, AND WHETHER IT CAN BE FOUND.
+   *
+   * Returns the sentence to say and the change to make, or the sentence to say and nothing to make -
+   * "I cannot find that on this check-in" is an answer, and a better one than silently doing nothing
+   * with what somebody just told you.
+   */
+  private async whatTheyWantChanged(groundId: string, said: string | null | undefined): Promise<
+    { say: string; apply: null | { intent: WhatTheyWant; thing: AThingOnRecord; newText?: string | null; toPerson?: string | null; participantId?: string | null } } | null
+  > {
+    const text = (said ?? '').trim();
+    if (!text || looksLikeADump(text)) return null;
+    const heard = await this.anthropic
+      .extract<AChangeHeard>(A_CHANGE_PROMPT, [{ role: 'user' as const, content: text }], A_CHANGE_SCHEMA as any)
+      .catch(() => null);
+    const intent = heard?.intent;
+    if (!intent || intent === 'none' || !heard?.which?.trim()) return null;
+    const things = await this.whatThisCheckInHolds(groundId);
+    /* Their whole sentence goes too, for the bucket word the extracted phrase drops. */
+    const found = whatTheyMeant(heard.which, things, text);
+    /* Two matches is a question, not a coin toss - see whatTheyMeant. */
+    if (found.length !== 1) return { say: whichOneDoYouMean(heard.which, found), apply: null };
+    const thing = found[0];
+    if (intent === 'reword' && !heard.newText?.trim()) return null;
+    let participantId: string | null = null;
+    if (intent === 'assign') {
+      if (!heard.toPerson?.trim()) return null;
+      const people = await this.prisma.groundParticipant.findMany({
+        where: { groundId, managingOnly: false },
+        select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+      });
+      const who = whoThisNameIs(heard.toPerson, people as any);
+      if (!who) return { say: `I cannot see anybody called ${heard.toPerson.trim()} on this check-in. Add them and I will put it on them.`, apply: null };
+      participantId = who.id;
+      const name = theNameWeUseFor(who as any);
+      /* "down as Hassan, instead of Hassan" - read live. Nothing to change is worth saying plainly. */
+      if (thing.who && thing.who.trim().toLowerCase() === name.trim().toLowerCase()) {
+        return { say: `That one is already ${name}'s.`, apply: null };
+      }
+      return { say: whatWillChange('assign', thing, { toPerson: name }), apply: { intent, thing, participantId, toPerson: name } };
+    }
+    return {
+      say: whatWillChange(intent, thing, { newText: heard.newText }),
+      apply: { intent, thing, newText: heard.newText ?? null },
+    };
+  }
+
+  /** The write behind a confirmed change. One row, one field, nothing else touched. */
+  private async makeTheChange(change: { intent: WhatTheyWant; thing: AThingOnRecord; newText?: string | null; participantId?: string | null }): Promise<void> {
+    const { intent, thing } = change;
+    if (thing.what === 'line') {
+      if (intent === 'drop' || intent === 'settle') {
+        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { closedAt: new Date() } });
+      } else if (intent === 'reword' && change.newText?.trim()) {
+        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { text: change.newText.trim().slice(0, 400) } });
+      }
+      return;
+    }
+    if (thing.what === 'action') {
+      if (intent === 'drop') {
+        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { status: 'DROPPED' } });
+      } else if (intent === 'settle') {
+        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { status: 'DONE' } });
+      } else if (intent === 'assign' && change.participantId) {
+        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { participantId: change.participantId } });
+      } else if (intent === 'reword' && change.newText?.trim()) {
+        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { text: change.newText.trim().slice(0, 400) } });
+      }
+      return;
+    }
+    /* A target. Dropping one takes its counts and its history with it, which is why only the lead
+       can ask and why it is said out loud first. */
+    if (intent === 'drop') {
+      await this.prisma.groundObjective.delete({ where: { id: thing.id } }).catch(() => null);
+    } else if (intent === 'reword' && change.newText?.trim()) {
+      await this.prisma.groundObjective.update({ where: { id: thing.id }, data: { name: change.newText.trim().slice(0, 120) } });
+    }
+  }
+
   private async whatAPasteGives(groundId: string, pasted: string): Promise<WhatAPasteGives | null> {
     const read = await this.anthropic.extract<ADumpRead>(
       A_DUMP_PROMPT,
@@ -2363,6 +2557,8 @@ export class GroundsService {
       unmatched,
       /* The three lists that are words rather than numbers, kept as the lead's own note. */
       waysOfWorking: aList(read.waysOfWorking),
+      strategy: aList(read.strategy),
+      notes: aList(read.notes),
       openDecisions: aList(read.openDecisions),
       notSettled: aList(read.notSettled),
       aboutPeople: aboutPeople,
@@ -2372,7 +2568,8 @@ export class GroundsService {
     };
     return (got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
       || got.waysOfWorking.length || got.openDecisions.length || got.notSettled.length || got.aboutPeople.length
-      || got.commitments.length || got.questionsForPeople.length || got.betweenPeople.length) ? got : null;
+      || got.commitments.length || got.questionsForPeople.length || got.betweenPeople.length
+      || got.strategy.length || got.notes.length) ? got : null;
   }
 
   /**
@@ -2469,6 +2666,42 @@ export class GroundsService {
      */
     /* Their own paste, whether they have just typed it again or are saying yes to the list the chat
        printed from it a turn ago - see thePasteThisYesIsFor. */
+    /*
+     * A CONFIRMED CHANGE TO SOMETHING ALREADY HERE, read from their own words like everything else.
+     *
+     * The lead's yes carries no id and no value: the sentence they are saying yes to is re-read here
+     * against what the check-in holds, and the write is one field of one row.
+     */
+    const theirChange = await this.whatTheyWantChanged(groundId, dto.said).catch(() => null);
+    if (theirChange?.apply) {
+      await this.makeTheChange(theirChange.apply);
+      return { changed: theirChange.apply.intent, say: whatChanged(theirChange.apply) };
+    }
+    /* A yes to a change proposed on the previous turn: the instruction is one turn up. */
+    const yesToAChange = thePasteThisYesIsFor(dto.said, dto.history as any) ? null : await (async () => {
+      const plainYes = /^(yes|yep|yeah|ok|okay|sure|do it|go ahead|please do|confirm(ed)?|that is right|correct)\b[\s\S]{0,40}$/i.test((dto.said ?? '').trim());
+      if (!plainYes) return null;
+      const lastSaid = [...(dto.history ?? [])].reverse().find((h) => h.role === 'user')?.content ?? '';
+      const wants = await this.whatTheyWantChanged(groundId, lastSaid).catch(() => null);
+      return wants?.apply ? wants : null;
+    })();
+    if (yesToAChange?.apply) {
+      await this.makeTheChange(yesToAChange.apply);
+      return { changed: yesToAChange.apply.intent, say: whatChanged(yesToAChange.apply) };
+    }
+
+    /*
+     * A YES TO A QUESTION THAT IS STILL OPEN IS NOT AN ANSWER TO ANYTHING ELSE.
+     *
+     * Driven on 22 September 2026: the chat asked which of two lines "the 30 day rule" meant, the
+     * lead said yes, and the yes was read as the answer to the open gap - "that is too short to
+     * stand as what doing well looks like". Their word was fine; the thing that read it was wrong.
+     */
+    const lastAsked = [...(dto.history ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? '';
+    if (/Which one\?\s*$/.test(lastAsked.trim()) && /^(yes|yep|yeah|ok|okay|sure|do it)\b[\s\S]{0,20}$/i.test((dto.said ?? '').trim())) {
+      throw new BadRequestException('Say which one - the number, or enough of the line to tell them apart - and I will change it.');
+    }
+
     const exception = whatTheYesLeavesOut(dto.said);
     const thePaste = looksLikeADump(dto.said)
       ? dto.said
@@ -2766,69 +2999,54 @@ export class GroundsService {
     }
 
     /*
-     * AND THE PARTS THAT ARE WORDS, WHERE THE LEAD'S WORDS ALREADY GO.
+     * AND THE PARTS THAT ARE WORDS, AS LINES IN NAMED BUCKETS.
      *
-     * A paste is not only numbers. This one carried twelve ways of working the team "sort of agreed",
-     * four decisions nobody had made, a list of things the lead said explicitly not to treat as fact -
-     * two definitions of one target, a figure nobody had approved, tasks nobody knew were finished -
-     * and a read of each person that is an opinion, not a measure. None of it had a destination, so
-     * all of it was dropped on the floor while the numbers were kept.
+     * They used to be four long notes, each a list inside one blob of text, and Hafsah read the page
+     * back on 22 September 2026: "the content needs to be parsed and paraphrased in sections - we
+     * should have strategy bucket, or notes/tips etc. those sections are so bulky." A blob cannot be
+     * edited, shared, retired or asked about. A line can - see GroundContextItem.
      *
-     * They go where the lead's words already go: a private note on the check-in, which the report may
-     * weigh and may never quote or state as fact (see addLeadContext). LEAD_ONLY, every one of them,
-     * including the ways of working: "we sort of agreed" is the lead's account of an agreement, and
-     * publishing it as the team's rules would make it one. Sharing is a separate, deliberate act.
+     * The four work buckets are shared with the team by default, because that is what a lead wants:
+     * the rules, the strategy, what is still to decide and what is not settled are about the work.
+     * The three person kinds are never shared and never quoted, and the writer enforces that rather
+     * than trusting a caller.
      */
-    if (this.prisma.leadContextNote?.create) {
+    if (this.prisma.groundContextItem?.create) {
       const author = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } }).then((g) => g?.initiatorId ?? null).catch(() => null);
-      const held = await this.prisma.leadContextNote.findMany({ where: { groundId }, select: { id: true, text: true, participantId: true } }).catch(() => [] as { id: string; text: string; participantId: string | null }[]);
-      /*
-       * One note per kind: a later paste REPLACES the note that opens the same way rather than adding
-       * a second version of it - see the opening lines in a-dump-is-many-things. Only a note that
-       * opens exactly that way is touched, so nothing the lead typed themselves is overwritten.
-       */
-      const note = async (opensWith: string, text: string, participantId: string | null) => {
-        if (!author || !text.trim()) return;
-        const mine = held.find((h) => (h.participantId ?? null) === participantId && (h.text ?? '').trimStart().startsWith(opensWith));
-        if (mine) {
-          if ((mine.text ?? '').trim() === text.trim()) return;
-          await this.prisma.leadContextNote.update({ where: { id: mine.id }, data: { text } })
-            .catch((err: any) => this.logger.warn(`Could not restate a note from the paste on ${groundId}: ${err?.message}`));
-          mine.text = text;
-          wrote = true;
-          return;
-        }
-        const made = await this.prisma.leadContextNote.create({
-          data: { groundId, participantId, authorUserId: author, text, audience: ContextNoteAudience.LEAD_ONLY },
-          select: { id: true },
-        }).catch((err: any) => { this.logger.warn(`Could not keep a note from the paste on ${groundId}: ${err?.message}`); return null; });
-        if (made) held.push({ id: made.id, text, participantId });
+      const held = await this.prisma.groundContextItem.findMany({
+        where: { groundId },
+        select: { id: true, kind: true, text: true, aboutParticipantId: true },
+      }).catch(() => [] as { id: string; kind: string; text: string; aboutParticipantId: string | null }[]);
+      /* The same line said at a different length is the same line - see theSameMeasure. */
+      const line = async (kind: ContextItemKind, text: string, opts?: { about?: string | null; saidAs?: string | null }) => {
+        const clean = (text ?? '').trim();
+        if (!clean) return;
+        const about = opts?.about ?? null;
+        if (held.some((h) => h.kind === kind && (h.aboutParticipantId ?? null) === about && theSameMeasure(h.text ?? '', clean))) return;
+        held.push({ id: 'new', kind, text: clean, aboutParticipantId: about });
+        await this.prisma.groundContextItem.create({
+          data: {
+            groundId,
+            kind,
+            text: clean.slice(0, 400),
+            saidAs: opts?.saidAs?.trim()?.slice(0, 600) ?? null,
+            /* A line about a person is the lead's alone, whatever anybody passes. */
+            audience: ABOUT_SOMEBODY.has(kind) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE,
+            aboutParticipantId: about,
+            source: 'PASTE',
+            authorUserId: author,
+          },
+        }).catch((err: any) => this.logger.warn(`Could not keep a context line on ${groundId}: ${err?.message}`));
         wrote = true;
       };
-      /* One note per list, because the Context page reads a note as one thing somebody wrote. */
-      if (got.waysOfWorking.length) await note(HOW_THE_TEAM_WORKS_OPENS, `${HOW_THE_TEAM_WORKS_OPENS}\n${got.waysOfWorking.map((w) => `- ${w}`).join('\n')}`, null);
-      if (got.openDecisions.length) await note(STILL_TO_DECIDE_OPENS, `${STILL_TO_DECIDE_OPENS}\n${got.openDecisions.map((d) => `- ${d}`).join('\n')}`, null);
-      if (got.notSettled.length) await note(NOT_SETTLED_OPENS, `${NOT_SETTLED_OPENS}\n${got.notSettled.map((n) => `- ${n}`).join('\n')}`, null);
-      /* And one per person, about them, private to the lead: an observation, never a claim. */
-      for (const a of got.aboutPeople) await note(MY_READ_OF_THEM_OPENS, `${MY_READ_OF_THEM_OPENS} ${a.observation}`, a.participantId);
-      /* A question the lead wants put to somebody. Asked in the interviewer's own words, in their session. */
-      if (got.questionsForPeople.length) {
-        const byPerson = new Map<string, string[]>();
-        for (const q of got.questionsForPeople) byPerson.set(q.participantId, [...(byPerson.get(q.participantId) ?? []), q.question]);
-        for (const [participantId, questions] of byPerson) {
-          await note(ASK_THEM_THIS_OPENS, `${ASK_THEM_THIS_OPENS}\n${questions.map((q) => `- ${q}`).join('\n')}`, participantId);
-        }
-      }
-      /*
-       * AND WHAT IS BETWEEN TWO OF THEM, WHICH IS NEITHER PERSON'S ALONE.
-       *
-       * Amina promising a feature David does not have, and sales committing dates Miriam has to keep,
-       * are pairs. Filed under one name they read as that person's failing, so they are kept on the
-       * check-in rather than on a person - private, and never quoted to either of them.
-       */
-      for (const b of got.betweenPeople) {
-        await note(`${BETWEEN_THEM_OPENS} ${b.who.join(' and ')}`, `${BETWEEN_THEM_OPENS} ${b.who.join(' and ')} (my read, not a fact, and not either person's fault on its own): ${b.issue}`, null);
-      }
+      for (const t of got.strategy) await line(ContextItemKind.STRATEGY, t);
+      for (const t of got.waysOfWorking) await line(ContextItemKind.WAY_OF_WORKING, t);
+      for (const t of got.openDecisions) await line(ContextItemKind.DECISION, t);
+      for (const t of got.notSettled) await line(ContextItemKind.UNSETTLED, t);
+      for (const t of got.notes) await line(ContextItemKind.NOTE, t);
+      for (const a of got.aboutPeople) await line(ContextItemKind.ABOUT_A_PERSON, a.observation, { about: a.participantId });
+      for (const q of got.questionsForPeople) await line(ContextItemKind.QUESTION_FOR_PERSON, q.question, { about: q.participantId });
+      for (const b of got.betweenPeople) await line(ContextItemKind.BETWEEN_PEOPLE, `${b.who.join(' and ')}: ${b.issue}`);
     }
 
     if (wrote) {
@@ -2892,6 +3110,47 @@ export class GroundsService {
     });
     this.logger.log(`Ground ${groundId}: a context note was shared with the team.`);
     return shared;
+  }
+
+  /**
+   * ONE LINE, CHANGED BY THE PERSON WHOSE LINE IT IS.
+   *
+   * The Context page used to be four blobs of text and three write boxes. Hafsah, 22 September 2026:
+   * the boxes go, the buckets are lines, and everything is done from the conversation - so a line has
+   * to be editable, shareable and retirable by id. Retired rather than deleted: a decision that was
+   * made is not a decision that never existed.
+   */
+  async changeContextLine(
+    groundId: string,
+    requestingUserId: string,
+    itemId: string,
+    change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean },
+  ) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can change what it knows.');
+    }
+    const line = await this.prisma.groundContextItem.findFirst({ where: { id: itemId, groundId }, select: { id: true, kind: true } });
+    if (!line) throw new NotFoundException('That line is not on this check-in');
+    /* A line about a person can never be shared, whoever asks - see what-this-check-in-knows. */
+    if (change.audience === 'EVERYONE' && !mayBeShared(line.kind)) {
+      throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
+    }
+    const text = (change.text ?? '').trim();
+    return this.prisma.groundContextItem.update({
+      where: { id: line.id },
+      data: {
+        ...(text ? { text: text.slice(0, 400) } : {}),
+        ...(change.audience ? { audience: change.audience === 'EVERYONE' ? ContextNoteAudience.EVERYONE : ContextNoteAudience.LEAD_ONLY } : {}),
+        ...(change.closed === undefined ? {} : { closedAt: change.closed ? new Date() : null }),
+      },
+      select: { id: true, kind: true, text: true, audience: true, aboutParticipantId: true, closedAt: true },
+    });
   }
 
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) {

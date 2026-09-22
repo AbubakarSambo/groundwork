@@ -215,5 +215,25 @@ export function whoThisNameIs(name: string, people: SomebodyOnTheCheckIn[]): Som
 
 /** How this person is named back to a reader: their own name, the one they gave, else their address. */
 export function theNameWeUseFor(p: SomebodyOnTheCheckIn): string {
-  return [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || p.email;
+  const known = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim();
+  if (known) return known;
+  /*
+   * AND OTHERWISE THE NAME IN THEIR ADDRESS, NOT THE ADDRESS.
+   *
+   * Read live on 22 September 2026: "I will put the Client C call down as hassan@harvestline.test",
+   * and a Context page whose rows read "david@harvestline.test". Nobody has to see an address where
+   * the address itself says the name - it is the same read `whoThisNameIs` already does in the other
+   * direction. Where the local part is not a name (info, sales, a number), it is left as the address,
+   * because guessing a person out of "accounts@" would be worse than showing it.
+   */
+  const local = (p.email ?? '').split('@')[0] ?? '';
+  const asWords = local.replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+  if (!asWords || asWords.length < 2 || NOT_A_PERSON.has(asWords.toLowerCase())) return p.email;
+  return asWords.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
+/** Addresses that are a desk rather than a person. */
+const NOT_A_PERSON = new Set([
+  'info', 'hello', 'admin', 'sales', 'support', 'contact', 'team', 'office', 'accounts', 'finance',
+  'hr', 'billing', 'help', 'enquiries', 'inquiries', 'noreply', 'no reply', 'mail', 'post',
+]);

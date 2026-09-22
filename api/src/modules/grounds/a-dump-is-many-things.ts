@@ -34,8 +34,12 @@ export interface ADumpRead {
   forPeople?: { personName: string; expectation: string; targets?: { name: string; number: number }[] | null }[] | null;
   /** Dates the paste sets, in its own words. Never parsed into a date here. */
   dates?: { what: string; when: string }[] | null;
-  /** How this team has said it works: the rules, in the paste's own words. */
+  /** How this team wins work and what it leads with. */
+  strategy?: string[] | null;
+  /** How this team has said it works: the rules. */
   waysOfWorking?: string[] | null;
+  /** Anything else worth keeping that is not a rule, a decision or an uncertainty. */
+  notes?: string[] | null;
   /** What the paste says somebody still has to decide. */
   openDecisions?: string[] | null;
   /** What the paste itself is unsure about, argues with itself about, or says not to treat as settled. */
@@ -73,7 +77,13 @@ WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own w
 
 DATES. What is due and when, in the paste's own words: "quarter ends 31 December", "board meeting 15 January".
 
-HOW THIS TEAM WORKS. The rules and practices the paste lists as how things are done here: "no proposal before qualification", "follow up 48 hours after a demo", "escalate after a week". Their wording. Take them whether the paste says they are agreed, half-agreed or ignored - it is the lead's own hedge and it is kept with the line.
+HOW THIS TEAM WORKS. The rules and practices the paste lists as how things are done here: "no proposal before qualification", "follow up 48 hours after a demo", "escalate after a week". Take them whether the paste says they are agreed, half-agreed or ignored.
+
+THE STRATEGY. How this team wins work and what it leads with: which customers, which sectors, what to sell on, what to stop doing. "Existing customers and expansion rather than new logos." "Government is slow but sticky." "Lead on fewer surprises, not on the technology."
+
+NOTES. Anything else worth keeping that is not a rule, a decision, an uncertainty or a job for somebody: how the team is feeling, what somebody suggested, an idea for next quarter. Leave out anything that is only about one person - that goes in the section below.
+
+EVERY LINE IN THOSE FOUR LISTS IS ONE SHORT PLAIN SENTENCE, twelve words or fewer, in the words the team would use. The paste is somebody thinking out loud: "dont sell AI lol sell knowing whats happening / fewer surprises / better decisions" is read back as "Sell fewer surprises and better decisions, not the technology". Keep the meaning and every specific - a name, a place, a number - and drop the aside, the swearing and the thinking-out-loud. Never invent a specific that is not there.
 
 WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One line each, as a decision, not as a task.
 
@@ -128,7 +138,9 @@ export const A_DUMP_SCHEMA = {
         type: 'array',
         items: { type: 'object', properties: { what: { type: 'string' }, when: { type: 'string' } }, required: ['what', 'when'] },
       },
-      waysOfWorking: { type: 'array', description: "How this team works, in the paste's own words.", items: { type: 'string' } },
+      waysOfWorking: { type: 'array', description: 'How this team works. One short plain sentence each.', items: { type: 'string' } },
+      strategy: { type: 'array', description: 'How this team wins work and what it leads with. One short plain sentence each.', items: { type: 'string' } },
+      notes: { type: 'array', description: 'Anything else worth keeping that is not a rule, a decision, an uncertainty or a job. One short plain sentence each.', items: { type: 'string' } },
       openDecisions: { type: 'array', description: 'What still has to be decided, one line each.', items: { type: 'string' } },
       notSettled: { type: 'array', description: 'What the paste contradicts itself about or says not to treat as fact. Give both versions where it gives both.', items: { type: 'string' } },
       aboutPeople: {
@@ -175,8 +187,10 @@ export interface WhatAPasteGives {
   forPeople: { who: string; participantId: string; expectation: string; targets: { name: string; number: number }[] }[];
   dates: { what: string; when: string }[];
   unmatched: string[];
-  /** The three lists that are words rather than numbers. Kept as the lead's own note, never as fact. */
+  /** The lists that are words rather than numbers, each one a bucket on the Context page. */
   waysOfWorking: string[];
+  strategy: string[];
+  notes: string[];
   openDecisions: string[];
   notSettled: string[];
   /** The lead's read of one person, kept where only the lead reads it. */
@@ -199,7 +213,8 @@ export interface WhatAPasteGives {
 export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean } = {}): string | null {
   const anything = got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
     || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length
-    || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length;
+    || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length
+    || got.strategy?.length || got.notes?.length;
   if (!anything) return null;
   const lines: string[] = ['Here is what I took from that.'];
   if (got.success) lines.push('', `What doing well looks like: "${got.success}"`);
@@ -221,9 +236,17 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
     lines.push('', 'Dates you named, which stay in this conversation rather than on the record:');
     for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
   }
+  if (got.strategy?.length) {
+    lines.push('', 'The strategy, as I read it. Everybody on the check-in will see these:');
+    for (const w of got.strategy) lines.push(`- ${w}`);
+  }
   if (got.waysOfWorking?.length) {
-    lines.push('', 'How this team works, as you wrote it. Kept as your note on the check-in, never quoted as a rule anybody agreed:');
+    lines.push('', 'How this team works. Everybody sees these, said as yours rather than as anything agreed:');
     for (const w of got.waysOfWorking) lines.push(`- ${w}`);
+  }
+  if (got.notes?.length) {
+    lines.push('', 'Notes, kept as they are:');
+    for (const w of got.notes) lines.push(`- ${w}`);
   }
   if (got.openDecisions?.length) {
     lines.push('', 'Still to decide, kept for you:');
