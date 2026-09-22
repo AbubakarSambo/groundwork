@@ -68,6 +68,16 @@ export function AnswerFirstPage() {
     try {
       const back = await openLinkApi.say(key, said)
       setTurns(t => [...t, { who: 'it', text: back.reply }])
+      /*
+       * WHEN IT HAS CLOSED, THE PAGE CLOSES.
+       *
+       * Read live, 22 September 2026: the conversation said "your report is ready now, speak soon"
+       * and the box stayed open under it, so the person typed two more questions into a session that
+       * had already ended and got answers to neither. The engine says when a session is over; this
+       * page took the reply and ignored the flag beside it. Now the close moves straight on to the
+       * one thing left - who they are and where the report goes - which is what the ending is for.
+       */
+      if (back.sessionComplete) setPhase('address')
     } catch (err: any) {
       setTurns(t => [...t, { who: 'it', text: err?.response?.data?.message ?? 'That did not send. Say it again.' }])
     } finally { setBusy(false) }

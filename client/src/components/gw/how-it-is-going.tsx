@@ -76,7 +76,10 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
                 <span style={{ color: ink.warn, fontWeight: 600 }}>
                   {glance.inTheWay.count}
                   {glance.inTheWay.oldest ? ` · ${glance.inTheWay.oldest}` : ''}
-                  {glance.inTheWay.daysWaiting != null ? ` (${glance.inTheWay.daysWaiting}d)` : ''}
+                  {/* "(0d)" read as a code on a live board. Days, in words, and nothing on the day it was named. */}
+                  {glance.inTheWay.daysWaiting != null && glance.inTheWay.daysWaiting > 0
+                    ? ` · ${glance.inTheWay.daysWaiting} ${glance.inTheWay.daysWaiting === 1 ? 'day' : 'days'}`
+                    : ''}
                 </span>
               )
               : <span style={{ color: ink.strong, fontWeight: 600 }}>Nothing</span>}

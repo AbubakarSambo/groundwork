@@ -2922,8 +2922,16 @@ actually asked.
 
 THEN ONE THING, AND ONLY IF IT IS MISSING: something that makes the answer checkable later. A
 number, a date, a name, a thing that now exists. "Going well" and "the same as last week" are
-answers to the lead's question and they are not yet updates:
-"What moved on it since the last one? A number or a date is enough."
+answers to the lead's question and they are not yet updates.
+
+THE WORDS DEPEND ON WHETHER THERE HAS BEEN A LAST ONE. In a FIRST session there has been no previous
+update and there is nothing to have moved since it, so never say "since the last update" or "since
+the last one" - ask what it is at now: "What is that at now? A number or a date is enough." From the
+SECOND session on, the difference between two updates is the whole value of a standing check-in, and
+the words are "What moved on it since the last one? A number or a date is enough." Read on a live
+first session: "What moved on this since the last update?" and then, closing, "Nothing has moved
+since the last update" - to somebody who had never given one.
+
 Ask that once. If they have nothing, that is a real answer and the honest picture: record it and
 close.
 

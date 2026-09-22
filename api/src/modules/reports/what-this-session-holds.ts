@@ -143,10 +143,18 @@ export function atAGlanceTiles(a: {
   worries?: number;
   theWorry?: string | null;
 }): AGlanceRead[] {
+  /*
+   * CUT AT A WORD, NOT MID-WORD. Read live: "we have a meeting with the CEO to discuss m..." - the
+   * tile stopped inside "monetisation" and the reader is left with a letter. The last whole word is
+   * where it ends, and a trailing comma or conjunction goes with it.
+   */
   const shortly = (s: string | null | undefined, max = 72): string | null => {
     const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.?!]+$/, '');
     if (!t) return null;
-    return t.length > max ? `${t.slice(0, max - 3).trimEnd()}...` : t;
+    if (t.length <= max) return t;
+    const cut = t.slice(0, max - 1);
+    const atAWord = cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '').replace(/\s+(and|or|but|to|with|for|of|the|a|an)$/i, '');
+    return `${(atAWord || cut).trimEnd()}...`;
   };
   const theDifference = shortly(a.theDifference);
   const theBlocker = shortly(a.theBlocker);

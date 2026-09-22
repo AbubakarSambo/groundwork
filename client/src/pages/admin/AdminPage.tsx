@@ -677,7 +677,7 @@ function FreeRunsPanel() {
             <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 10px',
                                      border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12.5, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600 }}>{r.email}</span>
-              <span style={{ color: 'var(--gw-sub)' }}>{r.months} months, {r.plan.replace('_', ' ').toLowerCase()}</span>
+              <span style={{ color: 'var(--gw-sub)' }}>{r.months} {r.months === 1 ? 'month' : 'months'}, {r.plan.replace('_', ' ').toLowerCase()}</span>
               <span style={{ color: r.state === 'running' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                 {r.state === 'waiting' ? 'waiting for them to sign up'
                   : r.state === 'running' ? `running until ${whenItWas(r.endsAt!, 'day')}`

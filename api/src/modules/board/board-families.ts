@@ -415,6 +415,27 @@ export function boardRendersFor(scenario: GroundScenario): boolean {
   return !!sections && sections.length > 0;
 }
 
+/**
+ * A ONE-ROUND READ DOES NOT WEAR A RECURRING BOARD.
+ *
+ * Read live, 22 September 2026, on a check-in set up to ask twenty-four organisations one question:
+ * the board carried "who owns what" per person, a success standard nobody had set, an empty "what
+ * we are aiming for" inviting the lead to add targets, and a patterns section that needs three
+ * periods. Every one of those reads across rounds, and there is one round.
+ *
+ * The family says what a SITUATION holds. This says what a single round can actually show, which is
+ * the same three things the snapshot family holds: what came back, where independent accounts of one
+ * moment differ, and who answered. A run that later gets more rounds gets its own sections back,
+ * because this is read from the planned count rather than stored anywhere.
+ */
+export const WHAT_ONE_ROUND_CAN_SHOW: BoardSection[] = ['quickRead', 'divergence', 'checkInGrid'];
+
+export function sectionsForARunOf(scenario: GroundScenario, roundsPlanned: number | null): BoardSection[] {
+  const all = sectionsFor(scenario);
+  if (roundsPlanned !== 1) return all;
+  return all.filter((s) => (WHAT_ONE_ROUND_CAN_SHOW as string[]).includes(s));
+}
+
 export function sectionsFor(scenario: GroundScenario): BoardSection[] {
   if (!boardRendersFor(scenario)) return [];
   return FAMILY_SECTIONS[familyFor(scenario)] ?? [];

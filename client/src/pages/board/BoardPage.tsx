@@ -383,9 +383,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* Counted the way the exit gate below counts it: sessions everybody has finished.
                         `currentSession` is the highest number any row carries, and the next row is
                         created the moment one completes, so it ran ahead of the run. */}
+                    {/* ONCE, NOT TWICE. "0 sessions done" sat three inches above "Progress 0 of 6
+                        rounds" on the same header - the same fact, in two vocabularies, and the
+                        progress line is the one that says how many there are to do. */}
                     {(() => {
                       const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
-                      return `${done} ${done === 1 ? 'session' : 'sessions'} done`
+                      return done > 0 ? `${done} ${done === 1 ? 'session' : 'sessions'} done` : null
                     })()}
                   </span>
                 ) : null}

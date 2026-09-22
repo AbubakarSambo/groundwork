@@ -15,7 +15,9 @@ import {
   familyFor,
   pickBoardSafeReportFields,
   sectionsFor,
+  sectionsForARunOf,
 } from './board-families';
+import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames , eachSideGetsSomebody } from '../reports/party-labels';
 import {
   CoverageKind,
@@ -263,7 +265,8 @@ export class BoardService {
      */
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
-    const sections = sectionsFor(ground.scenario);
+    /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
+    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 

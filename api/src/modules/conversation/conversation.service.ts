@@ -20,6 +20,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { withoutTheLastOne } from './a-first-session-has-no-last-one';
 import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
@@ -1958,6 +1959,14 @@ export class ConversationService {
      * separate field, because a field needs a screen to render it and this has to reach somebody on
      * the path they are already on.
      */
+    /* A FIRST SESSION HAS NO LAST ONE. See the module: "nothing has moved since the last update" went
+       out in the first minute of a first conversation. */
+    const withoutALastOne = withoutTheLastOne(aiTurn.content ?? '', (checkIn as any).sessionNumber);
+    if (withoutALastOne.changed) {
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: withoutALastOne.text } });
+      this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
+    }
+
     const room = howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
@@ -2335,6 +2344,12 @@ export class ConversationService {
         reply = `${reply}\n\n${close.sayFirst}`;
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         yield { type: 'delta', text: `\n\n${close.sayFirst}` };
+      }
+      const noLastOne = withoutTheLastOne(reply, (checkIn as any).sessionNumber);
+      if (noLastOne.changed) {
+        reply = noLastOne.text;
+        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
+        this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
       }
       yield { type: 'done', reply, sessionComplete: close.ready };
     } catch (err) {

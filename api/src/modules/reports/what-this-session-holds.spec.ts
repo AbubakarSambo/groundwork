@@ -26,3 +26,18 @@ describe('worries reach the Blockers tile when nothing is blocked', () => {
     expect(none.tone).toBe('good');
   });
 });
+
+/** "we have a meeting with the CEO to discuss m..." - a tile that stopped inside a word (22 Sep 2026). */
+describe('a tile cuts at a word', () => {
+  const { atAGlanceTiles } = require('./what-this-session-holds');
+  it('ends on the last whole word, not mid-word, and drops a dangling conjunction', () => {
+    const tiles = atAGlanceTiles({
+      agreed: 0, stillOpen: 0, movedOnTargets: 0, blocked: 1, waiting: 0, backedPct: null, numberWasSaid: false,
+      theBlocker: 'I have heard about it but we have a meeting with the CEO to discuss monetisation next week',
+    });
+    const blockers = tiles.find((t: any) => t.label === 'Blockers')!;
+    expect(blockers.sub).toContain('...');
+    expect(blockers.sub).not.toMatch(/\bm\.\.\./);
+    expect(blockers.sub).not.toMatch(/\b(and|or|but|to|with|for|of|the)\.\.\./);
+  });
+});

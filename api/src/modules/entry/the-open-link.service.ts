@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { theSituationIn } from '../grounds/what-a-participant-is-told-about-this';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,7 +37,7 @@ export class TheOpenLinkService {
   async whatThisIs(joinToken: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
-      select: { id: true, label: true, brief: true, scenario: true, status: true, initiator: { select: { firstName: true } } },
+      select: { id: true, label: true, brief: true, toldToParticipants: true, scenario: true, status: true, initiator: { select: { firstName: true } } },
     });
     if (!ground) throw new NotFoundException('That link does not open anything.');
     if (['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes(ground.status)) {
@@ -44,8 +45,19 @@ export class TheOpenLinkService {
     }
     return {
       groundLabel: ground.label,
-      /* The lead's own line is the question, which is the one thing worth showing before they start. */
-      theQuestion: ground.brief ?? null,
+      /*
+       * THE LEAD'S OWN LINE, AND ONLY AS MUCH OF IT AS SOMEBODY READS BEFORE ANSWERING.
+       *
+       * Read live, 22 September 2026: a two-hundred-word brief printed whole at the top of the
+       * phone screen, then the first question underneath repeating the half of it that was a
+       * question. The whole card promises two minutes.
+       *
+       * `toldToParticipants` is the product's own short read of the brief, written once and used in
+       * every "About this check-in" box; where it exists it is what this shows, and otherwise the
+       * first few sentences of the brief that are about the situation rather than about how to run
+       * the interview. See what-a-participant-is-told-about-this.
+       */
+      theQuestion: ((ground as any).toldToParticipants?.trim() || theSituationIn(ground.brief) || ground.brief) ?? null,
       askedBy: ground.initiator?.firstName ?? null,
       scenario: ground.scenario,
     };
