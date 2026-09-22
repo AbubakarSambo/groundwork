@@ -131,6 +131,7 @@ import {
 } from './what-a-check-in-owes';
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
+import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -1070,6 +1071,20 @@ export class ConversationService {
       this.logger.log(`Check-in ${checkInId}: the second opener cleared it.`);
       return second;
     }
+    /*
+     * AND IF NEITHER ATTEMPT ASKED ANYTHING, THE FIRST NO LONGER JUST STANDS.
+     *
+     * "The first stands" is right for a long opener or a banned word - a blemish on something
+     * usable. It is wrong for one that asks nothing, because that ships a paragraph and a text box
+     * as the first thing this product ever says to somebody. See
+     * nobody-is-left-looking-at-a-paragraph.
+     */
+    const stillADeadEnd = faults(opener).some((w) => w.why === 'asks nothing')
+      && faults(second || opener).some((w) => w.why === 'asks nothing');
+    if (stillADeadEnd) {
+      this.logger.warn(`Check-in ${checkInId}: neither opener asked anything; adding a question so nobody is stranded.`);
+      return withAQuestion(opener, { opening: true });
+    }
     this.logger.warn(`Check-in ${checkInId}: the second opener did not clear it either; the first stands.`);
     return opener;
   }
@@ -1414,7 +1429,26 @@ export class ConversationService {
          after this runs. The alias exists for exactly this collision. */
       const closingNow = textHadCloseMarker(rawReply);
       if (isADeadEnd(screened.text, closingNow)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close.`);
+        /*
+         * IT USED TO STOP AT THE WARNING, and the comment above said what should happen next: a
+         * reply with no question really does strand somebody, so if the log says it happens it
+         * comes back as a retry. The log said it happens - a live open-link conversation, five
+         * answers in, 23 September 2026 - so here is the retry, in the same shape as the four
+         * below it: ask again with one instruction, keep the second only if it is better.
+         */
+        /*
+         * NO SECOND MODEL CALL. A retry here was deliberately removed once before, for latency on
+         * the turn somebody is actually waiting for - see a-reply-that-asks-nothing-is-a-dead-end,
+         * which pins that decision. The log was left to say whether it mattered.
+         *
+         * It says it does: caught live on an open-link conversation five answers in, 23 September
+         * 2026. But the cure it was pinned against was a second call, and the person staring at a
+         * dead end right now is the one who would pay for it. One plain question, added to what the
+         * model did write, strands nobody and costs nothing. See nobody-is-left-looking-at-a-
+         * paragraph.
+         */
+        this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; adding a question.`);
+        screened.text = withAQuestion(screened.text, { closing: closingNow });
       }
 
       /*

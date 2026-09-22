@@ -31,8 +31,10 @@ describe('a target for somebody is not an opinion about them', () => {
   ] as any);
 
   it('the rule says a judgement goes to the note and a target is taken here', () => {
-    expect(prompt).toMatch(/A judgement about somebody is not recorded here; a target for them is/);
-    expect(prompt).toMatch(/what they EXPECT of a named person/);
+    /* Reworded on 23 September 2026 when rule 2 started coaching instead of refusing. The line
+       being pinned is the same one: an opinion is not a fact and is never stored as one. */
+    expect(prompt).toMatch(/A judgement is not a fact about somebody and is never recorded as one/);
+    expect(prompt).toMatch(/they EXPECT of a named person/);
     expect(prompt).toMatch(/marked unseen until that person reads it/);
   });
 
@@ -41,9 +43,18 @@ describe('a target for somebody is not an opinion about them', () => {
     expect(prompt).toMatch(/never send them to somebody else's check-in to set one/);
   });
 
-  it('and the private note is still where an opinion goes', () => {
-    expect(prompt).toMatch(/private context note/);
-    expect(prompt).toMatch(/About <that person>/);
+  /*
+   * THE PRIVATE NOTE BOX IS GONE, AND SO IS THE SENDING-AWAY.
+   *
+   * This pinned that an opinion about somebody was sent to a note box on the Context page. That box
+   * was removed on 23 September 2026 (the lead's read of a person lives in the conversation now),
+   * and rule 2 was rewritten the same day to coach rather than refuse - see the-context-chat.spec.
+   * What this test is really for survives in the assertions below: wherever the read is kept, it is
+   * kept as the lead's read and it never reaches the person it is about as a finding.
+   */
+  it('and a read of somebody is kept as the lead\'s, never as a finding about them', () => {
+    expect(prompt).toMatch(/Record it as THEIR READ of that person/);
+    expect(prompt).toMatch(/never quoted to that person as a finding/);
   });
 
   it('what recording it means is attached wherever there is somebody to expect it of', () => {

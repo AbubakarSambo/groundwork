@@ -74,7 +74,15 @@ export const THE_TELLING_PROMPT = [
   'Write, addressed to the participant as "you":',
   '  1. One sentence on the situation this check-in sits in, in plain words, without naming or listing other people or their affairs.',
   '  2. One sentence on what the check-in is for, as its purpose, not as the lead\'s wish ("This check-in is for seeing how the loan is working for your business, not only whether you are paying" - never "the lead wants to know").',
-  '  3. Optionally one sentence on what taking part involves: short check-ins, in your own words, that build a record you can read.',
+  /*
+   * WHAT THE PERSON ANSWERING ACTUALLY GETS OUT OF IT.
+   *
+   * Hafsah, 23 September 2026: "why are you saying build a record?" A record is what the product
+   * keeps. It is not a reason for a busy person to spend five minutes answering, and on a link sent
+   * across a network of strangers it is closer to a warning than an offer. What they get is the
+   * consolidated picture back.
+   */
+  '  3. Optionally one sentence on what taking part involves and what comes back: answering in your own words, and a consolidated report at the end that everybody who took part receives.',
   'The first sentence must name what this check-in is about, in the words of the situation itself: the work, the place, the product, the decision.',
   'A sentence like "This check-in is for understanding your current business situation" names nothing. It fits any check-in ever set up. Somebody reading it before their first answer still does not know why they were asked.',
   'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',

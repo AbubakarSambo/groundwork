@@ -49,9 +49,13 @@ describe('what the context chat says it can take', () => {
   });
 
   it('keeps the rule that overrides all of it', () => {
-    /* The moment this becomes a place to say things about people it is a file on somebody with a
-       chat interface. The new list must not have opened a door around that. */
+    /*
+     * RULE 2 STILL DECIDES ANYTHING ABOUT A NAMED PERSON. What rule 2 SAYS changed on 23 September
+     * 2026 - it coaches now rather than refusing, see the-context-chat.spec.ts for why - but the
+     * point of this line is unchanged and is the reason it is here: the list above must not have
+     * opened a side door for something about a person to be taken as an ordinary context line.
+     */
     expect(prompt).toContain('If it is about a named person, rule 2 below decides and it overrides everything on this list');
-    expect(prompt).toContain('This is not about a person');
+    expect(prompt).toContain('Record it as THEIR READ of that person');
   });
 });

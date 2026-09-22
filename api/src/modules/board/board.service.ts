@@ -455,6 +455,25 @@ export class BoardService {
       startingState: (ground as any).resolutionState ?? null,
       // Which participant row is the caller, so the client knows whose poll chip
       // is theirs to toggle. Null for an org admin reading without being a party.
+      /*
+       * WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
+       *
+       * Hafsah, 23 September 2026, looking at a hundred-person board: "the reports and boards needs
+       * to show more reasoning, they look more like things that just do counts." She was reading a
+       * hundred identical rows - "0 of 500, has not answered, ask them to check in" - on a check-in
+       * whose whole point is what the answers say.
+       *
+       * The read already exists: where enough separate accounts came in, the report carries the
+       * network picture (a-hundred-accounts-are-not-two). It was only on the report page, which is
+       * not the page somebody opens to see how this is going. It goes on the board too.
+       *
+       * WHO SEES IT. The person running the check-in always - it is their read of their own
+       * check-in. Everybody else once it has been released, which is the same rule the report
+       * itself uses, so the board cannot show a picture the report is still withholding.
+       */
+      whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)
+        ? ((ground as any).report?.networkPicture ?? null)
+        : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it

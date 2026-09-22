@@ -20,6 +20,7 @@ import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
@@ -643,6 +644,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           reads it first and often reads nothing else. Putting it under the tiles would be ordering
           the page by how long each block has existed.
         */}
+        {/*
+          WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
+          
+          Hafsah, 23 September 2026, on a hundred-person board: "the reports and boards needs to
+          show more reasoning, they look more like things that just do counts." The page opened on a
+          hundred identical rows saying somebody had not answered, and said nothing at all about
+          what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
+          belongs on the page somebody opens to see how this is going, not only on the report.
+        */}
+        {(b as any).whatTheAnswersSay && (
+          <>
+            <Sec title="What the answers say" src="from everybody who has answered so far" />
+            <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />
+          </>
+        )}
+
         {shown.eachPerson && (
           <>
             <Sec title="Where each person is" src="ordered by what needs you, not by name" />

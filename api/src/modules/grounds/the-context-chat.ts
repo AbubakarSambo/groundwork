@@ -304,7 +304,24 @@ export function contextChatPrompt(
      * The line is what the sentence is: a JUDGEMENT about somebody goes in the private note, a
      * NUMBER OR A JOB for somebody is recorded here, in her name, marked unseen until they read it.
      */
-    '2. This is not about a person. A judgement about somebody is not recorded here; a target for them is. If they tell you what they think of somebody by name - that this person is difficult, or underperforming, or the problem - stop and say plainly that this conversation is about how the check-in is set up. Then point them at the ONE place that is for it, by name: the private context note further down this same Context page, under "About <that person>". Do not say it belongs in a check-in - a check-in is that person\'s own account of their own work, and telling a lead to put their opinion of somebody there is pointing them at the one place it must never go. Do not record it here and do not draw them out on it. The moment this becomes a place to say things about people, it is a file on somebody with a chat interface, and this product exists to be the opposite of that. But what they EXPECT of a named person - a number, a date, a piece of work they are to own - is the opposite case and belongs here: take it, say it back plainly, and say it is recorded as theirs and marked unseen until that person reads it. Never tell them individual targets cannot be set here, and never send them to somebody else\'s check-in to set one.',
+    /*
+     * COACHING WAS ASKED FOR AND THIS RULE FORBADE IT.
+     *
+     * Hafsah, 22 September 2026: "Everything in the context chat can be used to guide and coach the
+     * team and also help them where they are going wrong." Then, 23 September: "i didnt forbid
+     * coaching... It seems i asked for coaching and then you did the opposite."
+     *
+     * She is right, and the old rule said so in as many words: "stop", "do not draw them out on
+     * it", and then it pointed at a private note box under "About <that person>" - a control that
+     * was removed on 23 September, so the one place it sent people no longer existed.
+     *
+     * WHAT THE RULE WAS ACTUALLY PROTECTING is still protected, and it is one thing: a lead's read
+     * of somebody is the lead's read. It is recorded as theirs, it guides how this check-in is run,
+     * and it is never handed to that person as a finding or quoted into their own check-in - which
+     * is their account of their own work. That wall does not need silence to hold; it needs the
+     * line to be labelled, which it now is.
+     */
+    '2. Coach them. If they tell you somebody is struggling, or difficult, or the problem, that is the conversation - do not stop it and do not send them somewhere else. Ask what they have seen, what they have already tried, and what they want to be different. Record it as THEIR READ of that person, in their words, and say plainly that it is kept as their read: it guides how this check-in is run and how you talk to them about it, and it is never quoted to that person as a finding or put into that person\'s own check-in, because a check-in is that person\'s account of their own work. A judgement is not a fact about somebody and is never recorded as one. But what they EXPECT of a named person - a number, a date, a piece of work they are to own - is a different thing again: take it, say it back plainly, and say it is recorded as theirs and marked unseen until that person reads it. Never tell them individual targets cannot be set here, and never send them to somebody else\'s check-in to set one.',
     '',
     '3. You do not decide anything. You ask and you suggest. Nothing is saved until they confirm it, so put what you have understood back to them in their own words and let them correct it.',
     '',

@@ -13,7 +13,15 @@ describe('one person, one row', () => {
   it('moves the answer onto the row that was invited, rather than refusing the address', () => {
     const finish = SRC.slice(SRC.indexOf('async finish('));
     expect(finish).not.toContain('That address is already on this check-in');
-    expect(finish).toContain("this.prisma.checkIn.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } })");
+    /*
+     * THE CHECK-INS MOVE ONE AT A TIME NOW, AND THAT IS THE POINT. An `updateMany` sets one value
+     * for every row, so it moved their session across still calling itself session one - and
+     * `CheckIn` is unique on (participant, session number), so anybody merging onto a row that
+     * already had a session one got a 409 and lost the whole second conversation. Found on the
+     * hundred-person run, 23 September 2026; see answering-twice-is-not-a-clash.
+     */
+    expect(finish).toMatch(/checkIn\.update\(\{ where: \{ id: c\.id \}, data: \{ participantId: already\.id, sessionNumber: next \} \}\)/);
+    expect(finish).not.toContain('this.prisma.checkIn.updateMany');
     /* What they said moves with it, or the merge loses the record it exists to protect. */
     expect(finish).toContain("this.prisma.recordEntry.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } })");
     expect(finish).toContain("this.prisma.groundDocument.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } })");

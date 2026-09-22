@@ -21,8 +21,21 @@ describe('what the page promises before somebody types', () => {
     expect(CODE).not.toMatch(/nobody sees what you write/)
   })
 
-  it('and says who does', () => {
-    expect(CODE).toMatch(/reads\s*\n?\s*what you write, and it goes into one report for everybody/)
+  /*
+   * THE SECOND VERSION, IN HER WORDS. My first fix named the organiser - "Hafsah reads what you
+   * write, and it goes into one report for everybody". Hafsah, 23 September 2026, replaced it: the
+   * person answering does not need to be told who is reading over their shoulder, they need to know
+   * the answers are pooled and that they get the result. Both sentences are honest; hers is the one
+   * that also gives them a reason to spend the five minutes.
+   */
+  it('and says the answers are pooled and what comes back', () => {
+    expect(CODE).toMatch(/The answers help everybody get a\s*\n?\s*shared picture, and you will receive the consolidated report at the end/)
+  })
+
+  /* Two minutes was never true of a conversation that asks four or five questions. */
+  it('and does not undersell how long it takes', () => {
+    expect(CODE).not.toMatch(/about two minutes/)
+    expect(CODE).toMatch(/about five minutes/)
   })
 })
 
@@ -33,10 +46,18 @@ describe('what it collects at the end', () => {
     expect(CODE).toMatch(/id="open-name"/)
   })
 
-  /* Somebody who does not want the report still names the organisation their answer is about -
-     that half of the record is the lead's, not a condition of being mailed something. */
-  it('and asks for it on the other path too', () => {
-    expect(CODE).toMatch(/id="open-org-2"/)
+  /*
+   * AND OF EVERYBODY, NOT ONLY OF WHOEVER WANTED THE REPORT.
+   *
+   * There were two paths here - "yes send it" asked for a name and an address, "no thanks" asked
+   * for a name optionally - which meant the organiser's record of whose answer this is depended on
+   * a question about mailing. Hafsah, 23 September 2026: "we need their email and names when they
+   * checkin and put their emails." One path, three fields, all needed.
+   */
+  it('and asks all three of everybody, with no second path', () => {
+    expect(CODE).not.toMatch(/id="open-org-2"/)
+    expect(CODE).not.toMatch(/Do you want the report\?/)
+    expect(CODE).toMatch(/disabled=\{busy \|\| !email\.trim\(\) \|\| !name\.trim\(\) \|\| !org\.trim\(\)\}/)
   })
 
   it('and sends it', () => {

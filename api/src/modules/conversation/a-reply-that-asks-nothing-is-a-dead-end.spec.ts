@@ -68,13 +68,28 @@ describe('a reply that asks nothing is a dead end', () => {
    * really does strand somebody - so the detection is asserted here, and the log is what will say
    * whether it happens often enough to be worth a second call.
    */
-  it('and it is wired as a note rather than a second model call', () => {
+  /**
+   * AND THE LOG ANSWERED THE QUESTION THIS TEST LEFT OPEN.
+   *
+   * It said: the detection stays, the second model call does not, and the log will say whether it
+   * happens often enough to be worth one. It happened - caught live on an open-link conversation
+   * five answers in, 23 September 2026, on the turn after somebody described how they vet their
+   * suppliers. The person was left with a paragraph and a text box.
+   *
+   * So the reply is fixed rather than only noted, and still WITHOUT a second model call, which is
+   * the thing this test was really protecting: the person waiting on this turn would have paid for
+   * that call. One plain question is appended instead. See nobody-is-left-looking-at-a-paragraph.
+   */
+  it('and is fixed in the reply rather than only noted, still without a second model call', () => {
     const SERVICE = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const at = SERVICE.indexOf('isADeadEnd(screened.text');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 900);
     expect(block).toMatch(/asked nothing and did not close/);
+    expect(block).toMatch(/withAQuestion\(screened\.text, \{ closing: closingNow \}\)/);
+    /* Still no retry: no second respond() between finding it and fixing it. */
     expect(block).not.toContain('ASK_SOMETHING_OR_CLOSE');
+    expect(block.slice(0, block.indexOf('withAQuestion'))).not.toContain('this.anthropic');
   });
 });
