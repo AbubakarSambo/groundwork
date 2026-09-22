@@ -5118,14 +5118,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // the record is populated before the status change races past it. buildSoloArtifact
     // is still fire-and-forget. Both are best-effort.
 
+    /*
+     * WHAT SOMEBODY WAITS FOR AT THE END OF A CHECK-IN, TIMED AND THEN NARROWED.
+     *
+     * Hafsah, 22 September 2026: "generating reports at the end of a checkin etc. all seem to load
+     * for a long time." Three steps were awaited here in a row and eight more run in the background.
+     * Only the first is a dependency: extraction writes the record, and the two after it read it.
+     * They do not read each other, so they run together.
+     */
+    const closingStartedAt = Date.now();
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
-    /* The lines just taken are read against the documents this person can see. Best effort, after
-       the extraction they depend on, before the report reads recallBased. */
-    await this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
-      this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`),
-    );
+    this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
 
     // Handoffs are a board object, so this only runs on SHARED-mode grounds.
     // Best-effort: a failure here must never block the check-in completing.
@@ -5151,8 +5156,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * A gap closes permanently the moment it is answered, in this round or any later one: a fact
      * does not stop being on the record because a new round began.
      */
-    await this.settleTheGaps(checkIn).catch((err) =>
-      this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`));
+    /* The two that read what extraction just wrote, together: neither reads the other. */
+    const afterExtractionAt = Date.now();
+    await Promise.all([
+      /* The lines just taken are read against the documents this person can see, before the report
+         reads recallBased. */
+      this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
+        this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`)),
+      this.settleTheGaps(checkIn).catch((err) =>
+        this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`)),
+    ]);
+    this.logger.log(`Check-in ${checkIn.id}: anchored the record and settled the gaps in ${Date.now() - afterExtractionAt}ms; the whole close took ${Date.now() - closingStartedAt}ms.`);
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );

@@ -121,17 +121,51 @@ export function ContextChat({ groundId }: { groundId: string }) {
        * and the question; this says them and offers the yes.
        */
       const filed = `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.`
-      const asking: string | null = res?.askingAboutIt ?? null
-      const waiting = res?.numbersWaiting ?? 0
-      /* The numbers go in the card that asks about them, not in the bubble AND the card - read live,
-         the list appeared twice in a row. The bubble says what happened to the file. */
-      setHistory((h) => [...h, { role: 'assistant', content: asking && !waiting ? `${filed}\n\n${asking}` : filed }])
-      if (asking && waiting > 0) {
-        setProposal({ gap: 'document', say: asking, said: `yes, record the numbers from ${file.name}` })
-      }
+      /*
+       * THE FILE IS FILED IMMEDIATELY; THE READ LANDS AFTER.
+       *
+       * The upload used to wait twenty seconds for two model reads before answering. It answers as
+       * soon as the file is stored now, so this says so, then waits for the read and says what was
+       * found when it arrives. A person who attached a sheet and walked away comes back to the
+       * question rather than to a spinner.
+       */
+      setHistory((h) => [...h, { role: 'assistant', content: `${filed}\n\nReading it now.` }])
+      void whatTheReadFound(res?.id, file.name)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not upload. Try again.'),
   })
+
+  /**
+   * WAIT FOR THE READ, THEN SAY WHAT IT FOUND.
+   *
+   * The document row gets `holds` when the model has finished with it, which is a few seconds after
+   * the upload answers. Polled rather than pushed because this is one file, for one person, on one
+   * open page - a socket for it would be machinery nobody needs. It gives up after a minute and
+   * says so rather than leaving "Reading it now." as the last word.
+   */
+  async function whatTheReadFound(docId: string | undefined, fileName: string) {
+    if (!docId) return
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 2000))
+      const list: any[] = await documentsApi.list(groundId).catch(() => [])
+      const mine = list.find((d) => d.id === docId)
+      if (!mine?.holds) continue
+      qc.invalidateQueries({ queryKey: ['documents', groundId] })
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      const asking: string | null = mine.askingAboutIt ?? mine.theContextWeHave ?? null
+      const waiting = (mine.holds?.waiting ?? []).length
+      if (asking && waiting > 0) {
+        /* `askingAboutIt` already ends in the question - it is written by whatWeTookFromThat. */
+        setProposal({ gap: 'document', say: asking, said: `yes, record the numbers from ${fileName}` })
+      } else if (asking) {
+        setHistory((h) => [...h, { role: 'assistant', content: asking }])
+      } else {
+        setHistory((h) => [...h, { role: 'assistant', content: `I have read ${fileName}. There are no numbers or dates in it to record, so it stays as context every check-in reads.` }])
+      }
+      return
+    }
+    setHistory((h) => [...h, { role: 'assistant', content: `${fileName} is taking a while to read. It is filed either way, and every check-in reads it.` }])
+  }
 
   const send = useMutation({
     mutationFn: (next: { role: 'user' | 'assistant'; content: string }[]) =>

@@ -21,6 +21,7 @@
  */
 import { useState } from 'react'
 import { personLabel } from '@/lib/utils'
+import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
 
 export interface APersonOnTheCard {
@@ -113,9 +114,14 @@ export function EachPerson({
   const rows = people.filter((p) => !p.managingOnly)
   if (!rows.length) return null
 
+  /* Your own row first, then a few, then the count - at a hundred people a stack of cards is a wall
+     however small each card is. See a-long-list-is-not-a-page. */
+  const inOrder = mine ? [mine, ...rows.filter((p) => p.id !== mine.id)] : rows
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-      {rows.map((p) => {
+      <ShowAFew rows={inOrder} few={8} what="people">
+      {(p) => {
         const isMe = !!viewerUserId && p.userId === viewerUserId
         const theirs = (p.objective?.all ?? []).filter((o: any) => o?.text?.trim())
         const theirTargets = targets.filter((t) => t.ownerParticipantId === p.id)
@@ -232,7 +238,8 @@ export function EachPerson({
             )}
           </div>
         )
-      })}
+      }}
+      </ShowAFew>
     </div>
   )
 }

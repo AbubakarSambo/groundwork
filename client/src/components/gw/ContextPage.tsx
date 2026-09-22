@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { scrollToId } from '@/lib/scroll-to'
+import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
@@ -440,12 +441,19 @@ export function ContextPage({
                     const at = groups.find((g) => g.who === who)
                     if (at) at.rows.push(o); else groups.push({ who, rows: [o] })
                   }
-                  return groups.map((g, gi) => (
+                  /*
+                    THE TEAM'S ALWAYS, THE PEOPLE'S A FEW AT A TIME. At a hundred people this table
+                    was a hundred one-row groups - see a-long-list-is-not-a-page.
+                  */
+                  const theTeamsGroup = groups.filter((g) => !g.who)
+                  const peopleGroups = groups.filter((g) => g.who)
+                  const draw = (g: { who: string | null; rows: any[] }, gi: number) => (
                     <div key={g.who ?? 'team'}>
                       <div style={{ padding: '7px 13px 5px', background: 'var(--gw-bg)', borderTop: gi === 0 ? 'none' : '1px solid var(--gw-border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub)' }}>
                         {g.who ?? 'The whole check-in'}
                       </div>
-                      {g.rows.map((o: any, i: number) => (
+                      <ShowAFew rows={g.rows} few={8} what={g.who ? `of ${g.who}\u2019s numbers` : 'team numbers'}>
+                      {(o: any, i: number) => (
                         <div key={o.id} style={{ padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                             <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
@@ -467,9 +475,18 @@ export function ContextPage({
                             <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 4, lineHeight: 1.5, maxWidth: '62ch' }}>{o.notSettled}</div>
                           )}
                         </div>
-                      ))}
+                      )}
+                      </ShowAFew>
                     </div>
-                  ))
+                  )
+                  return (
+                    <>
+                      {theTeamsGroup.map(draw)}
+                      <ShowAFew rows={peopleGroups} few={4} what="people with their own numbers">
+                        {(g, i) => draw(g as any, i + theTeamsGroup.length)}
+                      </ShowAFew>
+                    </>
+                  )
                 })()}
               </div>
             ) : (
@@ -1031,7 +1048,8 @@ export function ContextPage({
               <>
                 <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
                 <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
-                  {commitments.map((c: any, i: number) => {
+                  <ShowAFew rows={commitments} few={8} what="things people are down as doing">
+                  {(c: any, i: number) => {
                     const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
                     return (
                       <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -1043,7 +1061,8 @@ export function ContextPage({
                         {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
                       </div>
                     )
-                  })}
+                  }}
+                  </ShowAFew>
                 </div>
               </>
             )}
@@ -1068,7 +1087,8 @@ export function ContextPage({
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{b.title}</span>
                         <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{b.sub}</span>
                       </div>
-                      {b.lines.map((l: any, i: number) => (
+                      <ShowAFew rows={b.lines} few={6} what={`lines under ${b.title.toLowerCase()}`}>
+                      {(l: any, i: number) => (
                         <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
@@ -1111,7 +1131,8 @@ export function ContextPage({
                             </>
                           )}
                         </div>
-                      ))}
+                      )}
+                      </ShowAFew>
                     </div>
                   ))}
                 </div>

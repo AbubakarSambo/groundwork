@@ -236,7 +236,8 @@ export function theNameWeUseFor(p: SomebodyOnTheCheckIn): string {
    * because guessing a person out of "accounts@" would be worse than showing it.
    */
   const local = (p.email ?? '').split('@')[0] ?? '';
-  const asWords = local.replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+  /* Digits stay - see personLabel: person1@ and person2@ are two people, not one called Person. */
+  const asWords = local.replace(/[._-]+/g, ' ').trim();
   if (!asWords || asWords.length < 2 || NOT_A_PERSON.has(asWords.toLowerCase())) return p.email;
   return asWords.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
