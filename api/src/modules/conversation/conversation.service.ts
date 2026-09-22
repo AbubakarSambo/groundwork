@@ -140,6 +140,8 @@ import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
 import { asksItAgainAfterTheAnswer, theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
+import { deadlineOf } from '../grounds/when-the-clock-starts';
+import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
 /**
@@ -3475,6 +3477,19 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       }
     }
 
+    /*
+     * HOW LONG THIS RUNS, so "how do i know if we are done" can be answered with the run rather than
+     * with a summary of the conversation - see when-this-is-over.ts. Three facts already on the
+     * ground; none of them had ever reached the model.
+     */
+    /* And the one line that says they just asked, last of all - see when-this-is-over.ts. */
+    const askedWhenThisEnds = theyAskedWhenThisIsOver(latestMessage) ? THE_RUN_IS_WHAT_THEY_ASKED_ABOUT : '';
+    const howLongThisRuns = whenThisIsOver({
+      sessionNumber: checkIn.sessionNumber ?? 1,
+      roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      endsOn: deadlineOf(ground as any),
+    });
+
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
     // the pre-agreed resolutionState when set, else the party's own session-1
@@ -3940,7 +3955,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
-      ['finalSessionContext', finalSessionContext], ['returningUserContext', returningUserContext],
+      ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
       ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
       ['patternProbeBlock', patternProbeBlock], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands],
@@ -3949,7 +3964,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
@@ -3992,7 +4007,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem, askedWhenThisEnds, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**

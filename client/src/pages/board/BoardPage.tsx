@@ -247,6 +247,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const groundEnded = hasEnded((b as any)?.groundStatus)
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
+  /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
+  const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
 
   /**
    * A HEADING WITH NOTHING UNDER IT. W-UX-7.
@@ -510,6 +512,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </div>
 
         {/*
+          A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
+
+          The check-ins list carries this as a chip and a party's report tab carries it as a note.
+          The board, which is the shared picture itself, carried nothing: with one person on the
+          ground it drew "Nothing cross-referenced yet", an empty grid and a quick read of one, and
+          left the reader to work out that no amount of waiting would change it. The rule refuses a
+          shared report below two people, so the page says the same thing the rule does, and names
+          who can change it.
+        */}
+        {onlyOnePersonHere && (
+          <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 12, padding: '12px 14px', marginTop: 12, fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+            This board compares accounts, and there is one person on this check-in.{' '}
+            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+          </div>
+        )}
+
+        {/*
           WHERE PEOPLE DIFFER, FIRST.
 
           It sat in "Against the plan", four zones and roughly two screens down, under the objectives
@@ -526,7 +545,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Sec title="Where people differ" src="cross-referenced" />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
+                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
+                   more than one person has checked in" on a round where everybody had, three inches
+                   under a tile that said so. The server computes it from the one counter. */
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'Nothing to cross-reference yet.' : (b.divergence.whyNothingYet ?? 'Nothing cross-referenced yet. This fills in once more than one person has answered.')}</div></Row>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (

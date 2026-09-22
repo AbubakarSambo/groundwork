@@ -39,6 +39,7 @@ import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
+import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -611,6 +612,11 @@ export class BoardService {
             })
           : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
+        /* Why it is empty, where it is, rather than one sentence for every reason - see the module. */
+        whyNothingYet: whyNothingIsCrossReferenced({
+          stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
+          peopleExpected: out.howItIsGoing?.glance?.progress?.ofPeople ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+        }),
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
@@ -1711,6 +1717,17 @@ export class BoardService {
     const question = draftTheQuestion({
       functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
       blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+      /*
+       * THE BOARD READS THE DIFFERENCE THE SAME PAGE IS SHOWING.
+       *
+       * The report learnt this on 22 September 2026 and the board did not: the divergence section
+       * named what two people described differently, and "What to settle together", a few inches
+       * below it, fell through to a role-map probe about the work in general. Same rows, so the
+       * same question - see draftTheQuestion.
+       */
+      differences: ((report.divergences ?? []) as any[])
+        .filter((d) => d?.topic)
+        .map((d) => ({ topic: String(d.topic), settledBy: d.settledBy ?? d.atStake ?? null })),
     });
     /* The tiles are counted over the round in play, so "this session" is now true on the board too;
        the rewrite to "across every session" that used to sit here was papering over lifetime counts. */

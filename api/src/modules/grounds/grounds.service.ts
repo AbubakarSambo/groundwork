@@ -375,11 +375,16 @@ export class GroundsService {
       }
       const people = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { user: { select: { firstName: true, lastName: true } } } });
       const otherNames = people.flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '']).filter((n) => n.trim().length >= 3);
+      /* The subject as the lead named it, so the rewrite can be checked for naming it - see theTellingHolds. */
+      const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true } as any }).catch(() => null);
+      const label = (named as any)?.label ?? '';
+      /* One round or many, so the telling cannot promise a person a habit they were never signed up to. */
+      const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence) ?? null;
       const raw = await Promise.race([
-        this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What the person who set this up wrote:\n\n${text}` }] as any),
+        this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What this check-in is called: ${label || 'not named'}\nHow many times these people will be asked: ${rounds == null ? 'not set' : rounds <= 1 ? 'once, and only once' : `${rounds} times`}\n\nWhat the person who set this up wrote:\n\n${text}` }] as any),
         new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
       ]);
-      const told = theTellingHolds(raw, { otherNames });
+      const told = theTellingHolds(raw, { otherNames, about: `${label} ${text}`, rounds });
       await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
       this.logger.log(`Ground ${groundId}: what participants are told ${told ? 'written' : 'left to the filtered brief'}.`);
     } catch (err: any) {

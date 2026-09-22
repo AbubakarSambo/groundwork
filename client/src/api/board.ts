@@ -109,7 +109,8 @@ export type BoardPresent = {
   }[]
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
-  divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string }
+  /** `whyNothingYet`: why there is nothing to compare, from the counts - see why-nothing-is-cross-referenced.ts. */
+  divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string; whyNothingYet?: string }
   /** The aims, the places and the things, added up across everybody. Null until a round has closed. */
   whatTheRoomIsAbout?: {
     aims: { aim: string; held: string[] }[]

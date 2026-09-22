@@ -24,7 +24,12 @@ export const clockStartsAt = (g: HasAClock): Date => g.startsAt ?? g.createdAt;
 
 export function deadlineOf(g: HasAClock): Date | null {
   if (!g.timelineDays || g.timelineDays <= 0) return null;
-  return new Date(clockStartsAt(g).getTime() + g.timelineDays * 86_400_000);
+  /* No start date AND no creation date is a row nobody has a clock for, and "1 January 1970 plus
+     ninety days" is worse than saying nothing. It threw here the first time a caller passed a row
+     selected without createdAt (22 September 2026). */
+  const from = clockStartsAt(g);
+  if (!from || Number.isNaN(from.getTime?.() ?? NaN)) return null;
+  return new Date(from.getTime() + g.timelineDays * 86_400_000);
 }
 
 /**
