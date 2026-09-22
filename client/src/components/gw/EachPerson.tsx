@@ -148,6 +148,22 @@ export function EachPerson({
                 padding: '11px 13px', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontFamily: 'inherit',
               }}
             >
+              {/*
+                AN ARROW, NOT THE WORD "OPEN".
+                
+                Hafsah, 23 September 2026: "it is not clear that open is a drop down, can you make
+                it an arrow." It was an eleven-pixel grey word at the far right of the row, which
+                reads as a status rather than a control - and the thing it sat beside, the summary,
+                IS a status. The arrow goes at the front, where the eye starts, points down when the
+                card is open, and the word stays at the end for anybody who reads labels rather than
+                shapes. `aria-hidden`, because `aria-expanded` on the button already says this to a
+                screen reader and a second voice saying it again is noise.
+              */}
+              <span aria-hidden style={{
+                fontSize: 10, color: 'var(--gw-sub)', lineHeight: 1,
+                display: 'inline-block', width: 10,
+                transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
+              }}>&#9654;</span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : personLabel(p as any)}</span>
               {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
               <span style={{ flex: 1 }} />
@@ -169,8 +185,21 @@ export function EachPerson({
                     moment the person it is about looks at it.
                   */}
                   {theirs.length
-                    ? <ExpectationsPanel groundId={groundId} parties={[p as any]} viewerUserId={viewerUserId} hasChat={false} bare />
-                    : <Empty>Nothing yet. It comes from the lead's own check-in, or from the conversation on this page.</Empty>}
+                    ? <ExpectationsPanel groundId={groundId} parties={[p as any]} viewerUserId={viewerUserId} hasChat={false} viewerIsLead={isLead} bare />
+                    : (
+                      /*
+                        "THE LEAD" SAID TO THE LEAD.
+                        
+                        Hafsah, 23 September 2026, reading her own check-in: "why would you say it
+                        comes from the lead's own check-in when I am actually the lead, why can't it
+                        say your own check-in." `isLead` was already in scope one line below, used
+                        to decide whether to offer the chat link.
+                      */
+                      <Empty>
+                        Nothing yet. It comes from {isLead ? 'your' : 'the lead\u2019s'} own check-in,
+                        or from the conversation on this page.
+                      </Empty>
+                    )}
                   {isLead && onChangeInChat && (
                     <Small onClick={() => onChangeInChat(`Change what I expect of ${personLabel(p as any)} to `)}>Change this in the chat</Small>
                   )}

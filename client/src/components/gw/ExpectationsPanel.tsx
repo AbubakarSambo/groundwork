@@ -313,9 +313,12 @@ export function ExpectationsPanel({
   viewerUserId,
   hasChat = false,
   bare = false,
+  viewerIsLead = false,
 }: {
   groundId: string
   parties: Party[]
+  /** So the empty state says "your own check-in" to the person whose check-in it is. */
+  viewerIsLead?: boolean
   /** So this person's own row can be marked as shown, and only their own. */
   viewerUserId?: string | null
   /**
@@ -394,7 +397,7 @@ export function ExpectationsPanel({
     return (
       <div style={{ marginBottom: 22 }}>
         <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          Nothing yet. These come out of the lead's own check-in, where they are asked what this is
+          Nothing yet. These come out of {viewerIsLead ? 'your' : 'the lead\u2019s'} own check-in, where they are asked what this is
           aiming at and then what they expect of each person. Until that happens, everyone is working
           to their own read of it.
           {groundId && (

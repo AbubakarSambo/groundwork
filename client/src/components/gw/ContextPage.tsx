@@ -45,6 +45,21 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * writes in different places on it: they have deliveries and their own uploads, and they do not
  * have the lead's write boxes or the setup chat.
  */
+/*
+ * THE FIRST WORDS, SO A CHIP IS NOT A DEAD END.
+ *
+ * A button that opens an empty chat box has moved the blank page rather than removed it. Each of
+ * these is a half-finished sentence in the lead's own voice, put in the composer for them to
+ * finish - which is also what teaches them that this conversation takes plain sentences.
+ */
+const THE_WAY_IN: Record<string, string> = {
+  STRATEGY: 'Our strategy this quarter is ',
+  WAY_OF_WORKING: 'How we work: ',
+  DECISION: 'We still have to decide ',
+  UNSETTLED: 'Nobody is sure yet whether ',
+  NOTE: 'Worth knowing: ',
+}
+
 export function ContextPage({
   ground,
   role,
@@ -660,12 +675,21 @@ export function ContextPage({
               * that disagrees with the thing above it is worse than no number: it tells somebody
               * they have missed something.
               */}
-            <Sec n={band()} title="Documents" src="each one says who reads it" />
+            {/*
+              HOW MANY ARE BELOW IT. Hafsah, 23 September 2026: "where does the list of docs go."
+              The band opened with a large dashed box carrying a heading and two paragraphs, and the
+              list only exists once a file does - so on a check-in with none, the answer to "where
+              is the list" was genuinely nowhere, and on one with several the box still came first.
+              The count is in the heading now and the box below it is one row.
+            */}
+            <Sec n={band()} title="Documents" src={docs.length ? `${docs.length} attached \u00b7 each one says who reads it` : 'each one says who reads it'} />
 
             <div
               style={{
-                border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20,
-                textAlign: 'center', marginBottom: 16, background: 'var(--gw-bg)',
+                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
+                /* A row when there are files to get to, a panel when it is the only thing here. */
+                padding: docs.length ? '10px 13px' : 18,
+                textAlign: docs.length ? 'left' : 'center', marginBottom: 12, background: 'var(--gw-bg)',
                 /* A dropped file can take a moment. Without this the box looks untouched and
                    somebody presses it again, which is how two copies of one file get attached. */
                 cursor: uploadDoc.isPending ? 'progress' : 'pointer',
@@ -723,7 +747,14 @@ export function ContextPage({
                 (`canSeeDocument` returns `isMine` and ignores the column), so promising that
                 everyone reads it once you open it would swap one false sentence for another.
               */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+              {/*
+                STAYS, WHATEVER ELSE IS TRIMMED. I moved this behind `docs.length === 0` while
+                shrinking the band and what-the-upload-box-promises-is-true refused it, correctly:
+                the whole point of that guard is that the privacy default is readable BEFORE
+                somebody uploads, and the second person to upload a file reads this box too. The
+                examples below are for a first-timer; this sentence is for every upload.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: docs.length ? 'left' : 'left' }}>
                 {contextEnabled
                   ? 'It is private to you unless you decide to make it visible to everyone. Either way the check-in reads it, and says where it does not match what you have told it.'
                   : 'It is private to you. It shapes your own questions and reaches nobody else.'}
@@ -1044,9 +1075,28 @@ export function ContextPage({
               A paste hands over the actions as well as the numbers. The ones with no owner are
               listed as having none, because that is the fact and it is the one worth acting on.
             */}
-            {commitments.length > 0 && (
+            {/*
+              THE SAME OMISSION AS THE BUCKETS: gated on having some, so the one place a lead looks
+              for "what did somebody commit to on that call" did not exist until something had
+              already been recorded there. See the note on the strategy band.
+            */}
+            {(isTheLead || commitments.length > 0) && (
               <>
                 <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                {isTheLead && contextEnabled && commitments.length === 0 && (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    Nothing yet. Anything somebody says they will do in a check-in lands here on its
+                    own. Something agreed on a call goes in by saying it in the conversation above.
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        onClick={() => changeThisInTheChat('On the call today, ')}
+                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Something agreed on a call
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
                   <ShowAFew rows={commitments} few={8} what="things people are down as doing">
                   {(c: any, i: number) => {
@@ -1077,9 +1127,52 @@ export function ContextPage({
               The work buckets are the team's by default. A line about somebody is never here: it is
               under that person, above, and it is the lead's alone.
             */}
-            {theBuckets.some((b) => b.lines.length > 0) && (
+            {/*
+              THE SECTION THAT WAS ONLY THERE ONCE SOMETHING WAS IN IT.
+              
+              Hafsah, 23 September 2026: "The Context tab still needs places to seed strategy, team
+              notes, to dos, commitment... It should be clear where things go" and then, looking at
+              her own empty check-in, "I still dont see it anything."
+              
+              She was right and the reason is one line: this whole band rendered inside
+              `theBuckets.some(b => b.lines.length > 0)`. On a check-in with nothing in it yet -
+              which is every check-in on its first day, the one day somebody wants to seed it - the
+              section did not exist. A page whose job is to be a place to put things cannot appear
+              only after things have been put in it.
+              
+              So the heading is always here, and where there is nothing yet it carries the five
+              kinds by name with a way into each. Not five empty boxes: she has already said these
+              sections are bulky, and an empty box for each of five kinds is the bulkiest possible
+              way to say "nothing here".
+            */}
+            {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="What we know" src={isTheLead ? 'from the conversation \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                {isTheLead && contextEnabled && (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                      {theBuckets.some((b) => b.lines.length > 0)
+                        ? 'Add to any of these by saying it in the conversation at the top.'
+                        : 'Nothing here yet. Say any of these in the conversation at the top and it lands in the right place - and every check-in is guided by it.'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                      {BUCKETS.map((b) => (
+                        <button
+                          key={b.kind}
+                          onClick={() => changeThisInTheChat(THE_WAY_IN[b.kind] ?? '')}
+                          title={b.sub}
+                          style={{
+                            fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)',
+                            border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px',
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          {b.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>
                   {theBuckets.filter((b) => b.lines.length > 0).map((b) => (
                     <div key={b.kind} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>

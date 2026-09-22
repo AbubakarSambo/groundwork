@@ -24,7 +24,17 @@ describe('when a check-in is read as a network', () => {
 });
 
 describe('what the shape asks for', () => {
-  const props = (THE_NETWORK_REPORT_SCHEMA as any).parameters.properties;
+  const props = (THE_NETWORK_REPORT_SCHEMA as any).input_schema.properties;
+
+  /*
+   * THE KEY THE CONVERTER ACTUALLY READS. Written as `parameters` this schema converted to nothing,
+   * the model called the tool with no arguments, and a hundred accounts came back as `{}` with a
+   * log line saying the read had succeeded. Pinned because the failure is completely silent.
+   */
+  it('is called input_schema, which is the name convertTool reads', () => {
+    expect((THE_NETWORK_REPORT_SCHEMA as any).input_schema).toBeDefined();
+    expect((THE_NETWORK_REPORT_SCHEMA as any).parameters).toBeUndefined();
+  });
 
   /* Every question Hafsah's test says the report has to answer, present as its own section rather
      than hoped for inside a paragraph. */
@@ -50,8 +60,8 @@ describe('what the shape asks for', () => {
   /* The gaps are required, the findings mostly are not: a report that cannot say what these
      accounts could not answer lets a reader take silence for an answer. */
   it('and cannot be emitted without saying what nobody said', () => {
-    expect((THE_NETWORK_REPORT_SCHEMA as any).parameters.required).toContain('whatNobodySaid');
-    expect((THE_NETWORK_REPORT_SCHEMA as any).parameters.required).toContain('thePicture');
+    expect((THE_NETWORK_REPORT_SCHEMA as any).input_schema.required).toContain('whatNobodySaid');
+    expect((THE_NETWORK_REPORT_SCHEMA as any).input_schema.required).toContain('thePicture');
   });
 
   it('and never asks for a personal name', () => {

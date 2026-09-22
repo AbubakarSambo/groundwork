@@ -2007,6 +2007,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
             return `[${label}] (${r.type}) ${r.text}`;
           }).join('\n')}` }],
           THE_NETWORK_REPORT_SCHEMA as any,
+          /* Nobody is sitting in front of this, and a hundred accounts do not fit in a minute.
+             See A_HUNDRED_ACCOUNTS_WAIT - it timed out three times at sixty seconds and the
+             report was written with an empty picture in it, saying nothing had gone wrong. */
+          { patient: true },
         );
         this.logger.log(`Read ${howManyAnswered} accounts on ${groundId} as a network in ${Date.now() - began}ms.`);
       } catch (err: any) {

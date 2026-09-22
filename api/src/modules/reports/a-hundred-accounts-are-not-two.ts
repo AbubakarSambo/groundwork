@@ -53,7 +53,15 @@ const whoAndHowMany = {
 export const THE_NETWORK_REPORT_SCHEMA = {
   name: 'emit_network_picture',
   description: 'Turn many separate accounts into one picture of what this network wants, needs and is afraid of.',
-  parameters: {
+  /*
+   * `input_schema`, NOT `parameters`, AND THE DIFFERENCE IS SILENT.
+   *
+   * `convertTool` reads `tool.input_schema`. Written as `parameters` the tool converted with no
+   * schema at all, the model dutifully called it with no arguments, and the report stored
+   * `networkPicture: {}` while the log said the read had succeeded in thirty-eight seconds. Nothing
+   * failed; a hundred accounts were read and the answer was an empty object.
+   */
+  input_schema: {
     type: 'object',
     properties: {
       thePicture: {
