@@ -20,7 +20,8 @@ describe('a round nobody has opened is not this round', () => {
 
   const going = (checkIns: any[], people: string[]) => howACheckInIsGoing({
     checkIns,
-    participants: people.map((id) => ({ id, managingOnly: false })) as any,
+    /* Joined, which is what the population rule reads - see how-many-have-answered. */
+    participants: people.map((id) => ({ id, managingOnly: false, userId: `u-${id}` })) as any,
     dependencies: [],
     timelineDays: null,
     cadence: null,

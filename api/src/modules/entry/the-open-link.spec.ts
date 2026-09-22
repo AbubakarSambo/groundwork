@@ -23,8 +23,18 @@ function serviceWith(over: any = {}) {
         return over.clash ?? null;
       }),
       update: jest.fn(async ({ data }: any) => { state.updated = data; return data; }),
+      delete: jest.fn(async ({ where }: any) => { state.deleted = where.id; return {}; }),
+      updateMany: jest.fn(async () => ({ count: 1 })),
     },
-    checkIn: { create: jest.fn(async () => ({ id: 'ci1' })) },
+    /* The merge moves what they said onto the row that was already invited. See one-person-one-row. */
+    checkIn: {
+      create: jest.fn(async () => ({ id: 'ci1' })),
+      findFirst: jest.fn(async () => ({ id: 'ci1' })),
+      updateMany: jest.fn(async ({ data }: any) => { state.movedCheckIns = data; return { count: 1 }; }),
+    },
+    recordEntry: { updateMany: jest.fn(async ({ data }: any) => { state.movedEntries = data; return { count: 3 }; }) },
+    groundDocument: { updateMany: jest.fn(async () => ({ count: 0 })) },
+    $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
   const conversation: any = {
     open: jest.fn(async () => ({ reply: 'How is sales going for you this quarter?' })),
@@ -76,9 +86,19 @@ describe('the open link', () => {
     expect(done.willGetTheReport).toBe(false);
   });
 
-  it('refuses an address already answering on this check-in, rather than splitting their account', async () => {
-    const { svc } = serviceWith({ clash: { id: 'p-other' } });
-    await expect(svc.finish('key', 'sam@work.com')).rejects.toBeInstanceOf(BadRequestException);
+  /*
+   * IT USED TO REFUSE. Read on a live board: "Ehi Okosun - nobody has said anything about this yet"
+   * beside an unnamed card holding everything he had said. Invited by mail, answered on the shared
+   * link, two rows, and every count read them as two people.
+   */
+  it('moves an answer onto the row already invited at that address, rather than splitting their account', async () => {
+    const { svc, state, conversation } = serviceWith({ clash: { id: 'p-other' } });
+    const done = await svc.finish('key', 'sam@work.com', 'Sam Bello', true);
+    expect(state.movedCheckIns).toEqual({ participantId: 'p-other' });
+    expect(state.movedEntries).toEqual({ participantId: 'p-other' });
+    expect(state.deleted).toBe('p-open');
+    expect(conversation.complete).toHaveBeenCalledWith('ci1', { theParticipant: 'p-other' }, { theyAskedToFinish: true });
+    expect(done).toMatchObject({ willGetTheReport: true, at: 'sam@work.com' });
   });
 
   it('and a key that belongs to nothing opens nothing', async () => {

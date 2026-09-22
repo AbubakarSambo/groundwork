@@ -119,13 +119,40 @@ export class TheOpenLinkService {
     }
     if (at) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(at)) throw new BadRequestException('That is not an email address.');
-      /* Somebody already on this check-in keeps their row: two rows for one person would split
-         their account in the report, which is the one thing the report cannot recover from. */
+      /*
+       * ONE PERSON, ONE ROW - AND THE ANSWER MOVES TO THE ROW THEY ALREADY HAVE.
+       *
+       * This refused: "that address is already on this check-in, use the link from your email
+       * instead." Read on a live board, 22 September 2026: the check-in showed "Ehi Okosun" with
+       * "nobody has said anything about this yet" beside an unnamed card holding everything he had
+       * said. He had been invited by mail AND had answered on the shared link, so the ground held two
+       * rows for him - one named and empty, one anonymous and full - and the board, the report and
+       * every count read them as two people.
+       *
+       * Refusing was the wrong half of the right instinct. Two rows for one person is the thing to
+       * avoid, and by the time somebody is typing their address the work is already done: the answer
+       * exists, it is theirs, and the only question is which row it hangs on. So it moves onto the
+       * row that was invited, and the row the link made goes. Nothing they said is lost, and the
+       * person who was invited is now the person who answered.
+       */
       const already = await this.prisma.groundParticipant.findFirst({
         where: { groundId: row.groundId, email: at, id: { not: row.id } },
         select: { id: true },
       });
-      if (already) throw new BadRequestException('That address is already on this check-in. Use the link from your email instead.');
+      if (already) {
+        await this.prisma.$transaction([
+          this.prisma.checkIn.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          this.prisma.recordEntry.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          this.prisma.groundDocument.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          ...(name ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { nameGiven: name } })] : []),
+          ...(wantsTheReport != null ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { wantsTheReport } })] : []),
+          this.prisma.groundParticipant.delete({ where: { id: row.id } }),
+        ]);
+        this.logger.log(`Ground ${row.groundId}: an open-link answer joined the row already invited as ${at}.`);
+        const theirs = await this.prisma.checkIn.findFirst({ where: { id: checkIn.id }, select: { id: true } });
+        const done = await this.conversation.complete(theirs!.id, { theParticipant: already.id }, { theyAskedToFinish: true });
+        return { ...(done as any), willGetTheReport: true, at };
+      }
       await this.prisma.groundParticipant.update({ where: { id: row.id }, data: { email: at } });
     }
     /* "I am done" is asking to finish. See complete(): the floor lets the sentence out, and the button. */

@@ -47,6 +47,7 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
+import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, looksLikeADump, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 
@@ -1236,6 +1237,7 @@ export class GroundsService {
           dependencies: ((rest as any).dependencies ?? []) as any,
           timelineDays: (rest as any).timelineDays ?? null,
           cadence: (rest as any).cadence ?? null,
+          scenario: (rest as any).scenario ?? null,
           sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
         });
         const roundsDone = going.glance.progress.roundsDone;
@@ -5017,74 +5019,27 @@ export class GroundsService {
     });
     const sessionNumber = lastAnswered._max.sessionNumber ?? newestOpen._max.sessionNumber ?? 1;
 
-    /* THE SAME PEOPLE THE RELEASE RULE WAITS ON. A managing-only lead gives session 1 like everybody else
-       and is waited on for it (isSessionReadyForReport, waitsOnAManagingOnlyLead); this excluded them
-       outright, so Hafsah's own ground read "1 of 1 checked in" beside a roster of two, and "everyone is
-       in" while her session 1 sat untouched (21 Sep 2026). From session 2 they are not a party, and the
-       denominator no longer carries a number nobody will reach. */
-    /* Optional-chained: the unit specs mock groundParticipant and checkIn only. With no ground read, the rule
-       falls back to what it did before: managing-only leads are out. */
-    const itsScenario = await (this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } }) ?? Promise.resolve(null)).catch(() => null);
-    const active = await this.prisma.groundParticipant.findMany({
-      where: {
-        groundId,
-        ...(itsScenario && waitsOnAManagingOnlyLead((itsScenario as any).scenario, sessionNumber) ? {} : { managingOnly: false }),
-        OR: [
-          { userId: { not: null } },
-          { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
-          /**
-           * AND THE PEOPLE HOLDING AN UNOPENED INVITATION, which the release rule counts and this
-           * did not - though the comment on this method claims they use "the same active party
-           * definition".
-           *
-           * Seen on one screen: the header said "1 of 2 checked in for session 1" and the release
-           * box, three inches below, said "1 of 1 have checked in for this session". Both from
-           * this ground, neither wrong on its own terms. And the one saying 1 of 1 is the more
-           * misleading of the two, because the round does NOT release at 1 of 1 - somebody with an
-           * open invitation holds it, by the rule right above this method.
-           *
-           * The clause is copied from `isSessionReadyForReport` exactly, so the counter now counts
-           * the set whose completion actually releases the report.
-           */
-          {
-            userId: null,
-            invitedAt: { not: null },
-            inviteTokenExpiresAt: { gt: new Date() },
-          },
-        ],
-      },
-      select: { id: true },
-    });
-    if (active.length === 0) return null;
-
-    const answered = await this.prisma.checkIn.findMany({
-      where: {
-        participantId: { in: active.map((p) => p.id) },
-        sessionNumber,
-        status: { in: AN_ANSWER },
-      },
-      select: { participantId: true, status: true },
-    });
-    const completedIds = new Set(
-      answered.filter((c) => c.status === CheckInStatus.COMPLETED).map((c) => c.participantId),
-    );
-    const declinedIds = new Set(
-      answered.filter((c) => c.status === CheckInStatus.DECLINED).map((c) => c.participantId),
-    );
+    /*
+     * THE SAME PEOPLE THE RELEASE RULE WAITS ON, ASKED OF THE ONE PLACE THAT KNOWS. This carried its
+     * own copy of that clause - the third - and a rule with three copies is three answers waiting to
+     * happen. See how-many-have-answered.ts, and the note there about the day one session read four
+     * different numbers on four screens.
+     */
+    const counted = await howManyHaveAnswered(this.prisma, groundId, sessionNumber);
+    if (counted.expected === 0) return null;
+    const declined = new Set(counted.declinedIds);
 
     return {
       sessionNumber,
-      total: active.length,
+      total: counted.expected,
       /** Accounts actually given. A decline is not one, and must never be counted as one. */
-      completed: completedIds.size,
+      completed: counted.completed,
       /**
        * Nobody is "missing" once they have answered, and saying no IS answering. This is the single
        * line that lets a round with a decline in it ever finish.
        */
-      missingParticipantIds: active
-        .filter((p) => !completedIds.has(p.id) && !declinedIds.has(p.id))
-        .map((p) => p.id),
-      declinedParticipantIds: active.filter((p) => declinedIds.has(p.id)).map((p) => p.id),
+      missingParticipantIds: counted.waitingOn,
+      declinedParticipantIds: counted.expectedIds.filter((id) => declined.has(id)),
     };
   }
 

@@ -9,7 +9,7 @@ describe('there is no round after the last planned one', () => {
   it('the board counts the last planned round, not a stray row after it', () => {
     const going = howACheckInIsGoing({
       timelineDays: 90, cadence: Cadence.ONE_TIME, sharedPicture: null, dependencies: [],
-      participants: [{ id: 'h' }, { id: 'a' }],
+      participants: [{ id: 'h', userId: 'u-h' }, { id: 'a', userId: 'u-a' }],
       checkIns: [
         { participantId: 'h', sessionNumber: 1, status: CheckInStatus.COMPLETED },
         { participantId: 'a', sessionNumber: 1, status: CheckInStatus.NOT_STARTED },

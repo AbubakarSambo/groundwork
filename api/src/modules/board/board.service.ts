@@ -132,6 +132,8 @@ export class BoardService {
           select: {
             id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true,
             managingOnly: true, signedOffAt: true,
+            /* What the population rule reads: still holding a live invitation counts as expected. */
+            invitedAt: true, inviteTokenExpiresAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -424,6 +426,7 @@ export class BoardService {
         dependencies: (ground as any).dependencies ?? [],
         timelineDays: (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
+        scenario: (ground as any).scenario ?? null,
         sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */

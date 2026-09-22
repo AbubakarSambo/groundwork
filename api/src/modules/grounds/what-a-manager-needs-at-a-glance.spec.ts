@@ -21,7 +21,9 @@ const dep = (over: any = {}) => ({
 const base = {
   roundsDone: 1,
   roundsPlanned: 3,
-  people: [{ id: 'p1' }, { id: 'p2' }, { id: 'lead', managingOnly: true }],
+  /* Joined, which is what the population rule reads - see how-many-have-answered. */
+  people: [{ id: 'p1', userId: 'u1' }, { id: 'p2', userId: 'u2' }, { id: 'lead', userId: 'u3', managingOnly: true }],
+  sessionNumber: 2,
   thisRound: [{ participantId: 'p1', status: 'COMPLETED' }, { participantId: 'p2', status: 'NOT_STARTED' }],
   dependencies: [] as any[],
 };
@@ -37,6 +39,27 @@ describe('progress', () => {
   it('does not count a managing-only lead among the people who answer', () => {
     /* They have no check-in by design, so counting them makes every round read one short for ever. */
     expect(atAGlance(base as any, NOW).progress.ofPeople).toBe(2);
+  });
+
+  /*
+   * ONE DEFINITION, WHICH THIS DID NOT ASK. Read live on 22 September 2026: the board said "4 of 8
+   * answered", the session report "7 of 8", the finding "2 of 5", the lead's page "0 of 5" - one
+   * session. See how-many-have-answered.ts.
+   */
+  it('counts a decline as an answer, because it is one', () => {
+    const g = atAGlance({ ...base, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }, { participantId: 'p2', status: 'DECLINED' }] } as any, NOW);
+    expect(g.progress).toEqual({ roundsDone: 1, roundsPlanned: 3, answeredThisRound: 2, ofPeople: 2 });
+  });
+
+  it('and drops somebody whose invitation ran out without ever being opened', () => {
+    const people = [
+      { id: 'p1', userId: 'u1' },
+      { id: 'p2', invitedAt: new Date('2026-06-01'), inviteTokenExpiresAt: new Date('2026-09-01') },
+    ];
+    const g = atAGlance({ ...base, people, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }] } as any, NOW);
+    expect(g.progress.ofPeople).toBe(1);
+    const live = [{ id: 'p1', userId: 'u1' }, { id: 'p2', invitedAt: new Date('2026-09-20'), inviteTokenExpiresAt: new Date('2026-12-20') }];
+    expect(atAGlance({ ...base, people: live, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }] } as any, NOW).progress.ofPeople).toBe(2);
   });
 
   it('and a run whose length nobody set says what is done rather than inventing a total', () => {

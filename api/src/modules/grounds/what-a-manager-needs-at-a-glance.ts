@@ -1,4 +1,5 @@
 import { DependencyStatus } from '@prisma/client';
+import { whoIsExpected, howManyOfThemAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 
@@ -36,9 +37,18 @@ export interface AtAGlance {
 export interface GlanceInput {
   roundsDone: number;
   roundsPlanned: number | null;
-  /** Every party who is expected to answer - managing-only leads are not. */
-  people: { id: string; managingOnly?: boolean | null }[];
-  /** This round's check-ins, whatever their state. */
+  /**
+   * Everybody on the check-in, with what the population rule needs to decide who this round waits
+   * on: whether they joined, whether their invitation is still live, and this round's rows. The rule
+   * is in how-many-have-answered.ts and this asks it - see the note there about the day four screens
+   * quoted four different numbers for one session.
+   */
+  people: SomebodyWhoMightAnswer[];
+  /** Which round is being counted. */
+  sessionNumber?: number;
+  /** The situation, because a managing-only lead answers the first session and is not waited on after it. */
+  scenario?: string | null;
+  /** This round's check-ins, whatever their state. Kept for callers that do not carry rows per person. */
   thisRound: { participantId: string; status: string }[];
   dependencies: (ReadDependency & { createdAt?: Date | null; what: string })[];
 }
@@ -46,10 +56,18 @@ export interface GlanceInput {
 const A_DAY = 24 * 60 * 60 * 1000;
 
 export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
-  const answering = i.people.filter((p) => !p.managingOnly);
-  const done = new Set(
-    i.thisRound.filter((c) => c.status === 'COMPLETED').map((c) => c.participantId),
-  );
+  /*
+   * ONE DEFINITION OF WHO IS COUNTED AND WHAT COUNTS AS ANSWERING. This counted every row on the
+   * roster and only the COMPLETED ones, so a declined answer read as silence and somebody whose
+   * invitation had lapsed held the denominator open. See how-many-have-answered.ts.
+   */
+  const session = i.sessionNumber ?? 1;
+  const rows = new Map<string, { status: string }[]>();
+  for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status }]);
+  const withRows = i.people.map((p) => ({ ...p, checkIns: p.checkIns ?? rows.get(p.id) ?? [] }));
+  const counted = howManyOfThemAnswered(withRows, session, i.scenario, now);
+  const answering = whoIsExpected(withRows, session, i.scenario, now);
+  const done = new Set(answering.filter((p) => !counted.waitingOn.includes(p.id)).map((p) => p.id));
 
   const real = oneBlockerPerThingWaitedOn(dedupeDependencies(i.dependencies))
     .filter((d) => d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING)
@@ -79,8 +97,8 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
     progress: {
       roundsDone: i.roundsDone,
       roundsPlanned: i.roundsPlanned,
-      answeredThisRound: answering.filter((p) => done.has(p.id)).length,
-      ofPeople: answering.length,
+      answeredThisRound: counted.answered,
+      ofPeople: counted.expected,
     },
     inTheWay: {
       count: real.length,

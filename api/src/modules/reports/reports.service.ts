@@ -101,7 +101,8 @@ import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-w
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { documentBackedShare } from './backed-by-a-document';
-import { howManyHaveAnswered } from './how-many-have-answered';
+import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
+import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2407,8 +2408,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * is a runtime temporal-dead-zone error, not a type error, and every unit test passed because
      * they call the pure assembler rather than this read. Found by opening the page.
      */
+    /* A DECLINE IS AN ANSWER, and this counted only COMPLETED - so a declined session read as silence
+       on the masthead while the finding under it counted the same person as having answered. */
     const answered = await this.prisma.checkIn.findMany({
-      where: { groundId, sessionNumber, status: 'COMPLETED' },
+      where: { groundId, sessionNumber, status: { in: AN_ANSWER } },
       select: { participantId: true },
     });
     const answeredIds = new Set(answered.map((c) => c.participantId));
@@ -2576,9 +2579,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const shown = new Set(
       activations.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
     );
-    const counting = ground.participants
-      .filter((p) => !p.managingOnly)
-      .map((p, i) => ({
+    /*
+     * WHO THIS SESSION IS COUNTING, ASKED OF THE ONE RULE. This listed every row on the roster minus
+     * managing-only, so the masthead said "4 people, 2 of 4 answered" while the finding three lines
+     * below it - which asks how-many-have-answered - said "2 of 5". Same card, two denominators.
+     */
+    const counting = whoIsExpected(
+      ground.participants.map((p: any) => ({ ...p, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      sessionNumber,
+      (ground as any).scenario,
+    )
+      .map((p: any, i: number) => ({
         who: (() => {
           const label = labels.get(p.id);
           const named = label ? nameByLabel.get(label) : undefined;
