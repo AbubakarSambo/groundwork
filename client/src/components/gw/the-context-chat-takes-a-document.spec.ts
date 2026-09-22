@@ -27,8 +27,11 @@ describe('adding a document from the context chat', () => {
     expect(CHECKIN).toContain('documentsApi.upload(')
   })
 
-  it('is offered beside the message box, like the other chat', () => {
-    expect(CHAT).toContain("'+ Doc'")
+  it('is offered inside the message box, like the other chat', () => {
+    /* "+ Doc" was a bordered button beside a pill input beside a grey Send - three weights in a row.
+       It is a paperclip inside the composer since 22 September 2026, named for a screen reader. */
+    expect(CHAT).toContain('fileInput.current?.click()')
+    expect(CHAT).toContain('aria-label="Attach a document to this check-in"')
   })
 
   it('says in the conversation that the file arrived', () => {

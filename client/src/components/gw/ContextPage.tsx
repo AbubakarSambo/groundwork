@@ -108,6 +108,8 @@ export function ContextPage({
    * of an upload is a reason not to upload.
    */
   const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
+  /** The promise this upload is answering, where it was started from one. */
+  const [attachingFor, setAttachingFor] = useState<string | null>(null)
   const [whatToLookFor, setWhatToLookFor] = useState('')
 
   /**
@@ -543,7 +545,16 @@ export function ContextPage({
               viewerUserId={viewerUserId}
               isLead={isLead}
               onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
-              onUploadFor={() => document.getElementById('ga-doc-upload')?.click()}
+              /*
+                ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
+                pressed becomes what the check-in is told to look for in the file, so the promise and
+                the document are joined at the moment of attaching rather than by somebody guessing
+                later which sheet was meant.
+              */
+              onUploadFor={(_pid, ask) => {
+                setAttachingFor(ask?.what ?? null)
+                document.getElementById('ga-doc-upload')?.click()
+              }}
               onSetToDo={(itemId, status) => setMyToDo.mutate({ itemId, status })}
             />
 
@@ -727,7 +738,9 @@ export function ContextPage({
                    * one question left to ask here is what to look for in it.
                    */
                   if (f) {
-                    setWhatToLookFor(''); setAskingWhatToLookFor({ file: f, consented: false })
+                    /* Prefilled with what they said they would show, where that is why they are here. */
+                    setWhatToLookFor(attachingFor ?? ''); setAskingWhatToLookFor({ file: f, consented: false })
+                    setAttachingFor(null)
                   }
                   e.target.value = ''
                 }} />
@@ -809,10 +822,38 @@ export function ContextPage({
                 {isLead && <> <b>Whoever runs this check-in</b> keeps it to that person, so it stays readable if somebody takes the check-in over from you.</>}
               </div>
             )}
-            {docs.map(doc => (
+            {/*
+              GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
+              
+              It was one flat list where a brief the whole team works from sat between two private
+              uploads, and the only way to tell them apart was to read the control on the right of
+              each row. Somebody scanning for "what are we all working from" had to read every line.
+              The rows themselves are unchanged - same controls, same rules about who may set what.
+            */}
+            {(docs.length > 1 ? [
+              { title: 'Everyone here reads these', rows: docs.filter((d: any) => d.visibility === 'OPEN') },
+              { title: isLead ? 'Not shared: yours, and each person\u2019s own' : 'Not shared: yours', rows: docs.filter((d: any) => d.visibility !== 'OPEN') },
+            ] : [{ title: '', rows: docs }]).filter(g => g.rows.length).map(group => (
+            <div key={group.title || 'all'} style={{ marginBottom: 10 }}>
+            {group.title && (
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>{group.title}</div>
+            )}
+            {group.rows.map((doc: any) => (
               <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ minWidth: 0, paddingRight: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>
+                    {doc.name}
+                    {/*
+                      A PHOTO READS AS A PHOTO. Her words: "they should see docs/photos/things to
+                      upload". A thumbnail is not possible today and saying so is better than
+                      pretending: an image is read into words at upload and the bytes are not kept,
+                      so the list can say it is a photo and what the product saw in it, and a real
+                      thumbnail waits until a file is stored as a file.
+                    */}
+                    {/^image\//.test((doc as any).mimeType ?? '') && (
+                      <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{whenItWas(doc.uploadedAt, 'day')}</div>
                   {/*
                     WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
@@ -949,6 +990,8 @@ export function ContextPage({
                   )}
                 </div>
               </div>
+            ))}
+            </div>
             ))}
 
 
