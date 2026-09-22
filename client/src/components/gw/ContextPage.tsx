@@ -744,6 +744,25 @@ export function ContextPage({
                       {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
                     </div>
                   )}
+                  {/*
+                    AND THE NUMBERS IT HOLDS, WHOSE THEY ARE, AND THE DATES - the same words the chat
+                    says, from the same read (the API's what-a-document-holds). Hafsah, 22 Sep 2026:
+                    "context tab as well as the reports and board. It can pull the targets." A card
+                    that says a file was read and not what it gave is the locker this page is not.
+                  */}
+                  {doc.theContextWeHave && (
+                    <div style={{ marginTop: 8, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '9px 11px' }}>
+                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--gw-navy)', fontWeight: 700 }}>The context we have from it</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 4 }}>
+                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                      </div>
+                      {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                          These are on the board and in the report, against the people who hold them.
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {/* WHO CAN READ THIS, stated on the row rather than in a

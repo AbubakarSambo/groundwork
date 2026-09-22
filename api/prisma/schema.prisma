@@ -4288,6 +4288,14 @@ model GroundDocument {
   mimeType         String  @map("mime_type")
   content          String  @db.Text
   assessment       Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+  /// WHAT THIS DOCUMENT HOLDS: the numbers, the dates and the one line saying what it is, read once at
+  /// upload. Kept because four surfaces read it - the chat, the Context tab, the list and the board's
+  /// targets - and a read done per surface is four different answers to one question. See
+  /// what-a-document-holds.ts.
+  holds            Json?
+  /// When the chat said what this document holds. Null until it has; the conversation opens with it
+  /// once and never again, the way a note carried into a session is raised once.
+  holdsSaidAt      DateTime? @map("holds_said_at")
   /// WHAT THE PERSON WANTS LOOKED FOR IN IT, IN THEIR WORDS.
   ///
   /// A file arrives with no instructions and the session has to guess what mattered about it. In

@@ -532,6 +532,14 @@ export class BoardService {
       out.objectives = ground.objectives.map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
+        /*
+         * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
+         * team's, so a sheet of nine rows read as nine things everybody was held to (Hafsah, 22 Sep
+         * 2026). The name resolves by the same rule as everywhere else, so a reader who may not see
+         * somebody's name sees their role or nothing rather than a placeholder.
+         */
+        ownerParticipantId: o.ownerParticipantId ?? null,
+        owner: o.ownerParticipantId ? nameOf(o.ownerParticipantId) : null,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never

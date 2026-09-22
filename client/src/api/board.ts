@@ -98,6 +98,9 @@ export type BoardPresent = {
       covered: number | null
     }
     id: string; name: string; count: number; prevCount: number; target: number | null; delta: number; isNew: boolean
+    /** Whose number it is. Null is the whole check-in's. `owner` is the name this reader may see. */
+    ownerParticipantId?: string | null
+    owner?: string | null
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
     /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */
     suggestedCount: number | null

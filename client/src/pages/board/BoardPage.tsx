@@ -820,6 +820,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
                         {o.name}
+                        {/* WHOSE NUMBER IT IS, on the row. Nine rows read from one sheet are nine
+                            people's, and the board listed them exactly as it listed the team's. */}
+                        {o.owner && <span style={{ marginLeft: 7, fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12 }}>· {o.owner}</span>}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
                       </div>
                       {/*

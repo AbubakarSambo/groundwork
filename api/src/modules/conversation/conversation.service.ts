@@ -20,7 +20,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
-import { A_SHEET_OF_TARGETS_PROMPT, A_SHEET_OF_TARGETS_SCHEMA, MOST_OF_A_SHEET_WE_READ, whatTheSheetGave, type ATargetFromASheet } from './a-sheet-of-targets-is-read';
+import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
@@ -948,7 +948,9 @@ export class ConversationService {
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+    /* A session that opens after a document was attached opens with what we have from it. Once. */
+    const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
   /**
@@ -1959,7 +1961,13 @@ export class ConversationService {
     const room = howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
-    return { reply: withRoomLeft, sessionComplete };
+    /*
+     * AND A DOCUMENT ATTACHED SOMEWHERE ELSE IS SAID HERE, ONCE. Somebody who puts the sheet on the
+     * Context tab is not in the chat when it is read, so the next thing the chat says opens with what
+     * we now have. See theContextNotYetSaid.
+     */
+    const contextNotSaid = await this.theContextNotYetSaid(checkIn as any);
+    return { reply: contextNotSaid ? `${contextNotSaid}\n\n${withRoomLeft}` : withRoomLeft, sessionComplete };
   }
 
   /**
@@ -2214,6 +2222,14 @@ export class ConversationService {
       if (owedUpFront) {
         shown += `${owedUpFront}\n\n`;
         yield { type: 'delta', text: `${owedUpFront}\n\n` };
+      }
+
+      /* And what a document holds, where nobody has been told yet. Same place, same reason: it is our
+         own sentence about a file, and it reads best before the question. See theContextNotYetSaid. */
+      const contextFirst = await this.theContextNotYetSaid(checkIn as any);
+      if (contextFirst) {
+        shown += `${contextFirst}\n\n`;
+        yield { type: 'delta', text: `${contextFirst}\n\n` };
       }
 
       let emitted = 0;
@@ -6467,7 +6483,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }) ?? Promise.resolve([])).catch(() => [] as { fileName: string; content: string | null }[]);
     const attached = theirDocuments
       .filter((d) => (d.content ?? '').trim())
-      .map((d) => `THEY ATTACHED "${d.fileName}":\n${(d.content ?? '').slice(0, MOST_OF_A_SHEET_WE_READ)}`)
+      .map((d) => `THEY ATTACHED "${d.fileName}":\n${(d.content ?? '').slice(0, MOST_OF_A_DOCUMENT_WE_READ)}`)
       .join('\n\n');
     const numbersInTheirWords = new Set<number>(
       turns
@@ -7417,75 +7433,110 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * it confirms. Owner-scoped: reads only this participant's documents.
    */
   /**
-   * WHAT A SHEET OF TARGETS GAVE, WRITTEN AGAINST THE PEOPLE WHO HOLD THEM.
+   * THE CONTEXT WE HAVE FROM A DOCUMENT NOBODY HAS BEEN TOLD ABOUT YET.
    *
-   * See a-sheet-of-targets-is-read for what is read and what is deliberately not. The resolver is the
-   * one the spoken path uses - a name that matches nobody is dropped and said out loud, never guessed.
-   * Only the person running the check-in can set somebody else's number; a participant's attachment is
-   * read for their own rows and nothing else, which is the same wall as everywhere else here.
+   * Hafsah, 22 September 2026: "once read, the conversation should go into the chat as here is the
+   * context we have." The reading happens once, at upload, wherever the file was attached - the chat,
+   * the Context tab, an invite link - and lands on the row (see what-a-document-holds). This is the
+   * telling, and it happens once: `holdsSaidAt` is stamped as the words go out, the way a note
+   * carried into a session is raised once and not in every session after it.
+   *
+   * Their own documents, and for the person running the check-in anything shared with everybody -
+   * which is the same read the prompt itself is given, so the conversation cannot be told about a
+   * document it has not been shown.
    */
-  private async whatASheetOfTargetsGave(
-    checkIn: { id: string; groundId: string; participantId: string },
-    doc: { fileName: string; content: string | null },
-  ): Promise<string | null> {
+  /**
+   * THE NUMBERS THAT WERE WAITING FOR A NAME TO ARRIVE.
+   *
+   * A document read before somebody was on the check-in carries their name in `holds.unmatched` and
+   * their rows nowhere. Retried against the roster as it now is: what resolves is written against them
+   * and said once, and the name comes off the unmatched list so it is not offered again. Only ever the
+   * lead's read, because only the lead may set somebody else's number.
+   */
+  private async whatTheNewPeopleClaim(groundId: string, participantId: string, isLead: boolean): Promise<string | null> {
+    if (!isLead) return null;
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId, NOT: { holds: { equals: null as any } } },
+      select: { id: true, fileName: true, holds: true, content: true },
+    });
+    const waiting = docs.filter((d) => ((d.holds as any)?.unmatched ?? []).length);
+    if (!waiting.length) return null;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
+        objectives: { select: { name: true, ownerParticipantId: true } },
+      },
+    });
+    if (!ground) return null;
+    const people = ground.participants.filter((p) => !p.managingOnly);
+    const out: string[] = [];
+    for (const d of waiting) {
+      const holds = d.holds as any;
+      const stillWaiting: string[] = [];
+      const landedFor: { who: string; what: string; target: number; by?: string | null }[] = [];
+      /* Their rows are read from the document again rather than kept in the row: what a person's
+         numbers are belongs to the document, and duplicating them here would be a second copy to drift. */
+      const read = await this.anthropic.extract<WhatADocumentHolds>(
+        WHAT_A_DOCUMENT_HOLDS_PROMPT,
+        [{ role: 'user', content: `Document: "${d.fileName}"\n\n${(d.content ?? '').slice(0, MOST_OF_A_DOCUMENT_WE_READ)}` }],
+        WHAT_A_DOCUMENT_HOLDS_SCHEMA as any,
+      ).catch(() => null);
+      const rows = (read?.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+      for (const name of holds.unmatched as string[]) {
+        const who = whoThisNameIs(name, people as any);
+        if (!who) { stillWaiting.push(name); continue; }
+        const theirs = rows.filter((r) => r.personName.trim().toLowerCase() === name.trim().toLowerCase());
+        const wrote = await this.putOwnedTargetsOnTheRecord(
+          groundId,
+          theirs.map((r) => ({ participantId: who.id, name: r.what.trim().slice(0, 120), target: Math.round(r.target) })),
+          participantId,
+        );
+        if (!wrote.length) { continue; }
+        for (const w of wrote) landedFor.push({ who: theNameWeUseFor(who as any), what: w.name, target: w.target, by: theirs.find((r) => r.what.trim().slice(0, 120) === w.name)?.by ?? null });
+      }
+      await this.prisma.groundDocument.update({ where: { id: d.id }, data: { holds: { ...holds, unmatched: stillWaiting } as any } }).catch(() => undefined);
+      if (landedFor.length) {
+        out.push(theContextWeHave({ fileName: d.fileName, whatItIs: null, forOnePerson: landedFor, forEverybody: [], dates: [], unmatched: [] }) ?? '');
+        this.logger.log(`Ground ${groundId}: ${landedFor.length} number(s) from ${JSON.stringify(d.fileName)} found their person.`);
+      }
+    }
+    return out.filter(Boolean).join('\n\n') || null;
+  }
+
+  private async theContextNotYetSaid(checkIn: { id: string; groundId: string; participantId: string }): Promise<string | null> {
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: checkIn.groundId },
-        select: {
-          initiatorId: true,
-          participants: {
-            select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
-          },
+        select: { initiatorId: true, participants: { select: { id: true, userId: true } } },
+      });
+      const me = ground?.participants.find((p) => p.id === checkIn.participantId);
+      const isLead = !!me?.userId && ground?.initiatorId === me.userId;
+      /*
+       * A NAME THAT HAD NOBODY WHEN THE FILE WAS READ, FIRST. The read says "add them and their numbers
+       * go on too", and until now nothing kept that promise: the read happens once, at upload, and
+       * somebody added afterwards was a name in a list nobody looked at again. Every unmatched name is
+       * tried again against the roster as it is now. Before the query below on purpose - it takes names
+       * off the unmatched list, and a read announced with a stale list says somebody is missing who is
+       * standing right there.
+       */
+      const nowMatched = await this.whatTheNewPeopleClaim(checkIn.groundId, checkIn.participantId, isLead);
+      const docs = await this.prisma.groundDocument.findMany({
+        where: {
+          groundId: checkIn.groundId,
+          holdsSaidAt: null,
+          NOT: { holds: { equals: null as any } },
+          ...(isLead ? { OR: [{ participantId: checkIn.participantId }, { visibility: 'OPEN' as any }] } : { participantId: checkIn.participantId }),
         },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, holds: true },
       });
-      if (!ground) return null;
-      const me = ground.participants.find((p) => p.id === checkIn.participantId);
-      const isLead = !!me?.userId && ground.initiatorId === me.userId;
-      const read = await this.anthropic.extract<{ rows: ATargetFromASheet[] }>(
-        A_SHEET_OF_TARGETS_PROMPT,
-        [{ role: 'user', content: `Document: "${doc.fileName}"\n\n${(doc.content ?? '').slice(0, MOST_OF_A_SHEET_WE_READ)}` }],
-        A_SHEET_OF_TARGETS_SCHEMA as any,
-      );
-      const rows = (read?.rows ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
-      if (!rows.length) return null;
-
-      /* The same resolver as the spoken path: full name, first name, the address's local part, or the role. */
-      const mayHoldANumber = ground.participants.filter((p) => !p.managingOnly && (isLead || p.id === checkIn.participantId));
-      const resolve = (name: string) => {
-        const n = (name ?? '').trim().toLowerCase();
-        if (!n) return null;
-        return mayHoldANumber.find((p) => {
-          const first = (p.user?.firstName ?? '').toLowerCase();
-          const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase()
-            || (p.nameGiven ?? '').toLowerCase();
-          const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
-          const role = (p.roleAsDescribed ?? '').toLowerCase();
-          return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
-        }) ?? null;
-      };
-      const nameOf = (p: { nameGiven: string | null; email: string; user: { firstName: string | null; lastName: string | null } | null }) =>
-        [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || p.email;
-
-      const matched: { participantId: string; who: string; name: string; target: number }[] = [];
-      const unmatched: string[] = [];
-      for (const r of rows) {
-        const who = resolve(r.personName);
-        if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
-        matched.push({ participantId: who.id, who: nameOf(who as any), name: r.what.trim().slice(0, 120), target: Math.round(r.target) });
-      }
-      const landed = await this.putOwnedTargetsOnTheRecord(
-        checkIn.groundId,
-        matched.map((m) => ({ participantId: m.participantId, name: m.name, target: m.target })),
-        checkIn.participantId,
-      );
-      const kept = landed.map((l) => {
-        const m = matched.find((x) => x.participantId === l.participantId && x.name === l.name)!;
-        return { who: m.who, what: l.name, target: l.target };
-      });
-      this.logger.log(`Ground ${checkIn.groundId}: read ${rows.length} target row(s) from ${JSON.stringify(doc.fileName)}; ${kept.length} landed, ${unmatched.length} name(s) unmatched.`);
-      return whatTheSheetGave(doc.fileName, kept, unmatched);
+      if (!docs.length) return nowMatched;
+      const said = docs.map((d) => theContextWeHave(d.holds as any, { asking: true })).filter(Boolean) as string[];
+      await this.prisma.groundDocument.updateMany({ where: { id: { in: docs.map((d) => d.id) } }, data: { holdsSaidAt: new Date() } });
+      return [nowMatched, ...said].filter(Boolean).join('\n\n') || null;
     } catch (err: any) {
-      this.logger.warn(`Reading ${JSON.stringify(doc.fileName)} for targets failed: ${err?.message}`);
+      this.logger.warn(`Could not say what a document holds on ${checkIn.id}: ${err?.message}`);
       return null;
     }
   }
@@ -7513,7 +7564,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * them to us. The product's own sentence naming what it took goes under the acknowledgement, and
      * it ends by asking whether that is right - nothing here treats a read as settled.
      */
-    const fromTheSheet = doc?.content ? await this.whatASheetOfTargetsGave(checkIn, doc as any) : null;
+    const fromTheSheet = await this.theContextNotYetSaid(checkIn);
 
     const said = fromTheSheet ? `${reply}\n\n${fromTheSheet}` : reply;
     await this.prisma.conversationTurn.create({

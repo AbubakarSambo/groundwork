@@ -24,6 +24,10 @@ import {
   TERMS_IN_A_DOCUMENT_PROMPT, TERMS_IN_A_DOCUMENT_SCHEMA, theTermsInIt,
 } from '../alignment/the-agreement-arrives-as-a-document';
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
+import {
+  WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
+  theContextWeHave, whoThisNameIs, theNameWeUseFor, type WhatADocumentHolds, type WhatLanded,
+} from './what-a-document-holds';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -108,7 +112,7 @@ const ASSESSMENT_TOOL = {
 
 
 function toDocShape(
-  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
+  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any },
   viewerParticipantId?: string,
   contextEnabled?: boolean,
 ) {
@@ -118,6 +122,10 @@ function toDocShape(
     mimeType: doc.mimeType,
     uploadedAt: doc.createdAt,
     assessment: doc.assessment ?? null,
+    /* WHAT IT HOLDS, ON THE CARD. Read once at upload and kept, so the Context tab says the same
+       sentence the chat said rather than a filename and a date. See what-a-document-holds. */
+    holds: doc.holds ?? null,
+    theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null,
     /*
      * WHOSE IT IS, because only the uploader may move it and the screen had no way to know.
      * A reader's list holds their own files AND everything OPEN, so a lead looking at a party's
@@ -357,7 +365,7 @@ export class DocumentsService {
       /* `visibility` and `participantId` too — `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask told the person who just attached a file
          everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, holds: true },
     });
 
     /**
@@ -373,6 +381,15 @@ export class DocumentsService {
     this.readTheAgreementInIt(groundId, content).catch((err) =>
       this.logger?.warn?.(`Could not read the agreement in ${doc.fileName}: ${err?.message}`));
 
+    /*
+     * AND WHATEVER NUMBERS IT HOLDS, READ ONCE, HERE, WHATEVER PAGE IT WAS ATTACHED ON. See
+     * what-a-document-holds: a sheet attached in the chat and the same sheet attached on the Context
+     * page were two different silences. Awaited rather than fired and forgotten, because the caller
+     * shows what was read and a page that has to poll for it is a page that says nothing.
+     */
+    const held = await this.whatItHolds(doc.id, groundId, participant.id, content, doc.fileName)
+      .catch((err: any) => { this.logger?.warn?.(`Could not read what ${doc.fileName} holds: ${err?.message}`); return null; });
+
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
@@ -385,7 +402,103 @@ export class DocumentsService {
       ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
       /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+      /* What it holds, and the product's own words for it, so every page says the same sentence. */
+      holds: held ?? null,
+      theContextWeHave: held ? theContextWeHave(held) : null,
     };
+  }
+
+  /**
+   * WHAT THIS DOCUMENT HOLDS, AND THE NUMBERS PUT WHERE NUMBERS LIVE.
+   *
+   * One read, at upload, whatever page it was attached on. See what-a-document-holds for what is read
+   * and what is deliberately not. Three rules decide where a number lands:
+   *
+   *   A NUMBER FOR ONE PERSON needs that person to be on this check-in, matched by the resolver the
+   *   spoken path uses. A name that matches nobody is carried back as unmatched and said out loud;
+   *   nothing is guessed onto the nearest person.
+   *
+   *   ONLY THE LEAD MAY SET SOMEBODY ELSE'S NUMBER. A participant's attachment is read for their own
+   *   rows and for the group's, and nothing else - the same wall as everywhere else here.
+   *
+   *   A NUMBER ALREADY ON THE BOARD IS NEVER OVERWRITTEN. The board's own "the record shows 40 for
+   *   this, press to accept" is where a conflict belongs.
+   */
+  private async whatItHolds(
+    docId: string,
+    groundId: string,
+    participantId: string,
+    content: string,
+    fileName: string,
+  ): Promise<WhatLanded | null> {
+    if (!content?.trim()) return null;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        initiatorId: true,
+        participants: {
+          select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+        },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true } },
+      },
+    });
+    if (!ground) return null;
+    const me = ground.participants.find((p) => p.id === participantId);
+    const isLead = !!me?.userId && ground.initiatorId === me.userId;
+
+    const read = await this.anthropic.extract<WhatADocumentHolds>(
+      WHAT_A_DOCUMENT_HOLDS_PROMPT,
+      [{ role: 'user', content: `Document: "${fileName}"\n\n${content.slice(0, MOST_OF_A_DOCUMENT_WE_READ)}` }],
+      WHAT_A_DOCUMENT_HOLDS_SCHEMA as any,
+    );
+    if (!read) return null;
+
+    /* One name-matching rule, in one place. See whoThisNameIs. */
+    const mayHoldANumber = ground.participants.filter((p) => !p.managingOnly && (isLead || p.id === participantId));
+    const resolve = (name: string) => whoThisNameIs(name, mayHoldANumber as any);
+    const nameOf = theNameWeUseFor as (p: any) => string;
+
+    const rows = (read.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+    const held = new Set((ground.objectives ?? []).map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+    const forOnePerson: WhatLanded['forOnePerson'] = [];
+    const unmatched: string[] = [];
+    const toWrite: { groundId: string; name: string; target: number; ownerParticipantId: string | null; setByParticipantId: string; sortOrder: number }[] = [];
+    let sortOrder = 100 + (ground.objectives?.length ?? 0);
+    for (const r of rows) {
+      const who = resolve(r.personName);
+      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      const name = r.what.trim().slice(0, 120);
+      if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
+      held.add(`${who.id}::${name.toLowerCase()}`);
+      toWrite.push({ groundId, name, target: Math.round(r.target), ownerParticipantId: who.id, setByParticipantId: participantId, sortOrder: sortOrder++ });
+      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null });
+    }
+
+    /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
+    const forEverybody: WhatLanded['forEverybody'] = [];
+    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim() && Number.isFinite(t.target) && t.target > 0)) {
+      const name = t.what.trim().slice(0, 120);
+      if (held.has(`team::${name.toLowerCase()}`)) continue;
+      held.add(`team::${name.toLowerCase()}`);
+      toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });
+      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null });
+    }
+
+    if (toWrite.length) {
+      await this.prisma.groundObjective.createMany({ data: toWrite as any })
+        .catch((err: any) => this.logger?.warn?.(`Could not write the numbers from ${fileName}: ${err?.message}`));
+    }
+    const landed: WhatLanded = {
+      fileName,
+      whatItIs: read.whatItIs?.trim() || null,
+      forOnePerson,
+      forEverybody,
+      dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
+      unmatched,
+    };
+    await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
+    this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);
+    return landed;
   }
 
   /** Update a document's assessment (user-corrected version). */
@@ -399,7 +512,7 @@ export class DocumentsService {
       /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask for them told the person who just attached a
          file everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
     });
     /* Same flag, same reason: a corrected assessment must not come back relabelled private. */
     return toDocShape(updated, updated.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
@@ -535,7 +648,7 @@ export class DocumentsService {
        *
        * Found by putting the read on the card and watching it not appear.
        */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
       orderBy: { createdAt: 'asc' },
     });
     /*
@@ -599,10 +712,14 @@ export class DocumentsService {
       /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask for them told the person who just attached a
          file everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
     });
 
     this.anchorAfterUpload(participant.id, participant.groundId);
+
+    /* AN UPLOAD ON A LINK IS AN UPLOAD LIKE ANY OTHER, including this. See whatItHolds. */
+    const held = await this.whatItHolds(doc.id, participant.groundId, participant.id, content, doc.fileName)
+      .catch((err: any) => { this.logger?.warn?.(`Could not read what ${doc.fileName} holds: ${err?.message}`); return null; });
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
@@ -610,6 +727,8 @@ export class DocumentsService {
       ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
       /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+      holds: held ?? null,
+      theContextWeHave: held ? theContextWeHave(held) : null,
     };
   }
 
