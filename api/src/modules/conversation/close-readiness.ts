@@ -26,8 +26,15 @@ const SAYS_NOTHING_TO_ADD =
   /\b(nothing (to add|much|really|this week|new)|no (real )?(update|progress|change)|not much|same as (last|before)|quiet week|nothing (has )?(happened|moved)|haven'?t (done|had) )/i;
 
 /** Someone declining, or asking to stop. Always honoured immediately. */
+/*
+ * THE WAYS PEOPLE SAY THEY ARE FINISHED. Widened 22 Sep 2026: "That is everything from my side" was
+ * answered with "One more before this closes" on a live participant session. The short forms were
+ * here and the long ones were not - "that is everything", "that is all from me", "I have nothing else
+ * to add". Bare "nothing else" is deliberately NOT here: that is an answer about the work, and
+ * closeReadiness reads it as one below the floor (SAYS_NOTHING_TO_ADD).
+ */
 export const WANTS_OUT =
-  /\b(that'?s (it|me|all)|i'?m done|done for now|need to go|got to go|can we (stop|finish)|later|another time|skip this)/i;
+  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this)/i;
 
 export interface CloseReadiness {
   ready: boolean;

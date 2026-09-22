@@ -1879,6 +1879,8 @@ export const ALIGNMENT_SCHEMA = {
  */
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
 
+Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
+
 1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
 
    - name: the aim as a short phrase, in their words. "Sell 500 trucks", not "Sales objective".

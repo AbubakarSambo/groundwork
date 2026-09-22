@@ -20,6 +20,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { A_SHEET_OF_TARGETS_PROMPT, A_SHEET_OF_TARGETS_SCHEMA, MOST_OF_A_SHEET_WE_READ, whatTheSheetGave, type ATargetFromASheet } from './a-sheet-of-targets-is-read';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
@@ -6451,15 +6452,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         });
     if (turns.length === 0) return;
     /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
+    /*
+     * WHAT THEY ATTACHED IS WHAT THEY SAID. A lead who put the team's numbers in a sheet has given them
+     * to us as surely as if they had typed them (Hafsah, 22 Sep 2026), and this read the transcript only
+     * - so the sheet's targets had nowhere to land and the aims filter below would have stripped them
+     * as numbers nobody said. Their own attachments, labelled as attachments, and their numbers count
+     * as theirs. Capped, because this is an extraction input and a plan is not a sheet.
+     */
+    /* Optional-chained the way the rest of this file reaches a model a test double may not carry. */
+    const theirDocuments = await (this.prisma.groundDocument?.findMany?.({
+      where: { groundId, participantId },
+      orderBy: { createdAt: 'asc' },
+      select: { fileName: true, content: true },
+    }) ?? Promise.resolve([])).catch(() => [] as { fileName: string; content: string | null }[]);
+    const attached = theirDocuments
+      .filter((d) => (d.content ?? '').trim())
+      .map((d) => `THEY ATTACHED "${d.fileName}":\n${(d.content ?? '').slice(0, MOST_OF_A_SHEET_WE_READ)}`)
+      .join('\n\n');
     const numbersInTheirWords = new Set<number>(
       turns
         .filter((t) => t.role === TurnRole.PERSON)
-        .flatMap((t) => numbersInAClaim(t.content ?? ''))
+        .map((t) => t.content ?? '')
+        .concat(theirDocuments.map((d) => d.content ?? ''))
+        .flatMap((text) => numbersInAClaim(text))
         .flatMap((n) => [n, Math.round(n)]),
     );
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
-      .join('\n');
+      .join('\n')
+      + (attached ? `\n\n${attached}` : '');
 
     /*
      * A PARTICIPANT'S OWN PROMISES GO DOWN A DIFFERENT PROMPT.
@@ -6797,28 +6818,49 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
     }
 
-    if (theirOwnNumbers.length) {
-      const owned = await this.prisma.groundObjective.findMany({
-        where: { groundId, ownerParticipantId: { not: null } },
-        select: { name: true, ownerParticipantId: true },
-      });
-      const held = new Set(owned.map((o) => `${o.ownerParticipantId}::${o.name.trim().toLowerCase()}`));
-      const freshOwned = theirOwnNumbers.filter((t) => !held.has(`${t.participantId}::${t.name.toLowerCase()}`));
-      if (freshOwned.length) {
-        await this.prisma.groundObjective.createMany({
-          data: freshOwned.map((t, i) => ({
-            groundId,
-            name: t.name,
-            target: t.target,
-            ownerParticipantId: t.participantId,
-            /* The speaker: the lead setting "150 each" for three people, or a person naming their own. */
-            setByParticipantId: participantId,
-            sortOrder: 100 + i,
-          })),
-        }).catch((err: any) => this.logger.warn(`Could not write per-person targets on ${groundId}: ${err?.message}`));
-        this.logger.log(`Ground ${groundId}: kept ${freshOwned.length} target(s) against the person who owns them.`);
-      }
-    }
+    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers, participantId);
+  }
+
+  /**
+   * A NUMBER SAID ABOUT ONE PERSON IS THAT PERSON'S, and it is written in one place.
+   *
+   * Matched by owner and name so restating does not duplicate, and a number already on the board is
+   * never overwritten from here - the board's own "the record shows 40 for this, press to accept" is
+   * where a conflict belongs. Two callers: what the speaker said, and what a sheet they attached says
+   * (see a-sheet-of-targets-is-read).
+   *
+   * @returns the rows that landed, so a caller can say what it took.
+   */
+  private async putOwnedTargetsOnTheRecord(
+    groundId: string,
+    rows: { participantId: string; name: string; target: number }[],
+    setByParticipantId: string,
+  ): Promise<{ participantId: string; name: string; target: number }[]> {
+    if (!rows.length) return [];
+    const owned = await this.prisma.groundObjective.findMany({
+      where: { groundId, ownerParticipantId: { not: null } },
+      select: { name: true, ownerParticipantId: true },
+    });
+    const held = new Set(owned.map((o) => `${o.ownerParticipantId}::${o.name.trim().toLowerCase()}`));
+    const fresh = rows.filter((t) => !held.has(`${t.participantId}::${t.name.trim().toLowerCase()}`));
+    if (!fresh.length) return [];
+    const wrote = await this.prisma.groundObjective.createMany({
+      data: fresh.map((t, i) => ({
+        groundId,
+        name: t.name,
+        target: t.target,
+        ownerParticipantId: t.participantId,
+        /* The speaker: the lead setting "150 each" for three people, or a person naming their own. */
+        setByParticipantId,
+        sortOrder: 100 + i,
+      })),
+    }).then(() => true).catch((err: any) => {
+      this.logger.warn(`Could not write per-person targets on ${groundId}: ${err?.message}`);
+      return false;
+    });
+    if (!wrote) return [];
+    this.logger.log(`Ground ${groundId}: kept ${fresh.length} target(s) against the person who owns them.`);
+    return fresh;
   }
 
   /**
@@ -7374,6 +7416,80 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Generates a focused AI response acknowledging the document and asking what
    * it confirms. Owner-scoped: reads only this participant's documents.
    */
+  /**
+   * WHAT A SHEET OF TARGETS GAVE, WRITTEN AGAINST THE PEOPLE WHO HOLD THEM.
+   *
+   * See a-sheet-of-targets-is-read for what is read and what is deliberately not. The resolver is the
+   * one the spoken path uses - a name that matches nobody is dropped and said out loud, never guessed.
+   * Only the person running the check-in can set somebody else's number; a participant's attachment is
+   * read for their own rows and nothing else, which is the same wall as everywhere else here.
+   */
+  private async whatASheetOfTargetsGave(
+    checkIn: { id: string; groundId: string; participantId: string },
+    doc: { fileName: string; content: string | null },
+  ): Promise<string | null> {
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: checkIn.groundId },
+        select: {
+          initiatorId: true,
+          participants: {
+            select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+          },
+        },
+      });
+      if (!ground) return null;
+      const me = ground.participants.find((p) => p.id === checkIn.participantId);
+      const isLead = !!me?.userId && ground.initiatorId === me.userId;
+      const read = await this.anthropic.extract<{ rows: ATargetFromASheet[] }>(
+        A_SHEET_OF_TARGETS_PROMPT,
+        [{ role: 'user', content: `Document: "${doc.fileName}"\n\n${(doc.content ?? '').slice(0, MOST_OF_A_SHEET_WE_READ)}` }],
+        A_SHEET_OF_TARGETS_SCHEMA as any,
+      );
+      const rows = (read?.rows ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+      if (!rows.length) return null;
+
+      /* The same resolver as the spoken path: full name, first name, the address's local part, or the role. */
+      const mayHoldANumber = ground.participants.filter((p) => !p.managingOnly && (isLead || p.id === checkIn.participantId));
+      const resolve = (name: string) => {
+        const n = (name ?? '').trim().toLowerCase();
+        if (!n) return null;
+        return mayHoldANumber.find((p) => {
+          const first = (p.user?.firstName ?? '').toLowerCase();
+          const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase()
+            || (p.nameGiven ?? '').toLowerCase();
+          const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+          const role = (p.roleAsDescribed ?? '').toLowerCase();
+          return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
+        }) ?? null;
+      };
+      const nameOf = (p: { nameGiven: string | null; email: string; user: { firstName: string | null; lastName: string | null } | null }) =>
+        [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || p.email;
+
+      const matched: { participantId: string; who: string; name: string; target: number }[] = [];
+      const unmatched: string[] = [];
+      for (const r of rows) {
+        const who = resolve(r.personName);
+        if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+        matched.push({ participantId: who.id, who: nameOf(who as any), name: r.what.trim().slice(0, 120), target: Math.round(r.target) });
+      }
+      const landed = await this.putOwnedTargetsOnTheRecord(
+        checkIn.groundId,
+        matched.map((m) => ({ participantId: m.participantId, name: m.name, target: m.target })),
+        checkIn.participantId,
+      );
+      const kept = landed.map((l) => {
+        const m = matched.find((x) => x.participantId === l.participantId && x.name === l.name)!;
+        return { who: m.who, what: l.name, target: l.target };
+      });
+      this.logger.log(`Ground ${checkIn.groundId}: read ${rows.length} target row(s) from ${JSON.stringify(doc.fileName)}; ${kept.length} landed, ${unmatched.length} name(s) unmatched.`);
+      return whatTheSheetGave(doc.fileName, kept, unmatched);
+    } catch (err: any) {
+      this.logger.warn(`Reading ${JSON.stringify(doc.fileName)} for targets failed: ${err?.message}`);
+      return null;
+    }
+  }
+
   async documentReceived(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
 
@@ -7391,11 +7507,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
 
+    /*
+     * AND IF IT IS A SHEET OF TARGETS, THE TARGETS GO ON THE RECORD NOW. See
+     * a-sheet-of-targets-is-read: a lead who attaches the numbers instead of typing them has given
+     * them to us. The product's own sentence naming what it took goes under the acknowledgement, and
+     * it ends by asking whether that is right - nothing here treats a read as settled.
+     */
+    const fromTheSheet = doc?.content ? await this.whatASheetOfTargetsGave(checkIn, doc as any) : null;
+
+    const said = fromTheSheet ? `${reply}\n\n${fromTheSheet}` : reply;
     await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: doc ? `${DESCRIBES_DOCUMENT}${doc.id}` : stampWhatItAskedFor(reply) },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: said, askedFor: doc ? `${DESCRIBES_DOCUMENT}${doc.id}` : stampWhatItAskedFor(said) },
     });
 
-    return { reply };
+    return { reply: said };
   }
 
   /**
