@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { scrollToId } from '@/lib/scroll-to'
-import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
+import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
@@ -181,6 +181,14 @@ export function ContextPage({
     onError: () => toast.error('That did not share. Try again in a moment.'),
   })
 
+  /* Their own to-do, moved by them and by nobody else - the server enforces that. */
+  const setMyToDo = useMutation({
+    mutationFn: ({ itemId, status }: { itemId: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' }) =>
+      groundsApi.setMyCommitment(id, itemId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
+  })
+
   const changeLine = useMutation({
     mutationFn: ({ itemId, ...change }: { itemId: string; text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
       groundsApi.changeContextLine(id, itemId, change),
@@ -230,9 +238,11 @@ export function ContextPage({
     scrollToId('gw-context-chat')
   }
 
-  /** A line about one person, for their own row in the band above. The lead's, and nobody else's. */
-  const linesAbout = (participantId: string, kind: 'ABOUT_A_PERSON' | 'QUESTION_FOR_PERSON') =>
-    contextLines.filter((l) => l.kind === kind && l.aboutParticipantId === participantId)
+  /*
+   * THE LEAD'S READ OF A PERSON IS NOT ON THIS PAGE, on her instruction of 22 September 2026. It
+   * reaches their check-in as a place to look and it is read back in the conversation; drawing it on
+   * a page beside their name made a steer look like a file on somebody.
+   */
 
   /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
   const commitments = [...((ground as any).commitments ?? [])].sort(
@@ -484,8 +494,10 @@ export function ContextPage({
             */}
             <Sec
               n={band()}
-              title={isLead ? 'Person by person' : 'What is expected of you'}
-              src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
+              /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
+                 card per person holding everything about them, so it is named after that. */
+              title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
+              src={isLead ? 'their numbers, their to-dos, what they owe a look at' : 'yours is open \u00b7 theirs are a click'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -511,17 +523,28 @@ export function ContextPage({
               )
             })()}
 
-            <ExpectationsPanel
+            {/*
+              ONE CARD PER PERSON, AND THE ONLY PLACE ANYTHING ABOUT A PERSON APPEARS.
+              
+              "Not sure the purpose of person by person" - it rendered one card per EXPECTATION, so a
+              lead read a stack of sentences with names on them and everything else about a person
+              was in three other bands. Collapsed by default, because a hundred people is the test.
+              
+              And the lead's own read of somebody is NOT on it, on her instruction: that lives in the
+              conversation, which is where they write it and the only place it is read back.
+            */}
+            <EachPerson
               groundId={id}
-              parties={(ground.participants ?? []) as any[]}
+              people={(ground.participants ?? []) as any[]}
+              targets={((ground as any).objectives ?? []) as any[]}
+              toDos={commitments as any[]}
+              files={(docs ?? []) as any[]}
+              asks={((ground as any).asks ?? {}) as any}
               viewerUserId={viewerUserId}
-              hasChat={isTheLead && contextEnabled}
-              /* The lead's own read of each person, on that person's row. Not passed on anybody
-                 else's page, and the server does not send these lines to anybody else either. */
-              yoursAlone={isTheLead ? (pid: string) => ({
-                read: linesAbout(pid, 'ABOUT_A_PERSON').map((l: any) => l.text),
-                questions: linesAbout(pid, 'QUESTION_FOR_PERSON').map((l: any) => l.text),
-              }) : undefined}
+              isLead={isLead}
+              onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
+              onUploadFor={() => document.getElementById('ga-doc-upload')?.click()}
+              onSetToDo={(itemId, status) => setMyToDo.mutate({ itemId, status })}
             />
 
             {/*

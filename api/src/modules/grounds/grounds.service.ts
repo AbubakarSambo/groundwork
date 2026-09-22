@@ -46,6 +46,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
+import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
   A_CHANGE_PROMPT, A_CHANGE_SCHEMA, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
@@ -1857,6 +1858,33 @@ export class GroundsService {
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
 
+    /*
+     * WHAT EACH PERSON SAID THEY WOULD SHOW, for the slot on their own card.
+     *
+     * Her instruction: a participant needs to see the things they agreed to share, on the page where
+     * they can attach them. One read over what already existed - see what-they-said-they-would-show.
+     */
+    const [deliveries, docsForAsks] = await Promise.all([
+      this.prisma.delivery?.findMany?.({
+        where: { groundId: id },
+        select: { id: true, participantId: true, text: true, evidence: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+      /* Optional-chained like its neighbour: a test double with no document table is not a reason a
+         page cannot render, and this list only decides whether an ask has been met. */
+      this.prisma.groundDocument?.findMany?.({ where: { groundId: id }, select: { participantId: true, createdAt: true } })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+    ]);
+    const asks: Record<string, ReturnType<typeof whatTheyStillOweAShow>> = {};
+    for (const p of (ground.participants ?? []) as any[]) {
+      if (p.managingOnly) continue;
+      const theirs = whatTheyStillOweAShow(
+        (deliveries as any[]).filter((d) => d.participantId === p.id),
+        (commitments as any[]).filter((c) => c.participantId === p.id),
+        (docsForAsks as any[]).filter((d) => d.participantId === p.id),
+      );
+      if (theirs.length) asks[p.id] = theirs;
+    }
+
     const { patternDetections: _pd, ...rest } = ground as any;
     // THE BROADCAST JOIN TOKEN IS THE INITIATOR'S TO GIVE OUT, NOBODY ELSE'S.
     //
@@ -1877,6 +1905,9 @@ export class GroundsService {
       commitments,
       /* The buckets. Already filtered above: a participant is never sent a line about anybody. */
       contextItems,
+      /* What each person is still to show, keyed by participant. Everybody may see these: a promise
+         to hand something over was made out loud, and the page is where it is kept. */
+      asks,
       /* Each target with the lead's own sentence about what is unsettled in it, where there is one. */
       objectives: ((ground as any).objectives ?? []).map((o: any) => ({
         ...o,
@@ -3316,6 +3347,45 @@ export class GroundsService {
     });
     this.logger.log(`Ground ${groundId}: a context note was shared with the team.`);
     return shared;
+  }
+
+  /**
+   * A TO-DO'S STATE IS SET BY THE PERSON IT BELONGS TO, AND BY NOBODY ELSE.
+   *
+   * Not even the lead. That is the whole difference between a record and a manager's checklist: a
+   * lead can say what they expect and can read what happened, and cannot mark somebody else's work
+   * done. Hafsah's own framing of what this product is for - "did we achieve the thing", not "did
+   * you do your task" - only holds if the person doing the thing owns the answer.
+   *
+   * UNKNOWN is a state somebody can return to, because "actually, not yet" is a correction and this
+   * product takes corrections everywhere else.
+   */
+  async setMyCommitment(groundId: string, requestingUserId: string, itemId: string, status: string) {
+    const clean = (status ?? '').trim().toUpperCase();
+    if (!['DONE', 'NOT_DONE', 'DROPPED', 'UNKNOWN'].includes(clean)) {
+      throw new BadRequestException('A to-do is done, not done, dropped, or nobody has said.');
+    }
+    const row = await this.prisma.groundCommitment.findFirst({
+      where: { id: itemId, groundId },
+      select: { id: true, participantId: true, text: true },
+    });
+    if (!row) throw new NotFoundException('That is not on this check-in');
+    if (!row.participantId) {
+      throw new BadRequestException('Nobody owns this one yet. Say whose it is in the conversation and they can move it.');
+    }
+    const me = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId }, select: { id: true } });
+    if (!me || me.id !== row.participantId) {
+      throw new ForbiddenException(
+        'This one is somebody else\'s to move. You can say what you expect of them, and read what they say happened, and that is the difference between a record and a checklist.',
+      );
+    }
+    const moved = await this.prisma.groundCommitment.update({
+      where: { id: row.id },
+      data: { status: clean },
+      select: { id: true, text: true, status: true, participantId: true },
+    });
+    this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);
+    return moved;
   }
 
   /**

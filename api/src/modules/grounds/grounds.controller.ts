@@ -306,6 +306,21 @@ export class GroundsController {
    * One line of what this check-in knows: reworded, shared, made private, or retired. See
    * changeContextLine - a line about a person can never be shared.
    */
+  /**
+   * A to-do's state, moved by the person it belongs to. See setMyCommitment - not even the lead can
+   * move somebody else's.
+   */
+  @Patch(':id/commitments/:itemId')
+  @ApiOperation({ summary: "Move your own to-do: done, not done, dropped, or back to nobody has said" })
+  async setMyCommitment(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { status: string },
+  ) {
+    return this.grounds.setMyCommitment(id, userId, itemId, dto?.status);
+  }
+
   @Patch(':id/context/:itemId')
   @ApiOperation({ summary: 'Change one line of what this check-in knows' })
   async changeContextLine(
