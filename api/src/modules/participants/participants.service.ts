@@ -415,6 +415,37 @@ export class ParticipantsService {
    * ONLY while the participant has never accepted (userId null). Rewriting an
    * accepted participant's address would be an account-hijack vector: their
    * link and record would silently point at a new inbox. */
+  /**
+   * MY ROW, MY ADDRESS. See the controller. The participant row's email is where the report and the
+   * reminders go, so that changes. The sign-in made by the invite link carries the same address, and
+   * changes with it only when it still matches - somebody who joined with a sign-in of their own keeps
+   * it, because that address is theirs already and nothing here should touch it.
+   */
+  async updateMyEmail(actingUserId: string, groundId: string, newEmail: string) {
+    const email = newEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('That is not an email address.');
+    const mine = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId: actingUserId },
+      include: { user: { select: { id: true, email: true } } },
+    });
+    if (!mine) throw new NotFoundException('You are not on this check-in.');
+    if (mine.email.toLowerCase() === email) return { email, changed: false };
+    const takenHere = await this.prisma.groundParticipant.findFirst({ where: { groundId, email, id: { not: mine.id } }, select: { id: true } });
+    if (takenHere) throw new BadRequestException('Somebody on this check-in already has that address.');
+    const linkMadeThisSignIn = !!mine.user && mine.user.email.toLowerCase() === mine.email.toLowerCase();
+    if (linkMadeThisSignIn) {
+      const otherUser = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (otherUser && otherUser.id !== actingUserId) {
+        throw new BadRequestException('That address already has a sign-in. Sign in with it, then open your link again.');
+      }
+    }
+    await this.prisma.$transaction([
+      this.prisma.groundParticipant.update({ where: { id: mine.id }, data: { email } }),
+      ...(linkMadeThisSignIn ? [this.prisma.user.update({ where: { id: actingUserId }, data: { email, isEmailVerified: false } })] : []),
+    ]);
+    return { email, changed: true, signInMoved: linkMadeThisSignIn };
+  }
+
   async updateEmail(participantId: string, actingUserId: string, newEmail: string) {
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },

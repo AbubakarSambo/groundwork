@@ -1,7 +1,8 @@
 import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
@@ -109,6 +110,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     enabled: !!id,
   })
   const user = useAuthStore((st) => st.user)
+  const [searchParams] = useSearchParams()
+  const justAnswered = searchParams.get('done') === '1'
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
@@ -327,6 +330,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             ← Back to the check-in
           </button>
         </div>
+
+        {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
+        {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
         {/* header + phase spine */}
         <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>

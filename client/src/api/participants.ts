@@ -30,6 +30,10 @@ export const participantsApi = {
   updateEmail: (participantId: string, email: string) =>
     apiClient.patch<{ id: string; email: string }>(`/participants/${participantId}/email`, { email }).then(r => r.data),
 
+  /** My own row on this check-in: where my report goes. Any signed-in participant, for themselves. */
+  updateMyEmail: (groundId: string, email: string) =>
+    apiClient.patch<{ email: string; changed: boolean; signInMoved?: boolean }>('/participants/mine/email', { groundId, email }).then(r => r.data),
+
   updateRole: (participantId: string, roleAsDescribed: string) =>
     apiClient.patch<{ id: string; roleAsDescribed: string }>(`/participants/${participantId}`, { roleAsDescribed }).then((r) => r.data),
 }

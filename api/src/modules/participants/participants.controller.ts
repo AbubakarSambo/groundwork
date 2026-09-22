@@ -35,6 +35,17 @@ class UpdateEmailDto {
   email: string;
 }
 
+class UpdateMyEmailDto {
+  @IsString()
+  @IsNotEmpty()
+  groundId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(254)
+  email: string;
+}
+
 
 @ApiTags('Participants')
 @Controller('participants')
@@ -81,6 +92,23 @@ export class ParticipantsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.participants.updateRole(id, userId, dto.roleAsDescribed);
+  }
+
+  /**
+   * WHERE THE REPORT GOES, SET BY THE PERSON IT GOES TO.
+   *
+   * Hafsah, 22 Sep 2026, after answering a team update from an invite link: "no way to really add my
+   * email if I am just an invited person". The link carries whatever address the lead typed - a
+   * colleague's, a guess, a forwarded one - and once it has been opened the lead cannot change it
+   * either (PATCH :id/email refuses a joined person). So the person who answered had nowhere to say
+   * where their report should go. This is that place: their own row on this check-in, their own
+   * address. Before `:id/email` because Express matches routes in order.
+   */
+  @ApiBearerAuth()
+  @Patch('mine/email')
+  @ApiOperation({ summary: 'Set where my own report for this check-in goes' })
+  async updateMyEmail(@CurrentUser('id') userId: string, @Body() dto: UpdateMyEmailDto) {
+    return this.participants.updateMyEmail(userId, dto.groundId, dto.email);
   }
 
   @ApiBearerAuth()

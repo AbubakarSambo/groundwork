@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theFloorFor, A_CHECK_IN_IS_NOT_DONE_IN, A_CORRECTION_IS_NOT_DONE_IN } from './how-short-a-check-in-may-be';
+import { theFloorFor, A_CHECK_IN_IS_NOT_DONE_IN, A_CORRECTION_IS_NOT_DONE_IN, AN_UPDATE_IS_NOT_DONE_IN } from './how-short-a-check-in-may-be';
 
 /**
  * THE ENGINE AND THE SERVER READ THE SAME FLOOR.
@@ -23,8 +23,8 @@ describe('one floor, read in both places', () => {
     expect(SRC).not.toMatch(/minTurns\s*=\s*[^;]*\?\s*\d+\s*:\s*\d+/);
   });
 
-  it('both places read it from the one module', () => {
-    expect([...SRC.matchAll(/theFloorFor\(/g)]).toHaveLength(2);
+  it('every place reads it from the one module: the engine, the server, and the three replies that tell the screen', () => {
+    expect([...SRC.matchAll(/theFloorFor\(/g)]).toHaveLength(5);
   });
 
   it('a check-in does not close on three answers any more', () => {
@@ -36,5 +36,59 @@ describe('one floor, read in both places', () => {
   it('and a correction still takes one, because it is one thing', () => {
     expect(theFloorFor(true)).toBe(A_CORRECTION_IS_NOT_DONE_IN);
     expect(A_CORRECTION_IS_NOT_DONE_IN).toBe(1);
+  });
+
+  /*
+   * Hafsah, 22 Sep 2026, after giving an update: "I just got 'a few more exchanges are needed' as a
+   * pop, so I couldn't end the session." An update is one question answered; three is its floor.
+   */
+  it('a team update closes on three, whoever is answering it', () => {
+    expect(AN_UPDATE_IS_NOT_DONE_IN).toBe(3);
+    expect(theFloorFor(false, 'TEAM_UPDATES')).toBe(AN_UPDATE_IS_NOT_DONE_IN);
+    expect(theFloorFor(false, 'NEW_HIRE')).toBe(A_CHECK_IN_IS_NOT_DONE_IN);
+    expect(theFloorFor(true, 'TEAM_UPDATES')).toBe(A_CORRECTION_IS_NOT_DONE_IN);
+  });
+
+  it('the server reads the scenario into the floor at both ends', () => {
+    /* Both calls pass a scenario; a call with one argument would be the full floor on an update. */
+    /* The call's argument list, read to its closing paren with the nested parens of `!!(checkIn as any)` inside it. */
+    for (const m of SRC.matchAll(/theFloorFor\(((?:[^()]|\([^()]*\))*)\)/g)) expect(m[1]).toMatch(/,\s*(scenarioOfThis|\(row as any\)|\(ground as any\))/);
+  });
+
+  /*
+   * THE SCREEN READS THE FLOOR FROM THE SERVER. It kept its own copy at three; the server's went to
+   * five on 11 September, and for ten days the page offered "Complete session" two answers before the
+   * server would honour it. Now the server sends `mayCompleteAfter` with the session and the page
+   * offers at that count. This fails if either half stops.
+   */
+  it('and tells the screen, which never inlines a number of its own', () => {
+    expect(SRC.match(/mayCompleteAfter: theFloorFor\(/g)).toHaveLength(3);
+    const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'chat', 'ChatPage.tsx'), 'utf8'));
+    expect(page).toMatch(/\.length >= mayCompleteAfter && \(/);
+    expect(page).not.toMatch(/\.length >= \d+ && \(/);
+    expect(page).toContain('setMayCompleteAfter(res.mayCompleteAfter)');
+    expect(page).toContain('setMayCompleteAfter(t.mayCompleteAfter)');
+  });
+
+  /*
+   * THEIR SESSION, THEIR CALL, BEFORE ANY COUNT OR HOLD. "That's it from me this week" was answered
+   * with "One more before this closes". Somebody who asked to finish is let out before the floor and
+   * before either hold is considered.
+   */
+  it('somebody who asked to finish is let out before the floor and the holds', () => {
+    const mayClose = SRC.slice(SRC.indexOf('private async mayClose('), SRC.indexOf('private closesInOtherWords('));
+    const out = mayClose.indexOf('if (askedToFinish(personSaid)) return { ready: true };');
+    expect(out).toBeGreaterThan(-1);
+    expect(out).toBeLessThan(mayClose.indexOf('theFloorFor('));
+    expect(out).toBeLessThan(mayClose.indexOf('One more before this closes'));
+  });
+
+  /*
+   * A TEAM UPDATE OWES NOTHING BUT THE LEAD'S LINE. Its opener was the spine's first slot - "What did
+   * you understand these updates are for?" - the setup question the pack forbids.
+   */
+  it('a team update has no owed spine to open with or hold for', () => {
+    const which = SRC.slice(SRC.indexOf('private whichOwedListFor('), SRC.indexOf('private roleOfTheReaderFor('));
+    expect(which).toContain("if (scenario === 'TEAM_UPDATES') return null;");
   });
 });

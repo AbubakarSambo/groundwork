@@ -66,6 +66,8 @@ describe('the completion offer follows the server, not the screen', () => {
   it('appears once three answers are actually on the record', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
       turns: serverTurns(3),
     })
     renderChat()
@@ -78,6 +80,8 @@ describe('the completion offer follows the server, not the screen', () => {
     // THE REGRESSION. Two stored, and the offer must stay away.
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
       turns: serverTurns(2),
     })
     renderChat()
@@ -103,6 +107,8 @@ describe('the completion offer follows the server, not the screen', () => {
      */
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
       turns: serverTurns(4),
     })
     renderChat()
@@ -123,6 +129,8 @@ describe('a send that never lands does not unlock the offer', () => {
   const twoOnRecord = () =>
     (conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
       turns: serverTurns(2),
     })
 

@@ -504,6 +504,8 @@ export class ConversationService {
         scenario: ground?.scenario ?? null,
       },
       brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)),
+      /* The turn floor the server will hold this to, so the screen offers to finish exactly when the server will honour it. See how-short-a-check-in-may-be. */
+      mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null),
       turns: turns.map(asRead),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
@@ -589,6 +591,15 @@ export class ConversationService {
      */
     const card = whichCard(scenario, brief);
     if (card) return owedFor(card);
+    /*
+     * A TEAM UPDATE OWES NOTHING BUT THE LEAD'S LINE. Read live, 22 Sep 2026: an update whose one
+     * line was "What moved this week, and what is stuck" opened with "What did you understand these
+     * updates are for?" - the spine's first slot, and exactly the setup question TEAM_UPDATES_PACK
+     * forbids ("do not ask what success looks like, what they own, what was agreed"). The pack has
+     * the whole shape: ask the line, ask once for a number or a date, close. No list, so nothing
+     * here can hold the close for a slot the update never had.
+     */
+    if (scenario === 'TEAM_UPDATES') return null;
     return everythingOwedFor(scenario);
   }
 
@@ -703,7 +714,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
     }
     await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
       this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
@@ -935,7 +946,7 @@ export class ConversationService {
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)) };
+    return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
   /**
@@ -1977,7 +1988,14 @@ export class ConversationService {
       }),
     ]);
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    const minTurns = theFloorFor(isSelfCorrection);
+    /*
+     * THEIR SESSION, THEIR CALL, BEFORE ANY COUNT OR HOLD. Read live, 22 Sep 2026: "That's it from me
+     * this week" was answered with "One more before this closes". closeReadiness has always let
+     * somebody out on that sentence; the floor and the holds above it in this method did not know,
+     * so the product held the door on the person walking through it.
+     */
+    if (askedToFinish(personSaid)) return { ready: true };
+    const minTurns = theFloorFor(isSelfCorrection, (row as any)?.ground?.scenario ?? null);
     if (personSaid.length < minTurns) {
       this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
       return { ready: false };
@@ -4700,7 +4718,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * The record is still protected: the substance gate below is unconditional,
      * so somebody can leave early but cannot leave nothing behind.
      */
-    const minTurns = theFloorFor(!!checkIn.isSelfCorrection);
+    const scenarioOfThis = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } }).then((g) => g?.scenario ?? null).catch(() => null);
+    const minTurns = theFloorFor(!!checkIn.isSelfCorrection, scenarioOfThis);
     if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException({
         message:
