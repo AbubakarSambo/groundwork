@@ -169,3 +169,26 @@ describe('the same question word for word, straight after itself', () => {
     expect(theyPushedBackOnTheQuestions("That's what I just said. 5-10.")).toBe(true);
   });
 });
+
+describe('the same question straight back, after it was answered', () => {
+  const { asksItAgainAfterTheAnswer } = require('./asked-twice-and-told-no-twice');
+
+  it('catches the reworded second ask Halima got', () => {
+    expect(asksItAgainAfterTheAnswer(
+      'stay healthy is certainly key. What specific thing are you doing to keep them healthy right now?',
+      'That is the kind of specific target that helps. What specific thing are you doing to keep your 260 hens healthy right now?',
+    )).toBe(true);
+  });
+
+  it('lets a follow-up on the same subject through', () => {
+    expect(asksItAgainAfterTheAnswer(
+      'What moved on the Kano invoice since the last update? A number or a date is enough.',
+      'Twice, and nothing yet. What would you need to get that Kano invoice moving?',
+    )).toBe(false);
+  });
+
+  it('and needs a question in the reply and a subject in both', () => {
+    expect(asksItAgainAfterTheAnswer('What are you doing to keep them healthy?', 'Vaccinating them goes on the record.')).toBe(false);
+    expect(asksItAgainAfterTheAnswer('', 'What are you doing?')).toBe(false);
+  });
+});

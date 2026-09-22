@@ -20,6 +20,7 @@ import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { theFloorFor } from './how-short-a-check-in-may-be';
+import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
 import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carries-which-part';
@@ -135,7 +136,7 @@ import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
-import { theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
+import { asksItAgainAfterTheAnswer, theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 
@@ -1424,6 +1425,37 @@ export class ConversationService {
       }
 
       /*
+       * AND THE SAME QUESTION STRAIGHT BACK, AFTER A REAL ANSWER TO IT, whether or not the thing was on
+       * an owed list. The guard above knows the owed things; this one knows the last ask. "What are you
+       * doing to keep them healthy" - "Vaccinating them" - "what are you doing to keep your 260 hens
+       * healthy" (run 11). Once more with the answer named; if it asks again, the question comes out.
+       * See asksItAgainAfterTheAnswer.
+       */
+      {
+        const lastAskHere = earlierAsks[earlierAsks.length - 1] ?? '';
+        const theyAnswered = !theyDeclined(message) && !theyPushedBackOnTheQuestions(message) && (message ?? '').trim().length >= 3;
+        if (lastAskHere && theyAnswered && asksItAgainAfterTheAnswer(lastAskHere, screened.text)) {
+          const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
+          this.logger.warn(`Check-in ${checkIn.id}: asked the last question again after it was answered; asking for another turn.`);
+          const moved = await this.anthropic
+            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, message)}`, history)
+            .catch(() => '');
+          const second = moved.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !asksItAgainAfterTheAnswer(lastAskHere, second.text)) {
+            screened = second;
+          } else {
+            const withoutIt = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
+            if (withoutIt.trim() && withoutIt !== screened.text) {
+              screened = { ...screened, text: withoutIt };
+              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
+            }
+          }
+        }
+      }
+
+      /*
        * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
        *
        * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
@@ -1892,6 +1924,8 @@ export class ConversationService {
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
     const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
+    /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
+    if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
     if (close.ask) {
       /* The goodbye goes first. It was written before the product ruled on the close, and appending
          a question underneath it told a lead the session was over and then that it was not. */
@@ -2275,6 +2309,7 @@ export class ConversationService {
       });
       const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
       const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
+      if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
       if (close.ask) {
         /* Same as the turn path: a refused close may not keep its goodbye. The stream has already
            put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
@@ -6726,7 +6761,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units
          (10,000)" on the same board, as two objectives. See an-aim-said-twice-is-one-aim. */
-      const fresh = theAimsThatAreNew(aims, existing as any);
+      const fresh = theAimsThatAreNew(aims, existing as any, (n) => numbersInTheirWords.has(n));
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
           data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId })),

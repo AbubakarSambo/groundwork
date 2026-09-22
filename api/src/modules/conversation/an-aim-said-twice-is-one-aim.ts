@@ -85,19 +85,51 @@ export function theFigureInTheName(name: string | null | undefined): number | nu
   const m = /(?<![\d.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|m|mn|bn|thousand|million|billion)?\b/i.exec(name ?? '');
   if (!m) return null;
   const n = Number(m[1].replace(/,/g, '')) * (SCALE[(m[2] ?? '').toLowerCase()] ?? 1);
-  return Number.isFinite(n) && n >= 10 ? n : null;
+  /* A RATE IS A TARGET AT ANY SIZE. "under 8% arrears" sat on a sales board with no number, and the
+     board read "0 so far" against it while the lead was saying "arrears are at 14%" (run 11, 22 Sep
+     2026). Eight is small for a count and exactly right for a percentage. */
+  const aRate = /^\s*(%|percent|per cent|pc\b)/i.test((name ?? '').slice((m.index ?? 0) + m[0].length));
+  return Number.isFinite(n) && (n >= 10 || (aRate && n > 0)) ? n : null;
+}
+
+/*
+ * A NAME WITH NO NUMBER AND NO WORDS OF ITS OWN IS A RESTATEMENT. Run 11's sales board, session 3:
+ * "35% credit limit", "under 8% arrears" and "Sales reaching N180m" were joined by "credit limit",
+ * "arrears target" and "sales target", each with no number - the lead restating her three aims in a
+ * later session, written as three more. A fresh aim without a figure whose words, once the filler is
+ * out, all sit inside an existing aim's name is that aim said again. "Shops opened in Kano" is not
+ * inside "wholesale accounts signed", and stays.
+ */
+export function isAnExistingAimRestatedWithoutItsNumber(fresh: AnAim, existing: AnAim[]): boolean {
+  if (fresh.target != null) return false;
+  const mine = wordsOf(fresh.name);
+  if (mine.size === 0) return existing.length > 0;
+  return existing.some((e) => {
+    const theirs = wordsOf(e.name);
+    return theirs.size > 0 && [...mine].every((w) => theirs.has(w));
+  });
 }
 
 /** The fresh aims worth writing, with any restatement of an existing one left out. */
-export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[]): AnAim[] {
+/**
+ * @param theySaid whether the person said a figure, at any scale. The figure in a name is kept as the
+ *   target only where they did: "N50m in sales" was the model's reading of a man who said "50kg bags",
+ *   and the service had already taken that number off (run 4); reading it back off the name would put
+ *   it straight back on. With no predicate, every figure in a name counts.
+ */
+export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[], theySaid: (n: number) => boolean = () => true): AnAim[] {
   const already = new Set(existing.map((o) => (o.name ?? '').trim().toLowerCase()));
   const kept: AnAim[] = [];
   for (const aim of fresh) {
     if (already.has((aim.name ?? '').trim().toLowerCase())) continue;
-    const withFigure = aim.target == null && theFigureInTheName(aim.name) != null ? { ...aim, target: theFigureInTheName(aim.name) } : aim;
+    const figure = aim.target == null ? theFigureInTheName(aim.name) : null;
+    const withFigure = figure != null && theySaid(figure) ? { ...aim, target: figure } : aim;
     if (isTheSameAimSaidAsItsNumber(withFigure, [...existing, ...kept])) continue;
     if (isTheSameFigureWordedAgain(withFigure, [...existing, ...kept])) continue;
-    kept.push(aim);
+    if (isAnExistingAimRestatedWithoutItsNumber(withFigure, [...existing, ...kept])) continue;
+    /* THE FIGURE IN THE NAME IS KEPT AS THE TARGET. This pushed `aim`, so "35% credit limit" was written
+       with no number and the board could never read a rate against it (run 11). */
+    kept.push(withFigure);
   }
   return kept;
 }

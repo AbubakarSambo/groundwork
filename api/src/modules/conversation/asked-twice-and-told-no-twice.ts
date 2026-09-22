@@ -264,6 +264,26 @@ export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean
   return asked.filter((a) => asksTheSameThingAgain(a, reply) || asksMuchTheSameThing(a, reply)).length >= 2;
 }
 
+/**
+ * THE SAME QUESTION STRAIGHT BACK, AFTER IT WAS ANSWERED. "What specific thing are you doing to keep
+ * them healthy right now?" - "Vaccinating them." - and two turns later "What specific thing are you
+ * doing to keep your 260 hens healthy right now?" - "I just said. Vaccinating them." (run 11, Halima).
+ * Not word for word, so repeatsTheLastAskWordForWord let it by; not a third ask, so alreadyAskedTwice
+ * did. A second ask that shares four fifths of the last one's subject, straight after a real answer
+ * to it, is the fault on its own. Stricter than asksTheSameThingAgain on purpose: a follow-up on the
+ * same subject ("what would get the Kano invoice moving" after "what moved on the Kano invoice") is
+ * how a conversation goes deeper, and shares about two fifths.
+ */
+export function asksItAgainAfterTheAnswer(lastAsk: string | null | undefined, reply: string): boolean {
+  if (!lastAsk?.trim() || !/\?/.test(reply ?? '')) return false;
+  const a = subjectWords(lastAsk.split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).join(' ') || lastAsk);
+  const b = subjectWords((reply ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).join(' '));
+  if (a.size < 3 || b.size < 3) return false;
+  let shared = 0;
+  for (const w of b) if (a.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.8;
+}
+
 function asksMuchTheSameThing(earlier: string, now: string): boolean {
   const a = subjectWords(earlier);
   const b = subjectWords(now);

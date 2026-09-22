@@ -59,7 +59,7 @@ describe('the number she said is kept', () => {
      * objectives, read off a participant's own screen. The same-name case it always handled is
      * still handled; `theAimsThatAreNew` owns both and has its own spec.
      */
-    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any\)/);
+    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
     expect(write).toMatch(/data: fresh\.map/);
   });
 
