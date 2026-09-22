@@ -221,6 +221,15 @@ export function contextChatPrompt(
    * conversation that cannot see what is on the page it sits on has to open by asking, every time.
    */
   holds?: { what: string; count: number }[],
+  /**
+   * AND WHAT IS ACTUALLY ON IT, so the conversation can answer a question about the page it sits on.
+   *
+   * "Are these targets right?" and "what is not settled?" were unanswerable: the chat knew how many
+   * things there were and not what they said. Everything in this block is already on the screen in
+   * front of the lead, so it discloses nothing - it stops the one control on the page being the only
+   * thing that cannot see it.
+   */
+  onRecord?: { heading: string; lines: string[] }[],
 ): string {
   const gapList = gaps.length
     ? gaps.map((g) => `- ${g.key}: ${g.ask}${g.suggests ? ` (worth asking for: ${g.suggests})` : ''}`).join('\n')
@@ -237,6 +246,13 @@ export function contextChatPrompt(
       ...hasList.map((h) => `- ${h.count} ${h.what}`),
       '',
       'OPEN ON THAT, NOT ON A GREETING. Your first message in a conversation that already has something recorded says what is here in one short line, then asks for the most important missing thing. Never introduce yourself, never explain what a ground is, and never ask for something this list says you already have.',
+      '',
+    ] : []),
+    ...((onRecord ?? []).some((r) => r.lines.length) ? [
+      'WHAT IS ON THIS CHECK-IN, IN FULL. They can see all of it on the page beside this conversation:',
+      ...(onRecord ?? []).filter((r) => r.lines.length).flatMap((r) => [`${r.heading}:`, ...r.lines.map((l) => `  - ${l}`)]),
+      '',
+      'ANSWER A QUESTION ABOUT IT FROM THAT LIST AND NOTHING ELSE. "Are these targets right?", "what is not settled?", "what does nobody own?" are questions about the list above: read the relevant part back plainly, say what looks thin or contradictory in it, and do not invent a line that is not there. If they ask about something the list does not hold, say it is not here.',
       '',
     ] : []),
     'WHAT IS STILL MISSING, in the order it matters:',

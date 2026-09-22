@@ -405,6 +405,16 @@ export class DocumentsService {
       /* What it holds, and the product's own words for it, so every page says the same sentence. */
       holds: held ?? null,
       theContextWeHave: held ? theContextWeHave(held) : null,
+      /*
+       * AND THE SAME SENTENCE WITH THE QUESTION ON IT, for the conversation that attached it.
+       *
+       * Read in the browser, 22 September 2026: a sheet of Q4 targets attached through the context
+       * chat was answered with "harvestline-q4-targets.xlsx is filed under this check-in's
+       * documents" - a filing receipt. The check-in chat had said what the sheet held and asked
+       * whether it was right; the lead's own tab, where the numbers are set, said nothing at all.
+       */
+      askingAboutIt: held ? theContextWeHave(held, { asking: true }) : null,
+      numbersWaiting: (held as any)?.waiting?.length ?? 0,
     };
   }
 
@@ -484,10 +494,19 @@ export class DocumentsService {
       forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null });
     }
 
-    if (toWrite.length) {
-      await this.prisma.groundObjective.createMany({ data: toWrite as any })
-        .catch((err: any) => this.logger?.warn?.(`Could not write the numbers from ${fileName}: ${err?.message}`));
-    }
+    /*
+     * NOTHING IS WRITTEN HERE ANY MORE. THE SENTENCE ASKED AND THE CODE HAD ALREADY DONE IT.
+     *
+     * Driven in the browser, 22 September 2026: a sheet of Q4 targets was attached mid-conversation,
+     * nineteen rows appeared on the record, and the chat then said "Here is the context we have...
+     * Is that right?" - a question about something already done, which is the one thing this product
+     * says it never does. Every other path asks first: the paste proposes and writes on a yes, and a
+     * target is the yardstick somebody is read against.
+     *
+     * So the read is kept ON the document, with the owner it resolved, and the conversation writes it
+     * when the person says yes - see whatTheDocumentWaitsFor in the conversation service.
+     */
+    const waiting = toWrite.map((r) => ({ name: r.name, target: r.target, ownerParticipantId: r.ownerParticipantId }));
     const landed: WhatLanded = {
       fileName,
       whatItIs: read.whatItIs?.trim() || null,
@@ -495,6 +514,9 @@ export class DocumentsService {
       forEverybody,
       dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
       unmatched,
+      /* What will be written when they say yes, with the owner already resolved. */
+      waiting,
+      takenAt: null,
     };
     await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
     this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);

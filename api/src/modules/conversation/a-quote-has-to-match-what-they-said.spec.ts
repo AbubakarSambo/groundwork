@@ -69,3 +69,38 @@ describe('a quote has to match what they said', () => {
     expect(unmatchedQuotes('He said "something they never wrote down anywhere"', [])).toEqual(['something they never wrote down anywhere']);
   });
 });
+
+/**
+ * AND IT IS WIRED INTO THE REPLY, WHICH IT WAS NOT.
+ *
+ * This module was written weeks ago and reached the coaching and the report. The reply - the only
+ * text a person actually reads - ran without it. Read in the browser, 22 September 2026, one turn
+ * after a document was confirmed: 'You also mentioned earlier that "What moved in your part?"' - the
+ * product's own question from the turn before, in quotation marks, attributed to her.
+ */
+describe('the reply goes through it too', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  it('on the turn path', () => {
+    expect(src).toContain('const honestlyQuoted = withoutQuotesTheyDidNotSay(reply, personWords)');
+    expect(src).toContain('a quotation nobody said lost its marks');
+  });
+
+  it('and on the streaming path, which is the one the screen uses', () => {
+    const stream = src.slice(src.indexOf('async *sendMessageStream('));
+    expect(stream).toContain('const streamHonest = withoutQuotesTheyDidNotSay(reply, streamPersonWords)');
+    /* Before the turn is written, so the transcript does not keep a misquote either. */
+    expect(stream.indexOf('const streamHonest')).toBeLessThan(stream.indexOf('const streamAiTurn = await this.prisma.conversationTurn.create('));
+  });
+
+  it('and the product question that started this loses its marks', () => {
+    const { withoutQuotesTheyDidNotSay: strip } = require('./a-quote-has-to-match-what-they-said');
+    const said = ['We are about 7.8m booked and I have not checked the invoices.'];
+    const reply = 'You also mentioned earlier that "What moved in your part?" What has moved since?';
+    expect(strip(reply, said)).toBe('You also mentioned earlier that What moved in your part? What has moved since?');
+    /* And a real quotation keeps its marks. */
+    expect(strip('You said "We are about 7.8m booked and I have not checked the invoices." What changed?', said))
+      .toContain('"We are about 7.8m booked');
+  });
+});

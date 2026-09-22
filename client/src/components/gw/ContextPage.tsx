@@ -5,6 +5,7 @@ import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
+import { scrollToId } from '@/lib/scroll-to'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
@@ -219,6 +220,16 @@ export function ContextPage({
       ...(b.kind === 'NOTE' ? olderNotes : []),
     ],
   }))
+  /*
+   * HAND A LINE TO THE CONVERSATION. The row says what it is; the lead finishes the sentence.
+   * Scrolling as well as filling, because the chat is at the top and a filled box nobody can see is
+   * the same as no box at all.
+   */
+  const changeThisInTheChat = (said: string) => {
+    window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
+    scrollToId('gw-context-chat')
+  }
+
   /** A line about one person, for their own row in the band above. The lead's, and nobody else's. */
   const linesAbout = (participantId: string, kind: 'ABOUT_A_PERSON' | 'QUESTION_FOR_PERSON') =>
     contextLines.filter((l) => l.kind === kind && l.aboutParticipantId === participantId)
@@ -423,11 +434,26 @@ export function ContextPage({
                         {g.who ?? 'The whole check-in'}
                       </div>
                       {g.rows.map((o: any, i: number) => (
-                        <div key={o.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
-                            {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
-                          </span>
+                        <div key={o.id} style={{ padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                            <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
+                              {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
+                            </span>
+                            {isTheLead && contextEnabled && (
+                              <button
+                                onClick={() => changeThisInTheChat(`Change the target "${o.name}" to `)}
+                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                Change this
+                              </button>
+                            )}
+                          </div>
+                          {/* A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, said beside the number
+                              rather than a page away. The lead's own sentence, from what they wrote. */}
+                          {o.notSettled && (
+                            <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 4, lineHeight: 1.5, maxWidth: '62ch' }}>{o.notSettled}</div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1000,6 +1026,14 @@ export function ContextPage({
                               >
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
                               </button>
+                              {contextEnabled && (
+                                <button
+                                  onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}
+                                  style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  Change this
+                                </button>
+                              )}
                               {/* Retired, not deleted: a decision that was made is not one that never existed. */}
                               <button
                                 onClick={() => changeLine.mutate({ itemId: l.id, closed: true })}

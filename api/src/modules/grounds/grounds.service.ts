@@ -45,6 +45,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
+import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
   A_CHANGE_PROMPT, A_CHANGE_SCHEMA, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
   type AChangeHeard, type AThingOnRecord, type WhatTheyWant,
@@ -1831,6 +1832,16 @@ export class GroundsService {
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const contextItems = theLinesFor(contextLines as any, { isTheLead: isInitiatorViewer || viewerAdminsThisOrg });
+    /*
+     * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT A TARGET, BESIDE THE TARGET.
+     *
+     * The board learnt this first; the Context page is where a lead sets the numbers, so it is the
+     * page where a number nobody has defined most needs to say so. Same read, same module.
+     */
+    const notSettledSaid = (contextLines as any[])
+      .filter((l) => l.kind === 'UNSETTLED' && !l.closedAt)
+      .map((l) => (l.text ?? '').trim())
+      .filter(Boolean);
 
     /*
      * WHAT PEOPLE ARE DOWN AS DOING, ON THE PAGE THE LEAD READS.
@@ -1865,6 +1876,11 @@ export class GroundsService {
       commitments,
       /* The buckets. Already filtered above: a participant is never sent a line about anybody. */
       contextItems,
+      /* Each target with the lead's own sentence about what is unsettled in it, where there is one. */
+      objectives: ((ground as any).objectives ?? []).map((o: any) => ({
+        ...o,
+        notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
+      })),
       /*
        * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
        *
@@ -2171,7 +2187,9 @@ export class GroundsService {
       : '';
     /* What it already holds, counted, so it opens on the page rather than on a greeting. */
     const alreadyHolds = await this.whatThisCheckInAlreadyHolds(groundId, perPersonAny).catch(() => []);
-    const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds)}${expectationRule}\n\n${documentBlock}`;
+    /* And in full, so a question about the page can be answered from the page. */
+    const onRecord = await this.whatIsOnThisCheckIn(groundId).catch(() => []);
+    const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds, onRecord)}${expectationRule}\n\n${documentBlock}`;
     const raw = await this.anthropic.respond(
       systemPrompt,
       history.length
@@ -2358,6 +2376,150 @@ export class GroundsService {
       { what: 'lines of context: the strategy, the rules, what is still to decide, what is not settled', count: lines },
       { what: 'things somebody is down to do', count: actions },
       { what: 'documents every check-in reads', count: docs },
+    ];
+  }
+
+
+
+  /**
+   * THE NUMBERS A SHEET IS WAITING ON, TAKEN WHEN THE LEAD SAYS YES.
+   *
+   * The document read stores what it found and writes nothing - see a-document-is-read-not-agreed.
+   * This is the other half for the Context tab: the chat said what the sheet holds and asked, and
+   * this is where the answer lands. Only the lead's own documents on this ground, and only the rows
+   * the read already resolved, so nothing about who may set whose number is decided here.
+   */
+  private async whatASheetIsWaitingFor(
+    groundId: string,
+    requestingUserId: string,
+    said: string | null | undefined,
+    history?: { role: 'user' | 'assistant'; content: string }[],
+  ): Promise<string | null> {
+    const answer = (said ?? '').trim();
+    if (!answer) return null;
+    /* Long enough for the sentence the screen sends: "yes, record the numbers from <file name>". */
+    const plainYes = /^(yes|yep|yeah|yup|ok|okay|sure|correct|that is right|thats right|right|confirmed?|take (it|them|those)|record (it|them|those|the numbers))\b[\s\S]{0,160}$/i.test(answer);
+    if (!plainYes) return null;
+    /* Only where the thing being agreed to is the sentence this product wrote about a sheet. */
+    const lastAsked = [...(history ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? '';
+    if (!/Here is the context we have from /i.test(lastAsked)) return null;
+    const me = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId }, select: { id: true } });
+    if (!me) return null;
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId, participantId: me.id, NOT: { holds: { equals: null as any } } },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { id: true, fileName: true, holds: true },
+    });
+    for (const d of docs) {
+      const holds = (d.holds ?? {}) as any;
+      const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
+      if (holds.takenAt || !waiting.length) continue;
+      const already = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
+      const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+      const rows = waiting.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
+      if (rows.length) {
+        await this.prisma.groundObjective.createMany({
+          data: rows.map((w, i) => ({
+            groundId,
+            name: w.name.slice(0, 120),
+            target: w.target,
+            ownerParticipantId: w.ownerParticipantId,
+            setByParticipantId: me.id,
+            sortOrder: 300 + already.length + i,
+          })) as any,
+        }).catch((err: any) => this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`));
+      }
+      await this.prisma.groundContextItem?.create?.({
+        data: {
+          groundId,
+          kind: ContextItemKind.NOTE,
+          text: `The numbers on this check-in come from ${d.fileName}.`,
+          audience: ContextNoteAudience.EVERYONE,
+          source: 'PASTE',
+          authorUserId: requestingUserId,
+        },
+      }).catch(() => undefined);
+      await this.prisma.groundDocument.update({ where: { id: d.id }, data: { holds: { ...holds, takenAt: new Date().toISOString() } as any } }).catch(() => undefined);
+      const mine = rows.filter((r) => r.ownerParticipantId).length;
+      const team = rows.length - mine;
+      if (!rows.length) return 'Those are already on the record, so nothing was written twice.';
+      return [
+        `Recorded from ${d.fileName}.`,
+        mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}, marked as yours and not yet seen by them.` : '',
+        team ? `${team} for the whole check-in, which everybody here sees.` : '',
+        'They are on the Context page now, and every check-in asks against them.',
+      ].filter(Boolean).join(' ');
+    }
+    return null;
+  }
+
+  /**
+   * WHAT IS ON THIS CHECK-IN, IN THE WORDS THE PAGE USES, for a question about the page.
+   *
+   * Everything here is already on the lead's screen beside the conversation - this is what makes
+   * "are these targets right?" answerable rather than a question the chat has to deflect. Capped per
+   * heading, because a prompt is not a database and a lead with two hundred lines does not need all
+   * of them quoted back at once.
+   */
+  private async whatIsOnThisCheckIn(groundId: string): Promise<{ heading: string; lines: string[] }[]> {
+    const [targets, expectations, lines, actions] = await Promise.all([
+      this.prisma.groundObjective.findMany({
+        where: { groundId },
+        select: { name: true, target: true, ownerParticipantId: true },
+        orderBy: { sortOrder: 'asc' },
+      }).catch(() => [] as any[]),
+      this.prisma.personObjective.findMany({
+        where: { groundId },
+        select: { text: true, participantId: true },
+        orderBy: { createdAt: 'asc' },
+      }).catch(() => [] as any[]),
+      this.prisma.groundContextItem?.findMany?.({
+        where: { groundId, closedAt: null },
+        select: { kind: true, text: true, aboutParticipantId: true },
+        orderBy: { createdAt: 'asc' },
+      })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+      this.prisma.groundCommitment?.findMany?.({
+        where: { groundId, status: 'UNKNOWN' },
+        select: { text: true, participantId: true, whenSaid: true },
+        orderBy: { createdAt: 'asc' },
+      })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
+    ]);
+    const people = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+    }).catch(() => [] as any[]);
+    const who = (id: string | null | undefined) => {
+      const p = (people as any[]).find((x) => x.id === id);
+      return p ? theNameWeUseFor(p as any) : null;
+    };
+    const say = (kind: string) => (lines as any[]).filter((l) => l.kind === kind).map((l) => l.text as string).slice(0, 20);
+    return [
+      {
+        heading: 'Targets',
+        lines: (targets as any[]).slice(0, 30).map((t) => `${t.name}${t.target != null ? `: ${t.target.toLocaleString('en-GB')}` : ' (no number set)'}${t.ownerParticipantId ? ` [${who(t.ownerParticipantId) ?? 'somebody'}]` : ' [the whole check-in]'}`),
+      },
+      {
+        heading: 'What is expected of each person, in your words, unseen by them',
+        lines: (expectations as any[]).slice(0, 20).map((e) => `${who(e.participantId) ?? 'somebody'}: ${e.text}`),
+      },
+      { heading: 'The strategy', lines: say('STRATEGY') },
+      { heading: 'How this team works', lines: say('WAY_OF_WORKING') },
+      { heading: 'Still to decide', lines: say('DECISION') },
+      { heading: 'Not settled, not to be treated as fact', lines: say('UNSETTLED') },
+      { heading: 'Notes', lines: say('NOTE') },
+      {
+        heading: 'Things somebody is down to do, with nobody marked as having done them',
+        lines: (actions as any[]).slice(0, 25).map((a) => `${who(a.participantId) ?? 'nobody owns this'}: ${a.text}${a.whenSaid ? ` (${a.whenSaid})` : ''}`),
+      },
+      {
+        heading: 'Your own read of people and the questions you want asked (never quoted to them)',
+        lines: [
+          ...(lines as any[]).filter((l) => l.kind === 'ABOUT_A_PERSON').slice(0, 10).map((l) => `${who(l.aboutParticipantId) ?? 'somebody'}: ${l.text}`),
+          ...(lines as any[]).filter((l) => l.kind === 'QUESTION_FOR_PERSON').slice(0, 10).map((l) => `ask ${who(l.aboutParticipantId) ?? 'somebody'}: ${l.text}`),
+          ...(lines as any[]).filter((l) => l.kind === 'BETWEEN_PEOPLE').slice(0, 6).map((l) => l.text as string),
+        ],
+      },
     ];
   }
 
@@ -2701,6 +2863,16 @@ export class GroundsService {
     if (/Which one\?\s*$/.test(lastAsked.trim()) && /^(yes|yep|yeah|ok|okay|sure|do it)\b[\s\S]{0,20}$/i.test((dto.said ?? '').trim())) {
       throw new BadRequestException('Say which one - the number, or enough of the line to tell them apart - and I will change it.');
     }
+
+    /*
+     * A YES TO WHAT A DOCUMENT HOLDS, IN THE LEAD'S OWN TAB.
+     *
+     * The check-in chat asks this and writes on the answer; the Context tab is where the numbers are
+     * SET, and it was the one place that filed the sheet and said nothing about what was in it. Same
+     * rule as everywhere else: the read waits on the document and a person's yes writes it.
+     */
+    const yesToASheet = await this.whatASheetIsWaitingFor(groundId, requestingUserId, dto.said, dto.history as any).catch(() => null);
+    if (yesToASheet) return { changed: 'the numbers from the sheet', say: yesToASheet };
 
     const exception = whatTheYesLeavesOut(dto.said);
     const thePaste = looksLikeADump(dto.said)

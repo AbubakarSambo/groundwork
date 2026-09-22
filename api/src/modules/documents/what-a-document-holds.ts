@@ -138,6 +138,15 @@ export interface WhatLanded {
   dates: { what: string; when: string }[];
   /** Names the document has that this check-in does not. */
   unmatched: string[];
+  /**
+   * WHAT IS WAITING ON A YES, with the owner already resolved.
+   *
+   * The numbers used to be written the moment the file was read, and the conversation then asked "is
+   * that right?" about something already on the record. They wait here instead - see
+   * whatTheDocumentWaitsFor - and `takenAt` says when a person said yes to them.
+   */
+  waiting?: { name: string; target: number; ownerParticipantId: string | null }[];
+  takenAt?: string | null;
 }
 
 /**

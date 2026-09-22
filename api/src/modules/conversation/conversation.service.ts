@@ -957,6 +957,74 @@ export class ConversationService {
     return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
+
+  /**
+   * A DOCUMENT'S NUMBERS WAIT FOR A YES, AND THIS IS THE YES.
+   *
+   * Driven in the browser, 22 September 2026: a sheet of Q4 targets was attached mid-conversation,
+   * nineteen rows appeared on the record, and the chat then asked "Is that right?" - about something
+   * already done. Reading a document is not agreeing to it. A target is the yardstick somebody is
+   * read against, so it waits, exactly as a paste does.
+   *
+   * WHOSE NUMBERS MAY BE WRITTEN is decided where the document was read (mayHoldANumber): their own
+   * and the group's, or anybody's when the lead attached it. This only writes what is already on the
+   * document, so that rule cannot be widened here.
+   */
+  private async whatTheDocumentWaitsFor(
+    checkIn: { id: string; groundId: string; participantId: string },
+    said: string | null | undefined,
+  ): Promise<string | null> {
+    const answer = (said ?? '').trim();
+    if (!answer || !/^(yes|yep|yeah|yup|ok|okay|sure|correct|that is right|thats right|that's right|right|confirmed?|take (it|them|those)|record (it|them|those))\b[\s\S]{0,40}$/i.test(answer)) return null;
+    try {
+      const docs = await this.prisma.groundDocument.findMany({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId, NOT: { holds: { equals: null as any } } },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { id: true, fileName: true, holds: true },
+      });
+      for (const d of docs) {
+        const holds = (d.holds ?? {}) as any;
+        const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
+        if (holds.takenAt || !waiting.length) continue;
+        /* Nothing already on the record twice: the same measure for the same owner is one target. */
+        const already = await this.prisma.groundObjective.findMany({ where: { groundId: checkIn.groundId }, select: { name: true, ownerParticipantId: true } });
+        const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+        const rows = waiting.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
+        if (rows.length) {
+          await this.prisma.groundObjective.createMany({
+            data: rows.map((w, i) => ({
+              groundId: checkIn.groundId,
+              name: w.name.slice(0, 120),
+              target: w.target,
+              ownerParticipantId: w.ownerParticipantId,
+              setByParticipantId: checkIn.participantId,
+              sortOrder: 200 + already.length + i,
+            })) as any,
+          }).catch((err: any) => this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`));
+        }
+        await this.prisma.groundDocument.update({
+          where: { id: d.id },
+          data: { holds: { ...holds, takenAt: new Date().toISOString() } as any },
+        }).catch(() => undefined);
+        this.logger.log(`Check-in ${checkIn.id}: took ${rows.length} number(s) from ${d.fileName} on a yes.`);
+        const mine = rows.filter((r) => r.ownerParticipantId).length;
+        const team = rows.length - mine;
+        if (!rows.length) return `Those are already on the record, so nothing was written twice.`;
+        return [
+          `Recorded from ${d.fileName}.`,
+          mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}.` : '',
+          team ? `${team} for the whole check-in, which everybody here sees.` : '',
+          'Nobody is measured against any of it until they have seen it.',
+        ].filter(Boolean).join(' ');
+      }
+      return null;
+    } catch (err: any) {
+      this.logger.warn(`Could not take a document's numbers on ${checkIn.id}: ${err?.message}`);
+      return null;
+    }
+  }
+
   /**
    * THE FIRST THING THIS PRODUCT EVER SAYS, CHECKED THE WAY EVERYTHING AFTER IT IS.
    *
@@ -1894,6 +1962,22 @@ export class ConversationService {
       // is no word of hers to put back - the causation was invented whole. It is
       // logged rather than edited: silently deleting half a sentence would leave
       // prose that reads as though the engine lost its train of thought.
+      /*
+       * AND A QUOTE THEY DID NOT SAY LOSES ITS MARKS, ON THE PATH PEOPLE ACTUALLY READ.
+       *
+       * `withoutQuotesTheyDidNotSay` has existed for weeks and was wired into the coaching and the
+       * report, never into the reply. Read in the browser, 22 September 2026, one turn after a
+       * document was confirmed: 'You also mentioned earlier that "What moved in your part?"' - the
+       * product's own question from the turn before, in quotation marks, attributed to her.
+       *
+       * The sentence survives and the marks come off, which is what the module was written to do: a
+       * paraphrase dressed as a quotation is the fault, not the paraphrase.
+       */
+      const honestlyQuoted = withoutQuotesTheyDidNotSay(reply, personWords);
+      if (honestlyQuoted !== reply) {
+        this.logger.warn(`Check-in ${checkIn.id}: a quotation nobody said lost its marks.`);
+        reply = honestlyQuoted;
+      }
       const truncated = truncationsOfTheirWords(reply, personWords);
       if (truncated.length) {
         /* How many, not which: the words are the person's own. */
@@ -1979,7 +2063,18 @@ export class ConversationService {
      * we now have. See theContextNotYetSaid.
      */
     const contextNotSaid = await this.theContextNotYetSaid(checkIn as any);
-    return { reply: contextNotSaid ? `${contextNotSaid}\n\n${withRoomLeft}` : withRoomLeft, sessionComplete };
+    /*
+     * AND A YES TO WHAT A DOCUMENT HOLDS IS THE MOMENT ITS NUMBERS ARE WRITTEN.
+     *
+     * The chat says "Here is the context we have... Is that right?" - so this turn is where that
+     * question is answered. Before today the numbers were already on the record when the question
+     * was asked. See whatTheDocumentWaitsFor.
+     */
+    const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message);
+    return {
+      reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
+      sessionComplete,
+    };
   }
 
   /**
@@ -2244,6 +2339,19 @@ export class ConversationService {
         yield { type: 'delta', text: `${contextFirst}\n\n` };
       }
 
+      /*
+       * AND A YES TO WHAT A DOCUMENT HOLDS IS WHERE ITS NUMBERS ARE WRITTEN - ON THIS PATH TOO.
+       *
+       * Found in the browser rather than in the code: the screen streams, so wiring this into
+       * `sendMessage` alone meant a lead said yes, saw "Great. What moved this week?", and nothing
+       * was written. The non-streaming path is the API's; this one is the product's.
+       */
+      const tookFromTheSheet = await this.whatTheDocumentWaitsFor(checkIn as any, message);
+      if (tookFromTheSheet) {
+        shown += `${tookFromTheSheet}\n\n`;
+        yield { type: 'delta', text: `${tookFromTheSheet}\n\n` };
+      }
+
       let emitted = 0;
       /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
       /*
@@ -2325,6 +2433,25 @@ export class ConversationService {
           `Causal claim nobody made on ${checkIn.id}: ${streamCausal.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
         );
       }
+
+      /*
+       * WHAT WE SAID BEFORE THE MODEL SPOKE HAS TO SURVIVE THE END OF THE STREAM.
+       *
+       * `done` carries the whole reply and ChatPage replaces the streamed text with it - the comment
+       * fifteen lines below has said so for weeks. So anything yielded as a delta and not folded into
+       * `reply` is wiped the moment the stream finishes: what a document holds, and the receipt for
+       * taking its numbers, both appeared and then vanished. Found in the browser: a lead said yes,
+       * nine targets were written, and the screen said "Right. The Q4 targets are clear."
+       */
+      /* Same guard, same reason, on the path the screen uses - see the note on the turn path. */
+      const streamHonest = withoutQuotesTheyDidNotSay(reply, streamPersonWords);
+      if (streamHonest !== reply) {
+        this.logger.warn(`Check-in ${checkIn.id}: a quotation nobody said lost its marks.`);
+        reply = streamHonest;
+      }
+
+      const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\n\n');
+      if (ourOwnWords) reply = `${ourOwnWords}\n\n${reply}`;
 
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },

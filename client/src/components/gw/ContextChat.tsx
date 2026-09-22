@@ -46,6 +46,29 @@ export function ContextChat({ groundId }: { groundId: string }) {
     remembered?.history ?? [],
   )
   const [text, setText] = useState('')
+  /*
+   * A LINE FROM THE PAGE, HANDED TO THE CONVERSATION.
+   *
+   * Every row of the record carries "Change this", and the change is a sentence rather than a form -
+   * so the row puts the sentence in the box and the lead finishes it. An event rather than a store
+   * because the two live in different bands of one page and nothing else needs to know.
+   */
+  useEffect(() => {
+    const listen = (e: Event) => {
+      const said = (e as CustomEvent<string>).detail
+      if (!said) return
+      setOpen(true)
+      setText(said)
+      /* After the state lands, so the caret is at the end of what the row wrote. */
+      setTimeout(() => {
+        const box = document.querySelector<HTMLInputElement>('[data-gw-context-chat-input]')
+        box?.focus()
+        box?.setSelectionRange(box.value.length, box.value.length)
+      }, 60)
+    }
+    window.addEventListener('gw:context-chat:say', listen)
+    return () => window.removeEventListener('gw:context-chat:say', listen)
+  }, [])
   const [done, setDone] = useState(remembered?.done ?? false)
   /**
    * WHAT IT HEARD, WAITING ON A YES. This panel has always said "nothing is saved until you say
@@ -84,14 +107,28 @@ export function ContextChat({ groundId }: { groundId: string }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const attach = useMutation({
     mutationFn: (file: File) => documentsApi.upload(groundId, file),
-    onSuccess: (_res, file) => {
+    onSuccess: (res: any, file) => {
       qc.invalidateQueries({ queryKey: ['documents', groundId] })
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       toast.success(`${file.name} is filed under Documents`)
-      setHistory((h) => [
-        ...h,
-        { role: 'assistant', content: `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.` },
-      ])
+      /*
+       * WHAT THE SHEET HOLDS, NOT A FILING RECEIPT.
+       *
+       * Read in the browser, 22 September 2026: a sheet of Q4 targets attached here was answered
+       * with "harvestline-q4-targets.xlsx is filed under this check-in's documents". The check-in
+       * chat said what the sheet held and asked whether it was right; the lead's own tab - the page
+       * where the numbers are set - said nothing about the numbers. The server writes the sentence
+       * and the question; this says them and offers the yes.
+       */
+      const filed = `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.`
+      const asking: string | null = res?.askingAboutIt ?? null
+      const waiting = res?.numbersWaiting ?? 0
+      /* The numbers go in the card that asks about them, not in the bubble AND the card - read live,
+         the list appeared twice in a row. The bubble says what happened to the file. */
+      setHistory((h) => [...h, { role: 'assistant', content: asking && !waiting ? `${filed}\n\n${asking}` : filed }])
+      if (asking && waiting > 0) {
+        setProposal({ gap: 'document', say: asking, said: `yes, record the numbers from ${file.name}` })
+      }
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not upload. Try again.'),
   })
@@ -334,6 +371,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
+            data-gw-context-chat-input
             placeholder="Type your answer…"
             style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }}
           />
