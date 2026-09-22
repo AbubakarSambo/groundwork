@@ -3,14 +3,15 @@ import { recordAndMoveOn, whatTheAbsenceMeans, NOTHING_HERE_HAS_A_NUMBER } from 
 /** Ngozi, run 6: asked for the individual targets three times, then what she would do about it, twice. */
 describe('a refusal is an answer', () => {
   it('says what the absence means, to the person', () => {
-    expect(whatTheAbsenceMeans('who is responsible for which part of that plan')).toBe('Then it goes on this record as not given: who is responsible for which part of that plan.');
-    expect(whatTheAbsenceMeans('what is clear and what is not')).toBe('Then it goes on this record as not given: what is clear and what is not.');
-    expect(whatTheAbsenceMeans('what this is trying to achieve')).toBe('Then it goes on this record as not given: what this is trying to achieve.');
-    expect(whatTheAbsenceMeans('the part of the plan that is theirs to do')).toBe('Then it goes on this record as not given: the part of the plan that is yours to do.');
+    expect(whatTheAbsenceMeans('who is responsible for which part of that plan')).toBe('Then this record shows nothing on who is responsible for which part of that plan.');
+    expect(whatTheAbsenceMeans('what is clear and what is not')).toBe('Then this record shows nothing on what is clear and what is not.');
+    expect(whatTheAbsenceMeans('what this is trying to achieve')).toBe('Then this record shows nothing on what this is trying to achieve.');
+    expect(whatTheAbsenceMeans('the part of the plan that is theirs to do')).toBe('Then this record shows nothing on the part of the plan that is yours to do.');
   });
   it('and moves to the next thing: the plan\'s question, else the next owed thing, else nothing', () => {
-    expect(recordAndMoveOn('the goals or targets, as numbers or dates', { question: 'What did the credit review on Friday decide?' })).toBe('Then it goes on this record as not given: the goals or targets, as numbers or dates. What did the credit review on Friday decide?');
-    expect(recordAndMoveOn(null, { owed: 'what they need from other people' })).toBe('That goes on this record as you put it. The other thing this check-in is for: what you need from other people.');
+    expect(recordAndMoveOn('the goals or targets, as numbers or dates', { question: 'What did the credit review on Friday decide?' })).toBe('Then this record shows nothing on the goals or targets, as numbers or dates. What did the credit review on Friday decide?');
+    /* Asked, not labelled: "The other thing this check-in is for: what you need from other people" read as a weird colon (Hafsah, 21 Sep 2026). */
+    expect(recordAndMoveOn(null, { owed: 'what they need from other people' })).toBe('That goes on this record as you put it. What do you need from other people?');
     expect(recordAndMoveOn(null, {})).toBe('That goes on this record as you put it.');
     expect(NOTHING_HERE_HAS_A_NUMBER).toMatch(/how it will read/);
   });
