@@ -32,6 +32,9 @@ export function AnswerFirstPage() {
   const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>('reading')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
+     report is about, and this asked for a name and an address and nothing else. */
+  const [org, setOrg] = useState('')
   /* Whether they want the report: asked outright, and the answer kept either way. */
   const [wantsIt, setWantsIt] = useState<boolean | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -55,7 +58,22 @@ export function AnswerFirstPage() {
       setPhase('talking')
       if (started.reply) setTurns([{ who: 'it', text: started.reply }])
     } catch (err: any) {
-      setProblem(err?.response?.data?.message ?? 'That did not start. Try the link again.')
+      /*
+       * THE ELEVENTH PERSON IN THE ROOM WAS TOLD NOTHING.
+       *
+       * These routes are rate limited, and a hundred people scanning one QR code on one wifi hit
+       * that limit within seconds. The 429 was caught, `problem` was set - and `problem` was only
+       * rendered on the address screen, so on this screen the button simply went back to saying
+       * "Start". Proven on a phone, 23 September 2026: 429 in the network log, nothing at all on
+       * the screen. The limit itself is fixed in a-room-of-people-is-not-one-person; this is the
+       * half that matters when it is hit anyway.
+       */
+      const status = err?.response?.status
+      setProblem(
+        status === 429
+          ? 'A lot of people are starting at the same time. Wait a few seconds and press Start again - nothing is lost.'
+          : err?.response?.data?.message ?? 'That did not start. Try the link again.',
+      )
     } finally { setBusy(false) }
   }
 
@@ -91,7 +109,7 @@ export function AnswerFirstPage() {
     setProblem('')
     try {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
-      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail)
+      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
       setSentTo(done.at)
       setPhase('done')
     } catch (err: any) {
@@ -140,13 +158,25 @@ export function AnswerFirstPage() {
         {phase === 'reading' && (
           <div>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              Answer in your own words. It takes about two minutes, nobody sees what you write, and
-              you are not asked who you are until the end.
+              {/*
+                WHAT IT USED TO SAY: "nobody sees what you write". That is not true and it is not a
+                small untruth - the person who sent this link reads every answer, and the report
+                built from them goes back out to everybody who asked for it. A promise of privacy
+                made in the second before somebody types is the worst place in the product to be
+                wrong. Hafsah, 23 September 2026.
+              */}
+              Answer in your own words. It takes about two minutes. {what.askedBy ?? 'Whoever asked'} reads
+              what you write, and it goes into one report for everybody - you are not asked who you
+              are until the end.
             </p>
             <button onClick={begin} disabled={busy}
               style={{ marginTop: 16, padding: '12px 22px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               {busy ? 'Starting...' : 'Start'}
             </button>
+            {/* The reason, where the button is. See begin() for the hundred people this is for. */}
+            {problem && (
+              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
+            )}
           </div>
         )}
 
@@ -214,6 +244,10 @@ export function AnswerFirstPage() {
                 <input id="open-name" type="text" autoComplete="name" value={name}
                   onChange={e => { setName(e.target.value); setProblem('') }}
                   placeholder="Your name" style={field} />
+                <label htmlFor="open-org" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your organisation</label>
+                <input id="open-org" type="text" autoComplete="organization" value={org}
+                  onChange={e => { setOrg(e.target.value); setProblem('') }}
+                  placeholder="Where you work" style={field} />
                 <label htmlFor="open-email" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Where to send it</label>
                 <input id="open-email" type="email" autoComplete="email" value={email}
                   onChange={e => { setEmail(e.target.value); setProblem('') }}
@@ -226,6 +260,10 @@ export function AnswerFirstPage() {
                 <input id="open-name" type="text" autoComplete="name" value={name}
                   onChange={e => { setName(e.target.value); setProblem('') }}
                   placeholder="Your name" style={field} />
+                <label htmlFor="open-org-2" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your organisation (you can leave this blank too)</label>
+                <input id="open-org-2" type="text" autoComplete="organization" value={org}
+                  onChange={e => { setOrg(e.target.value); setProblem('') }}
+                  placeholder="Where you work" style={field} />
               </div>
             )}
             {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}

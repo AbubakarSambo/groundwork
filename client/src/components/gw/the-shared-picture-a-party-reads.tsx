@@ -20,13 +20,25 @@ const LABEL: React.CSSProperties = {
   fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
   color: 'var(--gw-sub-d)', marginBottom: 10,
 }
+import { WhatTheNetworkSaid } from './WhatTheNetworkSaid'
+
 const PROSE: React.CSSProperties = { fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)', maxWidth: '68ch' }
 
 export function TheSharedPictureAPartyReads({ report }: { report: any }) {
   const agreements: any[] = report?.agreements ?? []
   const divergences: any[] = report?.divergences ?? []
   const picture: string | null = report?.sharedPicture ?? null
-  if (!picture && !agreements.length && !divergences.length) return null
+  /*
+   * A HUNDRED ACCOUNTS COME FIRST, WHERE THERE ARE A HUNDRED.
+   *
+   * The block below is an alignment read - agreements and the gap - and it is capped at five
+   * hundred words because that is right for two people. Where enough separate organisations
+   * answered, the API writes a second read with its own shape and its own room, and that is the
+   * one somebody opens the report for. It goes above, not below. See a-hundred-accounts-are-not-
+   * two.ts and WhatTheNetworkSaid.
+   */
+  const network: any = report?.networkPicture ?? null
+  if (!picture && !agreements.length && !divergences.length && !network) return null
 
   /* An agreement arrives as a string on some paths and an object on others, and either half of the
      object can itself be a list. A page must not assume which shape arrived. */
@@ -35,6 +47,9 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
   const textOf = (a: any) => (typeof a === 'string' ? a : [flat(a?.topic), flat(a?.note)].filter(Boolean).join(' - '))
 
   return (
+    <>
+    {network && <WhatTheNetworkSaid picture={network} />}
+    {(picture || agreements.length || divergences.length) && (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ fontSize: 13.5, fontWeight: 700 }}>The shared picture</div>
@@ -79,5 +94,7 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
         </div>
       )}
     </div>
+    )}
+    </>
   )
 }

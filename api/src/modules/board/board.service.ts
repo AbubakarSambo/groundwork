@@ -134,7 +134,7 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true,
+            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
             managingOnly: true, signedOffAt: true,
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,

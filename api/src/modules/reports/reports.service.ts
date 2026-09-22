@@ -65,6 +65,8 @@ import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
+import { readAsANetwork, theNetworkInstruction, THE_NETWORK_REPORT_SCHEMA } from './a-hundred-accounts-are-not-two';
+import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
 import { withTheDisputeAttached, HOW_TO_READ_A_DISPUTED_LINE } from './a-disputed-line-is-shown-as-disputed';
@@ -903,7 +905,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true },
+      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1979,6 +1981,39 @@ Close the report by framing - neutrally, without recommending one - the choice n
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
     }
 
+    /*
+     * AND THE SECOND READ, WHERE THERE ARE ENOUGH SEPARATE ACCOUNTS FOR IT TO MEAN ANYTHING.
+     *
+     * The report above is an alignment read and it is capped at five hundred words, which is right
+     * for two people and useless for a hundred organisations. So the network picture is its own
+     * call with its own shape and its own room. See a-hundred-accounts-are-not-two.
+     *
+     * BEST EFFORT, ALWAYS. A report that already succeeded must never be lost to this: if the
+     * second read fails the first one is still written, and the column is simply null.
+     */
+    const howManyAnswered = await this.prisma.checkIn.findMany({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    }).then((rows) => new Set(rows.map((r) => r.participantId)).size).catch(() => 0);
+    let networkPicture: any = null;
+    if (readAsANetwork(howManyAnswered)) {
+      const asked = ((ground as any).brief ?? '').trim() || ground.label;
+      try {
+        const began = Date.now();
+        networkPicture = await this.anthropic.extract<any>(
+          theNetworkInstruction(howManyAnswered, asked),
+          [{ role: 'user', content: `${roster}\n\n${records.map((r) => {
+            const label = labelById.get(r.participant.id) ?? 'a party';
+            return `[${label}] (${r.type}) ${r.text}`;
+          }).join('\n')}` }],
+          THE_NETWORK_REPORT_SCHEMA as any,
+        );
+        this.logger.log(`Read ${howManyAnswered} accounts on ${groundId} as a network in ${Date.now() - began}ms.`);
+      } catch (err: any) {
+        this.logger.warn(`The network read on ${groundId} failed, so the report is the alignment one alone: ${err?.message}`);
+      }
+    }
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -2059,6 +2094,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
           : undefined) as any,
         arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
+        networkPicture: (networkPicture ?? undefined) as any,
         releasedAt: null,
       },
       update: {
@@ -2077,6 +2113,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           ? { closingComplete: true, tiers: Object.fromEntries(Object.entries(arcByParticipant).map(([pid, s2]) => [pid, s2.tier])), endStates: endStatesFor(ground.scenario).map((o) => ({ value: o.value, label: o.label })) }
           : undefined) as any,
         arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
+        /* A failed second read leaves the one already stored alone rather than blanking it. */
+        networkPicture: (networkPicture ?? undefined) as any,
       },
     });
 
@@ -2188,7 +2226,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         initiatorId: true,
         participants: {
           select: {
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -2280,7 +2318,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             /* The function detection columns, so the conversation question can read the role map of
                the round's clearest function. Same tier as roleAsDescribed: a fact about the work. */
             detectedFunction: true, detectedFunctionConfidence: true,
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -3063,13 +3101,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
        */
       /* The stored, model-written picture, under its own name so nothing downstream that still reads
          it breaks, and so the page can never mistake it for the engine-drafted one. */
+      /*
+       * AND THROUGH THE SAME DECISION AS THE REPORT ITSELF.
+       *
+       * This read its own answer from `peersAreNamed`, which is the check-in's setting rather than
+       * the organiser's choice at the moment of sending - so an organiser who sent a hundred people
+       * an anonymised report would have had every name put back on this one surface. The picture on
+       * the session page is the same picture; it gets the same rule. See what-the-respondents-get.
+       */
       writtenPicture: snapshot?.sharedPicture
-        ? this.applyNames(
-            { sharedPicture: snapshot.sharedPicture } as any,
-            ground.participants as any,
+        ? this.asItWasShared(
+            { ...(ground as any), report: { ...(ground as any).report, sharedPicture: snapshot.sharedPicture } },
             me?.id ?? null,
             viewerIsLead,
-            this.peersAreNamed(ground as any),
           ).sharedPicture
         : null,
       takenAt: snapshot?.takenAt ?? null,
@@ -3603,7 +3647,7 @@ happened, and what is in the way.`;
    * controller. Who will get it is listed back, by name and address, so the lead can see the send
    * before and after it happens: `owed` is who has not been told yet, `told` who has.
    */
-  async sendToEveryone(groundId: string, userId: string, organizationId: string): Promise<{ sessionNumber: number; sent: number; failed: number; alreadyTold: number; notAsked: number }> {
+  async sendToEveryone(groundId: string, userId: string, organizationId: string, as: HowItWasShared = 'NAMED'): Promise<{ sessionNumber: number; sent: number; failed: number; alreadyTold: number; notAsked: number; sharedAs: HowItWasShared }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, initiatorId: true, report: { select: { releasedAt: true } } } });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person running this check-in can send its report.');
@@ -3611,11 +3655,19 @@ happened, and what is in the way.`;
     if (completed === 0) throw new BadRequestException('Nobody has answered yet, so there is no report to send.');
     if (!ground.report) await this.synthesize(groundId);
     if (!ground.report?.releasedAt) await this.release(groundId, organizationId);
+    /*
+     * THE ORGANISER'S CHOICE, WRITTEN BEFORE A SINGLE MAIL GOES OUT.
+     *
+     * Written first on purpose: the link in the mail leads to a page that reads this column, so a
+     * send that wrote it afterwards would race its own email. See what-the-respondents-get.
+     */
+    const sharedAs: HowItWasShared = isHowItWasShared(as) ? as : 'NAMED';
+    await this.prisma.report.update({ where: { groundId }, data: { sharedAs } });
     const sessionNumber = await this.prisma.checkIn.aggregate({ where: { groundId, status: CheckInStatus.COMPLETED }, _max: { sessionNumber: true } }).then((r) => r._max.sessionNumber ?? 1);
     const before = await this.prisma.reportNotice.count({ where: { groundId, sessionNumber } });
     const notAsked = await this.prisma.groundParticipant.count({ where: { groundId, wantsTheReport: false } });
     const r = await this.tellThemTheReportIsReady(groundId, sessionNumber);
-    return { sessionNumber, sent: r.attempted - r.failed, failed: r.failed, alreadyTold: before, notAsked };
+    return { sessionNumber, sent: r.attempted - r.failed, failed: r.failed, alreadyTold: before, notAsked, sharedAs };
   }
 
   /** Fetch the report. If released, returns full content for any party or the
@@ -3829,6 +3881,33 @@ happened, and what is in the way.`;
    * disagree with them: the lead's setting where they have made one, and otherwise hidden on the
    * kinds of check-in that decide something about a person.
    */
+  /**
+   * THE REPORT AS THE ORGANISER CHOSE TO SHARE IT.
+   *
+   * Both report reads went through `applyNames(..., peersAreNamed)`, which answers a question about
+   * the CHECK-IN - are people named to each other here - and there was no way to answer the
+   * different question the organiser is actually asked at the moment of sending: is the copy these
+   * hundred people receive named or anonymised. See what-the-respondents-get.
+   *
+   * Anonymised is two things, not one. Names are not put back, AND the text is scrubbed of the
+   * people and organisations by name, because a name inside a quote survives every label
+   * substitution ever written. The lead's own copy is untouched: they ran this.
+   */
+  private asItWasShared(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; report?: any; participants?: any[] },
+    viewerParticipantId: string | null,
+    viewerIsLead: boolean,
+  ) {
+    const sharedAs = (ground.report as any)?.sharedAs ?? null;
+    const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any) });
+    const withNames = this.applyNames(ground.report as any, (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
+    return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
+      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
+      organisation: p.organisationGiven ?? null,
+    })));
+  }
+
   private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
     const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
     return (ground as any).peersVisibleToEachOther ?? !evaluative;
@@ -4593,7 +4672,7 @@ happened, and what is in the way.`;
       }
 
       return {
-        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)),
+        ...this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
@@ -4715,7 +4794,7 @@ happened, and what is in the way.`;
     ]);
     const base: any = {
       ...withoutOtherPeoplesReads(
-        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)) as any,
+        this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
         {
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,

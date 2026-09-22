@@ -114,7 +114,7 @@ export class TheOpenLinkService {
    * gives a real address gets the report; somebody who does not still leaves their account on the
    * record, because the lead asked a question and they answered it.
    */
-  async finish(key: string, email?: string, firstName?: string, wantsTheReport?: boolean) {
+  async finish(key: string, email?: string, firstName?: string, wantsTheReport?: boolean, organisation?: string) {
     const row = await this.theirRow(key);
     const checkIn = row.checkIns[0];
     if (!checkIn) throw new BadRequestException('Open the link again to start.');
@@ -123,10 +123,17 @@ export class TheOpenLinkService {
     /* THE NAME THEY GAVE, AND WHETHER THEY WANT THE REPORT, kept whether or not an address came with them.
        A name with no address still names their line on the lead's report. */
     const name = (firstName ?? '').trim().slice(0, 120) || null;
-    if (name || wantsTheReport != null) {
+    /* AND WHO THEY ANSWERED FOR. On a check-in run across a network the organisation is the unit
+       the report is about, and the link collected a name and an address and nothing else. */
+    const org = (organisation ?? '').trim().slice(0, 160) || null;
+    if (name || org || wantsTheReport != null) {
       await this.prisma.groundParticipant.update({
         where: { id: row.id },
-        data: { ...(name ? { nameGiven: name } : {}), ...(wantsTheReport != null ? { wantsTheReport } : {}) },
+        data: {
+          ...(name ? { nameGiven: name } : {}),
+          ...(org ? { organisationGiven: org } : {}),
+          ...(wantsTheReport != null ? { wantsTheReport } : {}),
+        },
       });
     }
     if (at) {
@@ -152,11 +159,39 @@ export class TheOpenLinkService {
         select: { id: true },
       });
       if (already) {
+        /*
+         * AND THE SECOND TIME THEY ANSWERED, WHICH THREW A 409 AND LOST IT.
+         *
+         * `CheckIn` is unique on (participantId, sessionNumber), and this moved the new answer onto
+         * the existing row still calling itself session one. So anybody who had already answered on
+         * this link with this address - their phone died and they started over, they were
+         * interrupted at the event and came back, they simply answered twice - got "Something with
+         * that name or key already exists" and their whole second conversation went nowhere.
+         * Observed on the hundred-person run, 23 September 2026.
+         *
+         * Nothing they said is lost is the rule this merge already claimed, so the moving check-ins
+         * take the next free session numbers on the row they are joining. Two answers from one
+         * person are two sessions, which is what they are, and the report reads both.
+         */
+        const takenThere = await this.prisma.checkIn.findMany({
+          where: { participantId: already.id },
+          select: { sessionNumber: true },
+        });
+        const moving = await this.prisma.checkIn.findMany({
+          where: { participantId: row.id },
+          select: { id: true },
+          orderBy: { sessionNumber: 'asc' },
+        });
+        let next = Math.max(0, ...takenThere.map((c) => c.sessionNumber));
         await this.prisma.$transaction([
-          this.prisma.checkIn.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
+          ...moving.map((c) => {
+            next += 1;
+            return this.prisma.checkIn.update({ where: { id: c.id }, data: { participantId: already.id, sessionNumber: next } });
+          }),
           this.prisma.recordEntry.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
           this.prisma.groundDocument.updateMany({ where: { participantId: row.id }, data: { participantId: already.id } }),
           ...(name ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { nameGiven: name } })] : []),
+          ...(org ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { organisationGiven: org } })] : []),
           ...(wantsTheReport != null ? [this.prisma.groundParticipant.update({ where: { id: already.id }, data: { wantsTheReport } })] : []),
           this.prisma.groundParticipant.delete({ where: { id: row.id } }),
         ]);

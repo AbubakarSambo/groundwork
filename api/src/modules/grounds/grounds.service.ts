@@ -286,7 +286,7 @@ export const SAFE_PARTICIPANT_SELECT = {
   roleAsDescribed: true,
   /* The name somebody gave at the end of an open link, and whether they asked for the report. The lead's
      roster reads both; the send-to-everyone button says who it will reach. */
-  nameGiven: true,
+  nameGiven: true, organisationGiven: true,
   wantsTheReport: true,
   invitedAt: true,
   notifiedAt: true,

@@ -40,8 +40,10 @@ export const reportsApi = {
     apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
 
   /** The lead's button: this round's report to everyone who answered and asked for it, once each. */
-  sendToEveryone: (groundId: string) =>
-    apiClient.post<{ sessionNumber: number; sent: number; failed: number; alreadyTold: number; notAsked: number }>(`/grounds/${groundId}/report/send-to-everyone`).then(r => r.data),
+  /* `as` is the organiser's choice of what the respondents receive, made at the moment of sending.
+     See what-the-respondents-get.ts on the API for what anonymised does and does not remove. */
+  sendToEveryone: (groundId: string, as: 'NAMED' | 'ANONYMOUS' = 'NAMED') =>
+    apiClient.post<{ sessionNumber: number; sent: number; failed: number; alreadyTold: number; notAsked: number; sharedAs: 'NAMED' | 'ANONYMOUS' }>(`/grounds/${groundId}/report/send-to-everyone`, { as }).then(r => r.data),
 
   /* `activate` is gone with the reveal it belonged to. Nothing withholds a released report from
      the person it is for any more, so there is nothing to activate - see there-is-no-reveal.spec.

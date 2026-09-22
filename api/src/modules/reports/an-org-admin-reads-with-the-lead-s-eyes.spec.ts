@@ -41,11 +41,24 @@ describe('who reads with the lead\'s eyes', () => {
   it('an org admin does, on both the forming and the released report', () => {
     // Two call sites, and a report that names people before release but not after would be
     // the worst of both.
-    /* The call now carries the check-in's naming setting after this flag, so the match runs to the
-       flag rather than to the closing bracket. What is protected is that both call sites hand an
-       org admin the same eyes as the lead. */
-    const calls = CODE.match(/applyNames\([^)]*isInitiator \|\| isOrgAdmin[,)]/g) ?? [];
+    /*
+     * THE CALL MOVED, THE DECISION DID NOT. Both sites now go through `asItWasShared`, which wraps
+     * `applyNames` and adds the organiser's named-or-anonymised choice on top of it - see
+     * what-the-respondents-get.ts. The flag handed in is the same flag, in the same position, and
+     * that is the thing this pins: an org admin reads with the lead's eyes on the forming report
+     * and on the released one.
+     */
+    const calls = CODE.match(/asItWasShared\([^)]*isInitiator \|\| isOrgAdmin[,)]/g) ?? [];
     expect(calls.length).toBe(2);
+    /* And nothing bypasses the wrapper by calling the inner one directly from a read path. */
+    expect(CODE.match(/this\.applyNames\(/g) ?? []).toHaveLength(1);
+  });
+
+  /* THE LEAD IS NEVER ANONYMISED TO THEMSELVES. An org admin reads with the lead's eyes, and that
+     has to survive the new choice or "anonymised" would blank the one person who ran the check-in. */
+  it('and an anonymised send does not take the names away from them', () => {
+    const fn = CODE.slice(CODE.indexOf('private asItWasShared('), CODE.indexOf('private peersAreNamed('));
+    expect(fn).toMatch(/if \(viewerIsLead \|\| sharedAs !== 'ANONYMOUS'\) return withNames;/);
   });
 
   it('and it is the same flag that gates the rest of their view', () => {

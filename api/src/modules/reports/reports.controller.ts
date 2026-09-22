@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CurrentUser, Roles, Role } from '../../common';
@@ -91,9 +91,16 @@ export class ReportsController {
    * link to this round's report, once. Pressing it again sends to anyone who answered since.
    */
   @Post('send-to-everyone')
-  @ApiOperation({ summary: 'Send this round\'s report to everyone who answered and asked for it' })
-  async sendToEveryone(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.reports.sendToEveryone(groundId, userId, organizationId);
+  @ApiOperation({ summary: 'Send this round\'s report to everyone who answered and asked for it, named or anonymised' })
+  async sendToEveryone(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+    /* The organiser's answer, not the product's. Absent means named, which is what it did before
+       this choice existed - a silent change to anonymised would be the product deciding. */
+    @Body() body: { as?: string },
+  ) {
+    return this.reports.sendToEveryone(groundId, userId, organizationId, body?.as === 'ANONYMOUS' ? 'ANONYMOUS' : 'NAMED');
   }
 
   @Post('activate')

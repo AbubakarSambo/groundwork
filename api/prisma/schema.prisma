@@ -1204,6 +1204,13 @@ model GroundParticipant {
   /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the
   /// people and their emails so we can release the report to them."
   nameGiven                  String?           @map("name_given") @db.VarChar(120)
+
+  /// THE ORGANISATION THEY ANSWERED FOR. Same story as `nameGiven` and asked in the same breath:
+  /// somebody answering an open link has no account, so nothing else on this row can say which
+  /// company, institute or fund the answer is about. On a check-in run across a network - a hundred
+  /// separate organisations on one link - that is the unit the whole report is about, and it was
+  /// not being collected at all. Hafsah, 23 Sep 2026: "Name / Organisation / Email."
+  organisationGiven          String?           @map("organisation_given") @db.VarChar(160)
   /// Whether they asked for the report. Null where nobody asked them (invited by the lead); true or
   /// false where the open link asked at the end. The release goes to those who said yes.
   wantsTheReport             Boolean?          @map("wants_the_report")
@@ -1971,6 +1978,16 @@ model Report {
   // of how they were led. Produced by the same synthesis that finds divergences,
   // so it is stated as a gap and never quotes either side.
   leadershipGaps  Json?     @map("leadership_gaps")
+  /// A HUNDRED ACCOUNTS ARE NOT TWO. The second read, written beside the alignment one where enough
+  /// separate organisations answered for "where are they going and how do the kinds differ" to be a
+  /// real question. Null on an ordinary two- or three-person check-in. See
+  /// a-hundred-accounts-are-not-two.ts for its shape and for what it is forbidden to invent.
+  networkPicture  Json?     @map("network_picture")
+
+  /// HOW THE ORGANISER CHOSE TO SHARE IT: 'NAMED' or 'ANONYMOUS'. Null until it is sent to anybody.
+  /// The product never decides this - see whatTheRespondentsGet.
+  sharedAs        String?   @map("shared_as") @db.VarChar(16)
+
   /// A discovery session's direction, read once at release and kept. It was computed on every read
   /// and, at twenty-four accounts, timed out on every read (adversarial run, 20 Sep 2026).
   direction       Json?

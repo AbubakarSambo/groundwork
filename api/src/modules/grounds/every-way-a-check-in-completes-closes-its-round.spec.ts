@@ -69,9 +69,28 @@ describe('every way a check-in completes closes its round', () => {
       .filter((f: string) => !f.endsWith('.spec.ts'))
       .filter((f: string) => {
         const src = strip(readFileSync(f, 'utf8'));
-        return [...src.matchAll(/status:\s*CheckInStatus\.COMPLETED/g)].some((m) =>
-          /\bdata:\s*\{/.test(src.slice(Math.max(0, m.index! - 260), m.index!)),
-        );
+        return [...src.matchAll(/status:\s*CheckInStatus\.COMPLETED/g)].some((m) => {
+          const before = src.slice(Math.max(0, m.index! - 260), m.index!);
+          /*
+           * A `data: {` ANYWHERE IN THE LAST 260 CHARACTERS WAS NOT THE SAME OBJECT.
+           *
+           * This read "is there a data block near here" and called that a write. An unrelated
+           * update two lines above a plain `where: { status: COMPLETED }` READ was enough to
+           * name the file a completion site - which happened the moment reports.service.ts
+           * started writing the share choice next to a query that counts completed check-ins
+           * (23 September 2026).
+           *
+           * A write is `data: { ... COMPLETED`, so the `data:` is the LAST of the two openers
+           * before the match. A read is `data: {...}); ... where: { ... COMPLETED`, where a
+           * `where:` has opened since. Comparing their positions tells them apart exactly, and
+           * a real completion site - `update({ where: {...}, data: { status: COMPLETED } })` -
+           * still has its `data:` last, so nothing this guard exists for stops being caught.
+           */
+          const lastData = before.lastIndexOf('data: {');
+          if (lastData === -1) return false;
+          const lastWhere = Math.max(before.lastIndexOf('where: {'), before.lastIndexOf('where: {\n'));
+          return lastData > lastWhere;
+        });
       })
       .map((f: string) => f.split('/src/')[1]);
 
