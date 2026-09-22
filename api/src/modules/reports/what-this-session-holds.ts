@@ -60,6 +60,15 @@ export interface WhatThisSessionHolds {
    */
   worries: number;
   theFirstWorry: string | null;
+  /**
+   * HOW MANY TARGETS EXIST AT ALL, which is a different fact from whether any moved.
+   *
+   * Read live, 22 September 2026, on a check-in whose lead had just pasted the quarter's six numbers
+   * and five people's: "Movement - No target set. Nobody has set something to measure this against."
+   * Thirteen targets on the Context page, and the tile beside them said nobody had set one. Movement
+   * is null before there are two snapshots to subtract, and null was being read as "none exist".
+   */
+  targetsSet: number;
 }
 
 export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
@@ -111,12 +120,14 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       return sum + ((current.get(o.id) ?? o.count) - from);
     }, 0);
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
 export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
+  /** How many targets this check-in holds. Nought is "none set"; anything else is "none moved yet". */
+  targetsSet?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
    * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
@@ -199,15 +210,19 @@ export function atAGlanceTiles(a: {
          different question, and read live as though it were the movement. What there is to say
          here is that nothing is being tracked. */
       value: a.movedOnTargets == null
-        ? a.numberWasSaid ? 'Not tracked' : 'No target set'
+        ? (a.targetsSet ?? 0) > 0 ? 'Nothing yet'
+          : a.numberWasSaid ? 'Not tracked' : 'No target set'
         : a.movedOnTargets > 0 ? `+${a.movedOnTargets}` : 'None',
       sub: a.movedOnTargets == null
-        ? a.numberWasSaid
-          ? 'somebody named a number and nothing is tracking it'
-          : 'nobody has set something to measure this against'
+        ? (a.targetsSet ?? 0) > 0
+          /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
+          ? `${a.targetsSet} target${a.targetsSet === 1 ? '' : 's'} set, and no round has closed to measure from`
+          : a.numberWasSaid
+            ? 'somebody named a number and nothing is tracking it'
+            : 'nobody has set something to measure this against'
         : a.movedOnTargets > 0 ? 'targets moved this session' : 'no target moved this session',
       tone: a.movedOnTargets == null
-        ? a.numberWasSaid ? 'warn' : 'flat'
+        ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',
     },
     {

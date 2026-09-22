@@ -103,14 +103,23 @@ const A_WORD_ANY_CHECK_IN_COULD_HOLD = new Set([
   'something', 'anything', 'everything', 'taking', 'share', 'shared', 'sharing', 'word', 'record',
   'report', 'month', 'week', 'over', 'next', 'first', 'last', 'ground', 'current', 'help', 'build',
   'better', 'understand', 'understanding', 'happening', 'moment', 'today', 'right', 'along', 'given',
+  'needs', 'wants', 'knows', 'tracking', 'others', 'yours', 'their', 'refer', 'short', 'regular',
+  /* How often is not what about: a telling that matches the brief only on "weekly" names nothing. */
+  'weekly', 'monthly', 'daily', 'fortnightly', 'quarterly', 'support', 'progressing', 'review', 'period',
 ]);
 
-/* A word long enough to carry a subject, singular-stemmed so "markets" and "market" are one word. */
+/*
+ * A word long enough to carry a subject, singular-stemmed so "markets" and "market" are one word.
+ *
+ * FIVE LETTERS, NOT FOUR. Read live on a sales and delivery check-in: "It is for tracking what is
+ * working, what is not, and what you need from others" was kept, because the brief also contains
+ * "need". A four-letter word this common is not the subject of anything.
+ */
 const theWordsThatNameSomething = (text: string): Set<string> => {
   const out = new Set<string>();
-  for (const raw of (text ?? '').toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? []) {
-    const w = raw.length > 4 && raw.endsWith('s') && !raw.endsWith('ss') ? raw.slice(0, -1) : raw;
-    if (w.length < 4 || A_WORD_ANY_CHECK_IN_COULD_HOLD.has(w)) continue;
+  for (const raw of (text ?? '').toLowerCase().match(/[a-z][a-z-]{4,}/g) ?? []) {
+    const w = raw.length > 5 && raw.endsWith('s') && !raw.endsWith('ss') ? raw.slice(0, -1) : raw;
+    if (w.length < 5 || A_WORD_ANY_CHECK_IN_COULD_HOLD.has(w)) continue;
     out.add(w);
   }
   return out;

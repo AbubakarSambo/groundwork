@@ -41,3 +41,38 @@ describe('a tile cuts at a word', () => {
     expect(blockers.sub).not.toMatch(/\b(and|or|but|to|with|for|of|the)\.\.\./);
   });
 });
+
+/**
+ * "NO TARGET SET" OVER THIRTEEN TARGETS.
+ *
+ * Read live, 22 September 2026, minutes after a lead pasted the quarter into the context chat: the
+ * Context page listed the team's six numbers and three people's, and the Movement tile beside them
+ * said "No target set - nobody has set something to measure this against". Movement is null until
+ * two snapshots exist to subtract, and null was being read as "none exist".
+ */
+describe('movement before a round has closed', () => {
+  const { atAGlanceTiles } = require('./what-this-session-holds');
+  const tile = (a: any) => atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false, ...a })
+    .find((t: any) => t.label === 'Movement');
+
+  it('says nothing has moved yet, and how many are set', () => {
+    const t = tile({ targetsSet: 13 });
+    expect(t.value).toBe('Nothing yet');
+    expect(t.sub).toBe('13 targets set, and no round has closed to measure from');
+    expect(t.sub).not.toMatch(/nobody has set/);
+  });
+
+  it('still says nobody set one where nobody did', () => {
+    expect(tile({ targetsSet: 0 }).value).toBe('No target set');
+    expect(tile({}).value).toBe('No target set');
+  });
+
+  it('and a number said with nothing tracking it is only that when nothing is set', () => {
+    expect(tile({ targetsSet: 0, numberWasSaid: true }).value).toBe('Not tracked');
+    expect(tile({ targetsSet: 6, numberWasSaid: true }).value).toBe('Nothing yet');
+  });
+
+  it('one target reads as one', () => {
+    expect(tile({ targetsSet: 1 }).sub).toContain('1 target set');
+  });
+});

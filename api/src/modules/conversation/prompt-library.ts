@@ -162,6 +162,17 @@ export const VOCABULARY_RULE = [
    * Rewriting every reference in the library would be a hundred edits to text that is mostly
    * correct where it sits. The reader-facing half is a vocabulary rule, which is what this is for.
    */
+  /*
+   * AND NEVER PUT A CURRENCY ON A NUMBER THE RECORD DOES NOT CARRY ONE FOR.
+   *
+   * Read live, 22 September 2026, on a Nigerian sales team whose lead had written "4m": "What moved
+   * for sales closed against your $4M target?" Nobody said dollars. The target is a number and a
+   * name in words, by design - see a-dump-is-many-things - and a symbol in front of it is the
+   * product telling somebody what currency they are measured in.
+   */
+  'NUMBERS AS THE RECORD HOLDS THEM. A target is a number and a name. Never add a currency symbol or',
+  'a currency word to it - no $, no N, no naira, no dollars, no pounds - unless the person or the',
+  'record used that currency themselves. "4m sales" stays "4m sales".',
   'And never invent what kind of organisation or role somebody has. Do not call anyone "your',
   'founder", "your CEO", "the leadership" or anything else you were not told - this product runs in',
   'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',

@@ -48,7 +48,7 @@ import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, looksLikeADump, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
@@ -2285,8 +2285,19 @@ export class GroundsService {
           .map((t) => ({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) })),
       });
     }
+    /* One line each, trimmed, in the paste's order, and nothing empty. */
+    const aList = (rows: (string | null | undefined)[] | null | undefined): string[] =>
+      (rows ?? []).map((r) => (r ?? '').trim().replace(/\s+/g, ' ')).filter(Boolean).map((r) => r.slice(0, 300)).slice(0, 25);
+    /* The lead's read of a person only where the name is somebody on this check-in - never guessed on. */
+    const aboutPeople: WhatAPasteGives['aboutPeople'] = [];
+    for (const r of (read.aboutPeople ?? []).filter((r) => r?.personName?.trim() && r?.observation?.trim())) {
+      const who = whoThisNameIs(r.personName, people as any);
+      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      aboutPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, observation: r.observation.trim().slice(0, 600) });
+    }
     const got: WhatAPasteGives = {
-      success: (read.success ?? '').trim().slice(0, 600) || null,
+      /* A rule or a slogan off a bullet list is not a yardstick - see aSuccessStatementHolds. */
+      success: aSuccessStatementHolds((read.success ?? '').slice(0, 600)),
       teamTargets: (read.teamTargets ?? [])
         .filter((t) => t?.name?.trim())
         .map((t) => ({
@@ -2297,8 +2308,14 @@ export class GroundsService {
       forPeople,
       dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
       unmatched,
+      /* The three lists that are words rather than numbers, kept as the lead's own note. */
+      waysOfWorking: aList(read.waysOfWorking),
+      openDecisions: aList(read.openDecisions),
+      notSettled: aList(read.notSettled),
+      aboutPeople: aboutPeople,
     };
-    return (got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length) ? got : null;
+    return (got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
+      || got.waysOfWorking.length || got.openDecisions.length || got.notSettled.length || got.aboutPeople.length) ? got : null;
   }
 
   /**
@@ -2388,11 +2405,17 @@ export class GroundsService {
      * this is a confirmation and not an edit endpoint taking a value from the screen. See
      * a-dump-is-many-things.
      */
-    if (looksLikeADump(dto.said)) {
-      const got = await this.whatAPasteGives(groundId, dto.said).catch(() => null);
+    /* Their own paste, whether they have just typed it again or are saying yes to the list the chat
+       printed from it a turn ago - see thePasteThisYesIsFor. */
+    const thePaste = looksLikeADump(dto.said) ? dto.said : thePasteThisYesIsFor(dto.said, dto.history as any);
+    if (thePaste) {
+      const got = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
       if (got) {
         const wrote = await this.writeWhatThePasteGave(groundId, got);
         if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got) ?? 'Recorded.' };
+        /* Nothing new to write means it is already on the record, which is not a failure to report as
+           one: saying yes twice to the same list used to fall through to one-gap-at-a-time. */
+        return { changed: 'nothing new', say: 'That is already on the record. Nothing was written twice.' };
       }
     }
 
@@ -2557,18 +2580,21 @@ export class GroundsService {
     }
 
     const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
-    const held = new Set(existing.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+    /* One name inside another is the same measure, because a second read of one paste renames things
+       - "signed" and "signed sales" - and two names for one number is two answers. See theSameMeasure. */
+    const held: { owner: string; name: string }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim() }));
+    const alreadyHeld = (owner: string, name: string) => held.some((h) => h.owner === owner && theSameMeasure(h.name, name));
     const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number }[] = [];
     let sortOrder = existing.length;
     for (const t of got.teamTargets) {
-      if (held.has(`team::${t.name.toLowerCase()}`)) continue;
-      held.add(`team::${t.name.toLowerCase()}`);
+      if (alreadyHeld('team', t.name)) continue;
+      held.push({ owner: 'team', name: t.name });
       rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++ });
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
-        if (held.has(`${p.participantId}::${t.name.toLowerCase()}`)) continue;
-        held.add(`${p.participantId}::${t.name.toLowerCase()}`);
+        if (alreadyHeld(p.participantId, t.name)) continue;
+        held.push({ owner: p.participantId, name: t.name });
         rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++ });
       }
     }
@@ -2578,12 +2604,63 @@ export class GroundsService {
     }
 
     for (const p of got.forPeople) {
-      const already = await this.prisma.personObjective.findFirst({ where: { groundId, participantId: p.participantId, text: p.expectation }, select: { id: true } }).catch(() => null);
+      /* The same expectation said at a different length is the same expectation - a second read of one
+         paste trims it. Matched on the words, not the characters. */
+      const theirs = await this.prisma.personObjective.findMany({ where: { groundId, participantId: p.participantId }, select: { text: true } }).catch(() => [] as { text: string }[]);
+      const already = theirs.some((o) => theSameMeasure(o.text ?? '', p.expectation));
       if (already) continue;
       await this.prisma.personObjective.create({
         data: { groundId, participantId: p.participantId, text: p.expectation, authoredBy: AUTHORED_AT_SETUP, seenBySubject: false },
       }).catch((err: any) => this.logger.warn(`Could not write an expectation from the paste on ${groundId}: ${err?.message}`));
       wrote = true;
+    }
+
+    /*
+     * AND THE PARTS THAT ARE WORDS, WHERE THE LEAD'S WORDS ALREADY GO.
+     *
+     * A paste is not only numbers. This one carried twelve ways of working the team "sort of agreed",
+     * four decisions nobody had made, a list of things the lead said explicitly not to treat as fact -
+     * two definitions of one target, a figure nobody had approved, tasks nobody knew were finished -
+     * and a read of each person that is an opinion, not a measure. None of it had a destination, so
+     * all of it was dropped on the floor while the numbers were kept.
+     *
+     * They go where the lead's words already go: a private note on the check-in, which the report may
+     * weigh and may never quote or state as fact (see addLeadContext). LEAD_ONLY, every one of them,
+     * including the ways of working: "we sort of agreed" is the lead's account of an agreement, and
+     * publishing it as the team's rules would make it one. Sharing is a separate, deliberate act.
+     */
+    if (this.prisma.leadContextNote?.create) {
+      const author = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } }).then((g) => g?.initiatorId ?? null).catch(() => null);
+      const held = await this.prisma.leadContextNote.findMany({ where: { groundId }, select: { id: true, text: true, participantId: true } }).catch(() => [] as { id: string; text: string; participantId: string | null }[]);
+      /*
+       * One note per kind: a later paste REPLACES the note that opens the same way rather than adding
+       * a second version of it - see the opening lines in a-dump-is-many-things. Only a note that
+       * opens exactly that way is touched, so nothing the lead typed themselves is overwritten.
+       */
+      const note = async (opensWith: string, text: string, participantId: string | null) => {
+        if (!author || !text.trim()) return;
+        const mine = held.find((h) => (h.participantId ?? null) === participantId && (h.text ?? '').trimStart().startsWith(opensWith));
+        if (mine) {
+          if ((mine.text ?? '').trim() === text.trim()) return;
+          await this.prisma.leadContextNote.update({ where: { id: mine.id }, data: { text } })
+            .catch((err: any) => this.logger.warn(`Could not restate a note from the paste on ${groundId}: ${err?.message}`));
+          mine.text = text;
+          wrote = true;
+          return;
+        }
+        const made = await this.prisma.leadContextNote.create({
+          data: { groundId, participantId, authorUserId: author, text, audience: ContextNoteAudience.LEAD_ONLY },
+          select: { id: true },
+        }).catch((err: any) => { this.logger.warn(`Could not keep a note from the paste on ${groundId}: ${err?.message}`); return null; });
+        if (made) held.push({ id: made.id, text, participantId });
+        wrote = true;
+      };
+      /* One note per list, because the Context page reads a note as one thing somebody wrote. */
+      if (got.waysOfWorking.length) await note(HOW_THE_TEAM_WORKS_OPENS, `${HOW_THE_TEAM_WORKS_OPENS}\n${got.waysOfWorking.map((w) => `- ${w}`).join('\n')}`, null);
+      if (got.openDecisions.length) await note(STILL_TO_DECIDE_OPENS, `${STILL_TO_DECIDE_OPENS}\n${got.openDecisions.map((d) => `- ${d}`).join('\n')}`, null);
+      if (got.notSettled.length) await note(NOT_SETTLED_OPENS, `${NOT_SETTLED_OPENS}\n${got.notSettled.map((n) => `- ${n}`).join('\n')}`, null);
+      /* And one per person, about them, private to the lead: an observation, never a claim. */
+      for (const a of got.aboutPeople) await note(MY_READ_OF_THEM_OPENS, `${MY_READ_OF_THEM_OPENS} ${a.observation}`, a.participantId);
     }
 
     if (wrote) {

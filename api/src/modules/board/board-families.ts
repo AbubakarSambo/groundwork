@@ -352,7 +352,12 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   /* See the enum note. `whoOwnsWhat` is the per-person lines, headed "What each person said" on the
      page for this family; `patterns` because a standing update is the one place three periods do
      accrue. No objectives, no dependencies, no contribution, no poll: the cadence is the lead's line. */
-  [BoardFamily.UPDATE]: ['quickRead', 'checkInGrid', 'whoOwnsWhat', 'divergence', 'patterns'],
+  /*
+   * TARGETS ON AN UPDATE BOARD, because a lead who has just handed the team six numbers reads this
+   * page next. Left off when this family was written, 22 September 2026, and found the same evening:
+   * thirteen targets on the Context page, and the board said "No target set".
+   */
+  [BoardFamily.UPDATE]: ['quickRead', 'objectives', 'checkInGrid', 'whoOwnsWhat', 'divergence', 'patterns'],
   [BoardFamily.RECURRING]: [
     'quickRead', 'objectives', 'whatTheRoomIsAbout', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
     'divergence', 'contribution', 'cascade', 'hiddenContributors', 'patterns', 'decisions', 'poll',
