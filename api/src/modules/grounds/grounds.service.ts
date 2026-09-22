@@ -47,6 +47,8 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, looksLikeADump, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -2164,7 +2166,24 @@ export class GroundsService {
     let proposal: Proposal = { kind: 'none', why: 'Nothing to record yet.' };
     const lastFromLead = [...history].reverse().find(h => h.role === 'user')?.content?.trim();
     const openGap = gaps[0]?.key ?? null;
-    if (lastFromLead && openGap) {
+    /*
+     * A PASTE IS NOT AN ANSWER TO THE QUESTION ON THE TABLE. See a-dump-is-many-things: somebody who
+     * has just written the whole quarter down is handing over the context, and the one-gap-at-a-time
+     * shape took one thing from it and asked eight more questions for the rest. So it is read once,
+     * for everything it holds, and offered as one thing to say yes to. The gap flow below still runs
+     * for ordinary answers, and the reply the lead reads is still the conversation's.
+     */
+    const fromAPaste = lastFromLead && looksLikeADump(lastFromLead)
+      ? await this.whatAPasteGives(groundId, lastFromLead).catch((err: any) => {
+          this.logger.warn(`Reading the paste on ${groundId} failed: ${err?.message}`);
+          return null;
+        })
+      : null;
+    if (fromAPaste) {
+      const say = whatWeTookFromThat(fromAPaste, { asking: true });
+      if (say) proposal = { kind: 'everything', say } as any;
+    }
+    if (!fromAPaste && lastFromLead && openGap) {
       try {
         const heard = await this.anthropic.extract<Heard>(
           'Read ONLY what the person just said in answer to the question they were asked. Omit any field they did not answer. Never infer a sensible default.',
@@ -2222,6 +2241,57 @@ export class GroundsService {
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
       proposal: proposal.kind === 'none' ? null : { gap: proposal.kind, say: forHumans(proposal.say) },
     };
+  }
+
+  /**
+   * WHAT A PASTE GIVES, READ ONCE AND MATCHED TO THE PEOPLE ON THIS CHECK-IN.
+   *
+   * See a-dump-is-many-things for why a paste is read whole. Nothing here writes: this is the read
+   * both halves use - the chat, to show the lead what it took, and the confirmation, to write it from
+   * their own words rather than from a value the screen sent back.
+   */
+  private async whatAPasteGives(groundId: string, pasted: string): Promise<WhatAPasteGives | null> {
+    const read = await this.anthropic.extract<ADumpRead>(
+      A_DUMP_PROMPT,
+      [{ role: 'user' as const, content: pasted }],
+      A_DUMP_SCHEMA as any,
+    );
+    if (!read) return null;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    const people = (ground?.participants ?? []).filter((p) => !p.managingOnly);
+    const forPeople: WhatAPasteGives['forPeople'] = [];
+    const unmatched: string[] = [];
+    for (const r of (read.forPeople ?? []).filter((r) => r?.personName?.trim() && r?.expectation?.trim())) {
+      const who = whoThisNameIs(r.personName, people as any);
+      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      forPeople.push({
+        who: theNameWeUseFor(who as any),
+        participantId: who.id,
+        expectation: r.expectation.trim().slice(0, 600),
+        targets: (r.targets ?? [])
+          .filter((t) => t?.name?.trim() && Number.isFinite(t.number) && t.number > 0)
+          .map((t) => ({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) })),
+      });
+    }
+    const got: WhatAPasteGives = {
+      success: (read.success ?? '').trim().slice(0, 600) || null,
+      teamTargets: (read.teamTargets ?? [])
+        .filter((t) => t?.name?.trim())
+        .map((t) => ({
+          name: t.name.trim().slice(0, 120),
+          target: Number.isFinite(t.target as number) && (t.target as number) > 0 ? Math.round(t.target as number) : null,
+          notToExceed: !!t.notToExceed,
+        })),
+      forPeople,
+      dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
+      unmatched,
+    };
+    return (got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length) ? got : null;
   }
 
   /**
@@ -2306,6 +2376,19 @@ export class GroundsService {
     });
     const openGap = gaps[0]?.key ?? null;
     if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
+    /*
+     * A PASTE IS CONFIRMED WHOLE. The same read as the chat's, run again on the lead's own words - so
+     * this is a confirmation and not an edit endpoint taking a value from the screen. See
+     * a-dump-is-many-things.
+     */
+    if (looksLikeADump(dto.said)) {
+      const got = await this.whatAPasteGives(groundId, dto.said).catch(() => null);
+      if (got) {
+        const wrote = await this.writeWhatThePasteGave(groundId, got);
+        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got) ?? 'Recorded.' };
+      }
+    }
+
 
     const heard = await this.anthropic.extract<Heard>(
       'Read ONLY what the person said in answer to the question they were asked. Omit any field they did not answer.',
@@ -2433,6 +2516,79 @@ export class GroundsService {
       },
     });
     return { changed: 'success', say: proposal.say };
+  }
+
+  /**
+   * WHAT A PASTE GAVE, WRITTEN - AND THE TEAM TOLD.
+   *
+   * Every rule the one-at-a-time path holds, held here: what doing well looks like becomes a new
+   * version rather than an edit, a number the team is held to goes on the board, an expectation of a
+   * named person goes down as the LEAD'S and marked unseen until that person reads it, and a number
+   * for one person is theirs. Nothing already on the record is overwritten - a paste restated in
+   * session four must not double the board.
+   *
+   * And then the team's own "About this check-in" is written again from the new context, because the
+   * whole point of a paste is that the people answering should be standing in it. See
+   * what-a-participant-is-told-about-this.
+   */
+  private async writeWhatThePasteGave(groundId: string, got: WhatAPasteGives): Promise<boolean> {
+    let wrote = false;
+    if (got.success) {
+      const latest = await this.prisma.groundBaseline.findFirst({ where: { groundId }, orderBy: { version: 'desc' }, select: { version: true, conditions: true, successLooksLike: true } });
+      if (latest?.successLooksLike?.trim() !== got.success) {
+        await this.prisma.groundBaseline.create({
+          data: {
+            groundId,
+            version: (latest?.version ?? 0) + 1,
+            successLooksLike: got.success,
+            conditions: (latest?.conditions ?? undefined) as any,
+            changeReason: latest ? 'Restated in the context conversation.' : null,
+          },
+        });
+        wrote = true;
+      }
+    }
+
+    const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
+    const held = new Set(existing.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+    const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number }[] = [];
+    let sortOrder = existing.length;
+    for (const t of got.teamTargets) {
+      if (held.has(`team::${t.name.toLowerCase()}`)) continue;
+      held.add(`team::${t.name.toLowerCase()}`);
+      rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++ });
+    }
+    for (const p of got.forPeople) {
+      for (const t of p.targets) {
+        if (held.has(`${p.participantId}::${t.name.toLowerCase()}`)) continue;
+        held.add(`${p.participantId}::${t.name.toLowerCase()}`);
+        rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++ });
+      }
+    }
+    if (rows.length) {
+      await this.prisma.groundObjective.createMany({ data: rows as any }).catch((err: any) => this.logger.warn(`Could not write the paste's numbers on ${groundId}: ${err?.message}`));
+      wrote = true;
+    }
+
+    for (const p of got.forPeople) {
+      const already = await this.prisma.personObjective.findFirst({ where: { groundId, participantId: p.participantId, text: p.expectation }, select: { id: true } }).catch(() => null);
+      if (already) continue;
+      await this.prisma.personObjective.create({
+        data: { groundId, participantId: p.participantId, text: p.expectation, authoredBy: AUTHORED_AT_SETUP, seenBySubject: false },
+      }).catch((err: any) => this.logger.warn(`Could not write an expectation from the paste on ${groundId}: ${err?.message}`));
+      wrote = true;
+    }
+
+    if (wrote) {
+      /* Told from what the paste settled, not from the brief it was set up with: the team's own "About
+         this check-in" is the point of taking a paste at all. The numbers are appended to it by
+         whatAParticipantIsToldAboutThis, each person seeing the shared ones and their own. */
+      const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
+      const fromTheContext = [g?.brief?.trim(), got.success ? `What doing well looks like: ${got.success}` : null].filter(Boolean).join('\n\n');
+      await this.tellParticipantsAboutThis(groundId, fromTheContext || g?.brief || null).catch((err: any) => this.logger.warn(`Could not tell the team about ${groundId}: ${err?.message}`));
+      this.logger.log(`Ground ${groundId}: took a paste whole - ${got.teamTargets.length} team number(s), ${got.forPeople.length} person(s), success ${got.success ? 'set' : 'unchanged'}.`);
+    }
+    return wrote;
   }
 
   /**
