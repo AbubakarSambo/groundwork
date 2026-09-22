@@ -56,8 +56,53 @@ export const saidToThem = (what: string): string => {
   return toYou.length > 120 ? `${toYou.slice(0, 117).trimEnd()}...` : toYou;
 };
 
+/**
+ * THE OWED THING, ASKED AS A QUESTION. "One more before this closes, because it is what this check-in is
+ * for: what you are answerable for." read to Abubakar as a sentence with a colon where a question
+ * should be (Hafsah, 21 Sep 2026: "the conversation had weird colons"). The owed list is written as
+ * noun phrases about them - "what they need from other people" - and a person is asked, not handed a
+ * label. The common shapes turn into plain questions; anything else is asked as "Tell me about ...".
+ */
+export function asAQuestion(what: string): string {
+  const t = saidToThem(what).trim().replace(/[.?!]+$/, '');
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  /* Two clauses joined with ", and" are two questions in one: each is turned, then rejoined. */
+  const twoClauses = /^(.+?),\s+and\s+((?:what|how|who|where|which)\s+.+)$/i.exec(t);
+  if (twoClauses) {
+    const first = asAQuestion(twoClauses[1]).replace(/\?$/, '');
+    const second = asAQuestion(twoClauses[2]).replace(/\?$/, '');
+    return `${first}, and ${second.charAt(0).toLowerCase()}${second.slice(1)}?`;
+  }
+  let m: RegExpExecArray | null;
+  /* "what is getting in the way", "what has moved since last time", "how it is actually going" */
+  if ((m = /^(what|how|who|where|which)\s+(is|are|has|have|was|were|does|do|did|will|would|should|can)\s+(.+)$/i.exec(t))) {
+    return `${cap(m[1])} ${m[2]} ${m[3]}?`;
+  }
+  /* "how it is actually going" -> "How is it actually going?" */
+  if ((m = /^(what|how)\s+(it|this|that|they)\s+(is|are|was|were|has|have)\s+(.+)$/i.exec(t))) {
+    return `${cap(m[1])} ${m[3]} ${m[2]} ${m[4]}?`;
+  }
+  /* "what you are answerable for" -> "What are you answerable for?"; "how you are making your number" */
+  if ((m = /^(what|how|who|where|which)\s+you\s+(are|were|have|had|will|would|should|can|could)\s+(.+)$/i.exec(t))) {
+    return `${cap(m[1])} ${m[2]} you ${m[3]}?`;
+  }
+  /* "what you understood you were meant to do" -> "What did you understand you were meant to do?" */
+  if ((m = /^(what|how|who|which)\s+you\s+(understood|meant|expected|decided|thought|saw|did|said)\s+(.*)$/i.exec(t))) {
+    const base: Record<string, string> = { understood: 'understand', meant: 'mean', expected: 'expect', decided: 'decide', thought: 'think', saw: 'see', did: 'do', said: 'say' };
+    return `${cap(m[1])} did you ${base[m[2].toLowerCase()] ?? m[2]}${m[3] ? ` ${m[3]}` : ''}?`;
+  }
+  /* "what you need from other people" -> "What do you need from other people?" */
+  if ((m = /^(what|how|who|where|which)\s+you\s+(.+)$/i.exec(t))) {
+    return `${cap(m[1])} do you ${m[2]}?`;
+  }
+  /* "what is clear and what is not" is already a question in shape; "whether your goal still makes sense" is not. */
+  if (/^whether\s+/i.test(t)) return `Does ${t.replace(/^whether\s+/i, '').replace(/\bstill makes sense\b/, 'still make sense')}?`;
+  /* "Tell me what stayed off track."; "Tell me about the part of the plan that is yours to do." */
+  return /^(what|how|who|where|which)\b/i.test(t) ? `Tell me ${t}.` : `Tell me about ${t}.`;
+}
+
 export const theOneThingNeverAsked = (what: string): string =>
-  `One more before this closes, because it is what this check-in is for: ${saidToThem(what)}.`;
+  `One more before this closes. ${asAQuestion(what)}`;
 
 /**
  * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
@@ -66,7 +111,7 @@ export const theOneThingNeverAsked = (what: string): string =>
  * what ships instead: the answer taken as given, and the next thing the check-in is for.
  */
 export const takenAsSaidAndOn = (next: string | null): string =>
-  next ? `That goes down as you put it. Something else this check-in is for: ${saidToThem(next)}.` : 'That goes down as you put it.';
+  next ? `That goes down as you put it. ${asAQuestion(next)}` : 'That goes down as you put it.';
 
 /** The line the model gets on the turn after the hold, so it does not ask a second time. */
 export const THE_CLOSE_WAS_HELD =
