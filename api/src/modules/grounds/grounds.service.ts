@@ -45,6 +45,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
   A_CHANGE_PROMPT, A_CHANGE_SCHEMA, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
@@ -2281,7 +2282,14 @@ export class GroundsService {
       }
     }
     /* A change they asked for is this turn's business; the gap flow would overwrite the proposal. */
-    if (!fromAPaste && !changeSay && lastFromLead && openGap) {
+    /*
+     * A GREETING IS NOT AN ANSWER, AND NOTHING IS PROPOSED FROM ONE.
+     *
+     * She typed "hi" and was offered "I will record that as what doing well looks like: 'Hi! What's
+     * on your mind?'" - the product's own greeting, about to become the yardstick her team is read
+     * against. See nothing-proposed-that-nobody-said.
+     */
+    if (!fromAPaste && !changeSay && lastFromLead && openGap && !nothingToTakeFrom(lastFromLead)) {
       try {
         const heard = await this.anthropic.extract<Heard>(
           'Read ONLY what the person just said in answer to the question they were asked. Omit any field they did not answer. Never infer a sensible default.',
@@ -2319,6 +2327,24 @@ export class GroundsService {
         } catch {
           /* the open gap's proposal, or none, stands */
         }
+      }
+    }
+
+    /*
+     * AND WHATEVER IT READ, THE WORDS HAVE TO BE THEIRS.
+     *
+     * The greeting case is the loud one; the quiet one is a model tidying an answer into a sentence
+     * the lead never typed and offering it as theirs. Checked in code against the message itself -
+     * see traceableToWhatTheySaid - because it is the model that is wrong when this happens.
+     */
+    if (proposal.kind !== 'none' && lastFromLead) {
+      const untraceable =
+        (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
+        || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
+        || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, lastFromLead));
+      if (untraceable) {
+        this.logger.warn(`Context chat on ${groundId}: dropped a ${proposal.kind} proposal whose words were not theirs.`);
+        proposal = { kind: 'none', why: 'Nothing in that answer to record.' } as any;
       }
     }
 
@@ -2955,6 +2981,14 @@ export class GroundsService {
       }
     }
     if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
+    /* The same rule where the write happens: nothing is recorded that they did not say. */
+    if (
+      (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
+      || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
+      || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, dto.said))
+    ) {
+      throw new BadRequestException('I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.');
+    }
 
     /**
      * The timeline write goes through `updateTimeline`, which already owns the rules about changing

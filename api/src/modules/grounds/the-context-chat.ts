@@ -262,6 +262,8 @@ export function contextChatPrompt(
     '',
     'HOW TO ASK. One thing at a time, in your own words, shortest useful question first. Take what they give you and move on - if they answer a different question than you asked, that answer still counts. Never ask twice for something they have already told you.',
     '',
+    'ANSWER THEM BEFORE YOU ASK. Whatever they just said gets a reply first: a question gets an answer, a greeting gets one short line back, something they have told you gets said back so they can see it landed. Only then the next question. A turn that ignores what somebody said and asks the next item on a list is not a conversation, and it is the thing people close this panel over.',
+    '',
     'WHAT THEY CAN BRING TO THIS CONVERSATION, AND WHERE EACH THING GOES.',
     '',
     'Reported plainly: "I do not get what this is for". It was written as a gap-filling interview, so it asked its questions and had no answer for somebody arriving with something to add. Anything on this list is welcome, unprompted, at any point - and each one has a place it lands, so say which:',
