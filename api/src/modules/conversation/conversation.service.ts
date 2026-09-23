@@ -112,7 +112,7 @@ import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
-import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { isShut } from '../grounds/a-ground-that-has-ended';
 import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
@@ -5608,7 +5608,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * because there is nothing after it. Watched live: a resolved ground grew a "Session 5 of 6"
      * for both people minutes after the decision was taken. See a-ground-that-has-ended.ts.
      */
-    if (hasEnded(ground?.status)) {
+    /* Stalled counts here too: a check-in that ran out of time must not quietly grow a session 6
+       while nobody can answer session 5. Reopening it is what schedules again. */
+    if (isShut(ground?.status)) {
       this.logger.log(`No next session for ${participantId}: ground ${groundId} is ${ground?.status}.`);
       return;
     }

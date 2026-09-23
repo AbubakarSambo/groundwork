@@ -67,6 +67,24 @@ const NOT_COPY = [
    */
   'the-context-chat.ts',
   /*
+   * AND THE THREE PROMPTS TODAY'S WORK ADDED, by the same test as every file above.
+   *
+   * `what-a-complete-answer-holds.ts` holds the instruction that reads a brief into comparable
+   * fields ("If two answers to your field could not be put in the same column of a table, it is not
+   * a field yet"). `the-judgement-over-the-answers.ts` holds the one that writes the judgement over
+   * the counts ("every sentence you write contains a number that is in the table"). And
+   * `fitting-an-answer-into-the-frame.ts` holds the one that puts a person's answers into those
+   * fields. Every scoring line in the three is addressed to a model.
+   *
+   * AND THE CEILING DOES NOT MOVE: measured at sixty after excluding them, which is where the copy
+   * pass left it. They account for exactly the lines today's work added and nothing else, so no
+   * real copy has been excused. The out-of-time sentences those same changes put in front of people
+   * were rewritten instead of excluded - they are copy, and they scored, so they were fixed.
+   */
+  'what-a-complete-answer-holds.ts',
+  'the-judgement-over-the-answers.ts',
+  'fitting-an-answer-into-the-frame.ts',
+  /*
    * AND THE TELLING'S OWN PROMPT. `what-a-participant-is-told-about-this.ts` exists to hold
    * THE_TELLING_PROMPT - the instructions for rewriting a lead's brief into the box a participant
    * reads. Its strings are addressed to a model, like the three files above it. The sentence the

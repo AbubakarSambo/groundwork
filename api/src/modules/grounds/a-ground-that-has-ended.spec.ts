@@ -4,9 +4,18 @@ import {
 } from './a-ground-that-has-ended';
 
 describe('a ground that has ended', () => {
-  it('names the three terminal statuses and nothing else', () => {
-    expect(A_GROUND_IS_OVER).toEqual([GroundStatus.RESOLVED, GroundStatus.CLOSED, GroundStatus.STALLED]);
-    for (const live of [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY, GroundStatus.PAUSED]) {
+  /*
+   * TWO, NOT THREE. STALLED LEFT, AND THAT WAS THE WHOLE BUG.
+   *
+   * RESOLVED and CLOSED are decisions somebody took. STALLED is what the 3am sweep writes when the
+   * time runs out while everybody is busy, and being filed here gave it the one property those two
+   * have: no way back. A customer let a few check-ins wait, found them stalled, and had nothing
+   * anywhere to reopen them. It is its own state now - shut, but liftable - in
+   * A_GROUND_HAS_STOPPED. See a-check-in-that-ran-out-of-time.
+   */
+  it('names the two decisions and nothing else', () => {
+    expect(A_GROUND_IS_OVER).toEqual([GroundStatus.RESOLVED, GroundStatus.CLOSED]);
+    for (const live of [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY, GroundStatus.PAUSED, GroundStatus.STALLED]) {
       expect(hasEnded(live)).toBe(false);
     }
     for (const over of A_GROUND_IS_OVER) expect(hasEnded(over)).toBe(true);
@@ -20,7 +29,9 @@ describe('a ground that has ended', () => {
   it('says how it ended in the words of the decision', () => {
     expect(howItEnded(GroundStatus.CLOSED, 'Keep the hire')).toBe('This check-in ended: keep the hire.');
     expect(howItEnded(GroundStatus.CLOSED, null)).toBe('This check-in has ended.');
-    expect(howItEnded(GroundStatus.STALLED, 'Keep the hire')).toBe('This check-in stopped without an agreed end.');
+    /* Running out of time is not an ending and no longer speaks in this voice - it has its own
+       sentence, which says what lifts it. See whyItRefuses. */
+    expect(howItEnded(GroundStatus.STALLED, 'Keep the hire')).toBeNull();
     expect(howItEnded(GroundStatus.ACTIVE, 'Keep the hire')).toBeNull();
   });
 });

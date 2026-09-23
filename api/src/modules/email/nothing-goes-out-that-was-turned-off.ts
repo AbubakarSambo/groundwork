@@ -208,6 +208,16 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendActivationRevealReminder: 'we decided to send it',
   sendFeedbackRequest: 'we decided to send it',
   sendStalledNotification: 'we decided to send it',
+  /*
+   * BOTH SIDES OF RUNNING OUT OF TIME, and both are ours to send rather than asked for.
+   *
+   * The warning is the one that matters: every check-in that ever stalled did so with no notice at
+   * all, and somebody who has switched reminders off has switched off being chased about answering
+   * - not being told that the thing they are running is about to shut. Classified honestly all the
+   * same, so the switch decides it rather than me.
+   */
+  sendTimeRunningOut: 'we decided to send it',
+  sendReopenedNotification: 'we decided to send it',
   sendParticipantBlockedNudge: 'we decided to send it',
   sendCodeExpiryReminder: 'we decided to send it',
   sendRoundDigest: 'we decided to send it',

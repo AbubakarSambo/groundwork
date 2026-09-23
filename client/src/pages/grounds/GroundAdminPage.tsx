@@ -1,4 +1,5 @@
-import { howItEnded } from '@/lib/a-ground-that-has-ended'
+import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
+import { scrollToId } from '@/lib/scroll-to'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
@@ -131,27 +132,31 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
  * stay, because they are the order the questions were asked in when the check-in was set up.
  */
 function Fold({
-  n, title, src, summary, open, onToggle, children, checked, onCheck,
+  n, title, src, summary, open, openOverride, onToggle, children, checked, onCheck,
 }: {
   n: number
   title: string
   src: string
   summary: string
   open: boolean
+  /** Forced open from somewhere else on the page - the out-of-time banner, which exists to get
+      somebody to this control. Kept separate from the accordion so neither closes the other. */
+  openOverride?: boolean
   onToggle: () => void
   children: React.ReactNode
   /** Whether the person has signed this question off. See the-setup-steps-you-have-checked.ts. */
   checked?: boolean
   onCheck?: () => void
 }) {
+  const isOpen = open || !!openOverride
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
       <button
         onClick={onToggle}
-        aria-expanded={open}
+        aria-expanded={isOpen}
         style={{
           display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '13px 14px',
-          background: open ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
+          background: isOpen ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
           fontFamily: 'inherit', textAlign: 'left',
         }}
       >
@@ -162,17 +167,17 @@ function Fold({
         */}
         <span style={{
           flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-          background: checked ? 'var(--gw-green-b)' : open ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: checked ? 'white' : open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          background: checked ? 'var(--gw-green-b)' : isOpen ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: checked ? 'white' : isOpen ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>{checked ? '\u2713' : n}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
-          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{isOpen ? src : summary}</span>
         </span>
-        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
+        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{isOpen ? '\u2212' : '+'}</span>
       </button>
-      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
+      {isOpen && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
       {/*
         SIGNING IT OFF, AT THE BOTTOM OF THE QUESTION YOU HAVE JUST READ.
 
@@ -189,7 +194,7 @@ function Fold({
         having actually read the answer. The closed row still turns its number into a tick, so the
         state is visible with everything shut; this is the act.
       */}
-      {open && onCheck && (
+      {isOpen && onCheck && (
         <div style={{ borderTop: '1px solid var(--gw-border)', background: checked ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)' }}>
           <button
             onClick={onCheck}
@@ -291,6 +296,9 @@ export function GroundAdminPage() {
      day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
      and it carried no way to say "not at the weekend". */
   const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
+  /* Opened by the out-of-time banner, which is the one notice whose whole point is to get somebody
+     to the control that lifts it. Independent of the accordion so it cannot fight with it. */
+  const [openTimeframe, setOpenTimeframe] = useState(false)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -1401,6 +1409,41 @@ export function GroundAdminPage() {
             ? <div style={{ padding: '0 16px 4px', fontSize: 14, fontWeight: 700, color: say.c, letterSpacing: '-.01em' }}>{say.t}</div>
             : null
         })()}
+        {/*
+          IT RAN OUT OF TIME, AND HERE IS WHAT LIFTS IT.
+
+          Nate Peterson, 23 September 2026: "i let a few check-ins wait and they are now stalled,
+          with no clear way to open them back up. i can't easily see where to reopen them or to
+          extend the timeline." There was no reopen anywhere in the product, and the only thing any
+          screen said about it was "Ended without an agreed outcome" - a verdict, in green, on the
+          one state somebody could still have done something about.
+
+          So it says what happened, in a sentence, and the button goes to the control that lifts it.
+          For anybody who cannot change the time, it says whose call it is instead of showing a
+          button they cannot press.
+        */}
+        {hasStalled(ground.status) && (
+          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Out of time</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              {itRanOutOfTime(!!ground.viewerRunsThisGround)}
+            </div>
+            {ground.viewerRunsThisGround && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenTimeframe(true)
+                  /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
+                     scroll ignores reduced-motion and fights the page's own scroll container. */
+                  scrollToId('how-long-this-runs')
+                }}
+                style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Give it more time
+              </button>
+            )}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
@@ -1418,7 +1461,9 @@ export function GroundAdminPage() {
               still has something to say. */}
           {/* WHAT ENDED IT COMES FIRST, and the session clock stops. See lib/a-ground-that-has-ended. */}
           {ended ? (
-            <span style={{ fontWeight: 700, color: 'var(--gw-green-t)' }}>{ended}</span>
+            /* Green says "this went well", which is the wrong thing to say about a check-in that
+               ran out of time with people still to answer. */
+            <span style={{ fontWeight: 700, color: hasStalled(ground.status) ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>{ended}</span>
           ) : allSessionsDone ? (
             <span>every session done</span>
           ) : (
@@ -2867,7 +2912,8 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
-            <Fold {...foldProps(setupBand())} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
+            <div id="how-long-this-runs" />
+            <Fold {...foldProps(setupBand())} openOverride={openTimeframe} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
 
             {/*
               WHEN IT STARTS, WHICH HAD NO CONTROL ANYWHERE.

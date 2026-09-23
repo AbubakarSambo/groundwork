@@ -957,6 +957,24 @@ model Ground {
   /// paused before this column existed; resume falls back to ACTIVE for those and says so.
   pausedFromStatus   GroundStatus? @map("paused_from_status")
 
+  /// WHEN THE TIME RAN OUT, AND WHAT THIS CHECK-IN WAS BEFORE IT DID.
+  ///
+  /// STALLED is written by the 3am sweep when a check-in passes the time it was given. It used to
+  /// sit with RESOLVED and CLOSED - two decisions somebody took - so it inherited their one
+  /// property: no way back. A customer let a few check-ins wait, found them stalled, and had
+  /// nothing anywhere to reopen them or extend the time; the check-ins were dead and so was
+  /// everything already answered in them.
+  ///
+  /// So it remembers where it came from, exactly as `pausedFromStatus` does, and giving the
+  /// check-in more time puts it back. A state a machine can put you in has to have a way out a
+  /// person can use. See a-ground-that-has-ended.ts and reopenAfterStalling.
+  stalledFromStatus  GroundStatus? @map("stalled_from_status")
+  stalledAt          DateTime?     @map("stalled_at")
+  /// One-shot: the lead was warned the time was about to run out, with a way to extend it. Null
+  /// means never warned - which is how every stalled check-in before today arrived there, with no
+  /// notice at all until it was already too late.
+  stallWarningSentAt DateTime?     @map("stall_warning_sent_at")
+
   /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
   ///
   /// The schedule used to be a constant in the reminder service, which meant every

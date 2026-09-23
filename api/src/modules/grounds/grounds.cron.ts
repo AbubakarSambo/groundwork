@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_IS_OVER, A_GROUND_IS_HELD } from './a-ground-that-has-ended';
+import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -22,6 +22,24 @@ const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivi
 
 /* One list, in one place: a-ground-that-has-ended.ts. */
 const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
+/**
+ * AND A GROUND THAT HAS ALREADY STOPPED IS NOT STOPPED AGAIN.
+ *
+ * STALLED used to sit in TERMINAL, so every sweep skipped it for free. It is its own state now -
+ * because a person has to be able to lift it - and that freedom comes with this obligation: without
+ * it the 3am sweep would re-stall the same overdue grounds every night and send every party the
+ * same "your check-in has stalled" email once a day forever.
+ */
+const STOPPED: GroundStatus[] = A_GROUND_HAS_STOPPED;
+
+/**
+ * HOW MUCH WARNING BEFORE THE TIME RUNS OUT.
+ *
+ * Seven days, because the thing being asked for is not a click - it is deciding whether people who
+ * have not answered still will, and possibly chasing them. A day's notice on a fortnightly check-in
+ * is no notice at all.
+ */
+const DAYS_OF_NOTICE = 7;
 /**
  * A HELD CLOCK DOES NOT RUN. Every sweep in here that moves a ground on, invites into it, or
  * closes and warns about its sessions leaves a paused ground exactly as it found it. The stall
@@ -124,12 +142,62 @@ export class GroundsCron {
     });
   }
 
+  /**
+   * NOTHING RUNS OUT OF TIME WITHOUT NOTICE. IT USED TO, EVERY TIME.
+   *
+   * Nate Peterson, 23 September 2026: "i let a few check-ins wait and they are now stalled." That
+   * is the ordinary thing that happens to a busy person, and the product's entire answer was to
+   * write the check-in off at 3am and email everybody that it was over. There was no warning at
+   * any point before it, so the first anybody heard of the deadline was the obituary.
+   *
+   * One email, to whoever runs it, while there is still time to do something about it. One-shot on
+   * `stallWarningSentAt`, so a check-in nobody extends is not nagged about daily for a week - the
+   * decision to let it run out is a real answer.
+   *
+   * RUNS BEFORE THE STALL SWEEP, and that ordering matters: a check-in inside the warning window
+   * has not passed its deadline yet, so the two can never fire on the same night for the same
+   * ground. If they ever could, the warning would arrive after the thing it warns about.
+   */
+  @Cron('0 2 * * *', { timeZone: 'UTC' })
+  async warnBeforeTimeRunsOut() {
+    await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+      const candidates = await this.prisma.ground.findMany({
+        where: {
+          status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
+          stallWarningSentAt: null,
+        },
+        select: {
+          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true,
+          initiator: { select: { email: true } },
+        },
+      });
+
+      const frontend = this.config.get<string>('resend.frontendUrl') || '';
+      let warned = 0;
+      for (const g of candidates) {
+        const deadline = deadlineOf(g);
+        if (!deadline) continue;
+        const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / 86_400_000);
+        if (daysLeft > DAYS_OF_NOTICE || daysLeft < 0) continue;
+        /* Stamped before the send, so a mailer that throws cannot turn one notice into a daily one. */
+        await this.prisma.ground.update({ where: { id: g.id }, data: { stallWarningSentAt: new Date() } });
+        const to = g.initiator?.email;
+        if (!to) continue;
+        await this.email
+          .sendTimeRunningOut(to, g.label, `${frontend}/grounds/${g.id}`, deadline, Math.max(0, daysLeft))
+          .catch((err: any) => this.logger.error(`Time-running-out notice failed for ground ${g.id}: ${err.message}`));
+        warned += 1;
+      }
+      if (warned) this.logger.log(`Warned ${warned} lead(s) that a check-in is about to run out of time.`);
+    });
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
-        where: { status: { notIn: [...TERMINAL, ...HELD] } },
-        select: { id: true, createdAt: true, startsAt: true, timelineDays: true },
+        where: { status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] } },
+        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, status: true },
       });
 
       const staleIds = candidates
@@ -143,10 +211,23 @@ export class GroundsCron {
 
       if (staleIds.length === 0) return;
 
-      await this.prisma.ground.updateMany({
-        where: { id: { in: staleIds } },
-        data: { status: GroundStatus.STALLED },
-      });
+      /*
+       * AND WHAT IT WAS BEFORE IS WRITTEN DOWN, so reopening can put it back rather than guess.
+       *
+       * The same shape as `pausedFromStatus`: a state something else can put you in has to remember
+       * where it came from, or the way out has to invent a destination. One update per prior status
+       * rather than one per ground - there are four of them at most.
+       */
+      const byPrior = new Map<GroundStatus, string[]>();
+      for (const g of candidates.filter((c) => staleIds.includes(c.id))) {
+        byPrior.set(g.status, [...(byPrior.get(g.status) ?? []), g.id]);
+      }
+      for (const [prior, ids] of byPrior) {
+        await this.prisma.ground.updateMany({
+          where: { id: { in: ids } },
+          data: { status: GroundStatus.STALLED, stalledFromStatus: prior, stalledAt: new Date() },
+        });
+      }
 
       this.logger.warn(`Stalled ${staleIds.length} overdue ground(s): ${staleIds.join(', ')}`);
 

@@ -7,7 +7,7 @@ import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
-import { hasEnded, isHeld } from '../grounds/a-ground-that-has-ended';
+import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-has-ended';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -102,9 +102,12 @@ export class ReportsListener {
          * NOR MAY IT LIFT A HOLD. A paused ground whose last participant finishes is still paused;
          * the report is released and the hold stands until somebody resumes it on purpose.
          */
-        if (hasEnded(g.status) || isHeld(g.status)) {
+        /* And a stalled one, for the same reason as a held one: releasing a report used to set a
+           ground ACTIVE, and doing that to a check-in that ran out of time would revive it without
+           anybody deciding to - which is the fault this whole change is about, in reverse. */
+        if (isShut(g.status)) {
           this.logger.log(
-            `Ground ${event.groundId} is ${g.status} (${hasEnded(g.status) ? 'ended' : 'held'}); report released and the status left as it is.`,
+            `Ground ${event.groundId} is ${g.status} (${hasEnded(g.status) ? 'ended' : hasStalled(g.status) ? 'out of time' : 'held'}); report released and the status left as it is.`,
           );
         } else {
           await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });

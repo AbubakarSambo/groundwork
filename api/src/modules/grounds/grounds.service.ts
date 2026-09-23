@@ -1,6 +1,6 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
-import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
+import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
@@ -3844,7 +3844,9 @@ export class GroundsService {
      */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
-        hasEnded(ground.status) ? 'This check-in has ended. Nobody can be added to it.' : WHILE_IT_IS_HELD,
+        hasEnded(ground.status) ? 'This check-in has ended. Nobody can be added to it.'
+          : hasStalled(ground.status) ? IT_RAN_OUT_OF_TIME
+          : WHILE_IT_IS_HELD,
       );
     }
 
@@ -4441,7 +4443,9 @@ export class GroundsService {
     /* Activating is not resuming, and it is not reopening. An ended ground stays ended; a held one is lifted by resumeGround, which knows what to go back to. */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
-        hasEnded(ground.status) ? 'This check-in has ended and cannot be activated.' : WHILE_IT_IS_HELD,
+        hasEnded(ground.status) ? 'This check-in has ended and cannot be activated.'
+          : hasStalled(ground.status) ? IT_RAN_OUT_OF_TIME
+          : WHILE_IT_IS_HELD,
       );
     }
 
@@ -4966,9 +4970,47 @@ export class GroundsService {
       }
     }
 
+    /*
+     * AND GIVING IT MORE TIME OPENS IT AGAIN, WHICH IS WHAT THEY WERE REACHING FOR.
+     *
+     * Nate Peterson, 23 September 2026: "i let a few check-ins wait and they are now stalled, with
+     * no clear way to open them back up. i can't easily see where to reopen them or to extend the
+     * timeline." There was no reopen anywhere, and extending the time was worse than missing: it
+     * wrote, the dates moved, the status stayed STALLED, and the check-in was still dead. A control
+     * that agrees with you and changes nothing.
+     *
+     * So the extension IS the reopen - one act, because they are one intention. Back to what it was
+     * before the time ran out, which the sweep now records rather than this having to guess.
+     *
+     * ONLY WHERE THE NEW DEADLINE IS ACTUALLY IN THE FUTURE. Reopening a check-in to a date that
+     * has already passed would hand it straight back to tonight's sweep, and the person would watch
+     * it stall again by morning having done exactly what the product told them to.
+     */
+    const reopening = hasStalled(ground.status) && requestedDays !== undefined
+      ? deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
+      : null;
+    const opensAgain = !!reopening && reopening.getTime() > Date.now();
+    if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {
+      throw new BadRequestException(
+        'That is not enough time to reopen this check-in - the new end date has already passed. Give it a date in the future and it opens again.',
+      );
+    }
+
     const updated = await this.prisma.ground.update({
       where: { id: groundId },
       data: {
+        /*
+         * Back to what it was, or ACTIVE where the sweep that stalled it predates this column and
+         * recorded nothing. ACTIVE rather than OPEN on that fallback: a check-in that ran long
+         * enough to stall has been under way, and telling everybody it is newly open would be the
+         * product forgetting what happened in it.
+         */
+        ...(opensAgain && {
+          status: ground.stalledFromStatus ?? GroundStatus.ACTIVE,
+          stalledFromStatus: null,
+          stalledAt: null,
+          stallWarningSentAt: null,
+        }),
         /**
          * Both columns, so nothing reading the legacy one goes stale - but DAYS is the value that
          * counts, and weeks is derived from it rather than the other way round.
@@ -5001,7 +5043,40 @@ export class GroundsService {
       },
     });
     if (dto.brief !== undefined) await this.tellParticipantsAboutThis(groundId, dto.brief);
+    if (opensAgain) {
+      auditData.timeline.push({
+        changedAt: new Date().toISOString(),
+        changedBy: requestingUserId,
+        changes: { reopened: { from: GroundStatus.STALLED, to: ground.stalledFromStatus ?? GroundStatus.ACTIVE } },
+      });
+      await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: auditData } }).catch(() => undefined);
+      this.logger.log(`Ground ${groundId} reopened after stalling: now ${ground.stalledFromStatus ?? GroundStatus.ACTIVE}, ${requestedDays} days.`);
+      /*
+       * AND THE PEOPLE WHO WERE TOLD IT STALLED ARE TOLD IT IS BACK.
+       *
+       * They each got an email saying this check-in had stalled. Leaving them with that as the last
+       * word, while the lead sees a live check-in, is how somebody decides it is not worth
+       * answering - which is the outcome he was actually worried about.
+       */
+      this.tellThemItIsOpenAgain(groundId).catch((err: any) =>
+        this.logger.warn(`Could not tell everybody ${groundId} is open again: ${err?.message}`));
+    }
     return updated;
+  }
+
+  /** One email each to everybody on a check-in that has just been given more time. */
+  private async tellThemItIsOpenAgain(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { label: true, endsAt: true, participants: { select: { email: true } } },
+    });
+    if (!ground) return;
+    const where = `${this.config.get<string>('resend.frontendUrl') || ''}/grounds/${groundId}`;
+    for (const p of ground.participants) {
+      await this.email
+        .sendReopenedNotification(p.email, ground.label, where, ground.endsAt ?? null)
+        .catch((err: any) => this.logger.warn(`Reopened notice failed for ${groundId}: ${err?.message}`));
+    }
   }
 
   /**

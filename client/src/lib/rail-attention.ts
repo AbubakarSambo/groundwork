@@ -1,3 +1,5 @@
+import { isShut } from './a-ground-that-has-ended'
+
 /**
  * WHAT A GROUND IN THE RAIL NEEDS FROM YOU, IF ANYTHING.
  *
@@ -30,6 +32,8 @@ export type RailAttention =
   | { kind: 'waiting'; done: number; total: number }
 
 export interface RailGround {
+  /** The ground's own status. Without it, the rail cannot tell a live check-in from a shut one. */
+  status?: string | null
   participants?: { id: string; userId?: string | null }[]
   checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null }[]
   closedAt?: string | null
@@ -40,6 +44,23 @@ export interface RailGround {
 export const OVERDUE_AFTER_DAYS = 7
 
 export function railAttention(g: RailGround, myUserId: string | null | undefined, now: Date = new Date()): RailAttention {
+  /*
+   * A CHECK-IN THAT REFUSES EVERY ANSWER IS NOT SOMEBODY'S TURN.
+   *
+   * Nate Peterson, 23 September 2026: "it doesn't seem clear that you can't check in, because all
+   * of the involved accounts have things like 'your turn - 12 days late', which would indicate that
+   * a user could still check in."
+   *
+   * They could not. The server refuses with "This check-in is closed. Nothing further can be added
+   * to it." This function never looked at the ground's status at all - it declared `closedAt` and
+   * `resolvedAt` in its own input type and read neither - so every ended, held and out-of-time
+   * check-in kept asking people for an answer it would then reject. Twelve days of it, in his case.
+   *
+   * `isShut` and not `hasEnded`: out of time is the one he hit, and it is the one that looks most
+   * like a live check-in from the outside.
+   */
+  if (isShut(g.status) || g.closedAt || g.resolvedAt) return { kind: 'none' }
+
   const me = (g.participants ?? []).find((p) => p.userId && p.userId === myUserId)
   const checkIns = g.checkIns ?? []
 
