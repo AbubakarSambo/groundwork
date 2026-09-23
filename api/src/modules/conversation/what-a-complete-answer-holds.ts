@@ -165,7 +165,19 @@ const kebab = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').
  * it would be asked of a hundred people and then counted into nothing. Keeping it would put back
  * exactly the fault this module exists to remove, so it goes, and it is logged where it goes.
  */
-export function theFrameFrom(raw: unknown, note?: (why: string) => void): AField[] {
+export function theFrameFrom(
+  raw: unknown,
+  note?: (why: string) => void,
+  /*
+   * HOW FEW IS STILL WORTH KEEPING, which is three for a whole frame and one for a top-up.
+   *
+   * The floor exists because two fields is not a frame, it is a pair of questions the conversation
+   * already asks. It does not apply to the second pass that fills in a subject the first pass
+   * dropped: there, one field is exactly the point. Without this the top-up was validated against
+   * the whole-frame floor and thrown away - which I only saw by reading my own wiring back.
+   */
+  atLeast: number = THE_FEWEST_WORTH_HAVING,
+): AField[] {
   const rows = Array.isArray((raw as any)?.fields) ? ((raw as any).fields as any[]) : [];
   const held: AField[] = [];
   const seen = new Set<string>();
@@ -193,8 +205,7 @@ export function theFrameFrom(raw: unknown, note?: (why: string) => void): AField
     });
     if (held.length >= THE_MOST_ANYBODY_WILL_FILL) break;
   }
-  /* Two fields is not a frame; it is a pair of questions, and the conversation already asks those. */
-  return held.length >= THE_FEWEST_WORTH_HAVING ? held : [];
+  return held.length >= atLeast ? held : [];
 }
 
 /**
@@ -210,4 +221,67 @@ export function theFrameAsShown(frame: AField[]): string {
     const opts = f.oneOf?.length ? `\n     one of: ${f.oneOf.join(' · ')}` : '';
     return `${i + 1}. ${f.asks}${who}\n     so you can: ${f.matters}${opts}`;
   }).join('\n');
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * AND WHAT THE BRIEF ASKED FOR THAT THE FRAME LEFT OUT
+ * ---------------------------------------------------------------------------------------------- */
+
+/**
+ * SUBJECTS THE BRIEF RAISES THAT NO FIELD ASKS ABOUT.
+ *
+ * Read off two real briefs: from the newer MarketView one the frame returned a field for the single
+ * biggest risk they face; from the Friends of NABG one, whose brief asks in as many words about
+ * "the risks and challenges you have encountered, what you would prefer not to repeat", it returned
+ * nine fields and not one about failure. Same reader, same instruction, one silently dropped a
+ * subject the lead had spent a sentence on.
+ *
+ * The brief is already read into SUBJECTS for the conversation, so there is a second, independent
+ * list of what this brief is about. Comparing the two is the cheapest check there is: a subject
+ * whose words appear in no field's question is one the frame forgot, and worth one more pass.
+ *
+ * WORDS, NOT MEANING, AND THAT IS THE RIGHT TOOL HERE. This decides only whether to LOOK again -
+ * a false alarm costs one model call and a second opinion, and a missed subject costs a column the
+ * lead asked for. The generous direction is the cheap one.
+ *
+ * AND THE WORDS HAVE TO BE THE DISTINCTIVE ONES. My first version took every word over three
+ * letters out of the subject's own sentence, so "the risks and challenges they HAVE encountered"
+ * matched a field whose margin note read "see which chains HAVE energy", and the check reported
+ * nothing missing on the exact brief it was written for. A four-letter verb is not a subject.
+ */
+const NOT_A_SUBJECT = new Set([
+  'they', 'have', 'has', 'their', 'them', 'this', 'that', 'with', 'from', 'what', 'when', 'where',
+  'which', 'want', 'wants', 'need', 'needs', 'about', 'into', 'over', 'your', 'you', 'and', 'the',
+  'for', 'are', 'any', 'each', 'been', 'would', 'could', 'make', 'makes', 'made', 'more', 'most',
+  'work', 'works', 'working', 'thing', 'things', 'kind', 'kinds', 'type', 'types', 'people', 'plan',
+  'plans', 'planning', 'encountered', 'looking', 'currently',
+]);
+export function whatTheFrameLeftOut(
+  frame: AField[],
+  subjects: { id: string; subject: string; words?: string[] }[] | null | undefined,
+): { id: string; subject: string }[] {
+  if (!frame.length) return [];
+  const asked = frame.map((f) => `${f.asks} ${f.matters} ${(f.oneOf ?? []).join(' ')}`.toLowerCase()).join(' | ');
+  const out: { id: string; subject: string }[] = [];
+  for (const s of subjects ?? []) {
+    if (!s?.subject) continue;
+    const words = [...(s.words ?? []), ...s.subject.split(/\s+/)]
+      .map((w) => w.toLowerCase().replace(/[^a-z]/g, ''))
+      .filter((w) => w.length > 3 && !NOT_A_SUBJECT.has(w));
+    if (!words.length) continue;
+    if (!words.some((w) => asked.includes(w))) out.push({ id: s.id, subject: s.subject });
+  }
+  return out;
+}
+
+/** The second pass, naming only what was missed, so the first answer is not re-litigated. */
+export function READ_THE_FRAME_AGAIN(missed: { subject: string }[]): string {
+  return [
+    READ_THE_FRAME,
+    '',
+    'YOU HAVE ALREADY READ THIS BRIEF ONCE and returned fields for most of it. These subjects are in the brief and no field you returned asks about any of them:',
+    ...missed.map((m) => `  - ${m.subject}`),
+    '',
+    'Return fields ONLY for these. Do not return the ones you gave before. If one of them genuinely cannot be made comparable - if the brief raises it as background rather than as something to collect from everybody - leave it out and return the rest.',
+  ].join('\n');
 }

@@ -143,10 +143,14 @@ import {
 import { whatTheyWantAsked, asSomethingToCover, followTheirLead } from './they-can-tell-us-what-to-ask';
 import { theChallengeWorthPutting, sayThisChallenge } from './what-a-claim-costs-to-prove';
 import {
-  READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar, theSubjectsToJudgeAgainst,
+  READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar, theSubjectsToJudgeAgainst, theFieldsToJudgeAgainst,
 } from './reading-what-they-just-said';
 import {
-  READ_THE_FRAME, READ_THE_FRAME_SCHEMA, theFrameFrom, type AField,
+  askForThisField, theFieldWorthAsking, theFrameComesFirst,
+} from './the-field-this-answer-is-missing';
+import {
+  READ_THE_FRAME, READ_THE_FRAME_AGAIN, READ_THE_FRAME_SCHEMA, theFrameFrom, whatTheFrameLeftOut,
+  THE_MOST_ANYBODY_WILL_FILL, type AField,
 } from './what-a-complete-answer-holds';
 import { whatTheyGaveUs, type WhatTheyGave } from './what-they-gave-us-to-work-with';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
@@ -3993,7 +3997,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * never having offered. Their steer is dropped from the rank only once they have actually
      * talked about it - decided by the same coverage rule as everything else.
      */
-    const theHole = this.whichHoleToPush(notes, subjects, theirAnswers).text;
+    const frame = await this.theFrameFor(checkIn.groundId).catch(() => [] as AField[]);
+    const theHole = this.whichHoleToPush(notes, subjects, theirAnswers, frame).text;
 
     /*
      * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
@@ -6159,14 +6164,38 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     notes: WhatWeHave | null,
     subjects: ASubject[],
     theirAnswers: string[],
-  ): { text: string; subject: ASubject | null } {
+    frame: AField[] = [],
+  ): { text: string; subject: ASubject | null; field?: AField | null } {
     const raised = notes?.covered ?? [];
     const stillOwed = (notes?.asked ?? [])
       .map((subject) => asSomethingToCover(subject))
       .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
     if (stillOwed.length) return { text: followTheirLead(stillOwed[0].subject), subject: null };
+    /*
+     * AND THE LEAD'S OWN FIELDS COME BEFORE OUR CURIOSITY, WHILE MOST OF THEM ARE STILL MISSING.
+     *
+     * Eighty-six of a hundred and one conversations never reached how the person vets anybody.
+     * Seventy-two never reached which actors they need. Sixty never reached volumes. The frame says
+     * what a complete answer holds; without this it was a specification nothing was held to, and
+     * the report was asked to bucket answers that had never been collected.
+     *
+     * AHEAD OF THE CHALLENGE, and only while half of them are still owed. The challenge is the
+     * thing that makes this feel like somebody who knows the work, and it is worth nothing if the
+     * conversation ends without the columns the lead asked for. Once the shape is there it goes
+     * back in front, which is the same trade breadthFirst makes next door.
+     */
+    const theirKind = [notes?.who?.organisation, notes?.who?.role].filter(Boolean).join(' ') || null;
+    if (frame.length && theFrameComesFirst(frame, notes, theirKind)) {
+      const field = theFieldWorthAsking(frame, notes, theirKind);
+      if (field) return { text: askForThisField(field), subject: null, field };
+    }
     const challenge = theChallengeWorthPutting(notes?.claims, notes?.challenged ?? []);
     if (challenge) return { text: sayThisChallenge(challenge), subject: null };
+    /* And after it, because a missing column still beats a topic nobody asked for. */
+    if (frame.length) {
+      const field = theFieldWorthAsking(frame, notes, theirKind);
+      if (field) return { text: askForThisField(field), subject: null, field };
+    }
     const cover = () => {
       const s = theSubjectWorthRaising(subjects, theirAnswers, raised);
       const text = whatToCoverNext(subjects, theirAnswers, raised);
@@ -6214,6 +6243,41 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     const frame = theFrameFrom(read, (why) => this.logger?.warn?.(`Frame on ${groundId}: ${why}`));
     if (!frame.length) return [];
+
+    /*
+     * AND WHAT THE BRIEF ASKED FOR THAT THIS MISSED.
+     *
+     * Read off two real briefs. From the newer MarketView one the frame returned a field for the
+     * single biggest risk they face; from the Friends of NABG one, whose brief asks in as many
+     * words about "the risks and challenges you have encountered, what you would prefer not to
+     * repeat", it returned nine fields and not one about failure. Same reader, same instruction,
+     * one subject the lead had spent a sentence on quietly gone.
+     *
+     * The brief is already read into subjects for the conversation, so there is a second and
+     * independent list of what it is about. Where a subject's words appear in no field's question,
+     * it gets one more pass naming only what was missed - which also stops the second answer
+     * re-litigating the first. Best-effort: a frame with nine good fields is not thrown away
+     * because the check for a tenth failed.
+     */
+    const missed = await this.theSubjectsToCover(groundId)
+      .then((subjects) => whatTheFrameLeftOut(frame, subjects))
+      .catch(() => [] as { id: string; subject: string }[]);
+    if (missed.length && frame.length < THE_MOST_ANYBODY_WILL_FILL) {
+      this.logger?.log?.(`Frame on ${groundId} missed ${missed.length} subject(s) the brief raises: ${missed.map((m) => m.id).join(', ')}. Reading again.`);
+      const more = await this.anthropic.extract<{ fields?: unknown[] }>(
+        READ_THE_FRAME_AGAIN(missed),
+        [{ role: 'user', content: brief }],
+        READ_THE_FRAME_SCHEMA as any,
+      ).catch(() => null);
+      /* Validated by the same rules, then only the ids the first pass did not already hold. */
+      const held = new Set(frame.map((f) => f.id));
+      for (const f of theFrameFrom(more, (why) => this.logger?.warn?.(`Frame on ${groundId}, second pass: ${why}`), 1)) {
+        if (held.has(f.id) || frame.length >= THE_MOST_ANYBODY_WILL_FILL) continue;
+        frame.push(f);
+        held.add(f.id);
+      }
+    }
+
     await this.prisma.ground
       .update({ where: { id: groundId }, data: { whatACompleteAnswerHolds: frame as any } })
       .catch((err: any) => this.logger?.warn?.(`Could not keep the frame on ${groundId}: ${err?.message}`));
@@ -6378,26 +6442,46 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       .then((rows) => rows.slice(0, -1).map((r) => r.content ?? ''))
       .catch(() => [] as string[]);
     const subjects = await this.theSubjectsToCover(row.groundId).catch(() => [] as ASubject[]);
-    const putToThem = subjects.length && stillTalking
-      ? this.whichHoleToPush(before, subjects, priorAnswers).subject
+    const frame = await this.theFrameFor(row.groundId).catch(() => [] as AField[]);
+    const lastTurnPut = (subjects.length || frame.length) && stillTalking
+      ? this.whichHoleToPush(before, subjects, priorAnswers, frame)
       : null;
+    const putToThem = lastTurnPut?.subject ?? null;
     if (putToThem) {
       before.covered = Array.from(new Set([...(before.covered ?? []), putToThem.id]));
       this.logger?.log?.(`Check-in ${checkInId}: they answered on "${putToThem.subject}".`);
+    }
+    /*
+     * AND THE FIELD IT PUT TO THEM IS REMEMBERED WHETHER OR NOT THEY ANSWERED IT.
+     *
+     * Not conditional on the answer, which is the whole point: driven live, the conversation asked
+     * what products she wanted three turns running - through an answer about farmers and agents and
+     * an answer about vetting - because nothing recorded that it had already asked. One entry per
+     * ask, and two asks is enough.
+     */
+    if (lastTurnPut?.field) {
+      before.askedFields = [...(before.askedFields ?? []), lastTurnPut.field.id];
+      this.logger?.log?.(`Check-in ${checkInId}: asked for "${lastTurnPut.field.id}".`);
     }
 
     const read = await this.anthropic.extract<{
       opens?: Partial<Claim>[];
       sharpens?: (Partial<Claim> & { id: string })[];
       who?: { name?: string; role?: string; organisation?: string };
+      fills?: string[];
+      cannotSay?: string[];
       covered?: string[];
       contradiction?: { between?: string[]; why?: string };
     }>(
       READ_THIS_TURN,
       [{
         role: 'user',
-        content: [theNotesSoFar(before), theSubjectsToJudgeAgainst(subjects), `WHAT THEY JUST SAID:\n${theirTurn}`]
-          .filter(Boolean).join('\n\n'),
+        content: [
+          theNotesSoFar(before),
+          theFieldsToJudgeAgainst(frame, before),
+          theSubjectsToJudgeAgainst(subjects),
+          `WHAT THEY JUST SAID:\n${theirTurn}`,
+        ].filter(Boolean).join('\n\n'),
       }],
       READ_THIS_TURN_SCHEMA as any,
       /*
@@ -6459,9 +6543,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const real = new Set(subjects.map((s) => s.id));
     const theyCovered = (read.covered ?? []).filter((id) => real.has(id));
+    /*
+     * AND WHICH OF THE LEAD'S FIELDS THIS ANSWER FILLED, which is what makes a hundred answers
+     * comparable instead of a hundred transcripts. Only ids that are really in the frame, for the
+     * same reason as the subjects: an invented one would mark a column complete that nobody has
+     * answered, and the column is the whole product.
+     */
+    const theFields = new Set(frame.map((f) => f.id));
+    const nowFilled = (read.fills ?? []).filter((id) => theFields.has(id));
+    const nowRuledOut = (read.cannotSay ?? []).filter((id) => theFields.has(id));
     let after = withThisTurn(before, [...opened, ...sharpened], false);
     if (theyCovered.length) {
       after = { ...after, covered: Array.from(new Set([...(after.covered ?? []), ...theyCovered])) };
+    }
+    if (nowFilled.length || nowRuledOut.length) {
+      /* Giving a value beats having ruled it out: somebody who said they had no way to know and
+         then produced the figure has answered it, and the conversation must stop asking. */
+      const ruledOut = new Set([...(after.cannotSay ?? []), ...nowRuledOut]);
+      const filled = Array.from(new Set([...(after.filled ?? []), ...nowFilled]));
+      for (const id of filled) ruledOut.delete(id);
+      after = { ...after, filled, cannotSay: Array.from(ruledOut) };
+      this.logger?.log?.(`Check-in ${checkInId}: ${filled.length} of ${frame.length} fields given, ${ruledOut.size} ruled out.`);
     }
     /* Only ever filled in: a turn that says nothing about who they are must not blank it. */
     if (read.who && (read.who.name || read.who.role || read.who.organisation)) {

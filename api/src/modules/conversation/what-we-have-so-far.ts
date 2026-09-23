@@ -75,6 +75,16 @@ export interface WhatWeHave {
    * rather than the category. See whatIsStillUncovered.
    */
   covered?: string[];
+  /*
+   * Field ids of the frame this person has given a real value for, and the ones they have said they
+   * cannot answer. The second list is why the conversation stops asking: asked twice for something
+   * somebody has already ruled out, an interview becomes an interrogation. See
+   * the-field-this-answer-is-missing.
+   */
+  filled?: string[];
+  cannotSay?: string[];
+  /* One entry per time a field was put to them, so the same one is never asked three times. */
+  askedFields?: string[];
   claims: Claim[];
   contradictions: Contradiction[];
   /** How many turns were about the product rather than the work. Counted, never stored as content. */

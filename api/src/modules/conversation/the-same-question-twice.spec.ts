@@ -185,7 +185,8 @@ describe('the bookkeeping for what was put to them', () => {
   it('nothing is marked once the conversation has closed', () => {
     expect(notes).toMatch(/const putLastTurn = row\.completedAt \? null : theChallengeWorthPutting\(/);
     expect(notes).toMatch(/const stillTalking = !row\.completedAt;/);
-    expect(notes).toMatch(/subjects\.length && stillTalking/);
+    /* Now also the field it asked for - see the-field-this-answer-is-missing. */
+    expect(notes).toMatch(/\(subjects\.length \|\| frame\.length\) && stillTalking/);
   });
 
   it('and a remark is not an answer, so it covers nothing', () => {

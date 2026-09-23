@@ -54,6 +54,11 @@ export const READ_THIS_TURN = [
   'ALSO RETURN, only where this answer says it:',
   '  who           their name, their role, the organisation they answer for',
   '  contradiction two claim ids that cannot both hold, and why in one clause',
+  '  fills         the ids of any FIELDS, from the list you are given, that this answer gives a real',
+  '                value for - and separately the ids of any they were asked for and said they do',
+  '                not know, do not do, or have no way to. That second one is an answer, not a blank:',
+  '                somebody with no way to check a new supplier has told you the most useful thing',
+  '                in the conversation.',
   '  covered       the ids of any subjects, from the list you are given, that this answer says',
   '                something about. Judge it by what the answer MEANS, not by whether it repeats the',
   '                subject\'s wording: "Niger and Kogi" covers the states they want to expand into,',
@@ -117,6 +122,16 @@ export const READ_THIS_TURN_SCHEMA = {
           organisation: { type: 'string' },
         },
       },
+      fills: {
+        type: 'array',
+        description: 'Field ids this answer gives a real value for.',
+        items: { type: 'string' },
+      },
+      cannotSay: {
+        type: 'array',
+        description: 'Field ids they were asked for and said they cannot answer. An answer, not a blank.',
+        items: { type: 'string' },
+      },
       covered: {
         type: 'array',
         description: 'Ids of the subjects this answer says something about, from the list given. Empty where it says nothing about any of them.',
@@ -159,6 +174,31 @@ export function theNotesSoFar(state: { claims: any[]; who?: any }): string {
  * Reading it is the model's job; what the reading is allowed to DO is the product's. See
  * the-ground-the-brief-asks-us-to-cover.
  */
+/**
+ * THE FIELDS AS THE MODEL IS SHOWN THEM, so it can say which one an answer filled.
+ *
+ * With the ones already given marked, because the read is about what THIS answer adds - and because
+ * a model handed a list of ten fields and no idea which are done will helpfully re-report all of
+ * them, which would mark a conversation complete on its second turn.
+ */
+export function theFieldsToJudgeAgainst(
+  fields: { id: string; asks: string; oneOf?: string[] }[] | null | undefined,
+  already: { filled?: string[]; cannotSay?: string[] } | null | undefined,
+): string {
+  const list = (fields ?? []).filter((f) => f?.id && f?.asks);
+  if (!list.length) return '';
+  const filled = new Set(already?.filled ?? []);
+  const ruledOut = new Set(already?.cannotSay ?? []);
+  return [
+    'THE FIELDS EVERY ANSWER TO THIS CHECK-IN HAS TO HOLD, and their ids for `fills` and `cannotSay`:',
+    ...list.map((f) => {
+      const state = filled.has(f.id) ? ' [already given]' : ruledOut.has(f.id) ? ' [they said they cannot]' : '';
+      return `- ${f.id}: ${f.asks}${state}`;
+    }),
+    'Report a field only where THIS answer is what gives it. Do not repeat one already marked given.',
+  ].join('\n');
+}
+
 export function theSubjectsToJudgeAgainst(subjects: { id: string; subject: string }[] | null | undefined): string {
   const list = (subjects ?? []).filter((s) => s?.id && s?.subject);
   if (!list.length) return '';
