@@ -59,6 +59,7 @@ import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
+import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -402,6 +403,12 @@ export class GroundsService {
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
+    /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
+       the rail with the same name. See four-check-ins-with-the-same-name. */
+    const labelsAlreadyHere = await this.prisma.ground
+      .findMany({ where: { organizationId }, select: { label: true } })
+      .then((rows) => rows.map((r) => r.label))
+      .catch(() => [] as string[]);
     // --- Billing gate ---
     // Resolve whether this org may create a ground right now, and how.
     const canCreate = await this.billing.canCreateGround(organizationId, dto.accessCode);
@@ -451,7 +458,13 @@ export class GroundsService {
       const groundData: Record<string, unknown> = {
         organizationId,
         initiatorId,
-        label: dto.label,
+        /*
+         * A LABEL THEY CAN TELL APART. Four check-ins in her rail read "The goal is to better
+         * un…" because each label is the opening words of a brief and she ran the same brief four
+         * times. See four-check-ins-with-the-same-name: a clash takes the day it opened, and the
+         * one that already exists is never renamed under somebody who has it open.
+         */
+        label: aLabelTheyCanTellApart(dto.label, labelsAlreadyHere),
         scenario: dto.scenario,
         // Immutable after this point. Omitting it takes the family default so a
         // sensing-family ground is never accidentally created shared.

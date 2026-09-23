@@ -131,7 +131,20 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
     .sort((a, b) => {
       const byReason = ORDER.indexOf(a.reason) - ORDER.indexOf(b.reason);
       if (byReason !== 0) return byReason;
-      /* Within a reason, by name, so the order does not shuffle between reads and read as movement. */
+      /*
+       * AND SOMEBODY WE CANNOT NAME GOES LAST WITHIN THEIR REASON.
+       *
+       * Read on a live board, 23 September 2026: "A teammate - no name given - has not answered -
+       * Ask them to check in." at the very top, above the one person who had answered and whose
+       * account is the only content on the page.
+       *
+       * "Has not answered" is rightly the first reason - it is the one thing a lead can act on. But
+       * the action is "ask them", and you cannot ask somebody whose name the product does not hold.
+       * An unnamed row is the least actionable row in its own category, so it sorts to the bottom of
+       * it rather than to the top of the page on an alphabetical accident.
+       */
+      if (a.nameIsTheirRole !== b.nameIsTheirRole) return a.nameIsTheirRole ? 1 : -1;
+      /* Within that, by name, so the order does not shuffle between reads and read as movement. */
       return a.who.localeCompare(b.who);
     });
 }
