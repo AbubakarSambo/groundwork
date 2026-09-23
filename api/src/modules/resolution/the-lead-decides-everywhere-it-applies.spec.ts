@@ -57,12 +57,26 @@ describe('GW-RES-01: a party cannot counter-propose their way around the lead', 
     expect(prisma.resolution.upsert).toHaveBeenCalled();
   });
 
-  it('and peers are untouched, because there both must agree', async () => {
-    /**
-     * The half that must NOT be tightened. NEW_PROJECT is not in LEAD_DECIDES, so a non-lead
-     * counter-proposing is the correct behaviour and this rule must not reach it.
-     */
+  /*
+   * AND THERE IS NO SCENARIO LEFT WHERE A PARTICIPANT MAY CLOSE ONE.
+   *
+   * This test used to assert the opposite half of a rule that no longer exists: NEW_PROJECT was not
+   * in LEAD_DECIDES, so a non-lead counter-proposing was correct there and the guard had to stay
+   * off it. Her call, 24 September 2026 - "the lead is meant to close it, nothing like agreement" -
+   * so the guard now reaches every scenario, and a peer scenario is the case worth naming because
+   * it is the one that changed.
+   */
+  it('and a peer scenario is no exception any more', async () => {
     const { svc, prisma } = makeService(GroundScenario.NEW_PROJECT, PartyType.PARTICIPANT);
+    await expect(
+      svc.counterPropose('g1', 'u1', endStatesFor(GroundScenario.NEW_PROJECT)[0].value),
+    ).rejects.toThrow(/the lead decides how it ends/);
+    expect(prisma.resolution.upsert).not.toHaveBeenCalled();
+  });
+
+  /* And the lead still closes it, on that same scenario. */
+  it('and the lead closes that same check-in', async () => {
+    const { svc, prisma } = makeService(GroundScenario.NEW_PROJECT, PartyType.INITIATOR);
     await svc.counterPropose('g1', 'u1', endStatesFor(GroundScenario.NEW_PROJECT)[0].value).catch(() => undefined);
     expect(prisma.resolution.upsert).toHaveBeenCalled();
   });

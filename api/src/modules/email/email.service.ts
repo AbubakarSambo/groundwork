@@ -1178,7 +1178,7 @@ export class EmailService implements OnModuleInit {
       subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
         `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
-         <p>It only closes when everybody still involved says the same thing. Have a look, and either agree or say where you see it differently.</p>
+         <p>Whoever runs the check-in decides how it ends. Have a look, and if you see it differently, say so in your own check-in - what you said stays on the record beside what they decided.</p>
          <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
     }, undefined, 'sendResolutionProposal');

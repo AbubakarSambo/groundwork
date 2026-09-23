@@ -143,31 +143,25 @@ export class ResolutionService {
       ? new Set(active.map((p) => choiceByParticipant.get(p.id)).filter((s): s is string => !!s))
       : new Set([endState]);
 
+    /*
+     * THE LEAD'S ANSWER CLOSES IT, AND THERE IS NO OTHER PATH OUT OF HERE.
+     *
+     * `closingNeedsEveryone` is false for every scenario now - "the lead is meant to close it,
+     * nothing like agreement" - and the confirmation is written above before the count is taken, so
+     * the person who just answered is always among the confirmed and the chosen set is always their
+     * one answer. This branch is the whole of it.
+     *
+     * WHAT WENT WITH THE OTHER BRANCH. It emailed every party who had not yet picked the same end
+     * state, asking them to agree or say where they saw it differently. Nobody is being asked to
+     * agree any more, so that invitation would be a question with no answer. Everybody is still
+     * told, by `finalize`, that it closed and what it closed as - which is the thing they actually
+     * need and the thing the old flow only got round to at the very end.
+     */
     if (allConfirmed && chosenStates.size === 1) {
       await this.finalize(groundId, [...chosenStates][0]);
     } else {
-      // GW-22: notify parties who have not yet confirmed this endState so they
-      // know a proposal is waiting. Skip the proposer (they just made it).
-      /**
-     * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
-     * with the person's actual NAME never consulted - and this one goes out in an email.
-     */
-    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
-      const frontend = this.config.get<string>('resend.frontendUrl') || '';
-      /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
-       these invitations to settle an end state landed on the not-found page. The panel that
-       accepts a proposal is rendered on the ground page itself. */
-    const groundUrl = `${frontend}/grounds/${groundId}`;
-      const needConfirmation = active.filter(
-        (p) => p.id !== participant.id && choiceByParticipant.get(p.id) !== endState,
-      );
-      for (const p of needConfirmation) {
-        await this.email
-          .sendResolutionProposal(p.email, proposerLabel, endState, groundUrl)
-          .catch((err: any) =>
-            this.logger.error(`Resolution proposal email failed for participant ${p.id}: ${err.message}`),
-          );
-      }
+      /* Defensive only: an end state that failed validation above cannot reach this. */
+      this.logger.warn(`Resolution on ${groundId} did not close: ${chosenStates.size} state(s) from ${confirmations.length} answer(s).`);
     }
 
     return this.buildState(groundId);
