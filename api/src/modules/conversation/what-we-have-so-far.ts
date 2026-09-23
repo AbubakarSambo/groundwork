@@ -66,6 +66,8 @@ export interface WhatWeHave {
    * rather than on the ground beside the brief's subjects - see they-can-tell-us-what-to-ask.
    */
   asked?: string[];
+  /* The challenge keys already put this session, so the same one is never put twice. */
+  challenged?: string[];
   claims: Claim[];
   contradictions: Contradiction[];
   /** How many turns were about the product rather than the work. Counted, never stored as content. */

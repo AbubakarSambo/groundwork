@@ -140,6 +140,7 @@ import {
   READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, theyHaveTalkedAbout, type ASubject,
 } from './the-ground-the-brief-asks-us-to-cover';
 import { whatTheyWantAsked, asSomethingToCover, followTheirLead } from './they-can-tell-us-what-to-ask';
+import { theChallengeWorthPutting, sayThisChallenge } from './what-a-claim-costs-to-prove';
 import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
@@ -3900,8 +3901,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const stillOwed = (notes?.asked ?? [])
       .map((subject) => asSomethingToCover(subject))
       .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
+    /*
+     * AND A CHALLENGE BEATS A QUESTION, WHERE THERE IS ONE TO PUT.
+     *
+     * Asking "what is the baseline?" is a form asking for a field. Saying "that is sixty thousand
+     * measurements, twice, of the same people - is somebody running that?" is the same gap with the
+     * consequence attached, and it is the difference between a survey and somebody who knows the
+     * work. Everything it asserts is arithmetic or a definition, never a fact about anybody's
+     * business - see what-a-claim-costs-to-prove for why that is the whole basis of its authority.
+     *
+     * Behind a steer, because what they asked for outranks what we would like to say.
+     */
+    const challenge = stillOwed.length ? null : theChallengeWorthPutting(notes?.claims, notes?.challenged ?? []);
     const theHole = stillOwed.length
       ? followTheirLead(stillOwed[0].subject)
+      : challenge
+      ? sayThisChallenge(challenge)
       : breadthFirst(subjects, theirAnswers)
         ? (whatToCoverNext(subjects, theirAnswers) || whatToAskAbout(notes))
         : (whatToAskAbout(notes) || whatToCoverNext(subjects, theirAnswers));
@@ -6055,6 +6070,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * they could direct this conversation, so what they asked for is the most important thing in
      * the record of it. Same phrase twice is one steer. See they-can-tell-us-what-to-ask.
      */
+    /*
+     * AND THE CHALLENGE THAT WAS PUT LAST TURN IS REMEMBERED.
+     *
+     * Recorded here rather than where it is composed, because the prompt is assembled on every
+     * turn and writing there would mark a challenge as put whether or not the turn went out. This
+     * runs after the reply has gone. See what-a-claim-costs-to-prove.
+     */
+    const putLastTurn = theChallengeWorthPutting(before.claims, before.challenged ?? []);
+    if (putLastTurn) {
+      before.challenged = Array.from(new Set([...(before.challenged ?? []), putLastTurn.key]));
+    }
+
     const steer = whatTheyWantAsked(theirTurn);
     if (steer) {
       const asked = Array.from(new Set([...(before.asked ?? []), steer]));
