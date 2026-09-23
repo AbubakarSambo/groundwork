@@ -129,3 +129,67 @@ describe('the note that merges onto what is already held', () => {
     expect(notes).toMatch(/\{ fast: true, thinkingBudget: 0 \}/);
   });
 });
+
+/**
+ * AND THE THIRD WAY OF NOTICING, WHICH IS TO READ THE ANSWER.
+ *
+ * "About two thousand tonnes a quarter" covers the volumes they move and shares not one word with
+ * the way the brief asks for it, and no turn had raised volumes, so it stayed owed. The words check
+ * and the raised check are both mechanical; this one asks the model what the answer was about,
+ * which is what it is for. All three stay: the cost of noticing is one question not asked, and the
+ * cost of missing is asking somebody the same thing twice.
+ */
+describe('what the answer was about, read rather than matched', () => {
+  const READ = readFileSync(join(__dirname, 'reading-what-they-just-said.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const { theSubjectsToJudgeAgainst } = require('./reading-what-they-just-said');
+
+  it('is asked for by meaning, not by wording', () => {
+    expect(READ).toMatch(/covered\s+the ids of any subjects/);
+    expect(READ).toContain('Judge it by what the answer MEANS');
+    /* And the schema is readable by the converter, which reads input_schema and nothing else. */
+    expect(READ).toMatch(/covered: \{\s*\n\s*type: 'array'/);
+  });
+
+  it('and the subjects are put in front of it with their ids', () => {
+    const shown = theSubjectsToJudgeAgainst([
+      { id: 'volumes', subject: 'the volumes they move' },
+      { id: 'states', subject: 'the states they want to expand into' },
+    ]);
+    expect(shown).toContain('- volumes: the volumes they move');
+    expect(shown).toContain('- states: the states they want to expand into');
+    expect(theSubjectsToJudgeAgainst([])).toBe('');
+    expect(theSubjectsToJudgeAgainst(null)).toBe('');
+  });
+
+  /* An id nobody put in the brief would silently retire a subject that is still owed. */
+  it('and only ids that are really in the brief are taken', () => {
+    const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
+    expect(notes).toMatch(/const real = new Set\(subjects\.map\(\(s\) => s\.id\)\)/);
+    expect(notes).toMatch(/\(read\.covered \?\? \[\]\)\.filter\(\(id\) => real\.has\(id\)\)/);
+  });
+});
+
+/**
+ * AND A TURN THAT PUT NOTHING TO ANYBODY MARKS NOTHING.
+ *
+ * Two ways this went wrong in one run. The challenge about which half of that income she meant was
+ * marked as put by the turn that said goodbye, so it was spent without ever being said. And a
+ * subject put to somebody who answered "you already asked me that" would have been marked covered
+ * on the strength of a complaint.
+ */
+describe('the bookkeeping for what was put to them', () => {
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
+
+  it('nothing is marked once the conversation has closed', () => {
+    expect(notes).toMatch(/const putLastTurn = row\.completedAt \? null : theChallengeWorthPutting\(/);
+    expect(notes).toMatch(/const stillTalking = !row\.completedAt;/);
+    expect(notes).toMatch(/subjects\.length && stillTalking/);
+  });
+
+  it('and a remark is not an answer, so it covers nothing', () => {
+    /* The coverage marking sits AFTER the remark check, which returns early. */
+    expect(notes.indexOf('if (aboutTheToolNotTheWork(theirTurn))')).toBeLessThan(notes.indexOf('const putToThem ='));
+  });
+});

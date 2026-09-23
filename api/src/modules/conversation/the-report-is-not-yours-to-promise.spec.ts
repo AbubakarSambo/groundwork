@@ -62,7 +62,27 @@ describe('and it is read rather than asked for', () => {
    */
   it('on the reply, against the ground\'s own scenario', () => {
     expect(SRC).toMatch(/if \(theReportIsNotTheirsYet\(thisGroundsScenario\)\)/);
-    expect(SRC).toMatch(/withoutPromisingTheReport\(screened\.text\)/);
+    expect(SRC).toMatch(/withoutPromisingTheReport\(aiTurn\.content \?\? ''\)/);
+  });
+
+  /*
+   * AND AFTER THE CLOSE IS ASSEMBLED, WHICH IS WHERE IT HAD TO MOVE TO.
+   *
+   * The first version sat with the other reply guards and it worked on the run where the model wrote
+   * the promise into its own reply. The very next run read "Your report is ready now. Speak soon."
+   * because the goodbye is not written by the model at all - the close is built after every guard has
+   * finished, so a guard that ran before the sentence existed did not run.
+   */
+  it('and after the goodbye exists, not before', () => {
+    const closeBuilt = SRC.indexOf('const sessionComplete = close.ready');
+    expect(closeBuilt).toBeGreaterThan(-1);
+    expect(SRC.indexOf('if (theReportIsNotTheirsYet(thisGroundsScenario))')).toBeGreaterThan(closeBuilt);
+  });
+
+  /* And the streamed path too, where the correction rides on the final reply the page keeps. */
+  it('and on the streaming path, against the same scenario', () => {
+    expect(SRC).toMatch(/if \(theReportIsNotTheirsYet\(scenarioHere\)\)/);
+    expect(SRC).toMatch(/withoutPromisingTheReport\(reply\)/);
   });
 
   it('and it says so in the log, so nobody has to read a transcript to find out', () => {

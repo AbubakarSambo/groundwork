@@ -68,8 +68,13 @@ export interface WhatWeHave {
   asked?: string[];
   /* The challenge keys already put this session, so the same one is never put twice. */
   challenged?: string[];
-  /* Subject ids the conversation has put to them and had an answer to. See whatIsStillUncovered. */
-  raised?: string[];
+  /*
+   * Subject ids of the brief this conversation has covered: the ones an answer said something
+   * about, read by the model, plus the ones it put to them and got an answer to. Kept because
+   * matching the brief's words against their answers is not enough - an answer names the place
+   * rather than the category. See whatIsStillUncovered.
+   */
+  covered?: string[];
   claims: Claim[];
   contradictions: Contradiction[];
   /** How many turns were about the product rather than the work. Counted, never stored as content. */

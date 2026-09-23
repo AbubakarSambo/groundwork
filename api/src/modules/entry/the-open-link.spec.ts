@@ -13,7 +13,7 @@ import * as path from 'path';
 function serviceWith(over: any = {}) {
   const state: any = { participant: null, checkIn: null, updated: null };
   const prisma: any = {
-    ground: { findUnique: jest.fn(async () => over.ground ?? { id: 'g1', label: 'Sales this quarter', brief: 'How is sales going?', scenario: 'TEAM_UPDATES', status: 'ACTIVE', initiator: { firstName: 'Hafsah' } }) },
+    ground: { findUnique: jest.fn(async () => over.ground ?? { id: 'g1', label: 'Sales this quarter', brief: 'How is sales going?', scenario: 'TEAM_UPDATES', status: 'ACTIVE', openerForALink: null, initiator: { firstName: 'Hafsah' } }), updateMany: jest.fn(async () => ({ count: 1 })) },
     groundParticipant: {
       create: jest.fn(async ({ data }: any) => { state.participant = { id: 'p-open', ...data }; return { id: 'p-open' }; }),
       findFirst: jest.fn(async ({ where }: any) => {
@@ -66,7 +66,8 @@ describe('the open link', () => {
     const started = await svc.start('tok');
     expect(state.participant.email.endsWith(AN_UNCLAIMED_ADDRESS)).toBe(true);
     expect(state.participant.inviteToken).toBe(started.key);
-    expect(conversation.open).toHaveBeenCalledWith('ci1', { theParticipant: 'p-open' });
+    /* With no opener stored yet, this first respondent is the one who pays for writing it. */
+    expect(conversation.open).toHaveBeenCalledWith('ci1', { theParticipant: 'p-open' }, null);
     expect(started.reply).toContain('How is sales going');
   });
 

@@ -65,7 +65,10 @@ export class TheOpenLinkService {
 
   /** Start answering. Mints the row they will fill in at the end, and opens session one on it. */
   async start(joinToken: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { joinToken }, select: { id: true, status: true } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { joinToken },
+      select: { id: true, status: true, openerForALink: true },
+    });
     if (!ground) throw new NotFoundException('That link does not open anything.');
     if (['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes(ground.status)) {
       throw new BadRequestException('This check-in has finished, so there is nothing to answer.');
@@ -86,7 +89,27 @@ export class TheOpenLinkService {
       data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
       select: { id: true },
     });
-    const opened = await this.conversation.open(checkIn.id, { theParticipant: participant.id });
+    /*
+     * THE OPENER IS WRITTEN ONCE FOR THE WHOLE LINK.
+     *
+     * Measured on her own link: fourteen to eighteen seconds before the first question appears, and
+     * the sentence is the same for everybody - an opener is composed from the brief and the scenario
+     * and nothing else, and somebody who followed a link has told us nothing to compose against. A
+     * hundred people were each paying for the same paragraph to be written again, at the one moment
+     * in the whole conversation where nothing has been invested yet and leaving costs nothing.
+     *
+     * The first person through pays; everybody after gets it immediately. Stored after it has been
+     * through the opener's guards, so what is reused is the held version.
+     */
+    const opened = await this.conversation.open(
+      checkIn.id, { theParticipant: participant.id }, ground.openerForALink,
+    );
+    const itsOpener = (opened as any)?.theOpener as string | undefined;
+    if (!ground.openerForALink && itsOpener) {
+      await this.prisma.ground
+        .updateMany({ where: { id: ground.id, openerForALink: null }, data: { openerForALink: itsOpener } })
+        .catch(() => undefined);
+    }
     this.logger.log(`Somebody started answering ${ground.id} through the open link.`);
     return { key, checkInId: checkIn.id, reply: (opened as any)?.reply ?? null, brief: (opened as any)?.brief ?? null };
   }

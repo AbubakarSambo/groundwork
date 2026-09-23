@@ -1008,6 +1008,15 @@ model Ground {
   freeParticipantCap         Int      @default(5) @map("free_participant_cap")
   joinToken                  String?  @unique @map("join_token")
 
+  /// THE FIRST THING THE PRODUCT SAYS TO SOMEBODY WHO ARRIVED THROUGH THE LINK, WRITTEN ONCE.
+  ///
+  /// An opener is composed from the brief and the scenario and nothing else - a link respondent has
+  /// said nothing and the product knows nothing about them - so a hundred people through one link
+  /// were each waiting fourteen to eighteen seconds for the same sentence to be written again.
+  /// Kept here so the first person pays for it and nobody else does. Null on every ground until
+  /// somebody opens the link, and never used for a named participant, whose opener can name them.
+  openerForALink             String?  @map("opener_for_a_link")
+
   /// WHICH PIECE OF THE CUSTOMER'S OWN WORK THIS CHECK-IN IS ABOUT.
   ///
   /// Null for every ground made inside Groundwork, which is all of them today - a lead opening a

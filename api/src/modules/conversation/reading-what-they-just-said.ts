@@ -54,6 +54,12 @@ export const READ_THIS_TURN = [
   'ALSO RETURN, only where this answer says it:',
   '  who           their name, their role, the organisation they answer for',
   '  contradiction two claim ids that cannot both hold, and why in one clause',
+  '  covered       the ids of any subjects, from the list you are given, that this answer says',
+  '                something about. Judge it by what the answer MEANS, not by whether it repeats the',
+  '                subject\'s wording: "Niger and Kogi" covers the states they want to expand into,',
+  '                and "about two thousand tonnes a quarter" covers the volumes they move. An answer',
+  '                usually covers one subject and sometimes two. Where it covers none, return none -',
+  '                a subject wrongly marked covered is a question nobody is ever asked.',
   '',
   'If this answer adds nothing - a greeting, a remark about the conversation, a refusal - return no claims at all.',
 ].join('\n');
@@ -111,6 +117,11 @@ export const READ_THIS_TURN_SCHEMA = {
           organisation: { type: 'string' },
         },
       },
+      covered: {
+        type: 'array',
+        description: 'Ids of the subjects this answer says something about, from the list given. Empty where it says nothing about any of them.',
+        items: { type: 'string' },
+      },
       contradiction: {
         type: 'object',
         description: 'Only where two claims cannot both hold.',
@@ -137,4 +148,22 @@ export function theNotesSoFar(state: { claims: any[]; who?: any }): string {
     ? `\nWho they are: ${[state.who.name, state.who.role, state.who.organisation].filter(Boolean).join(' · ')}`
     : '';
   return `THE NOTES SO FAR:\n${lines.join('\n')}${who}`;
+}
+
+/**
+ * THE SUBJECTS AS THE MODEL IS SHOWN THEM, so it can say which one an answer covered.
+ *
+ * There is a deterministic coverage check too - the subject's own words against their answers - and
+ * it is not enough on its own: she was asked which states, answered "Niger and Kogi", and was asked
+ * which states again four turns later, because an answer names the place rather than the category.
+ * Reading it is the model's job; what the reading is allowed to DO is the product's. See
+ * the-ground-the-brief-asks-us-to-cover.
+ */
+export function theSubjectsToJudgeAgainst(subjects: { id: string; subject: string }[] | null | undefined): string {
+  const list = (subjects ?? []).filter((s) => s?.id && s?.subject);
+  if (!list.length) return '';
+  return [
+    'THE SUBJECTS THIS CHECK-IN IS FOR, and their ids for `covered`:',
+    ...list.map((s) => `- ${s.id}: ${s.subject}`),
+  ].join('\n');
 }

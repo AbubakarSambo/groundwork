@@ -142,7 +142,7 @@ describe('and the conversation is wired to prefer whichever is worth more', () =
   /* And coverage counts what was put to them, not only the brief's own vocabulary. */
   it('and both branches are told what has already been raised', () => {
     const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
-    expect(rank).toMatch(/const raised = notes\?\.raised \?\? \[\];/);
+    expect(rank).toMatch(/const raised = notes\?\.covered \?\? \[\];/);
     expect(rank).toMatch(/theSubjectWorthRaising\(subjects, theirAnswers, raised\)/);
     expect(rank).toMatch(/whatToCoverNext\(subjects, theirAnswers, raised\)/);
   });

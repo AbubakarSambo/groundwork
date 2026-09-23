@@ -142,7 +142,9 @@ import {
 } from './the-ground-the-brief-asks-us-to-cover';
 import { whatTheyWantAsked, asSomethingToCover, followTheirLead } from './they-can-tell-us-what-to-ask';
 import { theChallengeWorthPutting, sayThisChallenge } from './what-a-claim-costs-to-prove';
-import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
+import {
+  READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar, theSubjectsToJudgeAgainst,
+} from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -701,7 +703,16 @@ export class ConversationService {
     };
   }
 
-  async open(checkInId: string, requestingUserId: WhoIsAsking) {
+  /**
+   * `alreadyWritten` is an opener composed for an earlier respondent on the same open link.
+   *
+   * An opener is written from the brief and the scenario and nothing else - somebody arriving
+   * through a link has said nothing and the product knows nothing about them - so for a hundred
+   * people it is a hundred identical sentences, each costing the person in front of it fourteen to
+   * eighteen seconds. The first one pays; nobody after does. Never passed for a named participant,
+   * whose opener may name them. See theOpenerForThisLink in the-open-link.service.
+   */
+  async open(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     /**
@@ -861,7 +872,6 @@ export class ConversationService {
       });
     }
 
-    const fullSystem = await this.composeSystemPrompt(checkIn);
     // The closing session must be NAMED in the opener - the system-context
     // instruction alone loses to the returning-user opener script, so the
     // begin turn (the most-attended instruction) carries it too.
@@ -894,8 +904,18 @@ export class ConversationService {
      * spoken. With the whole thing behind it, a short instruction at the end was read and outweighed
      * - thirteen of twenty-two lead openers still explained what the check-in was for.
      */
-    const openerSystem = `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
-    this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars against a turn's ${fullSystem.length}.`);
+    /*
+     * COMPOSED ONLY WHERE IT IS GOING TO BE USED.
+     *
+     * A second full prompt was composed here on every opener and used for nothing but the length in
+     * the log line below - and composing is no longer cheap: it waits for the last turn's note and
+     * reads the brief's subjects. The comparison was interesting once; it is not worth seconds of
+     * somebody's arrival.
+     */
+    const openerSystem = alreadyWritten
+      ? ''
+      : `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
+    if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
 
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
@@ -928,7 +948,9 @@ export class ConversationService {
     const firstSession = checkIn.sessionNumber === 1;
     /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre. */
     const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed);
-    const reply = startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
+    const reply = alreadyWritten
+      ? alreadyWritten
+      : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(openerSystem, [
           { role: 'user', content: beginMessage },
@@ -946,7 +968,11 @@ export class ConversationService {
      * The three cheapest and most visible of the guards, one retry, and the second is kept only if
      * it is genuinely better - the same shape as the others. See theOpenerIsHeldToTheSameBar.
      */
-    const held = await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
+    /* An opener written for an earlier respondent has already been through every guard below; it
+       is not rewritten, and above all it is not rewritten DIFFERENTLY for each person. */
+    const held = alreadyWritten
+      ? forHumans(reply)
+      : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
     const saidSoFar = await (this.prisma.conversationTurn?.count?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }) ?? Promise.resolve(1)).catch(() => 1);
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar);
@@ -966,7 +992,7 @@ export class ConversationService {
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
 
@@ -1460,30 +1486,6 @@ export class ConversationService {
          */
         this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; adding a question.`);
         screened.text = withAQuestion(screened.text, { closing: closingNow });
-      }
-
-      /*
-       * AND THE REPORT IS NOT THIS CONVERSATION'S TO HAND OVER.
-       *
-       * "it also tole my collegue the report is ready" - Hafsah, 23 September 2026. On a check-in
-       * run across a network there is no report at the end of any one conversation: it is
-       * synthesised once enough accounts are in and it reaches people when the ORGANISER sends it.
-       * The prompt has said not to claim otherwise for days and the sentence arrives anyway, which
-       * is what a prompt rule is worth against a phrase the model has good reason to reach for. So
-       * it is read here. See the-report-is-not-yours-to-promise.
-       */
-      /* The scenario off the ground this check-in belongs to. Read here rather than threaded down:
-         the loader does not include the ground and widening it would touch every caller. */
-      const thisGroundsScenario = await this.prisma.ground
-        .findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } })
-        .then((g) => g?.scenario ?? null)
-        .catch(() => null);
-      if (theReportIsNotTheirsYet(thisGroundsScenario)) {
-        const honest = withoutPromisingTheReport(screened.text);
-        if (honest !== screened.text) {
-          this.logger.warn(`Check-in ${checkIn.id}: a reply promised a report that is the organiser's to release; said what happens instead.`);
-          screened.text = honest;
-        }
       }
 
       /*
@@ -2126,6 +2128,56 @@ export class ConversationService {
     const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');
 
     /*
+     * AND A TURN THE PRODUCT DID NOT CLOSE MUST HAVE SOMETHING TO ANSWER.
+     *
+     * Read live, 23 September 2026, five answers in: "That is a clear picture of the impact you want
+     * to have. The goal of 30,000 smallholders with a 30% income increase is ambitious and
+     * specific." Nothing to answer, and the conversation was not over - she had to decide for
+     * herself whether it had finished.
+     *
+     * There is a dead-end guard hundreds of lines above this and it let the reply through, because
+     * it asks whether the MODEL was closing - it had emitted the close marker - and the product
+     * then declined to close, which is the product's call and not the model's. So the check is made
+     * again here, where the answer to "is this conversation over" is finally known. Both stay: the
+     * early one runs on every turn the close machinery never reaches.
+     */
+    if (!sessionComplete && isADeadEnd(aiTurn.content ?? '', false)) {
+      const asking = withAQuestion(aiTurn.content ?? '', { closing: false });
+      if (asking !== (aiTurn.content ?? '')) {
+        this.logger.warn(`Check-in ${checkIn.id}: the model closed, the product did not, and the reply asked nothing; added a question.`);
+        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: asking } });
+      }
+    }
+
+    /*
+     * AND THE REPORT IS NOT THIS CONVERSATION'S TO HAND OVER, READ AFTER THE CLOSE IS BUILT.
+     *
+     * "it also tole my collegue the report is ready" - Hafsah, 23 September 2026. On a check-in run
+     * across a network there is no report at the end of any one conversation: it is synthesised
+     * once enough accounts are in and it reaches people when the ORGANISER sends it. The prompt has
+     * said not to claim otherwise for days and the sentence arrives anyway, which is what a prompt
+     * rule is worth against a phrase the model has good reason to reach for.
+     *
+     * IT WAS READ EARLIER AND THAT WAS TOO EARLY. The first version sat with the other reply guards,
+     * a few hundred lines above, and it worked on the run where the model wrote the promise into its
+     * own reply. Then it read "Your report is ready now. Speak soon." on the very next run, because
+     * the goodbye is not written by the model at all - the close is assembled here, after every
+     * guard has finished. A guard that runs before the sentence exists is a guard that does not run.
+     * See the-last-thing-it-reads-is-the-thing-it-must-not-miss.
+     */
+    const thisGroundsScenario = await this.prisma.ground
+      .findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } })
+      .then((g) => g?.scenario ?? null)
+      .catch(() => null);
+    if (theReportIsNotTheirsYet(thisGroundsScenario)) {
+      const honest = withoutPromisingTheReport(aiTurn.content ?? '');
+      if (honest !== (aiTurn.content ?? '')) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply promised a report that is the organiser's to release; said what happens instead.`);
+        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: honest } });
+      }
+    }
+
+    /*
      * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
      * so the count including it is one more. Appended to the reply rather than returned as a
      * separate field, because a field needs a screen to render it and this has to reach somebody on
@@ -2590,6 +2642,25 @@ export class ConversationService {
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
       }
+      /*
+       * AND THE SAME READ OF WHAT THIS CONVERSATION MAY PROMISE, for the same reason and in the
+       * same place: after the close has been assembled. The streamed text is already on the screen
+       * word by word, so the correction rides on the final reply - which is what the page keeps -
+       * exactly as the previous-session fix above it does.
+       */
+      const scenarioHere = await this.prisma.ground
+        .findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } })
+        .then((g) => g?.scenario ?? null)
+        .catch(() => null);
+      if (theReportIsNotTheirsYet(scenarioHere)) {
+        const honest = withoutPromisingTheReport(reply);
+        if (honest !== reply) {
+          reply = honest;
+          await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
+          this.logger.warn(`Check-in ${checkIn.id}: a streamed reply promised a report that is the organiser's to release; said what happens instead.`);
+        }
+      }
+
       /* The same working notes as the other path, and for the same reasons: after the reply, fire
          and forget, never in front of the person waiting. See noteWhatTheySaid. */
       this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
@@ -6058,7 +6129,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     subjects: ASubject[],
     theirAnswers: string[],
   ): { text: string; subject: ASubject | null } {
-    const raised = notes?.raised ?? [];
+    const raised = notes?.covered ?? [];
     const stillOwed = (notes?.asked ?? [])
       .map((subject) => asSomethingToCover(subject))
       .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
@@ -6168,7 +6239,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async noteWhatTheySaidNow(checkInId: string, theirTurn: string): Promise<void> {
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      select: { whatWeHave: true, sessionNumber: true, groundId: true },
+      select: { whatWeHave: true, sessionNumber: true, groundId: true, completedAt: true },
     });
     if (!row) return;
     const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
@@ -6185,40 +6256,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * turn and writing there would mark a challenge as put whether or not the turn went out. This
      * runs after the reply has gone. See what-a-claim-costs-to-prove.
      */
-    const putLastTurn = theChallengeWorthPutting(before.claims, before.challenged ?? []);
+    const putLastTurn = row.completedAt ? null : theChallengeWorthPutting(before.claims, before.challenged ?? []);
     if (putLastTurn) {
       before.challenged = Array.from(new Set([...(before.challenged ?? []), putLastTurn.key]));
-    }
-
-    /*
-     * AND THE SUBJECT THE LAST TURN PUT TO THEM IS MARKED COVERED.
-     *
-     * Found by driving her own brief: she was asked which states at turn one, said "Niger and
-     * Kogi", and was asked which states again at turn five. Coverage was decided by matching the
-     * brief's words against her answers, and an answer names the place rather than the category -
-     * "Niger" contains none of "states" or "markets". So the subject the conversation actually
-     * raised is remembered here, where we know the reply went out and they answered it. The words
-     * check still stands and still catches coverage this cannot see.
-     *
-     * Recomputed from `before` and the answers that existed before this one, which is the state the
-     * last prompt was composed from - the same rank, run on the same inputs, so it names the same
-     * subject. Nothing is marked when that turn pushed on a claim or followed a steer instead.
-     */
-    const priorAnswers = await this.prisma.conversationTurn
-      .findMany({
-        where: { checkInId, role: TurnRole.PERSON },
-        orderBy: { createdAt: 'asc' },
-        select: { content: true },
-      })
-      .then((rows) => rows.slice(0, -1).map((r) => r.content ?? ''))
-      .catch(() => [] as string[]);
-    const subjects = await this.theSubjectsToCover(row.groundId).catch(() => [] as ASubject[]);
-    const putToThem = subjects.length
-      ? this.whichHoleToPush(before, subjects, priorAnswers).subject
-      : null;
-    if (putToThem) {
-      before.raised = Array.from(new Set([...(before.raised ?? []), putToThem.id]));
-      this.logger?.log?.(`Check-in ${checkInId}: they answered on "${putToThem.subject}".`);
     }
 
     const steer = whatTheyWantAsked(theirTurn);
@@ -6237,14 +6277,56 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return;
     }
 
+    /*
+     * AND THE SUBJECT THE LAST TURN PUT TO THEM IS MARKED COVERED.
+     *
+     * Found by driving her own brief: she was asked which states at turn one, said "Niger and
+     * Kogi", and was asked which states again at turn five. Coverage was decided by matching the
+     * brief's words against her answers, and an answer names the place rather than the category -
+     * "Niger" contains none of "states" or "markets". So the subject the conversation actually
+     * raised is remembered here, where we know the reply went out and they answered it. The words
+     * check still stands and still catches coverage this cannot see.
+     *
+     * Recomputed from `before` and the answers that existed before this one, which is the state the
+     * last prompt was composed from - the same rank, run on the same inputs, so it names the same
+     * subject. Nothing is marked when that turn pushed on a claim or followed a steer instead.
+     *
+     * AFTER THE REMARK CHECK, because a remark is not an answer. A subject was put to somebody who
+     * replied "you already asked me that" - it is still owed, and marking it covered would retire
+     * it on the strength of a complaint. And nothing at all is marked once the conversation has
+     * closed: that reply was a goodbye and put nothing to anybody.
+     */
+    const stillTalking = !row.completedAt;
+    const priorAnswers = await this.prisma.conversationTurn
+      .findMany({
+        where: { checkInId, role: TurnRole.PERSON },
+        orderBy: { createdAt: 'asc' },
+        select: { content: true },
+      })
+      .then((rows) => rows.slice(0, -1).map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+    const subjects = await this.theSubjectsToCover(row.groundId).catch(() => [] as ASubject[]);
+    const putToThem = subjects.length && stillTalking
+      ? this.whichHoleToPush(before, subjects, priorAnswers).subject
+      : null;
+    if (putToThem) {
+      before.covered = Array.from(new Set([...(before.covered ?? []), putToThem.id]));
+      this.logger?.log?.(`Check-in ${checkInId}: they answered on "${putToThem.subject}".`);
+    }
+
     const read = await this.anthropic.extract<{
       opens?: Partial<Claim>[];
       sharpens?: (Partial<Claim> & { id: string })[];
       who?: { name?: string; role?: string; organisation?: string };
+      covered?: string[];
       contradiction?: { between?: string[]; why?: string };
     }>(
       READ_THIS_TURN,
-      [{ role: 'user', content: `${theNotesSoFar(before)}\n\nWHAT THEY JUST SAID:\n${theirTurn}` }],
+      [{
+        role: 'user',
+        content: [theNotesSoFar(before), theSubjectsToJudgeAgainst(subjects), `WHAT THEY JUST SAID:\n${theirTurn}`]
+          .filter(Boolean).join('\n\n'),
+      }],
       READ_THIS_TURN_SCHEMA as any,
       /*
        * THE FAST MODEL, AND NO THINKING BUDGET.
@@ -6291,7 +6373,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const sharpened: Claim[] = (read.sharpens ?? [])
       .filter((c) => c?.id && held.has(c.id))
       .map((c) => ({ ...(c as Claim), said: '', kind: undefined as any, session: row.sessionNumber ?? 1 }));
+    /*
+     * AND WHICH OF THE BRIEF'S SUBJECTS THIS ANSWER ACTUALLY COVERED.
+     *
+     * Read by the model, because this is a reading: "about two thousand tonnes a quarter" covers the
+     * volumes they move and shares not one word with the way the brief asks for it. The words check
+     * and the subject-we-put-to-them check both stay - three ways of noticing the same thing, and
+     * the cost of noticing is one question not asked while the cost of missing is asking somebody
+     * the same thing twice.
+     *
+     * Only ids that are really in the brief: an id the model invented would silently retire a
+     * subject that is still owed, and nothing downstream would ever show it.
+     */
+    const real = new Set(subjects.map((s) => s.id));
+    const theyCovered = (read.covered ?? []).filter((id) => real.has(id));
     let after = withThisTurn(before, [...opened, ...sharpened], false);
+    if (theyCovered.length) {
+      after = { ...after, covered: Array.from(new Set([...(after.covered ?? []), ...theyCovered])) };
+    }
     /* Only ever filled in: a turn that says nothing about who they are must not blank it. */
     if (read.who && (read.who.name || read.who.role || read.who.organisation)) {
       after = { ...after, who: { ...(after.who ?? {}), ...read.who } };
