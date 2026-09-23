@@ -97,3 +97,38 @@ describe('one route, two doors', () => {
     expect(CONTROLLER).toMatch(/Buffer\.from\(dto\.media\.base64, 'base64'\)/);
   });
 });
+
+/**
+ * AND THE FIRST MESSAGE CARRIES ALL THREE PARTS, WHICH I REPORTED AS BROKEN WHEN IT WAS NOT.
+ *
+ * I wrote up a defect - "the first message into a check-in that has not started comes back as the
+ * session header alone, the opener lost" - and it was never true. The first reply is three parts
+ * joined by blank lines: the session header, the opener, then the answer to what they actually
+ * said. I printed it raw and read it back through a grep anchored to the start of a line, so I saw
+ * the header and nothing else. Instrumented, the call that "returned the header" had handed over
+ * 312 characters.
+ *
+ * Pinned here rather than written up again, because the shape is the thing worth protecting: on
+ * WhatsApp somebody's first message has to come back as a greeting AND a question AND an answer, or
+ * it reads either as a robot or as having ignored them.
+ */
+describe('the first message into a check-in that has not started', () => {
+  const SRC = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8');
+  const route = SRC.slice(SRC.indexOf('private async route('));
+
+  it('says the header, the opener, and the answer to what they said', () => {
+    expect(route).toMatch(/const first = await this\.conversation\.open\(current\.id, userId!\);/);
+    /* The header, then the opener, in one string. Matched on fragments rather than on the
+       whole template, because a template literal in a regex is how the last version of this
+       assertion failed while the code was right. */
+    expect(route).toContain('sessionHeader(current)');
+    expect(route).toContain('${first.reply}');
+    /* And the answer is appended to that rather than replacing it. */
+    expect(route).toContain('${r.reply}');
+  });
+
+  /* A greeting on its own gets the opener and stops - there is nothing to answer yet. */
+  it('and a greeting alone stops after the opener', () => {
+    expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)\) \{ await say\(reply\); return; \}/);
+  });
+});
