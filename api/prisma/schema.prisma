@@ -926,6 +926,17 @@ model Ground {
   /// Coverage is computed from what people said and never stored. See
   /// the-ground-the-brief-asks-us-to-cover.ts.
   subjectsToCover Json? @map("subjects_to_cover")
+  /// WHAT A COMPLETE ANSWER TO THIS BRIEF HOLDS: the comparable fields every respondent must end
+  /// with - a named place, a quantity with its period, which of a few named situations they are in.
+  ///
+  /// A subject is a topic to raise; two people can both talk about volumes and leave nothing that
+  /// can be put side by side. Two customers read the same report on 23 September 2026 and both said
+  /// it only listed what people said: a hundred differently shaped answers cannot be counted,
+  /// ranked or cut by kind of organisation, so the only thing left to write was atmosphere. Read
+  /// once from the brief, confirmed by the lead, and identical for every respondent - a column that
+  /// means something different for person 40 than person 4 is not a column.
+  /// See what-a-complete-answer-holds.ts.
+  whatACompleteAnswerHolds Json? @map("what_a_complete_answer_holds")
   /// What a participant reads under "About this check-in": the situation and what it is for, in the
   /// product's words, addressed to them. Written once from the brief at creation and again when the
   /// brief changes; guarded in code so no instruction to the product and none of the lead's first

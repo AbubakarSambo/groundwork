@@ -145,6 +145,9 @@ import { theChallengeWorthPutting, sayThisChallenge } from './what-a-claim-costs
 import {
   READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar, theSubjectsToJudgeAgainst,
 } from './reading-what-they-just-said';
+import {
+  READ_THE_FRAME, READ_THE_FRAME_SCHEMA, theFrameFrom, type AField,
+} from './what-a-complete-answer-holds';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -6147,6 +6150,47 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     };
     const breadth = breadthFirst(subjects, theirAnswers, raised);
     return (breadth ? cover() ?? gap() : gap() ?? cover()) ?? { text: '', subject: null };
+  }
+
+  /**
+   * WHAT A COMPLETE ANSWER TO THIS BRIEF HOLDS, read once and kept.
+   *
+   * Same arrangement as the subjects directly below, and for a stronger reason: a column that means
+   * something different for respondent forty than for respondent four is not a column. Read on the
+   * first check-in that needs it, stored on the ground, identical for everybody after.
+   *
+   * IT DOES NOT FALL BACK TO SOMETHING SMALLER. Where the brief is too short to specify anything, or
+   * the read comes back with fewer than three comparable fields, there is no frame and the
+   * conversation behaves exactly as it did before - subjects, holes, challenges. A guessed frame
+   * would be worse than none: it becomes a question a hundred people are made to answer and a
+   * column in a report nobody ordered.
+   */
+  async theFrameFor(groundId: string): Promise<AField[]> {
+    const ground = await this.prisma.ground
+      .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true, brief: true } })
+      .catch(() => null);
+    if (!ground) return [];
+    const already = (ground as any).whatACompleteAnswerHolds as AField[] | null;
+    if (Array.isArray(already) && already.length) return already;
+    const brief = (ground.brief ?? '').trim();
+    /* The same floor as the subjects: under forty words a brief is a question, not a specification. */
+    if (brief.split(/\s+/).length < 40) return [];
+
+    const read = await this.anthropic.extract<{ fields?: unknown[] }>(
+      READ_THE_FRAME,
+      [{ role: 'user', content: brief }],
+      READ_THE_FRAME_SCHEMA as any,
+    ).catch((err: any) => {
+      this.logger?.warn?.(`Could not read what a complete answer holds on ${groundId}: ${err?.message}`);
+      return null;
+    });
+    const frame = theFrameFrom(read, (why) => this.logger?.warn?.(`Frame on ${groundId}: ${why}`));
+    if (!frame.length) return [];
+    await this.prisma.ground
+      .update({ where: { id: groundId }, data: { whatACompleteAnswerHolds: frame as any } })
+      .catch((err: any) => this.logger?.warn?.(`Could not keep the frame on ${groundId}: ${err?.message}`));
+    this.logger?.log?.(`Read ${frame.length} fields a complete answer holds on ${groundId}: ${frame.map((f) => `${f.id}:${f.shape}`).join(', ')}.`);
+    return frame;
   }
 
   async theSubjectsToCover(groundId: string): Promise<ASubject[]> {
