@@ -132,6 +132,7 @@ import {
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
+import { theReportIsNotTheirsYet, withoutPromisingTheReport } from './the-report-is-not-yours-to-promise';
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
@@ -1453,6 +1454,30 @@ export class ConversationService {
          */
         this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; adding a question.`);
         screened.text = withAQuestion(screened.text, { closing: closingNow });
+      }
+
+      /*
+       * AND THE REPORT IS NOT THIS CONVERSATION'S TO HAND OVER.
+       *
+       * "it also tole my collegue the report is ready" - Hafsah, 23 September 2026. On a check-in
+       * run across a network there is no report at the end of any one conversation: it is
+       * synthesised once enough accounts are in and it reaches people when the ORGANISER sends it.
+       * The prompt has said not to claim otherwise for days and the sentence arrives anyway, which
+       * is what a prompt rule is worth against a phrase the model has good reason to reach for. So
+       * it is read here. See the-report-is-not-yours-to-promise.
+       */
+      /* The scenario off the ground this check-in belongs to. Read here rather than threaded down:
+         the loader does not include the ground and widening it would touch every caller. */
+      const thisGroundsScenario = await this.prisma.ground
+        .findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } })
+        .then((g) => g?.scenario ?? null)
+        .catch(() => null);
+      if (theReportIsNotTheirsYet(thisGroundsScenario)) {
+        const honest = withoutPromisingTheReport(screened.text);
+        if (honest !== screened.text) {
+          this.logger.warn(`Check-in ${checkIn.id}: a reply promised a report that is the organiser's to release; said what happens instead.`);
+          screened.text = honest;
+        }
       }
 
       /*

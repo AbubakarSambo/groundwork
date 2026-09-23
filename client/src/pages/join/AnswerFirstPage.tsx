@@ -25,11 +25,42 @@ export function AnswerFirstPage() {
   const token = params.get('t') ?? ''
   const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null } | null>(null)
   const [problem, setProblem] = useState('')
-  const [key, setKey] = useState<string | null>(null)
+  /*
+   * THE KEY OUTLIVES THE TAB, BECAUSE THE ANSWER DOES.
+   *
+   * "That answer does not belong to anything" - read on 23 September 2026, and it is the honest
+   * server response to a key it has never seen. The key only ever lived in React state, so a
+   * refresh, a phone locking, a tab restored by the browser, or being signed out mid-answer lost
+   * it - and the person was then told their answer belonged to nothing, while every word of it sat
+   * safely on the server against a row they could no longer reach.
+   *
+   * Kept per link, so somebody who answers two different check-ins on one phone does not resume
+   * the wrong one. Wrapped, because storage throws in a private window and an answer page must
+   * open regardless - see the artifact storage rule this codebase follows elsewhere.
+   */
+  /* `gw-` so the sign-out sweep reaches it. signing-out-leaves-nothing-behind counts every key the
+     app writes and refuses one it cannot clear - and it caught this on the first run. */
+  const keyFor = `gw-answer-${token}`
+  const [key, setKey] = useState<string | null>(() => {
+    try { return window.localStorage.getItem(keyFor) } catch { return null }
+  })
+  const remember = (k: string | null) => {
+    setKey(k)
+    try { k ? window.localStorage.setItem(keyFor, k) : window.localStorage.removeItem(keyFor) } catch { /* private window */ }
+  }
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>('reading')
+  /*
+   * SOMEBODY WHO HAD ALREADY STARTED PICKS UP WHERE THEY WERE.
+   *
+   * With the key surviving the tab, a returning person would otherwise land on "Start" and mint a
+   * SECOND row - two half-answers from one person, which is the duplicate the open link's own merge
+   * exists to clean up. If a key is on this device for this link, the conversation is already open.
+   */
+  const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>(() => {
+    try { return window.localStorage.getItem(`gw-answer-${token}`) ? 'talking' : 'reading' } catch { return 'reading' }
+  })
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
@@ -54,7 +85,7 @@ export function AnswerFirstPage() {
     setBusy(true)
     try {
       const started = await openLinkApi.start(token)
-      setKey(started.key)
+      remember(started.key)
       setPhase('talking')
       if (started.reply) setTurns([{ who: 'it', text: started.reply }])
     } catch (err: any) {
@@ -112,6 +143,9 @@ export function AnswerFirstPage() {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
       const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
       setSentTo(done.at)
+      /* Finished, so the key is spent. The next person to open this link on this phone - at an
+         event, that happens - starts their own answer rather than resuming somebody else's. */
+      remember(null)
       setPhase('done')
     } catch (err: any) {
       const said = err?.response?.data?.message ?? 'That did not finish. Try again.'
@@ -214,6 +248,14 @@ export function AnswerFirstPage() {
               }}>{t.text}</div>
             ))}
             <div ref={endRef} />
+          </div>
+        )}
+
+        {/* Said only where the page opened straight into a conversation nobody can see the start of. */}
+        {phase === 'talking' && turns.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+            You had already started this. Everything you said is saved - carry on below, or press
+            &ldquo;I am done&rdquo; to finish.
           </div>
         )}
 
