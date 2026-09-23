@@ -113,8 +113,8 @@ describe('what reaches the prompt', () => {
       // A sentence someone actually said would not fit.
       expect(q.split(/\s+/).length).toBeLessThanOrEqual(6);
     }
-    expect(g).not.toMatch(/last time|previously (mentioned|told)/i);
-    expect(g).not.toMatch(/session \d|ground \d/i);
+    expect(g).not.toMatch(/\blast time\b|\bpreviously (mentioned|told)\b/i);
+    expect(g).not.toMatch(/\bsession \d|\bground \d/i);
   });
 
   it('gives guidance on manner, never a label for the person', () => {

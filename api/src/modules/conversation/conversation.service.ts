@@ -137,7 +137,8 @@ import { notTheSameAsLastTime } from './the-same-sentence-five-times';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
 import {
-  READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, theyHaveTalkedAbout, type ASubject,
+  READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, theyHaveTalkedAbout,
+  theSubjectWorthRaising, type ASubject,
 } from './the-ground-the-brief-asks-us-to-cover';
 import { whatTheyWantAsked, asSomethingToCover, followTheirLead } from './they-can-tell-us-what-to-ask';
 import { theChallengeWorthPutting, sayThisChallenge } from './what-a-claim-costs-to-prove';
@@ -3884,7 +3885,26 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * while seven of the brief's subjects go unasked, which is the complaint this started from:
      * "the questions dont help us get what we want". See the-ground-the-brief-asks-us-to-cover.
      */
-    const notes = ((checkIn as any).whatWeHave as WhatWeHave) ?? null;
+    /*
+     * AND THE NOTE FROM THE LAST TURN HAS TO HAVE LANDED, OR NONE OF THIS IS WORTH ANYTHING.
+     *
+     * Read live on 23 September 2026: six answers, and a minute after the conversation had closed
+     * the notes were perfect - every claim, the 30,000 smallholders, the 30% income target, and the
+     * challenge about which half of that income they meant. All of it arrived too late to be asked.
+     * The note is fire-and-forget and was taking fifteen seconds; she answered every three. So the
+     * whole apparatus - the claims, the coverage, the challenge - was permanently one turn behind a
+     * conversation that only had six.
+     *
+     * So this turn waits for the last turn's note, and the row is read again afterwards rather than
+     * trusting the copy fetched before the wait. With the note itself now fast, a person who pauses
+     * to type waits for nothing; the wait only ever costs anything to somebody answering faster
+     * than they could read. It is bounded, because a hung note must never hold a conversation.
+     */
+    await this.theNoteFromTheLastTurnLands(checkIn.id);
+    const notes = await this.prisma.checkIn
+      .findUnique({ where: { id: checkIn.id }, select: { whatWeHave: true } })
+      .then((row) => ((row as any)?.whatWeHave as WhatWeHave) ?? null)
+      .catch(() => ((checkIn as any).whatWeHave as WhatWeHave) ?? null);
     const subjects = await this.theSubjectsToCover(checkIn.groundId).catch(() => [] as ASubject[]);
     const theirAnswers = await this.prisma.conversationTurn
       .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true } })
@@ -3898,28 +3918,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * never having offered. Their steer is dropped from the rank only once they have actually
      * talked about it - decided by the same coverage rule as everything else.
      */
-    const stillOwed = (notes?.asked ?? [])
-      .map((subject) => asSomethingToCover(subject))
-      .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
-    /*
-     * AND A CHALLENGE BEATS A QUESTION, WHERE THERE IS ONE TO PUT.
-     *
-     * Asking "what is the baseline?" is a form asking for a field. Saying "that is sixty thousand
-     * measurements, twice, of the same people - is somebody running that?" is the same gap with the
-     * consequence attached, and it is the difference between a survey and somebody who knows the
-     * work. Everything it asserts is arithmetic or a definition, never a fact about anybody's
-     * business - see what-a-claim-costs-to-prove for why that is the whole basis of its authority.
-     *
-     * Behind a steer, because what they asked for outranks what we would like to say.
-     */
-    const challenge = stillOwed.length ? null : theChallengeWorthPutting(notes?.claims, notes?.challenged ?? []);
-    const theHole = stillOwed.length
-      ? followTheirLead(stillOwed[0].subject)
-      : challenge
-      ? sayThisChallenge(challenge)
-      : breadthFirst(subjects, theirAnswers)
-        ? (whatToCoverNext(subjects, theirAnswers) || whatToAskAbout(notes))
-        : (whatToAskAbout(notes) || whatToCoverNext(subjects, theirAnswers));
+    const theHole = this.whichHoleToPush(notes, subjects, theirAnswers).text;
 
     /*
      * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
@@ -6029,6 +6028,56 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Best effort. Where it fails the conversation is exactly what it was yesterday: the brief's own
    * questions, and the holes in what somebody said.
    */
+  /**
+   * WHICH HOLE TO PUSH ON THIS TURN, AND WHICH OF THE BRIEF'S SUBJECTS THAT PUSHES.
+   *
+   * WHAT THEY ASKED FOR COMES FIRST. The brief promises them they can direct this conversation. A
+   * product that then asks its own next question has broken a promise it made before they typed
+   * anything, which is worse than never having offered. Their steer is dropped from the rank only
+   * once they have actually talked about it - by the same coverage rule as everything else.
+   *
+   * THEN A CHALLENGE, WHERE THERE IS ONE TO PUT. Asking "what is the baseline?" is a form asking
+   * for a field. Saying "that is sixty thousand measurements, twice, of the same people - is
+   * somebody running that?" is the same gap with the consequence attached, and it is the difference
+   * between a survey and somebody who knows the work. Everything it asserts is arithmetic or a
+   * definition, never a fact about anybody's business - see what-a-claim-costs-to-prove.
+   *
+   * THEN BREADTH AGAINST DEPTH. `whatToAskAbout` pushes on a hole in what somebody said - a target
+   * with no way to verify it, a change with no baseline. Left alone it will spend a whole check-in
+   * sharpening one claim while seven of the brief's subjects go unasked, which is the complaint
+   * this started from: "the questions dont help us get what we want".
+   *
+   * IT RETURNS THE SUBJECT AS WELL AS THE WORDS because the note written after the reply has to
+   * know which subject this turn put to them, so an answer in their own vocabulary still counts as
+   * covered. Both callers run it on the same state, so neither can drift from the other - the
+   * alternative was the rank written twice, and the second copy being subtly wrong is exactly how
+   * somebody gets asked the same question at turn five that they answered at turn one.
+   */
+  private whichHoleToPush(
+    notes: WhatWeHave | null,
+    subjects: ASubject[],
+    theirAnswers: string[],
+  ): { text: string; subject: ASubject | null } {
+    const raised = notes?.raised ?? [];
+    const stillOwed = (notes?.asked ?? [])
+      .map((subject) => asSomethingToCover(subject))
+      .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
+    if (stillOwed.length) return { text: followTheirLead(stillOwed[0].subject), subject: null };
+    const challenge = theChallengeWorthPutting(notes?.claims, notes?.challenged ?? []);
+    if (challenge) return { text: sayThisChallenge(challenge), subject: null };
+    const cover = () => {
+      const s = theSubjectWorthRaising(subjects, theirAnswers, raised);
+      const text = whatToCoverNext(subjects, theirAnswers, raised);
+      return s && text ? { text, subject: s } : null;
+    };
+    const gap = () => {
+      const text = whatToAskAbout(notes as any);
+      return text ? { text, subject: null } : null;
+    };
+    const breadth = breadthFirst(subjects, theirAnswers, raised);
+    return (breadth ? cover() ?? gap() : gap() ?? cover()) ?? { text: '', subject: null };
+  }
+
   async theSubjectsToCover(groundId: string): Promise<ASubject[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { subjectsToCover: true, brief: true } })
@@ -6057,10 +6106,69 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return subjects;
   }
 
+  /**
+   * ONE NOTE AT A TIME PER CHECK-IN.
+   *
+   * Found by driving a real conversation: six answers went in and the notes said `answers=3`, with
+   * the volumes, the vetting answer and a whole 30,000-smallholder target missing. Nothing had
+   * failed. `noteWhatTheySaid` is fire-and-forget and takes tens of seconds, so turn five's note
+   * was still running when turn six read the same row - both merged onto the version they had read,
+   * and the last write won. A read-modify-write on a row two requests are holding.
+   *
+   * Serialised per check-in, which is the shape the data has anyway: one person answers one turn at
+   * a time, so there is nothing to gain from overlapping them and a whole target to lose.
+   *
+   * IN PROCESS, AND HONEST ABOUT IT. This holds for one running instance. Two instances would need
+   * the merge inside a transaction that re-reads - worth doing when there are two, and not worth
+   * pretending to have solved today.
+   */
+  private notesInFlight = new Map<string, Promise<void>>();
+
+  /**
+   * HOW LONG A NOTE MAY HOLD UP A REPLY.
+   *
+   * Not a target - the note takes two or three seconds and the wait is normally zero, because
+   * anybody typing an answer has already spent longer than that. This is the point at which a note
+   * that has gone wrong stops being the conversation's problem. Twelve seconds, which is under the
+   * chat's own ceiling, so the worst case is a reply composed without the last turn's claims rather
+   * than a person watching a spinner.
+   */
+  private static readonly A_NOTE_MAY_HOLD_A_TURN_FOR = 12_000;
+
+  private async theNoteFromTheLastTurnLands(checkInId: string): Promise<void> {
+    /* Optional because the guards that assemble a prompt build the service off its prototype, so
+       the field initialiser has never run. No map means no note in flight, which is the truth. */
+    const running = this.notesInFlight?.get(checkInId);
+    if (!running) return;
+    let timer: NodeJS.Timeout | undefined;
+    const waited = Date.now();
+    await Promise.race([
+      running.catch(() => undefined),
+      new Promise<void>((done) => {
+        timer = setTimeout(done, ConversationService.A_NOTE_MAY_HOLD_A_TURN_FOR);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
+    const held = Date.now() - waited;
+    if (held > 2000) this.logger?.warn?.(`Check-in ${checkInId}: waited ${held}ms for the last turn's note.`);
+  }
+
   async noteWhatTheySaid(checkInId: string, theirTurn: string): Promise<void> {
+    const queued = (this.notesInFlight.get(checkInId) ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => this.noteWhatTheySaidNow(checkInId, theirTurn));
+    this.notesInFlight.set(checkInId, queued.catch(() => undefined));
+    /* Dropped once it is the last one, so the map does not grow for the life of the process. */
+    queued.catch(() => undefined).finally(() => {
+      if (this.notesInFlight.get(checkInId) === queued) this.notesInFlight.delete(checkInId);
+    });
+    return queued;
+  }
+
+  private async noteWhatTheySaidNow(checkInId: string, theirTurn: string): Promise<void> {
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      select: { whatWeHave: true, sessionNumber: true },
+      select: { whatWeHave: true, sessionNumber: true, groundId: true },
     });
     if (!row) return;
     const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
@@ -6080,6 +6188,37 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const putLastTurn = theChallengeWorthPutting(before.claims, before.challenged ?? []);
     if (putLastTurn) {
       before.challenged = Array.from(new Set([...(before.challenged ?? []), putLastTurn.key]));
+    }
+
+    /*
+     * AND THE SUBJECT THE LAST TURN PUT TO THEM IS MARKED COVERED.
+     *
+     * Found by driving her own brief: she was asked which states at turn one, said "Niger and
+     * Kogi", and was asked which states again at turn five. Coverage was decided by matching the
+     * brief's words against her answers, and an answer names the place rather than the category -
+     * "Niger" contains none of "states" or "markets". So the subject the conversation actually
+     * raised is remembered here, where we know the reply went out and they answered it. The words
+     * check still stands and still catches coverage this cannot see.
+     *
+     * Recomputed from `before` and the answers that existed before this one, which is the state the
+     * last prompt was composed from - the same rank, run on the same inputs, so it names the same
+     * subject. Nothing is marked when that turn pushed on a claim or followed a steer instead.
+     */
+    const priorAnswers = await this.prisma.conversationTurn
+      .findMany({
+        where: { checkInId, role: TurnRole.PERSON },
+        orderBy: { createdAt: 'asc' },
+        select: { content: true },
+      })
+      .then((rows) => rows.slice(0, -1).map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+    const subjects = await this.theSubjectsToCover(row.groundId).catch(() => [] as ASubject[]);
+    const putToThem = subjects.length
+      ? this.whichHoleToPush(before, subjects, priorAnswers).subject
+      : null;
+    if (putToThem) {
+      before.raised = Array.from(new Set([...(before.raised ?? []), putToThem.id]));
+      this.logger?.log?.(`Check-in ${checkInId}: they answered on "${putToThem.subject}".`);
     }
 
     const steer = whatTheyWantAsked(theirTurn);
@@ -6107,6 +6246,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       READ_THIS_TURN,
       [{ role: 'user', content: `${theNotesSoFar(before)}\n\nWHAT THEY JUST SAID:\n${theirTurn}` }],
       READ_THIS_TURN_SCHEMA as any,
+      /*
+       * THE FAST MODEL, AND NO THINKING BUDGET.
+       *
+       * It was running on the deliberating model with the default budget, which is why it took
+       * fifteen seconds while the reply it runs beside takes two. What it does is not deliberation:
+       * it reads one answer and fills in fields that are almost all quoted straight out of it. On
+       * her own six answers the fast model returned the same five claims - the 30,000, the 30%, the
+       * vetting, the volumes, the move into Niger and Kogi - in a fraction of the time.
+       */
+      { fast: true, thinkingBudget: 0 },
     ).catch((err: any) => {
       this.logger?.warn?.(`Could not note what was said on ${checkInId}: ${err?.message}`);
       return null;

@@ -106,7 +106,8 @@ describe('and it is wired ahead of both the holes and the brief', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('a steer they have not had yet wins the turn', () => {
-    expect(SRC).toMatch(/const theHole = stillOwed\.length\s*\?\s*followTheirLead\(stillOwed\[0\]\.subject\)/);
+    const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
+    expect(rank).toMatch(/if \(stillOwed\.length\) return \{ text: followTheirLead\(stillOwed\[0\]\.subject\)/);
   });
 
   /* Dropped from the rank only once they have actually talked about it, not once we have asked. */

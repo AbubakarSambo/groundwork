@@ -141,13 +141,21 @@ describe('and it is ranked behind what they asked for', () => {
   const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  /* What they asked for outranks what we would like to say. */
+  /* One method owns the rank - see the-same-question-twice - so the guard reads its body. */
+  const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
+
+  /* What they asked for outranks what we would like to say: the steer returns before the challenge
+     is even computed. */
   it('a steer still wins', () => {
-    expect(SRC).toMatch(/const challenge = stillOwed\.length \? null : theChallengeWorthPutting\(/);
+    const steerAt = rank.indexOf('return { text: followTheirLead(');
+    const challengeAt = rank.indexOf('theChallengeWorthPutting(');
+    expect(steerAt).toBeGreaterThan(-1);
+    expect(challengeAt).toBeGreaterThan(steerAt);
   });
 
   it('and a challenge beats asking a question', () => {
-    expect(SRC).toMatch(/: challenge\s*\?\s*sayThisChallenge\(challenge\)/);
+    expect(rank).toMatch(/if \(challenge\) return \{ text: sayThisChallenge\(challenge\)/);
+    expect(rank.indexOf('sayThisChallenge(challenge)')).toBeLessThan(rank.indexOf('whatToAskAbout('));
   });
 
   /* Marked as put after the reply has gone, not while the prompt is being built - a prompt is

@@ -48,10 +48,27 @@ const CLAIMS_THE_REPORT = [
  */
 export const WHAT_ACTUALLY_HAPPENS_NEXT = 'The consolidated report goes out once everybody has answered.';
 
+/**
+ * AND THE GOODBYE IS THE SAME PROMISE IN ONE WORD.
+ *
+ * "Speak soon." It is the right line to a colleague you check in with every fortnight, and the
+ * prompt asks for it by name. Said to somebody who followed a link once, from an organisation that
+ * has no relationship with them and no second round scheduled, it promises a conversation nobody
+ * has arranged. Read live in the close of the update run on 23 September 2026.
+ *
+ * Only the ones that claim another meeting. "Thank you" and "thanks for your time" stay: they are
+ * the only thing the product ever gives back for five minutes of somebody's work.
+ */
+const PROMISES_ANOTHER_CONVERSATION = [
+  /\b(?:speak|talk|chat)\s+(?:to you\s+)?(?:soon|again|next time|in [^.!?]{1,24})\b\.?/gi,
+  /\b(?:see|catch)\s+you\s+(?:soon|again|next time|in [^.!?]{1,24}|then)\b\.?/gi,
+  /\buntil (?:next time|then)\b\.?/gi,
+];
+
 export function withoutPromisingTheReport(text: string): string {
   let out = text ?? '';
   let claimed = false;
-  for (const rx of CLAIMS_THE_REPORT) {
+  for (const rx of [...CLAIMS_THE_REPORT, ...PROMISES_ANOTHER_CONVERSATION]) {
     rx.lastIndex = 0;
     if (rx.test(out)) claimed = true;
     rx.lastIndex = 0;

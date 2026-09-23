@@ -125,15 +125,26 @@ describe('and the conversation is wired to prefer whichever is worth more', () =
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('breadth while the ground is untouched, depth after', () => {
-    expect(SRC).toMatch(/breadthFirst\(subjects, theirAnswers\)\s*\?\s*\(whatToCoverNext\(subjects, theirAnswers\) \|\| whatToAskAbout\(notes\)\)/);
-    expect(SRC).toMatch(/:\s*\(whatToAskAbout\(notes\) \|\| whatToCoverNext\(subjects, theirAnswers\)\)/);
+    /* One method owns the rank now - see the-same-question-twice - so the guard reads its body. */
+    const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
+    expect(rank).toMatch(/const breadth = breadthFirst\(subjects, theirAnswers, raised\);/);
+    expect(rank).toMatch(/return \(breadth \? cover\(\) \?\? gap\(\) : gap\(\) \?\? cover\(\)\)/);
   });
 
   /* Neither starves: each branch falls back to the other, so a check-in with no subjects read still
      pushes on holes, and one with nothing missing still covers the ground. */
   it('and each falls back to the other', () => {
-    expect((SRC.match(/whatToCoverNext\(subjects, theirAnswers\)/g) ?? []).length).toBe(2);
-    expect((SRC.match(/whatToAskAbout\(notes\)/g) ?? []).length).toBe(2);
+    const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
+    expect((rank.match(/cover\(\)/g) ?? []).length).toBe(2);
+    expect((rank.match(/gap\(\)/g) ?? []).length).toBe(2);
+  });
+
+  /* And coverage counts what was put to them, not only the brief's own vocabulary. */
+  it('and both branches are told what has already been raised', () => {
+    const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theSubjectsToCover('));
+    expect(rank).toMatch(/const raised = notes\?\.raised \?\? \[\];/);
+    expect(rank).toMatch(/theSubjectWorthRaising\(subjects, theirAnswers, raised\)/);
+    expect(rank).toMatch(/whatToCoverNext\(subjects, theirAnswers, raised\)/);
   });
 
   /* Read once per check-in, not per turn: every respondent must be asked about the same ground. */

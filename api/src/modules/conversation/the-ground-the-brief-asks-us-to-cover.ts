@@ -109,9 +109,29 @@ export function theyHaveTalkedAbout(subject: ASubject, whatTheySaid: string[]): 
   return (subject.words ?? []).filter(meaningful).some((w) => said.has(stem(w)));
 }
 
-/** The subjects nobody has said anything about, in the brief's own order. */
-export function whatIsStillUncovered(subjects: ASubject[] | null | undefined, whatTheySaid: string[]): ASubject[] {
-  return (subjects ?? []).filter((s) => !theyHaveTalkedAbout(s, whatTheySaid));
+/**
+ * THE SUBJECTS NOBODY HAS SAID ANYTHING ABOUT, in the brief's own order.
+ *
+ * `alreadyRaised` are the ones the conversation has put to them and had an answer to. It exists
+ * because matching words is not enough on its own.
+ *
+ * Found by driving a real conversation: she was asked about states at turn one, answered "Niger and
+ * Kogi", and was asked about states again at turn five. The subject's words came out of the brief -
+ * "states", "markets" - and her answer used neither, because an answer names the place rather than
+ * the category. The words check is still here and still catches real coverage; this catches the
+ * case where somebody answered in their own vocabulary, which is most of them.
+ *
+ * Deliberately generous, for the same reason as the words check: the cost of treating a subject as
+ * covered is one question not asked, and the cost of not doing so is asking somebody the same thing
+ * twice - which is the fault she has named more often than any other.
+ */
+export function whatIsStillUncovered(
+  subjects: ASubject[] | null | undefined,
+  whatTheySaid: string[],
+  alreadyRaised: string[] = [],
+): ASubject[] {
+  const raised = new Set(alreadyRaised);
+  return (subjects ?? []).filter((s) => !raised.has(s.id) && !theyHaveTalkedAbout(s, whatTheySaid));
 }
 
 /**
@@ -125,7 +145,11 @@ export function whatIsStillUncovered(subjects: ASubject[] | null | undefined, wh
  * Half is the line, and it is arbitrary in the way a threshold has to be - what is not arbitrary is
  * that both are always in play, so neither can starve.
  */
-export function breadthFirst(subjects: ASubject[] | null | undefined, whatTheySaid: string[]): boolean {
+export function breadthFirst(
+  subjects: ASubject[] | null | undefined,
+  whatTheySaid: string[],
+  alreadyRaised: string[] = [],
+): boolean {
   const all = (subjects ?? []).length;
   if (!all) return false;
   /*
@@ -134,12 +158,25 @@ export function breadthFirst(subjects: ASubject[] | null | undefined, whatTheySa
    * she said were never asked about - and a strict majority test chose depth at that point. The
    * complaint was never that claims went unsharpened.
    */
-  return whatIsStillUncovered(subjects, whatTheySaid).length * 2 >= all;
+  return whatIsStillUncovered(subjects, whatTheySaid, alreadyRaised).length * 2 >= all;
 }
 
 /** What the conversation is told, where a subject is the thing worth raising. */
-export function whatToCoverNext(subjects: ASubject[] | null | undefined, whatTheySaid: string[]): string {
-  const left = whatIsStillUncovered(subjects, whatTheySaid);
+/** The one it would raise next, or null. Exported so the turn can be remembered as having raised it. */
+export function theSubjectWorthRaising(
+  subjects: ASubject[] | null | undefined,
+  whatTheySaid: string[],
+  alreadyRaised: string[] = [],
+): ASubject | null {
+  return whatIsStillUncovered(subjects, whatTheySaid, alreadyRaised)[0] ?? null;
+}
+
+export function whatToCoverNext(
+  subjects: ASubject[] | null | undefined,
+  whatTheySaid: string[],
+  alreadyRaised: string[] = [],
+): string {
+  const left = whatIsStillUncovered(subjects, whatTheySaid, alreadyRaised);
   if (!left.length) return '';
   const next = left[0];
   const rest = left.slice(1, 4).map((s) => s.subject);
