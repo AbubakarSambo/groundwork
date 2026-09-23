@@ -28,7 +28,14 @@ describe('GW-BOARD-NAMES: no address is ever a label', () => {
      * years.: 0 check-ins on record". A short description is kept as-is; a long one gives up its
      * leading name; anything else returns null and the caller says it cannot name them.
      */
-    expect(SRC).toContain('return n || aNameOrNothing(p.roleAsDescribed) || null;');
+    /* The fallback chain is unchanged; it is assigned before being returned now, because the
+       organisation somebody gave is appended to a name the way the report does it. What this test
+       is for - the role stands in, and the address never does - is asserted below and here. */
+    expect(SRC).toContain('const label = n || aNameOrNothing(p.roleAsDescribed) || null;');
+    expect(SRC).toContain('return label && n && forWhom ? `${label} (${forWhom})` : label;');
+    /* And the organisation only ever joins a real name - never the role standing in for one, which
+       would read as an organisation vouching for somebody we cannot even name. */
+    expect(SRC).not.toContain('return label && forWhom');
   });
 
   it('and not to the email', () => {

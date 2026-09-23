@@ -1,3 +1,4 @@
+import { insteadOfAFiller } from './the-same-sentence-five-times';
 /**
  * THE CLOSE BAR.
  *
@@ -211,12 +212,21 @@ export const asksForHomework = (text: string): boolean => {
  * you do about this, and by when?" anyway, in every session of run 7 (21 Sep 2026). The homework
  * sentence to a lead becomes the decision question, once a session; after that it is cut.
  */
-export const THE_LEADS_DECISION = 'From what is on this record, what have you decided?';
+/* "on this record" came out of it for the same reason as the filler: it is our word for what the
+   product does, and she read it five times in one conversation. The question is the same question. */
+export const THE_LEADS_DECISION = 'From everything you have said, what have you decided?';
 
 /**
  * A HOMEWORK BUDGET. The pack allows the question once and "once more for their own part"; Halima
  * had it four times in one closing session. The third time, the sentence comes out and the rest of the
  * turn stands; where nothing else was in it, the record line goes instead.
+ */
+/*
+ * WHERE THE CUT EMPTIES THE REPLY, IT NO LONGER ANNOUNCES A FILING.
+ *
+ * "That goes on this record as you put it." was substituted here, and read five times in one live
+ * check-in - twice as the answer to a direct question and once as the answer to "please end the
+ * session". See the-same-sentence-five-times for what is wrong with it and what replaces it.
  */
 export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[], isLead: boolean): { text: string; changed: 'kept' | 'cut' | 'decision' } {
   const text = reply ?? '';
@@ -227,12 +237,12 @@ export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[],
     HOMEWORK.lastIndex = 0;
     const swapped = decisionAsked ? withoutTheHomework(text).text : text.replace(HOMEWORK, THE_LEADS_DECISION).replace(/[ \t]{2,}/g, ' ').trim();
     HOMEWORK.lastIndex = 0;
-    if (decisionAsked && swapped === text) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+    if (decisionAsked && swapped === text) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
     return { text: swapped, changed: decisionAsked ? 'cut' : 'decision' };
   }
   if (earlier < 2) return { text, changed: 'kept' };
   const without = withoutTheHomework(text);
-  if (!without.cut) return { text: 'That goes on this record as you put it.', changed: 'cut' };
+  if (!without.cut) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
   return { text: without.text, changed: 'cut' };
 }
 

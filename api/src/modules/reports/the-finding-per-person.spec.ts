@@ -29,7 +29,10 @@ describe('the finding, per person, written by the product', () => {
     const g = findingFor(grace, 3)!;
     expect(g.text).toContain('the tractor owner said this was for: To plough my own maize on time and get a better crop.');
     expect(g.text).toContain('Where they say they stand now: Hiring it out brings N420,000 a month');
-    expect(g.text).toContain('Named as in the way: Losing hire income');
+    /* Was "Named as in the way:" - not a sentence: the start of the phrase lived in the variable
+       name, and a live board on 23 September 2026 read "Named as in the way: you didnt even as me
+       what i do". */
+    expect(g.text).toContain('What they say is in the way: Losing hire income');
     const h = findingFor(halima, 3)!;
     expect(h.hasGap).toBe(true);
     expect(h.text).toContain('The count moved: 500 birds then 260: down 48%.');

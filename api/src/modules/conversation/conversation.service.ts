@@ -36,7 +36,7 @@ import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { aNameOrNothing } from '../board/a-name-is-short';
-import { buildScenarioPackForParty, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -132,6 +132,10 @@ import {
 import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
+import { notTheSameAsLastTime } from './the-same-sentence-five-times';
+import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
+import { nothingYet, withThisTurn, type WhatWeHave, type Claim } from './what-we-have-so-far';
+import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -1452,6 +1456,22 @@ export class ConversationService {
       }
 
       /*
+       * AND NO REPLY IS EVER THE PREVIOUS REPLY, WORD FOR WORD.
+       *
+       * She read "That goes on this record as you put it." twice in a row from two different code
+       * paths, and a page that says the identical sentence twice is indistinguishable from one that
+       * has stopped working. The filler itself is gone (see the-same-sentence-five-times); this is
+       * the general case, because any guard that collapses a reply can collide with the last one.
+       */
+      const askedBefore = turns.filter((t) => t.role === TurnRole.AI);
+      const lastAi = askedBefore.length ? (askedBefore[askedBefore.length - 1].content ?? null) : null;
+      const notRepeated = notTheSameAsLastTime(screened.text, lastAi, askedBefore.length);
+      if (notRepeated !== screened.text) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply repeated the previous one word for word; replaced.`);
+        screened.text = notRepeated;
+      }
+
+      /*
        * AND IF THEY JUST SAID THE QUESTIONS ARE WRONG, DO NOT ASK THE SAME ONE AGAIN.
        *
        * Fourth of the retries, and the same shape as the three above: spot it, ask again with one
@@ -2088,7 +2108,20 @@ export class ConversationService {
       this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
     }
 
-    const room = howMuchRoomIsLeft(personTurnCount + 1);
+    /*
+     * AND NOT ON THE TURN THAT IS CLOSING, WHICH IS WHERE SHE READ IT.
+     *
+     * Live, 23 September 2026. She asked to end the session, said she had nothing else, and got:
+     * "No problem. Your report is ready now. Speak soon. There is room for 3 more answers in this
+     * session. Anything still on your mind is worth saying now."
+     *
+     * Three faults in one message, and this is two of them. The room notice is for somebody with a
+     * long way still to go - "early enough to plan", says its own module - and it was appended to a
+     * goodbye, so the turn said the report was finished and then asked for more. It is also the
+     * product's own plumbing: the twenty-answer ceiling is a fact about our storage and nobody
+     * being told a conversation is over needs the number.
+     */
+    const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
     /*
@@ -2105,6 +2138,17 @@ export class ConversationService {
      * was asked. See whatTheDocumentWaitsFor.
      */
     const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message);
+    /*
+     * AND THE WORKING NOTES, AFTER THE REPLY AND NEVER IN FRONT OF IT.
+     *
+     * Fire and forget: it costs a model call and the person waiting for this answer should not pay
+     * for it, and a conversation must never fail over its own notes. The state is one turn behind
+     * when the next reply is composed, which is the right arrangement - what reads from it is a
+     * challenge about accumulated claims, not a comment on the word just typed. See
+     * what-we-have-so-far and reading-what-they-just-said.
+     */
+    this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+      this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
@@ -2515,6 +2559,10 @@ export class ConversationService {
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
       }
+      /* The same working notes as the other path, and for the same reasons: after the reply, fire
+         and forget, never in front of the person waiting. See noteWhatTheySaid. */
+      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
       yield { type: 'done', reply, sessionComplete: close.ready };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
@@ -4175,6 +4223,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const inThisTurn = [
       ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
+      ['A_CORRECTION_IS_NOT_A_SCOLDING', A_CORRECTION_IS_NOT_A_SCOLDING],
+      ['ANSWER_THE_REMARK', ANSWER_THE_REMARK],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
       ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
@@ -4234,7 +4284,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5871,13 +5921,125 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
   }
 
+  /**
+   * WHAT WE HAVE SO FAR, KEPT UP TO DATE ONE TURN AT A TIME.
+   *
+   * Runs AFTER the reply has gone, so nobody waits for it, and best-effort, so a conversation never
+   * fails over its own working notes. The state is therefore one turn behind when the next reply is
+   * composed - which is the right arrangement: what reads from it is a challenge about accumulated
+   * claims, not a comment on the word just typed. See reading-what-they-just-said.
+   *
+   * A remark about the product is counted and nothing else: it is not an answer, so it adds no
+   * claims, and the extractor is not even asked about it.
+   */
+  async noteWhatTheySaid(checkInId: string, theirTurn: string): Promise<void> {
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: { whatWeHave: true, sessionNumber: true },
+    });
+    if (!row) return;
+    const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
+
+    if (aboutTheToolNotTheWork(theirTurn)) {
+      const after = withThisTurn(before, [], true);
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: after as any } });
+      return;
+    }
+
+    const read = await this.anthropic.extract<{
+      opens?: Partial<Claim>[];
+      sharpens?: (Partial<Claim> & { id: string })[];
+      who?: { name?: string; role?: string; organisation?: string };
+      contradiction?: { between?: string[]; why?: string };
+    }>(
+      READ_THIS_TURN,
+      [{ role: 'user', content: `${theNotesSoFar(before)}\n\nWHAT THEY JUST SAID:\n${theirTurn}` }],
+      READ_THIS_TURN_SCHEMA as any,
+    ).catch((err: any) => {
+      this.logger?.warn?.(`Could not note what was said on ${checkInId}: ${err?.message}`);
+      return null;
+    });
+    /*
+     * A FAILED READ STILL COUNTS THE ANSWER.
+     *
+     * My first version returned early, so a timed-out extraction lost the turn from the count as
+     * well as from the claims - and the count is what decides when to ask somebody who they are.
+     * Caught by replaying seven answers and reading "answers 3".
+     */
+    if (!read) {
+      const anyway = withThisTurn(before, [], false);
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: anyway as any } })
+        .catch(() => undefined);
+      return;
+    }
+
+    /*
+     * TWO ARRAYS, BECAUSE ONE BLURRED THE DECISION.
+     *
+     * With a single `claims` array the extractor kept reusing the first id for every answer, so one
+     * claim ended up holding a plan, a crop, a target and a verification and the 30% target was
+     * nowhere. Asking separately - what does this OPEN, what does it SHARPEN - makes the choice
+     * explicit instead of implied. Proven on a live replay of her own seven answers.
+     */
+    const opened: Claim[] = (read.opens ?? [])
+      .filter((c) => c?.id && c?.kind && c?.said?.trim())
+      .map((c) => ({ ...(c as Claim), session: row.sessionNumber ?? 1 }));
+    /* A sharpen only ever lands on a claim that exists: an id nobody has seen would silently become
+       a claim with no words in it, which is unreadable everywhere downstream. */
+    const held = new Set(before.claims.map((c) => c.id));
+    const sharpened: Claim[] = (read.sharpens ?? [])
+      .filter((c) => c?.id && held.has(c.id))
+      .map((c) => ({ ...(c as Claim), said: '', kind: undefined as any, session: row.sessionNumber ?? 1 }));
+    let after = withThisTurn(before, [...opened, ...sharpened], false);
+    /* Only ever filled in: a turn that says nothing about who they are must not blank it. */
+    if (read.who && (read.who.name || read.who.role || read.who.organisation)) {
+      after = { ...after, who: { ...(after.who ?? {}), ...read.who } };
+    }
+    if (read.contradiction?.between?.length === 2 && read.contradiction.why) {
+      after = {
+        ...after,
+        contradictions: [
+          ...after.contradictions,
+          { between: [read.contradiction.between[0], read.contradiction.between[1]], why: read.contradiction.why },
+        ],
+      };
+    }
+    await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: after as any } })
+      .catch((err: any) => this.logger?.warn?.(`Could not store the notes on ${checkInId}: ${err?.message}`));
+  }
+
   async extractRecordEntries(checkInId: string, participantId: string) {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
 
-    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    /*
+     * A REMARK ABOUT THE TOOL IS NOT THE WORK, AND THIS IS THE READ THAT DECIDES IT.
+     *
+     * Read on a live board: "you are repeating yourself, please end the session" filed under Asks,
+     * "you didnt even as me what i do" as a Risk AND a tracked blocker, "this is meant to be about
+     * personal" as a priority. Nothing in this pipeline had the concept of a turn that is not about
+     * the work, so every one of them was themed and shipped to a board an expansion team reads.
+     *
+     * Filtered here rather than in the prompt, and at the READ rather than at the write: the
+     * remarks stay in the transcript, because they are what the person said and not ours to
+     * delete, and they cannot reach the record by any path that forgot to ask. See
+     * a-remark-about-the-tool-is-not-the-work.
+     */
+    const theirs = turns.filter((t) => t.role !== TurnRole.AI);
+    const work = theWorkTheySaid(theirs);
+    if (theirs.length - work.length > 0) {
+      this.logger?.log?.(`Check-in ${checkInId}: ${theirs.length - work.length} turn(s) were about the conversation rather than the work; kept in the transcript, out of the record.`);
+    }
+    /* Nothing but remarks is not a thin record, it is no record. Extracting from it would leave the
+       themer only the AI's own words to work with, which is how a reply became a finding. */
+    if (work.length === 0) return;
+    const keep = new Set(work.map((t) => t.id));
+
+    const transcript = turns
+      .filter((t) => t.role === TurnRole.AI || keep.has(t.id))
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     /* Their side alone, kept for the check after extraction. See a-record-is-what-they-said.ts. */
-    const whatTheySaid = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content).join('\n');
+    const whatTheySaid = work.map((t) => t.content).join('\n');
     const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
       `${RECORD_EXTRACTION_PROMPT}\n\n${ONLY_THEIR_WORDS}`,
       [{ role: 'user', content: transcript }],
@@ -5932,7 +6094,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return countCheckableSpecifics(t) === 0;
     };
 
-    const valid = (result?.entries ?? []).filter(
+    /* And belt-and-braces on the way out: an entry that quotes a remark anyway - by reaching into
+       an AI turn that repeated it back - is dropped. The thing it prevents ends up on a board. */
+    const valid = notARemarkAboutUs(result?.entries ?? []).filter(
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&

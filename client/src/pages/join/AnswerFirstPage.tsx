@@ -103,8 +103,8 @@ export function AnswerFirstPage() {
 
   async function finish(withEmail: boolean) {
     if (!key || busy) return
-    if (withEmail && !name.trim()) { setProblem('Your name, so your answers are not anonymous in the record.'); return }
-    if (withEmail && !org.trim()) { setProblem('Your organisation - it is what the report is read by.'); return }
+    if (withEmail && !name.trim()) { setProblem('Your name.'); return }
+    if (withEmail && !org.trim()) { setProblem('Your organisation.'); return }
     if (withEmail && !looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return }
     setBusy(true)
     setProblem('')
@@ -234,10 +234,12 @@ export function AnswerFirstPage() {
         {phase === 'address' && (
           <div style={{ marginTop: 16, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Last thing: who are you?</div>
-            <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 12px' }}>
-              So your answers are not anonymous in the record, and so the consolidated report reaches
-              you at the end.
-            </p>
+            {/*
+              THE SENTENCE UNDER IT IS GONE. Hafsah, 23 September 2026: "this is not necessary 'the
+              part where it says so you are not anonymises'". She is right - three labelled fields
+              asking for a name, an organisation and an address do not need a paragraph explaining
+              that giving them makes you identifiable. The labels say what each one is for.
+            */}
             <div style={{ display: 'grid', gap: 8 }}>
               <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name</label>
               <input id="open-name" type="text" autoComplete="name" value={name}
@@ -264,11 +266,13 @@ export function AnswerFirstPage() {
 
         {phase === 'done' && (
           <div style={{ marginTop: 20 }}>
-            <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is on the record. Thank you.</h2>
+            {/* "on the record" is our word for what the product does, and she read it five times
+                in one conversation. See words-we-do-not-use on the API. */}
+            <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is everything. Thank you.</h2>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
               {sentTo
                 ? `The consolidated report goes to ${sentTo} at the end.`
-                : 'What you said is on the record.'}
+                : 'Your answers are saved.'}
             </p>
           </div>
         )}

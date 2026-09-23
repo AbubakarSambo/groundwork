@@ -450,6 +450,51 @@ const A_RULE_RATHER_THAN_A_PICTURE =
 const A_LIST_WITH_SLASHES = (t: string): boolean => (t.match(/\s\/\s/g) ?? []).length >= 2;
 
 /** What doing well looks like, or null where the paste only had rules and slogans. */
+/**
+ * AND THE SAME BAR FOR A DEFINITION THE EXTRACTOR PRODUCED, MINUS ONE TEST.
+ *
+ * `aSuccessStatementHolds` was written for a lead PASTING a statement about their team, so it
+ * refuses anything mentioning the product - meaning ours. Applied to what a person says in their
+ * own check-in that test is wrong: "I know the product well enough to demo it alone" is a real
+ * definition of success and the product in it is theirs.
+ *
+ * What is left is the part that was actually needed. Read on a live board, 23 September 2026:
+ * "horticulture", "sales records", "Yield too" printed as nine people's definitions of success.
+ * Those are answer fragments. A definition is at least a phrase, is not an instruction, and is not
+ * a slash list.
+ *
+ * Remarks about the product are handled properly now and structurally, at the read - see
+ * a-remark-about-the-tool-is-not-the-work - so this does not need to guess at them.
+ */
+export function aDefinitionOfSuccessHolds(text: string | null | undefined): string | null {
+  const t = (text ?? '').trim().replace(/\s+/g, ' ');
+  if (!t) return null;
+  /*
+   * LENGTH OR A COUNTABLE, NOT LENGTH ALONE.
+   *
+   * "Fifteen meetings a month" is four words and one of the best definitions of success anybody
+   * gives. A six-word floor threw it away, which would have been a worse bug than the one this is
+   * fixing: a real standard silently missing from a report. A number in it is enough on its own -
+   * it is what makes a definition checkable - and none of the fragments this exists to stop have
+   * one: "horticulture", "sales records", "Yield too".
+   */
+  const carriesACountable = /\d/.test(t) || /\b(fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|half|double|triple|ten|eleven|twelve)\b/i.test(t);
+  /*
+   * AND A SHORT DEFINITION THAT DESCRIBES A STATE OF AFFAIRS IS STILL A DEFINITION.
+   *
+   * "Getting to quota." is three words with no number in it and it is somebody's own account of
+   * what good looks like. What it has that a fragment does not is a verb - it describes a state
+   * rather than naming a thing. That is the actual difference between it and "horticulture",
+   * "sales records" and "Yield too", which is what this exists to stop.
+   */
+  const describesAState = /\b\w+ing\b/i.test(t)
+    || /\b(is|are|was|were|be|been|being|have|has|had|get|got|gets|keep|keeps|kept|reach|reaches|reached|hit|hits|close|closed|closes|know|knows|able|not|no longer|without)\b/i.test(t);
+  if (!carriesACountable && !describesAState && t.split(' ').length < FEW_ENOUGH_WORDS_TO_BE_A_SLOGAN) return null;
+  if (A_RULE_RATHER_THAN_A_PICTURE.test(t)) return null;
+  if (A_LIST_WITH_SLASHES(t)) return null;
+  return t;
+}
+
 export function aSuccessStatementHolds(text: string | null | undefined): string | null {
   const t = (text ?? '').trim().replace(/\s+/g, ' ');
   if (!t) return null;

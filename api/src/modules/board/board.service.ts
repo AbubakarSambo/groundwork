@@ -351,8 +351,17 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
+      /*
+       * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
+       *
+       * The report said "Hafsah (Coamana)" and the board said "Hafsah" on the same check-in, two
+       * inches apart. On a network-wide check-in the organisation is the unit anybody reads for -
+       * see displayName in party-labels, which this now matches.
+       */
+      const forWhom = ((p as any).organisationGiven ?? '').trim();
       /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
-      return n || aNameOrNothing(p.roleAsDescribed) || null;
+      const label = n || aNameOrNothing(p.roleAsDescribed) || null;
+      return label && n && forWhom ? `${label} (${forWhom})` : label;
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
@@ -721,9 +730,20 @@ export class BoardService {
             /* A person whose name this reader may not resolve still has a row: the read is about
                what to do, and "a teammate" with a three-week blocker is still worth acting on. */
             who: nameOf(p.id) ?? 'A teammate',
-            /* Whether that label is a name or their role standing in for one. Asked of the name
-               itself: somebody can have an account and never have given a first name. */
-            nameIsTheirRole: ![p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim(),
+            /*
+             * "Hafsah · no name given" - read on a live board, 23 September 2026, beside a report
+             * that called the same person "Hafsah (Coamana)".
+             *
+             * `nameOf` above falls back to the name somebody typed at the end of an open link, and
+             * this asked a narrower question - does she have an ACCOUNT name - so anybody who gave
+             * their name on the link got their real name printed and "no name given" beside it.
+             * The two now ask the same question, which is the whole point of the flag: is this
+             * label a name, or a role standing in for one.
+             */
+            nameIsTheirRole: !(
+              [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim()
+              || ((p as any).nameGiven ?? '').trim()
+            ),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,

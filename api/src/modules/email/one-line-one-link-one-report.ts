@@ -54,7 +54,16 @@ export function whatTheTeamGets(opts: {
     lines: [
       `${opts.leadName} asked you for a quick update.`,
       opts.theOneLine.trim(),
-      by ? `Takes two minutes. Reply by ${by}.` : 'Takes two minutes.',
+      /*
+       * FIVE MINUTES, AND WHAT COMES BACK.
+       *
+       * "Takes two minutes" was never true of a conversation that asks five or six questions -
+       * measured across a hundred real ones, the median was six answers. Hafsah, 23 September 2026:
+       * "should we tell people it takes 5mins and not 2?" And the reason to spend them is what
+       * arrives at the end, which this never mentioned.
+       */
+      by ? `Takes about five minutes. Reply by ${by}.` : 'Takes about five minutes.',
+      'You will get the consolidated report at the end.',
       ...(trial ? [trial] : []),
     ],
   };

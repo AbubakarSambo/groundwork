@@ -17,6 +17,7 @@
  * paragraph.
  */
 import { whatDoesNotAddUp, type AThingOnRecord, type ATargetTheyHold } from '../conversation/what-does-not-add-up';
+import { aDefinitionOfSuccessHolds } from '../grounds/a-dump-is-many-things';
 
 export interface APersonToWriteUp {
   participantId: string;
@@ -65,7 +66,15 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
   let headline: string | null = null;
 
   /* What they said this was for: the earliest definition of success, in their words. */
-  const purpose = said.filter((s) => s.type === 'SUCCESS_DEFINITION').sort((a, b) => a.session - b.session)[0];
+  /*
+   * AND THE PURPOSE HAS TO BE ONE. This took the earliest SUCCESS_DEFINITION whatever it was, so a
+   * board read "Hafsah said this was for: I plan to run interventions to impact 30k women farmers"
+   * from an answer to a different question, and elsewhere the same list printed "horticulture" and
+   * "Yield too" as definitions. Same bar as the board's - see aDefinitionOfSuccessHolds.
+   */
+  const purpose = said
+    .filter((s) => s.type === 'SUCCESS_DEFINITION' && aDefinitionOfSuccessHolds(s.text))
+    .sort((a, b) => a.session - b.session)[0];
   if (purpose) sentences.push(`${who} said this was for: ${short(clean(purpose.text))}.`);
 
   /* Where they say they stand: the latest progress line with a number in it, else the latest progress line. */
@@ -100,7 +109,14 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
   /* The worries they named, latest first. */
   const worries = said.filter((s) => s.type === 'WORRY' || s.type === 'TENSION');
   const worry = latest(worries);
-  if (worry) sentences.push(`Named as in the way: ${short(clean(worry.text), 120)}.`);
+  /*
+   * "Named as in the way: you didnt even as me what i do, i dont get you saying that goes on the
+   * record, what does that mean." Read on a live board, 23 September 2026. Two faults in one line:
+   * the sentence is not English - it is the end of a phrase whose beginning was in the variable
+   * name - and the thing it quoted was a remark about the product, which the record no longer
+   * carries (see a-remark-about-the-tool-is-not-the-work).
+   */
+  if (worry) sentences.push(`What they say is in the way: ${short(clean(worry.text), 120)}.`);
 
   /* The gaps the record itself shows. */
   const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [] });
