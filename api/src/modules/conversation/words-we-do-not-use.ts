@@ -93,6 +93,42 @@ export const PHRASES_WE_NEVER_WRITE = [
   'this was always going to surface',
   'that is the dynamic at the heart of this',
   'you are clearly someone who cares',
+  /*
+   * OUR WORD FOR WHAT THE PRODUCT DOES, SAID TO THE PERSON USING IT.
+   *
+   * Hafsah, 23 September 2026, after a live check-in: "you used on the record alot which is
+   * fucking annoying." Five times in one conversation, three of them as the whole reply. It is
+   * jargon, and to somebody answering questions about their own work it reads as a warning.
+   *
+   * The product still keeps a record and still says so where that is the point - the landing
+   * screen, the report, the close. What comes out is the conversation reaching for it as filler.
+   */
+  'on this record',
+  'on the record',
+  'goes on your record',
+  'on your record',
+  /*
+   * AND THE PRODUCT APOLOGISING FOR ITSELF, THREE TIMES IN ONE CONVERSATION.
+   *
+   * Read live, 23 September 2026: "You are right. My apologies. I got ahead of myself." Then "You
+   * are right. This is about your contribution... My apologies." Then "You did. My mistake."
+   *
+   * An existing guard covers the opposite case - a PERSON saying sorry to a check-in, see
+   * an-apology-is-not-owed - and nothing covered this one. It is not politeness. Somebody who has
+   * just pointed out that the question was already answered gets a paragraph of contrition and
+   * then, two turns later, the same behaviour: the apology is what the model does INSTEAD of
+   * thinking, and it is a large part of "the conversation shows no reasoning".
+   *
+   * What to do instead is in the prompt: take the correction, say the corrected thing in one
+   * clause, ask the next question.
+   */
+  'my apologies',
+  'my mistake',
+  'i apologise',
+  'i apologize',
+  'i got ahead of myself',
+  'you are right. ',
+  'you are right,',
 ];
 
 /**

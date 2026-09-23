@@ -145,6 +145,25 @@ export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
   'kept; saying so is a sentence about the product in the middle of a conversation about their work.',
 ].join('\n');
 
+/**
+ * DO NOT APOLOGISE. TAKE THE CORRECTION AND MOVE.
+ *
+ * Read live on 23 September 2026. She said "i said farmers"; the reply was "You did. My mistake."
+ * and a re-ask. She said "you didnt even ask me what i do"; the reply was "You are right. My
+ * apologies. I got ahead of myself." and a paragraph explaining itself. Two turns later it made
+ * the same mistake again.
+ *
+ * The contrition is not politeness - it is what the model produces INSTEAD of using the
+ * correction, and it is most of why she said the conversation shows no reasoning. A correction is
+ * information: it says what they have already told you, so use it in the next question.
+ */
+export const A_CORRECTION_IS_NOT_A_SCOLDING = [
+  'WHEN THEY CORRECT YOU, DO NOT APOLOGISE.',
+  'No "my apologies", no "my mistake", no "you are right", no explaining yourself. They do not want an apology, they want the conversation to move.',
+  'Take what the correction tells you - it is almost always something they have already said - and put it into the next question. One clause of acknowledgement at most, then ask about something you do not already have.',
+  'If they say you already told them something, you did: do not ask for it again in other words. Ask for the next thing.',
+].join('\n');
+
 export const VOCABULARY_RULE = [
   'VOCABULARY. Never use the words "ground" or "grounds" for the thing being discussed. It is a',
   'check-in. If somebody else calls it a ground, answer them without repeating the word. "Groundwork"',
@@ -515,7 +534,7 @@ Never accept "nothing was written" after only one ask. The second and third asks
 PUSHBACK RULES:
 If the answer to Question 1 does not contain a thing: a document, a number, a named person, a system state, a decision: ask once more: "Can you make that one level more concrete: a specific document, a number, a named person, or a system?" Maximum two pushbacks.
 If the answer to Question 2 does not name a person or system: ask once: "Who would be in a position to confirm this happened?"
-If still vague after two pushbacks: record what they said exactly, note it as a weak evidence definition, do not block the conversation. Tell them: "That is on your record as you put it. I will ask you to be more specific when we check in."
+If still vague after two pushbacks: record what they said exactly, note it as a weak evidence definition, do not block the conversation. Tell them: "Noted as you put it - I will ask you to be more specific next time."
 If they refuse entirely: see REFUSAL RULE below - ask once more before recording it.
 
 REFUSAL RULE - exactly one retry, then record and move on gracefully. Never badger:

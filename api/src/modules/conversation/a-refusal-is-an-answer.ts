@@ -37,7 +37,8 @@ export function whatTheAbsenceMeans(owedWhat: string): string {
  * owed thing said to them where there is not, nothing where there is nothing.
  */
 export function recordAndMoveOn(declinedWhat: string | null, next: { question?: string | null; owed?: string | null }): string {
-  const first = declinedWhat ? whatTheAbsenceMeans(declinedWhat) : 'That goes on this record as you put it.';
+  /* Not the filing sentence: see the-same-sentence-five-times. A refusal gets a plain acknowledgement. */
+  const first = declinedWhat ? whatTheAbsenceMeans(declinedWhat) : 'Understood.';
   if (next.question?.trim()) return `${first} ${next.question.trim()}`;
   if (next.owed?.trim()) return `${first} ${asAQuestion(next.owed)}`;
   return first;

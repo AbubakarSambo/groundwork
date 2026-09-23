@@ -33,8 +33,18 @@ const SAYS_NOTHING_TO_ADD =
  * to add". Bare "nothing else" is deliberately NOT here: that is an answer about the work, and
  * closeReadiness reads it as one below the floor (SAYS_NOTHING_TO_ADD).
  */
+/*
+ * AND SOMEBODY ASKING IN PLAIN WORDS TO END IT.
+ *
+ * Read on a live check-in, 23 September 2026. "you are repeating yourself, please end the session"
+ * - the conversation carried on. "can you have the session end please" - it asked another
+ * question. Neither sentence matched anything here: the list had "can we stop" and "can we finish"
+ * and nothing at all for the word people actually use, which is END.
+ *
+ * Hafsah: "it also doesnt end naturally." She asked three times.
+ */
 export const WANTS_OUT =
-  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this)/i;
+  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|finish (the|this) (session|check-?in)|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
 
 export interface CloseReadiness {
   ready: boolean;

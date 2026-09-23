@@ -205,8 +205,29 @@ describe('the homework question, budgeted', () => {
     expect(third.changed).toBe('cut');
     expect(third.text).toBe('That is a real answer.');
   });
-  it('a bare third ask becomes the record line', () => {
-    expect(withinTheHomeworkBudget('What will you do about this, and by when?', ['what will you do about this, and by when?', 'what will you do about it and by when?'], false).text).toBe('That goes on this record as you put it.');
+  /*
+   * IT USED TO BECOME "That goes on this record as you put it."
+   *
+   * Read five times in one live check-in on 23 September 2026, three of them as the whole reply to
+   * a question. Hafsah: "you used on the record alot which is fucking annoying." A cut that empties
+   * the reply now asks for the next thing instead of announcing a filing, and the wording rotates
+   * so the same conversation never uses it twice running. See the-same-sentence-five-times.
+   */
+  it('a bare third ask becomes a plain acknowledgement and a question, never the record line', () => {
+    const out = withinTheHomeworkBudget('What will you do about this, and by when?', ['what will you do about this, and by when?', 'what will you do about it and by when?'], false).text;
+    expect(out).not.toMatch(/record/i);
+    expect(out).toMatch(/\?$/);
+  });
+
+  /* And two of them in a row are not the same words. */
+  it('and the wording moves with the turn, so it cannot repeat', () => {
+    const asked = 'what will you do about this, and by when?';
+    /* Two earlier asks puts it over budget; a third turn of history picks the next wording. */
+    const cutOnce = withinTheHomeworkBudget('What will you do about this, and by when?', [asked, asked], false).text;
+    const cutAgain = withinTheHomeworkBudget('What will you do about this, and by when?', [asked, asked, 'anything else?'], false).text;
+    expect(cutOnce).not.toMatch(/record/i);
+    expect(cutAgain).not.toMatch(/record/i);
+    expect(cutOnce).not.toBe(cutAgain);
   });
   it('the lead gets the decision question once, then nothing', () => {
     const first = withinTheHomeworkBudget(ask, [], true);
