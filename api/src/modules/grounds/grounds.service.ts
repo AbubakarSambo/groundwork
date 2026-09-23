@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
+import { targetsFor } from '../board/whose-number-is-whose-business';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -1921,8 +1922,30 @@ export class GroundsService {
       /* What each person is still to show, keyed by participant. Everybody may see these: a promise
          to hand something over was made out loud, and the page is where it is kept. */
       asks,
-      /* Each target with the lead's own sentence about what is unsettled in it, where there is one. */
-      objectives: ((ground as any).objectives ?? []).map((o: any) => ({
+      /*
+       * AND WHOSE NUMBERS THIS READER MAY SEE, WHICH THIS FIELD WAS NOT ASKING.
+       *
+       * `peersKeepTheirNumbers` above narrows `participants[].objective` - somebody else's
+       * EXPECTATIONS - and it was written for exactly this symptom: "In the check-in itself Rita was
+       * shown the team's 500 and her own 150... On the Context tab of the same check-in, one tap
+       * away, she was shown Kunle's 150, Amir's 150 and the lead's 50."
+       *
+       * It fixed one of the two fields. The targets table added on 22-23 September reads THIS one,
+       * selected with `ownerParticipantId` for every row and filtered by nobody, so the same leak
+       * came back through a different field on the same page. Asked of the read on 23 September
+       * 2026: a participant on a THEIR_OWN ground was handed two numbers that were not hers.
+       *
+       * THROUGH `targetsFor`, which is where this rule is written and has been since owners existed.
+       * It had one caller - the conversation - so the rule was right, used once, and ignored by the
+       * two other surfaces that show targets. Passing the same `viewerIsInitiator` the expectations
+       * path uses, so the two fields on one response cannot disagree about one reader.
+       */
+      objectives: targetsFor(
+        ((ground as any).objectives ?? []) as any[],
+        (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null,
+        ((ground as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
+        { isLead: viewerIsInitiator },
+      ).shown.map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
       })),
