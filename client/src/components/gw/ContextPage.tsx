@@ -1182,21 +1182,28 @@ export function ContextPage({
               <>
                 <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
                 {/*
-                  AND WHERE THERE IS NO CONVERSATION, A PLACE TO TYPE IT.
+                  A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
 
-                  The block below this one says "say it in the conversation at the top" five ways.
-                  On a check-in where the chat is off there is no conversation at the top, so every
-                  empty state on this page pointed at a control that was not there - item B.
+                  Item B: the page could change a line of what a check-in knows, share it, make it
+                  private and retire it, and could not create one. Every line arrived through the
+                  chat, so five empty buckets each said "say it in the conversation at the top" and
+                  nothing on the page put anything anywhere.
 
-                  Five chips, not five boxes: she has already said these sections are bulky, and one
-                  textarea that opens where you press is the least of it. The chat stays the way in
-                  wherever there is one; this is the door for when there is not.
+                  MY FIRST FIX WAS DEAD CODE, AND IT WAS THE FAULT I HAVE BEEN FIXING ALL DAY. I
+                  gated this on `!contextEnabled`, having read that as a per-check-in setting. It is
+                  a global flag and it is on - her decision, "context is always enabled", with an env
+                  var kept only to kill it in an emergency. So the form rendered for nobody. A
+                  control that agrees with you and does nothing.
+
+                  The conversation is still the better route and still the first one: the chips hand
+                  it the sentence, because it asks the follow-up a form cannot. This is for the lead
+                  who knows exactly what the line is and does not want a conversation about it.
                 */}
-                {isTheLead && !contextEnabled && (
+                {isTheLead && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                       {theBuckets.some((b) => b.lines.length > 0)
-                        ? 'Add another line. Every check-in is guided by what is here.'
+                        ? 'Add a line. Every check-in is guided by what is here.'
                         : 'Nothing here yet. Put anything the check-ins should know in the right place, and every check-in is guided by it.'}
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
@@ -1227,7 +1234,7 @@ export function ContextPage({
                           onChange={(e) => setLineDraft(e.target.value)}
                           placeholder={THE_WAY_IN[typingInto] ?? ''}
                         />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                           <button
                             onClick={() => addLine.mutate({ kind: typingInto, text: lineDraft })}
                             disabled={!lineDraft.trim() || addLine.isPending}
@@ -1241,34 +1248,25 @@ export function ContextPage({
                           >
                             Cancel
                           </button>
+                          {/*
+                            AND THE CONVERSATION, WHICH IS STILL THE BETTER ROUTE.
+
+                            A typed line is one sentence with nothing around it. The chat can ask
+                            what the figure rests on, who agreed it, and what happens if it slips -
+                            which is why it is the way in and why this hands the half-written
+                            sentence over rather than competing with it.
+                          */}
+                          {contextEnabled && (
+                            <button
+                              onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            >
+                              Say it in the conversation instead
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-                {isTheLead && contextEnabled && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                      {theBuckets.some((b) => b.lines.length > 0)
-                        ? 'Add to any of these by saying it in the conversation at the top.'
-                        : 'Nothing here yet. Say any of these in the conversation at the top and it lands in the right place - and every check-in is guided by it.'}
-                    </div>
-                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                      {BUCKETS.map((b) => (
-                        <button
-                          key={b.kind}
-                          onClick={() => changeThisInTheChat(THE_WAY_IN[b.kind] ?? '')}
-                          title={b.sub}
-                          style={{
-                            fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)',
-                            border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px',
-                            cursor: 'pointer', fontFamily: 'inherit',
-                          }}
-                        >
-                          {b.title}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>

@@ -60,7 +60,15 @@ export function Zone({ label }: { label: string }) {
 export function Sec({ title, src, n, on = 'light' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark' }) {
   const dark = on === 'dark'
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: n ? '28px 2px 10px' : '16px 2px 8px' }}>
+    /*
+      AND IT WRAPS, BECAUSE THE SOURCE LINE WAS BEING CUT OFF THE SCREEN.
+      Measured on a real check-in at 375px: "what you put here guides every check-in · change any
+      line in it" ran to 440 on a 375-wide screen - sixty-five pixels of it simply gone - and "nobody
+      is marked as having done it · the check-ins ask" lost its last word. The span carried
+      `whiteSpace: nowrap` and `marginLeft: auto` in a row that could not wrap, so there was nowhere
+      for it to go. Every section heading in the product uses this.
+    */
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', margin: n ? '28px 2px 10px' : '16px 2px 8px' }}>
       {n !== undefined && (
         <span
           aria-hidden
@@ -75,7 +83,15 @@ export function Sec({ title, src, n, on = 'light' }: { title: string; src?: stri
         </span>
       )}
       <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
-      {src && <span style={{ fontSize: 10.5, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{src}</span>}
+      {/* Beside the title where it fits, on its own line where it does not, and still right-aligned. */}
+      {src && (
+        <span style={{
+          fontSize: 10.5, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)',
+          marginLeft: 'auto', textAlign: 'right', maxWidth: '100%', minWidth: 0,
+        }}>
+          {src}
+        </span>
+      )}
     </div>
   )
 }

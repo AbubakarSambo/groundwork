@@ -60,18 +60,26 @@ describe('adding one line of what a check-in knows', () => {
   });
 });
 
-describe('and the page offers it only where there is no conversation', () => {
-  it('the typing block is behind the chat being off', () => {
-    expect(PAGE).toMatch(/\{isTheLead && !contextEnabled && \(/);
+/**
+ * AND THE PAGE OFFERS IT TO WHOEVER RUNS THE CHECK-IN, NOT TO NOBODY.
+ *
+ * My first version gated the typing on `!contextEnabled`, having read that as a per-check-in
+ * setting. It is a global flag and it is on - "context is always enabled", with an env var kept only
+ * to kill it in an emergency - so the form rendered for nobody. A control that agrees with you and
+ * does nothing, which is the fault three other fixes today were about.
+ */
+describe('and the page offers it to whoever runs the check-in', () => {
+  it('to the lead, whatever the chat flag says', () => {
+    expect(PAGE).toMatch(/\{isTheLead && \(\n/);
     expect(PAGE).toMatch(/addLine\.mutate\(\{ kind: typingInto, text: lineDraft \}\)/);
+    /* And never behind the flag that made it dead. */
+    expect(PAGE).not.toMatch(/isTheLead && !contextEnabled/);
   });
 
-  /* And the block that says "say it in the conversation" still only shows when there is one. */
-  it('and the say-it-in-the-chat block still needs a chat', () => {
-    expect(PAGE).toMatch(/\{isTheLead && contextEnabled && \(/);
-    const at = PAGE.indexOf('Say any of these in the conversation at the top');
-    expect(at).toBeGreaterThan(-1);
-    const before = PAGE.slice(Math.max(0, at - 900), at);
-    expect(before).toContain('isTheLead && contextEnabled');
+  /* The conversation is still the better route, and the box hands the half-written line over. */
+  it('and the conversation is still offered from inside it', () => {
+    expect(PAGE).toContain('Say it in the conversation instead');
+    const at = PAGE.indexOf('Say it in the conversation instead');
+    expect(PAGE.slice(Math.max(0, at - 700), at)).toContain('changeThisInTheChat(lineDraft.trim()');
   });
 });

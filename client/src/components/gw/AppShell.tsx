@@ -1464,7 +1464,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           :root { --gw-bottom-nav: calc(60px + env(safe-area-inset-bottom)); }
           .gw-sidebar-desktop { display: none !important; }
           .gw-sidebar-mobile  { display: flex !important; }
-          .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+          /*
+            CLEAR OF THE NAV, AND OF THE TWO THINGS FLOATING ABOVE IT.
+
+            This was the nav's 60px exactly, so the last thing on every page ended level with the
+            top of the nav bar and underneath the feedback pill and the help button, which sit at
+            76 and 128 from the bottom. Measured on a real check-in at 375px: the lowest content
+            ended at 752 on an 812 screen, with both floats over it.
+
+            166 is where the help button's top edge is; the rest is a thumb's worth of room so the
+            last line is readable rather than merely uncovered.
+          */
+          .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(180px + env(safe-area-inset-bottom)); }
           /* A bottom sheet is the right shape on a phone - thumb reach, and there is no middle to
              speak of. It was being drawn that way on every screen, which is the bug. */
           .gw-fb-overlay      { align-items: flex-end !important; padding: 0 !important; }
