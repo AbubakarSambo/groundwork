@@ -149,3 +149,72 @@ describe('what the stalled email says', () => {
     expect(stalled).toContain('Everything already answered is kept');
   });
 });
+
+/**
+ * AND NOTHING STALLS IN SILENCE ANY MORE.
+ *
+ * "have a risk of stalling show, don't just stall." The notice sweep runs an hour before the stall
+ * sweep and the stall sweep will not touch a check-in nobody has been told about, so the worst case
+ * is a warning tonight and a stall tomorrow - never the two in the same silence.
+ */
+describe('the order of the two sweeps', () => {
+  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8');
+
+  it('nothing is stopped that was never warned', () => {
+    const sweep = CRON.slice(CRON.indexOf('async stallOverdueGrounds'), CRON.indexOf('Gap #22'));
+    expect(sweep).toMatch(/stallWarningSentAt: \{ not: null \}/);
+  });
+
+  /*
+   * AND A CHECK-IN ALREADY PAST ITS DATE IS WARNED, NOT SKIPPED. The first version skipped anything
+   * with negative days left, which on the day this shipped was every overdue check-in in the
+   * product - so the whole existing population would have stalled tonight, unwarned, which is the
+   * exact fault being fixed.
+   */
+  it('and one already past its date gets the notice rather than nothing', () => {
+    const warn = CRON.slice(CRON.indexOf('async warnBeforeTimeRunsOut'), CRON.indexOf('async stallOverdueGrounds'));
+    expect(warn).toMatch(/if \(daysLeft > DAYS_OF_NOTICE\) continue;/);
+    expect(warn).not.toMatch(/daysLeft < 0\) continue/);
+  });
+});
+
+/**
+ * AND THE ONES ALREADY DEAD ARE REOPENED, FOR EVERYBODY.
+ *
+ * They were stopped by a product fault rather than by anybody's decision, so they are not left for
+ * each lead to find and fix by hand.
+ */
+describe('the check-ins that were already stalled', () => {
+  const SQL = readFileSync(
+    join(__dirname, '../../../prisma/migrations/20260923200000_reopen_every_check_in_that_ran_out_of_time/migration.sql'),
+    'utf8',
+  );
+
+  it('come back active, with real time rather than a status flip', () => {
+    expect(SQL).toMatch(/SET status = 'ACTIVE'/);
+    /* Setting ACTIVE alone would hand every one of them straight back to tonight's sweep. */
+    expect(SQL).toMatch(/timeline_days = GREATEST\(/);
+    expect(SQL).toMatch(/\+ 30/);
+    /* And never shortens one that already had longer. */
+    expect(SQL).toMatch(/GREATEST\(\s*\n?\s*g\.timeline_days,/);
+  });
+
+  it('and get a fresh notice before any of them could stall again', () => {
+    expect(SQL).toMatch(/stall_warning_sent_at = NULL/);
+  });
+
+  /*
+   * ONLY THE ONES WITH WORK OUTSTANDING. A stalled check-in where every session is complete stopped
+   * because it was finished; reopening it gives nobody anything to do and restarts its billing,
+   * since the monthly sweep only counts ACTIVE grounds.
+   */
+  it('and only where somebody still owes a check-in', () => {
+    expect(SQL).toMatch(/AND EXISTS \(/);
+    expect(SQL).toMatch(/c\.status <> 'COMPLETED'/);
+  });
+
+  it('and the end date moves with the length', () => {
+    expect(SQL).toMatch(/ends_at = CASE/);
+    expect(SQL).toMatch(/WHEN g\.ends_at IS NULL THEN NULL/);
+  });
+});

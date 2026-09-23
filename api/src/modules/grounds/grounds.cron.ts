@@ -178,7 +178,15 @@ export class GroundsCron {
         const deadline = deadlineOf(g);
         if (!deadline) continue;
         const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / 86_400_000);
-        if (daysLeft > DAYS_OF_NOTICE || daysLeft < 0) continue;
+        /*
+         * ALREADY PAST IT COUNTS TOO, and that is the case that matters most.
+         *
+         * The first version skipped anything with negative days left, which would have been every
+         * check-in already overdue on the day this shipped - so the whole existing population would
+         * have stalled tonight, unwarned, which is exactly the thing being fixed. A ground past its
+         * date gets the notice tonight and is stalled tomorrow if nobody acts.
+         */
+        if (daysLeft > DAYS_OF_NOTICE) continue;
         /* Stamped before the send, so a mailer that throws cannot turn one notice into a daily one. */
         await this.prisma.ground.update({ where: { id: g.id }, data: { stallWarningSentAt: new Date() } });
         const to = g.initiator?.email;
@@ -195,8 +203,23 @@ export class GroundsCron {
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+      /*
+       * NOTHING STALLS THAT WAS NEVER WARNED.
+       *
+       * "have a risk of stalling show, don't just stall." The notice sweep runs an hour before this
+       * one, so a check-in nobody has told about gets its warning tonight and is stalled tomorrow
+       * at the earliest - never in the same silence it used to happen in. `stallWarningSentAt` is
+       * the record that somebody was actually told, so this reads it rather than assuming.
+       *
+       * The cost is one extra day on the clock for a check-in whose lead ignores the notice. That is
+       * the right way round: the product has never once lost anything by waiting a day, and it has
+       * lost whole check-ins by not waiting.
+       */
       const candidates = await this.prisma.ground.findMany({
-        where: { status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] } },
+        where: {
+          status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
+          stallWarningSentAt: { not: null },
+        },
         select: { id: true, createdAt: true, startsAt: true, timelineDays: true, status: true },
       });
 

@@ -1,5 +1,6 @@
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
+import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
@@ -1422,6 +1423,36 @@ export function GroundAdminPage() {
           For anybody who cannot change the time, it says whose call it is instead of showing a
           button they cannot press.
         */}
+        {/*
+          AND THE RISK OF IT, BEFORE IT HAPPENS.
+
+          "have a risk of stalling show, don't just stall." Same banner, same button, one week
+          earlier - which is the only version of this that helps anybody. It names what running out
+          costs and how many people have still not answered, because the decision it is asking for
+          is whether those people still will.
+        */}
+        {(() => {
+          const left = whenItRunsOut(ground as any)
+          if (left.state === 'fine') return null
+          const said = sayHowLongIsLeft(left, ground.overdue ?? 0)
+          return (
+            <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-bd)', background: 'var(--gw-amber-bg)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
+                {left.state === 'out' ? 'Time is up' : left.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${left.daysLeft} days`}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{said}</div>
+              {ground.viewerRunsThisGround && (
+                <button
+                  type="button"
+                  onClick={() => { setOpenTimeframe(true); scrollToId('how-long-this-runs') }}
+                  style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Give it more time
+                </button>
+              )}
+            </div>
+          )
+        })()}
         {hasStalled(ground.status) && (
           <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Out of time</div>
