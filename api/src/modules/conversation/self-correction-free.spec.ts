@@ -59,7 +59,7 @@ function makeService(checkIn: any, canStartSession: jest.Mock) {
     },
   };
   const billing: any = { canStartSession };
-  const anthropic: any = { respond: jest.fn(async () => 'opener text') };
+  const anthropic: any = { respond: jest.fn(async () => 'opener text - what would you like to start with?') };
   const events: any = { emit: jest.fn() };
   const usage: any = { emit: jest.fn(() => Promise.resolve()) };
   const service = new ConversationService(
@@ -87,7 +87,7 @@ describe('GW-SELFCORRECT-FREE: correcting your own record is never paywalled', (
 
     const res = await service.open('ci-correction', 'user1');
 
-    expect(res.reply).toBe('opener text');
+    expect(res.reply).toBe('opener text - what would you like to start with?');
     // The gate is skipped entirely: canStartSession is never consulted...
     expect(billing.canStartSession).not.toHaveBeenCalled();
     // ...and the balance is never decremented (updateMany is only the decrement here).

@@ -138,6 +138,15 @@ export interface WhatLanded {
   dates: { what: string; when: string }[];
   /** Names the document has that this check-in does not. */
   unmatched: string[];
+  /**
+   * WHAT IS WAITING ON A YES, with the owner already resolved.
+   *
+   * The numbers used to be written the moment the file was read, and the conversation then asked "is
+   * that right?" about something already on the record. They wait here instead - see
+   * whatTheDocumentWaitsFor - and `takenAt` says when a person said yes to them.
+   */
+  waiting?: { name: string; target: number; ownerParticipantId: string | null }[];
+  takenAt?: string | null;
 }
 
 /**
@@ -227,7 +236,8 @@ export function theNameWeUseFor(p: SomebodyOnTheCheckIn): string {
    * because guessing a person out of "accounts@" would be worse than showing it.
    */
   const local = (p.email ?? '').split('@')[0] ?? '';
-  const asWords = local.replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+  /* Digits stay - see personLabel: person1@ and person2@ are two people, not one called Person. */
+  const asWords = local.replace(/[._-]+/g, ' ').trim();
   if (!asWords || asWords.length < 2 || NOT_A_PERSON.has(asWords.toLowerCase())) return p.email;
   return asWords.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }

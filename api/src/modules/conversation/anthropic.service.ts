@@ -171,6 +171,17 @@ const CONVERSATION_THINKING_BUDGET = 256;
 export const A_CALL_WAITS = 20_000;
 /** Background reads nobody is sitting in front of get longer: a report is a bigger piece of work. */
 export const A_BACKGROUND_CALL_WAITS = 60_000;
+/**
+ * AND ONE READ IS A DIFFERENT SIZE OF WORK ALTOGETHER.
+ *
+ * Sixty seconds is a report about two or three people. Reading a hundred separate organisations
+ * into one picture is a much larger prompt and a much larger structured answer, and it timed out
+ * three times in a row at sixty - which surfaced as a report that quietly had nothing in it.
+ *
+ * Given its own number rather than raising the background one, because every other background read
+ * genuinely should give up at a minute: a slow two-party synthesis is a symptom, not a size.
+ */
+export const A_HUNDRED_ACCOUNTS_WAIT = 240_000;
 /** How long the chat waits for a stream to open before saying it could not. */
 export const OPENING_A_STREAM_WAITS = 20_000;
 /** And how long it waits between chunks once one has opened. */
@@ -526,7 +537,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number; fast?: boolean } = {},
+    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean } = {},
   ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -549,7 +560,9 @@ export class AnthropicService implements OnApplicationBootstrap {
         contents,
         config: {
           systemInstruction: systemPrompt,
-          maxOutputTokens: 8192,
+          /* A patient read is a big one: eight thousand tokens is not a hundred organisations laid
+             out in ten sections, and a truncated tool call comes back as an empty object. */
+          maxOutputTokens: options.patient ? 32768 : 8192,
           ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
@@ -559,7 +572,7 @@ export class AnthropicService implements OnApplicationBootstrap {
             },
           },
         },
-      }), options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
+      }), options.patient ? A_HUNDRED_ACCOUNTS_WAIT : options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
     } catch (err: any) {
       this.logger.error(`extract() Gemini call failed: ${err.message}`);
       this.noteFailure('extract', err);

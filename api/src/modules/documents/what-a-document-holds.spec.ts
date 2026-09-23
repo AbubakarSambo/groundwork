@@ -58,9 +58,16 @@ describe('what a document holds', () => {
     expect(MOST_OF_A_DOCUMENT_WE_READ).toBeGreaterThanOrEqual(60_000);
   });
 
-  it('is read once, at upload, on every path a file arrives by', () => {
-    /* The chat's upload, and an invite-link upload. Both await it, because the caller shows what was read. */
-    expect(DOCS.match(/await this\.whatItHolds\(/g)).toHaveLength(2);
+  it('is read once, on every path a file arrives by - and never while somebody waits', () => {
+    /*
+     * Both paths read it, and neither awaits it any more. Measured 23 September 2026: an upload took
+     * 20.2 seconds to answer, 10ms of which was the file. The row is written, the person is answered,
+     * and the read lands on the row - see readTheRestOfIt.
+     */
+    /* Two call sites - the chat's upload and an invite-link upload - plus the method itself,
+       which the comment-stripped source does not count twice. */
+    expect(DOCS.match(/this\.readTheRestOfIt\(/g)).toHaveLength(2);
+    expect(DOCS).not.toMatch(/await this\.whatItHolds\(/);
     /* Only the lead may set somebody else's number; a participant's file is read for their own rows and the group's. */
     expect(DOCS).toContain('(isLead || p.id === participantId)');
     /* A name that matches nobody is carried back, never guessed onto the nearest person. */

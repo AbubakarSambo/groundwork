@@ -5,7 +5,9 @@ import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
-import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
+import { scrollToId } from '@/lib/scroll-to'
+import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
+import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
@@ -43,6 +45,21 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * writes in different places on it: they have deliveries and their own uploads, and they do not
  * have the lead's write boxes or the setup chat.
  */
+/*
+ * THE FIRST WORDS, SO A CHIP IS NOT A DEAD END.
+ *
+ * A button that opens an empty chat box has moved the blank page rather than removed it. Each of
+ * these is a half-finished sentence in the lead's own voice, put in the composer for them to
+ * finish - which is also what teaches them that this conversation takes plain sentences.
+ */
+const THE_WAY_IN: Record<string, string> = {
+  STRATEGY: 'Our strategy this quarter is ',
+  WAY_OF_WORKING: 'How we work: ',
+  DECISION: 'We still have to decide ',
+  UNSETTLED: 'Nobody is sure yet whether ',
+  NOTE: 'Worth knowing: ',
+}
+
 export function ContextPage({
   ground,
   role,
@@ -107,6 +124,8 @@ export function ContextPage({
    * of an upload is a reason not to upload.
    */
   const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
+  /** The promise this upload is answering, where it was started from one. */
+  const [attachingFor, setAttachingFor] = useState<string | null>(null)
   const [whatToLookFor, setWhatToLookFor] = useState('')
 
   /**
@@ -180,6 +199,14 @@ export function ContextPage({
     onError: () => toast.error('That did not share. Try again in a moment.'),
   })
 
+  /* Their own to-do, moved by them and by nobody else - the server enforces that. */
+  const setMyToDo = useMutation({
+    mutationFn: ({ itemId, status }: { itemId: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' }) =>
+      groundsApi.setMyCommitment(id, itemId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
+  })
+
   const changeLine = useMutation({
     mutationFn: ({ itemId, ...change }: { itemId: string; text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
       groundsApi.changeContextLine(id, itemId, change),
@@ -219,9 +246,21 @@ export function ContextPage({
       ...(b.kind === 'NOTE' ? olderNotes : []),
     ],
   }))
-  /** A line about one person, for their own row in the band above. The lead's, and nobody else's. */
-  const linesAbout = (participantId: string, kind: 'ABOUT_A_PERSON' | 'QUESTION_FOR_PERSON') =>
-    contextLines.filter((l) => l.kind === kind && l.aboutParticipantId === participantId)
+  /*
+   * HAND A LINE TO THE CONVERSATION. The row says what it is; the lead finishes the sentence.
+   * Scrolling as well as filling, because the chat is at the top and a filled box nobody can see is
+   * the same as no box at all.
+   */
+  const changeThisInTheChat = (said: string) => {
+    window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
+    scrollToId('gw-context-chat')
+  }
+
+  /*
+   * THE LEAD'S READ OF A PERSON IS NOT ON THIS PAGE, on her instruction of 22 September 2026. It
+   * reaches their check-in as a place to look and it is read back in the conversation; drawing it on
+   * a page beside their name made a steer look like a file on somebody.
+   */
 
   /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
   const commitments = [...((ground as any).commitments ?? [])].sort(
@@ -417,21 +456,52 @@ export function ContextPage({
                     const at = groups.find((g) => g.who === who)
                     if (at) at.rows.push(o); else groups.push({ who, rows: [o] })
                   }
-                  return groups.map((g, gi) => (
+                  /*
+                    THE TEAM'S ALWAYS, THE PEOPLE'S A FEW AT A TIME. At a hundred people this table
+                    was a hundred one-row groups - see a-long-list-is-not-a-page.
+                  */
+                  const theTeamsGroup = groups.filter((g) => !g.who)
+                  const peopleGroups = groups.filter((g) => g.who)
+                  const draw = (g: { who: string | null; rows: any[] }, gi: number) => (
                     <div key={g.who ?? 'team'}>
                       <div style={{ padding: '7px 13px 5px', background: 'var(--gw-bg)', borderTop: gi === 0 ? 'none' : '1px solid var(--gw-border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub)' }}>
                         {g.who ?? 'The whole check-in'}
                       </div>
-                      {g.rows.map((o: any, i: number) => (
-                        <div key={o.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
-                            {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
-                          </span>
+                      <ShowAFew rows={g.rows} few={8} what={g.who ? `of ${g.who}\u2019s numbers` : 'team numbers'}>
+                      {(o: any, i: number) => (
+                        <div key={o.id} style={{ padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                            <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
+                              {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
+                            </span>
+                            {isTheLead && contextEnabled && (
+                              <button
+                                onClick={() => changeThisInTheChat(`Change the target "${o.name}" to `)}
+                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                Change this
+                              </button>
+                            )}
+                          </div>
+                          {/* A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, said beside the number
+                              rather than a page away. The lead's own sentence, from what they wrote. */}
+                          {o.notSettled && (
+                            <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 4, lineHeight: 1.5, maxWidth: '62ch' }}>{o.notSettled}</div>
+                          )}
                         </div>
-                      ))}
+                      )}
+                      </ShowAFew>
                     </div>
-                  ))
+                  )
+                  return (
+                    <>
+                      {theTeamsGroup.map(draw)}
+                      <ShowAFew rows={peopleGroups} few={4} what="people with their own numbers">
+                        {(g, i) => draw(g as any, i + theTeamsGroup.length)}
+                      </ShowAFew>
+                    </>
+                  )
                 })()}
               </div>
             ) : (
@@ -458,8 +528,10 @@ export function ContextPage({
             */}
             <Sec
               n={band()}
-              title={isLead ? 'Person by person' : 'What is expected of you'}
-              src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
+              /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
+                 card per person holding everything about them, so it is named after that. */
+              title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
+              src={isLead ? 'their numbers, their to-dos, what they owe a look at' : 'yours is open \u00b7 theirs are a click'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -485,17 +557,37 @@ export function ContextPage({
               )
             })()}
 
-            <ExpectationsPanel
+            {/*
+              ONE CARD PER PERSON, AND THE ONLY PLACE ANYTHING ABOUT A PERSON APPEARS.
+              
+              "Not sure the purpose of person by person" - it rendered one card per EXPECTATION, so a
+              lead read a stack of sentences with names on them and everything else about a person
+              was in three other bands. Collapsed by default, because a hundred people is the test.
+              
+              And the lead's own read of somebody is NOT on it, on her instruction: that lives in the
+              conversation, which is where they write it and the only place it is read back.
+            */}
+            <EachPerson
               groundId={id}
-              parties={(ground.participants ?? []) as any[]}
+              people={(ground.participants ?? []) as any[]}
+              targets={((ground as any).objectives ?? []) as any[]}
+              toDos={commitments as any[]}
+              files={(docs ?? []) as any[]}
+              asks={((ground as any).asks ?? {}) as any}
               viewerUserId={viewerUserId}
-              hasChat={isTheLead && contextEnabled}
-              /* The lead's own read of each person, on that person's row. Not passed on anybody
-                 else's page, and the server does not send these lines to anybody else either. */
-              yoursAlone={isTheLead ? (pid: string) => ({
-                read: linesAbout(pid, 'ABOUT_A_PERSON').map((l: any) => l.text),
-                questions: linesAbout(pid, 'QUESTION_FOR_PERSON').map((l: any) => l.text),
-              }) : undefined}
+              isLead={isLead}
+              onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
+              /*
+                ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
+                pressed becomes what the check-in is told to look for in the file, so the promise and
+                the document are joined at the moment of attaching rather than by somebody guessing
+                later which sheet was meant.
+              */
+              onUploadFor={(_pid, ask) => {
+                setAttachingFor(ask?.what ?? null)
+                document.getElementById('ga-doc-upload')?.click()
+              }}
+              onSetToDo={(itemId, status) => setMyToDo.mutate({ itemId, status })}
             />
 
             {/*
@@ -583,12 +675,21 @@ export function ContextPage({
               * that disagrees with the thing above it is worse than no number: it tells somebody
               * they have missed something.
               */}
-            <Sec n={band()} title="Documents" src="each one says who reads it" />
+            {/*
+              HOW MANY ARE BELOW IT. Hafsah, 23 September 2026: "where does the list of docs go."
+              The band opened with a large dashed box carrying a heading and two paragraphs, and the
+              list only exists once a file does - so on a check-in with none, the answer to "where
+              is the list" was genuinely nowhere, and on one with several the box still came first.
+              The count is in the heading now and the box below it is one row.
+            */}
+            <Sec n={band()} title="Documents" src={docs.length ? `${docs.length} attached \u00b7 each one says who reads it` : 'each one says who reads it'} />
 
             <div
               style={{
-                border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20,
-                textAlign: 'center', marginBottom: 16, background: 'var(--gw-bg)',
+                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
+                /* A row when there are files to get to, a panel when it is the only thing here. */
+                padding: docs.length ? '10px 13px' : 18,
+                textAlign: docs.length ? 'left' : 'center', marginBottom: 12, background: 'var(--gw-bg)',
                 /* A dropped file can take a moment. Without this the box looks untouched and
                    somebody presses it again, which is how two copies of one file get attached. */
                 cursor: uploadDoc.isPending ? 'progress' : 'pointer',
@@ -646,7 +747,14 @@ export function ContextPage({
                 (`canSeeDocument` returns `isMine` and ignores the column), so promising that
                 everyone reads it once you open it would swap one false sentence for another.
               */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+              {/*
+                STAYS, WHATEVER ELSE IS TRIMMED. I moved this behind `docs.length === 0` while
+                shrinking the band and what-the-upload-box-promises-is-true refused it, correctly:
+                the whole point of that guard is that the privacy default is readable BEFORE
+                somebody uploads, and the second person to upload a file reads this box too. The
+                examples below are for a first-timer; this sentence is for every upload.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: docs.length ? 'left' : 'left' }}>
                 {contextEnabled
                   ? 'It is private to you unless you decide to make it visible to everyone. Either way the check-in reads it, and says where it does not match what you have told it.'
                   : 'It is private to you. It shapes your own questions and reaches nobody else.'}
@@ -678,7 +786,9 @@ export function ContextPage({
                    * one question left to ask here is what to look for in it.
                    */
                   if (f) {
-                    setWhatToLookFor(''); setAskingWhatToLookFor({ file: f, consented: false })
+                    /* Prefilled with what they said they would show, where that is why they are here. */
+                    setWhatToLookFor(attachingFor ?? ''); setAskingWhatToLookFor({ file: f, consented: false })
+                    setAttachingFor(null)
                   }
                   e.target.value = ''
                 }} />
@@ -760,10 +870,38 @@ export function ContextPage({
                 {isLead && <> <b>Whoever runs this check-in</b> keeps it to that person, so it stays readable if somebody takes the check-in over from you.</>}
               </div>
             )}
-            {docs.map(doc => (
+            {/*
+              GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
+              
+              It was one flat list where a brief the whole team works from sat between two private
+              uploads, and the only way to tell them apart was to read the control on the right of
+              each row. Somebody scanning for "what are we all working from" had to read every line.
+              The rows themselves are unchanged - same controls, same rules about who may set what.
+            */}
+            {(docs.length > 1 ? [
+              { title: 'Everyone here reads these', rows: docs.filter((d: any) => d.visibility === 'OPEN') },
+              { title: isLead ? 'Not shared: yours, and each person\u2019s own' : 'Not shared: yours', rows: docs.filter((d: any) => d.visibility !== 'OPEN') },
+            ] : [{ title: '', rows: docs }]).filter(g => g.rows.length).map(group => (
+            <div key={group.title || 'all'} style={{ marginBottom: 10 }}>
+            {group.title && (
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>{group.title}</div>
+            )}
+            {group.rows.map((doc: any) => (
               <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ minWidth: 0, paddingRight: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>
+                    {doc.name}
+                    {/*
+                      A PHOTO READS AS A PHOTO. Her words: "they should see docs/photos/things to
+                      upload". A thumbnail is not possible today and saying so is better than
+                      pretending: an image is read into words at upload and the bytes are not kept,
+                      so the list can say it is a photo and what the product saw in it, and a real
+                      thumbnail waits until a file is stored as a file.
+                    */}
+                    {/^image\//.test((doc as any).mimeType ?? '') && (
+                      <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{whenItWas(doc.uploadedAt, 'day')}</div>
                   {/*
                     WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
@@ -901,6 +1039,8 @@ export function ContextPage({
                 </div>
               </div>
             ))}
+            </div>
+            ))}
 
 
             {/*
@@ -935,11 +1075,31 @@ export function ContextPage({
               A paste hands over the actions as well as the numbers. The ones with no owner are
               listed as having none, because that is the fact and it is the one worth acting on.
             */}
-            {commitments.length > 0 && (
+            {/*
+              THE SAME OMISSION AS THE BUCKETS: gated on having some, so the one place a lead looks
+              for "what did somebody commit to on that call" did not exist until something had
+              already been recorded there. See the note on the strategy band.
+            */}
+            {(isTheLead || commitments.length > 0) && (
               <>
                 <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                {isTheLead && contextEnabled && commitments.length === 0 && (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    Nothing yet. Anything somebody says they will do in a check-in lands here on its
+                    own. Something agreed on a call goes in by saying it in the conversation above.
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        onClick={() => changeThisInTheChat('On the call today, ')}
+                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Something agreed on a call
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
-                  {commitments.map((c: any, i: number) => {
+                  <ShowAFew rows={commitments} few={8} what="things people are down as doing">
+                  {(c: any, i: number) => {
                     const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
                     return (
                       <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -951,7 +1111,8 @@ export function ContextPage({
                         {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
                       </div>
                     )
-                  })}
+                  }}
+                  </ShowAFew>
                 </div>
               </>
             )}
@@ -966,9 +1127,52 @@ export function ContextPage({
               The work buckets are the team's by default. A line about somebody is never here: it is
               under that person, above, and it is the lead's alone.
             */}
-            {theBuckets.some((b) => b.lines.length > 0) && (
+            {/*
+              THE SECTION THAT WAS ONLY THERE ONCE SOMETHING WAS IN IT.
+              
+              Hafsah, 23 September 2026: "The Context tab still needs places to seed strategy, team
+              notes, to dos, commitment... It should be clear where things go" and then, looking at
+              her own empty check-in, "I still dont see it anything."
+              
+              She was right and the reason is one line: this whole band rendered inside
+              `theBuckets.some(b => b.lines.length > 0)`. On a check-in with nothing in it yet -
+              which is every check-in on its first day, the one day somebody wants to seed it - the
+              section did not exist. A page whose job is to be a place to put things cannot appear
+              only after things have been put in it.
+              
+              So the heading is always here, and where there is nothing yet it carries the five
+              kinds by name with a way into each. Not five empty boxes: she has already said these
+              sections are bulky, and an empty box for each of five kinds is the bulkiest possible
+              way to say "nothing here".
+            */}
+            {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="What we know" src={isTheLead ? 'from the conversation \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                {isTheLead && contextEnabled && (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                      {theBuckets.some((b) => b.lines.length > 0)
+                        ? 'Add to any of these by saying it in the conversation at the top.'
+                        : 'Nothing here yet. Say any of these in the conversation at the top and it lands in the right place - and every check-in is guided by it.'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                      {BUCKETS.map((b) => (
+                        <button
+                          key={b.kind}
+                          onClick={() => changeThisInTheChat(THE_WAY_IN[b.kind] ?? '')}
+                          title={b.sub}
+                          style={{
+                            fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)',
+                            border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px',
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          {b.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>
                   {theBuckets.filter((b) => b.lines.length > 0).map((b) => (
                     <div key={b.kind} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -976,7 +1180,8 @@ export function ContextPage({
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{b.title}</span>
                         <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{b.sub}</span>
                       </div>
-                      {b.lines.map((l: any, i: number) => (
+                      <ShowAFew rows={b.lines} few={6} what={`lines under ${b.title.toLowerCase()}`}>
+                      {(l: any, i: number) => (
                         <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
@@ -1000,6 +1205,14 @@ export function ContextPage({
                               >
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
                               </button>
+                              {contextEnabled && (
+                                <button
+                                  onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}
+                                  style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  Change this
+                                </button>
+                              )}
                               {/* Retired, not deleted: a decision that was made is not one that never existed. */}
                               <button
                                 onClick={() => changeLine.mutate({ itemId: l.id, closed: true })}
@@ -1011,7 +1224,8 @@ export function ContextPage({
                             </>
                           )}
                         </div>
-                      ))}
+                      )}
+                      </ShowAFew>
                     </div>
                   ))}
                 </div>

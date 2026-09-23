@@ -1,3 +1,4 @@
+import { ShowAFew } from './a-long-list-is-not-a-page'
 import { Pill } from './kit'
 
 /**
@@ -54,7 +55,14 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
   if (!rows.length) return null
   return (
     <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 16px' }}>
-      {rows.map((r, i) => (
+      {/*
+        A HUNDRED OF THESE IS NOT A GLANCE. The rows are ordered by what needs the lead first, so
+        the few at the top are the ones this section exists for - and on a check-in run across a
+        network the rest is a hundred identical lines saying somebody has not answered yet. See
+        a-long-list-is-not-a-page.
+      */}
+      <ShowAFew rows={rows} few={10} what="people">
+      {(r: Row, i: number) => (
         <div key={r.participantId} style={{ padding: '13px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
@@ -88,7 +96,8 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
             <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8, lineHeight: 1.55, paddingLeft: 10, borderLeft: `3px solid ${r.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)'}` }}>{r.finding}</div>
           )}
         </div>
-      ))}
+      )}
+      </ShowAFew>
     </div>
   )
 }

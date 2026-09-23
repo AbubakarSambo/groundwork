@@ -75,7 +75,13 @@ export function personLabel(p: {
    */
   const email = p?.email?.trim()
   if (email && !email.endsWith('@unclaimed.invalid')) {
-    const local = (email.split('@')[0] ?? '').replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim()
+    /*
+     * DIGITS STAY. Stripping them read every address in a hundred-person load test - person1@,
+     * person2@, person3@ - as the same person called "Person", and the targets table collapsed a
+     * hundred people's numbers into one group. A digit in somebody's address is part of who they
+     * are here, and an odd-looking name beats a hundred people sharing one.
+     */
+    const local = (email.split('@')[0] ?? '').replace(/[._-]+/g, ' ').trim()
     const NOT_A_PERSON = new Set(['info', 'hello', 'admin', 'sales', 'support', 'contact', 'team', 'office', 'accounts', 'finance', 'hr', 'billing', 'help', 'enquiries', 'inquiries', 'noreply', 'mail', 'post'])
     if (local.length >= 2 && !NOT_A_PERSON.has(local.toLowerCase())) {
       return local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')

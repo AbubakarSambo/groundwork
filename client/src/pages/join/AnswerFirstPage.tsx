@@ -32,8 +32,11 @@ export function AnswerFirstPage() {
   const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>('reading')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  /* Whether they want the report: asked outright, and the answer kept either way. */
-  const [wantsIt, setWantsIt] = useState<boolean | null>(null)
+  /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
+     report is about, and this asked for a name and an address and nothing else. */
+  const [org, setOrg] = useState('')
+  /* The question "do you want the report?" is gone: the page promises it before the first answer,
+     so asking afterwards had one real answer and cost the record a name. See the address step. */
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -55,7 +58,22 @@ export function AnswerFirstPage() {
       setPhase('talking')
       if (started.reply) setTurns([{ who: 'it', text: started.reply }])
     } catch (err: any) {
-      setProblem(err?.response?.data?.message ?? 'That did not start. Try the link again.')
+      /*
+       * THE ELEVENTH PERSON IN THE ROOM WAS TOLD NOTHING.
+       *
+       * These routes are rate limited, and a hundred people scanning one QR code on one wifi hit
+       * that limit within seconds. The 429 was caught, `problem` was set - and `problem` was only
+       * rendered on the address screen, so on this screen the button simply went back to saying
+       * "Start". Proven on a phone, 23 September 2026: 429 in the network log, nothing at all on
+       * the screen. The limit itself is fixed in a-room-of-people-is-not-one-person; this is the
+       * half that matters when it is hit anyway.
+       */
+      const status = err?.response?.status
+      setProblem(
+        status === 429
+          ? 'A lot of people are starting at the same time. Wait a few seconds and press Start again - nothing is lost.'
+          : err?.response?.data?.message ?? 'That did not start. Try the link again.',
+      )
     } finally { setBusy(false) }
   }
 
@@ -85,13 +103,14 @@ export function AnswerFirstPage() {
 
   async function finish(withEmail: boolean) {
     if (!key || busy) return
-    if (withEmail && !name.trim()) { setProblem('Your name, so the lead knows whose answer this is.'); return }
+    if (withEmail && !name.trim()) { setProblem('Your name, so your answers are not anonymous in the record.'); return }
+    if (withEmail && !org.trim()) { setProblem('Your organisation - it is what the report is read by.'); return }
     if (withEmail && !looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return }
     setBusy(true)
     setProblem('')
     try {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
-      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail)
+      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
       setSentTo(done.at)
       setPhase('done')
     } catch (err: any) {
@@ -140,13 +159,24 @@ export function AnswerFirstPage() {
         {phase === 'reading' && (
           <div>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              Answer in your own words. It takes about two minutes, nobody sees what you write, and
-              you are not asked who you are until the end.
+              {/*
+                WHAT IT USED TO SAY: "nobody sees what you write". That is not true and it is not a
+                small untruth - the person who sent this link reads every answer, and the report
+                built from them goes back out to everybody who asked for it. A promise of privacy
+                made in the second before somebody types is the worst place in the product to be
+                wrong. Hafsah, 23 September 2026.
+              */}
+              Answer in your own words. It takes about five minutes. The answers help everybody get a
+              shared picture, and you will receive the consolidated report at the end.
             </p>
             <button onClick={begin} disabled={busy}
               style={{ marginTop: 16, padding: '12px 22px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               {busy ? 'Starting...' : 'Start'}
             </button>
+            {/* The reason, where the button is. See begin() for the hundred people this is for. */}
+            {problem && (
+              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
+            )}
           </div>
         )}
 
@@ -187,56 +217,48 @@ export function AnswerFirstPage() {
         )}
 
         {/*
-          WHO THEY ARE, AND WHETHER THEY WANT THE REPORT. Hafsah, 22 Sep 2026: "we need to have the names
-          of the people and their emails so we can release the report to them ... they need to say if they
-          want the report or not." The question is asked outright, and either answer finishes.
+          WHO THEY ARE, AND IT IS ASKED OF EVERYBODY.
+          
+          This used to open on "Do you want the report?" and only ask for a name and an address if
+          the answer was yes. Hafsah, 23 September 2026: "we need their email and names when they
+          checkin and put their emails" - and the page now promises, before the first answer, that
+          the consolidated report comes back to them. Asking whether they want the thing they were
+          just promised is a question with one real answer, and it was costing the organiser the
+          half of the record that says whose answer this is.
+          
+          So the three are asked outright and all three are needed. Nobody is anonymous by accident
+          and nobody is anonymised by the product - whether the OTHERS see these names is the
+          organiser's choice at the moment they share it, which is a different decision made by a
+          different person. See what-the-respondents-get.ts.
         */}
         {phase === 'address' && (
           <div style={{ marginTop: 16, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Do you want the report?</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Last thing: who are you?</div>
             <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 12px' }}>
-              When everybody has answered, one report goes out: what each person said, where you line
-              up, where you do not. Your answers stay on the record either way.
+              So your answers are not anonymous in the record, and so the consolidated report reaches
+              you at the end.
             </p>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }} role="radiogroup" aria-label="Do you want the report?">
-              <button role="radio" aria-checked={wantsIt === true} onClick={() => { setWantsIt(true); setProblem('') }}
-                style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid', borderColor: wantsIt === true ? 'var(--gw-navy)' : 'var(--gw-border)', background: wantsIt === true ? 'var(--gw-blue-bg)' : 'white', color: 'var(--gw-text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Yes, send it to me
-              </button>
-              <button role="radio" aria-checked={wantsIt === false} onClick={() => { setWantsIt(false); setProblem('') }}
-                style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid', borderColor: wantsIt === false ? 'var(--gw-navy)' : 'var(--gw-border)', background: wantsIt === false ? 'var(--gw-blue-bg)' : 'white', color: 'var(--gw-text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                No, thanks
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name</label>
+              <input id="open-name" type="text" autoComplete="name" value={name}
+                onChange={e => { setName(e.target.value); setProblem('') }}
+                placeholder="Your name" style={field} />
+              <label htmlFor="open-org" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your organisation</label>
+              <input id="open-org" type="text" autoComplete="organization" value={org}
+                onChange={e => { setOrg(e.target.value); setProblem('') }}
+                placeholder="Where you work" style={field} />
+              <label htmlFor="open-email" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Where to send the report</label>
+              <input id="open-email" type="email" autoComplete="email" value={email}
+                onChange={e => { setEmail(e.target.value); setProblem('') }}
+                placeholder="you@work.com" style={field} />
+            </div>
+            {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              <button onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
+                style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() || !name.trim() || !org.trim() ? .5 : 1 }}>
+                Done
               </button>
             </div>
-            {wantsIt === true && (
-              <div style={{ display: 'grid', gap: 8 }}>
-                <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name</label>
-                <input id="open-name" type="text" autoComplete="name" value={name}
-                  onChange={e => { setName(e.target.value); setProblem('') }}
-                  placeholder="Your name" style={field} />
-                <label htmlFor="open-email" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Where to send it</label>
-                <input id="open-email" type="email" autoComplete="email" value={email}
-                  onChange={e => { setEmail(e.target.value); setProblem('') }}
-                  placeholder="you@work.com" style={field} />
-              </div>
-            )}
-            {wantsIt === false && (
-              <div style={{ display: 'grid', gap: 8 }}>
-                <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name, so the lead knows whose answer this is (you can leave it blank)</label>
-                <input id="open-name" type="text" autoComplete="name" value={name}
-                  onChange={e => { setName(e.target.value); setProblem('') }}
-                  placeholder="Your name" style={field} />
-              </div>
-            )}
-            {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
-            {wantsIt !== null && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-                <button onClick={() => finish(wantsIt)} disabled={busy || (wantsIt && (!email.trim() || !name.trim()))}
-                  style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || (wantsIt && (!email.trim() || !name.trim())) ? .5 : 1 }}>
-                  {wantsIt ? 'Send me the report' : 'Finish'}
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -245,8 +267,8 @@ export function AnswerFirstPage() {
             <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is on the record. Thank you.</h2>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
               {sentTo
-                ? `The report goes to ${sentTo} when everybody has answered.`
-                : 'You asked not to be sent the report, so nothing will come to you. What you said still counts.'}
+                ? `The consolidated report goes to ${sentTo} at the end.`
+                : 'What you said is on the record.'}
             </p>
           </div>
         )}

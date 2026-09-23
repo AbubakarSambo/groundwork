@@ -30,7 +30,12 @@ function serviceWith(over: any = {}) {
     checkIn: {
       create: jest.fn(async () => ({ id: 'ci1' })),
       findFirst: jest.fn(async () => ({ id: 'ci1' })),
-      updateMany: jest.fn(async ({ data }: any) => { state.movedCheckIns = data; return { count: 1 }; }),
+      /* The merge reads what is already taken on the row being joined, then moves each check-in to
+         a free number - see answering-twice-is-not-a-clash. The row here already has session 1. */
+      findMany: jest.fn(async ({ where }: any) => (where?.participantId === 'p-other'
+        ? [{ sessionNumber: 1 }]
+        : [{ id: 'ci1' }])),
+      update: jest.fn(async ({ data }: any) => { state.movedCheckIns = data; return { id: 'ci1' }; }),
     },
     recordEntry: { updateMany: jest.fn(async ({ data }: any) => { state.movedEntries = data; return { count: 3 }; }) },
     groundDocument: { updateMany: jest.fn(async () => ({ count: 0 })) },
@@ -94,7 +99,8 @@ describe('the open link', () => {
   it('moves an answer onto the row already invited at that address, rather than splitting their account', async () => {
     const { svc, state, conversation } = serviceWith({ clash: { id: 'p-other' } });
     const done = await svc.finish('key', 'sam@work.com', 'Sam Bello', true);
-    expect(state.movedCheckIns).toEqual({ participantId: 'p-other' });
+    /* Session 2, because session 1 on that row is theirs already and both answers are kept. */
+    expect(state.movedCheckIns).toEqual({ participantId: 'p-other', sessionNumber: 2 });
     expect(state.movedEntries).toEqual({ participantId: 'p-other' });
     expect(state.deleted).toBe('p-open');
     expect(conversation.complete).toHaveBeenCalledWith('ci1', { theParticipant: 'p-other' }, { theyAskedToFinish: true });

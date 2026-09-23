@@ -6,6 +6,7 @@ import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
+import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -575,6 +576,10 @@ class OpenFinishDto {
   @IsOptional() @IsString() @MaxLength(120) firstName?: string;
   /** Whether they want the report. Absent where the older page did not ask. */
   @IsOptional() @IsBoolean() wantsTheReport?: boolean;
+
+  /* Who they answered for. See the column's own note: on a network-wide check-in this is the unit
+     the report is about, and the link never asked for it. */
+  @IsOptional() @IsString() @MaxLength(160) organisation?: string;
 }
 
 @Controller('entry')
@@ -630,15 +635,18 @@ export class EntryCommitController {
     return this.openLink.whatThisIs(token ?? '');
   }
 
+  /* A hundred people scanning one QR code in one minute is the case this exists for, and ten a
+     minute per address turned the eleventh of them away. See a-room-of-people-is-not-one-person. */
   @Public()
-  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Throttle({ global: { limit: A_ROOM_MAY_START_PER_MINUTE, ttl: 60000 } })
   @Post('open-start')
   async openStart(@Body() dto: OpenStartDto) {
     return this.openLink.start(dto.joinToken);
   }
 
+  /* Counted per respondent, not per address - the key in the body says whose answer this is. */
   @Public()
-  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  @Throttle({ global: { limit: A_PERSON_MAY_SAY_PER_MINUTE, ttl: 60000 } })
   @Post('open-say')
   async openSay(@Body() dto: OpenSayDto) {
     return this.openLink.say(dto.key, dto.message);
@@ -646,8 +654,8 @@ export class EntryCommitController {
 
   @Public()
   @Throttle({ global: { limit: 10, ttl: 60000 } })
-  @Post('open-finish')
+  @Post('open-finish')  /* Per respondent too, by the same key. Finishing twice is not a thing. */
   async openFinish(@Body() dto: OpenFinishDto) {
-    return this.openLink.finish(dto.key, dto.email, dto.firstName, dto.wantsTheReport);
+    return this.openLink.finish(dto.key, dto.email, dto.firstName, dto.wantsTheReport, dto.organisation);
   }
 }

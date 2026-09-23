@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
@@ -322,14 +323,18 @@ export function OrgMembersPage() {
             move to a larger plan, then send the invitations. They have not been told any of this.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-            {seatQueue.data!.map(person => (
+            {/* A few, then the count: an org that has just invited a hundred people should not have
+                to scroll past all of them to reach the list of who is actually in. */}
+            <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
+            {(person: any) => (
               <div key={person.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{person.email}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5 }}>
                   Added by {person.addedBy ?? 'a lead'}{person.forCheckIn ? ` for “${person.forCheckIn}”` : ''}
                 </div>
               </div>
-            ))}
+            )}
+            </ShowAFew>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -355,7 +360,8 @@ export function OrgMembersPage() {
             they cannot check in and they are not counted on your plan.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {waiting.data!.map(person => (
+            <ShowAFew rows={waiting.data!} few={5} what="waiting to be let in">
+            {(person: any) => (
               <div key={person.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name ?? person.email}</div>
@@ -383,7 +389,8 @@ export function OrgMembersPage() {
                   Let them in
                 </button>
               </div>
-            ))}
+            )}
+            </ShowAFew>
           </div>
         </div>
       )}
@@ -622,7 +629,10 @@ export function OrgMembersPage() {
               {find.trim() ? `Nobody here matches "${find.trim()}".` : 'No members yet.'}
             </div>
           ) : (
-            members.map((m, i) => (
+            /* The roster itself. There is a search box above it, which is the right control for a
+               hundred people; this is so the page does not open as a hundred rows. */
+            <ShowAFew rows={members} few={12} what="people">
+            {(m: any, i: number) => (
               <div
                 key={m.id}
                 style={{
@@ -789,7 +799,8 @@ export function OrgMembersPage() {
                   )}
                 </div>
               </div>
-            ))
+            )}
+            </ShowAFew>
           )}
         </div>
       )}

@@ -114,10 +114,12 @@ describe('shown means shown', () => {
  * about one file plus the fact that neither page assembles its own.
  */
 describe('both roles get it', () => {
-  it('the one context page renders the panel', () => {
+  it('the one context page renders the person cards, and they render the panel', () => {
     const src = readFileSync(join(__dirname, 'ContextPage.tsx'), 'utf8')
-    expect(src).toContain('<ExpectationsPanel')
+    expect(src).toContain('<EachPerson')
     expect(src).toContain('viewerUserId={viewerUserId}')
+    const card = readFileSync(join(__dirname, 'EachPerson.tsx'), 'utf8')
+    expect(card).toContain('<ExpectationsPanel')
   })
 
   for (const page of ['../../pages/grounds/GroundAdminPage.tsx', '../../pages/grounds/GroundParticipantPage.tsx']) {
@@ -127,6 +129,7 @@ describe('both roles get it', () => {
       expect(src).toContain('viewerUserId={user?.id}')
       // Neither page may assemble its own version of the tab again.
       expect(src).not.toContain('<ExpectationsPanel')
+      expect(src).not.toContain('<EachPerson')
     })
   }
 })

@@ -202,6 +202,13 @@ export const groundsApi = {
   changeContextLine: (groundId: string, itemId: string, change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
     apiClient.patch(`/grounds/${groundId}/context/${itemId}`, change).then(r => r.data),
 
+  /**
+   * A to-do's state, set by the person it belongs to. The lead cannot mark somebody else's work
+   * done - that is the difference between a record and a manager's checklist.
+   */
+  setMyCommitment: (groundId: string, itemId: string, status: 'DONE' | 'NOT_DONE' | 'DROPPED') =>
+    apiClient.patch(`/grounds/${groundId}/commitments/${itemId}`, { status }).then(r => r.data),
+
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),
 

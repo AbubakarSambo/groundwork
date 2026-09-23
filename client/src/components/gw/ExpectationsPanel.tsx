@@ -312,10 +312,13 @@ export function ExpectationsPanel({
   parties,
   viewerUserId,
   hasChat = false,
-  yoursAlone,
+  bare = false,
+  viewerIsLead = false,
 }: {
   groundId: string
   parties: Party[]
+  /** So the empty state says "your own check-in" to the person whose check-in it is. */
+  viewerIsLead?: boolean
   /** So this person's own row can be marked as shown, and only their own. */
   viewerUserId?: string | null
   /**
@@ -325,14 +328,19 @@ export function ExpectationsPanel({
    */
   hasChat?: boolean
   /**
-   * WHAT THE LEAD HAS WRITTEN ABOUT THIS PERSON, FOR THE LEAD'S EYES.
+   * RENDERED INSIDE SOMEBODY'S OWN CARD, since 22 September 2026.
    *
-   * It used to live in a red band at the foot of the page called "Only you see this", which Hafsah
-   * asked to be rid of on 22 September 2026: the content belongs with the person it is about, and
-   * the band made a steer look like a confession. Passed in rather than fetched so the wall stays
-   * where it is decided - the server never sends these to anybody but the lead.
+   * The panel used to BE the band - one card per expectation, every person in one stack. It is now
+   * the expectation part of a person's card, which is the only place anything about a person
+   * appears, so it drops its own outer margin, its own card borders and its own empty state: the
+   * card around it says whose it is and says when there is nothing.
+   *
+   * Everything else it does is why it was kept rather than rewritten: whether an expectation matches
+   * what that person said doing well looks like, whether the lead says they have been told, a
+   * REFERENCE expectation's link and how stale the state we last read is, and marking an expectation
+   * seen the moment the person it is about actually looks at it.
    */
-  yoursAlone?: (participantId: string) => { read: string[]; questions: string[] }
+  bare?: boolean
 }) {
   /**
    * EVERY EXPECTATION EACH PERSON IS HELD TO, not one each.
@@ -384,10 +392,12 @@ export function ExpectationsPanel({
     somebody who has just read what is expected of them looks for what it is all aiming at.
   */
   if (withExpectations.length === 0) {
+    /* Inside a person's card, the card says it. */
+    if (bare) return null;
     return (
       <div style={{ marginBottom: 22 }}>
         <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          Nothing yet. These come out of the lead's own check-in, where they are asked what this is
+          Nothing yet. These come out of {viewerIsLead ? 'your' : 'the lead\u2019s'} own check-in, where they are asked what this is
           aiming at and then what they expect of each person. Until that happens, everyone is working
           to their own read of it.
           {groundId && (
@@ -401,8 +411,8 @@ export function ExpectationsPanel({
   }
 
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ marginBottom: bare ? 0 : 22 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: bare ? 10 : 8 }}>
         {withExpectations.flatMap((row) => row.items.map((raw, idx) => {
           const o = raw as NonNullable<Objective>
           const p = row.party
@@ -411,7 +421,7 @@ export function ExpectationsPanel({
           return (
             <div
               key={p.id + ':' + idx}
-              style={{
+              style={bare ? { display: 'flex', flexDirection: 'column' } : {
                 background: 'white',
                 border: `1px solid ${isMine ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                 borderRadius: 8,
@@ -420,7 +430,7 @@ export function ExpectationsPanel({
                 flexDirection: 'column',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+              <div style={{ display: bare ? 'none' : 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
                   {isMine ? 'You' : personLabel(p as any)}
                 </span>
@@ -572,34 +582,6 @@ export function ExpectationsPanel({
                 a way in that goes nowhere is worse than offering none: the sentence under this list
                 already tells them the real route, which is to say it in their own check-in.
               */}
-              {/*
-                THE LEAD'S OWN READ OF THIS PERSON, AND THE QUESTIONS THEY WANT ASKED, HERE.
-                
-                Only ever rendered for the lead: `yoursAlone` is not passed on anybody else's page,
-                and the server does not send these lines to anybody else either. Said plainly, in
-                plain grey, with what it does and does not do - it steers what gets asked and it is
-                never quoted to them.
-              */}
-              {(() => {
-                /* Once per person, on their first row: their steer is theirs, not their objective's. */
-                const mine = idx === 0 ? yoursAlone?.(p.id) : null
-                if (!mine || (!mine.read.length && !mine.questions.length)) return null
-                return (
-                  <div style={{ marginTop: 9, paddingTop: 8, borderTop: '1px dashed var(--gw-border)' }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 4 }}>
-                      Yours alone &middot; steers what they are asked, never quoted to them
-                    </div>
-                    {mine.read.map((t, i) => (
-                      <div key={`r${i}`} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 3 }}>{t}</div>
-                    ))}
-                    {mine.questions.map((t, i) => (
-                      <div key={`q${i}`} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 3 }}>
-                        <span style={{ color: 'var(--gw-muted)' }}>to ask: </span>{t}
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
               {hasChat && (
                 <button
                   onClick={() => scrollToId('gw-context-chat')}

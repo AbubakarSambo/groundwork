@@ -91,6 +91,8 @@ describe('and it is wired', () => {
     /* The rules about what this conversation may not do stay the first thing the model reads. */
     /* `alreadyHolds` joined the call on 22 September 2026 so the opener says what is here rather
        than greeting somebody who has just pasted a quarter in. The order is what this pins. */
-    expect(SRC).toContain('${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds)}${expectationRule}\\n\\n${documentBlock}');
+    /* `onRecord` joined it too: the one control on the page could not read the page, so "are these
+       targets right?" was unanswerable. Everything in it is already on the lead's screen. */
+    expect(SRC).toContain('${contextChatPrompt(ground.label, ground.scenario, gaps, alreadyHolds, onRecord)}${expectationRule}\\n\\n${documentBlock}');
   });
 });

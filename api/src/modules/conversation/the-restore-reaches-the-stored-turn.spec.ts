@@ -88,9 +88,11 @@ describe('her word, on the row that goes in the database', () => {
     // deliberately: she typed "mass general" and "Mass General" is the same
     // name. Capitalising somebody's word is not inventing a company. So the
     // case has to be an actual invention off the newest turn.
-    const { service, stored } = makeService('Got it: Anvil Corporation.', ['earlier turn']);
+    const { service, stored } = makeService('Got it: Anvil Corporation. What are they buying?', ['earlier turn']);
     await service.sendMessage('ci1', 'user-1', 'the client is anvilcorp');
-    expect(stored.find((s) => s.role === TurnRole.AI).content).toBe('Got it: anvilcorp.');
+    /* The reply carries a question because every reply does now - one that asks nothing gets one
+       appended, see nobody-is-left-looking-at-a-paragraph. What this test is about is the word. */
+    expect(stored.find((s) => s.role === TurnRole.AI).content).toBe('Got it: anvilcorp. What are they buying?');
   });
 
   it('leaves an ordinary reply completely alone', async () => {
