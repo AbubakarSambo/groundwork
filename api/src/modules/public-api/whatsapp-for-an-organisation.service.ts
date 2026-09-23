@@ -16,6 +16,9 @@ import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
+import {
+  aStrangerHearsNothing, NOT_ONE_OF_YOURS, type WhatCameBack, type WhoHoldsTheNumber,
+} from './their-number-stays-theirs';
 
 /**
  * WHAT HAPPENS TO A WHATSAPP MESSAGE SENT TO AN ORGANISATION'S NUMBER.
@@ -51,8 +54,74 @@ export class WhatsAppForAnOrganisationService {
     /* A redelivery is not a second answer. The id is claimed before anything else happens. */
     if (message.id && !(await this.firstTimeWeSeeThis(organizationId, String(message.id)))) return;
     await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
-    const arrived = whatArrived(message);
-    const say = (text: string) => this.whatsapp.sendFor(organizationId, from, text);
+    await this.route(organizationId, from, whatArrived(message), {
+      who: 'we do',
+      say: (text) => this.whatsapp.sendFor(organizationId, from, text),
+      list: (prompt, rows, asText) => this.whatsapp.sendListFor(organizationId, from, prompt, rows, asText),
+      fetchMedia: (mediaId) => this.whatsapp.fetchMediaFor(organizationId, mediaId),
+    });
+  }
+
+  /**
+   * ONE MESSAGE, HANDED TO US BY THE SYSTEM THAT HOLDS THE NUMBER.
+   *
+   * Their WhatsApp Business number stays theirs and stays pointed at their own customer system.
+   * When the sender is one of their team, that system hands us the message and sends our reply back
+   * from their number - so their customers never touch us, because they never hand us one.
+   *
+   * A sender who is not on their roster comes back as "not ours" with nothing said and nothing
+   * stored. See their-number-stays-theirs.
+   */
+  async relay(
+    organizationId: string,
+    from: string,
+    arrived: ReturnType<typeof whatArrived>,
+    messageId?: string | null,
+  ): Promise<WhatCameBack> {
+    if (!from) return NOT_ONE_OF_YOURS;
+    /*
+     * WHO THIS IS, BEFORE ANYTHING IS WRITTEN DOWN. On our own number the inbound stamp goes on
+     * first, because somebody wrote to us. Here the first question is whether they are ours to
+     * answer at all, and a stranger must leave no trace of having been asked about.
+     */
+    const who = await this.whatsapp.whoIsWritingTo(organizationId, from).catch(() => ({ personId: null, userId: null } as any));
+    if (!who.personId && !who.userId) return NOT_ONE_OF_YOURS;
+    if (messageId && !(await this.firstTimeWeSeeThis(organizationId, String(messageId)))) return { mine: true };
+    await this.prisma.whatsAppConnection
+      .update({ where: { organizationId }, data: { lastInboundAt: new Date() } })
+      .catch(() => undefined);
+
+    const said: string[] = [];
+    await this.route(organizationId, from, arrived, {
+      who: 'they do',
+      say: async (text) => { if (text?.trim()) said.push(text.trim()); },
+      /* No tappable list through a relay: their system sends our text from their own number, so the
+         numbered version - which already exists as the fallback for a plain SMS - is what goes. */
+      list: async (_prompt, _rows, asText) => { if (asText?.trim()) said.push(asText.trim()); },
+      fetchMedia: async () => arrived.kind === 'media' && (arrived as any).buffer
+        ? { buffer: (arrived as any).buffer as Buffer, mimeType: (arrived as any).mimeType as string }
+        : null,
+    });
+    return { mine: true, reply: said.join('\n\n') || undefined };
+  }
+
+  private async route(
+    organizationId: string,
+    from: string,
+    arrived: ReturnType<typeof whatArrived>,
+    out: {
+      who: WhoHoldsTheNumber;
+      say: (text: string) => Promise<unknown>;
+      list: (prompt: string, rows: any[], asText: string) => Promise<unknown>;
+      fetchMedia: (mediaId: string) => Promise<{ buffer: Buffer; mimeType: string } | null>;
+    },
+  ): Promise<void> {
+    /* Everything below is the same routing whoever holds the number - the only difference is where
+       the words go, and the one sentence a stranger must never be sent from their business. */
+    const say = async (text: string) => {
+      if (aStrangerHearsNothing(text, out.who)) return;
+      await out.say(text);
+    };
 
     if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
     /* The same checks as every other door, on the one field this door plucks off a raw request. */
@@ -127,7 +196,7 @@ export class WhatsAppForAnOrganisationService {
       await this.remember(organizationId, from, current.id);
     } else {
       await this.askWhichOne(organizationId, from);
-      await this.whatsapp.sendListFor(organizationId, from, 'You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
+      await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
       return;
     }
 
@@ -136,7 +205,7 @@ export class WhatsAppForAnOrganisationService {
 
     /* A photo or a document. */
     if (arrived.kind === 'media') {
-      const fetched = await this.whatsapp.fetchMediaFor(organizationId, arrived.mediaId);
+      const fetched = await out.fetchMedia(arrived.mediaId);
       if (!fetched) { await say('I could not fetch that file from WhatsApp. Send it again, or upload it in Groundwork.'); return; }
       const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
       try {

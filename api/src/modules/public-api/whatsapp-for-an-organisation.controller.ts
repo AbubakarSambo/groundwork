@@ -1,8 +1,11 @@
-import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-token.guard';
+import { A_MESSAGE_MAX } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
 import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
-import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { RawBodyRequest } from '@nestjs/common';
@@ -20,6 +23,31 @@ import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation
  * person who wrote. Nothing here depends on the platform number.
  */
 @ApiTags('whatsapp')
+/** One message off their number: who sent it, what they said, or the file they sent. */
+class ARelayedMessageDto {
+  @ApiProperty({ example: '2348012345678', description: "The sender's number, in any format" })
+  @IsString()
+  @MinLength(6)
+  @MaxLength(32)
+  from!: string;
+
+  @ApiPropertyOptional({ description: 'What they typed' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(A_MESSAGE_MAX)
+  text?: string;
+
+  @ApiPropertyOptional({ description: "WhatsApp's own message id, so a redelivery is not a second answer" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  messageId?: string;
+
+  @ApiPropertyOptional({ description: 'A photo or document they sent, which goes onto their check-in as evidence' })
+  @IsOptional()
+  media?: { base64: string; mimeType?: string; fileName?: string; caption?: string };
+}
+
 @Controller()
 export class WhatsAppForAnOrganisationController {
   private readonly logger = new Logger(WhatsAppForAnOrganisationController.name);
@@ -164,6 +192,49 @@ export class WhatsAppForAnOrganisationController {
     if (mode === 'subscribe' && own && token === own.verifyToken) { res.status(200).type('text/plain').send(challenge); return; }
     /* The same answer for a wrong token and an unknown organisation, so this cannot be used to find out which exist. */
     res.status(403).type('text/plain').send('Verification failed');
+  }
+
+  /**
+   * ONE MESSAGE FROM THEIR OWN WHATSAPP NUMBER, HANDED TO US BY THEIR OWN SYSTEM.
+   *
+   * "we dont want their customer traffic. what we want is for their team to be able to use their
+   * whatsapp for business to do checkin. They use it for their customers too."
+   *
+   * One number has one webhook, so either we hold it and see everything they receive, or they hold
+   * it and hand us the messages that are ours. This is the second: their number stays pointed at
+   * their own customer system, and when the sender is one of their team they pass that message here
+   * and send the reply we return from their own number.
+   *
+   * A sender who is not on their roster comes back `{ mine: false }` with no reply and nothing
+   * stored - not the number, not the message, not the fact that they asked. Their system carries on
+   * as though it had never asked. See their-number-stays-theirs.
+   *
+   * THE REPLY IS RETURNED, NEVER SENT. We hold no credential for their number in this arrangement
+   * and must not: the only thing that ever speaks to their customers is them.
+   */
+  @Post('integrations/whatsapp/relay')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('checkins:write')
+  @Throttle({ global: { limit: 240, ttl: 60_000 } })
+  @ApiOperation({ summary: "One WhatsApp message from your own number, answered. Returns the reply to send, or that the sender is not one of your people." })
+  async relay(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: ARelayedMessageDto,
+  ): Promise<{ mine: boolean; reply?: string }> {
+    const arrived = dto.media?.base64
+      ? {
+          kind: 'media' as const,
+          mediaId: dto.messageId ?? 'relayed',
+          mimeType: dto.media.mimeType ?? 'application/octet-stream',
+          fileName: dto.media.fileName ?? 'from-whatsapp',
+          caption: (dto.media.caption ?? '').trim(),
+          /* Their system already holds the file, so it comes with the message rather than being
+             fetched back from Meta with a credential we deliberately do not have. */
+          buffer: Buffer.from(dto.media.base64, 'base64'),
+        }
+      : { kind: 'text' as const, text: (dto.text ?? '').trim() };
+    if (arrived.kind === 'text' && !arrived.text) return { mine: false };
+    return this.inbound.relay(req.machine.organizationId, dto.from, arrived as any, dto.messageId ?? null);
   }
 
   @Public()
