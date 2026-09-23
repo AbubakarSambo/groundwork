@@ -58,6 +58,14 @@ export interface Contradiction {
 }
 
 export interface WhatWeHave {
+  /*
+   * WHAT THEY ASKED US TO COVER, in their own words and in the order they asked.
+   *
+   * The brief for the update scenario tells the person answering that they may direct the
+   * conversation. A steer is theirs, not the check-in's, so it lives here beside their claims
+   * rather than on the ground beside the brief's subjects - see they-can-tell-us-what-to-ask.
+   */
+  asked?: string[];
   claims: Claim[];
   contradictions: Contradiction[];
   /** How many turns were about the product rather than the work. Counted, never stored as content. */

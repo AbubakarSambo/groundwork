@@ -137,8 +137,9 @@ import { notTheSameAsLastTime } from './the-same-sentence-five-times';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
 import {
-  READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, type ASubject,
+  READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, theyHaveTalkedAbout, type ASubject,
 } from './the-ground-the-brief-asks-us-to-cover';
+import { whatTheyWantAsked, asSomethingToCover, followTheirLead } from './they-can-tell-us-what-to-ask';
 import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
@@ -3888,9 +3889,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true } })
       .then((rows) => rows.map((r) => r.content ?? ''))
       .catch(() => [] as string[]);
-    const theHole = breadthFirst(subjects, theirAnswers)
-      ? (whatToCoverNext(subjects, theirAnswers) || whatToAskAbout(notes))
-      : (whatToAskAbout(notes) || whatToCoverNext(subjects, theirAnswers));
+    /*
+     * AND WHAT THEY ASKED FOR COMES FIRST, BEFORE EITHER.
+     *
+     * The brief promises them they can direct this conversation. A product that then asks its own
+     * next question has broken a promise it made before they typed anything, which is worse than
+     * never having offered. Their steer is dropped from the rank only once they have actually
+     * talked about it - decided by the same coverage rule as everything else.
+     */
+    const stillOwed = (notes?.asked ?? [])
+      .map((subject) => asSomethingToCover(subject))
+      .filter((s) => !theyHaveTalkedAbout(s as any, theirAnswers));
+    const theHole = stillOwed.length
+      ? followTheirLead(stillOwed[0].subject)
+      : breadthFirst(subjects, theirAnswers)
+        ? (whatToCoverNext(subjects, theirAnswers) || whatToAskAbout(notes))
+        : (whatToAskAbout(notes) || whatToCoverNext(subjects, theirAnswers));
 
     /*
      * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
@@ -6035,6 +6049,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     if (!row) return;
     const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
+
+    /*
+     * A STEER IS KEPT, and kept before anything else is decided about the turn: the brief told them
+     * they could direct this conversation, so what they asked for is the most important thing in
+     * the record of it. Same phrase twice is one steer. See they-can-tell-us-what-to-ask.
+     */
+    const steer = whatTheyWantAsked(theirTurn);
+    if (steer) {
+      const asked = Array.from(new Set([...(before.asked ?? []), steer]));
+      await this.prisma.checkIn
+        .update({ where: { id: checkInId }, data: { whatWeHave: { ...before, asked } as any } })
+        .catch(() => undefined);
+      this.logger?.log?.(`Check-in ${checkInId}: they asked to talk about "${steer}".`);
+      before.asked = asked;
+    }
 
     if (aboutTheToolNotTheWork(theirTurn)) {
       const after = withThisTurn(before, [], true);
