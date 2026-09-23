@@ -4027,7 +4027,7 @@ happened, and what is in the way.`;
     /* The product's finding about this person, from the report: the first thing the note says. */
     const myFinding = (Array.isArray(ground.report?.findings) ? (ground.report.findings as any[]) : []).find((f) => f.participantId === participant.id);
     const findingLines: string[] = myFinding?.hasGap && myFinding.text
-      ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|Named as in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
+      ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|is in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
       : [];
     const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);

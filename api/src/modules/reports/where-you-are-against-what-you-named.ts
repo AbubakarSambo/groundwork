@@ -1,4 +1,5 @@
 import { RecordEntryType } from '@prisma/client';
+import { aDefinitionOfSuccessHolds } from '../grounds/a-dump-is-many-things';
 
 /**
  * THE ONE THING THE PLATFORM ASKS FOR AND THEN NEVER SHOWS YOU AGAINST.
@@ -204,9 +205,22 @@ export function whereYouAreAgainstWhatYouNamed(
    */
   const definitions: OwnDefinition[] = [];
   const alreadySaid = new Set<string>();
+  /*
+   * "HORTICULTURE" IS NOT A DEFINITION OF SUCCESS.
+   *
+   * Read on a live board, 23 September 2026, under "And what each person says it is": nine raw
+   * answers listed as success definitions - "horticulture", "sales records", "Yield too", "no
+   * specific states but they have to be woemn". They were answers to whatever the last question
+   * was, typed SUCCESS_DEFINITION by the extractor, and printed as though each one were somebody's
+   * account of what good looks like. Hafsah: "I can make [no] inferences from it."
+   *
+   * The bar already mostly existed - see aDefinitionOfSuccessHolds, which refuses a fragment, an
+   * instruction and a slash list. It is a floor and not a judgement: a real definition of success
+   * in somebody's own words passes it, and "Yield too" does not and never did.
+   */
   for (const e of input.entries) {
     if (e.type !== RecordEntryType.SUCCESS_DEFINITION) continue;
-    const text = e.text.trim();
+    const text = aDefinitionOfSuccessHolds(e.text);
     if (!text) continue;
     /*
      * EVERY DISTINCT THING A PERSON SAID SUCCESS IS, NOT THE LAST ONE.

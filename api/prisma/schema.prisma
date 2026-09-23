@@ -1372,6 +1372,17 @@ model CheckIn {
   participantId String @map("participant_id")
   sessionNumber Int    @map("session_number") // 1, 2, ...
 
+  /// WHAT WE HAVE SO FAR: the typed record of what this conversation has established - claims with
+  /// their measure, number, baseline, verification, owner, date and place, any contradictions
+  /// between them, who we are talking to, and how many answers and remarks there have been.
+  ///
+  /// The conversation had none of this. It had the brief's items in a list and asked the next one,
+  /// which is why 626 questions across a hundred conversations followed the brief's wording rather
+  /// than anything anybody said. Everything that challenges, decomposes or asks a derived question
+  /// reads from here, and the HOLES are computed in code rather than stored, so a requirement is
+  /// decided in exactly one place. See what-we-have-so-far.ts.
+  whatWeHave    Json?  @map("what_we_have")
+
   /// GW-EXP-6. A SETUP CONVERSATION, NOT A SESSION.
   ///
   /// The lead's expectation-setting interview. It exists because a managing-only lead - somebody who

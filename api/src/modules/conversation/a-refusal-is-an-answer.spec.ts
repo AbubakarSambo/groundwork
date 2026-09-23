@@ -11,8 +11,10 @@ describe('a refusal is an answer', () => {
   it('and moves to the next thing: the plan\'s question, else the next owed thing, else nothing', () => {
     expect(recordAndMoveOn('the goals or targets, as numbers or dates', { question: 'What did the credit review on Friday decide?' })).toBe('Then this record shows nothing on the goals or targets, as numbers or dates. What did the credit review on Friday decide?');
     /* Asked, not labelled: "The other thing this check-in is for: what you need from other people" read as a weird colon (Hafsah, 21 Sep 2026). */
-    expect(recordAndMoveOn(null, { owed: 'what they need from other people' })).toBe('That goes on this record as you put it. What do you need from other people?');
-    expect(recordAndMoveOn(null, {})).toBe('That goes on this record as you put it.');
+    /* The acknowledgement is no longer about a record - see the-same-sentence-five-times. What this
+       test is for is unchanged: a refusal is taken and the conversation moves to the next thing. */
+    expect(recordAndMoveOn(null, { owed: 'what they need from other people' })).toBe('Understood. What do you need from other people?');
+    expect(recordAndMoveOn(null, {})).toBe('Understood.');
     expect(NOTHING_HERE_HAS_A_NUMBER).toMatch(/how it will read/);
   });
 });

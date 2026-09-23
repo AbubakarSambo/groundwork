@@ -1,0 +1,12 @@
+-- WHAT WE HAVE SO FAR.
+--
+-- The conversation had a checklist of the brief's items and no model of what it had established, so
+-- every turn reflected an answer back and asked the next unasked item. Measured over a hundred real
+-- conversations the questions followed the brief's wording rather than anything anybody said.
+--
+-- This column holds the typed record: claims with their measure, number, baseline, verification,
+-- owner, date and place; contradictions; who we are talking to; and counts of answers and remarks.
+-- The holes in it are derived in code, never stored - see what-we-have-so-far.ts.
+--
+-- Null on every check-in that predates it, which reads as "nothing established yet" and is true.
+ALTER TABLE "check_ins" ADD COLUMN "what_we_have" JSONB;
