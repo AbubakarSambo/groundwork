@@ -153,6 +153,9 @@ import {
   THE_MOST_ANYBODY_WILL_FILL, type AField,
 } from './what-a-complete-answer-holds';
 import { whatTheyGaveUs, type WhatTheyGave } from './what-they-gave-us-to-work-with';
+import {
+  theFitInstruction, THE_FIT_SCHEMA, theFitFrom, howCompletely,
+} from '../reports/fitting-an-answer-into-the-frame';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -5511,6 +5514,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (whatYouGave.saying) {
       this.logger.log(`Check-in ${checkIn.id}: told them what they gave - ${whatYouGave.checkable} checkable, ${whatYouGave.general} general.`);
     }
+
+    /*
+     * AND THEIR WHOLE ANSWER GOES INTO THE FIELDS EVERY ANSWER HOLDS.
+     *
+     * Here rather than when the report runs, and that is the whole design: one call now, with a
+     * finished answer in front of it, instead of a hundred calls at once while somebody waits for a
+     * report. What it produces is one row of the same shape as everybody else's, which is what makes
+     * the findings arithmetic. Fire and forget - a report with ninety-nine rows is worth having and
+     * nothing about a person's own completion may fail over it. See fitting-an-answer-into-the-frame.
+     */
+    this.fitTheirAnswer(checkIn.id).catch((err: any) =>
+      this.logger.warn(`Could not fit the answer on ${checkIn.id} into the frame: ${err?.message}`));
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -6222,6 +6237,64 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * would be worse than none: it becomes a question a hundred people are made to answer and a
    * column in a report nobody ordered.
    */
+  /**
+   * ONE PERSON'S ANSWERS, PUT INTO THE FIELDS A COMPLETE ANSWER HOLDS.
+   *
+   * Reads the transcript rather than the record. The record is typed lines somebody may quote and is
+   * deliberately conservative; a fit asks a different question - not "what did they state for the
+   * record" but "which of these seven things did they tell us, in whatever words". On the
+   * hundred-person run the records held six entries a person and the transcripts held everything.
+   */
+  async fitTheirAnswer(checkInId: string): Promise<void> {
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: {
+        groundId: true, whatWeHave: true,
+        participant: { select: { id: true, roleAsDescribed: true, organisationGiven: true } },
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+      },
+    });
+    if (!row) return;
+    const frame = await this.theFrameFor(row.groundId).catch(() => [] as AField[]);
+    if (!frame.length) return;
+    const said = row.turns.map((t) => t.content ?? '').filter(Boolean);
+    if (!said.length) return;
+
+    const read = await this.anthropic.extract<any>(
+      theFitInstruction(frame, row.participant?.roleAsDescribed ?? row.participant?.organisationGiven ?? null),
+      [{ role: 'user', content: `WHAT THEY SAID, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}` }],
+      THE_FIT_SCHEMA as any,
+      { fast: true, thinkingBudget: 0 },
+    ).catch((err: any) => {
+      this.logger.warn(`The fit on ${checkInId} did not read: ${err?.message}`);
+      return null;
+    });
+    if (!read) return;
+    const kind = String(read.kind ?? '').trim() || row.participant?.roleAsDescribed || null;
+    const values = theFitFrom(read, frame, (why) => this.logger.warn(`Fit on ${checkInId}: ${why}`));
+    const notes = ((row as any).whatWeHave ?? {}) as WhatWeHave;
+    await this.prisma.checkIn.update({
+      where: { id: checkInId },
+      data: {
+        theirAnswerFitted: {
+          participantId: row.participant?.id ?? null,
+          organisation: String(read.organisation ?? '').trim() || row.participant?.organisationGiven || null,
+          kind,
+          values,
+          completeness: howCompletely(values, frame, kind),
+          /*
+           * WHAT THE CONVERSATION MEASURED, not a second opinion about it. `specificityHistory` is
+           * scored turn by turn while they answer and has never been read by anything but the
+           * assistant's tone.
+           */
+          specificity: null,
+          gaveEvidence: false,
+        } as any,
+      },
+    }).catch((err: any) => this.logger.warn(`Could not keep the fit on ${checkInId}: ${err?.message}`));
+    this.logger.log(`Fitted ${checkInId}: ${values.filter((v) => !v.couldNotSay).length} of ${frame.length} fields, ${values.filter((v) => v.couldNotSay).length} ruled out. (${notes.answers ?? 0} answers read.)`);
+  }
+
   async theFrameFor(groundId: string): Promise<AField[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true, brief: true } })

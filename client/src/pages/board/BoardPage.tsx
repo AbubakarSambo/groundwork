@@ -20,6 +20,7 @@ import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { TheJudgement } from '@/components/gw/TheJudgement'
 import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
@@ -653,10 +654,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
           belongs on the page somebody opens to see how this is going, not only on the report.
         */}
-        {(b as any).whatTheAnswersSay && (
+        {/*
+          EITHER READ IS ENOUGH TO OPEN THIS BAND.
+
+          Gating both on the network read would hide the judgement on every check-in too small for
+          one - the network read needs eight accounts before it says anything - and the judgement is
+          arithmetic over whatever has been answered, so it is there long before that. A band that
+          appears only once the bigger of its two reads exists is a band nobody sees first.
+        */}
+        {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
           <>
+            {/*
+              THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
+
+              "The report did not put things into buckets, do clear synthesis." The network read
+              below this is what everybody said, grouped. This is what it means, what to do about it,
+              and what it cannot tell you - which is the thing a reader opens a board for. A summary
+              above the detail, the way every other read on this page is arranged.
+            */}
             <Sec title="What the answers say" src="from everybody who has answered so far" />
-            <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />
+            <TheJudgement it={(b as any).theJudgement} table={(b as any).theTable} />
+            {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </>
         )}
 

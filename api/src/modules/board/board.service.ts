@@ -483,6 +483,21 @@ export class BoardService {
       whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)
         ? ((ground as any).report?.networkPicture ?? null)
         : null,
+      /*
+       * THE JUDGEMENT, AND THE TABLE IT WAS WRITTEN FROM.
+       *
+       * Same door as the network read above it: whoever runs the check-in sees it, and everybody
+       * else once the report has been released to them. It is a read across every answer, so it is
+       * the shared picture across the whole run - the board's own cell in the four-report map - and
+       * it has nowhere else to be.
+       *
+       * The table travels with it because a count is the only reason to believe a sentence, and
+       * because the test for the whole thing is that it can be laid out as rows and columns.
+       */
+      theJudgement: (isInitiator || (ground as any).report?.releasedAt)
+        ? ((ground as any).report?.theJudgement ?? null)
+        : null,
+      theTable: isInitiator ? ((ground as any).report?.theTable ?? null) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it

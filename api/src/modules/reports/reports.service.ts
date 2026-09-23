@@ -66,6 +66,12 @@ import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
 import { readAsANetwork, theNetworkInstruction, THE_NETWORK_REPORT_SCHEMA } from './a-hundred-accounts-are-not-two';
+import type { AField } from '../conversation/what-a-complete-answer-holds';
+import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
+import {
+  whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
+  everySentenceCarriesANumber, talksLikeAPerson,
+} from './the-judgement-over-the-answers';
 import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
@@ -81,7 +87,7 @@ import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { AN_UNCLAIMED_ADDRESS } from '../entry/the-open-link.service';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -2018,10 +2024,30 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
 
+    /*
+     * AND THE JUDGEMENT OVER EVERY ANSWER: CLASSIFY, ASSESS, THEN RECOMMEND, IN THAT ORDER.
+     *
+     * Two customers read a report that listed what people said and called it worthless - "it did not
+     * classify things or assess or recommend well", "too abstract, talked in parables". They were
+     * right, and the report was not where it went wrong: a hundred differently shaped answers cannot
+     * be counted, ranked or cut by kind of organisation, so the only thing left to write was
+     * atmosphere.
+     *
+     * Each answer is now fitted into the lead's own fields as its person finishes, so this is rows.
+     * The counts and the standing of each field are arithmetic and no model touches them. Only the
+     * last part is written, and it is handed nothing but the table, with every sentence required to
+     * carry a number that is already in it.
+     */
+    const theJudgement = await this.judgeTheAnswers(groundId).catch((err: any) => {
+      this.logger.warn(`The judgement on ${groundId} did not run, so the report is what it was: ${err?.message}`);
+      return null;
+    });
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
         groundId,
+        ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
         // A tally is how a shared picture becomes a verdict by arithmetic. It
         // cannot be stripped the way a stiff opener can - cutting "two of the
         // three" out of a sentence changes what the sentence says - so it is
@@ -2119,6 +2145,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
         /* A failed second read leaves the one already stored alone rather than blanking it. */
         networkPicture: (networkPicture ?? undefined) as any,
+        /* Same rule: a judgement that could not be written this time leaves the last one standing. */
+        ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
       },
     });
 
@@ -3492,6 +3520,108 @@ happened, and what is in the way.`;
    * Extract preference signals from the initiator's check-in records and upsert
    * into their AdminProfile. Called fire-and-forget after each synthesis.
    */
+  /**
+   * THE JUDGEMENT OVER EVERY ANSWER TO ONE BRIEF.
+   *
+   * Three parts in one order, because the order is what makes it defensible rather than confident.
+   * The counts and each field's standing are arithmetic over the fitted answers. The judgement is
+   * the only part a model writes and it is given nothing but the table - every sentence has to carry
+   * a number that is in it, which is checked rather than requested, because you cannot be abstract
+   * about twenty-nine out of thirty-four.
+   *
+   * IT NEEDS A FRAME AND IT NEEDS ROWS. A check-in whose brief was too short to specify anything
+   * gets no frame, and one where nobody has finished yet has no rows - both return nothing, and the
+   * report is exactly what it was before. See the-judgement-over-the-answers.
+   */
+  private async judgeTheAnswers(groundId: string): Promise<{ judgement: any; table: string } | null> {
+    /*
+     * READ OFF THE GROUND RATHER THAN ASKED FOR, and that is deliberate. The conversation derives
+     * the frame on the first turn and keeps it there; going through the conversation service to get
+     * it would point reports at conversation while conversation already points at this module's
+     * fitting prompt, and a cycle between the two is not worth one property access.
+     */
+    const frame = await this.prisma.ground
+      .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true } })
+      .then((g) => (((g as any)?.whatACompleteAnswerHolds ?? []) as AField[]))
+      .catch(() => [] as AField[]);
+    if (!Array.isArray(frame) || !frame.length) return null;
+
+    const rows = await this.prisma.checkIn.findMany({
+      /*
+       * `DbNull`, NOT `null`, AND THE DIFFERENCE IS THE WHOLE QUERY.
+       *
+       * On a Json column Prisma reads `equals: null` as the JSON value null, not as an absent
+       * column. This one is never written until an answer is fitted, so every unfitted row is a SQL
+       * NULL and `NOT { equals: null }` matched none of them - the judgement would have found zero
+       * answers on a ground with a hundred and five of them and quietly written nothing. Measured
+       * against the real run: 0 rows with the wrong filter, 105 with this one.
+       *
+       * The same idiom appears on `holds` elsewhere and happens to work there, because that column
+       * IS written as JSON null when a document has nothing read out of it. Left alone rather than
+       * churned, and noted here so the next person knows which of the two they are looking at.
+       */
+      where: { groundId, status: CheckInStatus.COMPLETED, NOT: { theirAnswerFitted: { equals: Prisma.DbNull } } },
+      select: { theirAnswerFitted: true, participant: { select: { specificityHistory: true, recordEntries: { select: { verifiability: true, anchoredDocumentId: true } } } } },
+    }).catch(() => [] as any[]);
+    const answers: AFittedAnswer[] = rows.map((r: any) => {
+      const fit = r.theirAnswerFitted ?? {};
+      const history: number[] = (r.participant?.specificityHistory as number[]) ?? [];
+      return {
+        ...fit,
+        /*
+         * WHAT THE CONVERSATION MEASURED, JOINED ON HERE RATHER THAN AT THE FIT.
+         *
+         * Both of these are facts about the person's participation rather than about their answer,
+         * they change after the fit is written, and they are what the lead asked to see: "he can not
+         * see in clear terms if the team gave evidence", "he can not see clearly people who provided
+         * specifics versus not".
+         */
+        specificity: history.length ? Math.round((history.reduce((a, b) => a + b, 0) / history.length) * 100) / 100 : null,
+        gaveEvidence: (r.participant?.recordEntries ?? []).some((e: any) => e.verifiability === 'HIGH' || !!e.anchoredDocumentId),
+      } as AFittedAnswer;
+    }).filter((a) => Array.isArray((a as any).values));
+    if (!answers.length) return null;
+
+    const reads = whatTheNumbersSay(frame, answers);
+    const assessments = reads.map(howGoodIsThis);
+    const table = theTable(reads, assessments, answers.length);
+
+    const judgement = await this.anthropic.extract<any>(
+      theJudgementInstruction(
+        'whoever called this check-in',
+        'what to do next about the people and the work it covers',
+      ),
+      [{ role: 'user', content: table }],
+      THE_JUDGEMENT_SCHEMA as any,
+      { patient: true },
+    ).catch((err: any) => {
+      this.logger.warn(`The judgement on ${groundId} did not read: ${err?.message}`);
+      return null;
+    });
+    if (!judgement) return null;
+
+    /*
+     * AND IT IS HELD TO ITS ONE RULE RATHER THAN TRUSTED WITH IT.
+     *
+     * The prompt says it in the strongest terms available and that has never been enough - the
+     * report promise, the filler sentence and the goodbye each arrived anyway. A finding carrying no
+     * count is dropped rather than softened: the reader has already said what an ungrounded sentence
+     * is worth to him.
+     */
+    const kept = {
+      ...judgement,
+      whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => everySentenceCarriesANumber(x?.says)),
+      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => everySentenceCarriesANumber(x?.because)),
+    };
+    const dropped = (judgement.whatTheNumbersSay ?? []).length - kept.whatTheNumbersSay.length
+      + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
+    const parables = talksLikeAPerson([kept.theGap, ...kept.whatTheNumbersSay.map((x: any) => x.says)].join(' '));
+    if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) carried no number and were dropped.`);
+    if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
+    this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
+    return { judgement: kept, table };
+  }
+
   private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {
     const initiatorParticipant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, partyType: PartyType.INITIATOR },

@@ -111,6 +111,20 @@ export type BoardPresent = {
   }[]
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
+  /**
+   * The judgement over every answer: the gap, what the counts say, what to do, what this cannot
+   * tell you, and what we failed to ask. Whoever runs the check-in, and everybody once the report
+   * is released. See TheJudgement and the-judgement-over-the-answers on the server.
+   */
+  theJudgement?: {
+    theGap?: string
+    whatTheNumbersSay?: { fieldId?: string; says: string; soWhat?: string }[]
+    whatToDo?: { move: string; because: string; startWith?: string }[]
+    whatThisCannotTellYou?: { about: string; why?: string; toKnow?: string }[]
+    whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
+  } | null
+  /** The counts it was written from. Lead only: it is the working, not the finding. */
+  theTable?: string | null
   /** `whyNothingYet`: why there is nothing to compare, from the counts - see why-nothing-is-cross-referenced.ts. */
   divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string; whyNothingYet?: string }
   /** The aims, the places and the things, added up across everybody. Null until a round has closed. */

@@ -1428,6 +1428,18 @@ model CheckIn {
   /// decided in exactly one place. See what-we-have-so-far.ts.
   whatWeHave    Json?  @map("what_we_have")
 
+  /// THIS PERSON'S ANSWERS, PUT INTO THE FIELDS A COMPLETE ANSWER HOLDS.
+  ///
+  /// The frame says what every answer must contain; this is what THIS answer contained, in the same
+  /// shape as everybody else's, so a hundred conversations become a hundred rows that can be
+  /// counted. Written when they finish, because that is when there is a whole answer to read and it
+  /// costs one call rather than a hundred at once when the report runs.
+  ///
+  /// `couldNotSay` is kept apart from a blank on purpose: somebody who says they have no way to
+  /// check a new supplier has answered the question, and twenty-nine of those is the product
+  /// specification. See fitting-an-answer-into-the-frame.ts.
+  theirAnswerFitted Json? @map("their_answer_fitted")
+
   /// GW-EXP-6. A SETUP CONVERSATION, NOT A SESSION.
   ///
   /// The lead's expectation-setting interview. It exists because a managing-only lead - somebody who
@@ -2039,6 +2051,20 @@ model Report {
   /// real question. Null on an ordinary two- or three-person check-in. See
   /// a-hundred-accounts-are-not-two.ts for its shape and for what it is forbidden to invent.
   networkPicture  Json?     @map("network_picture")
+
+  /// THE JUDGEMENT OVER EVERY ANSWER: the gap, what the counts say, what to do about it, what this
+  /// data cannot tell anybody, and what we failed to ask.
+  ///
+  /// Two customers read a report that listed what people said and called it worthless: "it did not
+  /// classify things or assess or recommend well", "too abstract, talked in parables". Classifying
+  /// and assessing are arithmetic over the fitted answers and no model touches them. Only the last
+  /// part is written, and it is handed nothing but the table of counts, with every sentence required
+  /// to carry a number that is in it - checked in code. See the-judgement-over-the-answers.ts.
+  theJudgement    Json?     @map("the_judgement")
+  /// The table the judgement was written from, kept so a reader can see the counts behind a
+  /// sentence, and so the whole thing can be laid out as rows and columns. If it cannot be, we
+  /// built a newsletter.
+  theTable        String?   @map("the_table") @db.Text
 
   /// HOW THE ORGANISER CHOSE TO SHARE IT: 'NAMED' or 'ANONYMOUS'. Null until it is sent to anybody.
   /// The product never decides this - see whatTheRespondentsGet.
