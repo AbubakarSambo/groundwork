@@ -3432,6 +3432,70 @@ export class GroundsService {
    * to be editable, shareable and retirable by id. Retired rather than deleted: a decision that was
    * made is not a decision that never existed.
    */
+  /**
+   * ONE LINE OF WHAT THIS CHECK-IN KNOWS, WRITTEN DIRECTLY.
+   *
+   * The Context page could change a line, share it, make it private and retire it, and could not
+   * create one. Every line arrived through the context chat, which meant a lead on a check-in where
+   * the chat is off could read five empty buckets, each telling them to "say it in the conversation
+   * above", with no conversation above. A page whose every empty state points at a control that is
+   * not there - saved as item B on the Context fix list, 23 September 2026.
+   *
+   * THE CHAT IS STILL THE WAY IN, and that decision stands: it asks the follow-up a form cannot, and
+   * a line that arrives with nothing around it is worth less. This is the door for when there is no
+   * chat, not a second front door beside it.
+   *
+   * A LINE ABOUT A PERSON CANNOT BE CREATED HERE AT ALL. `ABOUT_A_PERSON` is the lead's read of
+   * somebody, never shared and never quoted, and it belongs to the conversation that can ask what it
+   * rests on. Refused rather than accepted-and-hidden, which is how a form becomes a way to file
+   * opinions about people.
+   */
+  async addContextLine(
+    groundId: string,
+    requestingUserId: string,
+    line: { kind: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, status: true, endState: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can add what it knows.');
+    }
+    /* The same door every other writer goes through: ended, held or out of time refuses alike. */
+    const refused = whyItRefuses(ground.status, ground.endState, ground.initiatorId === requestingUserId ? 'the lead' : 'anybody else');
+    if (refused) throw new BadRequestException(refused);
+
+    const text = (line.text ?? '').trim();
+    if (!text) throw new BadRequestException('Type the line first.');
+    if (text.length > 2000) throw new BadRequestException('That is too long for one line. Say the one thing and add another line for the next.');
+    const kind = String(line.kind ?? '').toUpperCase();
+    if (ABOUT_SOMEBODY.has(kind as any)) throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
+    if (!['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'].includes(kind)) {
+      throw new BadRequestException('That is not one of the things this check-in keeps.');
+    }
+    const audience = line.audience === 'LEAD_ONLY' ? 'LEAD_ONLY' : 'EVERYONE';
+    if (audience === 'EVERYONE' && !mayBeShared(kind as any)) {
+      throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
+    }
+    const made = await this.prisma.groundContextItem.create({
+      data: {
+        groundId, kind: kind as any, text, audience: audience as any,
+        /* Typed in, not heard in a conversation and not pasted, and the record says which. */
+        source: 'TYPED',
+        authorUserId: requestingUserId,
+      },
+      select: { id: true, kind: true, text: true, audience: true },
+    });
+    this.logger.log(`Ground ${groundId}: a ${kind} line was typed in directly.`);
+    return made;
+  }
+
   async changeContextLine(
     groundId: string,
     requestingUserId: string,

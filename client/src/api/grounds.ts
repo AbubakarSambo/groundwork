@@ -199,6 +199,16 @@ export const groundsApi = {
    * One line of what a check-in knows: reworded, shared, made private, or retired. A line about a
    * person can never be shared - the server refuses that rather than trusting the screen.
    */
+  /**
+   * Add one line of what this check-in knows, typed in rather than said in the chat.
+   *
+   * The chat is still the way in - it asks the follow-up a form cannot. This is the door for a
+   * check-in where the chat is off, which until now showed five empty buckets each pointing at a
+   * conversation that was not there.
+   */
+  addContextLine: (groundId: string, line: { kind: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) =>
+    apiClient.post(`/grounds/${groundId}/context`, line).then(r => r.data),
+
   changeContextLine: (groundId: string, itemId: string, change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
     apiClient.patch(`/grounds/${groundId}/context/${itemId}`, change).then(r => r.data),
 

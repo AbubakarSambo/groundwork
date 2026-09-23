@@ -129,6 +129,23 @@ class UpdateTimelineDto {
   contextNote?: string;
 }
 
+class AddContextLineDto {
+  @ApiPropertyOptional({ enum: ['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'] })
+  @IsIn(['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'])
+  kind!: string;
+
+  @ApiPropertyOptional({ description: 'The line, in the lead\'s own words' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ enum: ['LEAD_ONLY', 'EVERYONE'], description: 'Who reads it. Everyone by default.' })
+  @IsOptional()
+  @IsIn(['LEAD_ONLY', 'EVERYONE'])
+  audience?: 'LEAD_ONLY' | 'EVERYONE';
+}
+
 class AddLeadContextDto {
   @ApiPropertyOptional({ description: 'The participant this context is about; omit for context about the whole ground' })
   @IsOptional()
@@ -338,6 +355,20 @@ export class GroundsController {
     @Body() dto: { status: string },
   ) {
     return this.grounds.setMyCommitment(id, userId, itemId, dto?.status);
+  }
+
+  /**
+   * ONE LINE OF WHAT THIS CHECK-IN KNOWS, TYPED IN. See addContextLine: the chat is still the way
+   * in, and this is the door for a check-in that has no chat.
+   */
+  @Post(':id/context')
+  @ApiOperation({ summary: "Add one line of what this check-in knows (lead or org admin)" })
+  async addContextLine(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: AddContextLineDto,
+  ) {
+    return this.grounds.addContextLine(id, userId, dto);
   }
 
   @Patch(':id/context/:itemId')
