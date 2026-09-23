@@ -133,7 +133,9 @@ import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
-import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK } from './a-remark-about-the-tool-is-not-the-work';
+import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
+import { nothingYet, withThisTurn, type WhatWeHave, type Claim } from './what-we-have-so-far';
+import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -2136,6 +2138,17 @@ export class ConversationService {
      * was asked. See whatTheDocumentWaitsFor.
      */
     const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message);
+    /*
+     * AND THE WORKING NOTES, AFTER THE REPLY AND NEVER IN FRONT OF IT.
+     *
+     * Fire and forget: it costs a model call and the person waiting for this answer should not pay
+     * for it, and a conversation must never fail over its own notes. The state is one turn behind
+     * when the next reply is composed, which is the right arrangement - what reads from it is a
+     * challenge about accumulated claims, not a comment on the word just typed. See
+     * what-we-have-so-far and reading-what-they-just-said.
+     */
+    this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+      this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
@@ -2546,6 +2559,10 @@ export class ConversationService {
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
       }
+      /* The same working notes as the other path, and for the same reasons: after the reply, fire
+         and forget, never in front of the person waiting. See noteWhatTheySaid. */
+      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
       yield { type: 'done', reply, sessionComplete: close.ready };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
@@ -5902,6 +5919,93 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         });
       }
     }
+  }
+
+  /**
+   * WHAT WE HAVE SO FAR, KEPT UP TO DATE ONE TURN AT A TIME.
+   *
+   * Runs AFTER the reply has gone, so nobody waits for it, and best-effort, so a conversation never
+   * fails over its own working notes. The state is therefore one turn behind when the next reply is
+   * composed - which is the right arrangement: what reads from it is a challenge about accumulated
+   * claims, not a comment on the word just typed. See reading-what-they-just-said.
+   *
+   * A remark about the product is counted and nothing else: it is not an answer, so it adds no
+   * claims, and the extractor is not even asked about it.
+   */
+  async noteWhatTheySaid(checkInId: string, theirTurn: string): Promise<void> {
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: { whatWeHave: true, sessionNumber: true },
+    });
+    if (!row) return;
+    const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
+
+    if (aboutTheToolNotTheWork(theirTurn)) {
+      const after = withThisTurn(before, [], true);
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: after as any } });
+      return;
+    }
+
+    const read = await this.anthropic.extract<{
+      opens?: Partial<Claim>[];
+      sharpens?: (Partial<Claim> & { id: string })[];
+      who?: { name?: string; role?: string; organisation?: string };
+      contradiction?: { between?: string[]; why?: string };
+    }>(
+      READ_THIS_TURN,
+      [{ role: 'user', content: `${theNotesSoFar(before)}\n\nWHAT THEY JUST SAID:\n${theirTurn}` }],
+      READ_THIS_TURN_SCHEMA as any,
+    ).catch((err: any) => {
+      this.logger?.warn?.(`Could not note what was said on ${checkInId}: ${err?.message}`);
+      return null;
+    });
+    /*
+     * A FAILED READ STILL COUNTS THE ANSWER.
+     *
+     * My first version returned early, so a timed-out extraction lost the turn from the count as
+     * well as from the claims - and the count is what decides when to ask somebody who they are.
+     * Caught by replaying seven answers and reading "answers 3".
+     */
+    if (!read) {
+      const anyway = withThisTurn(before, [], false);
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: anyway as any } })
+        .catch(() => undefined);
+      return;
+    }
+
+    /*
+     * TWO ARRAYS, BECAUSE ONE BLURRED THE DECISION.
+     *
+     * With a single `claims` array the extractor kept reusing the first id for every answer, so one
+     * claim ended up holding a plan, a crop, a target and a verification and the 30% target was
+     * nowhere. Asking separately - what does this OPEN, what does it SHARPEN - makes the choice
+     * explicit instead of implied. Proven on a live replay of her own seven answers.
+     */
+    const opened: Claim[] = (read.opens ?? [])
+      .filter((c) => c?.id && c?.kind && c?.said?.trim())
+      .map((c) => ({ ...(c as Claim), session: row.sessionNumber ?? 1 }));
+    /* A sharpen only ever lands on a claim that exists: an id nobody has seen would silently become
+       a claim with no words in it, which is unreadable everywhere downstream. */
+    const held = new Set(before.claims.map((c) => c.id));
+    const sharpened: Claim[] = (read.sharpens ?? [])
+      .filter((c) => c?.id && held.has(c.id))
+      .map((c) => ({ ...(c as Claim), said: '', kind: undefined as any, session: row.sessionNumber ?? 1 }));
+    let after = withThisTurn(before, [...opened, ...sharpened], false);
+    /* Only ever filled in: a turn that says nothing about who they are must not blank it. */
+    if (read.who && (read.who.name || read.who.role || read.who.organisation)) {
+      after = { ...after, who: { ...(after.who ?? {}), ...read.who } };
+    }
+    if (read.contradiction?.between?.length === 2 && read.contradiction.why) {
+      after = {
+        ...after,
+        contradictions: [
+          ...after.contradictions,
+          { between: [read.contradiction.between[0], read.contradiction.between[1]], why: read.contradiction.why },
+        ],
+      };
+    }
+    await this.prisma.checkIn.update({ where: { id: checkInId }, data: { whatWeHave: after as any } })
+      .catch((err: any) => this.logger?.warn?.(`Could not store the notes on ${checkInId}: ${err?.message}`));
   }
 
   async extractRecordEntries(checkInId: string, participantId: string) {
