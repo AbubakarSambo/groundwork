@@ -33,7 +33,7 @@ describe('the rule against restating reaches every turn, not only the ones a gua
   it('ships unconditionally in the check-in prompt, beside the vocabulary rule', () => {
     const service = read('conversation.service.ts');
     expect(service).toMatch(
-      /return \[systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE,/,
+      /return \[systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE,/,
     );
   });
 

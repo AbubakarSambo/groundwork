@@ -858,7 +858,18 @@ export class EmailService implements OnModuleInit {
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_TEAM_BUTTON} &rarr;</a></p>` +
-        `<p style="font-size:12px;color:#9B9590;">Nobody on your team sees what you write. It goes into one summary.</p>`,
+        /*
+         * IT DID NOT GO INTO ONE SUMMARY UNREAD.
+         *
+         * "Nobody on your team sees what you write" is true of a private alignment check-in, where
+         * the shared picture never quotes anybody - see the invite above, which says exactly that
+         * and may keep saying it. It is NOT true of a team update: the person who asked reads every
+         * answer, and the report built from them goes back out to everybody who asked for it.
+         *
+         * Hafsah had the same sentence removed from the answering screen on 23 September 2026. It
+         * was still here, in the mail that gets people to that screen.
+         */
+        `<p style="font-size:12px;color:#9B9590;">${escapeHtml(who.split(' ')[0] || 'Whoever asked')} reads the answers, and they go into one report that everybody who took part receives.</p>`,
       ),
     }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendTeamUpdateAsk');
     return { devUrl };

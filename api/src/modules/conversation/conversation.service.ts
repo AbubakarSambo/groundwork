@@ -133,6 +133,7 @@ import { everythingOwedFor } from './what-every-check-in-owes';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
+import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK } from './a-remark-about-the-tool-is-not-the-work';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -4206,6 +4207,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const inThisTurn = [
       ['systemPrompt', systemPrompt], ['theirLanguage', theirLanguage], ['VOCABULARY_RULE', VOCABULARY_RULE],
       ['A_CORRECTION_IS_NOT_A_SCOLDING', A_CORRECTION_IS_NOT_A_SCOLDING],
+      ['ANSWER_THE_REMARK', ANSWER_THE_REMARK],
       ['openWithSomethingNew', OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE],
       ['planBlock', planBlock], ['disagreementBlock', disagreementBlock], ['recordAlreadyHolds', recordAlreadyHolds], ['doesNotAddUp', doesNotAddUp], ['owedBlock', owedBlock], ['spineSoFar', spineSoFar], ['intakeBlock', intakeBlock],
       ['pendingLines', pendingLines.join('')], ['evidenceLines', evidenceLines.join('')],
@@ -4265,7 +4267,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5906,9 +5908,34 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
     if (turns.length === 0) return;
 
-    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    /*
+     * A REMARK ABOUT THE TOOL IS NOT THE WORK, AND THIS IS THE READ THAT DECIDES IT.
+     *
+     * Read on a live board: "you are repeating yourself, please end the session" filed under Asks,
+     * "you didnt even as me what i do" as a Risk AND a tracked blocker, "this is meant to be about
+     * personal" as a priority. Nothing in this pipeline had the concept of a turn that is not about
+     * the work, so every one of them was themed and shipped to a board an expansion team reads.
+     *
+     * Filtered here rather than in the prompt, and at the READ rather than at the write: the
+     * remarks stay in the transcript, because they are what the person said and not ours to
+     * delete, and they cannot reach the record by any path that forgot to ask. See
+     * a-remark-about-the-tool-is-not-the-work.
+     */
+    const theirs = turns.filter((t) => t.role !== TurnRole.AI);
+    const work = theWorkTheySaid(theirs);
+    if (theirs.length - work.length > 0) {
+      this.logger?.log?.(`Check-in ${checkInId}: ${theirs.length - work.length} turn(s) were about the conversation rather than the work; kept in the transcript, out of the record.`);
+    }
+    /* Nothing but remarks is not a thin record, it is no record. Extracting from it would leave the
+       themer only the AI's own words to work with, which is how a reply became a finding. */
+    if (work.length === 0) return;
+    const keep = new Set(work.map((t) => t.id));
+
+    const transcript = turns
+      .filter((t) => t.role === TurnRole.AI || keep.has(t.id))
+      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     /* Their side alone, kept for the check after extraction. See a-record-is-what-they-said.ts. */
-    const whatTheySaid = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content).join('\n');
+    const whatTheySaid = work.map((t) => t.content).join('\n');
     const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
       `${RECORD_EXTRACTION_PROMPT}\n\n${ONLY_THEIR_WORDS}`,
       [{ role: 'user', content: transcript }],
@@ -5963,7 +5990,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return countCheckableSpecifics(t) === 0;
     };
 
-    const valid = (result?.entries ?? []).filter(
+    /* And belt-and-braces on the way out: an entry that quotes a remark anyway - by reaching into
+       an AI turn that repeated it back - is dropped. The thing it prevents ends up on a board. */
+    const valid = notARemarkAboutUs(result?.entries ?? []).filter(
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&

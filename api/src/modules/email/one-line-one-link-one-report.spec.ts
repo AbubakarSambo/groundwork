@@ -15,7 +15,10 @@ describe('what the team gets', () => {
     expect(subject).toBe('Hafsah asked you for a quick update');
     expect(lines[0]).toBe('Hafsah asked you for a quick update.');
     expect(lines[1]).toBe(THE_LINE);
-    expect(lines[2]).toBe('Takes two minutes. Reply by Friday.');
+    /* Five, not two: across a hundred real conversations the median was six answers. And the mail
+       now says what arrives at the end, which is the reason to spend them. */
+    expect(lines[2]).toBe('Takes about five minutes. Reply by Friday.');
+    expect(lines[3]).toBe('You will get the consolidated report at the end.');
   });
 
   /* The lead's question is quoted, never paraphrased: it is what they are being asked, and the
@@ -27,7 +30,7 @@ describe('what the team gets', () => {
 
   it('drops the deadline rather than inventing one', () => {
     const { lines } = whatTheTeamGets({ leadName: 'Ada', theOneLine: THE_LINE, by: null });
-    expect(lines).toContain('Takes two minutes.');
+    expect(lines).toContain('Takes about five minutes.');
     expect(lines.join(' ')).not.toMatch(/Friday|by \w+day/);
   });
 
