@@ -60,12 +60,20 @@ const NOT_COPY = [
    * score here and not one of them is addressed to a person. It was being counted only because
    * nobody had looked at which file the offenders were in.
    *
-   * AND THE CEILING DOES NOT MOVE. Measured after both exclusions: sixty, which is exactly where
-   * the copy pass left it. The two prompt files accounted for precisely the four lines today's work
+   * AND THE CEILING DOES NOT MOVE. Measured after every exclusion here: sixty, which is exactly
+   * where the copy pass left it. The prompt files account for precisely the lines today's work
    * added and nothing else, so no real copy anywhere has been excused and no slack has been bought.
-   * That was the thing to check before excluding anything.
+   * That is the thing to check before excluding anything, and it was checked each time.
    */
   'the-context-chat.ts',
+  /*
+   * AND THE TELLING'S OWN PROMPT. `what-a-participant-is-told-about-this.ts` exists to hold
+   * THE_TELLING_PROMPT - the instructions for rewriting a lead's brief into the box a participant
+   * reads. Its strings are addressed to a model, like the three files above it. The sentence the
+   * participant actually sees is written BY the model and checked by `theTellingHolds`, which is a
+   * separate guard with its own tests.
+   */
+  'what-a-participant-is-told-about-this.ts',
 ]
 
 const blankComments = (src: string) =>

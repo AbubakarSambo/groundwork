@@ -136,6 +136,9 @@ import { theReportIsNotTheirsYet, withoutPromisingTheReport } from './the-report
 import { notTheSameAsLastTime } from './the-same-sentence-five-times';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
+import {
+  READ_THE_BRIEF, READ_THE_BRIEF_SCHEMA, whatToCoverNext, breadthFirst, type ASubject,
+} from './the-ground-the-brief-asks-us-to-cover';
 import { READ_THIS_TURN, READ_THIS_TURN_SCHEMA, theNotesSoFar } from './reading-what-they-just-said';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
@@ -3871,7 +3874,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * The brief is still the floor: where nothing is missing, this block is empty and the pack's
      * own questions carry the turn as before.
      */
-    const theHole = whatToAskAbout(((checkIn as any).whatWeHave as WhatWeHave) ?? null);
+    /*
+     * BREADTH AGAINST DEPTH, AND BOTH ARE ALWAYS IN PLAY.
+     *
+     * `whatToAskAbout` pushes on a hole in what somebody said - a target with no way to verify it,
+     * a change with no baseline. Left alone it will spend a whole check-in sharpening one claim
+     * while seven of the brief's subjects go unasked, which is the complaint this started from:
+     * "the questions dont help us get what we want". See the-ground-the-brief-asks-us-to-cover.
+     */
+    const notes = ((checkIn as any).whatWeHave as WhatWeHave) ?? null;
+    const subjects = await this.theSubjectsToCover(checkIn.groundId).catch(() => [] as ASubject[]);
+    const theirAnswers = await this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true } })
+      .then((rows) => rows.map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+    const theHole = breadthFirst(subjects, theirAnswers)
+      ? (whatToCoverNext(subjects, theirAnswers) || whatToAskAbout(notes))
+      : (whatToAskAbout(notes) || whatToCoverNext(subjects, theirAnswers));
 
     /*
      * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
@@ -5969,6 +5988,46 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * A remark about the product is counted and nothing else: it is not an answer, so it adds no
    * claims, and the extractor is not even asked about it.
    */
+  /**
+   * THE SUBJECTS THIS BRIEF ASKS ABOUT, READ ONCE PER CHECK-IN.
+   *
+   * Lazy rather than at creation: a brief can be written, rewritten and pasted over before anybody
+   * answers, and a list read from the first draft would send a hundred people through the wrong
+   * ground. The first conversation to need it reads it, and every conversation after that uses the
+   * same list - which is the point, since a hundred answers only add up to one picture if everybody
+   * was asked about the same things.
+   *
+   * Best effort. Where it fails the conversation is exactly what it was yesterday: the brief's own
+   * questions, and the holes in what somebody said.
+   */
+  async theSubjectsToCover(groundId: string): Promise<ASubject[]> {
+    const ground = await this.prisma.ground
+      .findUnique({ where: { id: groundId }, select: { subjectsToCover: true, brief: true } })
+      .catch(() => null);
+    if (!ground) return [];
+    const already = (ground as any).subjectsToCover as ASubject[] | null;
+    if (Array.isArray(already) && already.length) return already;
+    const brief = (ground.brief ?? '').trim();
+    /* Nothing to read. A one-line brief has one subject and the pack already asks about it. */
+    if (brief.split(/\s+/).length < 40) return [];
+
+    const read = await this.anthropic.extract<{ subjects?: ASubject[] }>(
+      READ_THE_BRIEF,
+      [{ role: 'user', content: brief }],
+      READ_THE_BRIEF_SCHEMA as any,
+    ).catch((err: any) => {
+      this.logger?.warn?.(`Could not read the subjects out of the brief on ${groundId}: ${err?.message}`);
+      return null;
+    });
+    const subjects = (read?.subjects ?? []).filter((x) => x?.id && x?.subject?.trim() && x?.ask?.trim());
+    if (!subjects.length) return [];
+    await this.prisma.ground
+      .update({ where: { id: groundId }, data: { subjectsToCover: subjects as any } })
+      .catch((err: any) => this.logger?.warn?.(`Could not keep the subjects on ${groundId}: ${err?.message}`));
+    this.logger?.log?.(`Read ${subjects.length} subjects out of the brief on ${groundId}: ${subjects.map((x) => x.id).join(', ')}.`);
+    return subjects;
+  }
+
   async noteWhatTheySaid(checkInId: string, theirTurn: string): Promise<void> {
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
