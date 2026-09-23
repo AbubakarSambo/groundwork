@@ -234,3 +234,49 @@ export function withThisTurn(state: WhatWeHave, said: Claim[], wasARemark: boole
     answers: state.answers + (wasARemark ? 0 : 1),
   };
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * WHAT THE CONVERSATION IS TOLD ABOUT IT
+ * ---------------------------------------------------------------------------------------------- */
+
+/** How each hole is put to somebody, in the words the turn should use. */
+const HOW_TO_RAISE: Record<GapKind, (g: Gap) => string> = {
+  'measure-cannot-be-verified': (g) =>
+    `They have named something to hit but nothing that would show it: ${g.because}. Ask where that figure would come from - whose records, which system, who reads it - and if the honest answer is that nobody collects it, say so plainly rather than moving on.`,
+  'target-has-no-measure': (g) =>
+    `They have named a goal with nothing in it that goes up or down: ${g.because}. Ask what they would look at to know it had happened.`,
+  'number-has-no-baseline': (g) =>
+    `They have given a change with no starting point: ${g.because}. Ask what it is now. A change nobody can measure from is not a target, and at the end of this it will not be claimable.`,
+  'nobody-said-who-they-are': () =>
+    'Nothing on the record says what this person does or who they do it for, and everything else they say has to be read against it. Ask, in one short question, before anything else.',
+  'plan-has-no-owner': (g) =>
+    `They have described something being done with nobody named as doing it: ${g.because}. Ask who.`,
+  'plan-has-no-date': (g) =>
+    `They have described something being done with no date on it: ${g.because}. Ask by when.`,
+};
+
+/**
+ * THE ONE THING WORTH ASKING ABOUT NEXT, AND WHY.
+ *
+ * This is what replaces "ask the next item on the brief". The brief is still the floor - where
+ * nothing is missing from what they have said, the conversation goes back to it - but where
+ * something IS missing, the hole is more useful than the next unasked heading. Measured on a
+ * hundred real conversations, the old arrangement asked about volumes 62 times and about how people
+ * vet each other 15 times, on a check-in whose strongest finding was that nobody can vet anybody.
+ *
+ * It never overrides what somebody just said: the rule below says answer them first. It decides
+ * what to ASK, not what to ignore.
+ */
+export function whatToAskAbout(state: WhatWeHave | null | undefined): string {
+  if (!state) return '';
+  const gap = theGapWorthRaising(state);
+  if (!gap) return '';
+  const quoted = gap.about ? ` Their words for it: "${gap.about}".` : '';
+  return [
+    'THE MOST USEFUL THING MISSING FROM WHAT THEY HAVE SAID:',
+    `${HOW_TO_RAISE[gap.kind](gap)}${quoted}`,
+    '',
+    'Answer whatever they just said first. Then this, unless they have raised something that matters more - in which case follow that and this will still be here next turn.',
+    'Ask it as one question. Do not stack it with anything else.',
+  ].join('\n');
+}

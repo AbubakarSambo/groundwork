@@ -149,12 +149,34 @@ export function AnswerFirstPage() {
   return (
     <div style={{ background: 'var(--gw-bg)', minHeight: '100dvh' }}>
       <div style={card}>
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
-            {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
+        {/*
+          THE BRIEF STOPS EATING A THIRD OF THE PHONE.
+          
+          Measured at 375x812: the heading is 240 of 812 pixels, and it was printed above the
+          conversation on every single turn - a paragraph somebody reads once, permanently occupying
+          thirty per cent of the screen, with the opener restating most of it directly underneath.
+          Hafsah, 23 September 2026: "that page does not seem mobile friedly."
+          
+          It stays whole while they are deciding whether to start, because that is the moment it is
+          for. Once they are answering it folds to one line they can open again.
+        */}
+        {phase === 'reading' ? (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+              {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
+            </div>
+            <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
           </div>
-          <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
-        </div>
+        ) : (
+          <details style={{ marginBottom: 14 }}>
+            <summary style={{ fontSize: 12.5, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
+              {what.askedBy ? `What ${what.askedBy} asked` : 'What you were asked'} &middot; tap to read it again
+            </summary>
+            <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
+              {what.theQuestion || what.groundLabel}
+            </p>
+          </details>
+        )}
 
         {phase === 'reading' && (
           <div>
@@ -196,7 +218,24 @@ export function AnswerFirstPage() {
         )}
 
         {phase === 'talking' && (
-          <div style={{ marginTop: 14 }}>
+          /*
+            PINNED TO THE BOTTOM, AND FINISHING IS NOT HIDDEN UNDER IT.
+            
+            Two faults on a phone. The composer scrolled away with the page, so after a few answers
+            the box you type in was below the fold and the transcript had to be scrolled past to
+            reach it. And "I am done" was a thirteen-pixel underlined link BENEATH the input - the
+            one place a phone keyboard covers - on the control Hafsah specifically asked to be
+            visible: "make sure the people can see i'm done".
+            
+            So the whole thing sticks to the bottom of the viewport, the transcript scrolls under
+            it, and the two actions sit on one row: finishing on the left where a thumb rests,
+            sending on the right. `env(safe-area-inset-bottom)` keeps it clear of the home bar.
+          */
+          <div style={{
+            position: 'sticky', bottom: 0, marginTop: 14,
+            paddingTop: 10, paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
+            background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)',
+          }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea
                 id="open-answer" value={input} rows={1}
@@ -209,10 +248,21 @@ export function AnswerFirstPage() {
                 ↑
               </button>
             </div>
-            <button onClick={() => setPhase('address')}
-              style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--gw-sub)', textDecoration: 'underline', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              I am done
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
+              <button onClick={() => setPhase('address')}
+                style={{
+                  background: 'white', border: '1px solid var(--gw-border)', borderRadius: 20,
+                  color: 'var(--gw-navy)', fontSize: 13.5, fontWeight: 600, padding: '8px 15px',
+                  cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                }}>
+                I am done
+              </button>
+              {/* What pressing it does, so nobody presses it wondering whether it throws away the
+                  answers they have just given. */}
+              <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', textAlign: 'right', lineHeight: 1.4 }}>
+                Finish and say where to send the report
+              </span>
+            </div>
           </div>
         )}
 
