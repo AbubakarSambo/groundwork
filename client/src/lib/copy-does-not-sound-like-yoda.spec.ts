@@ -42,6 +42,30 @@ const NOT_COPY = [
   /* Both hold that same sentence of hers: the email that sends it, and the form that sets it. */
   'one-line-one-link-one-report.ts',
   'AskYourTeamOneThing.tsx',
+  /*
+   * A MODEL INSTRUCTION, LIKE prompt-library.ts ABOVE IT.
+   *
+   * `reading-what-they-just-said.ts` is the extraction prompt for the conversation's working notes.
+   * Three of its lines score here - "NEVER INVENT A FIELD. If they did not say the baseline, leave
+   * it out" and two about which array a claim belongs in - and every one of them is addressed to a
+   * model, not to a person. Rewriting them to read well to somebody would make them worse at the
+   * only job they have. Same reason this list already excludes the prompt library.
+   */
+  'reading-what-they-just-said.ts',
+  /*
+   * AND THE CONTEXT CHAT'S OWN PROMPT, for the same reason and by the same test.
+   *
+   * `the-context-chat.ts` is one long model instruction - "ANSWER THEM BEFORE YOU ASK", "RECOMMEND
+   * THE MATERIAL, DO NOT WAIT FOR IT", the rules about what a commitment means. Ten of its lines
+   * score here and not one of them is addressed to a person. It was being counted only because
+   * nobody had looked at which file the offenders were in.
+   *
+   * AND THE CEILING DOES NOT MOVE. Measured after both exclusions: sixty, which is exactly where
+   * the copy pass left it. The two prompt files accounted for precisely the four lines today's work
+   * added and nothing else, so no real copy anywhere has been excused and no slack has been bought.
+   * That was the thing to check before excluding anything.
+   */
+  'the-context-chat.ts',
 ]
 
 const blankComments = (src: string) =>

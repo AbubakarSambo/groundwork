@@ -695,6 +695,17 @@ export function AppSidebar() {
     retry: false,
   })
   const setAuth = useAuthStore(s => s.setAuth)
+  /* The door out, for somebody whose only membership is one they were listed into. */
+  const startOwn = useMutation({
+    mutationFn: () => authApi.startMyOwnWorkspace(),
+    onSuccess: (res: any) => {
+      setAuth(res.accessToken, res.user)
+      window.location.assign('/grounds')
+    },
+    /* A failure is never a success: the one refusal this has is "you already have one", and the
+       person needs to be told which, not left looking at a button that did nothing. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
+  })
   const switchOrg = useMutation({
     mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
     onSuccess: (res) => {
@@ -1139,11 +1150,47 @@ export function AppSidebar() {
           an ordinary member of a client's, and the token carries the membership's role,
           not the person's.
         */}
-        {isAuthenticated && !collapsed && myOrgs.length > 1 && (
+        {/*
+          AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
+          
+          Hafsah, 23 September 2026: "someone is my account and created their own account and keep
+          showing up to my account. And they cannot switch to their."
+          
+          They could not, and this line is why: the whole block renders only at more than one
+          organisation. Somebody joined to a company because their address was on its roster has
+          exactly one, so there was no switcher, no list, and no way out - see
+          a-roster-row-is-not-a-life-sentence on the API for why the joining rule itself stands.
+          
+          The block now also shows for somebody whose single membership is not one they administer,
+          and offers the door.
+        */}
+        {isAuthenticated && !collapsed && (myOrgs.length > 1 || (myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN')) && (
           <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
             <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, marginBottom: 6 }}>
               Organisation
             </div>
+            {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', lineHeight: 1.5, marginBottom: 6 }}>
+                  You are in {myOrgs[0].name} because your address was on their list.
+                </div>
+                <button
+                  onClick={() => {
+                    if (startOwn.isPending) return
+                    if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
+                    startOwn.mutate()
+                  }}
+                  disabled={startOwn.isPending}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '7px 9px', borderRadius: 7,
+                    background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)',
+                    color: 'white', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
+                </button>
+              </div>
+            )}
             {myOrgs.map(o => (
               <button
                 key={o.id}

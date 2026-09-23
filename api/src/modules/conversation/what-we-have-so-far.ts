@@ -126,7 +126,7 @@ export function whatIsMissing(state: WhatWeHave): Gap[] {
       if (!c.measure) {
         out.push({
           kind: 'target-has-no-measure', claimId: c.id, about: shorten(c.said),
-          because: 'there is nothing named that would go up or down, so nobody can tell whether it happened',
+          because: 'nothing in it goes up or down. Nobody can tell whether it happened',
         });
       } else if (!c.verification) {
         out.push({
@@ -168,7 +168,7 @@ export function whatIsMissing(state: WhatWeHave): Gap[] {
   if (nameless && state.answers >= 2) {
     out.push({
       kind: 'nobody-said-who-they-are', claimId: null, about: '',
-      because: 'nothing on the record says what this person does or who they do it for',
+      because: 'nobody has said what this person does, or who they do it for',
     });
   }
 
@@ -248,7 +248,7 @@ const HOW_TO_RAISE: Record<GapKind, (g: Gap) => string> = {
   'number-has-no-baseline': (g) =>
     `They have given a change with no starting point: ${g.because}. Ask what it is now. A change nobody can measure from is not a target, and at the end of this it will not be claimable.`,
   'nobody-said-who-they-are': () =>
-    'Nothing on the record says what this person does or who they do it for, and everything else they say has to be read against it. Ask, in one short question, before anything else.',
+    'Nobody has said what this person does. Everything else they tell you has to be read against it, so ask in one short question, before anything else.',
   'plan-has-no-owner': (g) =>
     `They have described something being done with nobody named as doing it: ${g.because}. Ask who.`,
   'plan-has-no-date': (g) =>
