@@ -18,7 +18,7 @@ import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { needsApproval, WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
-import { isSubscribed } from '../../common/subscription';
+import { isCovered } from '../../common/subscription';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
@@ -2599,11 +2599,12 @@ from finishing at all.`;
       if (!participant) {
         /* The same seat rule addParticipant applies before it writes a row: a free ground has a cap,
            a paying organisation's grounds do not. This path wrote the row without asking. */
+        /* And a free run is cover here too - see the note in grounds.service.addParticipant. */
         const org = await tx.organization.findUnique({
           where: { id: ground.organizationId },
-          select: { subscriptionPlan: true, subscriptionStatus: true },
+          select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
         });
-        if (ground.isFreeGround && !(org && isSubscribed(org))) {
+        if (ground.isFreeGround && !(org && isCovered(org))) {
           const taken = await tx.groundParticipant.count({ where: { groundId: ground.id } });
           if (taken >= ground.freeParticipantCap) throw new BadRequestException(freeSeatLimitMessage(ground.freeParticipantCap));
         }

@@ -37,7 +37,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
 import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
-import { isSubscribed } from '../../common/subscription';
+import { isCovered } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
@@ -3957,13 +3957,26 @@ export class GroundsService {
      * consume a paid slot - it is correct and must not be rewritten. It was doing two jobs and only one
      * of them was right.
      */
+    /*
+     * A FREE RUN IS COVER, AND EVERY GATE ASKED THE WRONG QUESTION.
+     *
+     * Hafsah, 23 September 2026: "We gave them an updated free trial where they can use this for 1
+     * month for free for all their team but they still only have the 5 people, the tool is refusing
+     * to click send the invite to the rest of the team."
+     *
+     * `isCovered` knows about a free run - it reads `freeUntil` and `freePlan` alongside the paid
+     * pair, and its own comment in common/subscription calls it "the read most gates want". It was
+     * used in exactly one file in the codebase, billing, and every gate that actually stops a person
+     * asked `isSubscribed`, which only sees a paid plan. So a month given away lifted nothing, and
+     * the customer was told to subscribe to something they had already been given.
+     */
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
     });
-    const paying = !!org && isSubscribed(org);
+    const covered = !!org && isCovered(org);
 
-    if (ground.isFreeGround && !paying) {
+    if (ground.isFreeGround && !covered) {
       const participantCount = await this.prisma.groundParticipant.count({ where: { groundId } });
       if (participantCount >= ground.freeParticipantCap) {
         /**
