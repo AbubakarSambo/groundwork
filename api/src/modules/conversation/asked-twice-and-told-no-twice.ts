@@ -79,10 +79,13 @@ const CARRIES_NO_SUBJECT = new Set([
  * linked to them by the end of the year." Reading only letters, the figure at the front of both -
  * the most obviously repeated thing in the pair - counted for nothing.
  */
+/* A target, a figure, an amount and a number are one subject: "what is your target" and "what is the
+   specific number" asked for the same thing three times (run 12, Emeka). And "Q3" is a word. */
+const ONE_SUBJECT: Record<string, string> = { target: 'number', targets: 'number', figure: 'number', figures: 'number', amount: 'number', total: 'number', count: 'number' };
 function subjectWords(text: string): Set<string> {
   return new Set(
     /* "others" is "other" and "targets" is "target": a plural is the same subject. */
-    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)).map((w) => (w.length >= 5 && /[^s]s$/.test(w) ? w.slice(0, -1) : w)) ?? [],
+    (text ?? '').toLowerCase().match(/[a-z']{3,}|\d+|\bq[1-4]\b/g)?.filter((w) => !CARRIES_NO_SUBJECT.has(w)).map((w) => ONE_SUBJECT[w] ?? (w.length >= 5 && /[^s]s$/.test(w) ? w.slice(0, -1) : w)) ?? [],
   );
 }
 
@@ -98,9 +101,22 @@ function subjectWords(text: string): Set<string> {
  * The threshold is deliberately high. A false positive costs one extra model call and a differently
  * worded question, which is harmless. Missing it costs a person's patience, which is not.
  */
+/**
+ * THE QUESTION, NOT THE PREAMBLE. "That simplifies the credit sales and arrears part of the target for
+ * your contribution. What is your sales target for Q3?" - "I don't have a Q3 target" - "The record
+ * needs a number for your Q3 sales. What is the specific number you are working towards for Q3?" - three
+ * times (run 12, Emeka). Read whole, the first turn's preamble put eight subject words round a three-word
+ * question and the second ask shared a quarter of them; read as questions, they share two thirds. Where
+ * a turn asks something, the asking is what is compared.
+ */
+const theQuestionIn = (text: string): string => {
+  const qs = (text ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x));
+  return qs.length ? qs.join(' ') : (text ?? '');
+};
+
 export function asksTheSameThingAgain(earlier: string, now: string): boolean {
-  const a = subjectWords(earlier);
-  const b = subjectWords(now);
+  const a = subjectWords(theQuestionIn(earlier));
+  const b = subjectWords(theQuestionIn(now));
   if (a.size < 2 || b.size < 2) return false;
   let shared = 0;
   for (const w of b) if (a.has(w)) shared += 1;
@@ -262,6 +278,26 @@ export function alreadyAskedTwice(reply: string, earlierAsks: string[]): boolean
    * the same question three times.
    */
   return asked.filter((a) => asksTheSameThingAgain(a, reply) || asksMuchTheSameThing(a, reply)).length >= 2;
+}
+
+/**
+ * THE SAME QUESTION STRAIGHT BACK, AFTER IT WAS ANSWERED. "What specific thing are you doing to keep
+ * them healthy right now?" - "Vaccinating them." - and two turns later "What specific thing are you
+ * doing to keep your 260 hens healthy right now?" - "I just said. Vaccinating them." (run 11, Halima).
+ * Not word for word, so repeatsTheLastAskWordForWord let it by; not a third ask, so alreadyAskedTwice
+ * did. A second ask that shares four fifths of the last one's subject, straight after a real answer
+ * to it, is the fault on its own. Stricter than asksTheSameThingAgain on purpose: a follow-up on the
+ * same subject ("what would get the Kano invoice moving" after "what moved on the Kano invoice") is
+ * how a conversation goes deeper, and shares about two fifths.
+ */
+export function asksItAgainAfterTheAnswer(lastAsk: string | null | undefined, reply: string): boolean {
+  if (!lastAsk?.trim() || !/\?/.test(reply ?? '')) return false;
+  const a = subjectWords(lastAsk.split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).join(' ') || lastAsk);
+  const b = subjectWords((reply ?? '').split(/(?<=[.!?])\s+/).filter((x) => /\?\s*$/.test(x)).join(' '));
+  if (a.size < 3 || b.size < 3) return false;
+  let shared = 0;
+  for (const w of b) if (a.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.8;
 }
 
 function asksMuchTheSameThing(earlier: string, now: string): boolean {

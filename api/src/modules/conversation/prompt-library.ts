@@ -162,6 +162,17 @@ export const VOCABULARY_RULE = [
    * Rewriting every reference in the library would be a hundred edits to text that is mostly
    * correct where it sits. The reader-facing half is a vocabulary rule, which is what this is for.
    */
+  /*
+   * AND NEVER PUT A CURRENCY ON A NUMBER THE RECORD DOES NOT CARRY ONE FOR.
+   *
+   * Read live, 22 September 2026, on a Nigerian sales team whose lead had written "4m": "What moved
+   * for sales closed against your $4M target?" Nobody said dollars. The target is a number and a
+   * name in words, by design - see a-dump-is-many-things - and a symbol in front of it is the
+   * product telling somebody what currency they are measured in.
+   */
+  'NUMBERS AS THE RECORD HOLDS THEM. A target is a number and a name. Never add a currency symbol or',
+  'a currency word to it - no $, no N, no naira, no dollars, no pounds - unless the person or the',
+  'record used that currency themselves. "4m sales" stays "4m sales".',
   'And never invent what kind of organisation or role somebody has. Do not call anyone "your',
   'founder", "your CEO", "the leadership" or anything else you were not told - this product runs in',
   'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',
@@ -1599,7 +1610,7 @@ export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record en
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
 Classify each entry as exactly one of:
-- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not.
+- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not. A QUESTION IS NOT A STANDARD: "how do I know if we are done" is them asking, and it goes down as an ASK or as nothing, never as what success looks like. NOR IS A LIST OF PLACES OR THINGS: "Kano and Jigawa, grain markets" and "rice, maize, 10 tonnes" name where and what, not what good would look like - both reached a live board labelled as somebody's definition of success.
 - TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
 - COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report the work itself done, that is PROGRESS.
 - ASK - something they are requesting (a raise, equity, a resource, a decision)
@@ -1643,6 +1654,8 @@ For each handoff give:
 - status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
 - then: what happens once it clears, if they said ("then I can close the three orgs"). Null if they did not say.
 - triedSaid: what they said they have already DONE about it, in their own words ("I emailed finance twice", "I called him on Tuesday", "I raised it with her manager"). This is what they DID, not what they intend to do. Null if they did not say.
+
+A WISH IS NOT A HANDOFF. Something the person says would be useful, or wants to exist, is not something they are waiting on - nobody owes it to them and nobody can hand it over. "A shared, searchable layer like MarketView would help us" is a want, and extracting it produced a board that told a manager one of her people was waiting on a software product and advised her to go and speak to it. What they want built, what they wish existed, and what they would like to have access to one day are all left out. What somebody has promised them, or owes them, or is holding, is the whole of what belongs here.
 
 Be conservative. If it is not clearly a handoff this person is waiting on, do not extract it. An empty list is a correct answer.`;
 
@@ -1878,6 +1891,8 @@ export const ALIGNMENT_SCHEMA = {
  * actually said.
  */
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
+
+Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
 
 1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
 
@@ -2918,8 +2933,16 @@ actually asked.
 
 THEN ONE THING, AND ONLY IF IT IS MISSING: something that makes the answer checkable later. A
 number, a date, a name, a thing that now exists. "Going well" and "the same as last week" are
-answers to the lead's question and they are not yet updates:
-"What moved on it since the last one? A number or a date is enough."
+answers to the lead's question and they are not yet updates.
+
+THE WORDS DEPEND ON WHETHER THERE HAS BEEN A LAST ONE. In a FIRST session there has been no previous
+update and there is nothing to have moved since it, so never say "since the last update" or "since
+the last one" - ask what it is at now: "What is that at now? A number or a date is enough." From the
+SECOND session on, the difference between two updates is the whole value of a standing check-in, and
+the words are "What moved on it since the last one? A number or a date is enough." Read on a live
+first session: "What moved on this since the last update?" and then, closing, "Nothing has moved
+since the last update" - to somebody who had never given one.
+
 Ask that once. If they have nothing, that is a real answer and the honest picture: record it and
 close.
 

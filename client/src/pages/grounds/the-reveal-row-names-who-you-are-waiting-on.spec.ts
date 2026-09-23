@@ -66,6 +66,10 @@ describe('who the report is counting', () => {
   })
 
   it('never counts somebody who was never going to answer', () => {
-    expect(API).toContain('.filter((p) => !p.managingOnly)')
+    /* The roster asks the one population rule now rather than filtering here - see
+       how-many-have-answered.ts, and the day four screens quoted four numbers for one session. */
+    expect(API).toContain('const counting = whoIsExpected(')
+    const theRule = readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'reports', 'how-many-have-answered.ts'), 'utf8')
+    expect(theRule).toContain('if (p.managingOnly && !waitsOnTheLead) return false;')
   })
 })

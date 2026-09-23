@@ -86,8 +86,10 @@ describe('and the write happens only on confirmation', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   it('creates the objective inside applyContextProposal, not in the chat turn', () => {
-    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('));
-    expect(apply.slice(0, 4000)).toContain('personObjective.create');
+    /* To the end of the method, not a character count: the method grew past 4,000 characters on
+       22 September 2026 and the pin silently stopped covering the write it names. */
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('private async writeWhatThePasteGave('));
+    expect(apply).toContain('personObjective.create');
     const turn = CODE.slice(CODE.indexOf('async contextChat('), CODE.indexOf('async applyContextProposal('));
     expect(turn).not.toContain('personObjective.create');
   });

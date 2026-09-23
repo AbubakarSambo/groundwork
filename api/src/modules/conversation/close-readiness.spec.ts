@@ -1,4 +1,4 @@
-import { closeReadiness } from './close-readiness';
+import { closeReadiness, askedToFinish } from './close-readiness';
 
 /**
  * WHO GETS A CLEAN ENDING.
@@ -66,5 +66,25 @@ describe('the person can always stop', () => {
     // "later" mid-conversation is not a request to stop.
     const r = closeReadiness(['I will do the audit later', 'Still working through module 3'], false);
     expect(r.ready).toBe(false);
+  });
+});
+
+/** "That is everything from my side" met "One more before this closes" on a live session (22 Sep 2026). */
+describe('the ways people say they are finished', () => {
+  const out = (said: string) => askedToFinish([said]);
+
+  it('hears the long forms, not only the short ones', () => {
+    expect(out('That is everything from my side.')).toBe(true);
+    expect(out("That's everything from me.")).toBe(true);
+    expect(out('That is all from me, thanks.')).toBe(true);
+    expect(out('I have nothing else to add.')).toBe(true);
+    expect(out('We are done.')).toBe(true);
+    expect(out("That's it.")).toBe(true);
+  });
+
+  it('and a bare "nothing else" is still an answer about the work, not a request to stop', () => {
+    expect(out('Nothing else.')).toBe(false);
+    expect(out('Nothing much this week.')).toBe(false);
+    expect(out('I need to get everything signed.')).toBe(false);
   });
 });

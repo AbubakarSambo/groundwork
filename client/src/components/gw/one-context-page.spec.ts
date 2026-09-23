@@ -35,7 +35,7 @@ describe('there is one context page', () => {
      * built in two places again and the drift is already back, whatever the order looks like today.
      */
     it(`${name} builds no band of its own`, () => {
-      for (const band of ['<ExpectationsPanel', '<ContextStrength', '<ContextChat', '<DeliveredPanel', '<SharedNote']) {
+      for (const band of ['<EachPerson', '<ContextStrength', '<ContextChat', '<DeliveredPanel', '<SharedNote']) {
         expect(src).not.toContain(band)
       }
       expect(src).not.toContain('WHAT_YOU_CAN_UPLOAD')
@@ -68,8 +68,17 @@ describe('there is one context page', () => {
   it('and asks who runs it separately from whose it is', () => {
     expect(CONTEXT).toMatch(/const isLead = role === 'lead' \|\| role === 'admin'/)
     expect(CONTEXT).toMatch(/const isTheLead = role === 'lead'/)
-    /* The band that must never widen: the lead's own private steers. */
-    expect(CONTEXT).toMatch(/\{isTheLead && privateSteers\.length > 0 && \(/)
+    /*
+     * The thing that must never widen: the lead's own read of a person. It was a red band at the
+     * foot of the page, then a block on the person's card for about an hour, and on her instruction
+     * it is now on neither - it reaches their check-in as a place to look and is read back in the
+     * conversation. What is pinned is its absence from the page.
+     */
+    expect(CONTEXT).not.toContain('ABOUT_A_PERSON')
+    expect(CONTEXT).not.toContain('QUESTION_FOR_PERSON')
+    const CARD = readFileSync(join(__dirname, 'EachPerson.tsx'), 'utf8')
+    expect(CARD).not.toContain('ABOUT_A_PERSON')
+    expect(CARD).toContain('they live\n * in the conversation, which is where the lead writes them')
   })
 
   it('and both pages pass one', () => {
@@ -90,12 +99,17 @@ describe('the way in is on the page it points at', () => {
   it('the chat is only pointed at where the chat is rendered', () => {
     const panel = readFileSync(join(__dirname, 'ExpectationsPanel.tsx'), 'utf8')
     expect(panel).toMatch(/hasChat &&[\s\S]{0,400}gw-context-chat/)
+    /* Inside a person's card the panel is passed hasChat={false}: the card carries its own route
+       into the conversation, which is the lead's "Change this in the chat". */
+    const card = readFileSync(join(__dirname, 'EachPerson.tsx'), 'utf8')
+    expect(card).toContain('hasChat={false}')
+    expect(card).toContain('Change this in the chat')
   })
 
   it('and the page only claims to have one when it does', () => {
     // hasChat is true exactly where ContextChat is rendered: the lead, with context on.
     /* `isTheLead`, not `isLead`: the conversation is the lead's own, and an admin reads the page. */
-    expect(CONTEXT).toContain('hasChat={isTheLead && contextEnabled}')
+    expect(CONTEXT).toMatch(/onChangeInChat=\{isTheLead && contextEnabled \?/)
     expect(CONTEXT).toMatch(/\{contextEnabled && isTheLead && <ContextChat/)
   })
 })

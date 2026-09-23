@@ -56,13 +56,38 @@ export function personLabel(p: {
   user?: { firstName?: string | null; lastName?: string | null } | null
   roleAsDescribed?: string | null
   email?: string | null
+  /** The name typed at the end of an open-link check-in, where there is no sign-in to carry one. */
+  nameGiven?: string | null
 } | null | undefined): string {
-  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
+  const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim()
   if (name) return name
-  /* The address before the role: "runs the connect page · waiting" in a list of people reads as a
-     job title, and an address is at least somebody. */
+  /*
+   * THE NAME IN THE ADDRESS, NOT THE ADDRESS.
+   *
+   * Read live on 22 September 2026: a Context page whose person rows read "david@harvestline.test"
+   * and whose target groups read "SARAH@HARVESTLINE.TEST". Somebody invited by email has no name on
+   * record until they accept, and their address usually holds it - the same read the server does
+   * when it matches a name in a paste to a person. Where the local part is a desk rather than a
+   * person, the address stands, because guessing a name out of "accounts@" would be worse.
+   *
+   * The address before the role, still: "runs the connect page · waiting" in a list of people reads
+   * as a job title, and an address is at least somebody.
+   */
   const email = p?.email?.trim()
-  if (email) return email
+  if (email && !email.endsWith('@unclaimed.invalid')) {
+    /*
+     * DIGITS STAY. Stripping them read every address in a hundred-person load test - person1@,
+     * person2@, person3@ - as the same person called "Person", and the targets table collapsed a
+     * hundred people's numbers into one group. A digit in somebody's address is part of who they
+     * are here, and an odd-looking name beats a hundred people sharing one.
+     */
+    const local = (email.split('@')[0] ?? '').replace(/[._-]+/g, ' ').trim()
+    const NOT_A_PERSON = new Set(['info', 'hello', 'admin', 'sales', 'support', 'contact', 'team', 'office', 'accounts', 'finance', 'hr', 'billing', 'help', 'enquiries', 'inquiries', 'noreply', 'mail', 'post'])
+    if (local.length >= 2 && !NOT_A_PERSON.has(local.toLowerCase())) {
+      return local.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    }
+    return email
+  }
   const role = p?.roleAsDescribed?.trim()
   if (role) return role
   return 'a teammate'

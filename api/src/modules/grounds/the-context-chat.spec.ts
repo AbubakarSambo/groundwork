@@ -72,36 +72,51 @@ describe('what the chat is told it must not do', () => {
     expect(prompt).toMatch(/will appear in the report - it will not/);
   });
 
-  it('it refuses to be a place to say things about a person', () => {
-    /**
-     * THE ONE THAT MATTERS. A lead telling this thing that somebody is the problem,
-     * and it recording that, turns the Context tab into a file on an employee with a
-     * chat interface. This product exists to be the opposite of that.
-     */
-    expect(prompt).toContain('This is not about a person.');
-    // The destination is asserted in its own test below, precisely, because being
-    // vague here is what let the model relocate it to a check-in.
-    expect(prompt).toMatch(/point them at the ONE place that is for it/);
-    expect(prompt).toMatch(/Do not record it here and do not draw them out on it/);
+  /**
+   * THIS PINNED THE OPPOSITE OF WHAT SHE ASKED FOR, AND IT PINNED IT WELL.
+   *
+   * The rule was: a lead who says somebody is the problem is stopped, sent to a private note box,
+   * and not drawn out. The reasoning was sound - a Context tab that collects judgements about
+   * people is a file on an employee with a chat interface - and it produced a conversation that
+   * refused the one thing the lead came to it for.
+   *
+   * Hafsah, 22 September 2026: "Everything in the context chat can be used to guide and coach the
+   * team and also help them where they are going wrong." And on 23 September, reading it again: "i
+   * didnt forbid coaching... It seems i asked for coaching and then you did the opposite."
+   *
+   * The box it pointed at no longer exists either - the lead's read of a person moved into this
+   * conversation on 23 September - so the rule was sending people to a control that was gone.
+   *
+   * WHAT REPLACES IT IS NOT NOTHING. The wall the old rule was really protecting is the one below:
+   * a lead's read is kept as the lead's read, it is never handed to that person as a finding, and
+   * it never enters their own check-in. Silence was one way to hold that wall. Labelling the line
+   * is a better one, because it lets the lead be helped.
+   */
+  it('coaches rather than refusing, when a lead talks about somebody', () => {
+    expect(prompt).toContain('Coach them.');
+    expect(prompt).toMatch(/do not stop it and do not send them somewhere else/);
+    expect(prompt).toMatch(/what they have seen, what they have already tried/);
   });
 
-  it('names the ONE place it does belong, and it is not a check-in', () => {
-    /**
-     * FOUND BY RUNNING IT. The first version said "a closed context note where the
-     * product says who can read it", and the model paraphrased that into "a private
-     * note later, during a check-in" - which points a lead at the person's OWN account
-     * of their own work, the single place their manager's opinion must never go.
-     *
-     * Vague about the destination means the model picks one.
-     */
-    expect(prompt).toMatch(/private context note further down this same Context page/)
-    expect(prompt).toMatch(/Do not say it belongs in a check-in/)
-    expect(prompt).toMatch(/that person's own account of their own work/)
-  })
+  it('and keeps the wall that the refusal was really there for', () => {
+    /* Their read, labelled as theirs. Not a fact about somebody, and not their colleague's news. */
+    expect(prompt).toMatch(/Record it as THEIR READ of that person/);
+    expect(prompt).toMatch(/never quoted to that person as a finding/);
+    expect(prompt).toMatch(/that person's own check-in/);
+    expect(prompt).toMatch(/A judgement is not a fact about somebody/);
+  });
 
-  it('and it names what that would make the product, so the instruction has a reason', () => {
-    // An instruction with no reason is the one a model talks itself out of.
-    expect(prompt).toMatch(/a file on somebody with a chat interface/);
+  /* The box it used to send people to was deleted on 23 September 2026. A prompt that names a
+     control which does not exist is worse than one that names none: it sends somebody looking. */
+  it('and no longer sends them to a box that was removed', () => {
+    expect(prompt).not.toMatch(/private context note further down this same Context page/);
+    expect(prompt).not.toMatch(/About <that person>/);
+  });
+
+  /* Unchanged by any of this: an expectation of a named person is not an opinion about them. */
+  it('and still takes what the lead expects of a named person', () => {
+    expect(prompt).toMatch(/marked unseen until that person reads it/);
+    expect(prompt).toMatch(/never send them to somebody else's check-in to set one/);
   });
 
   it('it decides nothing - what is saved is what the lead confirms', () => {

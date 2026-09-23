@@ -32,6 +32,8 @@ export interface WhatItTakes {
   /** Every check-in row for the ground, setup rows included; they are filtered here. */
   checkIns: { sessionNumber: number; status: CheckInStatus; isSetup?: boolean | null }[];
   participants: unknown[];
+  /** The situation, for the population rule: a managing-only lead answers session one and no more. */
+  scenario?: string | null;
   dependencies: unknown[];
   timelineDays: number | null;
   cadence: string | null;
@@ -93,6 +95,9 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
       roundsDone,
       roundsPlanned,
       people: (it.participants ?? []) as any,
+      /* Which round, and the situation, so the population rule can be asked rather than guessed at. */
+      sessionNumber: openRound,
+      scenario: (it as any).scenario ?? null,
       thisRound: sessions.filter((c) => (c.sessionNumber ?? 1) === openRound) as any,
       dependencies: (it.dependencies ?? []) as any,
     },

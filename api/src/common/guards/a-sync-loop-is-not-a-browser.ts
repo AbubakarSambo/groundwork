@@ -24,6 +24,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModuleOptions, ThrottlerStorage } from '@nestjs/throttler';
 import type { ThrottlerRequest } from '@nestjs/throttler';
+import { whoseAnswerThisIs } from './a-room-of-people-is-not-one-person';
 
 /**
  * Enough for a first roster sync at one person per call, and still a ceiling. A customer pushing
@@ -61,6 +62,15 @@ export class ASyncLoopIsNotABrowser extends ThrottlerGuard {
 
   protected async handleRequest(props: ThrottlerRequest): Promise<boolean> {
     const { req } = this.getRequestResponse(props.context);
+    /*
+     * A ROOM OF PEOPLE IS NOT ONE PERSON. A respondent answering through the open link carries
+     * their own key, so their allowance is theirs - a hundred people on one wifi are a hundred
+     * buckets, not one. See a-room-of-people-is-not-one-person for what this does not relax.
+     */
+    const answering = whoseAnswerThisIs(req);
+    if (answering) {
+      return super.handleRequest({ ...props, getTracker: async () => `answering:${answering}` });
+    }
     const credential = await this.whichCredential(req);
     if (!credential) return super.handleRequest(props);
 

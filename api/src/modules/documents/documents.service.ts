@@ -24,6 +24,10 @@ import {
   TERMS_IN_A_DOCUMENT_PROMPT, TERMS_IN_A_DOCUMENT_SCHEMA, theTermsInIt,
 } from '../alignment/the-agreement-arrives-as-a-document';
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
+import {
+  WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
+  theContextWeHave, whoThisNameIs, theNameWeUseFor, type WhatADocumentHolds, type WhatLanded,
+} from './what-a-document-holds';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -108,7 +112,7 @@ const ASSESSMENT_TOOL = {
 
 
 function toDocShape(
-  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
+  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any },
   viewerParticipantId?: string,
   contextEnabled?: boolean,
 ) {
@@ -118,6 +122,15 @@ function toDocShape(
     mimeType: doc.mimeType,
     uploadedAt: doc.createdAt,
     assessment: doc.assessment ?? null,
+    /* WHAT IT HOLDS, ON THE CARD. Read once at upload and kept, so the Context tab says the same
+       sentence the chat said rather than a filename and a date. See what-a-document-holds. */
+    holds: doc.holds ?? null,
+    theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null,
+    /* The same sentence with the question on it, for the conversation that is waiting on the read. */
+    askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true }) : null,
+    /* Null holds on a row that has only just arrived means the read is still running, and the page
+       says so rather than showing a file that looks like it was ignored. */
+    stillReading: !doc.holds && Date.now() - new Date(doc.createdAt).getTime() < 3 * 60_000,
     /*
      * WHOSE IT IS, because only the uploader may move it and the screen had no way to know.
      * A reader's list holds their own files AND everything OPEN, so a lead looking at a party's
@@ -319,8 +332,11 @@ export class DocumentsService {
       );
     }
 
+    const uploadStartedAt = Date.now();
     const participant = await this.assertParticipant(groundId, userId);
+    const contentStartedAt = Date.now();
     const content = await this.extractContent(file);
+    this.logger?.log?.(`Took the text out of ${JSON.stringify(file.originalname)} in ${Date.now() - contentStartedAt}ms.`);
     /*
      * A RECORD OF A CONVERSATION IS TAKEN ON THE UPLOADER'S WORD, AND THE WORD IS STATED.
      *
@@ -334,7 +350,30 @@ export class DocumentsService {
     const isConversation = looksLikeAConversation(file.originalname, content);
     void consentConfirmed;
 
-    const assessment = await this.assessDocument(content, file.originalname);
+    /*
+     * NOBODY WAITS FOR A MODEL TO FINISH READING THEIR FILE.
+     *
+     * Measured on 23 September 2026, because "it feels slow" is not a measurement: an upload took
+     * 20.2 seconds to answer. Ten milliseconds of that was taking the text out of the file. The rest
+     * was two model reads - what it suggests (12.0s) and what it holds (8.2s) - which the person sat
+     * through before the screen said anything at all.
+     *
+     * Neither read is needed to STORE the file, and storing it is what they asked for. So the row is
+     * written, the response goes, and the reads land on the row afterwards: the file list says it is
+     * being read, and the conversation says what was found when it is found. Her words: "saving
+     * document, generating reports at the end of a checkin etc. all seem to load for a long time."
+     */
+    /*
+     * THREE READS AT ONCE, NOT ONE AFTER ANOTHER.
+     *
+     * Hafsah, 22 September 2026: "saving document, generating reports at the end of a checkin etc.
+     * all seem to load for a long time." An upload ran four model calls in series - the text out of
+     * the file, what it suggests, what kind of thing it is, and what it holds - and waited for all
+     * of them before the screen heard anything. Two of them never depended on each other.
+     *
+     * Timed, because "it feels slow" is not a measurement and neither is "it feels faster".
+     */
+    /* The only one that is cheap and decides a column the row is created with. */
     const origin = await this.decideOrigin(file, content, isConversation);
 
     const doc = await this.prisma.groundDocument.create({
@@ -351,13 +390,14 @@ export class DocumentsService {
         mimeType: file.mimetype,
         uploaderNote: uploaderNote?.trim() || null,
         content,
-        assessment: assessment as any,
+        /* Both reads land after the response - see the note above. */
+        assessment: undefined as any,
         origin,
       },
       /* `visibility` and `participantId` too — `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask told the person who just attached a file
          everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, holds: true },
     });
 
     /**
@@ -373,11 +413,30 @@ export class DocumentsService {
     this.readTheAgreementInIt(groundId, content).catch((err) =>
       this.logger?.warn?.(`Could not read the agreement in ${doc.fileName}: ${err?.message}`));
 
+    /*
+     * AND WHATEVER NUMBERS IT HOLDS, READ ONCE, HERE, WHATEVER PAGE IT WAS ATTACHED ON. See
+     * what-a-document-holds: a sheet attached in the chat and the same sheet attached on the Context
+     * page were two different silences. Awaited rather than fired and forgotten, because the caller
+     * shows what was read and a page that has to poll for it is a page that says nothing.
+     */
+    /*
+     * AND THE TWO SLOW READS, AFTER THE ANSWER.
+     *
+     * Deliberately not awaited: the file is stored, which is what the upload was for. The row gets
+     * `holds` and `assessment` when they land, the Context page says it is still reading until they
+     * do, and the conversation says what was found on its next turn (theContextNotYetSaid) or when
+     * the page sees `holds` arrive.
+     */
+    void this.readTheRestOfIt(doc.id, groundId, participant.id, content, doc.fileName);
+    const held = null as any;
+
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
     if (uploaderNote?.trim()) this.checkDescription(doc.id).catch(() => null).then(() => this.anchorAfterUpload(participant.id, groundId));
     else this.anchorAfterUpload(participant.id, groundId);
+
+    this.sayHowLongTheUploadTook(file.originalname, uploadStartedAt);
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
@@ -385,7 +444,150 @@ export class DocumentsService {
       ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
       /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+      /* What it holds, and the product's own words for it, so every page says the same sentence. */
+      holds: held ?? null,
+      theContextWeHave: held ? theContextWeHave(held) : null,
+      /*
+       * AND THE SAME SENTENCE WITH THE QUESTION ON IT, for the conversation that attached it.
+       *
+       * Read in the browser, 22 September 2026: a sheet of Q4 targets attached through the context
+       * chat was answered with "harvestline-q4-targets.xlsx is filed under this check-in's
+       * documents" - a filing receipt. The check-in chat had said what the sheet held and asked
+       * whether it was right; the lead's own tab, where the numbers are set, said nothing at all.
+       */
+      askingAboutIt: held ? theContextWeHave(held, { asking: true }) : null,
+      numbersWaiting: (held as any)?.waiting?.length ?? 0,
     };
+  }
+
+  /**
+   * WHAT THE SLOW READS FIND, WRITTEN ONTO THE ROW AFTER THE PERSON HAS BEEN ANSWERED.
+   *
+   * Two model calls, in parallel with each other because neither needs the other: what the document
+   * suggests, which the card shows, and what it holds, which is the numbers waiting on a yes. Twenty
+   * seconds of somebody's time, spent while they are already reading the rest of the page.
+   */
+  private async readTheRestOfIt(docId: string, groundId: string, participantId: string, content: string, fileName: string) {
+    const startedAt = Date.now();
+    const [assessment] = await Promise.all([
+      this.assessDocument(content, fileName).catch((err: any) => { this.logger?.warn?.(`Could not assess ${fileName}: ${err?.message}`); return null; }),
+      this.whatItHolds(docId, groundId, participantId, content, fileName).catch((err: any) => { this.logger?.warn?.(`Could not read what ${fileName} holds: ${err?.message}`); return null; }),
+    ]);
+    if (assessment) {
+      await this.prisma.groundDocument.update({ where: { id: docId }, data: { assessment: assessment as any } })
+        .catch((err: any) => this.logger?.warn?.(`Could not keep what ${fileName} suggests: ${err?.message}`));
+    }
+    this.logger?.log?.(`Finished reading ${JSON.stringify(fileName)} in ${Date.now() - startedAt}ms, after the upload was answered.`);
+  }
+
+  /** The one number a person feels, logged where it is felt. */
+  private sayHowLongTheUploadTook(fileName: string, startedAt: number) {
+    this.logger?.log?.(`Upload of ${JSON.stringify(fileName)} answered in ${Date.now() - startedAt}ms.`);
+  }
+
+  /**
+   * WHAT THIS DOCUMENT HOLDS, AND THE NUMBERS PUT WHERE NUMBERS LIVE.
+   *
+   * One read, at upload, whatever page it was attached on. See what-a-document-holds for what is read
+   * and what is deliberately not. Three rules decide where a number lands:
+   *
+   *   A NUMBER FOR ONE PERSON needs that person to be on this check-in, matched by the resolver the
+   *   spoken path uses. A name that matches nobody is carried back as unmatched and said out loud;
+   *   nothing is guessed onto the nearest person.
+   *
+   *   ONLY THE LEAD MAY SET SOMEBODY ELSE'S NUMBER. A participant's attachment is read for their own
+   *   rows and for the group's, and nothing else - the same wall as everywhere else here.
+   *
+   *   A NUMBER ALREADY ON THE BOARD IS NEVER OVERWRITTEN. The board's own "the record shows 40 for
+   *   this, press to accept" is where a conflict belongs.
+   */
+  private async whatItHolds(
+    docId: string,
+    groundId: string,
+    participantId: string,
+    content: string,
+    fileName: string,
+  ): Promise<WhatLanded | null> {
+    if (!content?.trim()) return null;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        initiatorId: true,
+        participants: {
+          select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+        },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true } },
+      },
+    });
+    if (!ground) return null;
+    const me = ground.participants.find((p) => p.id === participantId);
+    const isLead = !!me?.userId && ground.initiatorId === me.userId;
+
+    const read = await this.anthropic.extract<WhatADocumentHolds>(
+      WHAT_A_DOCUMENT_HOLDS_PROMPT,
+      [{ role: 'user', content: `Document: "${fileName}"\n\n${content.slice(0, MOST_OF_A_DOCUMENT_WE_READ)}` }],
+      WHAT_A_DOCUMENT_HOLDS_SCHEMA as any,
+    );
+    if (!read) return null;
+
+    /* One name-matching rule, in one place. See whoThisNameIs. */
+    const mayHoldANumber = ground.participants.filter((p) => !p.managingOnly && (isLead || p.id === participantId));
+    const resolve = (name: string) => whoThisNameIs(name, mayHoldANumber as any);
+    const nameOf = theNameWeUseFor as (p: any) => string;
+
+    const rows = (read.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+    const held = new Set((ground.objectives ?? []).map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
+    const forOnePerson: WhatLanded['forOnePerson'] = [];
+    const unmatched: string[] = [];
+    const toWrite: { groundId: string; name: string; target: number; ownerParticipantId: string | null; setByParticipantId: string; sortOrder: number }[] = [];
+    let sortOrder = 100 + (ground.objectives?.length ?? 0);
+    for (const r of rows) {
+      const who = resolve(r.personName);
+      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      const name = r.what.trim().slice(0, 120);
+      if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
+      held.add(`${who.id}::${name.toLowerCase()}`);
+      toWrite.push({ groundId, name, target: Math.round(r.target), ownerParticipantId: who.id, setByParticipantId: participantId, sortOrder: sortOrder++ });
+      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null });
+    }
+
+    /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
+    const forEverybody: WhatLanded['forEverybody'] = [];
+    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim() && Number.isFinite(t.target) && t.target > 0)) {
+      const name = t.what.trim().slice(0, 120);
+      if (held.has(`team::${name.toLowerCase()}`)) continue;
+      held.add(`team::${name.toLowerCase()}`);
+      toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });
+      forEverybody.push({ what: name, target: Math.round(t.target), kind: t.kind ?? null, by: t.by?.trim() || null });
+    }
+
+    /*
+     * NOTHING IS WRITTEN HERE ANY MORE. THE SENTENCE ASKED AND THE CODE HAD ALREADY DONE IT.
+     *
+     * Driven in the browser, 22 September 2026: a sheet of Q4 targets was attached mid-conversation,
+     * nineteen rows appeared on the record, and the chat then said "Here is the context we have...
+     * Is that right?" - a question about something already done, which is the one thing this product
+     * says it never does. Every other path asks first: the paste proposes and writes on a yes, and a
+     * target is the yardstick somebody is read against.
+     *
+     * So the read is kept ON the document, with the owner it resolved, and the conversation writes it
+     * when the person says yes - see whatTheDocumentWaitsFor in the conversation service.
+     */
+    const waiting = toWrite.map((r) => ({ name: r.name, target: r.target, ownerParticipantId: r.ownerParticipantId }));
+    const landed: WhatLanded = {
+      fileName,
+      whatItIs: read.whatItIs?.trim() || null,
+      forOnePerson,
+      forEverybody,
+      dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
+      unmatched,
+      /* What will be written when they say yes, with the owner already resolved. */
+      waiting,
+      takenAt: null,
+    };
+    await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
+    this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);
+    return landed;
   }
 
   /** Update a document's assessment (user-corrected version). */
@@ -399,7 +601,7 @@ export class DocumentsService {
       /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask for them told the person who just attached a
          file everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
     });
     /* Same flag, same reason: a corrected assessment must not come back relabelled private. */
     return toDocShape(updated, updated.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
@@ -535,7 +737,7 @@ export class DocumentsService {
        *
        * Found by putting the read on the card and watching it not appear.
        */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
       orderBy: { createdAt: 'asc' },
     });
     /*
@@ -579,7 +781,9 @@ export class DocumentsService {
 
     const content = await this.extractContent(file);
     const isConversation = looksLikeAConversation(file.originalname, content);
-    const assessment = await this.assessDocument(content, file.originalname);
+    /* The same rule as the other upload path: the file is stored, the person is answered, and the
+       slow reads land on the row afterwards - see readTheRestOfIt. An invited person's time is
+       nobody's to spend either. */
     const origin = await this.decideOrigin(file, content, isConversation);
 
     const doc = await this.prisma.groundDocument.create({
@@ -593,16 +797,20 @@ export class DocumentsService {
         fileName: file.originalname,
         mimeType: file.mimetype,
         content,
-        assessment: assessment as any,
         origin,
       },
       /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask for them told the person who just attached a
          file everything except who is about to see it. */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
     });
 
     this.anchorAfterUpload(participant.id, participant.groundId);
+
+    /* AN UPLOAD ON A LINK IS AN UPLOAD LIKE ANY OTHER, including this - and including not making
+       somebody wait twenty seconds for a model before their file is theirs. See readTheRestOfIt. */
+    void this.readTheRestOfIt(doc.id, participant.groundId, participant.id, content, doc.fileName);
+    const held = null as any;
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
@@ -610,6 +818,8 @@ export class DocumentsService {
       ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
       /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+      holds: held ?? null,
+      theContextWeHave: held ? theContextWeHave(held) : null,
     };
   }
 

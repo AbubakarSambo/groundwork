@@ -26,8 +26,13 @@ const MY_RECORD = strip(read('MyRecord.tsx'))
 
 describe('context holds what the link promises', () => {
   it('what is expected of you', () => {
-    expect(CONTEXT).toContain('<ExpectationsPanel')
-    expect(CONTEXT).toContain("'What is expected of you'")
+    /* One card per person since 22 September 2026 - "not sure the purpose of person by person" - and
+       the expectation itself is still rendered by ExpectationsPanel, inside that card, drawn bare. */
+    expect(CONTEXT).toContain('<EachPerson')
+    const CARD = strip(read('EachPerson.tsx'))
+    expect(CARD).toContain("'What is expected of you'")
+    expect(CARD).toContain('<ExpectationsPanel')
+    expect(CARD).toContain('bare')
   })
 
   it('and what success looks like, inside that same box', () => {
@@ -37,13 +42,12 @@ describe('context holds what the link promises', () => {
     const PANEL = strip(read('ExpectationsPanel.tsx'))
     expect(PANEL).toContain('<WhatSuccessLooksLikeFor')
     expect(PANEL).toContain('dense')
-    expect(CONTEXT).not.toContain('<WhatSuccessLooksLikeFor')
   })
 
   it('for a party, not only for whoever runs the check-in', () => {
     /* The panel renders for both; the band it now carries is the one a party could otherwise only
        reach by opening the board. */
-    const at = CONTEXT.indexOf('<ExpectationsPanel')
+    const at = CONTEXT.indexOf('<EachPerson')
     const guard = CONTEXT.lastIndexOf('{isLead && (', at)
     const closed = CONTEXT.lastIndexOf(')}', at)
     expect(guard === -1 || closed > guard).toBe(true)

@@ -135,7 +135,11 @@ describe('and it reaches the assembled prompt', () => {
     expect(SRC).toMatch(/\(ground\.participants\?\.length \?\? 0\) > 1/);
   });
 
+  /* What this holds to account is that `burden` is in the join and the three things stay last. It
+     used to quote the whole tail, which made every later block that belongs in the middle of that
+     tail look like a regression - see when-this-is-over.ts, 22 September 2026. */
   it('and is joined into the prompt rather than merely computed', () => {
-    expect(SRC).toMatch(/deliveriesBlock, burden, putThisToThem, cannotBeMissed, askedLastTurn, patternProbeBlock\]\.filter\(Boolean\)\.join/);
+    expect(SRC).toMatch(/deliveriesBlock, .*burden, putThisToThem,/);
+    expect(SRC).toMatch(/cannotBeMissed, askedLastTurn, patternProbeBlock\]\.filter\(Boolean\)\.join/);
   });
 });

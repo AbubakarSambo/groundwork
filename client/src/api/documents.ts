@@ -12,6 +12,18 @@ export interface GroundDocument {
   uploadedAt: string
   assessment: DocumentAssessment | null
   /**
+   * WHAT IT HOLDS: the numbers and dates read out of it at upload, and the product's own words for
+   * them. The same sentence the chat says - see the API's what-a-document-holds.
+   */
+  holds?: {
+    whatItIs?: string | null
+    forOnePerson: { who: string; what: string; target: number; by?: string | null }[]
+    forEverybody: { what: string; target: number; kind?: string | null; by?: string | null }[]
+    dates: { what: string; when: string }[]
+    unmatched: string[]
+  } | null
+  theContextWeHave?: string | null
+  /**
    * Who can read it. Absent on deployments with CONTEXT_ENABLED off, where every
    * document is private to its uploader and there is nothing to choose.
    */

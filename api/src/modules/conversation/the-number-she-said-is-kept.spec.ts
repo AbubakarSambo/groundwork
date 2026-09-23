@@ -59,7 +59,7 @@ describe('the number she said is kept', () => {
      * objectives, read off a participant's own screen. The same-name case it always handled is
      * still handled; `theAimsThatAreNew` owns both and has its own spec.
      */
-    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any\)/);
+    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
     expect(write).toMatch(/data: fresh\.map/);
   });
 
@@ -82,7 +82,8 @@ describe('the number she said is kept', () => {
 describe('a number said about one person is that person\'s', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-  const owned = service.slice(service.indexOf('if (theirOwnNumbers.length)'));
+  /* The write moved into one method both callers use - the spoken path and a sheet they attached. */
+  const owned = service.slice(service.indexOf('private async putOwnedTargetsOnTheRecord('), service.indexOf('DO THE TWO VIEWS OF THIS PERSON'));
 
   it('asks for a number per person, and says to split "150 each"', () => {
     expect(EXPECTATION_PROMPT).toMatch(/- targetNumber: the NUMBER this particular person is aiming at/);
@@ -104,8 +105,8 @@ describe('a number said about one person is that person\'s', () => {
   });
 
   it('does not duplicate one they restate, and never overwrites a number already on the board', () => {
-    expect(owned).toMatch(/held\.has\(`\$\{t\.participantId\}::\$\{t\.name\.toLowerCase\(\)\}`\)/);
-    expect(owned).toMatch(/data: freshOwned\.map/);
+    expect(owned).toMatch(/held\.has\(`\$\{t\.participantId\}::\$\{t\.name\.trim\(\)\.toLowerCase\(\)\}`\)/);
+    expect(owned).toMatch(/data: fresh\.map/);
   });
 
   it('and a failure here never stops the check-in being recorded', () => {

@@ -5,7 +5,7 @@ export type BoardSection =
   | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
   | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
 
-export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT'
+export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT' | 'UPDATE'
 export type CoverageVariant = 'text' | 'bar'
 
 /** A private-mode or sensing-family ground has no board, and says why. */
@@ -79,7 +79,7 @@ export type BoardPresent = {
   } | null
   participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
 
-  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null }[] }
+  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null }[] }
   /** The ground's pre-agreed intent, set at creation. Null when none was set. */
   startingState?: string | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
@@ -98,6 +98,11 @@ export type BoardPresent = {
       covered: number | null
     }
     id: string; name: string; count: number; prevCount: number; target: number | null; delta: number; isNew: boolean
+    /** The lead's own line about what is not settled here - a number nobody has defined is not agreed. */
+    notSettled?: string | null
+    /** Whose number it is. Null is the whole check-in's. `owner` is the name this reader may see. */
+    ownerParticipantId?: string | null
+    owner?: string | null
     askedOf: { participantId: string; name: string | null; asked: boolean }[] | null
     /** What the record suggests, when it disagrees with the lead's number. Never applied automatically. */
     suggestedCount: number | null
@@ -106,7 +111,8 @@ export type BoardPresent = {
   }[]
   /** Shown to the lead when no targets exist, because nothing else prompts for them. */
   objectivesPrompt?: string
-  divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string }
+  /** `whyNothingYet`: why there is nothing to compare, from the counts - see why-nothing-is-cross-referenced.ts. */
+  divergence?: { items: any[]; agreements: any[]; centralQuestion: string | null; pointer: string; whyNothingYet?: string }
   /** The aims, the places and the things, added up across everybody. Null until a round has closed. */
   whatTheRoomIsAbout?: {
     aims: { aim: string; held: string[] }[]

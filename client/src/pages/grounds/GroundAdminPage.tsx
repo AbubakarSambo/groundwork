@@ -43,6 +43,7 @@ import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayA
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1403,6 +1404,11 @@ export function GroundAdminPage() {
               )}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
               {sessionsDone === 0 && <TextAction onClick={() => navigate('/org/guide')} size={12}>How to run one</TextAction>}
+              {/* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE. Hafsah, 22 Sep 2026: the one set up from the
+                  entry chat "still doesn't have an end date". This line spoke up only in the last three days. */}
+              {ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3) && (
+                <span>Ends {whenItWas(ground.endsOn, 'day')}</span>
+              )}
               {ground.daysLeft != null && ground.daysLeft <= 3 ? (
                 <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
               ) : null}
@@ -2357,6 +2363,14 @@ export function GroundAdminPage() {
                 <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
               </div>
             )}
+            {/* The lead's one press to get this round's report to everyone who answered and asked for it. */}
+            {isInitiator && (
+              <SendTheReportToEveryone
+                groundId={id!}
+                participants={(ground.participants ?? []) as any[]}
+                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
+              />
+            )}
             {/* What success looks like is deliberately NOT here - see the note in
                 SharedReportForAParty, which carried the same block and lost it for the same
                 reason. This tab is an index; the band renders where it can say something. */}
@@ -2870,15 +2884,11 @@ export function GroundAdminPage() {
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <select className="gw-input" aria-label="Timeframe" value={timelineDaysDraft}
-                    onChange={(e) => setTimelineDaysDraft(Number(e.target.value))} style={{ background: 'white' }}>
-                    {[...new Set([7, 14, 21, 30, 60, 90, 180, 365, timelineDaysDraft])].sort((a, b) => a - b).map((d) => (
-                      <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 21 ? '3 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
-                    ))}
-                  </select>
-                  {/* OR AN END DATE. "There's no place to set end date" (Hafsah, 21 Sep 2026): a length in days is
-                      the same fact as an end date, and a lead thinks in dates. The date sets the days, counted
-                      from the start on record (today where none is set); the Save below saves both. */}
+                  {/* THE END DATE, ONCE. "There's no place to set end date" (Hafsah, 21 Sep 2026) put a date beside
+                      the length-in-days select; "seems like duplicates on end date" (22 Sep) is what two controls
+                      for one fact look like. The date is the control; the days and the sessions it makes are
+                      read out underneath. It sets the days, counted from the start on record (today where none
+                      is set); the Save below saves them. */}
                   <input
                     type="date"
                     className="gw-input"
@@ -2902,7 +2912,7 @@ export function GroundAdminPage() {
                   </select>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
-                  {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} sessions over {timelineDaysDraft} days.
+                  {timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session{(sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1) === 1 ? '' : 's'}.
                   {' '}Sessions already completed are never removed.
                 </div>
                 {/*

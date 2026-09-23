@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CurrentUser, Roles, Role } from '../../common';
@@ -82,6 +82,25 @@ export class ReportsController {
   @ApiOperation({ summary: 'Release the report to both parties simultaneously' })
   async release(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
     return this.reports.release(groundId, organizationId);
+  }
+
+  /**
+   * THE PLACE TO SEND THE REPORT TO EVERYONE, AT THE END. Hafsah, 22 Sep 2026: "I need a place to
+   * release the report to everyone at the end." Whoever runs the check-in presses it: the report is
+   * synthesised and released if it is not yet, and everybody who answered and asked for it gets the
+   * link to this round's report, once. Pressing it again sends to anyone who answered since.
+   */
+  @Post('send-to-everyone')
+  @ApiOperation({ summary: 'Send this round\'s report to everyone who answered and asked for it, named or anonymised' })
+  async sendToEveryone(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+    /* The organiser's answer, not the product's. Absent means named, which is what it did before
+       this choice existed - a silent change to anonymised would be the product deciding. */
+    @Body() body: { as?: string },
+  ) {
+    return this.reports.sendToEveryone(groundId, userId, organizationId, body?.as === 'ANONYMOUS' ? 'ANONYMOUS' : 'NAMED');
   }
 
   @Post('activate')

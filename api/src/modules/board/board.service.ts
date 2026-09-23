@@ -15,7 +15,9 @@ import {
   familyFor,
   pickBoardSafeReportFields,
   sectionsFor,
+  sectionsForARunOf,
 } from './board-families';
+import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames , eachSideGetsSomebody } from '../reports/party-labels';
 import {
   CoverageKind,
@@ -37,6 +39,8 @@ import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
+import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
+import { whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
@@ -130,8 +134,10 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true,
+            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
             managingOnly: true, signedOffAt: true,
+            /* What the population rule reads: still holding a live invitation counts as expected. */
+            invitedAt: true, inviteTokenExpiresAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -142,7 +148,7 @@ export class BoardService {
         /* For the header's "how it is going": the rounds, and the newest round's shared picture. */
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true } },
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true } },
         reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
@@ -261,7 +267,8 @@ export class BoardService {
      */
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
-    const sections = sectionsFor(ground.scenario);
+    /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
+    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -343,7 +350,7 @@ export class BoardService {
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
-      const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
+      const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
       return n || aNameOrNothing(p.roleAsDescribed) || null;
     };
@@ -424,6 +431,7 @@ export class BoardService {
         dependencies: (ground as any).dependencies ?? [],
         timelineDays: (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
+        scenario: (ground as any).scenario ?? null,
         sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
@@ -447,6 +455,25 @@ export class BoardService {
       startingState: (ground as any).resolutionState ?? null,
       // Which participant row is the caller, so the client knows whose poll chip
       // is theirs to toggle. Null for an org admin reading without being a party.
+      /*
+       * WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
+       *
+       * Hafsah, 23 September 2026, looking at a hundred-person board: "the reports and boards needs
+       * to show more reasoning, they look more like things that just do counts." She was reading a
+       * hundred identical rows - "0 of 500, has not answered, ask them to check in" - on a check-in
+       * whose whole point is what the answers say.
+       *
+       * The read already exists: where enough separate accounts came in, the report carries the
+       * network picture (a-hundred-accounts-are-not-two). It was only on the report page, which is
+       * not the page somebody opens to see how this is going. It goes on the board too.
+       *
+       * WHO SEES IT. The person running the check-in always - it is their read of their own
+       * check-in. Everybody else once it has been released, which is the same rule the report
+       * itself uses, so the board cannot show a picture the report is still withholding.
+       */
+      whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)
+        ? ((ground as any).report?.networkPicture ?? null)
+        : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
@@ -470,10 +497,15 @@ export class BoardService {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
+          /* WHEN IT OPENS, FOR A SESSION NOBODY HAS DONE. The team "complained about not knowing when the
+             next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
+             The earliest availableFrom across that session's check-ins is the day it opens. */
+          const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
           return {
             n,
             state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
+            opensOn: opens,
           };
         }),
       };
@@ -524,9 +556,35 @@ export class BoardService {
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
 
+      /*
+       * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
+       *
+       * "signed 12m" read as agreed while the lead's own note said nobody had decided whether the
+       * 12m is signed or recognised revenue. A reader cannot tell an agreed number from a typed one,
+       * so the number carries it - see a-target-nobody-has-defined.
+       */
+      const notSettledLines = await (this.prisma.groundContextItem?.findMany?.({
+        where: { groundId, kind: 'UNSETTLED' as any, closedAt: null },
+        select: { text: true },
+        orderBy: { createdAt: 'asc' },
+        take: 20,
+      }) ?? Promise.resolve([] as { text: string }[]))
+        .then((rows: { text: string }[]) => rows.map((r) => (r.text ?? '').trim()).filter(Boolean))
+        .catch(() => [] as string[]);
+
       out.objectives = ground.objectives.map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
+        /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
+        notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
+        /*
+         * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
+         * team's, so a sheet of nine rows read as nine things everybody was held to (Hafsah, 22 Sep
+         * 2026). The name resolves by the same rule as everywhere else, so a reader who may not see
+         * somebody's name sees their role or nothing rather than a placeholder.
+         */
+        ownerParticipantId: o.ownerParticipantId ?? null,
+        owner: o.ownerParticipantId ? nameOf(o.ownerParticipantId) : null,
         delta: o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never
@@ -592,6 +650,11 @@ export class BoardService {
             })
           : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
+        /* Why it is empty, where it is, rather than one sentence for every reason - see the module. */
+        whyNothingYet: whyNothingIsCrossReferenced({
+          stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
+          peopleExpected: out.howItIsGoing?.glance?.progress?.ofPeople ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+        }),
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
@@ -783,6 +846,14 @@ export class BoardService {
         Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]) : [],
         ground.dependencies,
         nameOf,
+        /*
+         * AND WHAT THE LEAD WROTE DOWN AS STILL TO DECIDE, once they have shared it.
+         *
+         * Six decisions nobody had made came out of one paste and lived on a page only the lead
+         * opens. They are decisions about the work, not about a person, which is exactly what this
+         * section is - so they belong here the moment the lead shares the note.
+         */
+        await this.whatTheLeadSaysIsStillToDecide(groundId),
       );
     }
 
@@ -827,7 +898,15 @@ export class BoardService {
         out.quickRead = sessionShape.atAGlance;
       } else {
         const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
-        const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
+        /*
+         * THE DIFFERENCE THE PAGE IS SHOWING IS THE DIFFERENCE THE TILE COUNTS. Read live, 22 Sep
+         * 2026: the tile said "Nothing to compare yet" on a board whose own session report, one
+         * click away, named "the definition of a 'verified' supplier" and what would settle it. The
+         * tile counted the live report's divergences; the section under it renders the round's. They
+         * are two readings of one round and the tile takes whichever has found something.
+         */
+        const openHere = Array.isArray(sessionShape?.whereThingsStand?.open) ? sessionShape!.whereThingsStand!.open.length : 0;
+        const divCount = Math.max(openHere, Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0);
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
         const firstDivergence = Array.isArray(reportSafe?.divergences)
@@ -835,6 +914,11 @@ export class BoardService {
           : null;
         out.quickRead = atAGlanceTiles({
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
+          /* How many exist, so "no target set" is only said where none is - see whatThisSessionHolds. */
+          targetsSet: held.targetsSet,
+          /* How many have still to answer, from the one counter - the tile said "not everybody has
+             answered yet" on every board because this was never passed and undefined is not zero. */
+          stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
           backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
           /* Named rather than counted - see atAGlanceTiles. */
           theDifference: typeof firstDivergence?.topic === 'string' ? firstDivergence.topic : null,
@@ -1019,10 +1103,25 @@ export class BoardService {
    * is what turns the board from a status read into a meeting agenda. Nothing
    * new is detected here - it is a view over things already established.
    */
+  /**
+   * The open decisions the lead wrote down, and only where they chose to share the note. A private
+   * note is private: the audience is the lead's choice and this reads it rather than deciding it.
+   */
+  private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<string[]> {
+    const lines = await (this.prisma.groundContextItem?.findMany?.({
+      where: { groundId, kind: 'DECISION' as any, audience: 'EVERYONE' as any, closedAt: null },
+      select: { text: true },
+      orderBy: { createdAt: 'asc' },
+      take: 8,
+    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
+    return (lines as { text: string }[]).map((l) => (l.text ?? '').trim()).filter(Boolean);
+  }
+
   private deriveDecisions(
     divergences: any[],
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
+    stillToDecide: string[] = [],
   ) {
     const fromDivergence = divergences.map((d) => ({
       question: d.topic ? `Settle: ${d.topic}` : 'Settle this difference between accounts',
@@ -1042,8 +1141,16 @@ export class BoardService {
       }));
 
     // Same decision phrased slightly differently is one decision.
+    /* The lead's own, said as theirs: nobody agreed these, one person wrote them down. */
+    const fromTheLead = stillToDecide.map((q) => ({
+      question: q,
+      why: 'The person running this check-in wrote this down as still to decide.',
+      owner: 'Lead and team',
+      source: 'lead' as const,
+    }));
+
     const seen = new Set<string>();
-    const deduped = [...fromBlockers, ...fromDivergence].filter((d) => {
+    const deduped = [...fromBlockers, ...fromDivergence, ...fromTheLead].filter((d) => {
       const k = d.question.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (seen.has(k)) return false;
       seen.add(k);
@@ -1669,6 +1776,7 @@ export class BoardService {
       centralQuestion: report.centralQuestion ?? null,
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
       movedOnTargets: held.movedOnTargets,
+      targetsSet: held.targetsSet,
       blocked: held.blocked,
       waiting: held.waiting,
       /* And the blocker itself, so the board's tile names it exactly as the report's does. */
@@ -1681,6 +1789,17 @@ export class BoardService {
     const question = draftTheQuestion({
       functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
       blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+      /*
+       * THE BOARD READS THE DIFFERENCE THE SAME PAGE IS SHOWING.
+       *
+       * The report learnt this on 22 September 2026 and the board did not: the divergence section
+       * named what two people described differently, and "What to settle together", a few inches
+       * below it, fell through to a role-map probe about the work in general. Same rows, so the
+       * same question - see draftTheQuestion.
+       */
+      differences: ((report.divergences ?? []) as any[])
+        .filter((d) => d?.topic)
+        .map((d) => ({ topic: String(d.topic), settledBy: d.settledBy ?? d.atStake ?? null })),
     });
     /* The tiles are counted over the round in play, so "this session" is now true on the board too;
        the rewrite to "across every session" that used to sit here was papering over lifetime counts. */

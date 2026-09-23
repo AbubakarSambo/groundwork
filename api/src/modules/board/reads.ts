@@ -762,6 +762,12 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
 
     const myCheckIns = input.checkIns.filter((c) => c.participantId === p.id);
     const completedCount = myCheckIns.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+    /* NOBODY IS READ BEFORE THEY HAVE SAID ANYTHING. Hafsah, 22 Sep 2026, a session report on a live
+       team: "Participant A and Participant B: the role was never clearly defined, so there is no
+       boundary to measure work against" - about the two people who had not answered yet. Where their
+       work is landing is a question about a record; with no check-in there is no record, and the
+       roster already says they have not answered. */
+    if (completedCount === 0) continue;
     const lastSessionNumber = myCheckIns.reduce((m, c) => Math.max(m, c.sessionNumber), 0);
 
     // SECOND SIGNAL: their own record thinning out.

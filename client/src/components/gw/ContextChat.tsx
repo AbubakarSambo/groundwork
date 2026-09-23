@@ -46,6 +46,29 @@ export function ContextChat({ groundId }: { groundId: string }) {
     remembered?.history ?? [],
   )
   const [text, setText] = useState('')
+  /*
+   * A LINE FROM THE PAGE, HANDED TO THE CONVERSATION.
+   *
+   * Every row of the record carries "Change this", and the change is a sentence rather than a form -
+   * so the row puts the sentence in the box and the lead finishes it. An event rather than a store
+   * because the two live in different bands of one page and nothing else needs to know.
+   */
+  useEffect(() => {
+    const listen = (e: Event) => {
+      const said = (e as CustomEvent<string>).detail
+      if (!said) return
+      setOpen(true)
+      setText(said)
+      /* After the state lands, so the caret is at the end of what the row wrote. */
+      setTimeout(() => {
+        const box = document.querySelector<HTMLInputElement>('[data-gw-context-chat-input]')
+        box?.focus()
+        box?.setSelectionRange(box.value.length, box.value.length)
+      }, 60)
+    }
+    window.addEventListener('gw:context-chat:say', listen)
+    return () => window.removeEventListener('gw:context-chat:say', listen)
+  }, [])
   const [done, setDone] = useState(remembered?.done ?? false)
   /**
    * WHAT IT HEARD, WAITING ON A YES. This panel has always said "nothing is saved until you say
@@ -84,17 +107,65 @@ export function ContextChat({ groundId }: { groundId: string }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const attach = useMutation({
     mutationFn: (file: File) => documentsApi.upload(groundId, file),
-    onSuccess: (_res, file) => {
+    onSuccess: (res: any, file) => {
       qc.invalidateQueries({ queryKey: ['documents', groundId] })
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       toast.success(`${file.name} is filed under Documents`)
-      setHistory((h) => [
-        ...h,
-        { role: 'assistant', content: `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.` },
-      ])
+      /*
+       * WHAT THE SHEET HOLDS, NOT A FILING RECEIPT.
+       *
+       * Read in the browser, 22 September 2026: a sheet of Q4 targets attached here was answered
+       * with "harvestline-q4-targets.xlsx is filed under this check-in's documents". The check-in
+       * chat said what the sheet held and asked whether it was right; the lead's own tab - the page
+       * where the numbers are set - said nothing about the numbers. The server writes the sentence
+       * and the question; this says them and offers the yes.
+       */
+      const filed = `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.`
+      /*
+       * THE FILE IS FILED IMMEDIATELY; THE READ LANDS AFTER.
+       *
+       * The upload used to wait twenty seconds for two model reads before answering. It answers as
+       * soon as the file is stored now, so this says so, then waits for the read and says what was
+       * found when it arrives. A person who attached a sheet and walked away comes back to the
+       * question rather than to a spinner.
+       */
+      setHistory((h) => [...h, { role: 'assistant', content: `${filed}\n\nReading it now.` }])
+      void whatTheReadFound(res?.id, file.name)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not upload. Try again.'),
   })
+
+  /**
+   * WAIT FOR THE READ, THEN SAY WHAT IT FOUND.
+   *
+   * The document row gets `holds` when the model has finished with it, which is a few seconds after
+   * the upload answers. Polled rather than pushed because this is one file, for one person, on one
+   * open page - a socket for it would be machinery nobody needs. It gives up after a minute and
+   * says so rather than leaving "Reading it now." as the last word.
+   */
+  async function whatTheReadFound(docId: string | undefined, fileName: string) {
+    if (!docId) return
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 2000))
+      const list: any[] = await documentsApi.list(groundId).catch(() => [])
+      const mine = list.find((d) => d.id === docId)
+      if (!mine?.holds) continue
+      qc.invalidateQueries({ queryKey: ['documents', groundId] })
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      const asking: string | null = mine.askingAboutIt ?? mine.theContextWeHave ?? null
+      const waiting = (mine.holds?.waiting ?? []).length
+      if (asking && waiting > 0) {
+        /* `askingAboutIt` already ends in the question - it is written by whatWeTookFromThat. */
+        setProposal({ gap: 'document', say: asking, said: `yes, record the numbers from ${fileName}` })
+      } else if (asking) {
+        setHistory((h) => [...h, { role: 'assistant', content: asking }])
+      } else {
+        setHistory((h) => [...h, { role: 'assistant', content: `I have read ${fileName}. There are no numbers or dates in it to record, so it stays as context every check-in reads.` }])
+      }
+      return
+    }
+    setHistory((h) => [...h, { role: 'assistant', content: `${fileName} is taking a while to read. It is filed either way, and every check-in reads it.` }])
+  }
 
   const send = useMutation({
     mutationFn: (next: { role: 'user' | 'assistant'; content: string }[]) =>
@@ -191,9 +262,9 @@ export function ContextChat({ groundId }: { groundId: string }) {
           The context chat
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11 }}>
-          Talk through what this check-in is for and what is expected of each person, and it fills in
-          this page as you go. It is about setting the check-in up, not about anybody in it: nothing
-          you say here is your account, and nothing is saved until you say so.
+          Talk through what this check-in is for, what each person is working to, and what you know
+          about how it is going - or paste it all in at once. It fills in this page as you go, and
+          what lands here guides the check-ins and the coaching. Nothing is written until you say so.
         </div>
         <button
           onClick={start}
@@ -206,10 +277,21 @@ export function ContextChat({ groundId }: { groundId: string }) {
   }
 
   return (
-    <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+    /*
+      THE PANEL, REBUILT 22 SEPTEMBER 2026: "the context chat box looks gross and badly designed."
+      
+      What it was: a grey inset panel inside a white page, a paragraph of explanation above the
+      messages, a 360-pixel scroll area inside a page that also scrolls, bubbles at 82% width with
+      two different corner radii, a bordered "+ Doc" beside a pill input and a grey Send. It read as
+      a widget dropped onto the page rather than as the page's one way in.
+      
+      What it is: the page's own ground, one line of purpose, no nested scroll - the page scrolls -
+      messages as text with a rule marking whose is whose, and a composer that looks like a composer.
+    */
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-sub)' }}>
-          The context chat &middot; what this check-in is missing
+          The context chat
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -220,16 +302,24 @@ export function ContextChat({ groundId }: { groundId: string }) {
       </div>
 
       {/*
-        SAID ONCE, AT THE TOP. A person typing into something on a page about a team
-        needs to know this is not a check-in and is not where things about people go.
-        Saying it in the chat itself would mean saying it every turn.
+        WHAT THIS IS FOR, SAID ONCE, AND SAID TRUTHFULLY.
+        
+        It used to read "About setting the check-in up, not about anybody in it. Nothing here reaches
+        a report, and nothing is saved until you say so." Hafsah, 22 September 2026: that has to go -
+        "everything in the context chat can be used to guide and coach the team and also help them
+        where they are going wrong". It is what the context is FOR, and the old line promised the
+        opposite of the product's own behaviour: what is written here already shapes what each person
+        is asked and the coaching they get.
+        
+        What stays true and is worth saying: nothing is written until you say so, and nothing you
+        write about a person is ever quoted to them or in a report.
       */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-        About setting the check-in up, not about anybody in it. Nothing here reaches a report, and
-        nothing is saved until you say so.
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+        Say it, paste it, or attach it: what lands here guides every check-in and the coaching.
+        Nothing is written until you say so.
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
         {/*
           The opening turn belongs to the query, not to `history`. Copying it into state on arrival
           would give the same sentence two owners, and they would disagree the first time anything
@@ -238,14 +328,15 @@ export function ContextChat({ groundId }: { groundId: string }) {
         {turns.map((m, i) => (
           <div
             key={i}
+            /* A thin rule says whose words these are. Yours are the darker ones; there are only
+               ever two speakers here, so a colour and an indent carry it without furniture. */
             style={{
-              maxWidth: '82%',
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-              background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-              color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-              border: m.role === 'user' ? 'none' : '1px solid var(--gw-border)',
-              borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-              padding: '10px 14px',
+              maxWidth: '68ch',
+              alignSelf: 'stretch',
+              borderLeft: `2px solid ${m.role === 'user' ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+              paddingLeft: 12,
+              color: m.role === 'user' ? 'var(--gw-dark)' : 'var(--gw-text)',
+              fontWeight: m.role === 'user' ? 600 : 400,
               fontSize: 13.5,
               lineHeight: 1.65,
               whiteSpace: 'pre-wrap',
@@ -265,8 +356,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
         * whose effect you have to guess is not a confirmation.
         */}
       {proposal && (
-        <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{proposal.say}</div>
+        <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => confirm.mutate()}
@@ -291,7 +382,9 @@ export function ContextChat({ groundId }: { groundId: string }) {
         read the opening turn too rather than only the mutation's answer.
       */}
       {!(history.length === 0 && opening.data ? opening.data.done : done) && (
-        <div style={{ display: 'flex', gap: 8 }}>
+        /* One bordered row: the attach inside it, the box growing, the send in the accent colour.
+           It was three separate controls of three different weights sitting in a line. */
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 4, background: 'white' }}>
           {/*
             A DOCUMENT, LIKE EVERY OTHER CHAT IN THE PRODUCT.
 
@@ -316,22 +409,24 @@ export function ContextChat({ groundId }: { groundId: string }) {
           <button
             onClick={() => fileInput.current?.click()}
             disabled={attach.isPending}
-            title="Add a document to this check-in"
-            style={{ padding: '10px 12px', borderRadius: 8, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, cursor: attach.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+            title="Attach a document to this check-in"
+            aria-label="Attach a document to this check-in"
+            style={{ width: 34, height: 34, borderRadius: 8, background: 'none', border: 'none', color: 'var(--gw-sub)', fontSize: 16, cursor: attach.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
           >
-            {attach.isPending ? 'Adding…' : '+ Doc'}
+            {attach.isPending ? '…' : '📎'}
           </button>
           <input
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
+            data-gw-context-chat-input
             placeholder="Type your answer…"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }}
+            style={{ flex: 1, padding: '8px 4px', border: 'none', fontSize: 13.5, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
           />
           <button
             onClick={submit}
             disabled={!text.trim() || send.isPending}
-            style={{ padding: '10px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+            style={{ padding: '8px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-bg)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
           >
             Send
           </button>

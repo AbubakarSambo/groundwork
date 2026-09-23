@@ -85,3 +85,32 @@ describe('a figure in the name is the target the aim did not carry', () => {
     expect(theAimsThatAreNew([{ name: 'Open 40 more dealers', target: null } as any], [{ name: 'Hit N180m', target: 180_000_000 } as any])).toHaveLength(1);
   });
 });
+
+/** Run 11, 22 Sep 2026: the sales board's six aims for three things, and "0 so far" against every rate. */
+describe('a rate is a target at any size, and a restatement without its number is not a new aim', () => {
+  const { theAimsThatAreNew, theFigureInTheName } = require('./an-aim-said-twice-is-one-aim');
+  const three = [
+    { name: 'Sales reaching N180m', target: 180_000_000 },
+    { name: '35% credit limit', target: 35 },
+    { name: 'under 8% arrears', target: 8 },
+  ];
+
+  it('reads 8% as eight and keeps the figure in the name as the target', () => {
+    expect(theFigureInTheName('under 8% arrears')).toBe(8);
+    expect(theFigureInTheName('35% credit limit')).toBe(35);
+    expect(theFigureInTheName('2 of the biggest customers')).toBeNull();
+    expect(theAimsThatAreNew([{ name: '35% credit limit', target: null }, { name: 'under 8% arrears', target: null }], [])).toEqual([
+      { name: '35% credit limit', target: 35 },
+      { name: 'under 8% arrears', target: 8 },
+    ]);
+  });
+
+  it('"credit limit", "arrears target" and "sales target", said with no number in session three, add nothing', () => {
+    expect(theAimsThatAreNew([{ name: 'sales target', target: null }, { name: 'credit limit', target: null }, { name: 'arrears target', target: null }], three)).toEqual([]);
+  });
+
+  it('while a numberless aim about something else still stands', () => {
+    expect(theAimsThatAreNew([{ name: 'Open the Kano depot', target: null }], three)).toEqual([{ name: 'Open the Kano depot', target: null }]);
+    expect(theAimsThatAreNew([{ name: 'sales target', target: null }], [])).toHaveLength(1);
+  });
+});

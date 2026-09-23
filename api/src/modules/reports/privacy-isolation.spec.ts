@@ -62,7 +62,9 @@ function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' |
     ground: { findUnique: jest.fn(async () => groundRow), findFirst: jest.fn(async () => groundRow) },
     report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
     reportActivation: { findUnique: jest.fn(async () => activation), findMany: jest.fn(async () => []) },
-    checkIn: { findMany: jest.fn(async () => []) },
+    checkIn: { findMany: jest.fn(async () => []), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) },
+    /* Who has been told the report is ready, once each: nobody yet. */
+    reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({})) },
   };
   const email: any = { sendReportReady: jest.fn(async () => undefined) };
   const config: any = { get: () => 'http://localhost:5173' };
@@ -233,8 +235,12 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
         findFirst: jest.fn(async (args: any) =>
           args.where.organizationId === 'org-A' ? ground : null,
         ),
+        /* The notifier reads the ground again by id, with everyone's address on it. */
+        findUnique: jest.fn(async () => ground),
       },
       report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
+      checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) },
+      reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({})) },
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };

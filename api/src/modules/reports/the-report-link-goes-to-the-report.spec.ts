@@ -59,7 +59,8 @@ describe('every report link the API sends', () => {
 
     // Template literals that look like a frontend URL being assembled.
     const built = [...source.matchAll(/\$\{frontend[^}]*\}([^`]*)`/g)].map((m) => m[1]);
-    const reportLinks = built.filter((p) => p.includes('report'));
+    /* The ground report, and the round's page (/grounds/:id/session/:n), which is what the report-ready mail links to now. */
+    const reportLinks = built.filter((p) => p.includes('report') || p.includes('/session/'));
 
     // If this is zero, either the list above is stale or the link moved - both
     // worth failing on, because the check would otherwise pass by testing nothing.

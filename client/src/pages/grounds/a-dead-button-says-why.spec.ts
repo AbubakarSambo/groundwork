@@ -4,45 +4,44 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 
 /**
- * A CONTROL THAT REFUSES SAYS WHY IT REFUSED.
+ * A CONTROL THAT REFUSES SAYS WHY IT REFUSED - AND THE THREE THAT DID ARE GONE.
  *
- * The Context page carries three write boxes, and all three buttons grey out on an empty field while
- * saying nothing. Somebody who clicked into the wrong box, or typed only spaces, met a button that
- * would not work and gave no reason - which reads as broken rather than as waiting.
+ * This file held the reasons under three write boxes on the Context page: a running log, a note
+ * everybody reads, and a private steer. Each button greyed out on an empty field, and each said what
+ * would happen after it rather than "type something", because the three differed in the one way that
+ * mattered: who ends up reading the thing.
  *
- * The reasons differ in the one way that matters on this page: who ends up reading the thing. So each
- * says what happens after, not just "type something".
- *
- * This is the same rule the refusals on the server follow - a refusal that does not tell you what to
- * do next is the failure, not the fix.
+ * All three boxes were removed on 22 September 2026. Hafsah: "that section needs to go since you can
+ * all do everything from the context chat." The reasons went with the buttons, which is the correct
+ * outcome and not a regression - so this file now holds the state that replaced them, because a
+ * deleted guard is how a page quietly grows its forms back.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-/** The write boxes moved out of the page and into the one Context page. */
 const CODE = readFileSync(path.join(__dirname, '../../components/gw/ContextPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
-describe('a dead button says why', () => {
-  it('the check-in note button', () => {
-    expect(CODE).toContain('Write something first, then this adds it.')
+describe('the context page has no write boxes', () => {
+  it('none of the three textareas that used to sit under it', () => {
+    /* The upload control keeps its own note field; these are the three that duplicated the chat. */
+    expect(CODE).not.toContain('Add a context note: changed scope')
+    expect(CODE).not.toContain('Share this with everyone')
+    expect(CODE).not.toContain('A private steer, never quoted')
+    expect(CODE).not.toContain('addLeadContext(')
   })
 
-  /** The two that differ by audience say which audience. */
-  it('the shared note button says everyone will read it', () => {
-    expect(CODE).toContain('Write something first, then everyone here can read it.')
+  it('and the way in is the conversation, at the top of the page', () => {
+    expect(CODE).toContain('<ContextChat groundId={id!} />')
+    const chatAt = CODE.indexOf('<ContextChat')
+    const firstBand = CODE.indexOf('What this check-in is for')
+    expect(chatAt).toBeLessThan(firstBand)
   })
 
-  it('the private steer says only you will', () => {
-    expect(CODE).toContain('Write something first, then only you will see it.')
-  })
-
-  /**
-   * The reason is attached to the disabled STATE, not printed always - a permanent instruction under
-   * a working button is noise, and it is the refusal that needs explaining.
-   */
-  it('and each reason appears only while the button is refusing', () => {
-    for (const flag of ['ctxNote', 'sharedNoteText', 'leadCtxText']) {
-      expect(CODE).toContain("title={!" + flag + ".trim() ? 'Write something first")
-    }
+  it('what the record holds is changed one line at a time', () => {
+    expect(CODE).toContain('changeContextLine(')
+    expect(CODE).toContain('Share with the team')
+    expect(CODE).toContain('Make it yours only')
+    /* Retired rather than deleted - a decision that was made is not one that never existed. */
+    expect(CODE).toContain('closed: true')
   })
 })

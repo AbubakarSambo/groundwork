@@ -27,7 +27,9 @@ const CHAT = SERVICE.slice(SERVICE.indexOf('async contextChat('), SERVICE.indexO
 
 describe('the setup chat goes through the boundary', () => {
   it('the reply does', () => {
-    expect(CHAT).toContain('reply: forHumans(reply)');
+    /* `changeSay` is the reply on a turn where they asked to change something - see
+       what-the-lead-wants-changed. Either way it goes through the boundary. */
+    expect(CHAT).toContain('reply: forHumans(changeSay ?? reply)');
   });
 
   /** The proposal is said to a person too - "I will set this to run for 90 days" - so it does as well. */
