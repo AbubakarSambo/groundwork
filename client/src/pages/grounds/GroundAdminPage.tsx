@@ -14,6 +14,8 @@ import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
+import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -285,6 +287,10 @@ export function GroundAdminPage() {
   const [groundLabel, setGroundLabel] = useState('')
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
+  /* Which days a check-in may open on. Empty means nobody said, which is not the same as every
+     day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
+     and it carried no way to say "not at the weekend". */
+  const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -964,11 +970,29 @@ export function GroundAdminPage() {
     // opens showing the truth rather than a default that would silently change it.
     if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
     if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
+    /* Seeded like the rest: an empty picker on a check-in that already skips weekends would offer
+       to put it back on Sundays by pressing save. */
+    if (Array.isArray(ground?.workingDays)) setWorkingDaysDraft(ground.workingDays as number[])
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
     /* Seeded from the record for the same reason as the two above: an empty date control on a
        check-in that HAS a start date would offer to clear it by pressing save. */
     setStartsAtDraft(startsAtOnRecord)
   }, [ground?.label, ground?.scenario, startsAtOnRecord])
+
+  /*
+   * WHETHER SAVE HAS ANYTHING TO SAVE.
+   *
+   * It compared the length and the rhythm only, so changing the days a team works left the button
+   * disabled - the control agreeing with you and doing nothing, which is the family of bug this
+   * week. Compared as sets, because the picker sorts and the record may not.
+   */
+  const sameDays = (a: number[] | null | undefined, b: number[] | null | undefined) =>
+    workingDaysOf(a).join(',') === workingDaysOf(b).join(',')
+  const theTimeframeChanged = !!ground && (
+    timelineDaysDraft !== ground.timelineDays
+    || cadenceDraft !== ground.cadence
+    || !sameDays(workingDaysDraft, (ground as { workingDays?: number[] }).workingDays)
+  )
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
@@ -2911,6 +2935,17 @@ export function GroundAdminPage() {
                     {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
                   </select>
                 </div>
+                {/*
+                  AND WHICH DAYS IT MAY LAND ON, under the rhythm because it is part of the rhythm.
+
+                  Offered for every cadence rather than only daily: a fortnightly anchor lands on a
+                  weekend too, just more quietly. A one-time check-in has no rhythm to shape.
+                */}
+                {cadenceDraft !== 'ONE_TIME' && (
+                  <div style={{ marginTop: 10 }}>
+                    <WhichDaysTheyWork value={workingDaysDraft} onChange={setWorkingDaysDraft} />
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
                   {timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session{(sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1) === 1 ? '' : 's'}.
                   {' '}Sessions already completed are never removed.
@@ -2933,9 +2968,9 @@ export function GroundAdminPage() {
                   answer you agree.
                 </div>
                 <button
-                  disabled={(timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence) || saveSetup.isPending}
-                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft })}
-                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
+                  disabled={!theTimeframeChanged || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft })}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: theTimeframeChanged ? 1 : 0.4 }}
                 >
                   Save timeframe
                 </button>

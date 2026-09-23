@@ -38,7 +38,8 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
-import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, WEEKDAYS, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
+import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
+import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
@@ -4039,25 +4040,7 @@ export function EntryChatPage() {
               */}
               {cadence !== 'ONE_TIME' && (
                 <div style={{ marginBottom: 8 }}>
-                  <FieldLabel>Which days does this team work? (optional)</FieldLabel>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
-                      const on = workingDays.includes(i)
-                      return (
-                        <button key={d} type="button"
-                          onClick={() => setWorkingDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort((a, b) => a - b))}
-                          style={{
-                            flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                            border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                            background: on ? 'var(--gw-blue-bg)' : 'white', color: on ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                          }}>{d}</button>
-                      )
-                    })}
-                  </div>
-                  <button type="button" onClick={() => setWorkingDays(workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? [] : [...WEEKDAYS])}
-                    style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
-                    {workingDays.length === 5 && WEEKDAYS.every(d => workingDays.includes(d)) ? 'Clear - any day is fine' : 'Weekdays only, skip weekends'}
-                  </button>
+                  <WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />
                 </div>
               )}
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -68,6 +69,7 @@ export function AnswerFirstPage() {
   const [org, setOrg] = useState('')
   /* The question "do you want the report?" is gone: the page promises it before the first answer,
      so asking afterwards had one real answer and cost the record a name. See the address step. */
+  const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -143,6 +145,8 @@ export function AnswerFirstPage() {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
       const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
       setSentTo(done.at)
+      /* What we measured about their own answers, told to them. See WhatYouGaveUs. */
+      if ((done as any)?.whatYouGave) setWhatYouGave((done as any).whatYouGave as WhatYouGave)
       /* Finished, so the key is spent. The next person to open this link on this phone - at an
          event, that happens - starts their own answer rather than resuming somebody else's. */
       remember(null)
@@ -366,6 +370,12 @@ export function AnswerFirstPage() {
                 ? `The consolidated report goes to ${sentTo} at the end.`
                 : 'Your answers are saved.'}
             </p>
+            {/*
+              AND WHAT THEY GAVE, WHICH IS THE ONLY THING THIS PRODUCT GIVES BACK BEFORE THE REPORT.
+              Somebody who followed a link once has no board, no next session and nothing else to
+              read; this is the whole of what they get for five minutes of their own work.
+            */}
+            <WhatYouGaveUs it={whatYouGave} />
           </div>
         )}
       </div>

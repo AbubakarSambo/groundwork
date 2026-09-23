@@ -4720,7 +4720,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -4758,7 +4758,18 @@ export class GroundsService {
      * session-planning maths both read - was left untouched. The change was audited and had no effect.
      */
     const requestedDays = dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
-    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined;
+    /*
+     * AND WHICH DAYS THE TEAM WORKS, WHICH COULD ONLY EVER BE SAID AT CREATION.
+     *
+     * "He cannot choose to set check-ins to happen outside of weekends." It was already built - the
+     * days are stored, every cadence honours them, and the entry flow offers them under the rhythm
+     * with a "weekdays only" shortcut. But a lead who set the check-in up in the app, or who
+     * realised afterwards that it was landing on Sundays, had nowhere to say so: this is the only
+     * place the rhythm can be changed after the fact and it did not carry the days.
+     *
+     * It changes the schedule, so it is the lead's call like the rhythm itself.
+     */
+    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined;
     if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
@@ -4888,13 +4899,16 @@ export class GroundsService {
         ? { timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [] }
         : { timeline: Array.isArray(rawLog) ? (rawLog as object[]) : [], contextNotes: [] };
 
-    if (requestedDays !== undefined || dto.cadence !== undefined) {
+    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
       auditData.timeline.push({
         changedAt: new Date().toISOString(),
         changedBy: requestingUserId,
         changes: {
           ...(requestedDays !== undefined && { timelineDays: { from: ground.timelineDays, to: requestedDays } }),
           ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
+          ...(dto.workingDays !== undefined && {
+            workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
+          }),
         },
       });
     }
@@ -4923,8 +4937,33 @@ export class GroundsService {
     if (dto.startsAt !== undefined) {
       await this.prisma.checkIn.updateMany({
         where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, (ground as any)?.workingDays) },
+        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays ?? (ground as any)?.workingDays) },
       });
+    }
+
+    /*
+     * AND A GATE ALREADY ON A SUNDAY MOVES OFF IT.
+     *
+     * Saying "weekdays only" has to do something to the check-in in front of them, or it is a
+     * setting that agrees with you and changes nothing - which is the whole family of bugs this
+     * week. The first session's gate is the one thing already on a date, so it moves forward to the
+     * next day they work. Forward only, and only where nobody has started: later is a delay,
+     * earlier is a different promise.
+     */
+    if (dto.workingDays !== undefined && dto.startsAt === undefined) {
+      const open = await this.prisma.checkIn.findMany({
+        where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: { not: null } },
+        select: { id: true, availableFrom: true },
+      });
+      for (const row of open) {
+        const moved = theNextDayTheyWork(new Date(row.availableFrom as Date), dto.workingDays);
+        if (moved.getTime() !== new Date(row.availableFrom as Date).getTime()) {
+          await this.prisma.checkIn.update({ where: { id: row.id }, data: { availableFrom: moved } });
+        }
+      }
+      if (open.length) {
+        this.logger.log(`Ground ${groundId}: working days changed, ${open.length} first-session gate(s) checked against them.`);
+      }
     }
 
     const updated = await this.prisma.ground.update({
@@ -4940,6 +4979,9 @@ export class GroundsService {
           timelineStated: true,
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
+        /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
+           and junk from an old client must not make a check-in unschedulable. */
+        ...(dto.workingDays !== undefined && { workingDays: workingDaysOf(dto.workingDays) }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
         ...(dto.brief !== undefined && { brief: dto.brief.trim() || null }),
         /*

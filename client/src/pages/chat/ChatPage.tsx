@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
 import { YourNextCheckIn } from '@/components/gw/YourNextCheckIn'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
+import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
@@ -310,6 +311,10 @@ export function ChatPage() {
     onError: () => toast.error('Could not record that. Try again.'),
   })
 
+  /* What the product measured about their own answers, told to them rather than kept behind the
+     curtain. Comes back on the completion response; see WhatYouGaveUs. */
+  const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
+
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
     /*
@@ -318,8 +323,9 @@ export function ChatPage() {
      * thing to see once they have answered: the board that everybody's answers build. Everybody else
      * gets the finished screen below, with the board as its first button.
      */
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       setCompleted(true)
+      if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
       if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
     /**
@@ -1184,6 +1190,8 @@ export function ChatPage() {
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
               <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
+              {/* What we measured about their answers, said to them - see WhatYouGaveUs. */}
+              <WhatYouGaveUs it={whatYouGave} />
               {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
               <YourNextCheckIn groundId={groundId} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}

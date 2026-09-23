@@ -148,6 +148,7 @@ import {
 import {
   READ_THE_FRAME, READ_THE_FRAME_SCHEMA, theFrameFrom, type AField,
 } from './what-a-complete-answer-holds';
+import { whatTheyGaveUs, type WhatTheyGave } from './what-they-gave-us-to-work-with';
 import { whatIsWorthSaying } from './what-the-room-already-knows';
 import { whereThatLeavesThem, theySaidANumber } from './where-that-leaves-them';
 import { whatIsAlreadyOnThem } from './you-have-already-said-this-about-them';
@@ -5347,7 +5348,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * event and the round are protected, the record may gain duplicate lines, and that is the cheaper
    * of the two failures. Closing it fully needs a claim column, which is its own change.
    */
-  private async finishTheSession(checkIn: any, by: 'the person' | 'the clock'): Promise<{ status: 'completed'; groundId: string }> {
+  private async finishTheSession(
+    checkIn: any,
+    by: 'the person' | 'the clock',
+  ): Promise<{ status: 'completed'; groundId: string; whatYouGave?: WhatTheyGave }> {
     // Score session specificity from person's turns before marking complete
     /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
        with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
@@ -5483,6 +5487,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
       return { status: 'completed', groundId: checkIn.groundId };
     }
+
+    /*
+     * AND WHAT THEY GAVE US, SAID BACK TO THEM.
+     *
+     * "specificity should be communicated to each user after their checkin." It has been measured on
+     * every message since long before today and used only to pick the model's tone - the prompt
+     * carrying it says "never name these system terms to the person" - so the one person who could
+     * act on it was the only one never told.
+     *
+     * Read from what the conversation already holds: no model call, nothing a person waits for, and
+     * nothing asserted that is not already in their own words. See what-they-gave-us-to-work-with.
+     */
+    const whatYouGave = whatTheyGaveUs(
+      ((checkIn as any).whatWeHave as WhatWeHave) ?? null,
+      (specificityData?.level ?? null) as any,
+    );
+    if (whatYouGave.saying) {
+      this.logger.log(`Check-in ${checkIn.id}: told them what they gave - ${whatYouGave.checkable} checkable, ${whatYouGave.general} general.`);
+    }
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -5544,7 +5567,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
-    return { status: 'completed', groundId: checkIn.groundId };
+    /* Only where there is something true to say. An empty block on the screen after somebody has
+       just finished is worse than no block, and a session with nothing in its notes has nothing to
+       tell anybody about their own answers. */
+    return { status: 'completed', groundId: checkIn.groundId, ...(whatYouGave.saying ? { whatYouGave } : {}) };
   }
 
   /**
