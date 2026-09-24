@@ -40,7 +40,15 @@ describe('the judgement, written at synthesis', () => {
        fortnightly ground. See one-person-is-one-answer. */
     expect(fn).toMatch(/theTable\(reads, assessments, howManyPeople\(answers\)\)/);
     /* And the model is handed the table and nothing else. */
-    expect(fn).toMatch(/\[\{ role: 'user', content: table \}\]/);
+    /*
+     * THE MATERIAL, WHICH IS THE TABLE FOR A POPULATION AND THE ROOM FOR ANYTHING SMALLER. Below
+     * eight people every field comes back THIN and the judgement wrote recommendations off
+     * proportions of four - "3 of 4 officers report that all their facilities are blocked", about
+     * three people in three different situations. See a-room-is-not-a-population.
+     */
+    expect(fn).toMatch(/\[\{ role: 'user', content: material \}\]/);
+    expect(fn).toMatch(/let material = table;/);
+    expect(fn).toMatch(/const asARoom = .*thisIsARoom\(room\.people\.length\)/);
   });
 
   /*

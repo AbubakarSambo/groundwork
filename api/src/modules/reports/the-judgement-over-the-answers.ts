@@ -239,6 +239,62 @@ export function whoAnsweredWell(answers: AFittedAnswer[]): AFittedAnswer[] {
  * columns, we built a newsletter. Every number the judgement is allowed to use is in here, which is
  * also why the judgement cannot invent one.
  */
+/**
+ * WHERE THE ANSWERS POINT, WHICH IS THE QUESTION AN EXPANSION CHECK-IN ACTUALLY ASKED.
+ *
+ * Measured on the MarketView expansion run, 24 September 2026. The brief asked which states,
+ * markets, products, actors and volumes the network needs. What came back was a standing per field
+ * - who named Kano, how many could not answer about volumes - and the reader's actual question,
+ * "which markets and regions and value chains should we prioritise next", was never answered.
+ *
+ * The material for it was already in the table and nothing composed it. A prioritisation is the top
+ * of each field read together: this place, with this product, with these actors, and how much of
+ * the room stands behind each. It is arithmetic - no model writes it and no model can soften it -
+ * and it says its own strength, because two people naming Kano is not a market entry decision.
+ *
+ * ONE LINE PER FIELD AND NO CROSS-TABULATION. Pairing "Kano" with "maize" because both are top of
+ * their column would be inventing a claim nobody made: the person who said Kano may have said
+ * cassava. Each line says what its own column says, and the reader does the joining, which is the
+ * honest division of labour here.
+ */
+export interface WhereItPoints {
+  fieldId: string;
+  asks: string;
+  value: string;
+  howMany: number;
+  ofHowMany: number;
+  share: number;
+  /** Whether this is enough to act on, in the table's own vocabulary. */
+  standing: AnAssessment['standing'];
+  say: string;
+}
+
+export function whereTheAnswersPoint(reads: AFieldRead[], assessments: AnAssessment[]): WhereItPoints[] {
+  const out: WhereItPoints[] = [];
+  for (const r of reads) {
+    const top = r.counts[0];
+    if (!top || !r.answered) continue;
+    /* One person naming a thing is an anecdote, and a prioritisation built on anecdotes is worse
+       than none: it reads as a recommendation and is a single sentence somebody said once. */
+    if (top.howMany < 2) continue;
+    const a = assessments.find((x) => x.fieldId === r.field.id);
+    const standing = a?.standing ?? 'THIN';
+    out.push({
+      fieldId: r.field.id,
+      asks: r.field.asks,
+      value: top.value,
+      howMany: top.howMany,
+      ofHowMany: r.answered,
+      share: top.share,
+      standing,
+      say: `${r.field.asks} -> ${top.value}, named by ${top.howMany} of the ${r.answered} who answered`
+        + (standing === 'SOLID' ? '.' : standing === 'THIN' ? ', which is too few to rank on.' : ', and the answers are split.'),
+    });
+  }
+  /* Strongest support first: the number of people, then the share of those who answered. */
+  return out.sort((x, y) => y.howMany - x.howMany || y.share - x.share);
+}
+
 export function theTable(reads: AFieldRead[], assessments: AnAssessment[], howMany: number): string {
   const lines = [`${howMany} people answered this check-in.`, ''];
   for (const r of reads) {
@@ -253,6 +309,17 @@ export function theTable(reads: AFieldRead[], assessments: AnAssessment[], howMa
       const top = k.counts.slice(0, 3).map((c) => `${c.value} (${c.howMany})`).join(', ');
       if (top) lines.push(`  by kind - ${k.kind}: ${top}`);
     }
+    lines.push('');
+  }
+  /*
+   * AND WHERE ALL OF IT POINTS, composed rather than left to the reader to assemble from nine
+   * separate standings. See whereTheAnswersPoint for why it is one line per field and never a
+   * cross-tabulation.
+   */
+  const points = whereTheAnswersPoint(reads, assessments);
+  if (points.length) {
+    lines.push('WHERE THE ANSWERS POINT, strongest support first. Each line is its own column; do not pair two of them into one claim, because the people behind them are not the same people.');
+    for (const p of points) lines.push(`  ${p.say}`);
     lines.push('');
   }
   return lines.join('\n');
@@ -290,6 +357,127 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
     '',
     '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
   ].join('\n');
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * A ROOM IS NOT A POPULATION, AND THE COUNTS MEAN NOTHING IN ONE
+ * ---------------------------------------------------------------------------------------------- */
+
+/**
+ * BELOW THIS MANY PEOPLE, THE JUDGEMENT STOPS COUNTING AND STARTS NAMING.
+ *
+ * Measured across three live scenarios, 24 September 2026, and it failed the same way in all three:
+ *
+ *   Four salespeople. "3 of the 4 relationship officers cannot say what the total value of their
+ *   pipeline is" -> give them a tool to track pipeline value. And "3 of 4 officers report that all
+ *   their facilities are blocked" - collapsing the man who has submitted nothing, the woman whose
+ *   eleven files are genuinely stuck at credit committee, and the man who is counting applications
+ *   as approvals, into one sentence. Those three need three different conversations.
+ *
+ *   A chief executive and her new hire. "2 of 2 new hires are blocked." One of the two is the chief
+ *   executive.
+ *
+ *   Eight borrowers. "5 of 7 people cannot tell you their average weekly revenue" -> give them a way
+ *   to track revenue. The actual finding, which the narrative half of the same report found, was
+ *   that the repayment schedule starts before any of these assets can earn.
+ *
+ * None of that is the model being careless. `ENOUGH_TO_COUNT` is 8, so on a small ground EVERY field
+ * comes back THIN, the instruction says skip THIN fields, and the only material left is a proportion
+ * of four. A proportion of four is not a finding; it is four people, and the difference between them
+ * is the whole point.
+ *
+ * SO A SMALL GROUND GETS A DIFFERENT JUDGEMENT, written from the people rather than from the fields.
+ * The arithmetic route is untouched for the corpus it was built for.
+ */
+export const A_POPULATION_STARTS_AT = ENOUGH_TO_COUNT;
+
+export function thisIsARoom(howManyPeople: number): boolean {
+  return howManyPeople < A_POPULATION_STARTS_AT;
+}
+
+export interface SomebodyInTheRoom {
+  /** How they are named to this reader. */
+  who: string;
+  /** Lead, or one of the people being checked in on. The judgement must not count these together. */
+  isLead: boolean;
+  role: string | null;
+  /** The product's own paragraph about them: what they said it was for, where they stand, what is in the way. */
+  finding: string | null;
+  /** Behaviours seen often enough to be a pattern, in the engine's words. Never a verdict. */
+  patterns: { code: string; name: string; observation: string; seenInSessions: number[] }[];
+  /** What they said they would do and nobody has closed. */
+  openCommitments: string[];
+}
+
+/** The room, as the model is given it. One block per person, and the differences between them. */
+export function theRoom(
+  people: SomebodyInTheRoom[],
+  differences: { topic: string; positions: { who: string; view: string }[] }[],
+  sessions: number,
+): string {
+  const lines: string[] = [
+    `${people.length} people, ${sessions} ${sessions === 1 ? 'session' : 'sessions'}.`,
+    '',
+  ];
+  for (const p of people) {
+    lines.push(`--- ${p.who}${p.isLead ? ' (RUNS THIS CHECK-IN - not one of the people being checked in on)' : ''}`);
+    if (p.role) lines.push(`    taken on for: ${p.role}`);
+    if (p.finding) lines.push(`    what the record holds: ${p.finding}`);
+    for (const x of p.patterns) {
+      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} [${x.code} ${x.name}]: ${x.observation}`);
+    }
+    for (const c of p.openCommitments.slice(0, 6)) lines.push(`    said they would, nobody has closed it: "${c}"`);
+    lines.push('');
+  }
+  if (differences.length) {
+    lines.push('WHERE THE ACCOUNTS DIFFER');
+    for (const d of differences) {
+      lines.push(`  ${d.topic}`);
+      for (const pos of d.positions) lines.push(`    ${pos.who}: ${pos.view}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
+ * The instruction for a room. Same output shape as the population one, so nothing downstream changes.
+ *
+ * THE RULE INVERTS. In a population every sentence must carry a count. Here every sentence must
+ * carry a PERSON, because a count over four people is what produced "3 of 4 are blocked" about three
+ * people in three different situations.
+ */
+export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding: string, leadName: string | null): string {
+  return [
+    `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
+    '',
+    'You are given a BLOCK PER PERSON: what they were taken on for, what the record holds about them, behaviours seen often enough to be a pattern, and what they said they would do that nobody has closed. Then the places the accounts differ. That is everything you have and everything you may use.',
+    '',
+    'THE ONE RULE: every sentence names a PERSON. Not "3 of 4", not "most of the team", not "several people". This is a room, not a survey - there are few enough people here to say which one you mean, and a proportion of four hides the only thing that matters, which is that they are in different situations.',
+    '',
+    'NEVER MERGE TWO PEOPLE WHOSE REASONS DIFFER. Somebody who has submitted nothing, somebody whose work is genuinely stuck with a third party, and somebody who has misunderstood what is being counted can all look like "behind" from a distance. They need three different conversations. If two blocks say different things, they are two findings.',
+    leadName
+      ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
+      : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
+    '',
+    'WRITE LIKE A PERSON TALKING TO ANOTHER PERSON. The reader runs a business. Say the thing.',
+    '  No metaphors. No "landscape", "journey", "ecosystem", "lens", "unlock", "leverage", "navigate".',
+    '  No "it is worth noting", "it is important to", "this suggests that", "there appears to be".',
+    '  Short sentences. One idea each. The words the people themselves used.',
+    '',
+    'NEVER DECIDE ABOUT A PERSON. Not "X should be let go", not "X is underperforming", not a rating. Say what the record holds and what it means for the decision the reader has to make. They decide.',
+    '',
+    'FIVE THINGS, AND NOTHING ELSE:',
+    '',
+    '1. THE GAP, in one or two sentences. The single most important thing the reader does not currently know or is getting wrong, naming who it is about. This is the only thing they will remember.',
+    '',
+    '2. WHAT THE RECORD SHOWS - one line per person who has something worth a line. Name them, say what the record holds, and say what it means for the decision. Somebody the record shows doing the job well gets a line too; a judgement that only names problems is not a judgement.',
+    '',
+    '3. WHAT TO DO, ranked, most valuable first, three to five. Each one: the move, the person it is about, and what in the record justifies it. A move nobody could make next week is not a move.',
+    '',
+    '4. WHAT THIS CANNOT TELL YOU. What is not on the record, and what it would take to know. Somebody who has said little is a gap in the record, not a finding about them.',
+    '',
+    '5. WHAT WE FAILED TO ASK. Anything the check-in should have asked and did not. Ours to own.',
+  ].filter(Boolean).join('\n');
 }
 
 export const THE_JUDGEMENT_SCHEMA = {

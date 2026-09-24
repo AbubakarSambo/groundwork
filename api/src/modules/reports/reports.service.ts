@@ -72,6 +72,7 @@ import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 import {
   whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
+  thisIsARoom, theRoom, theJudgementOverARoom,
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
 import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
@@ -2105,7 +2106,28 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * last part is written, and it is handed nothing but the table, with every sentence required to
      * carry a number that is already in it.
      */
-    const theJudgement = await this.judgeTheAnswers(groundId).catch((err: any) => {
+    const theJudgement = await this.judgeTheAnswers(groundId, {
+      /*
+       * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
+       * already computed - the per-person findings, the surfaced patterns, the open commitments and
+       * the differences - rather than from the frame's field counts, which on four people produce
+       * "3 of 4 are blocked" about three people in three different situations. See thisIsARoom.
+       */
+      people: (parties as any[]).filter((p) => !p.managingOnly).map((p) => ({
+        who: labelById.get(p.id) ?? 'a party',
+        isLead: p.partyType === PartyType.INITIATOR,
+        role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
+        finding: findings.find((f) => f.participantId === p.id)?.text ?? null,
+        participantId: p.id,
+      })),
+      leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
+      differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
+        topic: String(d?.topic ?? ''),
+        positions: (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({
+          who: String(x?.participantLabel ?? 'a party'), view: String(x?.view ?? ''),
+        })),
+      })),
+    }).catch((err: any) => {
       this.logger.warn(`The judgement on ${groundId} did not run, so the report is what it was: ${err?.message}`);
       return null;
     });
@@ -3741,7 +3763,14 @@ happened, and what is in the way.`;
     });
   }
 
-  private async judgeTheAnswers(groundId: string): Promise<{ judgement: any; table: string } | null> {
+  private async judgeTheAnswers(
+    groundId: string,
+    room?: {
+      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
+      leadName: string | null;
+      differences: { topic: string; positions: { who: string; view: string }[] }[];
+    },
+  ): Promise<{ judgement: any; table: string } | null> {
     /*
      * READ OFF THE GROUND RATHER THAN ASKED FOR, and that is deliberate. The conversation derives
      * the frame on the first turn and keeps it there; going through the conversation service to get
@@ -3802,12 +3831,52 @@ happened, and what is in the way.`;
     const assessments = reads.map(howGoodIsThis);
     const table = theTable(reads, assessments, howManyPeople(answers));
 
-    const judgement = await this.anthropic.extract<any>(
-      theJudgementInstruction(
+    /*
+     * A ROOM IS NOT A POPULATION. Below the counting floor the table is every field marked THIN and
+     * the judgement writes recommendations off proportions of four. The room read is written from
+     * the people instead. Same schema out, so nothing downstream knows which one ran.
+     */
+    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
+    let material = table;
+    let instruction = theJudgementInstruction(
+      'whoever called this check-in',
+      'what to do next about the people and the work it covers',
+    );
+    if (asARoom) {
+      const open = await (this.prisma.groundCommitment?.findMany?.({
+        where: { groundId, status: 'UNKNOWN' },
+        select: { text: true, participantId: true },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      const seen = await (this.prisma.patternDetection?.findMany?.({
+        where: { groundId, status: 'SURFACED' },
+        select: { code: true, observationText: true, seenInSessions: true, participantId: true },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
+      material = theRoom(
+        room!.people.map((p) => ({
+          who: p.who,
+          isLead: p.isLead,
+          role: p.role,
+          finding: p.finding,
+          patterns: (seen as any[])
+            .filter((x) => x.participantId === p.participantId && (x.observationText ?? '').trim())
+            .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
+        })),
+        room!.differences,
+        sessions,
+      );
+      instruction = theJudgementOverARoom(
         'whoever called this check-in',
         'what to do next about the people and the work it covers',
-      ),
-      [{ role: 'user', content: table }],
+        room!.leadName,
+      );
+      this.logger.log(`The judgement on ${groundId} is a room read: ${room!.people.length} people, ${sessions} session(s).`);
+    }
+
+    const judgement = await this.anthropic.extract<any>(
+      instruction,
+      [{ role: 'user', content: material }],
       THE_JUDGEMENT_SCHEMA as any,
       { patient: true },
     ).catch((err: any) => {

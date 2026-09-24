@@ -41,6 +41,7 @@ import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXP
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isCovered } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
+import { howManyTheFreePlanCovers } from './a-cohort-is-not-a-payroll';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
@@ -500,7 +501,10 @@ export class GroundsService {
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
         joinToken: crypto.randomBytes(24).toString('hex'),
-        freeParticipantCap: dto.freeParticipantCap ?? DEFAULT_FREE_MEMBER_LIMIT,
+        /* A cohort's people are the subject of the check-in, not seats in the organisation, and
+           counting them as staff refused the whole scenario at six people. See
+           a-cohort-is-not-a-payroll. */
+        freeParticipantCap: dto.freeParticipantCap ?? howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
         isFreeGround,
         sessionsBalance: 1,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
@@ -693,7 +697,7 @@ export class GroundsService {
           status: (dto.participants ?? []).length ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
           brief: dto.brief ?? null,
           joinToken: crypto.randomBytes(24).toString('hex'),
-          freeParticipantCap: DEFAULT_FREE_MEMBER_LIMIT,
+          freeParticipantCap: howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
           isFreeGround,
           sessionsBalance: 1,
           ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
