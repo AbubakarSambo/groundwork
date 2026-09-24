@@ -114,3 +114,28 @@ describe('a rate is a target at any size, and a restatement without its number i
     expect(theAimsThatAreNew([{ name: 'sales target', target: null }], [])).toHaveLength(1);
   });
 });
+
+/*
+ * THE SAME AIM, TWO VERBS. Live board, 24 September 2026: "Get the federal ministry MOU for the
+ * market information programme" and "Secure the federal ministry MOU for the market information
+ * programme", side by side, both unowned and both at zero.
+ */
+describe('a verb is not what an aim is about', () => {
+  it('merges the same aim phrased with a different verb', () => {
+    const existing = [{ name: 'Get the federal ministry MOU for the market information programme', target: null }];
+    const fresh = [{ name: 'Secure the federal ministry MOU for the market information programme', target: null }];
+    expect(theAimsThatAreNew(fresh, existing)).toEqual([]);
+  });
+
+  it('and does it in both directions', () => {
+    const existing = [{ name: 'Secure the federal ministry MOU', target: null }];
+    expect(theAimsThatAreNew([{ name: 'Get the federal ministry MOU', target: null }], existing)).toEqual([]);
+  });
+
+  /* The narrowness the file insists on: the verb goes, the thing decides. */
+  it('keeps two aims that differ in the thing rather than the verb', () => {
+    const existing = [{ name: 'Secure the federal ministry MOU', target: null }];
+    const fresh = [{ name: 'Get the state government letters of support', target: null }];
+    expect(theAimsThatAreNew(fresh, existing)).toHaveLength(1);
+  });
+});

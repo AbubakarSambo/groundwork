@@ -1244,6 +1244,10 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean           @default(false) @map("managing_only")
   roleAsDescribed            String?           @map("role_as_described") // role as the initiator described it
+  /// What the lead wrote when they added this person: what they are accountable for, in the lead's
+  /// own words. It used to go into the invite email and nowhere else, so the one statement of what
+  /// somebody was taken on to do was not on the record the reports read.
+  remitAsGiven               String?           @map("remit_as_given") @db.Text
   /// THE NAME THEY GAVE. Somebody who answers through an open link has no sign-in and so no User
   /// row to carry a name; this is the name they typed at the end, beside where to send the report.
   /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the
@@ -1463,7 +1467,6 @@ model CheckIn {
   sessionReadyNotifiedAt      DateTime?     @map("session_ready_notified_at") // one-shot: "your check-in is now open" email sent
   openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
-  nextCommitment              String?       @map("next_commitment")
   closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
   /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
@@ -2061,6 +2064,9 @@ model Report {
   /// part is written, and it is handed nothing but the table of counts, with every sentence required
   /// to carry a number that is in it - checked in code. See the-judgement-over-the-answers.ts.
   theJudgement    Json?     @map("the_judgement")
+  /// Commitments, dependencies, patterns, gaps and what is still open, across every session.
+  /// Arithmetic over rows: no model writes it and no model can leave it out.
+  overTime        Json?     @map("over_time")
   /// The table the judgement was written from, kept so a reader can see the counts behind a
   /// sentence, and so the whole thing can be laid out as rows and columns. If it cannot be, we
   /// built a newsletter.
@@ -2133,6 +2139,9 @@ model PatternDetection {
   participantId    String        @map("participant_id")
   code             String // D1..D8, B1..B12, K/E/R/F codes — see Part 4
   periodsObserved  Int           @default(1) @map("periods_observed")
+  /// Every period this was actually observed in, gaps included. `periodsObserved` is the CONSECUTIVE
+  /// run; this is the honest history, and three of these surfaces a pattern whether they touch or not.
+  seenInSessions   Int[]         @default([]) @map("seen_in_sessions")
   lastPeriodNumber Int?          @map("last_period_number") // session number of the most recent period; enforces consecutiveness
   status           PatternStatus @default(CANDIDATE)
   observationText  String?       @map("observation_text") @db.Text // plain language, never a score
@@ -4649,6 +4658,11 @@ model GroundCommitment {
   authorUserId  String? @map("author_user_id")
   /// The check-in this was last put to somebody in, so it is not raised again every session.
   carriedIntoCheckInId String? @map("carried_into_check_in_id")
+  /// The session they first said it in. Null on a PASTE, which has no session.
+  statedInSession Int? @map("stated_in_session")
+  /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
+  /// it is the same one, still open, and this is what makes that countable.
+  saidAgainIn Int[] @default([]) @map("said_again_in")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -53,6 +53,8 @@ import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
 import { totalSessionsFor } from '../grounds/session-count';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
@@ -72,6 +74,11 @@ import {
   whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
+import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
+import {
+  commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, WhatTheRecordShowsOverTime,
+} from './what-the-record-shows-over-time';
 import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
@@ -89,7 +96,7 @@ import { AN_UNCLAIMED_ADDRESS } from '../entry/the-open-link.service';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
-import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
@@ -176,6 +183,26 @@ export const POST_REPORT_GUIDE_PROMPT = [
   'DO NOT ASSUME A MEETING. There may be no conversation scheduled, and there may never be a room. Never write "in the room", "in our meeting", "on the call", or "this session". The opening line is something they could say in a corridor, a message, or a one-to-one - so write it as words they could use, not as an agenda item for an event that may not exist.',
   '',
   'Brief and direct - no more than 3 sentences per item.',
+].join('\n');
+
+/**
+ * AND WHEN THE RUN IS OVER, IT IS A DIFFERENT CONVERSATION.
+ *
+ * Live run, 24 September 2026. Final report of a three-month consulting engagement the client was
+ * about to end, and the guide handed her: "I have been thinking about what needs to happen in the
+ * next two weeks, and it seems we have different ideas about the right pace for the work." A pace
+ * conversation, two weeks out, on an engagement with no next fortnight in it. Everything in the
+ * prompt above is written for a run that continues, because until now that was the only case it
+ * knew about.
+ */
+export const THE_RUN_IS_OVER = [
+  '',
+  'THIS IS THE LAST ROUND. There is no next session and there may be no next fortnight of this work at all.',
+  '',
+  'So the conversation is not about pace, or about the next two weeks, or about how to work better together',
+  'from here. Write it as the conversation people have at the end of something: what this came to, what is',
+  'settled and what is not, and what each person needs in order to decide what happens next. Never assume the',
+  'arrangement continues, and never assume it ends.',
 ].join('\n');
 
 // Admin profile - extract preference signals from an initiator's check-in records.
@@ -911,7 +938,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true },
+      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1981,7 +2008,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
-    const productHalf = thePictureTheProductWrites(findings, findings.length);
+    const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
+    const productHalf = thePictureTheProductWrites(findings, findings.length, howManyDifferences);
     if (productHalf) {
       const modelHalf = String((result as any).sharedPicture ?? '').trim();
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
@@ -2043,11 +2071,25 @@ Close the report by framing - neutrally, without recommending one - the choice n
       return null;
     });
 
+    /*
+     * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, WHICH IS ARITHMETIC OVER ROWS.
+     *
+     * Commitments, dependencies, patterns, gaps and what is still open. Three of these were empty on
+     * a live three-month engagement while the facts for all three sat in tables the report never
+     * read - see what-the-record-shows-over-time. Best effort like every other read here: a report
+     * that is already written is never lost to this.
+     */
+    const overTime = await this.readTheRecordOverTime(groundId, parties as any, labelById).catch((err: any) => {
+      this.logger.warn(`The longitudinal read on ${groundId} did not run: ${err?.message}`);
+      return null;
+    });
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
         groundId,
         ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
+        ...(overTime ? { overTime: overTime as any } : {}),
         // A tally is how a shared picture becomes a verdict by arithmetic. It
         // cannot be stripped the way a stiff opener can - cutting "two of the
         // three" out of a sentence changes what the sentence says - so it is
@@ -2147,6 +2189,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         networkPicture: (networkPicture ?? undefined) as any,
         /* Same rule: a judgement that could not be written this time leaves the last one standing. */
         ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
+        ...(overTime ? { overTime: overTime as any } : {}),
       },
     });
 
@@ -3533,6 +3576,130 @@ happened, and what is in the way.`;
    * gets no frame, and one where nobody has finished yet has no rows - both return nothing, and the
    * report is exactly what it was before. See the-judgement-over-the-answers.
    */
+  /**
+   * THE LONGITUDINAL READ, FROM ROWS.
+   *
+   * Nothing here asks a model anything. Every model in this file can be having a bad day and this
+   * section still says the same true thing, which is the point of it: the three sections that came
+   * back empty on a live engagement were the three that depended on a model routing into them.
+   */
+  private async readTheRecordOverTime(
+    groundId: string,
+    parties: { id: string; roleAsDescribed: string | null; managingOnly: boolean; remitAsGiven?: string | null }[],
+    labelById: Map<string, string>,
+  ): Promise<WhatTheRecordShowsOverTime | null> {
+    const labelOf = (id: string | null) => (id ? labelById.get(id) ?? 'a party' : 'nobody named');
+
+    const [commitmentRows, dependencyRows, patternRows, checkIns, documents, entries] = await Promise.all([
+      (this.prisma.groundCommitment?.findMany?.({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
+          statedInSession: true, saidAgainIn: true,
+        },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.groundDependency?.findMany?.({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, createdAt: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.patternDetection?.findMany?.({
+        where: { groundId },
+        select: { participantId: true, code: true, observationText: true, seenInSessions: true, periodsObserved: true, lastPeriodNumber: true, status: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.checkIn?.findMany?.({
+        where: { groundId, status: CheckInStatus.COMPLETED },
+        select: { participantId: true, sessionNumber: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.groundDocument?.count?.({ where: { groundId } }) ?? Promise.resolve(0)).catch(() => 0),
+      (this.prisma.recordEntry?.findMany?.({
+        where: { participant: { groundId }, disputedAt: null },
+        select: { participantId: true, verifiability: true, anchoredDocumentId: true, text: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+    ]);
+
+    const sessionsSoFar = Math.max(0, ...(checkIns as any[]).map((c) => c.sessionNumber ?? 0));
+    if (!sessionsSoFar) return null;
+
+    /* A dependency has no session of its own, so it takes the session its person was in when it landed. */
+    const firstSessionOf = new Map<string, number>();
+    for (const c of (checkIns as any[]).slice().sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))) {
+      if (!firstSessionOf.has(c.participantId)) firstSessionOf.set(c.participantId, c.sessionNumber ?? 1);
+    }
+
+    /*
+     * DID ANYBODY EVER SAY WHO ARRANGED ANYTHING? Read from the words themselves by the
+     * conversation's own detector, not inferred from how checkable a line is - see
+     * who-secured-that-meeting. Two different questions, and the first version asked the wrong one.
+     */
+    const saidWhoArranged = !nobodyHasSaidWhoArrangedAnything(
+      (entries as any[]).map((e) => ({ text: String(e.text ?? ''), session: 1 })),
+    );
+
+    const commitments = commitmentsOverTime(commitmentRows as any[], labelOf, sessionsSoFar);
+    const dependencies = dependenciesOverTime(
+      (dependencyRows as any[]).map((d) => ({ ...d, statedInSession: firstSessionOf.get(d.fromParticipantId) ?? null })),
+      labelOf,
+      sessionsSoFar,
+    );
+    const patterns = patternsOverTime(patternRows as any[], (code) => nameOfPattern(code), labelOf, sessionsSoFar);
+
+    const gaps = gapsOverTime(parties.filter((p) => !p.managingOnly).map((p) => {
+      const theirs = (entries as any[]).filter((e) => e.participantId === p.id);
+      return {
+        participantId: p.id,
+        label: labelOf(p.id),
+        /*
+         * THE REMIT FIRST, THE TITLE ONLY IF THAT IS ALL THERE IS.
+         *
+         * `note` is what the lead wrote when they added the person - what they are accountable for -
+         * and `roleAsDescribed` is a job title. Reading the title as the remit produced "Government
+         * Liaison Consultant was taken on for: Government Liaison Consultant".
+         */
+        expected: ((p as any).remitAsGiven ?? '').trim() || (p.roleAsDescribed ?? '').trim(),
+        lines: theirs.length,
+        checkable: theirs.filter((e) => e.verifiability === 'HIGH' || !!e.anchoredDocumentId).length,
+        documented: theirs.filter((e) => !!e.anchoredDocumentId).length,
+        openCommitments: commitments.filter((c) => c.participantId === p.id && String(c.status).toUpperCase() === 'UNKNOWN').length,
+        owedToOthers: dependencies.filter((d) => d.onParticipantId === p.id).length,
+        sessions: (checkIns as any[]).filter((c) => c.participantId === p.id).length,
+      };
+    }));
+
+    /* Still open: their own words for what is in the way, and the promises nobody closed. */
+    const stillOpen = [
+      ...dependencies.map((d) => d.say),
+      ...theOnesStillOpen(commitments).slice(0, 10).map((c) => c.say),
+    ];
+
+    const answered = new Set((checkIns as any[]).map((c) => c.participantId)).size;
+    const cannotTellYou = whatThisCannotTellYou({
+      documentsAttached: Number(documents ?? 0),
+      peopleWhoAnswered: answered,
+      peopleInvited: parties.filter((p) => !p.managingOnly).length,
+      /*
+       * WHETHER ANYBODY ACTUALLY SAID WHO ARRANGED ANYTHING, read from the words.
+       *
+       * The first version of this used HIGH verifiability as a proxy, which is not the same
+       * question at all - a specific sentence about an email is HIGH and says nothing about who
+       * secured a meeting. The conversation's own detector answers it exactly.
+       */
+      anybodyAskedWhoArrangedThings: saidWhoArranged,
+    });
+
+    const settleFirst = toSettleFirst({
+      commitments, dependencies, patterns,
+      documentsAttached: Number(documents ?? 0),
+      anybodySaidWhoArrangedThings: saidWhoArranged,
+    });
+
+    return theRecordOverTime({
+      sessions: sessionsSoFar, commitments, dependencies, patterns, gaps, stillOpen, cannotTellYou,
+      toSettleFirst: settleFirst,
+    });
+  }
+
   private async judgeTheAnswers(groundId: string): Promise<{ judgement: any; table: string } | null> {
     /*
      * READ OFF THE GROUND RATHER THAN ASKED FOR, and that is deliberate. The conversation derives
@@ -3561,13 +3728,14 @@ happened, and what is in the way.`;
        * churned, and noted here so the next person knows which of the two they are looking at.
        */
       where: { groundId, status: CheckInStatus.COMPLETED, NOT: { theirAnswerFitted: { equals: Prisma.DbNull } } },
-      select: { theirAnswerFitted: true, participant: { select: { specificityHistory: true, recordEntries: { select: { verifiability: true, anchoredDocumentId: true } } } } },
+      select: { sessionNumber: true, theirAnswerFitted: true, participant: { select: { specificityHistory: true, recordEntries: { select: { verifiability: true, anchoredDocumentId: true } } } } },
     }).catch(() => [] as any[]);
-    const answers: AFittedAnswer[] = rows.map((r: any) => {
+    const perSession: AnAnswerInItsSession[] = rows.map((r: any) => {
       const fit = r.theirAnswerFitted ?? {};
       const history: number[] = (r.participant?.specificityHistory as number[]) ?? [];
       return {
         ...fit,
+        sessionNumber: r.sessionNumber ?? 0,
         /*
          * WHAT THE CONVERSATION MEASURED, JOINED ON HERE RATHER THAN AT THE FIT.
          *
@@ -3579,12 +3747,19 @@ happened, and what is in the way.`;
         specificity: history.length ? Math.round((history.reduce((a, b) => a + b, 0) / history.length) * 100) / 100 : null,
         gaveEvidence: (r.participant?.recordEntries ?? []).some((e: any) => e.verifiability === 'HIGH' || !!e.anchoredDocumentId),
       } as AFittedAnswer;
-    }).filter((a) => Array.isArray((a as any).values));
+    }).filter((a) => Array.isArray((a as any).values)) as AnAnswerInItsSession[];
+
+    /*
+     * ONE ROW PER PERSON, NOT PER CHECK-IN. Six fortnights by two people is twelve rows here and
+     * two people in the world, and the arithmetic below cannot tell the difference - see
+     * one-person-is-one-answer.ts for what that produced in front of a customer.
+     */
+    const answers = onePerPerson(perSession);
     if (!answers.length) return null;
 
     const reads = whatTheNumbersSay(frame, answers);
     const assessments = reads.map(howGoodIsThis);
-    const table = theTable(reads, assessments, answers.length);
+    const table = theTable(reads, assessments, howManyPeople(answers));
 
     const judgement = await this.anthropic.extract<any>(
       theJudgementInstruction(
@@ -4352,7 +4527,18 @@ happened, and what is in the way.`;
   ) {
     if (!viewerIsLead) return null;
     const held = await this.whatTheRecordHoldsFor(groundId, ground);
-    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    /*
+     * WHICH ROUND THIS IS, FROM THE READ THAT ALWAYS HAS IT.
+     *
+     * `ground.checkIns` is not selected on every path into here, and where it is missing this fell
+     * back to 1 - which made `earlyDays` true, and printed "with no escalation on record. This early
+     * that is worth showing them rather than asking about" on the sixth and final session of a
+     * three-month engagement. `held.sessions` is the completed-check-in read this function already
+     * does, so it is the same number and it is always there.
+     */
+    const fromTheRecord = Math.max(0, ...held.sessions.map((c: any) => c.sessionNumber ?? 0));
+    const fromTheGround = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    const planned = Math.max(fromTheRecord, fromTheGround);
     const thisRound = planned > 0 ? planned : 1;
 
     const reads = (ground.participants ?? [])
@@ -5177,6 +5363,27 @@ happened, and what is in the way.`;
       })),
     );
 
+    /*
+     * IS THERE A NEXT SESSION? Two ways a run is over and both count: somebody closed it, or the
+     * last planned session has been held. Read once for everybody, because the answer is about the
+     * check-in and not about a person.
+     */
+    const theRunIsOver = await (async () => {
+      const g = await this.prisma.ground.findUnique({
+        where: { id: report.groundId },
+        select: {
+          status: true, timelineDays: true, cadence: true,
+          checkIns: { select: { sessionNumber: true, isFinal: true, status: true } },
+        },
+      }).catch(() => null);
+      if (!g) return false;
+      if (hasEnded(g.status as any)) return true;
+      if ((g.checkIns ?? []).some((c: any) => c.isFinal && c.status === CheckInStatus.COMPLETED)) return true;
+      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence) ?? null;
+      const held = Math.max(0, ...(g.checkIns ?? []).map((c: any) => c.sessionNumber ?? 0));
+      return planned !== null && held >= planned;
+    })().catch(() => false);
+
     await Promise.all(
       participantIds.map(async (participantId) => {
         try {
@@ -5191,7 +5398,8 @@ happened, and what is in the way.`;
           const corpus = `SHARED SYNTHESIS:\n${synthesisText}\n\nTHIS PARTY'S RECORD:\n${partyRecord}`;
 
           const result = await this.anthropic.extract<PostReportGuide>(
-            POST_REPORT_GUIDE_PROMPT,
+            /* The end of a run is a different conversation - see THE_RUN_IS_OVER. */
+            theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT,
             [{ role: 'user', content: corpus }],
             POST_REPORT_GUIDE_SCHEMA,
           );

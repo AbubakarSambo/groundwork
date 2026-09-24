@@ -4139,6 +4139,8 @@ export class GroundsService {
           email: dto.email.toLowerCase(),
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
+          /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
+          remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
           /* Over the cap: on the check-in, not written to, until an admin makes room. */
           awaitingSeat: !waitingForASeat.room,

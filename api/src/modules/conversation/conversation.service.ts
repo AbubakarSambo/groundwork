@@ -169,6 +169,9 @@ import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, aPlaceToLook, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
+import { askWhoSecuredIt } from './who-secured-that-meeting';
+import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
+import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -3217,6 +3220,23 @@ export class ConversationService {
       })
       .catch(() => '');
 
+    /*
+     * A MEETING HAPPENED AND NOBODY IS ON IT.
+     *
+     * Same `said` list as the read above: their record plus this session's own words. Fifty-seven
+     * questions across a three-month engagement never asked who arranged a single meeting, and the
+     * report then credited the consultant with the one his client's team had set up. See
+     * who-secured-that-meeting.
+     */
+    const whoSecuredIt = await Promise.resolve(pastEntries)
+      .then((rows) => askWhoSecuredIt([
+        ...rows.map((r) => ({ text: r.text, session: r.session })),
+        ...turnsThisSession
+          .filter((t) => t.role === 'PERSON')
+          .map((t) => ({ text: t.content ?? '', session: checkIn.sessionNumber ?? 1 })),
+      ]))
+      .catch(() => '');
+
     const owedForThis = this.whichOwedListFor(ground.scenario as any, (ground as any).brief ?? null);
     let owedBlock = '';
     /* For the session plan: what is still owed and unasked, and what was declined or asked to the limit. */
@@ -4276,7 +4296,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
-      ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands],
+      ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
@@ -4400,7 +4420,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
       ['roleProbeBlock', roleProbeBlock], ['coachingBlock', coachingBlock],
       ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingBack', theOneThingBack],
-      ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands],
+      ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
       ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
@@ -4451,7 +4471,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5526,6 +5546,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     this.fitTheirAnswer(checkIn.id).catch((err: any) =>
       this.logger.warn(`Could not fit the answer on ${checkIn.id} into the frame: ${err?.message}`));
+    /*
+     * AND WHAT THEY SAID THEY WOULD DO BECOMES A ROW, which is the half of the commitment loop that
+     * was never built - see what-they-said-they-would-do-next.ts. Same fire-and-forget rule as the
+     * fit above: nothing about a person finishing their own check-in may fail over it.
+     */
+    this.writeWhatTheyPromised(checkIn.id).catch((err: any) =>
+      this.logger.warn(`Could not write what they promised on ${checkIn.id}: ${err?.message}`));
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -6245,6 +6272,81 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * record" but "which of these seven things did they tell us, in whatever words". On the
    * hundred-person run the records held six entries a person and the transcripts held everything.
    */
+  /**
+   * WHAT THEY SAID THEY WOULD DO, AS ROWS ON THE GROUND.
+   *
+   * Runs as a session finishes, on that person's own words only. Saying the same thing again lands
+   * on the row that is already there rather than making a second one, because a promise restated is
+   * the same promise still open, and the count of sessions it was restated in is the finding.
+   *
+   * NOTHING HERE DECIDES ANYTHING WAS DONE. Status stays UNKNOWN and only a person moves it.
+   */
+  async writeWhatTheyPromised(checkInId: string): Promise<void> {
+    if (!this.prisma.groundCommitment?.create) return;
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: {
+        groundId: true, sessionNumber: true, participantId: true,
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+      },
+    });
+    if (!row?.participantId) return;
+    const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
+    if (!said.length) return;
+
+    const read = await this.anthropic.extract<any>(
+      READ_WHAT_THEY_PROMISED,
+      [{ role: 'user', content: `THEIR OWN WORDS, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}` }],
+      WHAT_THEY_PROMISED_SCHEMA as any,
+      { fast: true, thinkingBudget: 0 },
+    ).catch((err: any) => {
+      this.logger.warn(`What they promised on ${checkInId} did not read: ${err?.message}`);
+      return null;
+    });
+    const keep = theOnesToKeep(Array.isArray(read?.commitments) ? read.commitments : []);
+    if (!keep.length) return;
+
+    const theirs = await this.prisma.groundCommitment.findMany({
+      where: { groundId: row.groundId, participantId: row.participantId },
+      select: { id: true, text: true, status: true, saidAgainIn: true, statedInSession: true },
+    }).catch(() => [] as any[]);
+
+    let written = 0;
+    let again = 0;
+    for (const c of keep) {
+      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action));
+      if (same) {
+        /* Already settled by a person: saying it again does not reopen it and is not counted. */
+        if (same.status !== 'UNKNOWN') continue;
+        if (same.statedInSession === row.sessionNumber) continue;
+        if ((same.saidAgainIn ?? []).includes(row.sessionNumber)) continue;
+        await this.prisma.groundCommitment.update({
+          where: { id: same.id },
+          data: { saidAgainIn: { set: [...(same.saidAgainIn ?? []), row.sessionNumber] } },
+        }).then(() => { again += 1; })
+          .catch((err: any) => this.logger.warn(`Could not record a restatement on ${checkInId}: ${err?.message}`));
+        continue;
+      }
+      await this.prisma.groundCommitment.create({
+        data: {
+          groundId: row.groundId,
+          participantId: row.participantId,
+          text: c.action.slice(0, 400),
+          outcome: c.outcome ?? null,
+          whenSaid: c.when ?? null,
+          explicit: true,
+          status: 'UNKNOWN',
+          source: 'CHECK_IN',
+          statedInSession: row.sessionNumber,
+        },
+      }).then(() => { written += 1; })
+        .catch((err: any) => this.logger.warn(`Could not write a commitment from ${checkInId}: ${err?.message}`));
+    }
+    if (written || again) {
+      this.logger.log(`Check-in ${checkInId} session ${row.sessionNumber}: ${written} new commitment(s), ${again} said again.`);
+    }
+  }
+
   async fitTheirAnswer(checkInId: string): Promise<void> {
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },

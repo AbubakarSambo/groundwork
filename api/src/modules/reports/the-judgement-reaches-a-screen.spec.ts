@@ -36,7 +36,9 @@ describe('the judgement, written at synthesis', () => {
   it('classifies and assesses with arithmetic, then writes', () => {
     expect(fn).toMatch(/whatTheNumbersSay\(frame, answers\)/);
     expect(fn).toMatch(/reads\.map\(howGoodIsThis\)/);
-    expect(fn).toMatch(/theTable\(reads, assessments, answers\.length\)/);
+    /* PEOPLE, not rows: one row per check-in printed "11 people answered" for two people on a
+       fortnightly ground. See one-person-is-one-answer. */
+    expect(fn).toMatch(/theTable\(reads, assessments, howManyPeople\(answers\)\)/);
     /* And the model is handed the table and nothing else. */
     expect(fn).toMatch(/\[\{ role: 'user', content: table \}\]/);
   });

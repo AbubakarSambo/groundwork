@@ -271,6 +271,18 @@ Answer only YES or NO. No explanation.`;
 const KNOWN_CODES = new Set(BAD_FAITH_CODES.map((c) => c.code));
 export const isBadFaithCode = (code: string) => KNOWN_CODES.has(code);
 
+/**
+ * The name of a code, for a reader.
+ *
+ * A report that says "B5" to a founder says nothing; "Coordination Without Leverage" at least says
+ * what was looked at, next to the observation in plain words. The code itself is kept beside it so
+ * anybody can go and read the signal it came from.
+ */
+const EVERY_CODE: PatternCode[] = [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES];
+export function nameOfPattern(code: string): string {
+  return EVERY_CODE.find((c) => c.code === code)?.name ?? code;
+}
+
 // Live-conversation trust boundary: a detected pattern is NEVER stated to the
 // person as an observation or verdict in the live conversation - that belongs
 // only in the report (see reports.service.ts's concernFlags routing). A

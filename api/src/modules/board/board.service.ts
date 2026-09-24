@@ -498,6 +498,13 @@ export class BoardService {
         ? ((ground as any).report?.theJudgement ?? null)
         : null,
       theTable: isInitiator ? ((ground as any).report?.theTable ?? null) : null,
+      /*
+       * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
+       * what is still open. The lead's own surface, because it is the lead who has to decide
+       * something, and because three of these were empty in the report on the one engagement that
+       * was entirely about them. See what-the-record-shows-over-time.
+       */
+      overTime: isInitiator ? ((ground as any).report?.overTime ?? null) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it

@@ -21,6 +21,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { TheJudgement } from '@/components/gw/TheJudgement'
+import { WhatTheRecordShows } from '@/components/gw/WhatTheRecordShows'
 import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
@@ -662,6 +663,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           arithmetic over whatever has been answered, so it is there long before that. A band that
           appears only once the bigger of its two reads exists is a band nobody sees first.
         */}
+        {/*
+          AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ABOVE BOTH.
+
+          The judgement reads this round's answers. This reads the whole run - promises and whether
+          they came back, who is waiting on whom, what has been seen often enough to be a pattern,
+          and each role beside what the record holds about it. A founder deciding about somebody
+          needs the run, not the round, and three of these sections were empty in the report on the
+          one engagement that was entirely about them. Its own band, because it is on its own
+          timescale.
+        */}
+        {(b as any).overTime && (
+          <>
+            <Sec title="What the record shows" src="across every session so far" />
+            <WhatTheRecordShows it={(b as any).overTime} />
+          </>
+        )}
+
         {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
           <>
             {/*

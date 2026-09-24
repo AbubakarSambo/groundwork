@@ -133,6 +133,55 @@ export function noDanglingConditional(text: string): string {
   );
 }
 
+/**
+ * THE PUNCTUATION HALF OF THE HOUSE STYLE, FOR STRUCTURED OUTPUT.
+ *
+ * `houseStyle` runs on every conversational reply and never ran on `extract`, which is what writes
+ * reports - so a report reached a customer reading "The consultant's advice about the November
+ * budget cycle was noted as useful" with a curly apostrophe, and the sentence before it ended
+ * "...it is in their own session.]" with a bracket that had no opener anywhere in the text.
+ *
+ * Only punctuation here, deliberately. `noDanglingConditional` rewrites a sentence, which is right
+ * for a chat turn being read once and wrong to do silently to every string in a structured result -
+ * some of those strings are enum values and identifiers.
+ *
+ * THE ORPHANED BRACKET IS REMOVED ONLY WHERE IT NEVER OPENED. A closing bracket with a matching
+ * opener is somebody's parenthesis and stays exactly as written.
+ */
+export function justThePunctuation(text: string): string {
+  if (!text) return text;
+  let out = text
+    .replace(/[\u2014\u2013]/g, '-')
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\u2026/g, '...')
+    .replace(/\u00a0/g, ' ')
+    .replace(/--+/g, '-');
+  for (const [open, close] of [['[', ']'], ['(', ')'], ['{', '}']] as [string, string][]) {
+    const opens = out.split(open).length - 1;
+    let closes = out.split(close).length - 1;
+    while (closes > opens) {
+      const at = out.lastIndexOf(close);
+      if (at < 0) break;
+      out = out.slice(0, at) + out.slice(at + 1);
+      closes -= 1;
+    }
+  }
+  return out;
+}
+
+/** Every string in a structured result, punctuation normalised, shape untouched. */
+export function punctuationEverywhere<T>(value: T): T {
+  if (typeof value === 'string') return justThePunctuation(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => punctuationEverywhere(v)) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = punctuationEverywhere(v);
+    return out as T;
+  }
+  return value;
+}
+
 export function houseStyle(text: string): string {
   if (!text) return text;
   return noDanglingConditional(text)
@@ -661,7 +710,12 @@ export class AnthropicService implements OnApplicationBootstrap {
      * signal there is that the first one did not. Then whichever answer we keep is cleaned, so a
      * page can never be handed an item it has to draw and has nothing to draw.
      */
-    const first = withoutTheEmptyOnes(args as T);
+    /*
+     * PUNCTUATION NORMALISED HERE, at the one boundary every structured result passes through.
+     * `houseStyle` has always run on conversational replies and never on this, which is what writes
+     * reports - see justThePunctuation for the two defects that reached a customer's report.
+     */
+    const first = withoutTheEmptyOnes(punctuationEverywhere(args) as T);
     if (first.dropped === 0) return first.value;
     /*
      * Only when cleaning took a whole array with it. A stray empty item among real ones costs the
@@ -688,7 +742,7 @@ export class AnthropicService implements OnApplicationBootstrap {
       });
       const retryArgs = cleaner.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall)?.functionCall?.args;
       if (retryArgs) {
-        const second = withoutTheEmptyOnes(retryArgs as T);
+        const second = withoutTheEmptyOnes(punctuationEverywhere(retryArgs) as T);
         /* The better of the two, not simply the newer: a retry that is emptier is not an improvement. */
         if (second.dropped < first.dropped) return second.value;
       }
