@@ -3908,10 +3908,32 @@ happened, and what is in the way.`;
      * checked here instead - so an ungrounded sentence is still dropped, by the standard the
      * sentence was actually written to.
      */
+    /*
+     * AND IT MATCHES HOW A PERSON IS ACTUALLY REFERRED TO, NOT THE WHOLE LABEL.
+     *
+     * The first version required the sentence to contain the label in full. Labels on a roster
+     * ground are long - "Relationship officer, Ikeja. Target 14 approved facilities this quarter." -
+     * and the model writes "the Ikeja officer", so four findings that named people perfectly well
+     * were dropped for naming them the way a person would. A word that belongs to ONE person's
+     * label and to nobody else's is that person: "Ikeja" is, "officer" is not.
+     */
+    const generic = new Set(['the', 'and', 'for', 'this', 'that', 'with', 'from', 'their', 'they', 'target',
+      'quarter', 'month', 'year', 'week', 'total', 'team', 'initiator', 'party', 'participant', 'borrower',
+      'officer', 'relationship', 'manager', 'lead', 'director', 'approved', 'facilities', 'loan', 'machine']);
+    const handlesOf = (who: string): string[] => (who ?? '').toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !generic.has(w)) ?? [];
+    const theirOwnWords = new Map<string, string[]>();
+    for (const p of room?.people ?? []) {
+      const others = (room?.people ?? []).filter((x) => x.who !== p.who).flatMap((x) => handlesOf(x.who));
+      theirOwnWords.set(p.who, handlesOf(p.who).filter((w) => !others.includes(w)));
+    }
     const namesSomebody = (text: string | null | undefined): boolean => {
-      const t = (text ?? '').trim();
+      const t = (text ?? '').toLowerCase().trim();
       if (!t) return false;
-      return (room?.people ?? []).some((p) => p.who && t.toLowerCase().includes(p.who.toLowerCase()));
+      for (const p of room?.people ?? []) {
+        if (p.who && t.includes(p.who.toLowerCase())) return true;
+        if ((theirOwnWords.get(p.who) ?? []).some((w) => t.includes(w))) return true;
+      }
+      return false;
     };
     const grounded = asARoom ? namesSomebody : everySentenceCarriesANumber;
     const kept = {

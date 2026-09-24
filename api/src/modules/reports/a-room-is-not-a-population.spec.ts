@@ -144,7 +144,22 @@ describe('a room finding is grounded in a person, not a count', () => {
 
   it('checks a room sentence against the people actually in the room', () => {
     expect(SRC).toMatch(/const namesSomebody = \(text: string \| null \| undefined\): boolean =>/);
-    expect(SRC).toMatch(/\(room\?\.people \?\? \[\]\)\.some/);
+    expect(SRC).toMatch(/for \(const p of room\?\.people \?\? \[\]\)/);
+  });
+
+  /*
+   * And by how a person is actually referred to. Requiring the whole label - "Relationship officer,
+   * Ikeja. Target 14 approved facilities this quarter." - dropped four findings that said "the
+   * Ikeja officer", which is how anybody would write it.
+   */
+  it('matches a word that belongs to one person and nobody else', () => {
+    expect(SRC).toMatch(/const handlesOf = \(who: string\): string\[\]/);
+    expect(SRC).toMatch(/theirOwnWords\.set\(p\.who, handlesOf\(p\.who\)\.filter\(\(w\) => !others\.includes\(w\)\)\)/);
+  });
+
+  it('does not let a generic role word stand in for a person', () => {
+    const block = SRC.slice(SRC.indexOf('const generic = new Set('), SRC.indexOf('const handlesOf'));
+    for (const w of ['officer', 'borrower', 'participant', 'initiator', 'manager']) expect(block).toContain(`'${w}'`);
   });
 
   /* Still a guard: an ungrounded sentence is still dropped, by the right standard. */
