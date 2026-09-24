@@ -82,6 +82,9 @@ export class TheOpenLinkService {
         /* Their own secret, and the only thing that reaches this row. */
         inviteToken: key,
         invitedAt: new Date(),
+        /* How they arrived, recorded rather than left to be inferred later from an address that is
+           about to be replaced. See an-open-link-has-no-roster. */
+        cameThroughTheLink: true,
       },
       select: { id: true },
     });

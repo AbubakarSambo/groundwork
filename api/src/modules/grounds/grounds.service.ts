@@ -6022,11 +6022,11 @@ export class GroundsService {
     const howTheyArrived = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       select: {
-        userId: true, invitedAt: true, managingOnly: true,
+        cameThroughTheLink: true, managingOnly: true,
         checkIns: { where: { sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
       },
     }).then((rows) => rows.map((r) => ({
-      userId: r.userId, invitedAt: r.invitedAt, managingOnly: r.managingOnly, finished: r.checkIns.length > 0,
+      cameThroughTheLink: r.cameThroughTheLink, managingOnly: r.managingOnly, finished: r.checkIns.length > 0,
     }))).catch(() => [] as any[]);
     if (answeredOnALink(howTheyArrived)) return aLinkRoundIsReady(howTheyArrived);
 

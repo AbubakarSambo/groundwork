@@ -1248,6 +1248,11 @@ model GroundParticipant {
   /// own words. It used to go into the invite email and nowhere else, so the one statement of what
   /// somebody was taken on to do was not on the record the reports read.
   remitAsGiven               String?           @map("remit_as_given") @db.Text
+  /// Whether they came in through the open link rather than being put on a roster. Recorded rather
+  /// than inferred: `invitedAt` is set on a link respondent immediately, the `@unclaimed.invalid`
+  /// address is replaced when they finish, and a null `userId` is also true of somebody invited who
+  /// has not signed in. See an-open-link-has-no-roster.
+  cameThroughTheLink         Boolean           @default(false) @map("came_through_the_link")
   /// THE NAME THEY GAVE. Somebody who answers through an open link has no sign-in and so no User
   /// row to carry a name; this is the name they typed at the end, beside where to send the report.
   /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the

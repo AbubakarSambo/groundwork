@@ -2,15 +2,26 @@ import { answeredOnALink, aLinkRoundIsReady, cameThroughTheLink, ENOUGH_TO_MAKE_
 import * as fs from 'fs';
 import * as path from 'path';
 
-const stranger = (finished: boolean) => ({ userId: null, invitedAt: null, managingOnly: false, finished });
-const lead = (finished = false) => ({ userId: 'u1', invitedAt: null, managingOnly: true, finished });
-const invited = (finished: boolean) => ({ userId: null, invitedAt: new Date(), managingOnly: false, finished });
+const stranger = (finished: boolean) => ({ cameThroughTheLink: true, managingOnly: false, finished });
+const lead = (finished = false) => ({ cameThroughTheLink: false, managingOnly: true, finished });
+const invited = (finished: boolean) => ({ cameThroughTheLink: false, managingOnly: false, finished });
 
 describe('an open link has no roster', () => {
+  /*
+   * READ FROM THE COLUMN, NOT INFERRED. The first version inferred it from "no userId and no
+   * invitedAt" and never fired once on the live run: the link sets invitedAt the moment somebody
+   * opens it, so all ten respondents looked invited.
+   */
   it('knows somebody who came through the link from somebody who was invited', () => {
     expect(cameThroughTheLink(stranger(true))).toBe(true);
     expect(cameThroughTheLink(invited(true))).toBe(false);
     expect(cameThroughTheLink(lead())).toBe(false);
+    expect(cameThroughTheLink({ finished: true } as any)).toBe(false);
+  });
+
+  it('and the open link records it when it makes the row', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'entry', 'the-open-link.service.ts'), 'utf8');
+    expect(src).toMatch(/cameThroughTheLink: true,/);
   });
 
   it('is a link ground once somebody who came through it has finished', () => {

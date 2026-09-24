@@ -2036,7 +2036,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
-    const productHalf = thePictureTheProductWrites(findings, findings.length, howManyDifferences);
+    /*
+     * HOW MANY ANSWERED, NOT HOW MANY WERE WRITTEN UP, AND THEY ARE NOT THE SAME NUMBER.
+     *
+     * This passed `findings.length` as the count of people who answered, so the sentence was always
+     * "N of N people have given an account" - true by construction and therefore saying nothing. On
+     * the live open link it read "6 of 6" on the same page as a table headed "9 people answered this
+     * check-in": a person whose answer produced no finding is still a person who answered.
+     */
+    const peopleWhoAnswered = await (this.prisma.checkIn?.findMany?.({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    }) ?? Promise.resolve([] as any[])).then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size).catch(() => findings.length);
+    const productHalf = thePictureTheProductWrites(findings, Math.max(peopleWhoAnswered, findings.length), howManyDifferences);
     if (productHalf) {
       const modelHalf = String((result as any).sharedPicture ?? '').trim();
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
@@ -5037,6 +5049,16 @@ happened, and what is in the way.`;
         ...this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
+        /* A forming report is partial by definition, so it is the one that most needs to say how
+           partial. Same read as the released branch - see a-report-behind-the-answers. */
+        /* Optional-chained like every other read here: a caller whose prisma double does not stub a
+           model must get an empty read rather than a crash mid-report. */
+        behindTheAnswers: howFarBehind(
+          await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+            .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
+            .catch(() => 0),
+          (ground.report as any)?.builtFromAnswers ?? null,
+        ),
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
@@ -5173,9 +5195,8 @@ happened, and what is in the way.`;
        * opposite decisions. See a-report-behind-the-answers.
        */
       behindTheAnswers: howFarBehind(
-        await this.prisma.checkIn
-          .findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } })
-          .then((rows) => new Set(rows.map((r) => r.participantId)).size)
+        await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+          .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
           .catch(() => 0),
         (ground.report as any)?.builtFromAnswers ?? null,
       ),

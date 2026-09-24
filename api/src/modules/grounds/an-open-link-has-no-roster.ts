@@ -27,10 +27,16 @@
  */
 
 export interface APartyOnTheGround {
-  /** Null until somebody signs in. Everybody who comes through a link has none. */
-  userId?: string | null;
-  /** Set when the product emailed them an invitation. Nobody who comes through a link has one. */
-  invitedAt?: Date | string | null;
+  /**
+   * Whether they came in through the open link. A recorded fact, not an inference.
+   *
+   * My first version inferred it from "no userId and no invitedAt", and the live run said no: the
+   * link sets `invitedAt` the moment somebody opens it, so every respondent looked invited and the
+   * rule below never fired once. The `@unclaimed.invalid` address it mints is replaced the moment
+   * they finish and give a real one, and a null `userId` is also true of an invited person who has
+   * not signed in. Three plausible proxies, all wrong. So the column exists.
+   */
+  cameThroughTheLink?: boolean | null;
   /** True of somebody who runs the check-in without giving an account of their own. */
   managingOnly?: boolean | null;
   /** Whether they have finished this session. */
@@ -48,7 +54,7 @@ export const ENOUGH_TO_MAKE_A_ROUND = 2;
 
 /** Somebody who arrived through the link rather than being put on a roster. */
 export function cameThroughTheLink(p: APartyOnTheGround): boolean {
-  return !p.userId && !p.invitedAt;
+  return p?.cameThroughTheLink === true;
 }
 
 /**
