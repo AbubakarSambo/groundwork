@@ -421,3 +421,47 @@ export function theRecordOverTime(o: {
     toSettleFirst: o.toSettleFirst,
   };
 }
+
+/**
+ * AND A PARTICIPANT SEES ONLY THEIR OWN ROWS OF IT.
+ *
+ * Caught on a four-person sales ground, 24 September 2026, in the same session this section was
+ * built. The board gates it correctly (`overTime: isInitiator ? ... : null`), and the REPORT does
+ * not - the read returns the whole row - so a relationship officer opening his own report found
+ * this in it:
+ *
+ *   "Relationship officer, Ikeja. Target 14 approved facilities this quarter. is waiting on the
+ *    credit committee and the Head of Credit for the eleven complete files"
+ *
+ * That is his colleague's pipeline, her escalation and her label, on his page. On a four-person
+ * team the role label names her as surely as her name would. Every other read in this file was
+ * built for the lead, who may see all of it; nothing narrowed it for anybody else.
+ *
+ * WHAT A PARTICIPANT KEEPS. What they themselves said they would do, and what they themselves are
+ * waiting on, because those are their own words coming back. Everything that is a read ABOUT people
+ * - the patterns, the role-against-record gaps, the questions for the lead to settle, the list of
+ * what is still open across everybody - is the lead's, and a participant gets none of it.
+ *
+ * FAIL CLOSED ON AN UNKNOWN READER. No participantId means no rows, not all rows.
+ */
+export function overTimeForThisReader(
+  it: WhatTheRecordShowsOverTime | null | undefined,
+  viewer: { isLead: boolean; participantId: string | null },
+): WhatTheRecordShowsOverTime | null {
+  if (!it) return null;
+  if (viewer.isLead) return it;
+  const mine = viewer.participantId;
+  if (!mine) return null;
+  return {
+    sessions: it.sessions,
+    commitments: (it.commitments ?? []).filter((c) => c.participantId === mine),
+    dependencies: (it.dependencies ?? []).filter((d) => d.fromParticipantId === mine || d.onParticipantId === mine),
+    /* Reads about people, all of them the lead's. */
+    patterns: [],
+    gaps: [],
+    stillOpen: [],
+    toSettleFirst: [],
+    /* What none of it can tell anybody is true for every reader, and identifies nobody. */
+    cannotTellYou: it.cannotTellYou ?? [],
+  };
+}

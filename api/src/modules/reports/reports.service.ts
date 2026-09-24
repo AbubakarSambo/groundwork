@@ -78,7 +78,7 @@ import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-
 import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, WhatTheRecordShowsOverTime,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime,
 } from './what-the-record-shows-over-time';
 import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
@@ -5049,6 +5049,10 @@ happened, and what is in the way.`;
         ...this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
+        overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
+          isLead: isInitiator || isOrgAdmin,
+          participantId: participant?.id ?? null,
+        }),
         /* A forming report is partial by definition, so it is the one that most needs to say how
            partial. Same read as the released branch - see a-report-behind-the-answers. */
         /* Optional-chained like every other read here: a caller whose prisma double does not stub a
@@ -5186,6 +5190,16 @@ happened, and what is in the way.`;
         },
       ),
       activated: true,
+      /*
+       * AND THE LONGITUDINAL READ, NARROWED TO THIS READER.
+       *
+       * The board gates this on `isInitiator`; the report returns the whole row, so a participant's
+       * own report carried other people's commitments and dependencies. See overTimeForThisReader.
+       */
+      overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
+        isLead: isInitiator || isOrgAdmin,
+        participantId: participant?.id ?? null,
+      }),
       /*
        * WHETHER THESE NUMBERS ARE OLDER THAN THE ANSWERS.
        *
