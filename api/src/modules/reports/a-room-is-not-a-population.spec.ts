@@ -7,11 +7,24 @@ const person = (who: string, over: any = {}) => ({
 });
 
 describe('a room is not a population', () => {
-  it('counts four people as a room and eight as a population', () => {
+  it('counts anybody you could name as a room, and a corpus as a population', () => {
     expect(thisIsARoom(2)).toBe(true);
     expect(thisIsARoom(4)).toBe(true);
+    /* A nine-person loan cohort went back to the population route and lost the finding. */
+    expect(thisIsARoom(9)).toBe(true);
+    expect(thisIsARoom(19)).toBe(true);
     expect(thisIsARoom(A_POPULATION_STARTS_AT)).toBe(false);
     expect(thisIsARoom(101)).toBe(false);
+  });
+
+  /*
+   * The floor is NOT the one that decides whether a field can be ranked. Using one constant for
+   * both is what put nine people on the wrong route.
+   */
+  it('does not borrow the field-ranking floor', () => {
+    const { ENOUGH_TO_COUNT } = require('./the-judgement-over-the-answers');
+    expect(A_POPULATION_STARTS_AT).not.toBe(ENOUGH_TO_COUNT);
+    expect(A_POPULATION_STARTS_AT).toBe(20);
   });
 
   /* The run this came from: four salespeople, three of them "blocked" for three different reasons. */
@@ -77,5 +90,69 @@ describe('a room is not a population', () => {
     const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
     expect(src).toMatch(/const asARoom = !!room\?\.people\?\.length && thisIsARoom\(room\.people\.length\)/);
     expect(src).toMatch(/instruction = theJudgementOverARoom\(/);
+  });
+});
+
+/*
+ * The room instruction landed and `whatToDo` came back EMPTY: the instruction says name a person
+ * and never a proportion, and the schema it was filling asked for "the count that justifies it".
+ */
+describe('the room schema asks for what the room instruction asks for', () => {
+  const { THE_ROOM_JUDGEMENT_SCHEMA, THE_JUDGEMENT_SCHEMA } = require('./the-judgement-over-the-answers');
+  const room = THE_ROOM_JUDGEMENT_SCHEMA.input_schema.properties;
+  const pop = THE_JUDGEMENT_SCHEMA.input_schema.properties;
+
+  it('is the same shape, so nothing downstream knows which one ran', () => {
+    expect(Object.keys(room).sort()).toEqual(Object.keys(pop).sort());
+    expect(Object.keys(room.whatToDo.items.properties).sort()).toEqual(Object.keys(pop.whatToDo.items.properties).sort());
+  });
+
+  it('asks a move to be justified by the record rather than by a count', () => {
+    expect(room.whatToDo.items.properties.because.description).toContain('record');
+    expect(pop.whatToDo.items.properties.because.description).toContain('count');
+  });
+
+  it('asks who to start with by name, not by kind of organisation', () => {
+    expect(room.whatToDo.items.properties.startWith.description).toContain('by name');
+  });
+
+  /* And it stops requiring the fields a room cannot fill, which is what emptied the array. */
+  it('does not require a fieldId or a startWith a room has no way to give', () => {
+    expect(room.whatTheNumbersSay.items.required).toEqual(['says', 'soWhat']);
+    expect(room.whatToDo.items.required).toEqual(['move', 'because']);
+    expect(pop.whatToDo.items.required).toContain('startWith');
+  });
+
+  it('asks for a line about somebody doing the job well', () => {
+    expect(room.whatTheNumbersSay.description).toContain('doing the job well');
+  });
+});
+
+/*
+ * THE GUARD HAS TO BE THE ONE THE OUTPUT WAS WRITTEN FOR.
+ *
+ * The nine-borrower cohort logged "7 finding(s) carried no number and were dropped" and its
+ * whatToDo came back empty twice. The room instruction says name a person and never a proportion;
+ * this filter then deleted every sentence with a person in it and no digits.
+ */
+describe('a room finding is grounded in a person, not a count', () => {
+  const SRC = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+
+  it('chooses the guard by which instruction wrote the output', () => {
+    expect(SRC).toMatch(/const grounded = asARoom \? namesSomebody : everySentenceCarriesANumber;/);
+  });
+
+  it('checks a room sentence against the people actually in the room', () => {
+    expect(SRC).toMatch(/const namesSomebody = \(text: string \| null \| undefined\): boolean =>/);
+    expect(SRC).toMatch(/\(room\?\.people \?\? \[\]\)\.some/);
+  });
+
+  /* Still a guard: an ungrounded sentence is still dropped, by the right standard. */
+  it('still drops a finding that grounds itself in nothing', () => {
+    expect(SRC).toMatch(/whatTheNumbersSay: \(judgement\.whatTheNumbersSay \?\? \[\]\)\.filter\(\(x: any\) => grounded\(x\?\.says\)\)/);
+  });
+
+  it('and says which standard it applied when it drops something', () => {
+    expect(SRC).toMatch(/asARoom \? 'named nobody' : 'carried no number'/);
   });
 });

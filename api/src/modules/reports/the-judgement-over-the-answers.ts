@@ -389,7 +389,22 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
  * SO A SMALL GROUND GETS A DIFFERENT JUDGEMENT, written from the people rather than from the fields.
  * The arithmetic route is untouched for the corpus it was built for.
  */
-export const A_POPULATION_STARTS_AT = ENOUGH_TO_COUNT;
+/**
+ * TWENTY, AND NOT `ENOUGH_TO_COUNT`, WHICH ANSWERS A DIFFERENT QUESTION.
+ *
+ * The first version of this borrowed the eight that decides whether a FIELD can be ranked. Those
+ * are two different questions and using one constant for both put a nine-person loan cohort back on
+ * the population route, where it produced "4 of 6 people who were asked do not know their monthly
+ * revenue" - and missed both the borrower who never received his asset and the repayment schedule
+ * that starts before any of these assets can earn, which the narrative half of the same report had
+ * found.
+ *
+ * The question here is not "can this column be ranked". It is "can I name everybody". A block per
+ * person is about five lines, so twenty people is a hundred lines, which a prompt holds and a reader
+ * can follow. A hundred and one cannot be named and must be counted - that corpus is what the
+ * arithmetic route was built for and it keeps it.
+ */
+export const A_POPULATION_STARTS_AT = 20;
 
 export function thisIsARoom(howManyPeople: number): boolean {
   return howManyPeople < A_POPULATION_STARTS_AT;
@@ -546,6 +561,79 @@ export const THE_JUDGEMENT_SCHEMA = {
  * ---------------------------------------------------------------------------------------------- */
 
 /** Metaphors and hedges the last report was thrown out for. Checked, not asked for. */
+/**
+ * THE SAME SHAPE, ASKING FOR A PERSON WHERE THE OTHER ONE ASKS FOR A COUNT.
+ *
+ * The room instruction landed and the room's `whatToDo` came back EMPTY. The instruction says every
+ * sentence names a person and never a proportion; the schema it was filling says `because` is "the
+ * count that justifies it" and `startWith` is "a kind of organisation with how many of them there
+ * are". The model could not satisfy both, left the fields blank, and `withoutTheEmptyOnes` dropped
+ * the whole array - so the one section that says what to do about any of it disappeared.
+ *
+ * Identical field names, so every reader, every guard and every stored report is unchanged. Only
+ * the descriptions differ, and they differ in exactly the way the instruction does.
+ */
+export const THE_ROOM_JUDGEMENT_SCHEMA = {
+  name: 'the_judgement',
+  description: 'The judgement over a room: the gap, what the record shows about each person, what to do, and what this cannot tell anybody.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      theGap: { type: 'string', description: 'One or two plain sentences naming who it is about.' },
+      whatTheNumbersSay: {
+        type: 'array',
+        description: 'One per person who has something worth a line, including anybody the record shows doing the job well.',
+        items: {
+          type: 'object',
+          properties: {
+            fieldId: { type: 'string', description: 'The person this line is about, exactly as they are named in the blocks.' },
+            says: { type: 'string', description: 'What the record holds about them. Their name, and what it shows.' },
+            soWhat: { type: 'string', description: 'What it changes for the reader\'s decision. One sentence.' },
+          },
+          required: ['says', 'soWhat'],
+        },
+      },
+      whatToDo: {
+        type: 'array',
+        description: 'Three to five moves, most valuable first. One per person where the record calls for a different conversation with each.',
+        items: {
+          type: 'object',
+          properties: {
+            move: { type: 'string', description: 'What to do, in the imperative, specific enough to start next week.' },
+            because: { type: 'string', description: 'What in the record justifies it, in the person\'s own terms.' },
+            startWith: { type: 'string', description: 'Which person to begin with, by name.' },
+          },
+          required: ['move', 'because'],
+        },
+      },
+      whatThisCannotTellYou: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            about: { type: 'string' },
+            why: { type: 'string', description: 'What the record does not hold. Somebody who has said little is a gap in the record, not a finding about them.' },
+            toKnow: { type: 'string', description: 'What it would take to find out.' },
+          },
+          required: ['about', 'why'],
+        },
+      },
+      whatWeFailedToAsk: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            about: { type: 'string' },
+            howManyMissedIt: { type: 'number', description: 'How many people it was not asked of.' },
+          },
+          required: ['about'],
+        },
+      },
+    },
+    required: ['theGap', 'whatTheNumbersSay', 'whatToDo', 'whatThisCannotTellYou'],
+  },
+} as const;
+
 export const NOT_HOW_A_PERSON_TALKS = [
   /\blandscape\b/i, /\becosystem\b/i, /\bjourney\b/i, /\btapestry\b/i, /\bthrough the lens\b/i,
   /\bunlock(?:ing|s)?\b/i, /\bleverage\b/i, /\bnavigat(?:e|ing)\b/i, /\bholistic\b/i, /\bsynerg/i,

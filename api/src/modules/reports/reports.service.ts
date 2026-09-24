@@ -72,7 +72,7 @@ import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 import {
   whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
-  thisIsARoom, theRoom, theJudgementOverARoom,
+  thisIsARoom, theRoom, theJudgementOverARoom, THE_ROOM_JUDGEMENT_SCHEMA,
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
 import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
@@ -3877,7 +3877,9 @@ happened, and what is in the way.`;
     const judgement = await this.anthropic.extract<any>(
       instruction,
       [{ role: 'user', content: material }],
-      THE_JUDGEMENT_SCHEMA as any,
+      /* Same field names, asking for a person where the other asks for a count - the room's
+         whatToDo came back empty against the population schema. See THE_ROOM_JUDGEMENT_SCHEMA. */
+      (asARoom ? THE_ROOM_JUDGEMENT_SCHEMA : THE_JUDGEMENT_SCHEMA) as any,
       { patient: true },
     ).catch((err: any) => {
       this.logger.warn(`The judgement on ${groundId} did not read: ${err?.message}`);
@@ -3892,16 +3894,35 @@ happened, and what is in the way.`;
      * report promise, the filler sentence and the goodbye each arrived anyway. A finding carrying no
      * count is dropped rather than softened: the reader has already said what an ungrounded sentence
      * is worth to him.
+     *
+     * BUT THE RULE IS THE POPULATION'S, AND A ROOM'S RULE IS ITS OPPOSITE.
+     *
+     * The nine-borrower cohort logged "7 finding(s) carried no number and were dropped" and its
+     * `whatToDo` came back empty twice running. Of course it did: the room instruction says every
+     * sentence must name a PERSON and never a proportion, and this filter then deleted every
+     * sentence that had a person in it and no digits. The only lines that survived were the two
+     * that happened to quote a weekly figure. The guard was doing exactly what it was built to do,
+     * to output built under the opposite instruction.
+     *
+     * A room's finding is grounded in a NAMED PERSON rather than in a count, and that is the thing
+     * checked here instead - so an ungrounded sentence is still dropped, by the standard the
+     * sentence was actually written to.
      */
+    const namesSomebody = (text: string | null | undefined): boolean => {
+      const t = (text ?? '').trim();
+      if (!t) return false;
+      return (room?.people ?? []).some((p) => p.who && t.toLowerCase().includes(p.who.toLowerCase()));
+    };
+    const grounded = asARoom ? namesSomebody : everySentenceCarriesANumber;
     const kept = {
       ...judgement,
-      whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => everySentenceCarriesANumber(x?.says)),
-      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => everySentenceCarriesANumber(x?.because)),
+      whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => grounded(x?.says)),
+      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move)),
     };
     const dropped = (judgement.whatTheNumbersSay ?? []).length - kept.whatTheNumbersSay.length
       + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
     const parables = talksLikeAPerson([kept.theGap, ...kept.whatTheNumbersSay.map((x: any) => x.says)].join(' '));
-    if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) carried no number and were dropped.`);
+    if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) ${asARoom ? 'named nobody' : 'carried no number'} and were dropped.`);
     if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     return { judgement: kept, table };

@@ -66,8 +66,14 @@ describe('the judgement, written at synthesis', () => {
 
   /* A finding with no count is dropped rather than softened - checked, not requested. */
   it('and holds the writing to its one rule', () => {
-    expect(fn).toMatch(/\.filter\(\(x: any\) => everySentenceCarriesANumber\(x\?\.says\)\)/);
-    expect(fn).toMatch(/\.filter\(\(x: any\) => everySentenceCarriesANumber\(x\?\.because\)\)/);
+    /*
+     * HELD TO THE RULE THE OUTPUT WAS WRITTEN UNDER: a count for a population, a named person for a
+     * room. A nine-borrower cohort lost seven findings and its whole whatToDo to the count rule,
+     * having been instructed to name people and never use a proportion.
+     */
+    expect(fn).toMatch(/const grounded = asARoom \? namesSomebody : everySentenceCarriesANumber;/);
+    expect(fn).toMatch(/\.filter\(\(x: any\) => grounded\(x\?\.says\)\)/);
+    expect(fn).toMatch(/whatToDo: \(judgement\.whatToDo \?\? \[\]\)\.filter\(\(x: any\) => grounded\(/);
     expect(fn).toMatch(/talksLikeAPerson\(/);
   });
 
