@@ -75,6 +75,7 @@ import {
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
 import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
+import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
   whatThisCannotTellYou, theRecordOverTime, toSettleFirst, WhatTheRecordShowsOverTime,
@@ -938,7 +939,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1018,6 +1019,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         id: true,
         partyType: true,
+        createdAt: true,
         checkIns: {
           select: {
             turns: { select: { id: true, role: true, content: true } },
@@ -1405,10 +1407,35 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * words lifted verbatim from one person's entry, because a long enough lifted phrase identifies
      * its author as surely as a name and the picture promises synthesis, not quotation.
      */
+    /*
+     * AND THE CORPUS IS EVERYTHING THE PRODUCT ITSELF PUT IN FRONT OF THE MODEL, NOT ONLY THE
+     * RECORD ENTRIES.
+     *
+     * Live run, 24 September 2026, ten agribusinesses on one open link. The picture was refused
+     * twice and the report kept a severe fault, for this: `it named "Nigeria", which is not a party
+     * here and appears in nobody's record`. Nigeria is in the brief the lead wrote and in the
+     * ground's own label. It is in nobody's record entry because people naming their own state say
+     * "Kwara", and the check only ever read the entries.
+     *
+     * So a guard built to catch a fabricated "Alex Smith" spent two extra model calls and several
+     * minutes rejecting the name of the country the whole check-in is about - and on a ground with
+     * ten unrelated organisations, that is the ordinary case rather than the edge one.
+     *
+     * What is added is only what the product supplied or a person typed about themselves: the
+     * brief, the label, and the names and organisations people gave. None of it can reveal anything
+     * the reader does not already have, and a genuinely invented name is still caught, because an
+     * invented name is in none of these either.
+     */
+    const whatThisCheckInIsAbout = [
+      (ground as any)?.brief ?? '',
+      (ground as any)?.label ?? '',
+      ...parties.map((p: any) => `${p.nameGiven ?? ''} ${p.organisationGiven ?? ''} ${p.roleAsDescribed ?? ''}`),
+    ].join('\n');
     const corpusText = records.map((r) => r.text).join('\n');
-    const corpusDigits = new Set(corpusText.match(/\d+/g) ?? []);
+    const everythingSaid = `${corpusText}\n${whatThisCheckInIsAbout}`;
+    const corpusDigits = new Set(everythingSaid.match(/\d+/g) ?? []);
     const knownWords = new Set(
-      [...labelById.values(), ...(corpusText.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
+      [...labelById.values(), ...(everythingSaid.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
         .flatMap((w) => w.split(/\s+/))
         .map((w) => w.toLowerCase()),
     );
@@ -2090,6 +2117,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         groundId,
         ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
         ...(overTime ? { overTime: overTime as any } : {}),
+        builtFromAnswers: howManyAnswered,
         // A tally is how a shared picture becomes a verdict by arithmetic. It
         // cannot be stripped the way a stiff opener can - cutting "two of the
         // three" out of a sentence changes what the sentence says - so it is
@@ -2190,6 +2218,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* Same rule: a judgement that could not be written this time leaves the last one standing. */
         ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
         ...(overTime ? { overTime: overTime as any } : {}),
+        builtFromAnswers: howManyAnswered,
       },
     });
 
@@ -2301,7 +2330,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         initiatorId: true,
         participants: {
           select: {
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -2393,7 +2422,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             /* The function detection columns, so the conversation question can read the role map of
                the round's clearest function. Same tier as roleAsDescribed: a fact about the work. */
             detectedFunction: true, detectedFunctionConfidence: true,
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -4141,7 +4170,20 @@ happened, and what is in the way.`;
       divergences: walk(report.divergences),
       finalSynthesis: walk(report.finalSynthesis),
       leadershipGaps: walk(report.leadershipGaps),
-      engagement: walkTextOnly(report.engagement),
+      /*
+       * AND A NAME BESIDE THE LABEL, WITHOUT TOUCHING THE LABEL.
+       *
+       * Ten agribusinesses gave their name and their organisation at the end of an open link, and
+       * their own lead's report listed them as "Participant A", "Participant B", "Participant C",
+       * "Participant D" - while the paragraph above named them. `label` is deliberately never
+       * substituted (the note above says why: own-reads-only filters on the raw label and a name in
+       * that field silently keeps the wrong person's quality read), so the fix is not to resolve it
+       * but to carry the resolved name alongside it.
+       *
+       * `who` is what a page prints. `label` is what the filters match. Same permission rule as
+       * every other name on this read: a reader who may not see somebody gets the label back.
+       */
+      engagement: theNamesBesideTheLabels(walkTextOnly(report.engagement), visible),
       inferences: walkTextOnly(report.inferences),
     };
   }
@@ -5122,6 +5164,21 @@ happened, and what is in the way.`;
         },
       ),
       activated: true,
+      /*
+       * WHETHER THESE NUMBERS ARE OLDER THAN THE ANSWERS.
+       *
+       * A synthesis that fails keeps the report that is already there, silently, and on an open
+       * link somebody finishes every few minutes. A lead reading "4 people answered" on a check-in
+       * ten people answered cannot tell a thin response rate from a stale page, and those call for
+       * opposite decisions. See a-report-behind-the-answers.
+       */
+      behindTheAnswers: howFarBehind(
+        await this.prisma.checkIn
+          .findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } })
+          .then((rows) => new Set(rows.map((r) => r.participantId)).size)
+          .catch(() => 0),
+        (ground.report as any)?.builtFromAnswers ?? null,
+      ),
       postReportGuide,
       coaching,
       /* Only a discovery session has one; everything else gets null and renders nothing. */
@@ -5566,6 +5623,44 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
    * HOURLY, not daily. The gap between a ground closing and its lead opening the
    * report is usually minutes.
    */
+  /**
+   * AND THE REPORTS THAT FELL BEHIND THE ANSWERS.
+   *
+   * A synthesis that fails keeps the report that is already there, which is right - a report with
+   * four people in it beats no report at all. What was missing is anybody going back for the rest.
+   * Measured on a live open link, 24 September 2026: ten people answered over ten minutes, two
+   * syntheses failed to parse and one was refused by a guard, and the report the lead read was
+   * built from four answers and stayed that way. Nothing said so and nothing retried.
+   *
+   * Hourly and idempotent by construction: a ground stops matching the moment its report has read
+   * as many answers as the ground holds.
+   */
+  @Cron('35 * * * *', { timeZone: 'UTC' })
+  async catchUpReportsLeftBehind(): Promise<void> {
+    try {
+      const reports = await this.prisma.report.findMany({
+        where: { ground: { status: { notIn: [GroundStatus.CLOSED, GroundStatus.RESOLVED] } } },
+        select: { groundId: true, builtFromAnswers: true },
+        take: 200,
+      });
+      for (const r of reports) {
+        const answered = await this.prisma.checkIn
+          .findMany({ where: { groundId: r.groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } })
+          .then((rows) => new Set(rows.map((x) => x.participantId)).size)
+          .catch(() => 0);
+        /* Null means it was written before this column existed; leave those alone rather than
+           re-synthesising every old report in the database on the first run after a deploy. */
+        if (r.builtFromAnswers === null || r.builtFromAnswers === undefined) continue;
+        if (answered <= r.builtFromAnswers) continue;
+        this.logger.log(`Report on ${r.groundId} read ${r.builtFromAnswers} answer(s) and ${answered} are on record. Writing it again.`);
+        await this.synthesize(r.groundId).catch((err: any) =>
+          this.logger.warn(`Catching up the report on ${r.groundId} failed again: ${err?.message}`));
+      }
+    } catch (err: any) {
+      this.logger.warn(`The catch-up sweep did not run: ${err?.message}`);
+    }
+  }
+
   @Cron('20 * * * *', { timeZone: 'UTC' })
   async finishClosingSynthesesThatFailed(): Promise<void> {
     try {
@@ -5657,4 +5752,22 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
       this.logger.error(`Weekly outcome learning report failed: ${err.message}`);
     }
   }
+}
+
+/**
+ * A name beside each label in the engagement header, leaving every label exactly as it was.
+ *
+ * Structural only: it adds one key and changes nothing else, so nothing that matches on `label`
+ * can be affected by it.
+ */
+export function theNamesBesideTheLabels(engagement: any, visible: Map<string, string>): any {
+  if (!engagement || typeof engagement !== 'object' || !Array.isArray(engagement.parties)) return engagement;
+  return {
+    ...engagement,
+    parties: engagement.parties.map((p: any) => {
+      const label = typeof p?.label === 'string' ? p.label : null;
+      const name = label ? visible.get(label) : null;
+      return name ? { ...p, who: name } : { ...p, who: label ?? null };
+    }),
+  };
 }

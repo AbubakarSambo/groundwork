@@ -481,6 +481,31 @@ export function SettingsPage() {
         </section>
 
         <section>
+          {/*
+            SIGNING OUT, WHERE A PHONE CAN REACH IT.
+            
+            "Sign out" lived in one place: the user block at the bottom of the desktop rail. On a
+            phone that rail is replaced by a sixty-pixel bar of nav icons, and the user block is
+            not in it - so there was no way to sign out of Groundwork on a phone at all.
+            
+            It was on the check-ins page once and was taken off for a good reason, recorded there:
+            it was a second navigation bar for things the rail already had. That reason does not
+            apply here. Settings is in the mobile bar, this is the page about you, and on desktop
+            the rail's own button is still the one most people use.
+          */}
+          <Sec title="This device" />
+          <Card pad={false}>
+            <button
+              onClick={() => { logout(); navigate('/auth') }}
+              style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Sign out</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>
+                Signs you out of Groundwork on this device. Nothing you have written is affected.
+              </div>
+            </button>
+          </Card>
+
           <Sec title="Membership" />
           <Card pad={false}>
             {!showLeaveConfirm ? (

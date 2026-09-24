@@ -2067,6 +2067,10 @@ model Report {
   /// Commitments, dependencies, patterns, gaps and what is still open, across every session.
   /// Arithmetic over rows: no model writes it and no model can leave it out.
   overTime        Json?     @map("over_time")
+  /// How many people had answered when this report was last written. A report that is behind the
+  /// answers says so, and a cron goes back for the ones who came after. Null on reports written
+  /// before the column existed.
+  builtFromAnswers Int?     @map("built_from_answers")
   /// The table the judgement was written from, kept so a reader can see the counts behind a
   /// sentence, and so the whole thing can be laid out as rows and columns. If it cannot be, we
   /// built a newsletter.

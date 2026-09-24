@@ -2847,6 +2847,7 @@ export class ConversationService {
           select: {
             id: true,
             partyType: true,
+            createdAt: true,
             managingOnly: true,
             roleAsDescribed: true,
             user: { select: { firstName: true, lastName: true } },
@@ -7598,6 +7599,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           select: {
             id: true,
             partyType: true,
+            createdAt: true,
             managingOnly: true,
             email: true,
             roleAsDescribed: true,

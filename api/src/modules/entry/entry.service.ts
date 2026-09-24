@@ -1,4 +1,5 @@
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
+import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
 import {
@@ -956,6 +957,12 @@ Rules:
   reassuring the software. Answer the question they actually asked, in one sentence, and carry on.
 - NEVER invent facts the person did not say. Do not assume a timeframe (like "90 days"), a date, a number, or a standard. If a timeframe matters, ask for it - do not fill it in yourself.
 - If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with what you shared." Do not just acknowledge it and move on.
+- BUT NEVER ASK FOR SOMETHING THEY HAVE JUST GIVEN YOU. Read live, 24 September 2026: somebody pasted
+  a full brief, a thousand characters of it, and was answered "This is a detailed brief. You can
+  upload or paste that here so it is kept with what you shared." She had. Asking a person to hand
+  over what is already on the screen is the clearest possible sign that nothing is being read. If
+  their message IS the material - a long paste, a brief, a list of questions - say what you now know
+  from it and ask the next thing you still do not know.
 - Describe what WILL happen next, not only what the person should do. Before wrapping up, let them know: after this, they will add the people involved, then end this session to generate their report.
 - If someone asks who will see this: say what is actually true, which is narrower than it used to
   say here and is the version both invite pages already give. Nobody on their team sees the words
@@ -1267,7 +1274,23 @@ from finishing at all.`;
      */
     const needsPeople = !extracted.peopleNamed?.length;
 
-    return { reply, extracted, ready, needsPeople };
+    /*
+     * AND NOT ASKING HER FOR THE BRIEF SHE HAS JUST PASTED IN.
+     *
+     * Second turn of a real setup, 24 September 2026: a thousand characters of brief, answered with
+     * "You can upload or paste that here so it is kept with what you shared." The prompt line that
+     * produces that is a good one and cannot tell "I have a brief" from a brief. See
+     * they-just-gave-you-that - only that sentence comes out, and only when their message was the
+     * material.
+     */
+    const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    let out = reply;
+    if (theyJustPastedSomething(theirLast)) {
+      out = withoutAskingForWhatTheyGave(reply);
+      if (out !== reply) this.logger.log('Setup: they had just pasted it, so the ask to paste it came out of the reply.');
+    }
+
+    return { reply: out, extracted, ready, needsPeople };
   }
 
   /**

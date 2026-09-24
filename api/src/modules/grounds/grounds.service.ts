@@ -30,6 +30,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { totalSessionsFor } from './session-count';
+import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
@@ -6009,6 +6010,25 @@ export class GroundsService {
       select: { id: true },
     });
     if (active.length < 2) return false;
+
+    /*
+     * A GROUND ANSWERED ON A LINK IS READY ON ANSWERS, NOT ON ATTENDANCE.
+     *
+     * The loop below waits for EVERY active party, which cannot be satisfied where parties keep
+     * arriving and the lead never answers: ten agribusinesses answered one link and `releasedAt`
+     * stayed null, so nobody who asked for the report was ever told it existed. See
+     * an-open-link-has-no-roster.
+     */
+    const howTheyArrived = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: {
+        userId: true, invitedAt: true, managingOnly: true,
+        checkIns: { where: { sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+      },
+    }).then((rows) => rows.map((r) => ({
+      userId: r.userId, invitedAt: r.invitedAt, managingOnly: r.managingOnly, finished: r.checkIns.length > 0,
+    }))).catch(() => [] as any[]);
+    if (answeredOnALink(howTheyArrived)) return aLinkRoundIsReady(howTheyArrived);
 
     /* Everybody has ANSWERED - and a decline is an answer (an-answer-includes-a-refusal.ts). Counting
        only COMPLETED here froze every round with one refusal in it, for that session and every one after. */

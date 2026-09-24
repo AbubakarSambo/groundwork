@@ -4,6 +4,13 @@ export type LabelParty = {
   id: string;
   partyType: PartyType;
   roleAsDescribed?: string | null;
+  /**
+   * WHEN THEIR ROW WAS MADE, WHICH IS WHAT THE LETTERS ARE ORDERED BY.
+   *
+   * Optional because most callers already select it and the rest fall back to the id. It is not
+   * decoration: see the note on `labelsForParties` about the ten agribusinesses.
+   */
+  createdAt?: Date | string | null;
   /** The address on their row: the one the lead typed, and the only handle a person who has not joined yet has. */
   email?: string | null;
   /** The name they typed at the end of an open-link check-in; they have no User row to carry one. */
@@ -51,7 +58,60 @@ export function aLetterFor(n: number): string {
   return out;
 }
 
-export function labelsForParties(parties: LabelParty[]): Map<string, string> {
+/**
+ * WHOSE LETTER IS WHOSE CANNOT DEPEND ON THE ORDER A QUERY HAPPENED TO RETURN.
+ *
+ * Live run, 24 September 2026. Ten agribusinesses answered one open link. The shared report said:
+ *
+ *   "Ibrahim (Danladi Grains) said this was for: It's about having more trucks, first...
+ *    if they go all that way and the customer doesn't take it, then what? ... the tomatoes spoil."
+ *
+ * Every one of those sentences is Chidinma Okeke's, at Freshline Cold Chain. Ibrahim aggregates
+ * maize and soya and has never owned a truck. One stranger's words, published in a shared report
+ * under another company's name.
+ *
+ * Nothing was wrong with the record - all seven truck-and-tomato lines sit on Chidinma's
+ * participant - and nothing was wrong with the stored report, whose findings carried the right
+ * participantId for every one. The fault is here. Letters are handed out BY ARRAY POSITION, so the
+ * label a person gets depends on the order the rows arrived in. The write path fetched them
+ * `orderBy: createdAt asc`. The read path used `include: { participants: ... }` with no ordering at
+ * all, and Postgres does not owe an unordered query any particular order - least of all after ten
+ * UPDATEs, which is what ten people finishing an open link does to those rows.
+ *
+ * So the read's letters drifted one place from the write's, and "Participant B" resolved to the
+ * person who had been "Participant A".
+ *
+ * FIXED HERE RATHER THAN BY ORDERING FOURTEEN CALLERS. Labelling is meant to be a pure function of
+ * the parties - its own comment says the two paths must "derive the same labels from the same
+ * participants" - and a function whose answer depends on its argument's order is not that. It
+ * sorts its own copy, by the same key the write path used, so every existing label keeps its
+ * meaning and no caller can get it wrong again.
+ */
+function inAStableOrder(parties: LabelParty[]): LabelParty[] {
+  const when = (p: LabelParty): number => {
+    const t = p.createdAt ? new Date(p.createdAt as any).getTime() : NaN;
+    return Number.isFinite(t) ? t : NaN;
+  };
+  /*
+   * ONLY WHERE THE DATA CAN ANSWER IT, AND THE ORDER IS OTHERWISE LEFT ALONE.
+   *
+   * My first version fell back to sorting by id when a caller had not selected `createdAt`. Three
+   * existing guards caught it in one run, and one of them failed OPEN: "participant B said the
+   * handover was late" - the sentence a participant must see unresolved - came back as "Abubakar B
+   * said the handover was late". Reordering a list somebody assembled deliberately is a way to
+   * hand one person another person's label, which is the bug this function is being fixed FOR.
+   *
+   * So the sort applies when every party carries a real createdAt, which every caller that reaches
+   * a real database now does, and is a no-op otherwise. A caller with no timestamps keeps exactly
+   * the order it passed, which is what it has always had.
+   */
+  const times = parties.map(when);
+  if (!times.length || times.some((t) => !Number.isFinite(t))) return parties;
+  return [...parties].sort((a, b) => when(a) - when(b) || String(a.id).localeCompare(String(b.id)));
+}
+
+export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
+  const parties = inAStableOrder(unordered);
   const labelById = new Map<string, string>();
   let participantIdx = 0;
 

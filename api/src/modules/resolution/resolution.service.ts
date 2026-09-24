@@ -326,6 +326,7 @@ export class ResolutionService {
         email: true,
         userId: true,
         partyType: true,
+        createdAt: true,
         roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },

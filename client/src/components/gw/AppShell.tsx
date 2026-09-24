@@ -768,6 +768,17 @@ export function AppSidebar() {
      `who-may-rename-a-check-in`, so the two cannot drift apart again. */
   const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
 
+  /*
+   * THE ONES THAT NEED THIS PERSON, for the collapsed rail. Same read as the expanded list uses,
+   * so the two cannot disagree about whose turn it is, and capped because a column of coloured
+   * squares stops being scannable somewhere around eight.
+   */
+  const needsYou = grounds
+    .map((g: any) => ({ g, attention: railAttention(g as any, user?.id) }))
+    .filter(({ attention }) => attention.kind === 'overdue' || attention.kind === 'yours')
+    .sort((a, b) => railRank(a.attention) - railRank(b.attention))
+    .slice(0, 8)
+
   const sidebarWidth = collapsed ? 60 : 240
 
   return (
@@ -1060,6 +1071,43 @@ export function AppSidebar() {
                 </NavLink>
               )
             })}
+
+            {/*
+              AND THE CHECK-INS THAT NEED YOU, WHICH COLLAPSING USED TO THROW AWAY.
+              
+              The rail's whole job is to say which check-in needs you - it is ordered by exactly
+              that, and the note on the expanded list says so. Collapsing it left seven nav icons
+              and nothing about the work, so the one thing the rail is for was the one thing that
+              did not survive being made narrow.
+              
+              Narrow enough to fit: the first letter, coloured by whether it is yours to answer and
+              how late it is, with the name and the reason on the tooltip. Only the ones that need
+              somebody - a collapsed rail has no room for a list, and a list nobody has to act on is
+              what the expanded one is for.
+            */}
+            {needsYou.length > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                {needsYou.map(({ g, attention }) => (
+                  <NavLink
+                    key={g.id}
+                    to={`/grounds/${g.id}`}
+                    title={attention.kind === 'overdue'
+                      ? `${g.label} - session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                      : attention.kind === 'yours'
+                        ? `${g.label} - session ${attention.sessionNumber} is ready for you`
+                        : g.label}
+                    style={{
+                      width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 800, textDecoration: 'none', flexShrink: 0,
+                      background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
+                      color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : 'white',
+                    }}
+                  >
+                    {(g.label ?? '?').trim().charAt(0).toUpperCase()}
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </nav>
         )}
 
