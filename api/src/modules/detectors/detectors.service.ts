@@ -9,6 +9,8 @@ import {
 } from './the-three-that-were-not-built';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
+import { namesFor, turnMentions } from './a-name-is-how-people-say-it';
+import { turnsFromCheckIns } from './a-check-in-is-where-people-talk';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
 import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
@@ -47,6 +49,14 @@ export class DetectorsService {
    * service" matches "the billing service rebuild is slipping" and does not match "billing". A
    * loose match here would produce dependencies nobody has, which is worse than producing none -
    * the finding is about two named objectives and being wrong about which ones is the whole error.
+   *
+   * AND THAT RULE NEVER MATCHED ANYTHING, because nobody says "the Atlas market entry study"; they
+   * say "Atlas". Measured on a whole fictional firm, 25 September 2026: twenty-eight conversations
+   * about three named projects produced zero matches, so every read built on this was computing
+   * over an empty set - and told six of seven people's leads that they were "listed on 4 pieces of
+   * work and not mentioned in any of them". The strict path is kept, exactly as it was, and a name
+   * is now also a mention. See a-name-is-how-people-say-it for what counts as a name and why the
+   * ordinary words of consulting work can never be one.
    */
   private mentionsOf(subjects: SubjectRef[], turns: { personExternalId: string; content: string; createdAt: Date }[]): Mention[] {
     const keyed = subjects.map((s) => ({
@@ -54,12 +64,13 @@ export class DetectorsService {
       words: s.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
         .filter((w) => w.length >= 3 && !STOPWORDS.has(w)),
     })).filter((k) => k.words.length > 0);
+    const names = namesFor(keyed.map((k) => ({ externalId: k.s.externalId, title: k.s.title, words: k.words })));
 
     const out: Mention[] = [];
     for (const t of turns) {
       const flat = t.content.toLowerCase().replace(/[^a-z0-9]/g, '');
       for (const k of keyed) {
-        if (k.words.every((w) => flat.includes(w))) {
+        if (turnMentions(flat, k.words, names.get(k.s.externalId) ?? [])) {
           out.push({ personExternalId: t.personExternalId, subjectExternalId: k.s.externalId, at: t.createdAt });
         }
       }
@@ -733,12 +744,50 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
-    const turns = await this.prisma.assistantTurn.findMany({
+    const assistantTurns = await this.prisma.assistantTurn.findMany({
       where: { organizationId, role: 'person' },
       select: { personExternalId: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 2_000,
     });
+
+    /*
+     * AND WHAT PEOPLE SAID IN THEIR CHECK-INS, which was not an input to this at all.
+     *
+     * This read `assistantTurn` and nothing else - the chat a lead has with the assistant. Most
+     * people in an organisation never open that; a check-in is the only place they say anything.
+     * Measured on a firm of eleven with twenty-eight conversations about three named projects: 27
+     * ASSIGNED rows, zero STATED, zero REFERENCED, and six people told their leads they had "not
+     * been mentioned in any" of the work they had spent the quarter on. See
+     * a-check-in-is-where-people-talk.
+     */
+    const spoken = await this.prisma.conversationTurn.findMany({
+      where: { role: 'PERSON', checkIn: { ground: { organizationId } } },
+      select: {
+        content: true, createdAt: true,
+        checkIn: { select: { participant: { select: { email: true, user: { select: { email: true } } } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 4_000,
+    }).catch(() => [] as any[]);
+    const directory = await this.prisma.person.findMany({
+      where: { organizationId },
+      select: { externalId: true, email: true },
+    }).catch(() => [] as any[]);
+    const fromCheckIns = turnsFromCheckIns(
+      (spoken as any[]).map((t) => ({
+        email: t.checkIn?.participant?.email ?? null,
+        userEmail: t.checkIn?.participant?.user?.email ?? null,
+        content: t.content,
+        createdAt: t.createdAt,
+      })),
+      directory as any[],
+    );
+    if (fromCheckIns.unmatched) {
+      this.logger.log(`Org ${organizationId}: ${fromCheckIns.unmatched} check-in turn(s) belong to somebody who is not in the directory, so they are not read here.`);
+    }
+    const turns = [...assistantTurns, ...fromCheckIns.turns];
+    this.logger.log(`Org ${organizationId}: reading ${assistantTurns.length} assistant turn(s) and ${fromCheckIns.turns.length} check-in turn(s).`);
 
     /*
      * TWO OF THE PEOPLE DETECTORS DO NOT NEED A SINGLE SUBJECT, so they run before the early exit
