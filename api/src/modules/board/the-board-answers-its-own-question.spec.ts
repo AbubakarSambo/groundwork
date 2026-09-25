@@ -39,10 +39,17 @@ describe('where accounts differ', () => {
   });
 
   it('with the names still masked the way the rest of the board masks them', () => {
-    /* The single guarantee this rests on: `named()` walks every string in the report object before
-       it is put on the response, so positions were already filtered. If that ever stops recursing
-       into arrays and objects, this section starts printing names the reader may not have. */
-    expect(SERVICE).toMatch(/if \(Array\.isArray\(v\)\) return v\.map\(named\);/);
-    expect(SERVICE).toMatch(/const reportSafe = reportSafeRaw \? \(named\(reportSafeRaw\)/);
+    /*
+     * The single guarantee this rests on: every string in the report row is resolved for this
+     * reader before anything is put on the response, so positions were already filtered.
+     *
+     * IT USED TO PIN THE BOARD'S OWN WALKER - `v.map(named)` and `named(reportSafeRaw)`. That
+     * walker covered the whitelisted fields only, which let `theJudgement` and `overTime` reach a
+     * lead in labels, so the board now replaces the whole row through the report's own read
+     * instead. Same guarantee, wider: what this rests on is that the resolution happens on the
+     * ROW, before any section reads it. See the-board-uses-names-like-the-report.
+     */
+    expect(SERVICE).toMatch(/\(ground as any\)\.report = this\.reports\.theReportAsItWasShared\(/);
+    expect(SERVICE).toMatch(/const reportSafe = ground\.report \? pickBoardSafeReportFields\(/);
   });
 });

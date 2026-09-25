@@ -1,5 +1,5 @@
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
-import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
@@ -18,7 +18,7 @@ import {
   sectionsForARunOf,
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames , eachSideGetsSomebody } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody } from '../reports/party-labels';
 import {
   CoverageKind,
   CoverageRead,
@@ -65,6 +65,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
+import { ReportsService } from '../reports/reports.service';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -109,6 +110,13 @@ export class BoardService {
     private readonly anthropic: AnthropicService,
     /* For `getSessionProgress` only - which round is open, and who has not answered it. */
     private readonly grounds: GroundsService,
+    /*
+     * For ONE job: putting people's names into the report's own sentences before the board serves
+     * them, through the same door the report uses. See `theReportAsItWasShared`. forwardRef for the
+     * reason the module note gives: module wiring is invisible to tsc and to the unit tests, and
+     * the cost of the wrapper is nothing.
+     */
+    @Inject(forwardRef(() => ReportsService)) private readonly reports: ReportsService,
   ) {}
 
   /*
@@ -291,6 +299,38 @@ export class BoardService {
     const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
 
+    /**
+     * GATE 3: THE NAMES, ON THE WHOLE ROW, ONCE, FOR THIS READER.
+     *
+     * The board serves the report's own sentences, and the model writes those sentences in LABELS -
+     * "the initiator", "participant A" - which the report resolves per reader on the way out.
+     *
+     * The board used to do its own half of that, over the whitelisted fields only, so everything it
+     * took STRAIGHT off the stored row kept its labels. Read on the running board, as the lead of
+     * the sales check-in, about her own team:
+     *
+     *   "The initiator believes the team is behind on a collective goal for one reason, but the
+     *    record shows each person is working on an individual goal."
+     *   "the initiator is waiting on the credit committee for 'decisions on their deals'"
+     *
+     * So the ROW ITSELF IS REPLACED, here, before anything reads it - rather than the six fields
+     * that happen to be read today. That is the whole point: a field list was the bug twice in the
+     * report for exactly this reason, and a column added to that table tomorrow is named the day it
+     * arrives rather than the day somebody notices it is not. Mutated in place, like `dependencies`
+     * a few lines above, so no read downstream can pick the raw row by mistake.
+     *
+     * Through the report's own door and not a copy of it. Names are only one of the four things
+     * that read does - it also leaves `.label` raw (a name there silently keeps the wrong person's
+     * quality reads), drops the identifying detail out of a check-in shared without names, and puts
+     * the reader's own "you" in - and a board with the names but not the rest is worse than a board
+     * with neither. See `ReportsService.theReportAsItWasShared`.
+     */
+    (ground as any).report = this.reports.theReportAsItWasShared(
+      ground as any,
+      me?.id ?? null,
+      runsThisGround,
+    );
+
     // WHOSE ANSWER THIS IS.
     //
     // The scenario is only a guess: a cohort usually means people who never see
@@ -366,24 +406,16 @@ export class BoardService {
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
-    const reportSafeRaw = ground.report ? pickBoardSafeReportFields(ground.report as any) : null;
+    /* The row is already named, for this reader, at gate 3 above - see the note there. */
+    const reportSafe = ground.report ? pickBoardSafeReportFields(ground.report as any) : null;
 
-    /**
-     * GATE 3: THE NAMES. W8-73.
+    /*
+     * AND THE NAMES THE DIVERGENCE SECTION LOOKS UP BY HAND.
      *
-     * The board reads the report's own sentences, and those sentences are written by the
-     * model in LABELS - "the initiator", "the participant", "participant A" - which
-     * `reports.service.ts` swaps for real names on the way out, per reader, according to
-     * what that reader is allowed to see.
-     *
-     * The board never did that. So a LEAD, who is entitled to every name in their own
-     * ground, read their board as "By the end of the evaluation period, the participant was
-     * successfully owning two client accounts" and "the initiator's clarification in week
-     * seven" - about themselves. Twelve sessions of work, described in placeholders.
-     *
-     * Same helpers, same rule, same reason it lives in code: this is access control, not
-     * wording. A lead reads with every name; anybody else gets their own, the lead's, and
-     * labels for the rest.
+     * `participantLabel` is one of the two fields the report's read deliberately leaves raw, so
+     * that `own-reads-only` can still match a person's rows on it. The board prints it, so it
+     * resolves it here, at the one place that prints it, under the same permission rule: a reader
+     * who may not see who somebody is gets the role back.
      */
     const visibleNames = namesVisibleTo(
       readsWithNamesOf({
@@ -400,18 +432,6 @@ export class BoardService {
       }),
       ground.participants as any[],
     );
-    const allLabels = [...labelsForParties(ground.participants as any[]).values()];
-    const named = (v: any): any => {
-      if (typeof v === 'string') return withNames(v, visibleNames, allLabels);
-      if (Array.isArray(v)) return v.map(named);
-      if (v && typeof v === 'object') {
-        const out: Record<string, any> = {};
-        for (const [k, val] of Object.entries(v)) out[k] = named(val);
-        return out;
-      }
-      return v;
-    };
-    const reportSafe = reportSafeRaw ? (named(reportSafeRaw) as typeof reportSafeRaw) : null;
 
     const out: Record<string, any> = {
       groundId,

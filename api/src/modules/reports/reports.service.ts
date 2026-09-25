@@ -4452,6 +4452,31 @@ happened, and what is in the way.`;
   }
 
   /**
+   * THE SAME READ, FOR THE BOARD, WHICH HAD NO VERSION OF IT AT ALL.
+   *
+   * The board serves the report's own sentences, and those sentences are stored in labels. It had
+   * its own half of the rule - a `withNames` walk over the whitelisted fields - and that half
+   * missed three things the report's read does: it walked `.label` too (a name there silently
+   * keeps the wrong person's rows, see the note in `applyNames`), it never dropped the identifying
+   * detail out of a check-in shared without names, and it never reached `theJudgement` or
+   * `overTime`, which the board takes straight off the stored row. So a lead read their own board
+   * as "The initiator believes the team is behind on a collective goal".
+   *
+   * One implementation, asked for rather than copied. This is deliberately a thin door onto
+   * `asItWasShared` and not a second naming path: the anonymous-send scrub, the label exception
+   * and the reader's own "you" all have to come with the names or the board gets the names without
+   * the rules that go with them.
+   */
+  theReportAsItWasShared(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; report?: any; participants?: any[] },
+    viewerParticipantId: string | null,
+    viewerIsLead: boolean,
+  ) {
+    if (!ground?.report) return null;
+    return this.asItWasShared(ground, viewerParticipantId, viewerIsLead);
+  }
+
+  /**
    * THE ENGINE'S CLAIMS, SAID BETTER, OR THE ENGINE'S CLAIMS.
    *
    * One call per surface rather than one per sentence, so the model sees the whole block and can

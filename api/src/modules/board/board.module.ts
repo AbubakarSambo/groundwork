@@ -4,6 +4,7 @@ import { BoardListener } from './board.listener';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { BoardController } from './board.controller';
 import { GroundsModule } from '../grounds/grounds.module';
+import { ReportsModule } from '../reports/reports.module';
 
 @Module({
   /*
@@ -15,7 +16,13 @@ import { GroundsModule } from '../grounds/grounds.module';
    * clean and passed every suite. The cost of the wrapper is nothing; the cost of being wrong is
    * a server that will not boot.
    */
-  imports: [forwardRef(() => GroundsModule)],
+  /*
+   * And `ReportsModule` for one read: `theReportAsItWasShared`, which puts people's names into the
+   * report's own sentences before the board serves them. One implementation of that rule, asked
+   * for rather than copied - see the note at gate 3 in board.service.ts. forwardRef for the same
+   * reason as above.
+   */
+  imports: [forwardRef(() => GroundsModule), forwardRef(() => ReportsModule)],
   controllers: [BoardController],
   providers: [BoardService, BoardListener, AnthropicService],
   exports: [BoardService],
