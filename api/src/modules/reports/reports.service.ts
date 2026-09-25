@@ -64,6 +64,7 @@ import {
 } from '../conversation/the-window-for-correcting-a-record';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
+import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
@@ -5158,7 +5159,12 @@ happened, and what is in the way.`;
       }
 
       return {
-        ...this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin),
+        /* THE LEAD'S LAYER COMES OFF HERE TOO. A forming report carries the same stored row, so a
+           participant who has answered read the judgement about the room before it was released. */
+        ...whatAParticipantMayRead(
+          this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
+          { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null },
+        ),
         activated: true,
         forming: true,
         overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
@@ -5293,14 +5299,22 @@ happened, and what is in the way.`;
         }),
     ]);
     const base: any = {
-      ...withoutOtherPeoplesReads(
+      /*
+       * AND THE LEAD'S LAYER, OFF, BEFORE ANYTHING ELSE RUNS.
+       *
+       * `withoutOtherPeoplesReads` takes the per-person quality reads out. It never looked at
+       * `theJudgement`, because the judgement did not exist when it was written - so a participant's
+       * own report carried a verdict on the room written for their manager. See
+       * the-judgement-is-the-leads.
+       */
+      ...whatAParticipantMayRead(withoutOtherPeoplesReads(
         this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
         {
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,
           viewerIsLead: isInitiator || isOrgAdmin,
         },
-      ),
+      ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }),
       activated: true,
       /*
        * AND THE LONGITUDINAL READ, NARROWED TO THIS READER.

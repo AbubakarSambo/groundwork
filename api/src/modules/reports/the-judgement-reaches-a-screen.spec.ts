@@ -90,10 +90,23 @@ describe('the judgement, written at synthesis', () => {
 });
 
 describe('and it reaches the board', () => {
-  it('to whoever runs the check-in, and to everybody once the report is out', () => {
-    expect(BOARD).toMatch(/theJudgement: \(isInitiator \|\| \(ground as any\)\.report\?\.releasedAt\)/);
-    /* The working is the lead's; the finding is everybody's. */
-    expect(BOARD).toMatch(/theTable: isInitiator \?/);
+  /*
+   * CHANGED 25 SEPTEMBER 2026, AND WHAT IT USED TO SAY IS THE REASON.
+   *
+   * This read: "to whoever runs the check-in, and to everybody once the report is out", and it
+   * pinned `theJudgement: (isInitiator || report?.releasedAt)`. The live run of all twenty-four
+   * scenarios showed what that sentence means in practice - on the performance-plan scenario the
+   * person the plan was about could read "The initiator is about to put Nathan on a formal plan",
+   * on his own board, the moment the round closed.
+   *
+   * The premise was that a released SHARED picture makes the reading of it shared too. It does not.
+   * The picture is everybody's; the verdict on the room is the lead's. So the test now pins the
+   * opposite, and the old assertion is kept here in words so nobody restores it by accident
+   * thinking they are fixing a regression.
+   */
+  it('to whoever runs the check-in, and to nobody else, released or not', () => {
+    expect(BOARD).toMatch(/theBoardsJudgementFor\(\(ground as any\)\.report, \{ isLead: isInitiator \}\)/);
+    expect(BOARD).not.toMatch(/theJudgement: \(isInitiator \|\| \(ground as any\)\.report\?\.releasedAt\)/);
   });
 
   it('and renders above what people said, not instead of it', () => {

@@ -64,6 +64,7 @@ import { whichRoundIsOpen } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
+import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -494,10 +495,16 @@ export class BoardService {
        * The table travels with it because a count is the only reason to believe a sentence, and
        * because the test for the whole thing is that it can be laid out as rows and columns.
        */
-      theJudgement: (isInitiator || (ground as any).report?.releasedAt)
-        ? ((ground as any).report?.theJudgement ?? null)
-        : null,
-      theTable: isInitiator ? ((ground as any).report?.theTable ?? null) : null,
+      /*
+       * AND IT IS THE LEAD'S, RELEASED OR NOT.
+       *
+       * This used to read `isInitiator || releasedAt`, so the moment a round closed every
+       * participant's board carried the verdict on the room. Watched on the performance-plan
+       * scenario: the person the plan was about could read that it was coming. The release of a
+       * SHARED picture is not permission to hand round the reading of it.
+       * See reports/the-judgement-is-the-leads.
+       */
+      ...theBoardsJudgementFor((ground as any).report, { isLead: isInitiator }),
       /*
        * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
        * what is still open. The lead's own surface, because it is the lead who has to decide
