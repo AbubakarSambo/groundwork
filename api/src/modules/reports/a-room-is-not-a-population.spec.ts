@@ -87,7 +87,7 @@ describe('a room is not a population', () => {
   });
 
   it('and the service chooses between the two by headcount', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const asARoom = !!room\?\.people\?\.length && thisIsARoom\(room\.people\.length\)/);
     expect(src).toMatch(/instruction = theJudgementOverARoom\(/);
   });
@@ -136,7 +136,7 @@ describe('the room schema asks for what the room instruction asks for', () => {
  * this filter then deleted every sentence with a person in it and no digits.
  */
 describe('a room finding is grounded in a person, not a count', () => {
-  const SRC = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+  const SRC = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('chooses the guard by which instruction wrote the output', () => {
     expect(SRC).toMatch(/const grounded = asARoom \? namesSomebody : everySentenceCarriesANumber;/);

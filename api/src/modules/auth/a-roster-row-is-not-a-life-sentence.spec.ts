@@ -40,7 +40,7 @@ describe('and only one of them', () => {
 });
 
 describe('what the door does and does not do', () => {
-  const SRC = readFileSync(join(__dirname, 'auth.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'auth.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const fn = SRC.slice(SRC.indexOf('async startMyOwnWorkspace('), SRC.indexOf('private async generateUniqueSlug('));
 
   /* THE RULE ITSELF IS NOT TOUCHED. Nobody is removed from an organisation and no stranger is put

@@ -65,7 +65,7 @@ describe('a subject answered in their own words', () => {
  * subtly wrong is precisely how somebody gets asked at turn five what they answered at turn one.
  */
 describe('the ranking the prompt uses and the note records', () => {
-  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('is one method, and both callers go through it', () => {
     expect(SRC.match(/private whichHoleToPush\(/g)).toHaveLength(1);
@@ -86,7 +86,7 @@ describe('the ranking the prompt uses and the note records', () => {
  * read-modify-write on a row two requests are holding.
  */
 describe('the note that merges onto what is already held', () => {
-  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('never runs twice over one check-in at once', () => {
     expect(SRC).toContain('private notesInFlight = new Map<string, Promise<void>>();');
@@ -140,8 +140,8 @@ describe('the note that merges onto what is already held', () => {
  * cost of missing is asking somebody the same thing twice.
  */
 describe('what the answer was about, read rather than matched', () => {
-  const READ = readFileSync(join(__dirname, 'reading-what-they-just-said.ts'), 'utf8');
-  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const READ = readFileSync(join(__dirname, 'reading-what-they-just-said.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const { theSubjectsToJudgeAgainst } = require('./reading-what-they-just-said');
 
   it('is asked for by meaning, not by wording', () => {
@@ -179,7 +179,7 @@ describe('what the answer was about, read rather than matched', () => {
  * on the strength of a complaint.
  */
 describe('the bookkeeping for what was put to them', () => {
-  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
 
   it('nothing is marked once the conversation has closed', () => {

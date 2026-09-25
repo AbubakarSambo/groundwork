@@ -95,7 +95,7 @@ describe('what they gave us, said back to them', () => {
 });
 
 describe('and it reaches them', () => {
-  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('on the completion the person asked for', () => {
     expect(SRC).toMatch(/whatYouGave\?: WhatTheyGave/);

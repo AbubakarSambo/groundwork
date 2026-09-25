@@ -13,9 +13,9 @@ import { join } from 'node:path';
  * line that arrives with nothing around it is worth less. This is the door for when there is no
  * chat, and the page offers it only then.
  */
-const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
-const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8');
-const PAGE = readFileSync(join(__dirname, '../../../../client/src/components/gw/ContextPage.tsx'), 'utf8');
+const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const PAGE = readFileSync(join(__dirname, '../../../../client/src/components/gw/ContextPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('adding one line of what a check-in knows', () => {
   it('has a route at all, which it did not', () => {

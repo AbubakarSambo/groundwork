@@ -63,7 +63,7 @@ describe('the longitudinal read belongs to the lead', () => {
   });
 
   it('and the report read applies it on both branches', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/overTime: overTimeForThisReader\(/g) ?? []).toHaveLength(2);
   });
 });

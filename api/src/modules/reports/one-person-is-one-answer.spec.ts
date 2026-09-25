@@ -59,7 +59,7 @@ describe('one person is one answer', () => {
    * because the caller handed it a row count. It may only ever be handed the fold.
    */
   it('and the report hands the table people, never check-ins', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const fn = src.slice(src.indexOf('private async judgeTheAnswers('), src.indexOf('private async judgeTheAnswers(') + 4000);
     expect(fn).toMatch(/const answers = onePerPerson\(perSession\)/);
     expect(fn).toMatch(/theTable\(reads, assessments, howManyPeople\(answers\)\)/);

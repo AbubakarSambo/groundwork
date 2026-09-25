@@ -11,8 +11,8 @@ import { join } from 'node:path';
  * invested anything yet and leaving costs them nothing.
  */
 const API = join(__dirname, '../..');
-const LINK = readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8');
-const CONV = readFileSync(join(API, 'modules/conversation/conversation.service.ts'), 'utf8');
+const LINK = readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CONV = readFileSync(join(API, 'modules/conversation/conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('the opener for an open link', () => {
   it('is reused by everybody after the first', () => {
@@ -62,7 +62,7 @@ describe('the opener for an open link', () => {
           const full = join(at, e.name);
           if (e.isDirectory()) { walk(full); continue; }
           if (!e.name.endsWith('.ts') || e.name.endsWith('.spec.ts')) continue;
-          const src = readFileSync(full, 'utf8');
+          const src = readFileSync(full, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
           for (const m of src.matchAll(/\.open\(\s*\n?\s*[^;]*?\}\s*,\s*[^;)]+\)/g)) {
             if (/theParticipant|theUser|checkIn/.test(m[0])) callers.push(`${e.name}: ${m[0].slice(0, 60).replace(/\n/g, ' ')}`);
           }
@@ -77,7 +77,7 @@ describe('the opener for an open link', () => {
   /* No expiry and no version: a link handed out at an event cannot be reissued, and neither can the
      first thing it says. If it is ever wrong, it is wrong for the ground, not for one person. */
   it('and carries no expiry', () => {
-    const schema = readFileSync(join(API, '../prisma/schema.prisma'), 'utf8');
+    const schema = readFileSync(join(API, '../prisma/schema.prisma'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(schema).toMatch(/openerForALink\s+String\?\s+@map\("opener_for_a_link"\)/);
     expect(schema).not.toMatch(/openerForALinkExpiresAt/);
   });

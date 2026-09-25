@@ -67,7 +67,7 @@ describe('which field the next turn is for', () => {
   });
 
   it('and giving a value later beats having ruled it out', () => {
-    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(SRC).toMatch(/for \(const id of filled\) ruledOut\.delete\(id\)/);
   });
 });
@@ -81,7 +81,7 @@ describe('when the frame outranks everything else', () => {
 
   /* Ahead of the challenge early, behind it later - the same trade breadthFirst makes. */
   it('and it is ranked ahead of our own curiosity, then behind it', () => {
-    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const rank = SRC.slice(SRC.indexOf('private whichHoleToPush('), SRC.indexOf('async theFrameFor('));
     const early = rank.indexOf('theFrameComesFirst(frame, notes, theirKind)');
     const challenge = rank.indexOf('theChallengeWorthPutting(');

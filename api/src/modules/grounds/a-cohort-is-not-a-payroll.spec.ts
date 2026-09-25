@@ -27,7 +27,7 @@ describe('a cohort is not a payroll', () => {
   });
 
   it('and the ground takes it at creation, on both paths', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'grounds.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/howManyTheFreePlanCovers\(dto\.scenario, DEFAULT_FREE_MEMBER_LIMIT\)/g) ?? []).toHaveLength(2);
   });
 });

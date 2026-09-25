@@ -3,7 +3,7 @@ import * as path from 'path';
 
 import { theNamesBesideTheLabels } from './reports.service';
 
-const SRC = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /*
  * Ten agribusinesses gave a name and an organisation at the end of an open link, and their lead's

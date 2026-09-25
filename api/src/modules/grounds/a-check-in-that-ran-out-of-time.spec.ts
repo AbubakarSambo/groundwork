@@ -69,8 +69,8 @@ describe('a check-in that ran out of time', () => {
 });
 
 describe('and giving it more time opens it again', () => {
-  const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
-  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8');
+  const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   /* The extension IS the reopen: one act, because they are one intention. */
   it('back to what it was before the time ran out', () => {
@@ -109,7 +109,7 @@ describe('and giving it more time opens it again', () => {
 });
 
 describe('and nothing runs out of time without notice', () => {
-  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8');
+  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the lead is warned while there is still time to act', () => {
     expect(CRON).toMatch(/async warnBeforeTimeRunsOut\(\)/);
@@ -140,7 +140,7 @@ describe('and nothing runs out of time without notice', () => {
  * told about it.
  */
 describe('what the stalled email says', () => {
-  const EMAIL = readFileSync(join(__dirname, '../email/email.service.ts'), 'utf8');
+  const EMAIL = readFileSync(join(__dirname, '../email/email.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const stalled = EMAIL.slice(EMAIL.indexOf('async sendStalledNotification('), EMAIL.indexOf('async sendReopenedNotification('));
 
   it('says whose call it is, and that the answers are kept', () => {
@@ -158,7 +158,7 @@ describe('what the stalled email says', () => {
  * is a warning tonight and a stall tomorrow - never the two in the same silence.
  */
 describe('the order of the two sweeps', () => {
-  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8');
+  const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('nothing is stopped that was never warned', () => {
     const sweep = CRON.slice(CRON.indexOf('async stallOverdueGrounds'), CRON.indexOf('Gap #22'));

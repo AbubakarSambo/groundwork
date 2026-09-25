@@ -20,7 +20,7 @@ describe('an open link has no roster', () => {
   });
 
   it('and the open link records it when it makes the row', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'entry', 'the-open-link.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'entry', 'the-open-link.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/cameThroughTheLink: true,/);
   });
 
@@ -52,7 +52,7 @@ describe('an open link has no roster', () => {
 
   /* And the roster rule is left alone for grounds that have one. */
   it('the service asks this only where people came through the link', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'grounds.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/if \(answeredOnALink\(howTheyArrived\)\) return aLinkRoundIsReady\(howTheyArrived\);/);
   });
 });

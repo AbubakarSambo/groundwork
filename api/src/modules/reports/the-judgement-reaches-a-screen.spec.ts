@@ -8,10 +8,10 @@ import { join } from 'node:path';
  * hundred-person run, and a customer reading his board would have seen exactly what he saw before.
  * This is the path from one person finishing to a sentence on the board.
  */
-const CONV = readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8');
-const REPORTS = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
-const BOARD = readFileSync(join(__dirname, '../board/board.service.ts'), 'utf8');
-const PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/board/BoardPage.tsx'), 'utf8');
+const CONV = readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const REPORTS = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const BOARD = readFileSync(join(__dirname, '../board/board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/board/BoardPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('one answer, fitted when its person finishes', () => {
   it('and not a hundred at once while somebody waits for a report', () => {

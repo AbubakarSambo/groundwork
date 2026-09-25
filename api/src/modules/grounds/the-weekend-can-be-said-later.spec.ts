@@ -10,9 +10,9 @@ import { workingDaysOf, theNextDayTheyWork, isAWorkingDay } from './which-days-t
  * any way to say it once the check-in existed - and the in-app rhythm editor, which is where a lead
  * goes when they notice their check-ins landing on a Sunday, carried no control at all.
  */
-const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
-const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8');
-const ADMIN_PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'), 'utf8');
+const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const ADMIN_PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('the days a team works, after the check-in exists', () => {
   it('are accepted where the rhythm is changed', () => {
@@ -56,7 +56,7 @@ describe('the days a team works, after the check-in exists', () => {
   /* One picker, not a second copy that quietly stops agreeing with the first. */
   it('and there is one picker in the product', () => {
     const client = join(__dirname, '../../../../client/src');
-    const entry = readFileSync(join(client, 'pages/enter/EntryChatPage.tsx'), 'utf8');
+    const entry = readFileSync(join(client, 'pages/enter/EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(entry).toMatch(/<WhichDaysTheyWork value=\{workingDays\} onChange=\{setWorkingDays\} \/>/);
     expect(entry).not.toMatch(/Which days does this team work\?/);
   });

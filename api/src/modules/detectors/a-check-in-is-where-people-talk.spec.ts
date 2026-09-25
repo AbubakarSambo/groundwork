@@ -47,7 +47,7 @@ describe('a check-in is where people talk', () => {
   });
 
   it('and the detector reads them alongside the assistant turns', () => {
-    const src = fs.readFileSync(path.join(__dirname, 'detectors.service.ts'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, 'detectors.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const turns = \[\.\.\.assistantTurns, \.\.\.fromCheckIns\.turns\]/);
     expect(src).toMatch(/this\.prisma\.conversationTurn\.findMany/);
   });

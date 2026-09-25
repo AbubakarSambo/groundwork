@@ -48,8 +48,8 @@ describe('a message from somebody who is not on their roster', () => {
  * into being a second, worse product.
  */
 describe('one route, two doors', () => {
-  const SRC = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8');
-  const CONTROLLER = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.controller.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const CONTROLLER = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the webhook and the relay both go through it', () => {
     expect(SRC).toMatch(/private async route\(/);
@@ -113,7 +113,7 @@ describe('one route, two doors', () => {
  * it reads either as a robot or as having ignored them.
  */
 describe('the first message into a check-in that has not started', () => {
-  const SRC = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8');
+  const SRC = readFileSync(join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const route = SRC.slice(SRC.indexOf('private async route('));
 
   it('says the header, the opener, and the answer to what they said', () => {
