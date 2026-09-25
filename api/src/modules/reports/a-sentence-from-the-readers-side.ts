@@ -116,44 +116,35 @@ export function fullNameOnce(text: string, names: Iterable<string>): string {
 }
 
 /**
- * AND A VERB JOINED ON WITH "AND" AGREES WITH "YOU" TOO.
+ * WHAT USED TO BE HERE, AND WHY IT IS NOT.
  *
- * `withNames` already conjugates a verb sitting immediately after "you" - that rule was written for
- * "You is concerned". It cannot see this shape, where the subject is several words back:
+ * `andTheVerbAgrees` conjugated a third-person verb joined on with "and" in a sentence that began
+ * with "You" - "You say you were told the target was five renewals, and has completed six" became
+ * "and have completed six". It guessed which noun the verb belonged to by looking for a capitalised
+ * word or another pronoun between "You" and the verb, and where the real subject is neither it
+ * guessed wrong. Read off the lead's own board on 26 September 2026:
  *
- *   "You say you were told the target was five renewals, and has completed six."
- *   "You, however, had an expectation that the target would increase, and is concerned about it."
+ *   "You believe the team is behind on a collective goal for one reason, but the record shows each
+ *    person is working on an individual goal and ARE blocked by a different problem."
  *
- * NARROW, BECAUSE THE OBVIOUS RULE CORRUPTS REAL SENTENCES. "You say Caroline has completed six"
- * has a "has" that agrees with Caroline and must not be touched. So this only fires when the
- * sentence begins with "You" and nothing between that "You" and the "and" looks like another
- * subject - no capitalised word, no other pronoun. Where it cannot tell, it does nothing.
+ *   "You say the office move is going well and ARE on schedule."
+ *
+ * The subject is "each person" in the first and "the office move" in the second. Both were correct
+ * English before the rule existed and broken by it, which is the one thing this file says it must
+ * never do: "a sentence this leaves alone is merely stiff, and one it mangles is wrong." A regular
+ * expression cannot resolve which noun a verb belongs to, so the rule is gone rather than narrowed.
+ *
+ * NOT TO BE CONFUSED WITH THE RULE IN `withNames`, which stays. That one fixes "you is", "you was",
+ * "you has" and "you does" - the verb sits immediately after "you", so there is no other subject it
+ * could belong to and nothing to guess.
  */
-const THIRD_PERSON: Record<string, string> = { is: 'are', has: 'have', was: 'were', does: 'do' };
-
-export function andTheVerbAgrees(text: string): string {
-  return text.replace(/[^.!?]+[.!?]?/g, (sentence) => {
-    if (!/^\s*You\b/.test(sentence)) return sentence;
-    return sentence.replace(
-      /\b(and|but)\s+(is|has|was|does)\b/g,
-      (whole: string, conj: string, verb: string, offset: number) => {
-        const before = sentence.slice(0, offset);
-        /* Another subject between "You" and here means the verb is probably theirs. Leave it. */
-        if (/\b[A-Z][a-z]+\b/.test(before.replace(/^\s*You\b/, ''))) return whole;
-        if (/\b(he|she|they|it|we|I)\b/i.test(before.replace(/^\s*You\b/, ''))) return whole;
-        return `${conj} ${THIRD_PERSON[verb]}`;
-      },
-    );
-  });
-}
 
 /**
  * All of them, in the order they have to run: the reorder first, because the group-pronoun rule
- * reads whether the previous sentence has "you" and an "and" in it; the agreement after that, once
- * every "you" that is going to exist does; the shortening last, because the others match on full
- * names.
+ * reads whether the previous sentence has "you" and an "and" in it; the shortening last, because
+ * the others match on full names.
  */
 export function fromTheReadersSide(text: string, names: Iterable<string>): string {
   if (!text) return text;
-  return fullNameOnce(andTheVerbAgrees(theReaderIsNotThey(youComeFirst(text))), names);
+  return fullNameOnce(theReaderIsNotThey(youComeFirst(text)), names);
 }
