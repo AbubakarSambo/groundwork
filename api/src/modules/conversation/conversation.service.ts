@@ -267,6 +267,9 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
   toldToParticipants: true,
   scenario: true,
   initiatorId: true,
+  /* AND WHOEVER THAT IS, BY NAME. The opener says "Bisi says your target is 12", never "the person
+     who set this up said". See nothing-said-yet-cannot-be-quoted. */
+  initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
   objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' as const } },
 } as const;
@@ -989,7 +992,13 @@ export class ConversationService {
       : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
     const saidSoFar = await (this.prisma.conversationTurn?.count?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }) ?? Promise.resolve(1)).catch(() => 1);
-    const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar);
+    /* Named, because "the person who set this up" is a label and this is the first sentence
+       somebody ever reads from this product. See the module. */
+    const whoSetItUp = [
+      (ground as any)?.initiator?.firstName,
+      (ground as any)?.initiator?.lastName,
+    ].filter(Boolean).join(' ').trim() || null;
+    const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
     const opening = quoted.text;
 

@@ -138,50 +138,47 @@ export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
    * why the invariant at the end of this function checks uniqueness rather than
    * checking for names.
    */
-  const roleCounts = new Map<string, number>();
-  for (const p of parties) {
-    const role = p.roleAsDescribed?.trim();
-    if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
-  }
-
-  const roleSeen = new Map<string, number>();
+  /*
+   * A ROLE DESCRIPTION IS NOT A NAME, AND THIS USED TO MAKE IT ONE.
+   *
+   * The label was `roleAsDescribed` wherever somebody had one. `roleAsDescribed` is free text a
+   * lead types when adding a person, and leads type a sentence. So the twenty-four-scenario run of
+   * 25 September produced, in the middle of a paragraph:
+   *
+   *   "Apply the checklist from the Relationship officer, Surulere. Target 14 approved facilities
+   *    this quarter. to the work of the other officers."
+   *
+   * The label has two full stops inside it, so it ends the sentence twice and the remainder starts
+   * in lower case. That is problems 4, 6 and 8 of the twelve, all produced by one decision.
+   *
+   * IT ALSO COULD NOT BE SWAPPED FOR A NAME. Every label is substituted at the read, and the
+   * substitution is a string match - a label that IS a sentence matches nothing reliable, so these
+   * people were never named even to readers entitled to their names.
+   *
+   * So the label is now positional and nothing else: "the initiator", "Participant A", "Participant
+   * B". Short, unique by construction, and a clean string to swap for a name. The role is not lost;
+   * it lives on the participant row and is shown where a role belongs, which is not in place of
+   * somebody's name.
+   *
+   * WHAT THIS BREAKS, SAID PLAINLY: a report stored before this change holds role-shaped labels in
+   * its prose, and those no longer resolve to anybody. Every ground in this database is ours and
+   * the corpus is re-run, so the cost is a re-synthesis rather than a migration.
+   */
   for (const p of parties) {
     if (p.partyType === PartyType.INITIATOR) {
-      const role = p.roleAsDescribed?.trim();
-      if (role && (roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
-        /** Shared with somebody else, so it has to be distinguished like any other. */
-        const n = roleSeen.get(role.toLowerCase()) ?? 0;
-        roleSeen.set(role.toLowerCase(), n + 1);
-        labelById.set(p.id, `${role} ${aLetterFor(n)}`);
-      } else {
-        /** Unshared roles keep their exact former label, so stored reports do not drift. */
-        labelById.set(p.id, role || 'the initiator');
-      }
+      labelById.set(p.id, 'the initiator');
     } else {
-      const role = p.roleAsDescribed?.trim();
-      if (role) {
-        if ((roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
-          const n = roleSeen.get(role.toLowerCase()) ?? 0;
-          roleSeen.set(role.toLowerCase(), n + 1);
-          labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
-        } else {
-          labelById.set(p.id, role);
-        }
-      } else {
-        /*
-         * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
-         *
-         * Lowercase, this produced three registers in one list: "Hafsah", "participant A",
-         * "Tunde Okafor (you)". Two of them are names and the third reads as a system placeholder
-         * that failed to resolve, which is the wrong reading - it is the permission rule working,
-         * and somebody who may not see a name should still see a person.
-         *
-         * Substitution back into prose is case-insensitive (see withNames), so labels already
-         * written into stored report JSON keep resolving.
-         */
-        const letter = aLetterFor(participantIdx++);
-        labelById.set(p.id, `Participant ${letter}`);
-      }
+      /*
+       * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
+       *
+       * Lowercase, this produced three registers in one list: "Hafsah", "participant A",
+       * "Tunde Okafor (you)". Two of them are names and the third reads as a system placeholder
+       * that failed to resolve, which is the wrong reading - it is the permission rule working,
+       * and somebody who may not see a name should still see a person.
+       *
+       * Substitution back into prose is case-insensitive (see withNames).
+       */
+      labelById.set(p.id, `Participant ${aLetterFor(participantIdx++)}`);
     }
   }
 
@@ -390,6 +387,39 @@ export function handleOf(label: string): string {
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const withoutTrailingStop = (s: string) => (s ?? '').trim().replace(/[.!?,;:]+$/, '');
+
+/**
+ * A NAME IS NOT A TITLE, AND IT DOES NOT END A SENTENCE IT IS IN THE MIDDLE OF.
+ *
+ * Run of 25 September 2026, in the lead's own report: "The Daniel Osei. has completed a churn
+ * model", "The Priti Sharma. is managing access requests". 55 of these across 19 scenarios.
+ *
+ * Neither artefact comes from the name. The model wrote "The <label>." - the article because a
+ * label reads like a role, and the stop because the label it had been given ended in one - and the
+ * substitution put a person inside both. Labels are positional now, which makes the second half
+ * rarer, but the model will still write "The Participant A" because that is how you refer to a
+ * label in English.
+ *
+ * So it is cleaned after substitution, where both halves are visible at once: an article
+ * immediately before a name that is a real person's name goes, and a full stop between that name
+ * and a word that carries the same sentence on goes with it.
+ */
+export function aNameIsNotATitle(text: string, names: Iterable<string>): string {
+  let out = text;
+  for (const name of names) {
+    if (!name?.trim()) continue;
+    const n = escapeRe(name.trim());
+    /* "The Daniel Osei." mid-sentence -> "Daniel Osei". The stop only goes when a lower-case word
+       follows it, because a stop that genuinely ends the sentence must stay. */
+    out = out.replace(new RegExp(`\\b[Tt]he ${n}\\.(?=\\s+[a-z])`, 'g'), name);
+    /* "Daniel Osei. has completed" -> "Daniel Osei has completed". */
+    out = out.replace(new RegExp(`\\b${n}\\.(?=\\s+[a-z])`, 'g'), name);
+    /* "The Daniel Osei is" -> "Daniel Osei is". Sentence-initial "The" keeps its capital. */
+    out = out.replace(new RegExp(`(^|[.!?]\\s+)[Tt]he ${n}\\b`, 'g'), (_m, lead: string) => `${lead}${name}`);
+    out = out.replace(new RegExp(`\\b[Tt]he ${n}\\b`, 'g'), name);
+  }
+  return out;
+}
 
 export function withNames(
   text: string,
@@ -639,7 +669,9 @@ export function withNames(
     const re = new RegExp(`(?<![\\w])${escaped}(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
     out = out.replace(re, printed);
   }
-  return out;
+  /* AND A NAME IS NOT A TITLE. "The Daniel Osei. has completed" was 55 lines across 19 scenarios,
+     and neither the article nor the stop came from the name. See aNameIsNotATitle. */
+  return aNameIsNotATitle(out, visible.values());
 }
 
 /**

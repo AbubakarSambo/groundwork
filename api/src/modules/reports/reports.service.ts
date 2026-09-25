@@ -4332,8 +4332,25 @@ happened, and what is in the way.`;
       return v;
     };
 
+    /*
+     * AND NOW EVERY FIELD, BECAUSE THE FIELD LIST WAS THE BUG TWICE.
+     *
+     * The note above records the first time: six fields named, everything else through on
+     * `...report`, and the lead read "the initiator" in her own inferences. Two fields were added
+     * and the default was left alone - so when `theJudgement` and `findings` arrived, the same
+     * defect regrew in them. The twenty-four-scenario run counted "the initiator" twenty-four
+     * times in ONE lead's report, almost all of it inside the judgement.
+     *
+     * So the default is inverted. Everything is walked; `NEVER_NAMED` is the exception list, and it
+     * is the one that has a reason - `own-reads-only` filters per-person rows on the raw label, so
+     * a name in `.label` silently keeps the wrong person's rows.
+     *
+     * The named fields below stay named only where they need a DIFFERENT walker: `divergences` gets
+     * a side assigned to each position before names go in, and `engagement` gets a name carried
+     * beside the label rather than into it.
+     */
     return {
-      ...report,
+      ...walkTextOnly(report),
       sharedPicture: t(report.sharedPicture),
       centralQuestion: t(report.centralQuestion),
       agreements: walk(report.agreements),
@@ -5252,10 +5269,16 @@ happened, and what is in the way.`;
         ),
         activated: true,
         forming: true,
-        overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
-          isLead: isInitiator || isOrgAdmin,
-          participantId: participant?.id ?? null,
-        }),
+        /* NAMED, LIKE EVERYTHING ELSE SOMEBODY READS. overTime is assembled after the name pass,
+           so its prose kept its labels: "Participant A is waiting on the person who called this
+           meeting". Through the wrapper, not `applyNames` directly - the wrapper is also where an
+           anonymously shared report loses its identifying detail, and a read that skips it would
+           name people on a check-in shared without names. */
+        overTime: (this.asItWasShared(
+          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }) } },
+          participant?.id ?? null,
+          isInitiator || isOrgAdmin,
+        ) as any).overTime,
         /* A forming report is partial by definition, so it is the one that most needs to say how
            partial. Same read as the released branch - see a-report-behind-the-answers. */
         /* Optional-chained like every other read here: a caller whose prisma double does not stub a
@@ -5407,10 +5430,12 @@ happened, and what is in the way.`;
        * The board gates this on `isInitiator`; the report returns the whole row, so a participant's
        * own report carried other people's commitments and dependencies. See overTimeForThisReader.
        */
-      overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
-        isLead: isInitiator || isOrgAdmin,
-        participantId: participant?.id ?? null,
-      }),
+      /* And named through the wrapper, for the reason in the forming branch above. */
+      overTime: (this.asItWasShared(
+        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }) } },
+        participant?.id ?? null,
+        isInitiator || isOrgAdmin,
+      ) as any).overTime,
       /*
        * WHETHER THESE NUMBERS ARE OLDER THAN THE ANSWERS.
        *

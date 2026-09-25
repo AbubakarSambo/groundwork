@@ -22,7 +22,7 @@
  * the one thing that fallback is not allowed to do is glue slot names - see `plainlyWithoutAModel`.
  */
 import type { PersonFacts } from './the-facts-about-a-person';
-import { PLAIN_WORDS_WITH_EXAMPLES } from '../conversation/plain-words';
+import { PLAIN_WORDS_WITH_EXAMPLES, WRITTEN_ONCE_FOR_SEVERAL_READERS } from '../conversation/plain-words';
 
 export interface ThePicture {
   /** What is true across everybody, in one or two sentences. Never a fixed sentence. */
@@ -55,6 +55,8 @@ facts say it was never written down. The person this is about will read this.`
 
   return `${PLAIN_WORDS_WITH_EXAMPLES}
 
+${WRITTEN_ONCE_FOR_SEVERAL_READERS}
+
 WHAT YOU ARE WRITING
 
 You are given the facts this product holds about each person on a check-in. Every one of them is
@@ -77,8 +79,8 @@ they are waiting on. Where the record shows two numbers for one thing, or a numb
 have never mentioned, say so as a plain fact about what was and was not said - never as a criticism
 of them.
 
-Use the name you are given for each person. Never write "the initiator", never write a person's job
-description in place of their name.
+Use the label you are given for each person, exactly. The product turns it into a name, or into
+"you" for whoever is reading, when the report is served.
 
 AND A HEADLINE PER PERSON, only where the record shows something the lead should look at. One plain
 sentence, not a label. Null where there is nothing.${single}`;

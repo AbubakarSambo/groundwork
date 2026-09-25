@@ -19,6 +19,15 @@ import { namesVisibleTo, viewerLabelOf, withNames } from './party-labels';
  * "write in second person" has nobody to write to. The substitution layer is the only place that
  * knows who is reading.
  */
+/*
+ * THE LABELS IN THESE FIXTURES CHANGED ON 25 SEPTEMBER 2026, and the text with them.
+ *
+ * A label used to be the person's role, so the stored prose said "Participant A described...". A
+ * role is free text a lead types and turned out to be a whole sentence in practice, which ended the
+ * surrounding sentence twice and could never be matched for substitution. Labels are positional
+ * now, so stored prose says "Participant A" and "the initiator" - and the substitution this file
+ * tests is the same substitution, on the strings the product actually writes today.
+ */
 const parties = [
   { id: 'lead', partyType: PartyType.INITIATOR, roleAsDescribed: 'programme lead', user: { firstName: 'Amara', lastName: 'Obi' } },
   { id: 'me', partyType: PartyType.PARTICIPANT, roleAsDescribed: 'sales lead', user: { firstName: 'Hafsah', lastName: 'Jumare' } },
@@ -29,32 +38,32 @@ const render = (text: string, viewerId: string) =>
 
 describe('the reader is addressed, not described', () => {
   it('the exact line from the live report', () => {
-    const out = render('The sales lead described their role as building a new MVP.', 'me');
+    const out = render('Participant A described their role as building a new MVP.', 'me');
     expect(out).toBe('You described your role as building a new MVP.');
     expect(out).not.toContain('Hafsah');
   });
 
   it('a possessive becomes "your", never "you-apostrophe-s"', () => {
-    expect(render("The sales lead's account is on record.", 'me')).toBe('Your account is on record.');
+    expect(render("Participant A's account is on record.", 'me')).toBe('Your account is on record.');
   });
 
   it('and the bare label becomes "you"', () => {
     /* "You has" was what this asserted, which is the bug rather than the behaviour: a label
        swapped for "you" left the third-person conjugation behind, and a live report read "You is
        concerned this sign-off will drift". The verb agrees now. */
-    expect(render('The sales lead has not checked in.', 'me')).toBe('You have not checked in.');
+    expect(render('Participant A has not checked in.', 'me')).toBe('You have not checked in.');
   });
 
   it('OTHER people keep their names, so the report is still about somebody', () => {
     /** The control. Turning every label into "you" would make the report unreadable. */
-    const out = render('The programme lead disagreed with the sales lead.', 'me');
+    const out = render('The initiator disagreed with Participant A.', 'me');
     expect(out).toContain('Amara Obi');
     expect(out).toContain('you');
   });
 
   it('and a reader who is NOT this party still sees the name', () => {
     /** The same sentence, read by the lead, must name her. */
-    const out = render('The sales lead described their role as building a new MVP.', 'lead');
+    const out = render('Participant A described their role as building a new MVP.', 'lead');
     expect(out).toContain('Hafsah Jumare');
     expect(out).not.toMatch(/\byou\b/i);
   });
@@ -62,7 +71,7 @@ describe('the reader is addressed, not described', () => {
 
 describe('the pronoun rule is narrow on purpose', () => {
   it('rewrites "their" only after a reporting verb', () => {
-    expect(render('The sales lead said their target was 400k.', 'me')).toBe('You said your target was 400k.');
+    expect(render('Participant A said their target was 400k.', 'me')).toBe('You said your target was 400k.');
   });
 
   it('and leaves a third party pronoun alone', () => {
@@ -74,14 +83,14 @@ describe('the pronoun rule is narrow on purpose', () => {
      * real case: the manager is somebody else's, the sentence is already correct, and only an
      * explicit list of accounting verbs leaves it alone.
      */
-    const out = render('The sales lead emailed their manager.', 'me');
+    const out = render('Participant A emailed their manager.', 'me');
     expect(out).toContain('their manager');
     expect(out).not.toContain('your manager');
   });
 
   it('a viewer with no label changes nothing', () => {
     /** A reader who is not a party at all must not have the text rewritten around them. */
-    const text = 'The sales lead described their role.';
+    const text = 'Participant A described their role.';
     expect(withNames(text, namesVisibleTo(null, parties), undefined, { viewerLabel: null })).toContain('their role');
   });
 });
@@ -97,34 +106,34 @@ describe('the pronoun rule is narrow on purpose', () => {
  */
 describe('the verb agrees with "you"', () => {
   it('fixes the four irregulars', () => {
-    expect(render('The sales lead is concerned about sign-off.', 'me')).toBe('You are concerned about sign-off.');
-    expect(render('The sales lead was clear about the date.', 'me')).toBe('You were clear about the date.');
-    expect(render('The sales lead has the plan.', 'me')).toBe('You have the plan.');
-    expect(render('The sales lead does the weekly review.', 'me')).toBe('You do the weekly review.');
+    expect(render('Participant A is concerned about sign-off.', 'me')).toBe('You are concerned about sign-off.');
+    expect(render('Participant A was clear about the date.', 'me')).toBe('You were clear about the date.');
+    expect(render('Participant A has the plan.', 'me')).toBe('You have the plan.');
+    expect(render('Participant A does the weekly review.', 'me')).toBe('You do the weekly review.');
   });
 
   it('and the reporting verbs a record of this kind uses', () => {
-    expect(render('The sales lead describes the handover as unfinished.', 'me'))
+    expect(render('Participant A describes the handover as unfinished.', 'me'))
       .toBe('You describe the handover as unfinished.');
-    expect(render('The sales lead expects the board by week four.', 'me'))
+    expect(render('Participant A expects the board by week four.', 'me'))
       .toBe('You expect the board by week four.');
-    expect(render('The sales lead seems unsure who signs off.', 'me'))
+    expect(render('Participant A seems unsure who signs off.', 'me'))
       .toBe('You seem unsure who signs off.');
   });
 
   it('mid-sentence as well as at the start', () => {
-    expect(render('On the timeline, the sales lead is clear.', 'me')).toBe('On the timeline, you are clear.');
+    expect(render('On the timeline, Participant A is clear.', 'me')).toBe('On the timeline, you are clear.');
   });
 
   it('leaves another party\'s verb alone, because it is correct', () => {
     /* Only the READER becomes "you". Everybody else stays in the third person and their
        conjugation was never wrong. */
-    const out = render('The engineer is concerned and the sales lead is not.', 'me');
+    const out = render('The engineer is concerned and Participant A is not.', 'me');
     expect(out).toContain('The engineer is concerned');
     expect(out).toContain('you are not');
   });
 
   it('and does not touch a possessive, which the rule above already handled', () => {
-    expect(render("The sales lead's account is thin.", 'me')).toBe('Your account is thin.');
+    expect(render("Participant A's account is thin.", 'me')).toBe('Your account is thin.');
   });
 });

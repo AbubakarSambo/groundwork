@@ -29,9 +29,7 @@ export const PLAIN_WORDS = `HOW TO WRITE ANYTHING A PERSON WILL READ
 Write every sentence as a full sentence, with a subject and a verb. Never a fragment, never a label
 followed by a colon and an answer.
 
-Use people's names. Speak to the reader as "you". Never write "the initiator", "the lead",
-"Participant A", "the person who set this up", or any other internal label for a person. Never use
-somebody's job description as their name.
+Use people's names. Never use somebody's job description as their name.
 
 Never join pieces with colons, dots, arrows or slashes. Never write a list of labels and fragments.
 
@@ -52,6 +50,58 @@ happened, and what would change it.
 
 Start every sentence with a capital letter. Never cut a sentence, and never cut a word. If something
 must be shorter, write a shorter whole sentence.`;
+
+/**
+ * AND WHO THE SENTENCE IS SPOKEN TO, WHICH IS NOT THE SAME EVERYWHERE.
+ *
+ * The first version of this rulebook said "Speak to the reader as you" and gave it to everything.
+ * On the performance-plan scenario the shared picture then came back:
+ *
+ *   "You said that for his first quarter, you and Nathan agreed on a target of five renewals.
+ *    You wrote that Nathan is not meeting his renewal targets."
+ *
+ * That is the lead's account, written in second person. The report is generated ONCE, in labels,
+ * and rendered separately for each reader - so "You" meaning the lead becomes "You" meaning
+ * whoever opens it, and Nathan read his manager's account of him as though it were his own.
+ *
+ * `withNames` has said so since it was written: "Tell the model to write in second person cannot
+ * work: ONE report is generated in labels and then rendered per reader. At generation time there is
+ * no reader to address." The rulebook has to respect that, so the person being addressed is now a
+ * property of the SURFACE rather than a rule for all of them.
+ */
+
+/** For anything written to one person, in the moment: the check-in, the guide, the assistant, email. */
+export const SPOKEN_TO_THE_READER = `Speak to the reader as "you". Use other people's names.
+Never write "the initiator", "the lead", "Participant A", "the person who set this up", or any other
+internal label for a person.`;
+
+/**
+ * For the shared report and the board, which are written once and rendered for several readers.
+ *
+ * The labels are not a style choice here - they are the mechanism. The product swaps each label for
+ * a name, or for "you" when that label belongs to whoever is reading, at the moment it is served. A
+ * "you" written into the text itself belongs to nobody and is read by everybody.
+ */
+export const WRITTEN_ONCE_FOR_SEVERAL_READERS = `WHO YOU ARE WRITING ABOUT, AND HOW TO NAME THEM.
+
+Every person is given to you with a label: "the initiator" for whoever set this up, and "Participant
+A", "Participant B" and so on for everybody else. Use those labels exactly, every time you refer to
+somebody.
+
+NEVER write "you" or "your" about a person. This is written once and shown to several different
+people, each of whom sees their own label turned into "you" and everybody else's turned into a name.
+A "you" that you write yourself belongs to nobody, and every reader will take it to mean themselves.
+
+Do not invent a label. Do not use somebody's job description in place of their label.
+
+AND DO NOT REFER BACK TO A PERSON WITH A PRONOUN. Write the label again instead of "he", "she" or
+"they". Each label is swapped for a name, or for "you", when the report is served - so a pronoun
+that agreed with the label no longer agrees with what replaces it, and "Participant A says they were
+told the target was five" is served as "You say they were told the target was five".
+
+Write "Participant A says Participant A was told the target was five renewals, and has completed
+six." It reads repetitively to you. It is served as "You say you were told the target was five
+renewals, and have completed six", which is what the person actually reads.`;
 
 /**
  * THE BEFORE SET, from the run of 25 September 2026.
@@ -78,10 +128,12 @@ WRONG: Apply the checklist from the Relationship officer, Surulere. Target 14 ap
 RIGHT: Kwame made a checklist that gets customers' documents in faster. Share it with Femi and Ngozi.
 
 WRONG: The initiator believes the problem is the credit committee, but for two of the three officers, the bottleneck is customers not providing documents.
-RIGHT: You believe the credit committee is what holds sales up. For two of your three officers, the hold-up comes earlier: customers are slow to send their bank statements.
+RIGHT: The initiator believes the credit committee is what holds sales up. For two of the three officers, the hold-up comes earlier: customers are slow to send their bank statements.
+  (On a surface written to one person, this reads "You believe the credit committee is what holds
+   sales up." The product makes that swap itself. Write the label; never write "you".)
 
 WRONG: The initiator's pipeline count of 25 applications is also wrong; the officers are reporting a combined total of 64.
-RIGHT: You counted 25 open applications. Your officers' own numbers add up to 64.
+RIGHT: The initiator counted 25 open applications. The officers' own numbers add up to 64.
 
 WRONG: standing: THIN - only 3 people answered, which is too few to rank. asked 4 . answered 3 . said they cannot 0 . never reached 1
 RIGHT: Three of the four people answered this question. That is too few to compare.

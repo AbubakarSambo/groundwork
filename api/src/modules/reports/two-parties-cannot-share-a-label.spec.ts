@@ -33,41 +33,68 @@ describe('the collision that leaked', () => {
   });
 });
 
-describe('labels that were already correct do not move', () => {
-  it('an unshared initiator remit keeps its exact former label, so stored reports do not drift', () => {
-    /**
-     * The control that matters most. Changing a label that was fine would make every stored report's
-     * rows stop resolving - which fails safe, but silently loses people their own reads.
-     */
+/*
+ * CHANGED 25 SEPTEMBER 2026, AND THE THREE TESTS THAT WENT ARE WORTH NAMING.
+ *
+ * This file used to hold "labels that were already correct do not move": an unshared role kept its
+ * exact label, same-role people kept A/B suffixes, and a role could collide with another's suffix.
+ * All three described a world in which a person's ROLE is their label.
+ *
+ * `roleAsDescribed` is free text a lead types when adding somebody, and leads type sentences. The
+ * twenty-four-scenario run printed, mid-paragraph: "Apply the checklist from the Relationship
+ * officer, Surulere. Target 14 approved facilities this quarter. to the work of the other officers."
+ * Two full stops inside a label, so the sentence ends twice and resumes in lower case. It also could
+ * never be swapped for a name, because the substitution is a string match and the label was a
+ * sentence - so those people were never named even to readers entitled to their names.
+ *
+ * Labels are now positional and nothing else. The collision the old disambiguation existed to
+ * prevent is now impossible by construction, which is why the case that constructed one is gone.
+ * The guard itself stays, because a guard that cannot fire is cheap and the next naming branch
+ * somebody adds might make it fire again.
+ */
+describe('a label is positional, never a role description', () => {
+  it('the initiator is "the initiator", whatever their remit says', () => {
     expect(labelsForParties([initiator('Chief executive'), party('p1', 'Board chair')]).get('lead'))
-      .toBe('Chief executive');
-  });
-
-  it('an initiator with no remit is still "the initiator"', () => {
+      .toBe('the initiator');
     expect(labelsForParties([initiator(null), party('p1', 'Board chair')]).get('lead')).toBe('the initiator');
   });
 
-  it('same-role participants keep their A/B suffixes', () => {
+  it('participants are Participant A, B, C, whatever their roles say', () => {
     const m = labelsForParties([initiator('Chief executive'), party('p1', 'Field officer'), party('p2', 'Field officer')]);
-    expect([...m.values()].filter(v => v.startsWith('Field officer')).sort()).toEqual(['Field officer A', 'Field officer B']);
+    expect([...m.values()].sort()).toEqual(['Participant A', 'Participant B', 'the initiator']);
   });
 
   it('a party with no role at all is still "Participant A"', () => {
     expect(labelsForParties([initiator('Chief executive'), party('p1', null)]).get('p1')).toBe('Participant A');
   });
+
+  it('and no label contains a full stop, so none of them can end a sentence', () => {
+    const m = labelsForParties([
+      initiator('Relationship officer, Surulere. Target 14 approved facilities this quarter.'),
+      party('p1', 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.'),
+    ]);
+    for (const label of m.values()) expect(label).not.toContain('.');
+  });
 });
 
 describe('and if a collision ever returns, it fails closed', () => {
-  it('throws rather than returning a duplicated label', () => {
-    /**
-     * Deliberately constructed to defeat the disambiguation: one party's role is literally another's
-     * suffixed label. Losing the report for this ground is the cheaper failure.
-     */
+  /*
+   * The case that used to live here built a collision out of roles: one party's role was literally
+   * another's suffixed label. Roles are no longer labels, so that collision cannot be built. The
+   * guard below is kept because `own-reads-only` filters per-person rows on the raw label, and a
+   * shared label hands one person another's private read - a failure worth a dead check.
+   */
+  it('cannot be reached through roles any more, however they are written', () => {
     expect(() => labelsForParties([
       party('p1', 'Field officer'),
       party('p2', 'Field officer'),
-      party('p3', 'Field officer A'),
-    ])).toThrow(/label collision/i);
+      party('p3', 'Participant A'),
+    ])).not.toThrow();
+    expect(new Set([...labelsForParties([
+      party('p1', 'Field officer'),
+      party('p2', 'Field officer'),
+      party('p3', 'Participant A'),
+    ]).values()]).size).toBe(3);
   });
 
   it('the error names both parties, so it is diagnosable', () => {

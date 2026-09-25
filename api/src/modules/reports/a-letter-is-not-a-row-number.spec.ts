@@ -30,8 +30,9 @@ describe('a letter is not a row number', () => {
     expect(labels.get('ibrahim')).toBe('Participant A');
     expect(labels.get('chidinma')).toBe('Participant B');
     expect(labels.get('fatima')).toBe('Participant J');
-    /* The lead has a role, so she takes no letter - which is why the respondents start at A. */
-    expect(labels.get('lead')).toBe('a_party');
+    /* The lead is "the initiator" and takes no letter, which is why the respondents start at A.
+       This read `a_party` when the lead's role was used as their label; labels are positional now. */
+    expect(labels.get('lead')).toBe('the initiator');
   });
 
   /* The defect, end to end: the stored sentence resolves to the person who said it. */
