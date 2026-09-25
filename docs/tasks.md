@@ -12,8 +12,8 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. Never skip ahe
 
 ## Phase 0. Get ready (do this first, every night)
 
-- [ ] **0.1 Check it is safe.** Confirm: this is a separate copy of the code on its own branch; test keys only (no live Stripe, WhatsApp off); emails do not really send; the database is a local test database. If any of these is not true, stop and write it in the morning report.
-- [ ] **0.2 Score where we are now.** Run all 24 scenarios (`journey/all-24`, `run.ts`) and score them with `tools/score_run.py`. Save the result as `docs/score-at-start.md`. Compare it with `docs/baseline.json`, which is the score from 25 September before any fixes. Fixes 1 to 3 are already done, so the problem numbers should already be lower, and no engine-value number may be lower.
+- [x] **0.1 Check it is safe.** Confirm: this is a separate copy of the code on its own branch; test keys only (no live Stripe, WhatsApp off); emails do not really send; the database is a local test database. If any of these is not true, stop and write it in the morning report.
+- [x] **0.2 Score where we are now.** Run all 24 scenarios (`journey/all-24`, `run.ts`) and score them with `tools/score_run.py`. Save the result as `docs/score-at-start.md`. Compare it with `docs/baseline.json`, which is the score from 25 September before any fixes. Fixes 1 to 3 are already done, so the problem numbers should already be lower, and no engine-value number may be lower.
 
 ## Phase 1. Finish making reports and boards readable
 
