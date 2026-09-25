@@ -133,37 +133,34 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
 }
 
 /**
- * THE FALLBACK, WHICH IS ALLOWED TO BE FLAT AND IS NOT ALLOWED TO GLUE.
+ * WHEN THE PICTURE CANNOT BE WRITTEN, SAY SO IN ONE SENTENCE AND STOP.
  *
- * Every sentence here is whole, starts with a capital and names the person. It reads like a form
- * because it is one; what it never does is print "Where they say they stand now:" in front of
- * somebody's answer to a different question.
+ * The first version of this tried to keep writing: a flat sentence per person, built from the same
+ * facts, with connectors instead of slot names. Hafsah asked to see it, which is how it was caught.
+ * Forced live on the sales ground, it produced:
+ *
+ *   "the initiator reported this: We have a total of 25 facilities in the pipeline right now."
+ *   "Relationship officer, Lagos mainland. Target 12 approved facilities this quarter. reported
+ *    this: I have visited many businesses, 46 in total."
+ *
+ * That is the same defect wearing a different connector. "reported this:" is a slot name; the label
+ * is a job description with full stops inside it, printed twice a sentence; and the whole thing
+ * starts in lower case. A fallback that reproduces four of the twelve problems is not a fallback,
+ * it is the bug with a fresh coat on.
+ *
+ * SO IT SAYS THE TRUE THING AND STOPS. Her words: "If the fallback can only say little, a short
+ * honest sentence is better." Nothing is lost by this - the model's own synthesis still follows
+ * underneath, every person's own words are still on their own record, and the hourly sweep
+ * re-synthesises a report that is behind, so this is what the lead reads for an hour at worst.
+ *
+ * The count is still exact, because the count is arithmetic and was never the part that failed.
  */
-export function plainlyWithoutAModel(facts: PersonFacts[], nameFor: (label: string) => string): ThePicture {
-  const capital = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-  const perPerson = facts.map((f) => {
-    const who = nameFor(f.label);
-    const out: string[] = [];
-    if (f.whereTheySayTheyAre) out.push(`${who} reported this: ${capital(f.whereTheySayTheyAre)}.`);
-    else if (f.whatTheySaidItWasFor) out.push(`${who} said this was about ${f.whatTheySaidItWasFor}.`);
-    if (f.whatTheySayIsInTheWay) out.push(`${who} named this as being in the way: ${capital(f.whatTheySayIsInTheWay)}.`);
-    if (f.twoNumbersForOneTarget) {
-      const t = f.twoNumbersForOneTarget;
-      out.push(`There are two numbers for ${t.what}. The lead has ${t.theLeads} and ${who} has ${t.theirs}.`);
-    }
-    if (f.aNumberSetForThemTheyHaveNeverSaid) {
-      const n = f.aNumberSetForThemTheyHaveNeverSaid;
-      out.push(`The lead set ${n.target} for ${n.what}, and ${who} has not mentioned that figure.`);
-    }
-    for (const d of f.whatDoesNotAddUp) out.push(`${capital(d)}.`);
-    return {
-      participantId: f.participantId,
-      text: out.join(' ').replace(/\.\.+/g, '.').trim(),
-      headline: f.hasGap && out.length ? out[out.length - 1] : null,
-    };
-  }).filter((p) => p.text);
-
-  return { opening: '', perPerson };
+export function whenThePictureCannotBeWritten(peopleAnswered: number, peopleExpected: number): ThePicture {
+  const count = howManyAnsweredInWords(peopleAnswered, peopleExpected);
+  return {
+    opening: `${count} The full picture could not be written just now, and will appear here shortly.`,
+    perPerson: [],
+  };
 }
 
 /**

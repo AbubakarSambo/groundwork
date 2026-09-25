@@ -1,5 +1,5 @@
 import { factsAbout, everMentioned } from './the-facts-about-a-person';
-import { plainlyWithoutAModel, howManyAnsweredInWords, factsAsLines } from './the-picture-in-plain-sentences';
+import { whenThePictureCannotBeWritten, howManyAnsweredInWords, factsAsLines } from './the-picture-in-plain-sentences';
 
 /**
  * THE EXTRACTION KEEPS ITS SCARS; THE GLUE DOES NOT.
@@ -93,33 +93,33 @@ describe('a number set for them that they have never said', () => {
   });
 });
 
-describe('and when the model cannot be reached, the fallback does not glue', () => {
-  const facts = [
-    factsAbout({
-      participantId: 'p1', label: 'Femi', isLead: false,
-      said: [
-        said('SUCCESS_DEFINITION', 'Twelve approved facilities'),
-        said('PROGRESS', 'I have visited 46 businesses', 2),
-        said('WORRY', 'customers are slow with bank statements', 2),
-      ],
-      targets: [],
-    }, 2)!,
-  ];
+describe('and when the picture cannot be written, it says so and stops', () => {
+  /*
+   * WHAT THIS REPLACES. The fallback used to keep writing - a flat sentence per person built from
+   * the same facts. Forced live on the sales ground it produced "the initiator reported this: ..."
+   * and "Relationship officer, Lagos mainland. Target 12 approved facilities this quarter. reported
+   * this: ...", which is four of the twelve problems in one paragraph. A short true sentence beats
+   * a long glued one.
+   */
+  it('says how many answered and that the rest is coming, and nothing else', () => {
+    const out = whenThePictureCannotBeWritten(4, 4);
+    expect(out.opening).toBe('All four people have checked in. The full picture could not be written just now, and will appear here shortly.');
+    expect(out.perPerson).toEqual([]);
+  });
 
-  it('writes whole sentences with no slot names in them', () => {
-    const out = plainlyWithoutAModel(facts, (l) => l);
-    const text = out.perPerson[0].text;
-    expect(text).not.toMatch(/said this was for:|Where they say they stand now:|What they say is in the way:/);
-    expect(text).toContain('Femi');
-    /* Every sentence starts with a capital and ends with a stop. */
-    for (const sentence of text.split(/(?<=\.)\s+/)) {
-      expect(sentence.charAt(0)).toBe(sentence.charAt(0).toUpperCase());
+  it('never a slot name, never a label, never a lower-case start', () => {
+    for (const [a, e] of [[0, 3], [1, 1], [1, 4], [3, 4], [4, 4]]) {
+      const { opening } = whenThePictureCannotBeWritten(a, e);
+      expect(opening).not.toMatch(/reported this:|said this was for:|named this as being in the way:/);
+      expect(opening).not.toMatch(/the initiator|Participant [A-Z]\b/);
+      expect(opening.charAt(0)).toBe(opening.charAt(0).toUpperCase());
+      expect(opening).not.toMatch(/\b1 people\b/);
     }
   });
 
-  it('never claims the accounts do not contradict each other', () => {
-    const out = plainlyWithoutAModel(facts, (l) => l);
-    expect(JSON.stringify(out)).not.toContain('contradicts');
+  it('and it is the count that is true, not a guess', () => {
+    expect(whenThePictureCannotBeWritten(1, 4).opening).toContain('One person has answered so far, of 4.');
+    expect(whenThePictureCannotBeWritten(0, 3).opening).toContain('Nobody has answered yet.');
   });
 });
 

@@ -49,7 +49,7 @@ import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
 import {
-  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, plainlyWithoutAModel, howManyAnsweredInWords,
+  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten,
   type ThePicture,
 } from './the-picture-in-plain-sentences';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
@@ -4463,10 +4463,7 @@ happened, and what is in the way.`;
     const nameFor = (label: string) => label;
     if (!facts.length) return { opening: '', perPerson: [] };
 
-    const fallback = (): ThePicture => {
-      const flat = plainlyWithoutAModel(facts, nameFor);
-      return { ...flat, opening: howManyAnsweredInWords(about.peopleAnswered, about.peopleExpected) };
-    };
+    const fallback = (): ThePicture => whenThePictureCannotBeWritten(about.peopleAnswered, about.peopleExpected);
 
     try {
       const written = await this.anthropic.extract<ThePicture>(
