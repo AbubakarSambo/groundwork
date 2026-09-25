@@ -443,6 +443,8 @@ export class BoardService {
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
         sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+        /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
+        theOpening: ((ground as any).report?.theOpening as string | null) ?? null,
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
       groundStatus: ground.status,

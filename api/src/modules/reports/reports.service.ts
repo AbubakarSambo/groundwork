@@ -47,7 +47,11 @@ const patternCatalogue = () => (patternByCode ??= new Map(
 import { cleanText } from './what-the-record-actually-holds';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
-import { findingFor, thePictureTheProductWrites } from './the-finding-per-person';
+import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
+import {
+  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, plainlyWithoutAModel, howManyAnsweredInWords,
+  type ThePicture,
+} from './the-picture-in-plain-sentences';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
@@ -2025,9 +2029,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the model's narrative follows under it. Both halves go through the same name resolution at the
      * read, so "the tractor owner" becomes "you" on her own page and her name on the lead's.
      */
-    const findings = parties
+    const theFacts = parties
       .filter((p: any) => !p.managingOnly)
-      .map((p: any) => findingFor({
+      .map((p: any) => factsAbout({
         participantId: p.id,
         label: labelById.get(p.id) ?? 'a party',
         isLead: p.partyType === PartyType.INITIATOR,
@@ -2050,11 +2054,48 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { groundId, status: CheckInStatus.COMPLETED },
       select: { participantId: true },
     }) ?? Promise.resolve([] as any[])).then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size).catch(() => findings.length);
-    const productHalf = thePictureTheProductWrites(findings, Math.max(peopleWhoAnswered, findings.length), howManyDifferences);
+    /*
+     * AND NOW SOMETHING THAT CAN READ WRITES IT. See the-picture-in-plain-sentences.
+     *
+     * What stood here joined slot names to raw answers - "said this was for:", "Where they say they
+     * stand now:" - and put a fixed sentence on top claiming the accounts did not contradict each
+     * other, immediately before listing the contradictions. 734 glued lines and 80 contradicted
+     * openings across the twenty-four-scenario run.
+     *
+     * The facts are the same facts. Only the writing moved.
+     */
+    const differenceTopics: string[] = (Array.isArray((result as any).divergences) ? (result as any).divergences : [])
+      .map((d: any) => (typeof d === 'string' ? d : d?.topic))
+      .filter((t: any): t is string => typeof t === 'string' && !!t.trim())
+      .slice(0, 4);
+    const answered = Math.max(peopleWhoAnswered, theFacts.length);
+    const expected = parties.filter((p: any) => !p.managingOnly).length || answered;
+    const picture = await this.pictureInPlainSentences(theFacts, {
+      peopleAnswered: answered,
+      peopleExpected: expected,
+      differenceTopics,
+      /* PIP, RECOGNITION and CONTRACT_RENEWAL are about one person, who reads this. */
+      aboutOnePerson: familyFor((ground as any).scenario) === BoardFamily.EVALUATION,
+    });
+
+    const findings = theFacts.map((f) => {
+      const written = picture.perPerson.find((x) => x.participantId === f.participantId);
+      return {
+        participantId: f.participantId,
+        label: f.label,
+        text: written?.text ?? '',
+        hasGap: f.hasGap,
+        headline: written?.headline ?? null,
+      };
+    }).filter((f) => f.text);
+
+    const productHalf = [picture.opening, ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
     if (productHalf) {
       const modelHalf = String((result as any).sharedPicture ?? '').trim();
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
     }
+    /* THE BOARD READS THIS, NOT THE FIRST PARAGRAPH OF THE REPORT. See how-a-check-in-is-going. */
+    (result as any).theOpening = picture.opening || null;
 
     /*
      * AND THE SECOND READ, WHERE THERE ARE ENOUGH SEPARATE ACCOUNTS FOR IT TO MEAN ANYTHING.
@@ -2199,6 +2240,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           return {};
         })()),
         sharedPicture: result.sharedPicture,
+        /* The opening on its own, for the board. See the-picture-in-plain-sentences. */
+        theOpening: ((result as any).theOpening ?? null) as any,
         findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
@@ -2234,6 +2277,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       },
       update: {
         sharedPicture: result.sharedPicture,
+        /* The opening on its own, for the board. See the-picture-in-plain-sentences. */
+        theOpening: ((result as any).theOpening ?? null) as any,
         findings: (findings.length ? findings : undefined) as any,
         agreements: result.agreements as any,
         divergences: result.divergences as any,
@@ -4399,6 +4444,49 @@ happened, and what is in the way.`;
    * Never allowed to fail the read. A report that will not load because a wording pass timed out
    * is strictly worse than one that reads like an engine wrote it.
    */
+  /**
+   * THE PICTURE, WRITTEN ONCE, FROM THE FACTS.
+   *
+   * One call for everybody rather than one per person: the opening has to be true across the room,
+   * and four separate calls would let four paragraphs disagree about how many people answered.
+   *
+   * NEVER ALLOWED TO FAIL THE REPORT. A refusal, a timeout or a shape that does not match falls
+   * back to `plainlyWithoutAModel`, which reads flatly and does not glue. Flat is a worse report;
+   * glued is a broken one.
+   */
+  private async pictureInPlainSentences(
+    facts: PersonFacts[],
+    about: { peopleAnswered: number; peopleExpected: number; differenceTopics: string[]; aboutOnePerson: boolean },
+  ): Promise<ThePicture> {
+    /* The label is what is stored; the name is swapped in at the read. The model is given the label
+       so that whatever it writes still goes through the same name resolution as everything else. */
+    const nameFor = (label: string) => label;
+    if (!facts.length) return { opening: '', perPerson: [] };
+
+    const fallback = (): ThePicture => {
+      const flat = plainlyWithoutAModel(facts, nameFor);
+      return { ...flat, opening: howManyAnsweredInWords(about.peopleAnswered, about.peopleExpected) };
+    };
+
+    try {
+      const written = await this.anthropic.extract<ThePicture>(
+        thePictureInstruction(about),
+        [{ role: 'user', content: facts.map((f) => factsAsLines(f, nameFor)).join('\n\n') }],
+        THE_PICTURE_SCHEMA as any,
+        { patient: true },
+      );
+      const perPerson = Array.isArray(written?.perPerson) ? written.perPerson.filter((p: any) => p?.participantId && p?.text?.trim()) : [];
+      if (!written?.opening?.trim() || !perPerson.length) {
+        this.logger.warn('The picture came back without an opening or without people; writing it plainly instead.');
+        return fallback();
+      }
+      return { opening: written.opening.trim(), perPerson };
+    } catch (err: any) {
+      this.logger.warn(`Writing the picture failed, so it is written plainly: ${err?.message}`);
+      return fallback();
+    }
+  }
+
   private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
     const out = await wordedByTheModel(
       drafts,

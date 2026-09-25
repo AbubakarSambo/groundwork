@@ -39,6 +39,8 @@ export interface WhatItTakes {
   cadence: string | null;
   /** The newest round's shared picture, if one has been taken. */
   sharedPicture: string | null;
+  /** The opening, written once as plain sentences. Preferred over slicing the picture. */
+  theOpening?: string | null;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
@@ -67,9 +69,22 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * guard was written to stop being a surprise. Applying it in the shared function rather than in
    * each caller means the next screen to ask this question cannot forget.
    */
-  const latestSummary = it.sharedPicture
-    ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
-    : null;
+  /*
+   * THE OPENING, NOT THE FIRST THREE SENTENCES OF THE REPORT.
+   *
+   * This sliced `sharedPicture`, so the board's summary was whatever the report happened to open
+   * with - which, across the twenty-four-scenario run, was the glued opening every single time
+   * (problem 12 of twelve: "the board copies the report's first paragraph").
+   *
+   * The opening is now written once as plain sentences and kept in its own column, so this reads
+   * the sentence somebody wrote for the job. The slice stays as the fallback, for a report written
+   * before the column existed or one whose wording call fell back - flat, but never empty.
+   */
+  const latestSummary = (it as any).theOpening?.trim()
+    ? notTheWordParty(String((it as any).theOpening).trim())
+    : it.sharedPicture
+      ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
+      : null;
 
   /*
    * THE HIGHEST SESSION NUMBER IS NEXT WEEK'S ROW, NOT THE OPEN ROUND.

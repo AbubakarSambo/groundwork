@@ -2043,6 +2043,15 @@ model Report {
   id              String    @id @default(uuid())
   groundId        String    @unique @map("ground_id")
   sharedPicture   String    @map("shared_picture") @db.Text
+  /// THE OPENING, ON ITS OWN, BECAUSE THE BOARD USED TO TAKE THE FIRST THREE SENTENCES.
+  ///
+  /// `how-a-check-in-is-going` built the board's summary by slicing `sharedPicture` - so every
+  /// board in the twenty-four-scenario run led with the report's glued opening, which is problem 12
+  /// of twelve. The opening is now written once, as plain sentences, and kept here so the board can
+  /// read the sentence rather than guess at where it ends.
+  ///
+  /// Null on every report written before this column, and on any whose wording call fell back.
+  theOpening      String?   @map("the_opening") @db.Text
   agreements      Json // where both accounts agree
   divergences     Json // the gap — never framed as one side being right
   centralQuestion String    @map("central_question") @db.Text

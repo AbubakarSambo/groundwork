@@ -1272,6 +1272,8 @@ export class GroundsService {
           cadence: (rest as any).cadence ?? null,
           scenario: (rest as any).scenario ?? null,
           sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+          /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
+          theOpening: ((rest as any).report?.theOpening as string | null) ?? null,
         });
         const roundsDone = going.glance.progress.roundsDone;
         /*
@@ -1355,7 +1357,7 @@ export class GroundsService {
          * first attempt at the fix went into the fallback lookup below instead of this one: the
          * endpoint kept returning null, which is the only reason the mistake surfaced.
          */
-        report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
+        report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true } },
         /*
          * WHICH ROUNDS HAVE CLOSED, as recorded, so the page stops working it out.
          *
@@ -1406,7 +1408,7 @@ export class GroundsService {
              *
              * Found by reading both payloads for one ground rather than either page on its own.
              */
-            report: { select: { id: true, releasedAt: true, sharedPicture: true, createdAt: true, agreements: true, divergences: true } },
+            report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true } },
             /* Same include as the primary query above. TypeScript refused the two shapes when this
                was added to only one of them, which is the check the comment above wishes it had. */
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
