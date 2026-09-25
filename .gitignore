@@ -81,3 +81,8 @@ api/journey/
 # they are how the work was decided, not the work. The product docs (api-terms, edge-protection)
 # stay tracked - those are things the product itself points at.
 docs/audit/
+
+# The prototype screens: 34MB of screenshots, kept on this computer and out of git.
+# They are reference for building, not part of the product, and git history is the wrong
+# place for a folder of images that will be replaced wholesale each time it is redrawn.
+docs/prototype/
