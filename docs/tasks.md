@@ -25,6 +25,14 @@ Fixes 1 (the leak), 2 (the gluing) and 3 (names, not labels) are done on this br
 - [ ] **1.4 Fix 6. Plain wording in every prompt** a person reads the output of (check-in, report, board, guide, assistant, emails), using the rulebook already in `conversation/plain-words.ts`, split by surface. Change every field a person reads from "a short phrase" or "in a few words" to "one plain, full sentence". Make sure the version that runs is the new one (see the rules on `PromptVersion`). *Done when:* "jargon in reports and boards" and "jargon in Groundwork's turns" are both at most a quarter of the baseline, and the reviewer finds no clipped phrasing in 10 random report lines.
 - [ ] **1.5 Fix 7. Better judgement:** join people's accounts into one picture; never add a charge nobody made; never come back empty. *Done when:* "report with no judgement" is 0, and the new judgement matches the right answer in at least 20 of the 24 scenarios. The right answer for each is the `theDecision` field in the scenario definitions (`journey/all-24`), which is never shown to the product, including ACUTE_SHOCK (the timeline of three warning signs) and ROLE_HANDOVER (both things only in her head, and no charge against the lead).
 - [ ] **1.6 Fix 8. The automatic check:** before anything is saved, check the rendered text for each reader for slot names, labels, the machine's words, lower-case starts and cut words, and have the AI rewrite that line once. *Done when:* every problem count in `tools/score_run.py` is 0 across all 24 scenarios.
+  - **Also close this here** (found on the run of 26 September, PIP). The model still refers back to a
+    person with a pronoun despite the rule against it, so the stored line "Participant A says their
+    goal is to exceed the targets they are given" is served to that person as "You say **their** goal
+    is to exceed the targets **they** are given". The lead gets "You say **they** expect eight
+    renewals" about themselves. A regex cannot fix this safely - "You say they were late" may be
+    about customers - but this check can, because by then the reader is known and the line can be
+    rewritten once with that knowledge. Add "a pronoun that disagrees with the reader" to what the
+    check looks for.
 
 ## Phase 2. Bring the conversation up to the standard
 
