@@ -1,4 +1,5 @@
 import { PartyType } from '@prisma/client';
+import { fromTheReadersSide } from './a-sentence-from-the-readers-side';
 
 export type LabelParty = {
   id: string;
@@ -671,7 +672,12 @@ export function withNames(
   }
   /* AND A NAME IS NOT A TITLE. "The Daniel Osei. has completed" was 55 lines across 19 scenarios,
      and neither the article nor the stop came from the name. See aNameIsNotATitle. */
-  return aNameIsNotATitle(out, visible.values());
+  const named = aNameIsNotATitle(out, visible.values());
+  /* AND THE READER IS ONE OF THE PEOPLE IN IT. "Both Caroline Mensah and you have answered. They
+     disagree" puts the reader second in their own report and then leaves them out of a
+     disagreement they are half of. Self-gating: it only acts where a "you" is present, which only
+     happens where the reader's own label was just substituted. */
+  return fromTheReadersSide(named, visible.values());
 }
 
 /**

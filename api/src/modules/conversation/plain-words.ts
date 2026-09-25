@@ -170,4 +170,11 @@ export const NEVER_IN_ANYTHING_A_PERSON_READS: { what: string; pattern: RegExp }
 ];
 
 /** Management words the rulebook bans, for the same checker. Word-boundaried, case-insensitive. */
-export const JARGON = ['bottleneck', 'alignment', 'leverage', 'stakeholders', 'deliverables', 'escalate', 'cadence', 'pipeline', 'KPI'];
+export const JARGON = [
+  'bottleneck', 'alignment', 'leverage', 'stakeholders', 'deliverables', 'escalate', 'cadence',
+  'pipeline', 'KPI',
+  /* Added 25 September 2026 from Nathan's own report, which called five renewals "the initial
+     success metric" and then "the performance target" in consecutive sentences. Neither phrase was
+     said by anybody in the room; both mean "target". */
+  'success metric', 'performance target', 'delivery objective', 'key result area',
+];

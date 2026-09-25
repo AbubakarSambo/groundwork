@@ -65,8 +65,15 @@ interpreted yet.
 
 Write two things.
 
-THE OPENING. One or two sentences saying what is actually true across everybody. How many have
-checked in, and what they disagree about if they disagree. ${a.peopleAnswered} of ${a.peopleExpected} have
+THE OPENING. Two or three sentences saying what is actually true across everybody. How many have
+checked in, what they agree on, and what they disagree about if they disagree.
+
+AND THE FACT THAT EXPLAINS THE DISAGREEMENT MUST BE IN IT. Where the facts below show TWO NUMBERS
+FOR ONE THING, or A NUMBER SET FOR SOMEBODY THEY HAVE NEVER MENTIONED, that is almost always the
+reason people disagree, and leaving it out produces an opening that does not make sense. A picture
+saying the target was five, that they have done six, and that somebody says they are behind, is a
+picture with the explanation cut out of it. Say the other number, and say plainly that it was never
+written down or given to them. ${a.peopleAnswered} of ${a.peopleExpected} have
 answered. ${a.differenceTopics.length
     ? `They disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
     : 'Nothing in the record yet shows one account disagreeing with another, so say that plainly.'}
@@ -83,7 +90,11 @@ Use the label you are given for each person, exactly. The product turns it into 
 "you" for whoever is reading, when the report is served.
 
 AND A HEADLINE PER PERSON, only where the record shows something the lead should look at. One plain
-sentence, not a label. Null where there is nothing.${single}`;
+sentence, not a label. Null where there is nothing.
+
+USE THE NOUNS THE PEOPLE USED. Their own words for the thing are in the quotations below. If they
+said "renewals", write "renewals" - not "the performance target", not "the initial success metric",
+not "the delivery objective". A noun nobody in the room used is jargon even when it is accurate.${single}`;
 }
 
 export const THE_PICTURE_SCHEMA = {
