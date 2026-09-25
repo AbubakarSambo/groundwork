@@ -23,6 +23,13 @@ if kind == "bash":
         (r"sk_live_|pk_live_|rk_live_", "Live Stripe keys are not allowed."),
         (r"\brm\s+-rf\s+(/|~|\.\.)(\s|$)", "Deleting outside the project is not allowed."),
         (r"(>|>>|tee)\s*\S*\.env", "Writing to .env files is not allowed."),
+        (r"\bgh\s+(pr|release|workflow|run|api|repo\s+sync)\b", "Nothing goes to GitHub: no pull requests, releases or workflow runs."),
+        (r"\bglab\b|\bhub\s+pull-request\b", "No pull or merge requests."),
+        (r"\bgit\s+remote\s+(add|set-url|rename)\b", "Changing where the code can be sent is not allowed."),
+        (r"\b(vercel|netlify|railway|flyctl|heroku|firebase\s+deploy|serverless\s+deploy|sls\s+deploy|kubectl|terraform\s+apply|eb\s+deploy)\b|\bfly\s+deploy\b|\bhelm\s+(install|upgrade)\b|\bdocker\s+push\b|\baws\s+(ecs|s3\s+sync|deploy)\b", "Deploying anywhere is not allowed, staging included."),
+        (r"\b(npm|yarn|pnpm)\s+(run\s+)?\S*deploy\S*|\bmake\s+\S*deploy", "Deploying anywhere is not allowed, staging included."),
+        (r"(?=.*staging)(?=.*(\bpush\b|deploy|release|migrat|\bseed\b|psql|mysql|mongo|redis-cli|\bssh\b|\bscp\b|rsync|\bcurl\b|\bwget\b|https?://|DATABASE_URL|_URL=|prisma\s+(migrate|db)|kubectl|terraform|\baws\b|gcloud|\baz\s)).*", "Nothing may touch staging. Hafsah decides when anything goes there."),
+        (r"(sed\s+-i|>|>>|\btee\b|\bcp\b|\bmv\b|\brm\b|\btruncate\b|\bchmod\b|\bgit\s+(checkout|restore)\b)[^;&|]*(\.claude/|CLAUDE\.md|docs/decisions\.md|docs/baseline\.json|tools/score_run\.py)", "The kit's protected files cannot be changed."),
     ]
     for pat, msg in rules:
         if re.search(pat, cmd, re.I):

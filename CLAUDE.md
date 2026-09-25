@@ -63,7 +63,9 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Tests.** All must pass. If a test only checks old wording or old defective behaviour, update it, and write the reason in the commit and in the morning report. Never delete a test to make things pass.
 
-**Never:** push, merge, open a pull request, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
+**Nothing leaves this computer.** No pushes, pull requests, merges or deploys, and nothing goes to staging, until Hafsah says so herself, in her own words, in this session. Work stays in commits on this branch, on this computer.
+
+**Never:** push, merge, open a pull request, deploy anywhere (staging included), change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
 
 ## Stop and ask Hafsah (write it in the morning report, then move to the next task)
 

@@ -15,7 +15,7 @@
 
 1. Open `docs/morning-report.md`.
 2. Paste it into the Claude chat where we planned this. We go through it together, and you answer the "Needs Hafsah" questions.
-3. When a phase is finished and you are happy, you open the pull request to staging yourself. The kit never does.
+3. Nothing goes to staging, or anywhere else, until you decide. The kit keeps everything as commits on this computer, and its safety rules block pushing, pull requests, merges and deploys.
 
 ## What is in the kit
 
