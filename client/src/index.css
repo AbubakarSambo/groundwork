@@ -1235,11 +1235,11 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
  * 45px tall inside a 35px row would reach into the rows above and below, and stealing taps from a
  * neighbouring check-in is a worse bug than the one being fixed.
  */
-.gw-rename::after {
-  content: '';
-  position: absolute;
-  inset: -12px -15px;
-}
+/* NOW THE BUTTON IS THE TARGET, not a pseudo-element around a glyph. The pencil used to be a 14x11
+   glyph stretched to 44 wide by an ::after reaching 15px either side. When the pin was put beside it
+   (A1), that stretch covered the pin: a tap on the pin opened the rename box. Both are now boxes of
+   their own, the row's height tall and 32px wide, side by side with nothing reaching over the other
+   (.gw-rail-row .gw-pin and .gw-rail-row .gw-rename, below). */
 
 /*
  * AND ON A TOUCH SCREEN THERE IS NO HOVER TO REVEAL IT.
@@ -1481,7 +1481,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rl-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .gw-rl-pages { margin-top: 12px; }
 .gw-rl-empty { font-size: 13px; color: var(--gw-sub); padding: 6px 10px; }
-.gw-rail-row { display: flex; align-items: flex-start; gap: 2px; }
+.gw-rail-row { display: flex; align-items: flex-start; gap: 0; }
 .gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; min-height: 36px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
 .gw-ci-row:hover { background: var(--gw-card); }
 .gw-ci-row.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
@@ -1497,7 +1497,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rail-bdg-proven { background: var(--gw-green-bg); color: var(--gw-green-t); }
 .gw-rail-bdg-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
 .gw-rail-bdg-plain { background: var(--gw-bg); color: var(--gw-sub); }
-.gw-rename { border: 0; background: none; color: var(--gw-sub); cursor: pointer; padding: 8px 4px; font-size: 13px; line-height: 1; flex-shrink: 0; font-family: inherit; }
+.gw-rename { border: 0; background: none; color: var(--gw-sub); cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0; font-family: inherit; }
 .gw-rl-rename-input { width: 100%; border: 1.5px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font: inherit; font-size: 14.5px; padding: 6px 8px; }
 .gw-rl-fold { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; margin-top: 8px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-sub); cursor: pointer; text-align: left; border-radius: 8px; }
 .gw-rl-fold:hover { color: var(--gw-text); background: var(--gw-card); }
@@ -1529,7 +1529,9 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rl-menu-note { padding: 8px 10px; font-size: 13px; color: var(--gw-sub); display: flex; flex-direction: column; gap: 8px; }
 /* Pinning a check-in to the top of the sidebar. Quiet until the row is pointed at or focused, and
    always shown on a pinned row and on a device that cannot hover. */
-.gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; padding: 8px 3px; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 6px; }
+.gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 6px; }
+/* The two buttons on a row: each its own 32x36 target, touching and never overlapping. */
+.gw-rail-row .gw-pin, .gw-rail-row .gw-rename { position: relative; width: 32px; height: 36px; padding: 0; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
 .gw-rail-row:hover .gw-pin, .gw-pin:focus-visible, .gw-pin.on { opacity: 1; }
 .gw-pin:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
 .gw-pin.on { color: var(--gw-navy); }
