@@ -78,7 +78,23 @@ leave the fifty packs. Then you decide whether they need the same pass, and if s
 batch you can read before it is activated. If you would rather I did them tonight, say so and I
 will.
 
-### 3. The engine-value conversation numbers are noisy, and the gate cannot tell noise from a regression
+### 3. The scorer cannot see the plural form of a label
+
+Small, but it matters because it is a blind spot rather than a disagreement. `tools/score_run.py`
+looks for `Participant [A-Z]\b`. The engine sometimes writes the collapsed plural, and the lead's
+own board said:
+
+> You believe the target is collective, while **Participants A, B, and C** all believe they are
+> working towards individual targets.
+
+Three real people left as placeholders on their own board. "Participants" is not "Participant", so
+the pattern misses it - and so did the name substitution, for the same reason. I am fixing the
+substitution tonight. **The scorer's pattern I have left alone**, because I am told not to touch it,
+so be aware that its label count has always been slightly under the truth.
+
+**My suggestion:** widen that one pattern to `Participants? [A-Z]\b`. One character.
+
+### 4. The engine-value conversation numbers are noisy, and the gate cannot tell noise from a regression
 
 Two engine-value numbers came in below the baseline on tonight's run, which the scorer calls a
 failure:
@@ -118,7 +134,7 @@ or up tonight, so they can stay at 10%.
 
 **What I am doing meanwhile:** treating the two numbers as not-a-regression and carrying on, and
 saying so here rather than quietly passing the gate.
-### 4. This is your main checkout, not a separate copy
+### 5. This is your main checkout, not a separate copy
 
 Task 0.1 asks me to confirm "this is a separate copy of the code on its own branch". It is on its
 own branch, but it is **the same working copy you use** — `/Users/hafsahjumare/Documents/GitHub/groundwork`,
@@ -218,6 +234,56 @@ morning reading is in one place.
 
 Two commits tonight were the kit itself: `73894140` (kit and the four docs) and `e0fcd32a` (the
 guard update).
+
+---
+
+## Read ahead for Phase 2, from tonight's conversations
+
+Not tasks I have started. I read ACUTE_SHOCK and the sales scenario in full against the twelve
+points in `docs/conversation-standard.md` while the scenarios were running, so Phase 2 starts with
+evidence rather than a fresh reading.
+
+**The lead is still never named (point 1).** Two openers, neither naming anybody:
+
+> Tobi, thank you for making the time. This conversation is about Meridian giving notice…
+
+> This check-in is about seeing how your work is going against your goals this quarter. Your
+> target is 12 approved facilities.
+
+The second should be "Bisi says your target this quarter is 12 approved facilities. Is that right?"
+My fix in `32bb938a` only fires when the model attributes something to the person ("you said…"), and
+neither of these does, so nothing triggers. **Task 2.1 is a real change, not a tidy-up.**
+
+**Two asks in one message, which the scorer cannot see (point 4).** It counts turns with more than
+one question mark. These have one:
+
+> When did you first learn about it, and from whom?
+
+> Of what you just described, what do you know first-hand, and what are you assuming or repeating
+> from someone else?
+
+Both are two questions wearing one mark. The number for 2.2 will reach zero without the problem
+being fixed, so 2.2 needs the reviewer to read, not just the counter.
+
+**It asked the same thing twice in a row.** The first-hand-versus-assumed question above is asked,
+answered, and then asked again in the next turn. It reads as not listening.
+
+**A probe fired where it made no sense.** After Tobi explained that the customer's champion had
+left, Groundwork asked:
+
+> Who arranged the original access to Sarah, or how did that meeting come about?
+
+Nobody had claimed credit for access to Sarah. That is `who-secured-that-meeting` firing on the
+word "meeting" in a sentence about somebody leaving. Worth a look in Phase 2.
+
+**What it got right, and must not lose.** In the same conversation it pulled out all three warning
+signs the scenario hides - the two cancelled reviews, the champion leaving in July, and "I reported
+the account as healthy because usage was flat" - which is exactly what ACUTE_SHOCK exists to test.
+Whatever Phase 2 changes, that has to survive.
+
+**Jargon in the questions**, from the sales conversation: "What is the total amount you have had
+**disbursed** this quarter?" and "what is stopping your **deals from converting**". The standard's
+own table gives the replacements.
 
 ---
 
