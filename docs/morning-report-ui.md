@@ -200,7 +200,7 @@ and its copy of `docs/requests-to-engine.md` has no answers in it.
 
 ## Phase U. The prototype's screens and the suites
 
-### U.1 Look and layout: in progress
+### U.1 Look and layout: done (the tour waits for you)
 
 The builder split U.1 into 13 small changes. Done so far:
 
@@ -255,9 +255,26 @@ session that had not opened yet, and fixed that too.
     wording was ours, and the prototype has no tour to copy from. See item 8 above: this waits for
     you.
 
-Still to do: remembering the folded sidebar, pinning, the phone bar and
-"More" page, "Jump to", help and "Talk to us", the short tour, and the sidebar links to Today,
-Company, You and Suites as those pages are built.
+**The final review sent it back twice more, for small things, and both are fixed.**
+- At a computer's width, the lead's check-in name broke in the middle of words ("Coaman / a /
+  growth"), because the pin, the pencil and the "Your turn" tag left it too little room. Now the pin
+  and pencil only appear when the mouse is on the row, and they take the tag's place, so the name
+  reads in whole words ("Coamana growth, / Q3 paying / customers") and never moves (commits
+  `13084c6c`, `25611349`).
+- The sidebar said "Nothing in progress yet." for a moment while the list was still loading. Now it
+  waits. If the list fails to load, it says "Your check-ins did not load. Reload the page to try
+  again." (commit `a64e7164`).
+- On a phone, the feedback panel was cut off on the left, including its "Cancel" button. An old,
+  unused style rule from an earlier feedback widget was still pushing it (commit `94f26553`). The
+  floating Feedback button no longer covers the "More" page (commit `a460fd1c`).
+
+**U.1 is ticked.** The tester passed it: all 2411 screen tests and the build, and the full API
+suite, apart from the known email key failure and two slow tests that pass on their own. Each fix
+after that passed the screen tests again. The reviewer passed it as Sahar, Hafsah, Adam and Kavon,
+at a computer's width and a phone's. The 24 scenarios could not be run (item 3).
+
+**Still open in U.1:** the short tour, which waits for you (item 8). The sidebar links to Today,
+Company, You and Suites come with those pages, in U.5, U.12, U.15 and U.17.
 
 ## Found on the way, for later tasks
 
