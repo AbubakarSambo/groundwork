@@ -153,7 +153,7 @@ the tour was taken is kept in the browser, like the pins.
 Feedback button. I kept it, because it is the pilot's one-tap way to send feedback. Say if it should
 go.
 
-### 10. Signing in (U.2): ten places where the prototype and the product disagree
+### 10. Signing in (U.2): ten places where the prototype and the product disagree (all decided)
 
 **Answered by you on 26 September:**
 - **Decision 10, a password at sign-up: follow the prototype.** The sign-up offers an email link, or a
@@ -172,7 +172,15 @@ go.
   is sent. Sign-in and sign-up never reveal whether an address has an account, and any test-only
   setting that would reveal it is off outside tests.
 
-Still open: decisions 2, 3, 5, 7, 8 and 9 below, and item 12.
+**And the rest, answered by you the same day:** choosing a password is optional, as I had read it.
+Decision 2: "Email", not "Work email". Decision 3: the prototype's password rules (at least 8
+characters, a number or a symbol, not your email address), checked the same way on the screen and in
+the backend; existing passwords keep working. Decision 5: "an hour". Decision 7: an expired sign-up
+link says the new link is on its way, without asking for the address again. Decision 8: leave out
+"Anything you'd started is saved". Decision 9: leave out "Nothing was created or changed", and say
+what to do next instead. Item 12: the reset page does not show the address.
+
+Nothing about signing in is waiting for you any more.
 
 
 The prototype's sign-in screens say some things the product does not do, or does differently on
@@ -219,7 +227,7 @@ purpose. I will build everything else in U.2 and leave these as they are until y
     otherwise keep choosing it after the link, as now. Until you decide, the sign-up says so plainly:
     "We send you a link. Your account is made when you open it, and then you choose a password."
 
-### 12. May the reset page say whose account it is? A privacy question
+### 12. May the reset page say whose account it is? A privacy question (decided: no)
 
 The prototype's reset page says "For wairimu@baridi.co.ke. Once it's saved, you're signed out
 everywhere else." To show the address, the server would have to return the email of the account
