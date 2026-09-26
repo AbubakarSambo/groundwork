@@ -6,6 +6,35 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## Task 1.4, and the jargon is mostly not the AI
+
+Measured before touching anything, on run-1, all 24 scenarios:
+
+| | now | baseline | target |
+| --- | --- | --- | --- |
+| jargon in reports and boards | 234 | 511 | 127 |
+| jargon in Groundwork's turns | 15 | 42 | 10 |
+
+**163 of the 234 are one sentence the product writes itself**, repeated on every dependency row:
+
+> ... "their bank statements"; nothing on record about **escalating** it.
+
+That is `what-the-record-shows-over-time.ts`, not a prompt. Rewriting that one sentence takes
+reports and boards from 234 to about 71, under the target on its own.
+
+Three other things are in that count and only one is a wording problem:
+
+- **A quotation of what somebody said.** `Fatima Sow: "I would escalate the issue"`. Her word, and
+  the rules say to use the words the team itself used. **I am not rewriting it.** If the scorer
+  keeps counting it, the scorer is counting something correct, and I would rather tell you that
+  than launder what she said.
+- **Pattern names.** "Alignment Creator", "Coordination Without Leverage" are 2 of the 49 named
+  codes in the pattern library. Renaming those is a product decision, not tidying, so they are
+  untouched. Whether they are ever shown to a person at all is being checked - if they are
+  internal only, they do not matter here.
+- **The rest is prompts,** which is what fix 6 was actually meant to be, and is much smaller than
+  the number suggested.
+
 ## The fix, and what the numbers do and do not prove
 
 NEW_HIRE, "specific detail asked for", the same scenario throughout:
