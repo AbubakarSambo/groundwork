@@ -1426,3 +1426,34 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 }
 /* Read aloud by a screen reader, not drawn: for a reason a colour carries on screen. */
 .gw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ── THE MARK (A1, the design system) ─────────────────────────
+   "One idea runs through all of it: a ring is something someone said; a filled mark is proven."
+   It works in one colour and at any size. Built by `Mark` and `StageLadder` in kit.tsx.
+     proven     filled green      Proven
+     confirmed  filled, with a ring around it   Confirmed by the person who received it
+     said       an ink ring       Only someone's word
+     memory     a dashed ring     From memory only
+     none       a faint ring      Not reached */
+.gw-mk { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; vertical-align: -2px; }
+.gw-mk-lg { width: 18px; height: 18px; }
+.gw-mk-proven    { background: var(--gw-green-t); }
+.gw-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
+.gw-mk-said      { box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gw-mk-memory    { border: 2px dashed var(--gw-muted); }
+.gw-mk-none      { box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+.gw-mk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--gw-sub); list-style: none; }
+.gw-mk-key li { display: inline-flex; align-items: center; gap: 6px; }
+
+/* The stage ladder: a mark per stage, joined by a line in the colour of the stage it leads to. */
+.gw-ladder { min-width: 0; }
+.gw-ladder-row { display: flex; align-items: center; }
+.gw-ladder-ln { flex: 1; height: 2px; background: var(--gw-rule-2); min-width: 8px; }
+.gw-ladder-ln-proven, .gw-ladder-ln-confirmed { background: var(--gw-green-t); }
+.gw-ladder-ln-said { background: var(--gw-text); }
+.gw-ladder-ln-memory { background: var(--gw-muted); }
+.gw-ladder-stages { display: flex; justify-content: space-between; gap: 4px; margin-top: 6px; font-size: 13px; color: var(--gw-sub); list-style: none; }
+.gw-ladder-stages li { min-width: 0; overflow-wrap: anywhere; text-align: center; }
+.gw-ladder-stages li:first-child { text-align: left; }
+.gw-ladder-stages li:last-child { text-align: right; }
+.gw-ladder-says { margin-top: 8px; font-size: 15px; color: var(--gw-sub); }

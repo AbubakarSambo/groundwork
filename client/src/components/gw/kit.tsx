@@ -26,6 +26,7 @@
 
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { MARK_WORDS, readMark, type MarkKind } from './the-mark'
 
 /** A titled band with a rule, grouping sections. */
 export function Zone({ label }: { label: string }) {
@@ -279,4 +280,79 @@ export function NeedsYouRow({ kind, title, detail, actions }: {
 }
 export function NeedsYouList({ label, children }: { label: string; children: React.ReactNode }) {
   return <ul className="gw-need-list" aria-label={label} style={{ listStyle: 'none' }}>{children}</ul>
+}
+
+/**
+ * THE MARK (A1). "A ring is something someone said; a filled mark is proven." It replaces the
+ * claimed, proven and not-proven chips, and reads the same for a deal, a task, a commitment or a
+ * stakeholder.
+ *
+ * ONLY WHAT THE RECORD SAYS. The mark comes from the data, never from the screen guessing: with no
+ * mark, or one this screen does not know, `Mark` draws nothing at all, so nobody is shown a proof
+ * that was never checked. `readMark` is the one place a value from the server is turned into a mark.
+ *
+ * The words are the prototype's key (docs/prototype/screens/B4-reports-and-sharing/team-report.txt
+ * and A1's design-system.txt), and a screen reader hears them, since a ring says nothing aloud.
+ */
+export function Mark({ mark, large }: { mark: unknown; large?: boolean }) {
+  const kind = readMark(mark)
+  if (!kind) return null
+  return (
+    <span
+      className={`gw-mk gw-mk-${kind}${large ? ' gw-mk-lg' : ''}`}
+      role="img"
+      aria-label={MARK_WORDS[kind]}
+      title={MARK_WORDS[kind]}
+    />
+  )
+}
+
+/** The key under a list of marked lines: "Proven", "Confirmed by the person who received it", ... */
+export function MarkKey({ marks = ['proven', 'confirmed', 'said', 'memory'] }: { marks?: MarkKind[] }) {
+  return (
+    <ul className="gw-mk-key">
+      {marks.map(m => (
+        <li key={m}><span className={`gw-mk gw-mk-${m}`} aria-hidden />{MARK_WORDS[m]}</li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * THE STAGE LADDER (A1): Contacted, Need, Pitched, Qualified, Quoted, each with its mark, so "Aisha
+ * says it's qualified. The proof shows it up to need." can be seen at a glance.
+ *
+ * The stages and their marks come from the data. If not one stage carries a mark there is nothing
+ * true to draw, so the ladder draws nothing rather than a row of empty rings that would read as
+ * "nothing happened". `says` is the one sentence that goes with it, in the engine's words.
+ */
+export function StageLadder({ stages, says, label }: {
+  stages: { name: string; mark?: unknown }[]
+  says?: string
+  /** What the ladder is about, for a screen reader: "Eastside Foods". */
+  label?: string
+}) {
+  const read = stages.map(s => ({ name: s.name, mark: readMark(s.mark) }))
+  if (read.length === 0 || read.every(s => s.mark === null)) return null
+  return (
+    <div className="gw-ladder" role="group" aria-label={label}>
+      <div className="gw-ladder-row" aria-hidden>
+        {read.map((s, i) => (
+          <React.Fragment key={s.name + i}>
+            {i > 0 && <span className={`gw-ladder-ln gw-ladder-ln-${s.mark ?? 'none'}`} />}
+            <span className={`gw-mk gw-mk-lg gw-mk-${s.mark ?? 'none'}`} />
+          </React.Fragment>
+        ))}
+      </div>
+      <ol className="gw-ladder-stages">
+        {read.map((s, i) => (
+          <li key={s.name + i}>
+            {s.name}
+            <span className="gw-sr-only">. {MARK_WORDS[s.mark ?? 'none']}.</span>
+          </li>
+        ))}
+      </ol>
+      {says && <p className="gw-ladder-says">{says}</p>}
+    </div>
+  )
 }
