@@ -1354,6 +1354,15 @@ export class AuthService {
     return this.jwtService.sign(sessionClaims(user, via));
   }
 
+  /** On in Groundwork, or through the organisation's own connected number. Off when unsure. */
+  async whatsappIsOn(organizationId: string): Promise<boolean> {
+    const [platform, own] = await Promise.all([
+      this.whatsapp?.isEnabled?.().catch(() => false) ?? Promise.resolve(false),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+    ]);
+    return !!platform || !!own?.enabled;
+  }
+
   /**
    * "WHERE DO YOU WORK?" (A3, #/welcome, U.3). What a signed-in person may join, and nothing else:
    *

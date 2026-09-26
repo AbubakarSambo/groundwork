@@ -279,6 +279,18 @@ export class AuthController {
     return this.authService.joinByDomain(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
   }
 
+  /**
+   * WHETHER WHATSAPP IS SWITCHED ON FOR THIS PERSON (U.3, Hafsah, 26 September): on in Groundwork
+   * (our credentials and the staff toggle), or through their organisation's own connected number.
+   * While it is off, the screens mention WhatsApp nowhere.
+   */
+  @Get('whatsapp')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Whether WhatsApp is switched on, here or for my organisation' })
+  async whatsappIsOn(@CurrentUser() user: CurrentUserData) {
+    return { on: await this.authService.whatsappIsOn(user.organizationId) };
+  }
+
   @Get('my-organizations')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'The organisations this person belongs to, with the active one marked' })

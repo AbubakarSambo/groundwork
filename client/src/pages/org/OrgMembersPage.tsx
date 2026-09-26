@@ -1,3 +1,4 @@
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { WhoCanJoin } from './WhoCanJoin'
 import { useState } from 'react'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -85,6 +86,7 @@ const HOW_IT_READS: Record<string, { says: string; sent?: string; tone: 'good' |
 }
 
 export function OrgMembersPage() {
+  const whatsappOn = useWhatsAppIsOn()
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const qc = useQueryClient()
@@ -659,7 +661,7 @@ export function OrgMembersPage() {
                     Saves when the box loses focus or on Enter - no second button per row, on a page
                     that already has a dropdown and two buttons on every line.
                   */}
-                  <input
+                  {whatsappOn && <input
                     defaultValue={m.phoneNumber ?? ''}
                     placeholder="WhatsApp number"
                     aria-label={`WhatsApp number for ${m.firstName || m.email}`}
@@ -675,7 +677,7 @@ export function OrgMembersPage() {
                       fontFamily: 'inherit', borderRadius: 6, border: '1px solid var(--gw-border)',
                       color: 'var(--gw-text)', background: 'white',
                     }}
-                  />
+                  />}
                   {/* How they got here. Somebody who accepted one check-in's invitation looked identical
                       to somebody hired, on the page with the dropdown that can make them an admin. */}
                   {m.arrivedThroughACheckIn && (

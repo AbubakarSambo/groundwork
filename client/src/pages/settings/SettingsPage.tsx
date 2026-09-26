@@ -1,3 +1,4 @@
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -9,6 +10,7 @@ import { Sec, Card } from '@/components/gw/kit'
 import { apiClient } from '@/api/client'
 
 export function SettingsPage() {
+  const whatsappOn = useWhatsAppIsOn()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const updateUser = useAuthStore(s => s.updateUser)
@@ -353,7 +355,8 @@ export function SettingsPage() {
           </Card>
         </section>
 
-        <section style={{ marginBottom: 32 }}>
+        {/* Only while WhatsApp is switched on (U.3): until then nothing mentions it. */}
+        {whatsappOn && <section style={{ marginBottom: 32 }}>
           <Sec title="WhatsApp" />
           {/* A single block, not a list of rows: this panel was written as a row container and
               filled with one block, so its content sat flush against the card edge while every
@@ -385,7 +388,7 @@ export function SettingsPage() {
               <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 8 }}>Saved.</div>
             )}
           </Card>
-        </section>
+        </section>}
 
         {/**
           * WHAT WE HOLD ABOUT YOU. W14-9.
