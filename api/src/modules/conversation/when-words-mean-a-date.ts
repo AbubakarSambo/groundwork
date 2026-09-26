@@ -241,7 +241,7 @@ export function sayTheDateAndCheckIt(period: string, meansThisDay: Date): string
   const day = whenItWas(meansThisDay, 'full', 'UTC');
   return `They said "${period}", which is a period rather than a day. The product reads that as ${day}.
 
-YOUR NEXT REPLY IS THAT QUESTION AND NOTHING ELSE: "${period} - so ${day}?" Or the same question in your own words, as long as the DATE is in it.
+YOUR NEXT REPLY IS THAT QUESTION AND NOTHING ELSE: "When you say ${period}, do you mean ${day}?" Or the same question in your own words, as long as the DATE is in it.
 
 THIS IS NOT SAYING THEIR ANSWER BACK TO THEM, and the rule against that does not apply here. You are giving them something they did not say: ${day} is the product's reading of their words, not their words, and they have never seen it. Driven live, this instruction and that rule pulled against each other and what reached the person was "Is that the date you mean?" - a question about a date that had been left out of the message asking it.
 
