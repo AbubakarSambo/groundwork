@@ -46,6 +46,13 @@ right order.
 merged it. It was missing because a trailing slash in `.gitignore` meant none of the exceptions for
 `api/journey/` had ever worked. From now on the 24 scenarios and the scorer run here too.
 
+**Answered by you on 26 September:** screen tasks do not need the 24 scenarios scored. They check
+the engine's words, which is the engine workspace's job, and screen changes cannot move them. The
+run that had started is finishing only as sample data, so the screens have real check-ins to show.
+It is not scored and will not be repeated for each task. The scenarios run again only if you ask,
+or if the local sample data is lost. For screen tasks, the tester runs the product's own tests and
+the reviewer compares every screen with the prototype.
+
 Every task is meant to finish with the 24-scenario run and the scorer. The runner,
 `api/journey/all-24`, is not on this computer. The whole `api/journey/` folder is in `.gitignore`,
 so it only ever lived on the other computer. The tester searched every branch and the whole disk.
@@ -117,6 +124,11 @@ disagree.
 questions to Ask Groundwork, anyone's own report, or a lead's private notes.", and "Got it". Below it
 is a list headed "Get Nyali Foods going", marked "0 of 4 done": "Invite your team", "Add a second
 admin", "Start your first check-in" and "Connect WhatsApp (optional)".
+
+**You asked again on 26 September, so I checked again myself.** A new organisation's Today page in
+the prototype shows the list "Get … going" and nothing else. Apart from the demo bar's
+"Click-through", the word "tour" does not appear anywhere in `groundwork-prototype.html`. So there
+is no wording to copy, and the tour stays out.
 
 **Which do you want?** (a) no tour, with that card and list on Today as the welcome, built in U.3 and
 U.5, word for word from the screen; or (b) a tour, with wording you give me. I suggest (a). Until
