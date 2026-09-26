@@ -300,8 +300,16 @@ export class UsersController {
   @Get('rollout')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'What an admin has actually done so far, as counts' })
-  async rollout(@CurrentUser('organizationId') organizationId: string) {
-    return this.usersService.rolloutFacts(organizationId);
+  async rollout(@CurrentUser('organizationId') organizationId: string, @CurrentUser('id') userId: string) {
+    return this.usersService.rolloutFacts(organizationId, userId);
+  }
+
+  /** "Got it" on the new admin's welcome card (U.3). Saved on the server so it stays gone. */
+  @Post('me/welcome-card/seen')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'I have read the welcome card' })
+  async welcomeCardSeen(@CurrentUser('id') userId: string) {
+    return this.usersService.welcomeCardSeen(userId);
   }
 
   @Post('invitations')

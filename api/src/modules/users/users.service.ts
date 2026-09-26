@@ -1,5 +1,5 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
-import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -14,6 +14,7 @@ import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
@@ -31,6 +32,9 @@ export class UsersService {
     @Inject(forwardRef(() => AuthService)) private auth: AuthService,
     /* The back office is told when somebody asks for a call. See back-office/the-team-is-told.service.ts. */
     private events: EventEmitter2,
+    /* Whether WhatsApp is switched on here, for the new admin's checklist (U.3). Optional, so the
+       services built by hand in tests keep their shape; Nest always supplies it. */
+    @Optional() private whatsapp?: WhatsAppService,
   ) {}
 
   /**
@@ -49,8 +53,8 @@ export class UsersService {
    * Counts only. No names, no emails, no plan - the console needs to know whether a step happened,
    * and anything more than that is a second copy of data the pages themselves already serve.
    */
-  async rolloutFacts(organizationId: string): Promise<RolloutFacts> {
-    const [people, admins, checkIns, org, keys] = await Promise.all([
+  async rolloutFacts(organizationId: string, readerId?: string): Promise<RolloutFacts> {
+    const [people, admins, checkIns, org, keys, wa, reader, whatsappOn] = await Promise.all([
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
       this.prisma.user.count({ where: { organizationId, deletedAt: null, role: 'ADMIN', isActive: true } }),
       this.prisma.ground.count({ where: { organizationId } }),
@@ -59,6 +63,10 @@ export class UsersService {
         select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
       }),
       this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
+      this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null),
+      readerId ? this.prisma.user.findUnique({ where: { id: readerId }, select: { welcomeCardSeenAt: true } }) : null,
+      /* Off when there is no WhatsApp service here at all, which is the safe direction. */
+      this.whatsapp ? this.whatsapp.isEnabled().catch(() => false) : Promise.resolve(false),
     ]);
     return {
       people,
@@ -68,7 +76,16 @@ export class UsersService {
          to subscribe to something we had already given them. See grounds.service.addParticipant. */
       paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
       connected: keys > 0,
+      whatsappOn,
+      whatsappConnected: !!wa?.enabled,
+      welcomeCardSeen: !!reader?.welcomeCardSeenAt,
     };
+  }
+
+  /** "Got it" on the new admin's welcome card (U.3). Their own row only. */
+  async welcomeCardSeen(userId: string) {
+    await this.prisma.user.update({ where: { id: userId }, data: { welcomeCardSeenAt: new Date() } });
+    return { seen: true };
   }
 
   /**

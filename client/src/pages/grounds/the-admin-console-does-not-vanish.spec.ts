@@ -19,27 +19,12 @@ describe('it stays past the first check-in', () => {
     expect(mount).not.toContain('grounds.length === 0')
   })
 
+  /* U.3: the card is now the prototype's "Get <organisation> going" (see
+     get-your-organisation-going.spec.tsx for what it reads). It still decides for itself when it is
+     finished. The old checks on its counter's wording, its optional card and its "next step" border
+     went with "Setting up <organisation>", which it replaces. */
   it('decides for itself when it is finished, and goes then', () => {
-    expect(CARD).toContain('if (!data || finished) return null')
-  })
-})
-
-describe('what it shows', () => {
-  it('counts the steps that count, and not the optional one', () => {
-    const counting = CARD.slice(CARD.indexOf('const counted'), CARD.indexOf('if (!data'))
-    expect(counting).toContain('steps.filter(s => !s.optional)')
-  })
-
-  it('does not introduce itself by quoting the card underneath it', () => {
-    /* It printed the next step's own body three centimetres above the card printing it. */
-    const intro = CARD.slice(CARD.indexOf('NOT THE NEXT STEP'), CARD.indexOf('<div style={{ display: \'grid\''))
-    expect(intro).not.toContain('{next.body}')
-    expect(intro).not.toContain('{next ? next.body')
-  })
-
-  it('marks the next thing to do rather than leaving five identical cards', () => {
-    expect(CARD).toContain('const next = steps.find(s => !s.done && !s.optional)')
-    expect(CARD).toContain("s === next ? 'var(--gw-navy)'")
+    expect(CARD).toContain('if (finished && !showWelcome) return null')
   })
 })
 

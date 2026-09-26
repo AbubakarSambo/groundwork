@@ -21,6 +21,16 @@ export interface RolloutFacts {
   paying: boolean;
   /** Whether any API key has been issued. Optional step, so it is never "not done". */
   connected: boolean;
+  /**
+   * U.3, "Get <organisation> going". Whether WhatsApp is switched on in Groundwork at all (our
+   * credentials and the staff toggle, WhatsAppService.isEnabled). While it is off, nothing may
+   * mention WhatsApp, so the checklist leaves its row out.
+   */
+  whatsappOn?: boolean;
+  /** Whether this organisation has its own WhatsApp number connected and switched on. */
+  whatsappConnected?: boolean;
+  /** Whether the person reading pressed "Got it" on the welcome card. Per person, kept on the server. */
+  welcomeCardSeen?: boolean;
 }
 
 export interface Step {

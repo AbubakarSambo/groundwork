@@ -1,0 +1,82 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AdminFirstRun, getItGoing } from './an-admin-lands-on-a-check-in-list'
+import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
+
+/**
+ * A NEW ORGANISATION'S WELCOME CARD AND "GET <ORGANISATION> GOING" (U.3), AS EACH READER SEES THEM.
+ * The held sentence ("You can see every board and report. They never see ...") is not shown.
+ */
+const NEW = { people: 1, admins: 1, checkIns: 0, paying: false, connected: false, whatsappOn: false, whatsappConnected: false, welcomeCardSeen: false }
+
+function open(user: any, facts: any = NEW) {
+  vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { success: true, data: facts } } as any)
+  vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { success: true, data: { seen: true } } } as any)
+  useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={qc}><MemoryRouter><AdminFirstRun /></MemoryRouter></QueryClientProvider>)
+}
+const ADMIN = { id: 'u1', firstName: 'Wanjiru', role: 'ADMIN', organizationName: 'Nyali Foods', organization: { name: 'Nyali Foods' } }
+
+beforeEach(() => { vi.restoreAllMocks() })
+
+describe('the new admin', () => {
+  it('reads the welcome card and the checklist, with WhatsApp left out while it is off', async () => {
+    open(ADMIN)
+    expect(await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Got it' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
+    expect(screen.getByText('0 of 3 done')).toBeTruthy()
+    expect([...document.querySelectorAll('.gw-get-going-title')].map(e => e.textContent)).toEqual([
+      'Invite your team', 'Add a second admin', 'Start your first check-in',
+    ])
+    expect(screen.getAllByRole('link', { name: 'Do it' }).map(a => a.getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/WhatsApp/)
+    expect(text).not.toMatch(/You can see every board and report|They never see/)
+  })
+
+  it('with WhatsApp switched on, the fourth row, and "0 of 4 done", as the prototype has it', async () => {
+    open(ADMIN, { ...NEW, whatsappOn: true })
+    expect(await screen.findByText('0 of 4 done')).toBeTruthy()
+    expect(screen.getByText('Connect WhatsApp (optional)')).toBeTruthy()
+  })
+
+  it('ticks what has happened', async () => {
+    open(ADMIN, { ...NEW, people: 3, checkIns: 1 })
+    expect(await screen.findByText('2 of 3 done')).toBeTruthy()
+    expect(screen.getAllByText('Done')).toHaveLength(2)
+  })
+
+  it('"Got it" is saved on the server and the card goes', async () => {
+    open(ADMIN)
+    fireEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/users/me/welcome-card/seen'))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeNull())
+    expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
+  })
+
+  it('once every step is done and the card was read, nothing is left', async () => {
+    const { container } = open(ADMIN, { ...NEW, people: 3, admins: 2, checkIns: 1, welcomeCardSeen: true })
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalled())
+    expect(container.textContent).toBe('')
+  })
+})
+
+describe('everybody else', () => {
+  it('a member or a lead sees neither', () => {
+    const { container } = open({ ...ADMIN, role: 'MEMBER' })
+    expect(container.textContent).toBe('')
+  })
+})
+
+describe('the steps', () => {
+  it('are the prototype\'s, in its order', () => {
+    expect(getItGoing({ ...NEW, whatsappOn: true }).map(s => s.title)).toEqual([
+      'Invite your team', 'Add a second admin', 'Start your first check-in', 'Connect WhatsApp (optional)',
+    ])
+  })
+})

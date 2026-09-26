@@ -50,7 +50,8 @@ describe('every page says what it is', () => {
      * H1 Check-ins -> H2 Setting up Local Test Co rather than stopping at the h1.
      */
     const firstRun = readFileSync(join(PAGES, 'grounds/an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
-    expect(firstRun).toMatch(/<h2[^>]*>\s*\n?\s*Setting up\{orgName/)
+    /* U.3: the section is now the prototype's "Get <organisation> going", still an h2. */
+    expect(firstRun).toMatch(/<h2>Get \{orgName\} going<\/h2>/)
   })
 
   it('and neither has gone back to a 22px div standing in for one', () => {

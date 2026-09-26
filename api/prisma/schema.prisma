@@ -612,6 +612,9 @@ model User {
   tokenEpoch          Int      @default(0) @map("token_epoch")
   googleId            String?  @unique @map("google_id")
   emailNotifications  Boolean  @default(true) @map("email_notifications")
+  /// When this person pressed "Got it" on the new admin's welcome card (U.3), so it does not come back
+  /// on another device. Null means they have not.
+  welcomeCardSeenAt   DateTime? @map("welcome_card_seen_at")
   // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
   // WhatsApp number serves everyone, so a phone number identifies exactly one
   // account, not one per org. Set by the user in Settings, or by an
