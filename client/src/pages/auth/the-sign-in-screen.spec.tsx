@@ -98,7 +98,9 @@ describe('"Email me a sign-in link instead"', () => {
 
 describe('the answers at the door are unchanged', () => {
   it('a refused sign-in shows the server\'s one answer, whether or not the address has an account', async () => {
-    const same = 'If that address has an account here, we have emailed you a way in - check your inbox. If you have a password and it did not work, check it and try again.'
+    /* The server's sentence (api/src/modules/auth/one-answer-at-the-door.ts), without the dash it
+       used to join its two halves with. */
+    const same = 'If that address has an account here, we have emailed you a way in, so check your inbox. If you have a password and it did not work, check it and try again.'
     ;(authApi.login as any).mockRejectedValue({ response: { status: 401, data: { message: same } } })
     renderAt('/auth')
     fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'nobody@baridi.test' } })
