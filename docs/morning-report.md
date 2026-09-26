@@ -6,6 +6,60 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## TONIGHT, 26 to 27 September: where I am now
+
+This section is kept up to date as I go. If it stops partway, that is where I got to.
+
+### Run-6 is sound, and nothing is worse than the baseline
+
+- All 24 scenarios finished. No report was marked "REPORT INCOMPLETE" and every report was released.
+- In all 24, the captured report holds exactly as many findings as the database.
+- Every report was written by `report_synthesis` version 6, and the active `system` prompt is version 43. Both are the versions I expected.
+- The scorer says nothing got worse than the baseline.
+
+### How many judgements are clearly right: 17 of 24
+
+I read every judgement against the right answer for its scenario. Seventeen are clearly right, four are close, and three are wrong. The bar is twenty.
+
+Clearly right: advisor, cofounder, contractreview, crisis, discovery, implementation, newmanager, pip, project, pulse, realign, renewal, sales, seniorhire, snapshot, updates and workplan.
+
+Three of these were wrong or close last time and are right now. In realign, the judgement now names the chief executive as the second person giving directions. In newmanager, it now says Daniel is answering the hardest tickets himself instead of managing. In workplan, it now finds that two leads booked the same design firm, Studio Lune, at the same time.
+
+The four that are close:
+
+- **drift.** It says Zainab was asked by "somebody else" to do sales support. In fact Zainab says it was Nadia, and Nadia is the lead. The fact was in the record, but nothing passed it on to the judgement.
+- **handover.** It finds the year-end spreadsheet but only hints at the supplier arrangement. Both facts are in the record in Patience's own words. They never reached her part of the report.
+- **loans.** It says repayments start too early, but it does not separate the five borrowers who share that cause from the one who never received the machine, and it does not say the grace period should change.
+- **shock.** It joins two warning signs, not three. In this run nobody said first-hand that the quarterly reviews were missed, so only two of the three were in the material.
+
+The three that are wrong:
+
+- **board.** It says the three people define success differently. The right answer is that the plan assumes a launch in four months and the person responsible says twelve. In this run Wanjiru never gave a number of months. She said only that there is no licence yet and she is not counting on any sales. So the key fact was missing from the material. On run-5 it was there, and the judgement was right.
+- **openread.** It misses the Friday deploy freeze. The freeze is in the record seven times, so this time the judgement itself missed it. On run-5 it was right.
+- **recognition.** It never mentions Victor, the contractor who wrote the migration script. Two people named him, but the record kept only what each person said about their own work. So Victor was in nobody's record at all.
+
+Board and openread were right on run-5 and are wrong on run-6. Realign, newmanager and workplan went the other way. So some scenarios still change from run to run, and a single run cannot settle them.
+
+### The lower-temperature test: dropped
+
+I measured it last session. A lower temperature made the answers about seven points more alike, but the right answers fell from 19 of 25 to 15 of 25. In the performance-plan scenario, all five answers at the lower temperature agreed with each other and all five were wrong. A steadier wrong answer is worse than a varying right one, so nothing sets a temperature. That is still the decision.
+
+### Something that got worse since run-5, though not below the baseline
+
+Jargon in reports and boards rose from 123 on run-5 to 217 on run-6. Task 1.4's bar is 128, so 1.4's bar no longer holds on this run. Almost all of it is two words, "pipeline" in the sales scenario and "escalation" in the crisis scenario. The people themselves used jargon words 30 times on run-6 against 25 on run-5, and the reports repeated their words far more often. I have not changed anything for this yet. See "Needs Hafsah" below.
+
+### What I have changed tonight
+
+1. **`ce6e7fe8`: each person's finding now keeps what they say about how the work really runs.** The record stores these lines, but nothing that writes a person's finding read them. Run-6 stored 15 of them and lost every one. They include Patience's verbal supplier arrangement, "as requested by Nadia" in drift, and Daniel's "I'm faster at them, so it's quicker for me to just handle them" in newmanager.
+2. **`3c56f5eb`: the record now keeps what a person says somebody else did, with that person's name.** This is for recognition, where Victor was named by two people and stored by nobody.
+
+Neither change is measured yet. Next I rebuild the local API and re-run the scenarios they affect, each one twice.
+
+### Needs Hafsah
+
+- **Jargon in reports rose above 1.4's bar on this run,** mostly because the reports repeat the people's own words "pipeline" and "escalation". The rule is to never change people's own words. So the question is whether a report should still use a word the person used when that word is on the jargon list. I have not changed anything for this.
+- The older open questions are unchanged and do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
+
 ## WHERE THIS SESSION STOPPED, 26 September, evening
 
 **This session stopped early, and not because of the work.** It started in an empty folder and was moved into this repository partway through. The project's safety check runs before every command and every file edit, and it still looks for its script in the old folder. So everything after the move was refused, including editing this report. I did not touch the safety settings. The fix is a fresh session opened on this folder.
