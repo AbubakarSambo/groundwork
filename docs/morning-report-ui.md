@@ -194,6 +194,52 @@ purpose. I will build everything else in U.2 and leave these as they are until y
    links an existing account to Google, before steps that can still fail. **My suggestion:** leave the
    line out, as it is now, unless the Google sign-in is changed to undo those steps when it fails.
 
+### 11. Organisations and joining (U.3): nine decisions
+
+I will build what does not depend on these first, and leave each of these as the product does it
+today until you decide.
+
+1. **What the invitation promises about who reads your words. This is a privacy question.** The
+   prototype's invitation page says three things that do not agree: "The people in this check-in,
+   including your manager, can see what you say in it.", "Nobody else reads your answers." and
+   "Wairimu reads the report, not your words." Today's page says "Nobody you work with reads it. Not
+   your manager, not whoever set this up, not an admin." Your decision of 25 September allows words
+   to be shown to the people in the check-in. **My suggestion:** the invitation should say exactly
+   what the backend serves for that check-in, worked out from its real sharing settings, never a
+   fixed sentence. Please tell me which sentence is true today.
+2. **Joining by email domain changes a written safety rule.** The code says people join an
+   organisation "only by an exact address, never a domain". The prototype lets anyone with an
+   @baridi.co.ke address join Baridi. **My suggestion:** allow it only when an admin switches it on,
+   for the admin's own verified domain, never for public mail such as gmail.com, one organisation per
+   domain, joining as "Takes part" and using a seat. Should the domain also need a proof in its DNS
+   settings, so one contractor's address cannot claim a whole company?
+3. **The organisation's invite link.** The prototype shows `myground.work/j/baridi`, an address
+   anyone can guess. **My suggestion:** a random link an admin can turn off or replace. Does joining
+   through it let someone in at once, or wait for an admin when their email domain does not match?
+4. **What someone outside may see before being let in.** The prototype says "We've asked Grace
+   Achieng", but the backend asks every admin: name one, all, or none? "27 people there" on a public
+   page gives away the head count. "We'll email and text you": there are no text messages yet, so I
+   suggest leaving "and text" out.
+5. **How long an invitation lasts.** The prototype says 14 days. The product was changed to 90 days on
+   purpose. If 90, the page's sentence changes.
+6. **More than one organisation of your own.** The prototype lets you create several. The product
+   allows one on purpose. Lift the limit?
+7. **Your own web address and logo.** This needs the hosting company's domain service, certificates
+   and live keys, which this workspace must not touch. The logo's wording exists only in the
+   prototype's code. **My suggestion:** leave it for F1 (connections), or build only the card that
+   says it is not set up.
+8. **"All 38 of your check-ins"** on the "out of time" page counts sessions as check-ins. That is the
+   open question of what "check-in" means.
+9. **The new admin's welcome card.** It says "You can see every board and report. They never see
+   anyone's questions to Ask Groundwork…". "They" has nothing to point to; should it be "You never
+   see"? And "every board and report" goes further than the rule in A4, where an admin sees a
+   performance plan or exact words only with access to that check-in. Should the sentence be
+   narrowed to match?
+
+Two of the U.2 decisions matter here too: "3 months free" (decision 1), because "Create an
+organisation" asks "How many people will use it?" with "Fewer than 20: 3 months free"; and where
+the organisation's name is asked (decision 6).
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
