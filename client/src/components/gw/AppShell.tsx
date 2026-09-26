@@ -680,7 +680,7 @@ export function AppSidebar() {
   const orgRef = useClosesOnItsOwn(orgOpen, () => setOrgOpen(false))
   const meRef = useClosesOnItsOwn(meOpen, () => setMeOpen(false))
 
-  const { data: grounds = [] } = useQuery<Ground[]>({
+  const { data: grounds = [], isSuccess: listLoaded, isError: listFailed } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
     staleTime: 30_000,
@@ -959,8 +959,14 @@ export function AppSidebar() {
                 <div className="gw-rl-h">
                   <NavLink to="/grounds" className="gw-rl-h-link" title="See all your check-ins">Check-ins</NavLink>
                 </div>
-                {running.length === 0 && closed.length === 0 && (
+                {/* "Nothing in progress yet" only once the list has arrived and really is empty. While it
+                    is on its way the sidebar says nothing, rather than telling somebody with check-ins
+                    that they have none. */}
+                {listLoaded && running.length === 0 && closed.length === 0 && (
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
+                )}
+                {listFailed && !listLoaded && (
+                  <p className="gw-rl-empty" role="alert">Your check-ins did not load. Reload the page to try again.</p>
                 )}
                 {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
                 {unpinned.length === 0 && pinned.length > 0 && (
