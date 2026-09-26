@@ -106,7 +106,9 @@ describe('the sidebar, as a lead reads it', () => {
     expect(late).toHaveTextContent('Your turn')
     expect(late.querySelector('.gw-rail-bdg-late')).not.toBeNull()
     expect(late.querySelector('.gw-ci-dot-late')).not.toBeNull()
-    expect(late.getAttribute('title')).toMatch(/Session 2 is \d+ days past its date/)
+    // In a sentence, from her side (this check-in has no plan, so no "of 12").
+    expect(late.getAttribute('title')).toMatch(/^Supplier review\. Your session 2 is \d+ days past its date\.$/)
+    expect(late).toHaveAccessibleName(late.getAttribute('title')!)
   })
 
   it('a check-in waiting on others has a quiet dot and no badge; a finished report says so', () => {

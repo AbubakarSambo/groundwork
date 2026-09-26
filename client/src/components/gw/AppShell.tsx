@@ -2,7 +2,7 @@ import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
 import { authApi } from '@/api/auth'
-import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
+import { railAttention, railRank, stillInRail, openRound } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -17,9 +17,9 @@ import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
 import { pinnedFor, togglePin } from './pinned-check-ins'
+import { whatTheRowSays } from './what-a-sidebar-row-says'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
-import { alignmentShort } from '@/lib/alignment'
 import {
   asStyle, keepItOnScreen, rememberIt, theyMeantToMoveIt, whereItLands, whereTheyLeftIt,
   type Resting, type Where,
@@ -842,20 +842,24 @@ export function AppSidebar() {
 
   function rowFor(g: Ground) {
     const attention = railAttention(g as any, user?.id)
-    const sessions = new Set(
-      (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
-    ).size
-    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
-    const maxSessions = planned != null ? Math.max(planned, sessions) : null
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     const dot = attention.kind === 'overdue' ? 'late' : attention.kind === 'yours' ? 'turn' : 'quiet'
     const why = attention.kind === 'overdue'
       ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
       : attention.kind === 'yours'
         ? `Session ${attention.sessionNumber} is ready for you`
-        : attention.kind === 'waiting'
-          ? `${attention.done} of ${attention.total} have checked in`
-          : null
+        : null
+    /* The whole row in sentences, for the pointer and for a screen reader. See what-a-sidebar-row-says. */
+    const says = whatTheRowSays({
+      label: g.label,
+      attention,
+      round: openRound((g as any).checkIns),
+      planned,
+      roundsDone: (g as any).roundsDone,
+      alignment: (g as any).alignment,
+      closed: isClosed(g),
+    })
     return (
       <li key={g.id}>
         {renamingId === g.id ? (
@@ -873,12 +877,8 @@ export function AppSidebar() {
             <NavLink
               to={`/grounds/${g.id}`}
               className={({ isActive }) => `gw-ci-row${isActive ? ' on' : ''}${isClosed(g) ? ' closed' : ''}`}
-              title={[
-                g.label,
-                `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
-                alignmentShort((g as any).alignment) || null,
-                why,
-              ].filter(Boolean).join('. ')}
+              title={says}
+              aria-label={says}
             >
               <span className={`gw-ci-dot gw-ci-dot-${dot}`} aria-hidden />
               <span className="gw-ci-nm">{g.label}</span>
