@@ -613,13 +613,29 @@ export class AnthropicService implements OnApplicationBootstrap {
              out in ten sections, and a truncated tool call comes back as an empty object. */
           maxOutputTokens: options.patient ? 32768 : 8192,
           /*
-           * TEMPERATURE, WHERE A CALLER ASKS FOR ONE, AND NOWHERE ELSE.
+           * TEMPERATURE, WHICH NO CALLER SETS, AND THE MEASUREMENT THAT SAYS SO.
            *
-           * Nothing set this, so every extraction ran at the model's own default. That is right
-           * for most of them - there is no single correct wording for a shared picture. It is
-           * wrong for the judgement, where the same record read twice should reach the same
-           * conclusion: a lead who refreshes their report and gets a different gap has no reason
-           * to trust either. Passed through rather than set here, so each caller decides.
+           * Added to answer a fair question: a lead should get the same judgement twice from the
+           * same record, so would a lower temperature make the judgement steadier? Measured the
+           * only way that settles it - the same material, five samples, at the model's default
+           * and at zero, on five scenarios, scoring both how alike the answers were AND whether
+           * they still reached the right answer:
+           *
+           *   scenario         default: alike / right      temperature 0: alike / right
+           *   loans                38% / 5 of 5                35% / 5 of 5
+           *   pip                  45% / 3 of 5                57% / 0 of 5
+           *   contractreview       49% / 5 of 5                47% / 5 of 5
+           *   workplan             41% / 1 of 5                56% / 0 of 5
+           *   renewal              31% / 5 of 5                43% / 5 of 5
+           *
+           * Consistency rose about seven points. Correctness fell from 19 of 25 to 15 of 25, and
+           * on the performance-plan scenario the five answers became MORE alike and all five
+           * wrong: at zero it converged on "they are working to two different targets" every
+           * time, and stopped saying the target was never written down, which is the finding.
+           *
+           * A steadier wrong answer is worse than a varying right one, so nothing sets this. The
+           * option stays because it is what made the measurement possible; anybody switching it
+           * on owes the same two columns, not just the first.
            */
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
