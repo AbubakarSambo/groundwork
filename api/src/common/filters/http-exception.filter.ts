@@ -124,6 +124,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 /** One sentence for a pipe failure; the sentences themselves travel as `errors` / `details`. */
 export function summariseValidation(sentences: string[]): string {
+  /*
+   * A MESSAGE ALREADY WRITTEN FOR A PERSON IS PASSED ON AS IT IS. U.2 re-review.
+   *
+   * The pipe's own messages start with the field's name ("message must be a string") and read best
+   * behind "The request did not validate:". A DTO that wrote its own sentence ("Your password needs a
+   * number or a symbol.") was read to a person as "The request did not validate: Your password needs
+   * a number or a symbol.", two pieces joined by a colon. A message that begins with a capital letter
+   * and ends with a full stop is a sentence somebody wrote to be read; those are passed on alone, and
+   * several of them are joined as sentences. Nothing else changes, and the full list still travels as
+   * `errors` / `details`.
+   */
+  const written = [...new Set(sentences.map((s) => String(s).trim()))];
+  if (written.length && written.every((s) => /^[A-Z].*[.!?]$/.test(s))) return written.join(' ');
   const fields = [...new Set(sentences.map((s) => String(s).split(' ')[0]).filter(Boolean))];
   if (!fields.length) return 'The request did not validate.';
   return fields.length === 1

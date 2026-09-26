@@ -343,7 +343,7 @@ export function AuthPage() {
       const said = err?.response?.data?.message
       const sentence = Array.isArray(said) ? said[0] : said
       if (typeof sentence === 'string' && /password/i.test(sentence)) {
-        setError(sentence.replace(/^The request did not validate: /, ''))
+        setError(sentence)
         return
       }
       /*
