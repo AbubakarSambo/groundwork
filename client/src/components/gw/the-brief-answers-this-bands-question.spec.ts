@@ -53,10 +53,13 @@ describe('the brief answers this band own question', () => {
 
   it('objectives still render alongside it - neither replaces the other', () => {
     expect(BAND).toContain('objectives.length > 0')
-    /* One table since 22 September 2026, grouped by whose number it is: thirteen cards, each
-       repeating "a number crosses a line", was the bulk she asked to be rid of. */
-    expect(BAND).toContain('const theTeams = objectives.filter')
-    expect(BAND).toContain('The whole check-in')
+    /* One table since 22 September 2026: thirteen cards, each repeating "a number crosses a line",
+       was the bulk she asked to be rid of. Since U.7 the table is its own file, TargetsBand.tsx, in
+       the prototype's shape: the team's rows first, each named "The whole team", then each share. */
+    expect(BAND).toContain('<TargetsBand')
+    const TABLE = readFileSync(join(__dirname, 'TargetsBand.tsx'), 'utf8')
+    expect(TABLE).toContain('const theTeams = targets.filter')
+    expect(TABLE).toContain("'The whole team'")
   })
 
   it('the source line names what is actually there rather than claiming both', () => {

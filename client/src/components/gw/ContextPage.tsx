@@ -10,6 +10,7 @@ import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
+import { TargetsBand } from '@/components/gw/TargetsBand'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
@@ -464,79 +465,29 @@ export function ContextPage({
               </div>
             )}
             {/*
-              THIRTEEN TARGETS WERE THIRTEEN CARDS, AND EACH ONE REPEATED THE SAME SENTENCE.
-              
-              Hafsah, 22 September 2026, on a page holding a quarter's numbers: "i feel like the
-              targets i see are not real targets and they can all be in one box... those sections are
-              so bulky." Every card carried "how we'd know: a number crosses a line", which is true of
-              every target ever set and told her nothing, and the team's numbers sat in the same
-              stack as one person's, so nine rows read as nine things everybody was held to.
-              
-              One table. The team's first, then each person's under their name, and the figure in a
-              column a reader can run their eye down.
+              TARGETS, IN THE PROTOTYPE'S TABLE (U.7): what it is, the number, whose it is, and who
+              sees it, with what each target assumes under it. Its own file, TargetsBand.tsx.
+
+              Before that it was one table grouped by person, which replaced thirteen cards - Hafsah,
+              22 September 2026: "i feel like the targets i see are not real targets and they can all
+              be in one box". Still one box: the team's rows first, then each person's share.
+
+              WHO SEES A ROW IS THE SERVER'S ANSWER (targetsFor in the ground read). This draws what
+              it was sent, and says beside each row who else reads it.
             */}
             {objectives.length > 0 ? (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8, maxWidth: 720 }}>
-                {(() => {
-                  const nameOf = (pid: string | null | undefined) =>
-                    pid ? personLabel(ground.participants?.find((x: any) => x.id === pid)) : null
-                  const theTeams = objectives.filter((o: any) => !o.ownerParticipantId)
-                  const theirs = objectives.filter((o: any) => o.ownerParticipantId)
-                  const groups: { who: string | null; rows: any[] }[] = []
-                  if (theTeams.length) groups.push({ who: null, rows: theTeams })
-                  for (const o of theirs) {
-                    const who = nameOf(o.ownerParticipantId) ?? 'somebody'
-                    const at = groups.find((g) => g.who === who)
-                    if (at) at.rows.push(o); else groups.push({ who, rows: [o] })
-                  }
-                  /*
-                    THE TEAM'S ALWAYS, THE PEOPLE'S A FEW AT A TIME. At a hundred people this table
-                    was a hundred one-row groups - see a-long-list-is-not-a-page.
-                  */
-                  const theTeamsGroup = groups.filter((g) => !g.who)
-                  const peopleGroups = groups.filter((g) => g.who)
-                  const draw = (g: { who: string | null; rows: any[] }, gi: number) => (
-                    <div key={g.who ?? 'team'}>
-                      <div style={{ padding: '7px 13px 5px', background: 'var(--gw-bg)', borderTop: gi === 0 ? 'none' : '1px solid var(--gw-border)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub)' }}>
-                        {g.who ?? 'The whole check-in'}
-                      </div>
-                      <ShowAFew rows={g.rows} few={8} what={g.who ? `of ${g.who}\u2019s numbers` : 'team numbers'}>
-                      {(o: any, i: number) => (
-                        <div key={o.id} style={{ padding: '8px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                            <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 140 }}>{o.name}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
-                              {o.target == null ? <span style={{ fontWeight: 400, color: 'var(--gw-muted)', fontSize: 12 }}>no number set</span> : o.target.toLocaleString('en-GB')}
-                            </span>
-                            {isTheLead && contextEnabled && (
-                              <button
-                                onClick={() => changeThisInTheChat(`Change the target "${o.name}" to `)}
-                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                              >
-                                Change this
-                              </button>
-                            )}
-                          </div>
-                          {/* A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, said beside the number
-                              rather than a page away. The lead's own sentence, from what they wrote. */}
-                          {o.notSettled && (
-                            <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 4, lineHeight: 1.5, maxWidth: '62ch' }}>{o.notSettled}</div>
-                          )}
-                        </div>
-                      )}
-                      </ShowAFew>
-                    </div>
-                  )
-                  return (
-                    <>
-                      {theTeamsGroup.map(draw)}
-                      <ShowAFew rows={peopleGroups} few={4} what="people with their own numbers">
-                        {(g, i) => draw(g as any, i + theTeamsGroup.length)}
-                      </ShowAFew>
-                    </>
-                  )
-                })()}
-              </div>
+              <>
+                <Sec n={band()} title="Targets" />
+                <TargetsBand
+                  groundId={id}
+                  targets={objectives}
+                  participants={(ground.participants ?? []) as any[]}
+                  viewerUserId={viewerUserId}
+                  isTheLead={isTheLead}
+                  numbersShared={(ground as any).whoSeesTargets === 'EVERYBODY'}
+                  onChangeTarget={isTheLead && contextEnabled ? (o) => changeThisInTheChat(`Change the target "${o.name}" to `) : undefined}
+                />
+              </>
             ) : (
               !theBrief && (
                 <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>

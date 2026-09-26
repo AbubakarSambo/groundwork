@@ -30,6 +30,6 @@ describe('a line is changed by talking about it', () => {
   })
 
   it('and a target whose definition is unsettled says so beside the number', () => {
-    expect(PAGE).toContain('{o.notSettled}')
+    expect(readFileSync(join(__dirname, 'TargetsBand.tsx'), 'utf8')).toContain('{t.notSettled}')
   })
 })

@@ -1,0 +1,106 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { TargetsBand, type Target } from './TargetsBand'
+import { boardApi } from '@/api/board'
+
+vi.mock('@/api/board', () => ({ boardApi: { updateObjective: vi.fn(async () => ({})) } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+/*
+ * THE TARGETS BAND, READ AS EACH PERSON READS IT (U.7, B2 Context).
+ *
+ * Words from docs/prototype/screens/B2-context/context.txt ("Targets", "Change who sees them", "The
+ * whole team", "Seen by everyone", "Seen by Aisha and you", "Each person sees their own share and
+ * the team’s totals, never someone else’s share.") and, for what a target assumes, from the
+ * prototype's board (B5-the-board/board-as-lead.txt).
+ *
+ * The server decides which rows each reader is sent (targetsFor, api what-a-target-assumes.spec).
+ * These cases feed each reader exactly what the server sends them.
+ */
+const people = [
+  { id: 'p-lead', userId: 'u-lead', partyType: 'INITIATOR', user: { firstName: 'Wairimu', lastName: 'Kamau' } },
+  { id: 'p-aisha', userId: 'u-aisha', partyType: 'PARTY', user: { firstName: 'Aisha', lastName: 'Otieno' } },
+  { id: 'p-brian', userId: 'u-brian', partyType: 'PARTY', user: { firstName: 'Brian', lastName: 'Mwangi' } },
+]
+const team: Target = { id: 't1', name: 'Sales', target: 25, ownerParticipantId: null, assumes: ['6 reps each close about 4 sales.', 'Stock arrives within a week of an order.'] }
+const aisha: Target = { id: 't2', name: 'Aisha’s share', target: 6, ownerParticipantId: 'p-aisha', assumes: [] }
+const brian: Target = { id: 't3', name: 'Brian’s share', target: 5, ownerParticipantId: 'p-brian', assumes: [] }
+
+const draw = (props: Partial<React.ComponentProps<typeof TargetsBand>>) => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <TargetsBand groundId="g1" targets={[]} participants={people} isTheLead={false} numbersShared={false} {...props} />
+    </QueryClientProvider>,
+  )
+}
+const rowText = (id: string) => (document.querySelector(`[data-gw-target="${id}"]`) as HTMLElement).textContent
+
+beforeEach(() => vi.clearAllMocks())
+
+describe('the lead, Wairimu', () => {
+  it('reads every target, whose it is, and who sees it', () => {
+    draw({ targets: [team, aisha, brian], viewerUserId: 'u-lead', isTheLead: true })
+    expect(rowText('t1')).toContain('Sales')
+    expect(rowText('t1')).toContain('25')
+    expect(rowText('t1')).toContain('The whole team')
+    expect(rowText('t1')).toContain('Seen by everyone')
+    expect(rowText('t2')).toContain('Aisha')
+    expect(rowText('t2')).toContain('Seen by Aisha and you')
+    expect(rowText('t3')).toContain('Seen by Brian and you')
+    expect(screen.getByText('Change who sees them').getAttribute('href')).toBe('/grounds/g1?tab=settings')
+    expect(screen.getByText('Each person sees their own share and the team’s totals, never someone else’s share.')).toBeTruthy()
+  })
+
+  it('reads what the target of 25 assumes, and the sentence under it', () => {
+    draw({ targets: [team], viewerUserId: 'u-lead', isTheLead: true })
+    const row = within(document.querySelector('[data-gw-target="t1"]') as HTMLElement)
+    expect(row.getByText('What the target of 25 assumes')).toBeTruthy()
+    expect(row.getByText('6 reps each close about 4 sales.')).toBeTruthy()
+    expect(row.getByText('Stock arrives within a week of an order.')).toBeTruthy()
+    expect(row.getByText('If one of these stops being true, the target needs a second look.')).toBeTruthy()
+  })
+
+  it('can say what a target assumes, one thing on each line, and it is saved as lines', async () => {
+    draw({ targets: [aisha], viewerUserId: 'u-lead', isTheLead: true })
+    await userEvent.click(screen.getByText('Say what it assumes'))
+    const box = screen.getByLabelText('What the target of 6 assumes')
+    await userEvent.type(box, 'Aisha keeps her two supermarket buyers.{enter}{enter}Stock arrives on time.')
+    await userEvent.click(screen.getByText('Save'))
+    expect(boardApi.updateObjective).toHaveBeenCalledWith('g1', 't2', { assumes: ['Aisha keeps her two supermarket buyers.', 'Stock arrives on time.'] })
+  })
+
+  it('when everybody sees every number, every row says so and the promise about shares is not made', () => {
+    draw({ targets: [team, aisha], viewerUserId: 'u-lead', isTheLead: true, numbersShared: true })
+    expect(rowText('t2')).toContain('Seen by everyone')
+    expect(screen.queryByText(/never someone else/)).toBeNull()
+  })
+})
+
+describe('Aisha, who takes part', () => {
+  it('reads the team target and her own share, told that only she and Wairimu see it', () => {
+    /* What the server sends her: the team's target and her own share, not Brian's. */
+    draw({ targets: [team, aisha], viewerUserId: 'u-aisha' })
+    expect(rowText('t2')).toContain('Seen by you and Wairimu')
+    expect(document.body.textContent).not.toContain('Brian')
+    expect(screen.getByText('What the target of 25 assumes')).toBeTruthy()
+  })
+
+  it('cannot change who sees them, cannot write what a target assumes, and is not offered the conversation', () => {
+    draw({ targets: [team, aisha], viewerUserId: 'u-aisha' })
+    expect(screen.queryByText('Change who sees them')).toBeNull()
+    expect(screen.queryByText('Say what it assumes')).toBeNull()
+    expect(screen.queryByText('Change what it assumes')).toBeNull()
+    expect(screen.queryByText('Change this')).toBeNull()
+  })
+})
+
+describe('an admin reading a check-in somebody else leads', () => {
+  it('is told whose share it is and who sees it, and cannot write to it', () => {
+    draw({ targets: [team, aisha], viewerUserId: 'u-admin' })
+    expect(rowText('t2')).toContain('Seen by Aisha and Wairimu')
+    expect(screen.queryByText('Say what it assumes')).toBeNull()
+  })
+})
