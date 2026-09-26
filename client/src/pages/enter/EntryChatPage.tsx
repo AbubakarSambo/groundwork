@@ -47,7 +47,7 @@ import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
  * Everybody typed by hand is still their address.
  */
 const A_COLLEAGUE = 'colleague:'
-function asAContributor(entry: string): { email?: string; colleagueId?: string; context?: string } {
+function asSomeoneToInvite(entry: string): { email?: string; colleagueId?: string; context?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
   const context = dash === -1 ? undefined : entry.slice(dash + 3)
@@ -2097,7 +2097,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(asAContributor),
+        contributors: inviteAdded.map(asSomeoneToInvite),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2370,7 +2370,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(asAContributor),
+        contributors: inviteAdded.map(asSomeoneToInvite),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these

@@ -1,0 +1,110 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { apiClient } from '@/api/client'
+import { OnePersonPage } from './OnePersonPage'
+
+/** ONE PERSON'S PAGE, AS GRACE (AN ADMIN) READS MIRIAM'S, against A4 one-person.txt. */
+const me: any = { id: 'grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
+vi.mock('@/stores/auth', () => ({ useAuthStore: (sel?: any) => (sel ? sel({ user: me }) : { user: me }) }))
+let whatsapp = false
+vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsapp }))
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }))
+vi.mock('sonner', () => ({ toast }))
+
+const people = [
+  { id: 'amani', email: 'amani@baridi.co.ke', firstName: 'Amani', lastName: 'Njoroge', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Chief executive', team: 'Leadership', reportsTo: null, checkIns: [] },
+  { id: 'wairimu', email: 'wairimu@baridi.co.ke', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales lead', team: 'Sales', reportsTo: { id: 'amani', name: 'Amani Njoroge' }, checkIns: [] },
+  { id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, level: 'Sales rep', team: 'Sales', reportsTo: { id: 'wairimu', name: 'Wairimu Kamau' }, phoneNumber: '+254722118440', checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }] },
+]
+
+function open(who = 'miriam') {
+  vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+    if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } } as any
+    if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+    return { data: {} } as any
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[`/org/members/${who}`]}>
+        <Routes>
+          <Route path="/org/members/:id" element={<OnePersonPage />} />
+          <Route path="/grounds/:id" element={<p>The check-in</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); whatsapp = false })
+
+describe('what Grace reads about Miriam', () => {
+  it('where she sits, her role here with what each role does, her team, status, seat and check-ins', async () => {
+    const { container } = open()
+    expect(await screen.findByRole('heading', { name: 'Miriam Wanjiku' })).toBeTruthy()
+    expect(screen.getByText('miriam@baridi.co.ke')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Where they sit' })).toBeTruthy()
+    expect(screen.getByText('Sales rep')).toBeTruthy()
+    expect(screen.getByText('Wairimu Kamau')).toBeTruthy()
+    expect(screen.getByText('This describes the organisation. What Miriam can do still comes only from their role and their access to each check-in.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Role at Baridi Appliances' })).toBeTruthy()
+    expect(screen.getByText('Manages people and billing, and can read every check-in.')).toBeTruthy()
+    expect(screen.getByText('Can start check-ins and run them. Takes part in others.')).toBeTruthy()
+    expect(screen.getByText('Answers the check-ins they’re invited to.')).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^Takes part/ })).toHaveAttribute('aria-checked', 'true')
+    /* A guest is only offered for somebody who is one. */
+    expect(screen.queryByText('Guest')).toBeNull()
+    expect(screen.getByText('Used to add whole teams to a check-in')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Team' })).toHaveValue('Sales')
+    expect(screen.getByText('Checking in')).toBeTruthy()
+    expect(screen.getByText('Holds a seat')).toBeTruthy()
+    expect(screen.getByText('1 check-in')).toBeTruthy()
+    expect(screen.getByText('Sales team, Q3')).toBeTruthy()
+    expect(screen.getByText('Checks in')).toBeTruthy()
+    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, change its setup and end it. You don’t see anyone’s private notes.')).toBeTruthy()
+    /* WhatsApp is off, so her number is not offered. And no label, no dash. */
+    expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
+    expect(container.textContent).not.toMatch(/ - |\bscore\b|at risk/i)
+  })
+
+  it('her WhatsApp number, when WhatsApp is on', async () => {
+    whatsapp = true
+    open()
+    expect(await screen.findByLabelText('WhatsApp number for Miriam')).toHaveValue('+254722118440')
+  })
+})
+
+describe('what Grace can change', () => {
+  it('her level, saved to where she sits', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Change level' }))
+    fireEvent.change(screen.getByLabelText('Level'), { target: { value: 'Senior sales rep' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save level' }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam/where-they-sit', { level: 'Senior sales rep' }))
+  })
+
+  it('who she reports to, from the people here, and a refusal is the server\'s own sentence', async () => {
+    vi.spyOn(apiClient, 'patch').mockRejectedValue({ response: { data: { message: 'That would make a loop, because that person already reports to them, directly or through someone else.' } } })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Change reports to' }))
+    fireEvent.change(screen.getByLabelText('Reports to'), { target: { value: 'amani' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save reports to' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That would make a loop, because that person already reports to them, directly or through someone else.'))
+  })
+
+  it('her role, straight away', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    open()
+    fireEvent.click(await screen.findByRole('radio', { name: /Can open check-ins/ }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'LEAD' }))
+  })
+
+  it('not the owner\'s role, and the page says why', async () => {
+    open('amani')
+    expect(await screen.findByText('Amani owns this organisation, so their role cannot be changed here.')).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /^Takes part/ })).toBeDisabled()
+  })
+})

@@ -38,8 +38,9 @@ describe('whether WhatsApp is mentioned', () => {
   })
   it('the Settings section and the People page\'s number box both ask it', () => {
     const settings = readFileSync(join(__dirname, '../pages/settings/SettingsPage.tsx'), 'utf8')
-    const people = readFileSync(join(__dirname, '../pages/org/OrgMembersPage.tsx'), 'utf8')
+    /* U.4: the number box moved to one person's page. */
+    const people = readFileSync(join(__dirname, '../pages/org/OnePersonPage.tsx'), 'utf8')
     expect(settings).toMatch(/\{whatsappOn && <section[^>]*>\s*<Sec title="WhatsApp" \/>/)
-    expect(people).toMatch(/\{whatsappOn && <input\s+defaultValue=\{m\.phoneNumber/)
+    expect(people).toMatch(/\{whatsappOn && \(\s*<div className="gw-one-field">\s*<span className="gw-one-label">WhatsApp<\/span>/)
   })
 })

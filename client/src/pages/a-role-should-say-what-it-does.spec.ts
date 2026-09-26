@@ -28,7 +28,8 @@ const read = (p: string) => readFileSync(join(__dirname, p), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 
 const REPORT = strip(read('report/ReportPage.tsx'))
-const PEOPLE = strip(read('org/OrgMembersPage.tsx'))
+/* U.4: roles are set, and said, on one person's page now, in the prototype's words (one-person.txt). */
+const PEOPLE = strip(read('org/OnePersonPage.tsx'))
 
 describe('a role should say what it does', () => {
   it('reads the real files, so an empty one cannot pass', () => {
@@ -36,18 +37,18 @@ describe('a role should say what it does', () => {
     expect(PEOPLE.length).toBeGreaterThan(3000)
   })
 
-  it('the People page says what an admin can do, where roles are set', () => {
-    expect(PEOPLE).toMatch(/Admins<\/strong>\s*\{?'?\s*manage people and billing|manage people and billing/)
+  it('the page where roles are set says what an admin can do', () => {
+    expect(PEOPLE).toContain('Manages people and billing, and can read every check-in.')
   })
 
-  it('and says what everybody else and a guest can do, so the pill is resolvable', () => {
-    expect(PEOPLE).toContain('takes part in the')
-    expect(PEOPLE).toContain('never open one here')
+  it('and says what everybody else and a guest can do, so the role is resolvable', () => {
+    expect(PEOPLE).toContain('Answers the check-ins they’re invited to.')
+    expect(PEOPLE).toContain('Can start check-ins and run them. Takes part in others.')
+    expect(PEOPLE).toContain('From another organisation. Sees only the check-ins they’re invited to.')
   })
 
-  it('the role that sets it is no longer just its own name', () => {
+  it('no role is offered as its own name alone', () => {
     expect(PEOPLE).not.toMatch(/<option value="ADMIN">Admin<\/option>/)
-    expect(PEOPLE).toMatch(/<option value="ADMIN">Admin - manages people and billing<\/option>/)
   })
 
   it('nobody is told a request went to "the initiator"', () => {

@@ -87,6 +87,7 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { MorePage } from '@/pages/more/MorePage'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
+import { OnePersonPage } from '@/pages/org/OnePersonPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { OrgsPage } from '@/pages/org/OrgsPage'
@@ -581,6 +582,7 @@ export default function App() {
             {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
             <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/members/:id" element={<RequireOrgSetup><AdminsOnly><OnePersonPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
               * everybody being briefed was just invited and has an account. Not admin-only: it is
