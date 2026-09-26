@@ -91,9 +91,28 @@ their home in the app, since leaving the app by accident is easy and confusing. 
 
 ### 8. Wording no prototype screen shows, which I had to write
 
-**Answered by you on 26 September: the tour must not have invented wording.** The prototype has its
-own short tour, so its wording is now being copied from the prototype's screen, step by step. The
-wording the builder first wrote for it is being replaced.
+**Answered by you on 26 September: the tour must not have invented wording, and it should copy the
+prototype's.** We could not find a tour for a new person anywhere in the prototype. The builder ran
+the prototype and looked at a new organisation's Today page, and I searched its source. The only
+tour is the demo bar's "Click-through" (`TOUR` in `docs/prototype/source/s28.js`). It walks a
+reviewer through the sample screens: "Pick a journey. The guide switches person and state for you,
+and says what to look at on each screen." Its steps describe the prototype itself, for example "The
+home page. Try the 60-second check-in in the hero: three questions about your own week." That is
+the demo bar and sample data, so `not-to-build.md` rules it out.
+
+**So I took the tour out again** (commit `336b4f94`), with the wording we had written. No other test
+changed. `docs/modules.md` does list "a short guided tour for someone new", so the two documents
+disagree.
+
+**What the prototype shows someone new instead** is on Today. A new admin gets a card reading
+"You're an admin at Nyali Foods", then "You can see every board and report. They never see anyone's
+questions to Ask Groundwork, anyone's own report, or a lead's private notes.", and "Got it". Below it
+is a list headed "Get Nyali Foods going", marked "0 of 4 done": "Invite your team", "Add a second
+admin", "Start your first check-in" and "Connect WhatsApp (optional)".
+
+**Which do you want?** (a) no tour, with that card and list on Today as the welcome, built in U.3 and
+U.5, word for word from the screen; or (b) a tour, with wording you give me. I suggest (a). Until
+you answer, the tour is the one open part of U.1.
 
 These two lines are still written by us, because no prototype screen shows them:
 
@@ -232,9 +251,9 @@ session that had not opened yet, and fixed that too.
     because the backend has no list of people limited by what each reader may see.
 11. **Help and "Talk to us" from anywhere** (commit `a355300f`), in your own menu and on "More". The
     floating "?" button is gone where the sidebar is, because the menu now does the same job.
-12. **A short guided tour** (commit `41b999b5`). Someone new is offered it once, and anyone can take
-    it again from their menu. It only points at real parts of the page. See item 8 above for its
-    wording.
+12. **A short guided tour** (commit `41b999b5`), **taken out again** (commit `336b4f94`). Its
+    wording was ours, and the prototype has no tour to copy from. See item 8 above: this waits for
+    you.
 
 Still to do: remembering the folded sidebar, pinning, the phone bar and
 "More" page, "Jump to", help and "Talk to us", the short tour, and the sidebar links to Today,
