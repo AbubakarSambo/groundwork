@@ -340,6 +340,14 @@ export function theTable(reads: AFieldRead[], assessments: AnAssessment[], howMa
  * RECOMMEND - the only part a model writes, and it is handed nothing but the table
  * ---------------------------------------------------------------------------------------------- */
 
+/*
+ * A MOVE IS SOMETHING THE READER DOES. The lead read "Tell you what Blessing Okafor's record says
+ * about the handover time changing" and "Ask you to decide what Zainab Suleiman should work on now"
+ * (8 such moves in run-5, 4 in run-6). The judgement is written about labels, so the model wrote
+ * "Tell the initiator ..." as if the lead were somebody else, and serving turned the label into
+ * "you". Both WHAT TO DO items now say the move is an instruction to the reader. Nothing rewrites
+ * the text afterwards; the instruction is where it is fixed.
+ */
 export function theJudgementInstruction(whoIsReading: string, whatTheyAreDeciding: string): string {
   return [
     `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
@@ -362,7 +370,7 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
     '',
     '2. WHAT THE NUMBERS SAY - one line per field that has a standing of SOLID, SPLIT or NOBODY_COULD_ANSWER. The count first, then what it means for the decision. Skip THIN and WE_NEVER_ASKED fields here; they belong in 4 and 5.',
     '',
-    '3. WHAT TO DO, ranked, most valuable first, three to five of them. Each one: the move, the count that justifies it, and who to start with by name or by kind of organisation. A move nobody could act on next week is not a move.',
+    '3. WHAT TO DO, ranked, most valuable first, three to five of them. Each one: the move, the count that justifies it, and who to start with by name or by kind of organisation. A move nobody could act on next week is not a move. Every move is something the reader does themselves, written as an instruction to them: "Speak with Ngozi Eze about the 11 applications." Never write a move that tells, asks or shows the reader something, such as "Tell the initiator..." or "Ask the initiator to...". Where the reader is the one who must act, write what they do.',
     '',
     '4. WHAT THIS CANNOT TELL YOU. Every field the table marks THIN or SPLIT, and what it would take to know. A reader who cannot see the edge of the data calls the whole thing abstract.',
     '',
@@ -510,7 +518,7 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
     '',
     '2. WHAT THE RECORD SHOWS - one line per person who has something worth a line. Name them, say what the record holds, and say what it means for the decision. Somebody the record shows doing the job well gets a line too; a judgement that only names problems is not a judgement.',
     '',
-    '3. WHAT TO DO, ranked, most valuable first, three to five. Each one: the move, the person it is about, and what in the record justifies it. A move nobody could make next week is not a move.',
+    '3. WHAT TO DO, ranked, most valuable first, three to five. Each one: the move, the person it is about, and what in the record justifies it. A move nobody could make next week is not a move. Every move is something the reader does themselves, written as an instruction to them: "Speak with Ngozi Eze about the 11 applications." Never write a move that tells, asks or shows the reader something, such as "Tell the initiator..." or "Ask the initiator to...". Where the reader is the one who must act, write what they do.',
     '',
     '4. WHAT THIS CANNOT TELL YOU. What is not on the record, and what it would take to know. Somebody who has said little is a gap in the record, not a finding about them.',
     '',
