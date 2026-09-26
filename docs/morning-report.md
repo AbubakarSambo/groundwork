@@ -375,8 +375,37 @@ Six samples, no overlap, and the turn counts are identical at 69. That is not sa
   re-seeded the engine prompt and changed it for both. It did not: `system` is still v40 and
   `report_synthesis` still v3, unchanged since 23 and 15 September.
 
-**So I am doing what you said and not moving on.** A bisect is running now: NEW_HIRE on each of the
-three fix commits in turn, to find which one moves the number. That is the next thing in the log.
+**The bisect did not work, and I stopped it rather than read tea leaves.** One NEW_HIRE run per
+commit is not enough: the conversations come out different lengths - the fix-1 point ran 53 turns
+against the usual 69 - so a raw count is not comparable between points, and a rate over one sample
+tells you nothing. Doing it properly is three commits times two or three runs each, about two
+hours, and it should be done that way rather than badly.
+
+**But I can name the remaining suspect, and it is specific.**
+
+The conversation reads the report from the **raw database row**, not through the filtered read - I
+checked both call sites (`conversation.service.ts:2846` selects `report.findings`, `:3798` selects
+`report.inferences`). So fix 1, which filters at the serving endpoint, cannot reach the conversation
+at all. That rules it out on principle rather than on a sample.
+
+Fix 2 *can*, because it changed the `findings` rows themselves. And I measured earlier that findings
+with both a gap and a headline went **up**: 3 and 2 on the old code, 6 and 5 on the new. That block
+(`putThisToThem`, at `:4378`) is what puts a disagreement to the lead in a later session, so it now
+fires more often.
+
+Here is why "more" could still mean "fewer questions". **The engine prompt is trimmed to fit.** It
+is assembled from around forty blocks and cut down when it is too long - `a-prompt-that-ran-out-of-room-says-so.ts`,
+and the log line at `:4411` reads "engine 114920 to 101767 chars, leaving out …". If fix 2 made one
+block appear more often, the trimmer has to drop something else, and what it drops could be exactly
+the blocks that ask for a number or a date.
+
+**How to test it, precisely:** run NEW_HIRE on the current code and on `ed2b4996` with the engine
+logs kept, and compare the "leaving out" lines. If the new runs are dropping blocks the old runs
+kept, that is the answer, and the fix is to make the trimmer protect the question-generating blocks
+rather than to undo fix 2. That is one run each, not six, because the log says it outright.
+
+I have not done it: I would rather hand you a named hypothesis and the one-command test than spend
+the remaining time on more samples.
 
 ## The first result, before both runs were in
 
