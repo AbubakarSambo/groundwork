@@ -67,7 +67,8 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, THE_LEADS_LABEL } from './party-labels';
+import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
@@ -4090,7 +4091,10 @@ happened, and what is in the way.`;
     const kept = {
       ...judgement,
       whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => grounded(x?.says)),
-      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move)),
+      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move))
+        /* A move that tells the reader to do something is stored as the thing to do. The lead read
+           "Tell you to get Chidi Eze and Sara Lindqvist in a room" (run-7). See a-move-is-the-thing-to-do. */
+        .map((x: any) => (typeof x?.move === 'string' ? { ...x, move: aMoveForTheReader(x.move, THE_LEADS_LABEL) } : x)),
     };
     const dropped = (judgement.whatTheNumbersSay ?? []).length - kept.whatTheNumbersSay.length
       + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
