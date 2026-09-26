@@ -70,6 +70,14 @@ type UserWithOrg = {
 
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
 
+/**
+ * For an address that already has an account: the draft token a new address would have been given
+ * for the same request, in the same shape, stored nowhere. See the end of entrySave.
+ */
+function theSameShapeAsANewAddress(draft: unknown): { draftToken?: string } {
+  return draft ? { draftToken: crypto.randomBytes(32).toString('hex') } : {};
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -623,7 +631,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower };
+        return { message, email: lower, ...theSameShapeAsANewAddress(draft) };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -636,8 +644,17 @@ export class AuthService {
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
-    /* The key is absent, not undefined, when there is no token: a body that names it says the address had no account. */
-    return { message, email: lower, ...(draftToken ? { draftToken } : {}) };
+    /*
+     * THE SAME FIELDS FOR EVERY ADDRESS. U.2 review, Hafsah's rule of 26 September.
+     *
+     * A new address that sent a draft gets the token for its waiting sign-up, so the entry chat can
+     * keep editing it. An address with an account used to get no token at all, so the reply alone said
+     * which addresses have accounts. It now gets a token of the same shape that is stored nowhere and
+     * opens nothing: editing with it changes nothing (PATCH /entry/draft answers the same for a token
+     * it does not hold), and the account's draft is still never written from here. Without a draft,
+     * neither gets a token.
+     */
+    return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}) };
   }
 
   async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {

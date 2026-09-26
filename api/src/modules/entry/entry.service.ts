@@ -2382,7 +2382,8 @@ from finishing at all.`;
     if (pending) {
       /* The same test the EntryDraft branch below and the pendingJoin path run. A leaked or logged
          draft token was valid for ever on this branch alone (fix plan A10). */
-      if (pending.expiresAt < new Date()) throw new NotFoundException('Draft not found');
+      /* Answered like any token this does not hold (below): nothing is written. */
+      if (pending.expiresAt < new Date()) return { ok: true };
       const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
       const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
       await this.prisma.pendingSignup.update({
@@ -2398,7 +2399,16 @@ from finishing at all.`;
     }
 
     const draft = await this.prisma.entryDraft.findUnique({ where: { draftToken } });
-    if (!draft || draft.consumedAt) throw new NotFoundException('Draft not found');
+    /*
+     * A TOKEN THIS DOES NOT HOLD IS ANSWERED LIKE ONE IT DOES, AND NOTHING IS WRITTEN. U.2 review.
+     *
+     * entry-save gives an address that already has an account a draft token of the same shape as a new
+     * address's, stored nowhere, so its reply cannot say which addresses have accounts (Hafsah's rule
+     * of 26 September). If this answered 404 for that token, calling it would say the same thing. So an
+     * unknown, expired or used token gets { ok: true } and changes nothing. The entry chat treats this
+     * call as best-effort already; its own copy in the browser carries the edits either way.
+     */
+    if (!draft || draft.consumedAt) return { ok: true };
 
     const merged = { ...(draft.payload as Record<string, any>), ...payload };
     await this.prisma.entryDraft.update({ where: { id: draft.id }, data: { payload: merged as any } });

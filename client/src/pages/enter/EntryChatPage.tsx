@@ -2316,10 +2316,11 @@ export function EntryChatPage() {
         setDraftToken(res.draftToken)
         try { localStorage.setItem('gw_draft_token', res.draftToken) } catch { /* */ }
       } else {
-        /* No token means the address already has an account and the server wrote nothing for it - by
-           design, since this request is unauthenticated. Post-email edits stay in localStorage and
-           travel with the same-browser commit; a token left over from an earlier session must not be
-           used to patch a draft this address no longer has. */
+        /* No token: nothing was stored for this request. (Since the U.2 review an address that already
+           has an account gets a token too, of the same shape and stored nowhere, so the reply does not
+           say which addresses have accounts; patching with it changes nothing, and the edits travel in
+           localStorage with the same-browser commit, as before.) A token left over from an earlier
+           session must not be used to patch a draft this address no longer has. */
         setDraftToken(null)
         try { localStorage.removeItem('gw_draft_token') } catch { /* */ }
       }

@@ -259,10 +259,22 @@ describe('patchDraft reaches a signup that has no user yet', () => {
 });
 
 describe('patchDraft is token-gated', () => {
-  it('rejects a missing/unknown token and refuses consumed drafts', async () => {
-    const { service } = makeService(); // findUnique -> null
+  /*
+   * CHANGED IN THE U.2 REVIEW, and why. An unknown token used to be refused with "Draft not found".
+   * entry-save now gives an address with an account a token of the same shape that is stored nowhere,
+   * so a 404 here would say which addresses have accounts (Hafsah's rule of 26 September). An
+   * unknown or used token is answered { ok: true } and NOTHING IS WRITTEN, which is what this test
+   * protects: it is still token-gated.
+   */
+  it('refuses a missing token, and writes nothing for an unknown or used one', async () => {
+    const { service, prisma } = makeService(); // findUnique -> null
     await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('draftToken required');
-    await expect(service.patchDraft('bad-token', { orgName: 'X' })).rejects.toThrow('Draft not found');
+    await expect(service.patchDraft('bad-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
+    expect(prisma.entryDraft.update).not.toHaveBeenCalled();
+    expect(prisma.pendingSignup.update).not.toHaveBeenCalled();
+    prisma.entryDraft.findUnique = jest.fn(async () => ({ id: 'd1', consumedAt: new Date(), payload: {} }))
+    await expect(service.patchDraft('used-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
+    expect(prisma.entryDraft.update).not.toHaveBeenCalled();
   });
 
   it('shallow-merges the patch into the stored payload', async () => {
