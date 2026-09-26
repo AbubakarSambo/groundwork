@@ -586,7 +586,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean } = {},
+    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number } = {},
   ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -612,6 +612,16 @@ export class AnthropicService implements OnApplicationBootstrap {
           /* A patient read is a big one: eight thousand tokens is not a hundred organisations laid
              out in ten sections, and a truncated tool call comes back as an empty object. */
           maxOutputTokens: options.patient ? 32768 : 8192,
+          /*
+           * TEMPERATURE, WHERE A CALLER ASKS FOR ONE, AND NOWHERE ELSE.
+           *
+           * Nothing set this, so every extraction ran at the model's own default. That is right
+           * for most of them - there is no single correct wording for a shared picture. It is
+           * wrong for the judgement, where the same record read twice should reach the same
+           * conclusion: a lead who refreshes their report and gets a different gap has no reason
+           * to trust either. Passed through rather than set here, so each caller decides.
+           */
+          ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
