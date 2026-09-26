@@ -6,6 +6,22 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## NEW SESSION, 26 September, from 21:35 (a different account, same branch)
+
+Picked up exactly where the section below stopped.
+
+- **In step with the screens workspace.** Merged `mine/wip/prototype-ui` (65 commits, all sign-up,
+  billing's free-trial setting and screens; nothing in the engine's code). Clean merge, pushed as
+  `51f55fbe`. No new requests: their file now marks both of theirs answered or accepted, which
+  mirrors `docs/answers-from-engine.md`.
+- **Safe to run, checked again.** Local test database `gw_pw9_1786222102`, Stripe `sk_test_`,
+  Resend placeholder with `EMAIL_SENDS_FOR_REAL` unset, WhatsApp unset.
+- **The API that was running was out of date.** It served `dist/` built at 20:58, before the
+  last session's final code commits. Rebuilt and restarted, so this run measures the code as it
+  is committed.
+- **Run-6 started**: all 24, three shards, into `api/journey/all-24/run-6`. This is step 1 below.
+  The tester helper is running every test suite on the merge at the same time.
+
 ## WHERE I STOPPED, AND WHAT COMES NEXT
 
 **Stopped at 21:30 on 26 September, at a clean point.** Everything is committed and pushed to
