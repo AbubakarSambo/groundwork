@@ -17,9 +17,9 @@ const CARDS = readFileSync(join(__dirname, 'EachPerson.tsx'), 'utf8')
 
 describe('what the page calls whoever is reading it', () => {
   it('the brief says "yours" to the person who wrote it', () => {
-    expect(CONTEXT).toContain("isTheLead ? 'from setup, and your own check-in'")
-    expect(CONTEXT).toContain("isTheLead ? 'from setup, in your own words'")
-    expect(CONTEXT).toContain("isTheLead ? 'from your own check-in'")
+    /* Since U.7 in the prototype's sentence, under the brief: "Your words, from setup." To anyone
+       else it names the lead, never "the lead". */
+    expect(CONTEXT).toContain("isTheLead ? 'Your words, from setup.' : `${theLeadsFirstName}\\u2019s words, from setup.`")
   })
 
   it('and the rules are the ones you wrote', () => {

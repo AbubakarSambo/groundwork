@@ -62,9 +62,11 @@ describe('the brief answers this band own question', () => {
     expect(TABLE).toContain("'The whole team'")
   })
 
-  it('the source line names what is actually there rather than claiming both', () => {
-    /* It read "from the lead's own check-in" unconditionally, which was untrue of a brief. */
-    expect(BAND).toContain('from setup, in the lead')
-    expect(BAND).toContain('from setup, and the lead')
+  it('the brief says whose words it is, rather than claiming both', () => {
+    /* It read "from the lead's own check-in" unconditionally, which was untrue of a brief. Since U.7
+       the targets are their own band, so the line is only about the brief, in the prototype's
+       sentence: "Your words, from setup. Everyone reads this before they answer." */
+    expect(BAND).toContain("'Your words, from setup.'")
+    expect(BAND).toContain('Everyone reads this before they answer.')
   })
 })

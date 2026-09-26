@@ -22,7 +22,8 @@ const PAGE = strip(readFileSync(join(__dirname, 'ContextPage.tsx'), 'utf8'))
 
 describe('writing the brief', () => {
   it('is offered on the brief itself, to whoever runs the check-in', () => {
-    expect(PAGE).toContain('Rewrite this')
+    /* "Rewrite", the prototype's word, since U.7 (it was "Rewrite this"). */
+    expect(PAGE).toMatch(/>\s*Rewrite\s*</)
     expect(PAGE).toContain('{isLead && briefDraft === null && (')
   })
 

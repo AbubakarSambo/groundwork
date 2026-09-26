@@ -313,6 +313,9 @@ export function ContextPage({
    * readiness check below already treats it.
    */
   const theBrief: string = ((ground as any).brief ?? '').trim()
+  /** Whose words the brief is, for everybody but the lead. */
+  const theLeadsFirstName: string =
+    personLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')).split(' ')[0] || 'The lead'
   const objectives: any[] = (ground as any).objectives ?? []
 
 
@@ -368,43 +371,33 @@ export function ContextPage({
               checkable statements the engine drew out of their session - so the source line names
               whichever is actually there rather than claiming the check-in for both.
             */}
-            <Sec
-              n={band()}
-              title="What this check-in is for"
-              src={
-                /*
-                 * WHOSE WORDS, SAID TO WHOEVER IS READING.
-                 *
-                 * "why would you say it comes from the leads own check or context chat when i am
-                 * actually the lead." Three source lines here named the lead in the third person to
-                 * the lead's own face, which reads as the product talking about somebody else in
-                 * the room. Saved as item D on the Context fix list, 23 September 2026.
-                 */
-                theBrief && objectives.length > 0
-                  ? (isTheLead ? 'from setup, and your own check-in' : 'from setup, and the lead\u2019s own check-in')
-                : theBrief
-                  ? (isTheLead ? 'from setup, in your own words' : 'from setup, in the lead\u2019s own words')
-                : (isTheLead ? 'from your own check-in' : 'from the lead\u2019s own check-in')
-              }
-            />
+            {/*
+              THE HEADING ALONE, AS THE PROTOTYPE HAS IT. The source line that sat beside it ("from
+              setup, in your own words") is now a full sentence under the brief itself, and the
+              targets, which it also had to account for, are their own band since U.7.
+            */}
+            <Sec n={band()} title="What this check-in is for" />
             {theBrief && (
               <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
-                <span style={{
-                  display: 'inline-block', fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em',
-                  padding: '1px 7px', borderRadius: 10, marginBottom: 4,
-                  color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                }}>
-                  the brief
-                </span>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{theBrief}</div>
-                {isLead && briefDraft === null && (
-                  <button
-                    onClick={() => setBriefDraft(theBrief)}
-                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Rewrite this
-                  </button>
-                )}
+                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{theBrief}{'\u201D'}</div>
+                {/*
+                  WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
+                  lead's name for everybody else, never "the lead" to the lead's own face (item D on
+                  the Context fix list, 23 September 2026).
+                */}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    {isTheLead ? 'Your words, from setup.' : `${theLeadsFirstName}\u2019s words, from setup.`} Everyone reads this before they answer.
+                  </span>
+                  {isLead && briefDraft === null && (
+                    <button
+                      onClick={() => setBriefDraft(theBrief)}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Rewrite
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             {/*
@@ -666,162 +659,7 @@ export function ContextPage({
               is the list" was genuinely nowhere, and on one with several the box still came first.
               The count is in the heading now and the box below it is one row.
             */}
-            <Sec n={band()} title="Documents" src={docs.length ? `${docs.length} attached \u00b7 each one says who reads it` : 'each one says who reads it'} />
-
-            <div
-              style={{
-                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
-                /* A row when there are files to get to, a panel when it is the only thing here. */
-                padding: docs.length ? '10px 13px' : 18,
-                textAlign: docs.length ? 'left' : 'center', marginBottom: 12, background: 'var(--gw-bg)',
-                /* A dropped file can take a moment. Without this the box looks untouched and
-                   somebody presses it again, which is how two copies of one file get attached. */
-                cursor: uploadDoc.isPending ? 'progress' : 'pointer',
-                opacity: uploadDoc.isPending ? 0.6 : 1,
-              }}
-              onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
-              /* The formats, where somebody asks the question: while choosing a file. */
-              title={WHAT_YOU_CAN_UPLOAD}
-            >
-              {/*
-                LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
-                named by what they were - documents, notes, private context - when the only difference
-                that matters to somebody deciding where to put something is who ends up reading it.
-              */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                {/*
-                  THE HEADING FOLLOWS THE FLAG, LIKE THE SENTENCE UNDER IT.
-                  
-                  My first version read "private to you until you open it" in both states - and with
-                  CONTEXT_ENABLED off there is no opening it, so it promised an action that does not
-                  exist, directly above a sentence correctly saying the file reaches nobody. The same
-                  contradiction this box was just fixed for, reintroduced one line higher.
-                */}
-                {uploadDoc.isPending
-                  ? 'Uploading…'
-                  : 'Upload a file as proof or context for this check-in'}
-              </div>
-              {/*
-                THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
-
-                "The Documents band is the loudest thing on the Context page." It was a large dashed
-                dropzone carrying a heading, a list of eight accepted file types, and a
-                three-line paragraph - about as much text as the brief, for a control that is
-                pressed once. Which formats are allowed is a question somebody has WHILE choosing a
-                file, which is where the file picker is, so it is on the control's tooltip and in
-                its `accept` - where the picker enforces it anyway.
-              */}
-              {/*
-                THE PROMISE SITS IN THE BOX IT IS ABOUT. It used to be a second bordered panel
-                directly beneath this one, so an empty Documents band was two stacked boxes saying
-                two halves of one thing - what you may upload, then what happens to it. One box.
-              */}
-              {/*
-                THE PRIVACY DEFAULT IS STATED BEFORE ANYBODY UPLOADS, ALWAYS.
-                
-                This lived in the heading, and the heading is now what the box is FOR - her words:
-                "upload file to use as proof or context of work in the checkin, it is private to
-                you unless you decide to make it visible to everyone." So the privacy half moved
-                down here, and it is NOT inside the empty-state branch: put there, the box stopped
-                stating the default the moment the list had one document in it, which is the exact
-                shape of the bug that spec was written for - the page telling the truth only after
-                the upload it had already talked somebody into.
-                
-                Flag-aware, because with CONTEXT_ENABLED off a document can never be opened at all
-                (`canSeeDocument` returns `isMine` and ignores the column), so promising that
-                everyone reads it once you open it would swap one false sentence for another.
-              */}
-              {/*
-                STAYS, WHATEVER ELSE IS TRIMMED. I moved this behind `docs.length === 0` while
-                shrinking the band and what-the-upload-box-promises-is-true refused it, correctly:
-                the whole point of that guard is that the privacy default is readable BEFORE
-                somebody uploads, and the second person to upload a file reads this box too. The
-                examples below are for a first-timer; this sentence is for every upload.
-              */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: docs.length ? 'left' : 'left' }}>
-                {contextEnabled
-                  ? 'It is private to you unless you decide to make it visible to everyone. Either way the check-in reads it, and says where it does not match what you have told it.'
-                  : 'It is private to you. It shapes your own questions and reaches nobody else.'}
-              </div>
-              {docs.length === 0 && (
-                /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
-                   centred is harder to read than the same paragraph set flush. */
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
-                  {/*
-                    AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
-
-                    Every example here used to be a document from BEFORE the work started, so people
-                    uploaded a scope and stopped. The record of what was actually done or said -
-                    meeting notes, a Gemini or other transcript, a photo of a whiteboard - is what a
-                    check-in most wants to read, and it is already sitting in somebody's inbox.
-                  */}
-                  Proof or context for what has happened: meeting notes, a transcript from Gemini or
-                  another notetaker, a photo of what was agreed - or the brief, plan or scope this
-                  work was set against.
-                </div>
-              )}
-              <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
-                onChange={e => {
-                  const f = e.target.files?.[0]
-                  /*
-                   * NOTHING IS ASKED BEFORE IT LEAVES THE DEVICE. This used to stop a file whose name said
-                   * "transcript" and ask first. The server recognises a record of a conversation by its
-                   * shape, keeps it, and says the assumption back (see the upload's onSuccess) - so the
-                   * one question left to ask here is what to look for in it.
-                   */
-                  if (f) {
-                    /* Prefilled with what they said they would show, where that is why they are here. */
-                    setWhatToLookFor(attachingFor ?? ''); setAskingWhatToLookFor({ file: f, consented: false })
-                    setAttachingFor(null)
-                  }
-                  e.target.value = ''
-                }} />
-            </div>
-
-            {/*
-              * WHAT TO LOOK FOR, ASKED ONCE, SKIPPABLE.
-              *
-              * The chat asks this as a file is attached and nothing here did, so a document arrived
-              * with no idea what mattered about it. Skip is a real answer and sits first, because
-              * most files need nothing said about them and a required box before an upload is a
-              * reason not to upload.
-              */}
-            {askingWhatToLookFor && (
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, background: 'var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-                  {askingWhatToLookFor.file.name}
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 9 }}>
-                  Anything you want read out of this? One line is enough, and you can skip it.
-                </div>
-                <textarea
-                  autoFocus
-                  value={whatToLookFor}
-                  onChange={e => setWhatToLookFor(e.target.value)}
-                  placeholder="e.g. the hardware interface dates in section 4, not the rest of it"
-                  style={{ width: '100%', boxSizing: 'border-box', minHeight: 58, resize: 'none', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', marginBottom: 9 }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented })
-                      setAskingWhatToLookFor(null)
-                    }}
-                    style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >Skip and upload</button>
-                  <button
-                    type="button"
-                    disabled={!whatToLookFor.trim()}
-                    onClick={() => {
-                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented, note: whatToLookFor })
-                      setAskingWhatToLookFor(null)
-                    }}
-                    style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: whatToLookFor.trim() ? 'pointer' : 'not-allowed', opacity: whatToLookFor.trim() ? 1 : 0.5, fontFamily: 'inherit' }}
-                  >Upload with this</button>
-                </div>
-              </div>
-            )}
+            <Sec n={band()} title="Documents" />
 
             {/*
               AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
@@ -855,6 +693,12 @@ export function ContextPage({
               </div>
             )}
             {/*
+              THE DOCUMENTS AS CARDS, WITH "ADD A DOCUMENT" AS THE LAST CARD (U.7, the prototype's
+              Context page). Shared ones first, so "what are we all working from" is the first row
+              somebody reads; each card still says who reads it, with the same controls and rules.
+            */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
+            {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
               
               It was one flat list where a brief the whole team works from sat between two private
@@ -862,17 +706,12 @@ export function ContextPage({
               each row. Somebody scanning for "what are we all working from" had to read every line.
               The rows themselves are unchanged - same controls, same rules about who may set what.
             */}
-            {(docs.length > 1 ? [
-              { title: 'Everyone here reads these', rows: docs.filter((d: any) => d.visibility === 'OPEN') },
-              { title: isLead ? 'Not shared: yours, and each person\u2019s own' : 'Not shared: yours', rows: docs.filter((d: any) => d.visibility !== 'OPEN') },
-            ] : [{ title: '', rows: docs }]).filter(g => g.rows.length).map(group => (
-            <div key={group.title || 'all'} style={{ marginBottom: 10 }}>
-            {group.title && (
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>{group.title}</div>
-            )}
-            {group.rows.map((doc: any) => (
-              <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ minWidth: 0, paddingRight: 12 }}>
+            {[
+              ...docs.filter((d: any) => d.visibility === 'OPEN'),
+              ...docs.filter((d: any) => d.visibility !== 'OPEN'),
+            ].map((doc: any) => (
+              <div key={doc.id} data-gw-document={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>
                     {doc.name}
                     {/*
@@ -886,7 +725,12 @@ export function ContextPage({
                       <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{whenItWas(doc.uploadedAt, 'day')}</div>
+                  {/* WHAT IT IS FOR, in the uploader's words, as the prototype's card has it ("Checks price
+                      objections"). The server sends it to the uploader alone (usedFor). */}
+                  {doc.usedFor && (
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{doc.usedFor}</div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>{whenItWas(doc.uploadedAt, 'day')}</div>
                   {/*
                     WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
 
@@ -927,7 +771,7 @@ export function ContextPage({
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {/* WHO CAN READ THIS, stated on the row rather than in a
                       settings screen. Somebody deciding whether to attach a
                       handover note needs the answer where they are, not two
@@ -1023,8 +867,166 @@ export function ContextPage({
                 </div>
               </div>
             ))}
+            <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !uploadDoc.isPending) { e.preventDefault(); document.getElementById('ga-doc-upload')?.click() } }}
+              style={{
+                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
+                /* A card beside the documents, as the prototype draws "Add a document". */
+                padding: '12px 14px',
+                textAlign: 'left', background: 'var(--gw-bg)',
+                /* A dropped file can take a moment. Without this the box looks untouched and
+                   somebody presses it again, which is how two copies of one file get attached. */
+                cursor: uploadDoc.isPending ? 'progress' : 'pointer',
+                opacity: uploadDoc.isPending ? 0.6 : 1,
+              }}
+              onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
+              /* The formats, where somebody asks the question: while choosing a file. */
+              title={WHAT_YOU_CAN_UPLOAD}
+            >
+              {/*
+                LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
+                named by what they were - documents, notes, private context - when the only difference
+                that matters to somebody deciding where to put something is who ends up reading it.
+              */}
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                {/*
+                  THE HEADING FOLLOWS THE FLAG, LIKE THE SENTENCE UNDER IT.
+                  
+                  My first version read "private to you until you open it" in both states - and with
+                  CONTEXT_ENABLED off there is no opening it, so it promised an action that does not
+                  exist, directly above a sentence correctly saying the file reaches nobody. The same
+                  contradiction this box was just fixed for, reintroduced one line higher.
+                */}
+                {uploadDoc.isPending
+                  ? 'Uploading…'
+                  : 'Add a document'}
+              </div>
+              {/*
+                THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
+
+                "The Documents band is the loudest thing on the Context page." It was a large dashed
+                dropzone carrying a heading, a list of eight accepted file types, and a
+                three-line paragraph - about as much text as the brief, for a control that is
+                pressed once. Which formats are allowed is a question somebody has WHILE choosing a
+                file, which is where the file picker is, so it is on the control's tooltip and in
+                its `accept` - where the picker enforces it anyway.
+              */}
+              {/*
+                THE PROMISE SITS IN THE BOX IT IS ABOUT. It used to be a second bordered panel
+                directly beneath this one, so an empty Documents band was two stacked boxes saying
+                two halves of one thing - what you may upload, then what happens to it. One box.
+              */}
+              {/*
+                THE PRIVACY DEFAULT IS STATED BEFORE ANYBODY UPLOADS, ALWAYS.
+                
+                This lived in the heading, and the heading is now what the box is FOR - her words:
+                "upload file to use as proof or context of work in the checkin, it is private to
+                you unless you decide to make it visible to everyone." So the privacy half moved
+                down here, and it is NOT inside the empty-state branch: put there, the box stopped
+                stating the default the moment the list had one document in it, which is the exact
+                shape of the bug that spec was written for - the page telling the truth only after
+                the upload it had already talked somebody into.
+                
+                Flag-aware, because with CONTEXT_ENABLED off a document can never be opened at all
+                (`canSeeDocument` returns `isMine` and ignores the column), so promising that
+                everyone reads it once you open it would swap one false sentence for another.
+              */}
+              {/*
+                STAYS, WHATEVER ELSE IS TRIMMED. I moved this behind `docs.length === 0` while
+                shrinking the band and what-the-upload-box-promises-is-true refused it, correctly:
+                the whole point of that guard is that the privacy default is readable BEFORE
+                somebody uploads, and the second person to upload a file reads this box too. The
+                examples below are for a first-timer; this sentence is for every upload.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 4 }}>
+                {contextEnabled
+                  ? 'It starts private to you. You choose who can read it.'
+                  : 'It is private to you. It shapes your own questions and reaches nobody else.'}
+              </div>
+              {docs.length === 0 && (
+                /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
+                   centred is harder to read than the same paragraph set flush. */
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6 }}>
+                  {/*
+                    AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
+
+                    Every example here used to be a document from BEFORE the work started, so people
+                    uploaded a scope and stopped. The record of what was actually done or said -
+                    meeting notes, a Gemini or other transcript, a photo of a whiteboard - is what a
+                    check-in most wants to read, and it is already sitting in somebody's inbox.
+                  */}
+                  The check-in reads it, and says where it does not match what you have told it. It
+                  can be proof of what has happened, such as meeting notes, a transcript from Gemini
+                  or another notetaker, or a photo of what was agreed. It can also be the brief, plan
+                  or scope this work was set against.
+                </div>
+              )}
+              <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  /*
+                   * NOTHING IS ASKED BEFORE IT LEAVES THE DEVICE. This used to stop a file whose name said
+                   * "transcript" and ask first. The server recognises a record of a conversation by its
+                   * shape, keeps it, and says the assumption back (see the upload's onSuccess) - so the
+                   * one question left to ask here is what to look for in it.
+                   */
+                  if (f) {
+                    /* Prefilled with what they said they would show, where that is why they are here. */
+                    setWhatToLookFor(attachingFor ?? ''); setAskingWhatToLookFor({ file: f, consented: false })
+                    setAttachingFor(null)
+                  }
+                  e.target.value = ''
+                }} />
             </div>
-            ))}
+            </div>
+
+            {/*
+              * WHAT TO LOOK FOR, ASKED ONCE, SKIPPABLE.
+              *
+              * The chat asks this as a file is attached and nothing here did, so a document arrived
+              * with no idea what mattered about it. Skip is a real answer and sits first, because
+              * most files need nothing said about them and a required box before an upload is a
+              * reason not to upload.
+              */}
+            {askingWhatToLookFor && (
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, background: 'var(--gw-bg)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+                  {askingWhatToLookFor.file.name}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 9 }}>
+                  Anything you want read out of this? One line is enough, and you can skip it.
+                </div>
+                <textarea
+                  autoFocus
+                  value={whatToLookFor}
+                  onChange={e => setWhatToLookFor(e.target.value)}
+                  placeholder="e.g. the hardware interface dates in section 4, not the rest of it"
+                  style={{ width: '100%', boxSizing: 'border-box', minHeight: 58, resize: 'none', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', marginBottom: 9 }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented })
+                      setAskingWhatToLookFor(null)
+                    }}
+                    style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >Skip and upload</button>
+                  <button
+                    type="button"
+                    disabled={!whatToLookFor.trim()}
+                    onClick={() => {
+                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented, note: whatToLookFor })
+                      setAskingWhatToLookFor(null)
+                    }}
+                    style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: whatToLookFor.trim() ? 'pointer' : 'not-allowed', opacity: whatToLookFor.trim() ? 1 : 0.5, fontFamily: 'inherit' }}
+                  >Upload with this</button>
+                </div>
+              </div>
+            )}
+
 
 
             {/*
