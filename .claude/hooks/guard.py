@@ -10,11 +10,41 @@ inp = data.get("tool_input") or {}
 def block(msg):
     print(f"Blocked by the kit's safety rules: {msg} If this is really needed, write it under 'Needs Hafsah' in docs/morning-report.md and move on.", file=sys.stderr)
     sys.exit(2)
+def current_branch():
+    import subprocess, os
+    try:
+        return subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, cwd=os.environ.get("CLAUDE_PROJECT_DIR") or None, timeout=5).stdout.strip()
+    except Exception:
+        return ""
+
 if kind == "bash":
     cmd = inp.get("command", "")
+    if re.search(r"abubakar", cmd, re.I) and re.search(r"\bgit\b", cmd):
+        block("Nothing may touch Abubakar's branches.")
+    # Hafsah's own work-in-progress branches on GitHub are the one allowed destination.
+    one = cmd.strip()
+    # The ONLY place work may be pushed: Hafsah's own private copy, the remote named "mine", wip/ branches only.
+    # "origin" is Abubakar's repository and must never be pushed to.
+    if re.fullmatch(r"git\s+push\s+(?:(?:-u|--set-upstream)\s+)?mine\s+(?:[\w./-]+:)?wip/[\w./-]+", one) and not re.search(r"(--force|\s-f\b|\+)", one):
+        sys.exit(0)
+    if re.fullmatch(r"git\s+merge\s+(?:(?:--no-edit|--no-ff)\s+)*mine/wip/[\w./-]+", one):
+        if current_branch().startswith("wip/"):
+            sys.exit(0)
+        block("Merging is only allowed into a wip/ branch.")
+    # Setting up the private copy, once: only under Hafsah's own account, only private.
+    if re.fullmatch(r"gh\s+repo\s+create\s+hafsahjumare-lgtm/[\w.-]+\s+--private(\s+--description\s+\"[^\"]*\")?", one):
+        sys.exit(0)
+    if re.fullmatch(r"git\s+remote\s+add\s+mine\s+(https://github\.com/|git@github\.com:)hafsahjumare-lgtm/[\w.-]+(\.git)?", one):
+        sys.exit(0)
+    if re.fullmatch(r"git\s+clone\s+(https://github\.com/|git@github\.com:)hafsahjumare-lgtm/[\w.-]+(\.git)?(\s+[\w./~-]+)?", one):
+        sys.exit(0)
+    if re.search(r"\bgh\s+repo\b", cmd):
+        block("Only one GitHub repository action is allowed: gh repo create hafsahjumare-lgtm/<name> --private.")
+    if re.search(r"\bgit\s+pull\b", cmd):
+        block("Use git fetch, then git merge origin/wip/<branch>, so every merge is visible.")
     rules = [
-        (r"\bgit\s+push\b", "Pushing is not allowed."),
-        (r"\bgit\s+merge\b", "Merging is not allowed."),
+        (r"\bgit\s+push\b", "Pushing is only allowed as: git push mine wip/<branch>, to Hafsah's own private copy. Never to origin, which is Abubakar's repository."),
+        (r"\bgit\s+merge\b", "Merging is only allowed as: git merge mine/wip/<branch>, into a wip/ branch."),
         (r"\bgh\s+pr\b|\bpull request\b", "Opening pull requests is not allowed."),
         (r"\bgit\s+reset\s+--hard\s+origin", "Resetting to the remote is not allowed."),
         (r"\bgit\s+(checkout|switch)\s+(main|master|staging|production)\b", "Changing to the main, staging or production branch is not allowed."),

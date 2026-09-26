@@ -13,4 +13,6 @@ Two rules above all:
 1. Judge the output, never only the code. Read what a person actually sees, for each reader.
 2. Nothing valuable may be lost. If an engine-value number in tools/score_run.py drops, the change is wrong.
 
+You are the engine workspace, on wip/plain-reports. At the start, and after each finished task, stay in step with the screens workspace as CLAUDE.md describes, and answer any requests it left in docs/requests-to-engine.md. The only push allowed is to your own branch: git push mine wip/plain-reports. Never to main, staging, or anyone else's branch. No pull requests and no deploys.
+
 Begin.

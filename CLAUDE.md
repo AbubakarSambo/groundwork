@@ -63,9 +63,26 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Tests.** All must pass. If a test only checks old wording or old defective behaviour, update it, and write the reason in the commit and in the morning report. Never delete a test to make things pass.
 
-**Nothing leaves this computer.** No pushes, pull requests, merges or deploys, and nothing goes to staging, until Hafsah says so herself, in her own words, in this session. Work stays in commits on this branch, on this computer.
+**Nothing goes anywhere except Hafsah's own `wip/` branches.** The only push allowed is `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`), where "mine" is Hafsah's own private copy on GitHub, never with force. **Never push to "origin": it is Abubakar's repository (`AbubakarSambo/groundwork`).** Never push to main, staging, production, or anyone else's branch. No pull requests, no deploys, and nothing goes to staging, until Hafsah says so herself, in her own words. The only merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to stay in step with the other workspace.
 
-**Never:** push, merge, open a pull request, deploy anywhere (staging included), change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
+## Two workspaces
+
+Two copies of Claude Code work on this at once, on two computers. Check which one you are, with `git rev-parse --abbrev-ref HEAD`:
+
+| Your branch | You are | Your task list | Your start message |
+| --- | --- | --- | --- |
+| `wip/plain-reports` | **The engine workspace:** reports and the conversation | `docs/tasks.md`, phases 0 to 2 | `START.md` |
+| `wip/prototype-ui` | **The screens workspace:** the prototype's screens and the suites | `docs/tasks-ui.md` | `START-UI.md` |
+
+**The engine workspace owns** the conversation, reports, boards' text, prompts, labels and names, and the scorer runs. **The screens workspace owns** the screens (`client/`) and new backend parts the screens need (suites, the You board, the Company page, and so on).
+
+**The screens workspace never changes the engine's code:** the conversation, report synthesis, prompts, pattern detection, label and name handling, or `theJudgement`. If a screen needs something from the engine, it writes a request in `docs/requests-to-engine.md` on its branch, and carries on with something else. The engine workspace reads that file at the start of each session with `git fetch mine && git show mine/wip/prototype-ui:docs/requests-to-engine.md`, and answers in the same file on its own branch.
+
+**Staying in step:** at the start of each session, and after each finished task, run `git fetch mine`, then `git merge mine/wip/<the other branch>`, then push your own branch. If the merge has conflicts in files the other workspace owns, keep their version. If you cannot resolve a conflict safely, stop, abort the merge, and write it under "Needs Hafsah".
+
+**Before the very first push from either workspace,** read every workflow in `.github/workflows/` and any deploy settings (for example `render.yaml`, `vercel.json`, `fly.toml`, `railway.json`, `Procfile`, `app.json`). If any of them would deploy, migrate a database, or touch staging when a `wip/` branch is pushed, do not push. Write it under "Needs Hafsah" and keep working locally.
+
+**Never:** push anywhere except your own `wip/` branch, merge anything except `mine/wip/<branch>` into a `wip/` branch, open a pull request, deploy anywhere (staging included), change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
 
 ## Stop and ask Hafsah (write it in the morning report, then move to the next task)
 
