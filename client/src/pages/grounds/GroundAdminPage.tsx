@@ -33,6 +33,8 @@ import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
+import { ShareSection } from './ShareSection'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
@@ -249,6 +251,8 @@ export function GroundAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
+  /* U.6: WhatsApp is only mentioned while it is switched on (GET /auth/whatsapp), as well as connected. */
+  const whatsAppIsOn = useWhatsAppIsOn()
   /**
    * CHECK-INS FIRST, because that is what a ground is for.
    *
@@ -3215,7 +3219,7 @@ export function GroundAdminPage() {
               connection is an admin read and a lead is often not an admin. A control over nothing
               is a door into a wall.
             */}
-            {(ground as any)?.orgHasWhatsApp && (
+            {whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
               <Fold {...foldProps(setupBand())} title="Where people answer this" src="in Groundwork, or on your organisation's WhatsApp number" summary={
                 (ground as any).overWhatsApp === true ? 'On WhatsApp'
                   : (ground as any).overWhatsApp === false ? 'In Groundwork'
@@ -3417,53 +3421,3 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}>{children}</div>
 }
 
-function ShareSection({ joinToken }: { joinToken: string }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const baseUrl = window.location.origin
-  /*
-   * THE QR CODE OPENS THE ANSWER-FIRST DOOR NOW. The old one asked for a name, an address and a
-   * role before anybody could say a word, which is three steps of admin in front of a two-minute
-   * answer. See AnswerFirstPage and the API's the-open-link.
-   */
-  const joinUrl = `${baseUrl}/answer?t=${joinToken}`
-
-  useEffect(() => {
-    import('qrcode').then(QRCode => {
-      QRCode.toDataURL(joinUrl, { width: 180, margin: 1 }).then(setQrDataUrl).catch(() => {})
-    }).catch(() => {})
-  }, [joinUrl])
-
-  async function copyLink() {
-    if (await copy(joinUrl)) {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } else {
-      toast.error('Copying is not available here. Select the link and copy it yourself.')
-    }
-  }
-
-  return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code. Anyone can answer without signing up: they get your question,
-        they answer in their own words, and they are asked where to send the report at the end.
-      </div>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {qrDataUrl && (
-          <img src={qrDataUrl} alt="QR code" style={{ width: 100, height: 100, borderRadius: 6, border: '1px solid var(--gw-border)', flexShrink: 0 }} />
-        )}
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6, wordBreak: 'break-all', fontFamily: 'monospace' }}>{joinUrl}</div>
-          <button
-            onClick={copyLink}
-            style={{ padding: '8px 14px', borderRadius: 7, background: copied ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', color: copied ? 'var(--gw-green-t)' : 'var(--gw-dark)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            {copied ? 'Copied!' : 'Copy link'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
