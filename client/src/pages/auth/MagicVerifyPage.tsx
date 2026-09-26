@@ -9,6 +9,7 @@ import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
 import { LinkExpired, LinkAlreadyResent } from './LinkExpired'
+import { EmailConfirmed } from './EmailConfirmed'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
@@ -31,6 +32,8 @@ type VerifyOutcome =
   | { kind: 'verifyError'; message: string }
   /* The link ran out ('expired'), or ran out and the server has already sent a new one ('resent'). */
   | { kind: 'deadLink'; what: 'expired' | 'resent'; sentence: string }
+  /* The link has just created the account: say so first, then carry on to `then`. */
+  | { kind: 'confirmed'; email: string | null; then: VerifyOutcome }
 // SINGLE-FLIGHT per token: the remount can happen while the first mount's
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
@@ -42,6 +45,7 @@ export function MagicVerifyPage() {
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
   const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent'; sentence: string } | null>(null)
+  const [confirmed, setConfirmed] = useState<{ email: string | null; then: VerifyOutcome } | null>(null)
   const [commitError, setCommitError] = useState(false)
   /* The server's own sentence for a refused commit - the plan limit, the seat limit, "not named as able
      to open check-ins" - which all used to arrive as one generic line. */
@@ -96,6 +100,8 @@ export function MagicVerifyPage() {
       setError(outcome.message)
     } else if (outcome.kind === 'deadLink') {
       setDeadLink({ what: outcome.what, sentence: outcome.sentence })
+    } else if (outcome.kind === 'confirmed') {
+      setConfirmed({ email: outcome.email, then: outcome.then })
     }
   }
 
@@ -243,8 +249,27 @@ export function MagicVerifyPage() {
               }
             : null
 
+        /*
+         * "YOUR EMAIL IS CONFIRMED" (A2, #/verify-email), ONLY FOR AN ACCOUNT THIS LINK HAS JUST MADE.
+         *
+         * Shown when the server says `justCreated`, and only in front of an outcome that goes on
+         * (a redirect, or the first check-in's welcome). A failure is never hidden behind it. Its
+         * "Continue" leads to exactly where the page would have gone without it, through the
+         * password step when the account has no password yet. Without `justCreated`, which the
+         * server does not send yet, nothing changes.
+         */
+        const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
+          if (!res.justCreated) return o
+          if (o.kind === 'redirect') {
+            const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
+            return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
+          }
+          if (o.kind === 'success') return { kind: 'confirmed', email: res.user?.email ?? null, then: o }
+          return o
+        }
+
         if (fromParam && fromParam.startsWith('/')) {
-          return passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam }
+          return confirmFirst(passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam })
         }
         // ALWAYS attempt the commit. The server merges whatever this browser
         // has over the server-side draft written at entry-save, so the commit
@@ -268,9 +293,9 @@ export function MagicVerifyPage() {
          */
         if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
           /** Shown, not skipped. The button out of the confirmation goes via the password step. */
-          return { ...outcome, passwordSetupToken: res.passwordSetupToken }
+          return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
         }
-        return outcome
+        return confirmFirst(outcome)
       })()
       verifyFlows.set(token, flow)
     }
@@ -336,6 +361,10 @@ export function MagicVerifyPage() {
    * So it is shown only when this really is the org's first ground. Anybody else
    * goes where they were going.
    */
+  if (confirmed) {
+    return <EmailConfirmed email={confirmed.email} onContinue={() => { const then = confirmed.then; setConfirmed(null); applyOutcome(then) }} />
+  }
+
   if (nextGroundId && isFirstGround === false) {
     return null   // returning user: the effect above has sent them to their grounds
   }

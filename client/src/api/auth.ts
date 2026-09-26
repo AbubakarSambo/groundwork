@@ -7,7 +7,18 @@ export interface MagicLinkResponse { message: string; email: string }
  * flag must read as "no password step needed" rather than sending everybody to set one. The server
  * computes it in `buildAuthResponse`, so every door returns it.
  */
-export interface VerifyEmailResponse { accessToken: string; user: User; needsPassword?: boolean; passwordSetupToken?: string }
+export interface VerifyEmailResponse {
+  accessToken: string
+  user: User
+  needsPassword?: boolean
+  passwordSetupToken?: string
+  /**
+   * True when opening this link has just created the account (a waiting sign-up became real). The
+   * page then says "Your email is confirmed" before going on. Not sent by the server yet; absent, the
+   * page goes straight on, as it always has.
+   */
+  justCreated?: boolean
+}
 export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
 
 
