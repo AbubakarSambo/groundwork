@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -90,10 +90,12 @@ import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { OrgsPage } from '@/pages/org/OrgsPage'
+import { WelcomePage } from '@/pages/org/WelcomePage'
 import { StopRemindersPage } from '@/pages/mail/StopRemindersPage'
 import { WaitingForAnAdminPage } from '@/pages/join/WaitingForAnAdminPage'
 import { useYourOrganisations } from '@/components/gw/your-organisations'
-import { takeJustSignedIn } from '@/lib/choose-an-organisation'
+import { takeJustSignedIn, stillToChoose } from '@/lib/choose-an-organisation'
+import { authApi } from '@/api/auth'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal } from '@/components/gw/HelpModal'
@@ -321,20 +323,29 @@ function RootRoute() {
 }
 
 /**
- * RIGHT AFTER SIGNING IN, SOMEBODY IN TWO OR MORE ORGANISATIONS IS ASKED WHICH TO OPEN (A3, #/orgs).
- * Once: the flag is cleared as it is read. Everybody else, and everybody after that, gets their
- * check-ins. While the list of organisations is still coming, the check-ins show, since that is
- * where most people land anyway.
+ * THE FIRST STOP RIGHT AFTER SIGNING IN (A3, U.3). Once: the flag is cleared as it is read.
+ *
+ *   - Somebody whose confirmed email domain an organisation lets join is offered it first, on
+ *     "Where do you work?" (#/welcome).
+ *   - Otherwise somebody in two or more organisations is asked which to open (#/orgs).
+ *   - Everybody else, and everybody after that, gets their check-ins.
  */
 function HomeOrChooseAnOrganisation() {
   const { myOrgs, loaded } = useYourOrganisations()
-  const [ask, setAsk] = useState<boolean | null>(null)
+  const [justIn] = useState(() => stillToChoose())
+  const offers = useQuery({ queryKey: ['where-can-i-join'], queryFn: authApi.whereCanIJoin, enabled: justIn, retry: false })
+  const [go, setGo] = useState<'welcome' | 'orgs' | 'stay' | null>(null)
   useEffect(() => {
-    if (!loaded || ask !== null) return
-    const justIn = takeJustSignedIn()
-    setAsk(justIn && myOrgs.length >= 2)
-  }, [loaded, ask, myOrgs.length])
-  if (ask) return <Navigate to="/orgs" replace />
+    if (go !== null || !loaded) return
+    if (justIn && !offers.isFetched) return
+    takeJustSignedIn()
+    if (!justIn) { setGo('stay'); return }
+    if ((offers.data?.byDomain.length ?? 0) > 0) setGo('welcome')
+    else if (myOrgs.length >= 2) setGo('orgs')
+    else setGo('stay')
+  }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])
+  if (go === 'welcome') return <Navigate to="/welcome" replace />
+  if (go === 'orgs') return <Navigate to="/orgs" replace />
   return <GroundsListPage />
 }
 
@@ -416,9 +427,11 @@ export default function App() {
             <Route path="/org/setup" element={<KeepTheQuery to="/org-new" />} />
             {/* "Choose an organisation" (A3). */}
             <Route path="/orgs" element={<RequireAuth><OrgsPage /></RequireAuth>} />
+            {/* "Where do you work?" (A3): join by email domain, as a guest, or create one. */}
+            <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
-            <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />
+            <Route path="/grounds" element={<RequireOrgSetup><HomeOrChooseAnOrganisation /></RequireOrgSetup>} />
             {/*
               * REFUSED AT THE DOOR, NOT ON SUBMIT. Both of these were behind RequireOrgSetup alone,
               * so a member who typed the address got the whole flow and was turned away at the end.

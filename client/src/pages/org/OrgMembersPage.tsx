@@ -1,3 +1,4 @@
+import { WhoCanJoin } from './WhoCanJoin'
 import { useState } from 'react'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { useNavigate } from 'react-router-dom'
@@ -433,6 +434,9 @@ export function OrgMembersPage() {
         <strong style={{ color: 'var(--gw-text)' }}>Guests</strong> come from another organisation:
         they take part in what they are added to, and never open one here.
       </p>
+
+      {/* "Who can join" (A4 people.txt): anyone with the admin's own email domain, as "Takes part". U.3. */}
+      <WhoCanJoin orgName={user?.organization?.name ?? user?.organizationName ?? 'your organisation'} />
 
       {/* Invite form */}
       <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 12, padding: '20px 22px', marginBottom: 32 }}>

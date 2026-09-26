@@ -48,7 +48,8 @@ describe('what the person reads', () => {
     expect(await screen.findByText('You’re in 2. You can switch at any time from the top of the sidebar.')).toBeTruthy()
     const rows = await screen.findAllByRole('button')
     expect(rows.map(r => r.textContent)).toEqual(['BABaridi AppliancesAdmin', 'KTKilimo Traders’ AssociationGuest'])
-    expect(screen.getByRole('link', { name: 'Join or create another' })).toHaveAttribute('href', '/org-new')
+    /* U.3: it goes to "Where do you work?" now that it exists. */
+    expect(screen.getByRole('link', { name: 'Join or create another' })).toHaveAttribute('href', '/welcome')
     expect(screen.queryByText(/new$/)).toBeNull()
   })
 

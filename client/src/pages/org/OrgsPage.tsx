@@ -58,7 +58,7 @@ export function OrgsPage() {
         ))}
       </ul>
       <p className="gw-org-rows-foot">
-        <Link to="/org-new" className="gw-auth-link">Join or create another</Link>
+        <Link to="/welcome" className="gw-auth-link">Join or create another</Link>
       </p>
     </AuthCard>
   )

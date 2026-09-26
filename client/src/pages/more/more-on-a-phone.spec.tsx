@@ -114,7 +114,8 @@ describe('switching organisation and signing out on a phone', () => {
     )
     expect(within(main()).getByRole('heading', { name: 'Organisations' })).toBeInTheDocument()
     expect(within(main()).getByLabelText('You are in this organisation')).toBeInTheDocument()
-    expect(within(main()).getByRole('link', { name: 'Join or create an organisation' })).toHaveAttribute('href', '/org-new')
+    /* U.3: it goes to "Where do you work?" now that it exists. */
+    expect(within(main()).getByRole('link', { name: 'Join or create an organisation' })).toHaveAttribute('href', '/welcome')
     fireEvent.click(within(main()).getByRole('button', { name: /Kilimo Traders/ }))
     expect(await screen.findByText('The chooser')).toBeInTheDocument()
     expect(sw).not.toHaveBeenCalled()

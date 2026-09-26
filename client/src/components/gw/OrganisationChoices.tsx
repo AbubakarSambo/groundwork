@@ -35,7 +35,7 @@ export function OrganisationChoices() {
         </button>
       ))}
       {/* As on the prototype's "More" (more-menu-phone.txt). */}
-      <Link to="/org-new" className="gw-rl-menu-item gw-rl-menu-join">Join or create an organisation</Link>
+      <Link to="/welcome" className="gw-rl-menu-item gw-rl-menu-join">Join or create an organisation</Link>
       {onlyOneNotChosen && (
         <div className="gw-rl-menu-note">
           <p>You are in {myOrgs[0].name} because your email address was on its list of people.</p>

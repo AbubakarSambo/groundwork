@@ -37,6 +37,12 @@ export interface WaitingAtTheDoor {
 /** "Fewer than 20" or "20 or more": what they chose, and the line they were shown. */
 export type TeamSizeSaid = { said: 'fewer' | 'more'; line: number }
 
+/** What "Where do you work?" offers (U.3). No head counts. */
+export interface WhereCanIJoin {
+  byDomain: { id: string; name: string; domain: string }[]
+  asAGuest: { organisationName: string; checkInName: string; invitePath: string }[]
+}
+
 /** What the person waiting to be let in reads about their own request (U.3). */
 export type MyWaiting =
   | { waiting: false }
@@ -201,6 +207,15 @@ export const authApi = {
   /** The organisation name suggested from an address at sign-up. The public-mail list is the server's. */
   nameFromAddress: (email: string) =>
     apiClient.get<{ name: string | null }>('/auth/name-from-address', { params: { email } }).then(r => r.data),
+
+  /** "Where do you work?" (U.3): organisations to join by email domain, and invitations for this address. */
+  whereCanIJoin: () =>
+    apiClient.get<WhereCanIJoin>('/auth/where-can-i-join').then(r => r.data),
+  /** "Join": by email domain. Returns a token scoped to it, like a switch. */
+  joinByDomain: (organizationId: string) =>
+    apiClient
+      .post<{ accessToken: string; user: any; organization: { id: string; name: string; slug: string } }>('/auth/join-by-domain', { organizationId })
+      .then(r => r.data),
 
   /** The organisations this person belongs to, with the active one marked. */
   myOrganizations: () =>
