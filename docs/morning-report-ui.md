@@ -1049,6 +1049,12 @@ by the setting and still shown before any upload). Only the tests for the change
 checks were run, as you asked; the full suites wait for the end of the module. No screen could be
 checked signed in (item 14).
 
+**The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
+read a source file without removing comments first, and the comment guard caught it; that is fixed.
+After merging the engine workspace's latest, the only failure left is that same guard naming four of
+the engine's own test files, which I have asked them to fix (request 4). **Not ticked,** because no
+review can sign in (item 14).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
