@@ -8,12 +8,19 @@ import { useMemo, useState } from 'react'
  * types an address for them; the box for an outsider stays beside this, owned by the caller.
  *
  * The component knows nothing about check-ins: it takes a list, hides the ones already in, and hands
- * back the chosen addresses. Two callers use it - the Setup chat's invite step and the Setup tab -
+ * back the chosen people. Two callers use it - the Setup chat's invite step and the Setup tab -
  * and the same thing in two places is the point.
+ *
+ * NO ADDRESSES (U.4). The list of colleagues carries each person's id, name, role and team, and
+ * nothing else: Hafsah decided nobody sees anything of a colleague beyond name, role and team. So a
+ * person is picked by id and the server looks their address up. Typing a team's name finds everyone
+ * in it, and "Select these" adds the whole team.
  */
 export interface APerson {
-  email: string
-  name: string | null
+  id: string
+  name: string
+  role?: string
+  team?: string | null
 }
 
 export function PeoplePicker({
@@ -23,7 +30,7 @@ export function PeoplePicker({
   adding = false,
 }: {
   people: APerson[]
-  /** Addresses already on the check-in, or already queued. Lower-cased inside. */
+  /** The ids of the people already on the check-in, or already queued. */
   alreadyIn: string[]
   onAdd: (chosen: APerson[]) => void
   adding?: boolean
@@ -31,24 +38,24 @@ export function PeoplePicker({
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState<Set<string>>(new Set())
 
-  const inAlready = useMemo(() => new Set(alreadyIn.map((e) => e.toLowerCase())), [alreadyIn])
-  const candidates = useMemo(() => people.filter((p) => !inAlready.has(p.email.toLowerCase())), [people, inAlready])
+  const inAlready = useMemo(() => new Set(alreadyIn), [alreadyIn])
+  const candidates = useMemo(() => people.filter((p) => !inAlready.has(p.id)), [people, inAlready])
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return candidates
-    return candidates.filter((p) => (p.name ?? '').toLowerCase().includes(q) || p.email.toLowerCase().includes(q))
+    return candidates.filter((p) => p.name.toLowerCase().includes(q) || (p.team ?? '').toLowerCase().includes(q))
   }, [candidates, query])
 
   if (!candidates.length) return null
 
-  const toggle = (email: string) =>
+  const toggle = (id: string) =>
     setChosen((prev) => {
       const next = new Set(prev)
-      if (next.has(email)) next.delete(email)
-      else next.add(email)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
-  const allShownChosen = shown.length > 0 && shown.every((p) => chosen.has(p.email))
+  const allShownChosen = shown.length > 0 && shown.every((p) => chosen.has(p.id))
 
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 10 }}>
@@ -64,8 +71,8 @@ export function PeoplePicker({
           type="button"
           onClick={() => setChosen((prev) => {
             const next = new Set(prev)
-            if (allShownChosen) shown.forEach((p) => next.delete(p.email))
-            else shown.forEach((p) => next.add(p.email))
+            if (allShownChosen) shown.forEach((p) => next.delete(p.id))
+            else shown.forEach((p) => next.add(p.id))
             return next
           })}
           style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px', whiteSpace: 'nowrap' }}
@@ -75,24 +82,24 @@ export function PeoplePicker({
       </div>
       <div role="listbox" aria-multiselectable="true" style={{ maxHeight: 260, overflowY: 'auto' }}>
         {shown.length === 0 && (
-          <div style={{ padding: '10px 12px', fontSize: 12.5, color: 'var(--gw-muted)' }}>Nobody in your organisation matches that. Add them by address below.</div>
+          <div style={{ padding: '10px 12px', fontSize: 12.5, color: 'var(--gw-muted)' }}>Nobody in your organisation matches that. Add them by their email address below.</div>
         )}
         {shown.map((p) => {
-          const on = chosen.has(p.email)
+          const on = chosen.has(p.id)
           return (
             <label
-              key={p.email}
+              key={p.id}
               role="option"
               aria-selected={on}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderTop: '1px solid var(--gw-border)', background: on ? 'var(--gw-bg)' : 'white' }}
             >
-              <input type="checkbox" checked={on} onChange={() => toggle(p.email)} aria-label={p.name ?? p.email} />
+              <input type="checkbox" checked={on} onChange={() => toggle(p.id)} aria-label={p.name} />
               <span style={{ width: 28, height: 28, borderRadius: 14, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {(p.name ?? p.email).trim().charAt(0).toUpperCase()}
+                {p.name.trim().charAt(0).toUpperCase()}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name ?? p.email}</span>
-                {p.name && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</span>}
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                {p.team && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.team}</span>}
               </span>
             </label>
           )
@@ -106,7 +113,7 @@ export function PeoplePicker({
           type="button"
           disabled={chosen.size === 0 || adding}
           onClick={() => {
-            const picked = candidates.filter((p) => chosen.has(p.email))
+            const picked = candidates.filter((p) => chosen.has(p.id))
             setChosen(new Set())
             setQuery('')
             onAdd(picked)

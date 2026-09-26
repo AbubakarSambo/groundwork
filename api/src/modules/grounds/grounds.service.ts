@@ -1,4 +1,5 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -3897,6 +3898,12 @@ export class GroundsService {
   }
 
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
+    /* A colleague picked by id (U.4): their address is looked up here, never sent to the page. */
+    if (dto.colleagueId) {
+      const address = await theAddressOfAColleague(this.prisma as any, organizationId, dto.colleagueId);
+      if (!address) throw new BadRequestException(NOT_SOMEONE_HERE);
+      dto = { ...dto, email: address };
+    }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the
      * invite goes now exactly as it always did.

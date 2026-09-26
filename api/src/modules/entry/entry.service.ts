@@ -1,4 +1,5 @@
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
+import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
@@ -1717,6 +1718,23 @@ from finishing at all.`;
     return u?.role ?? 'MEMBER';
   }
 
+  /**
+   * COLLEAGUES PICKED BY ID, GIVEN THEIR ADDRESSES (U.4). The list of colleagues carries no
+   * addresses, so a colleague queued in setup arrives as an id and is looked up here, in this
+   * organisation only. Somebody who is not here is refused rather than dropped.
+   */
+  private async withColleaguesAddressed<T extends { email?: string; colleagueId?: string }>(organizationId: string, contributors: T[]): Promise<(T & { email: string })[]> {
+    const out: (T & { email: string })[] = [];
+    for (const c of contributors) {
+      if (!c.colleagueId) { out.push(c as T & { email: string }); continue; }
+      const address = await theAddressOfAColleague(this.prisma as any, organizationId, c.colleagueId);
+      if (!address) throw new BadRequestException(NOT_SOMEONE_HERE);
+      const { colleagueId: _picked, ...rest } = c;
+      out.push({ ...(rest as T), email: address });
+    }
+    return out;
+  }
+
   async commit(
     organizationId: string,
     initiatorId: string,
@@ -1742,7 +1760,8 @@ from finishing at all.`;
       report?: EntryReport | null;
       /** The setter's own part in this, from the report's yourRole or typed by them. */
       roleAsDescribed?: string;
-      contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
+      /** `colleagueId` instead of `email` for a colleague picked from the list (U.4); resolved in commitInner. */
+      contributors: { email: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
@@ -1878,6 +1897,9 @@ from finishing at all.`;
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+    /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
+       list of colleagues never carried an address (U.4). */
+    dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
     /*
      * NOTHING USABLE FROM ANY SOURCE, AND THERE ARE THREE OF THEM NOW.
      *

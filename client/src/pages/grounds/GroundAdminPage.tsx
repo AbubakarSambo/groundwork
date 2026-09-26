@@ -868,18 +868,19 @@ export function GroundAdminPage() {
 
   /* Many at once, one call each, so a refusal for one person (a seat, a guest) is reported for that person and the rest still land. */
   const [addingMany, setAddingMany] = useState(false)
-  async function addManyParticipants(emails: string[]) {
+  /* Colleagues are picked by id and the server finds each address (U.4): the list carries none. */
+  async function addManyParticipants(picked: { id: string; name: string }[]) {
     setAddingMany(true)
     let added = 0
     const refused: string[] = []
     const rows: { invitedAt?: string | null; notInvitedBecause?: string | null }[] = []
-    for (const email of emails) {
+    for (const person of picked) {
       try {
-        const r = (await groundsApi.addParticipant(id!, { email })) as { invitedAt?: string | null; notInvitedBecause?: string | null }
+        const r = (await groundsApi.addParticipant(id!, { colleagueId: person.id })) as { invitedAt?: string | null; notInvitedBecause?: string | null }
         added++
         rows.push(r)
       } catch (err: any) {
-        refused.push(`${email}: ${err?.response?.data?.message ?? 'could not be added'}`)
+        refused.push(`${person.name} could not be added. ${err?.response?.data?.message ?? 'Try again.'}`)
       }
     }
     setAddingMany(false)
@@ -2661,9 +2662,9 @@ export function GroundAdminPage() {
                 */}
               <PeoplePicker
                 people={colleagues ?? []}
-                alreadyIn={(((ground as any)?.participants ?? []) as any[]).map((m) => m.email ?? '')}
+                alreadyIn={(((ground as any)?.participants ?? []) as any[]).map((m) => m.userId ?? '').filter(Boolean)}
                 adding={addingMany}
-                onAdd={(picked) => addManyParticipants(picked.map((p) => p.email))}
+                onAdd={(picked) => addManyParticipants(picked)}
               />
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"

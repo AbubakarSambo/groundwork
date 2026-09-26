@@ -246,7 +246,8 @@ export const entryApi = {
     cadenceChosen?: boolean
     history: ChatTurn[]
     report?: EntryReport | null
-    contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
+    /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
+    contributors: { email?: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).

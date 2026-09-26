@@ -192,9 +192,12 @@ export class UsersController {
    *
    * A lead inviting colleagues to a check-in had to type every address in full, for people the
    * organisation already knows: "it recognises the people mentioned and suggests them, but then you
-   * need to type every email out". Any signed-in member may read this - these are their own
-   * colleagues, and the addresses are the ones invitations already go to. Name and address only,
-   * never role or standing, and never the caller.
+   * need to type every email out".
+   *
+   * U.4 (Hafsah, 26 September): name, role and team only, never an address, a load or a note, and
+   * never the caller. A member sees the organisation's own people; a guest, or somebody still
+   * waiting to be let in, sees only the people on their own check-ins here. See common/colleagues.ts.
+   * A colleague is added to a check-in by id, and the server looks the address up.
    */
   @Get('colleagues')
   @ApiOperation({ summary: 'The people in your organisation, for adding to a check-in without typing their address' })

@@ -8,7 +8,7 @@ import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -205,7 +205,9 @@ class EntryReportDto {
 }
 
 class ContributorDto {
-  @IsString() email: string;
+  /* Blank when a colleague was picked by id (U.4); the server looks the address up before anything else. */
+  @ValidateIf((o: ContributorDto) => !o.colleagueId) @IsString() email: string;
+  @IsOptional() @IsString() @MaxLength(64) colleagueId?: string;
   @IsOptional() @IsString() context?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;

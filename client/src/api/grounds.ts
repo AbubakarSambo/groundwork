@@ -45,7 +45,9 @@ export interface CreateGroundBody {
 }
 
 export interface AddParticipantBody {
-  email: string
+  /** Their address, or leave it out and send `colleagueId` for somebody picked from the list (U.4). */
+  email?: string
+  colleagueId?: string
   roleAsDescribed?: string
   /** Optional, never inferred; blank means blank. */
   department?: string

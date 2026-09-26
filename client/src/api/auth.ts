@@ -118,9 +118,12 @@ export const authApi = {
   forgotPassword: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/forgot-password', { email }).then(r => r.data),
 
-  /** Colleagues already in the organisation: name and address, for adding to a check-in without typing. */
+  /**
+   * Colleagues already in the organisation, for adding to a check-in without typing: id, name, role
+   * and team, never an address (U.4). A guest gets only the people on their own check-ins here.
+   */
   colleagues: () =>
-    apiClient.get<{ email: string; name: string | null }[]>('/users/colleagues').then(r => r.data),
+    apiClient.get<{ id: string; name: string; role: string; team: string | null }[]>('/users/colleagues').then(r => r.data),
   teamInvite: (email: string) =>
     apiClient.post<{ message: string }>('/auth/team-invite', { email }).then(r => r.data),
 

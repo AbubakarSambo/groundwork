@@ -41,6 +41,20 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 
+/*
+ * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
+ * colleague is queued as "colleague:<id>" and sent as `colleagueId`; the server finds the address.
+ * Everybody typed by hand is still their address.
+ */
+const A_COLLEAGUE = 'colleague:'
+function asAContributor(entry: string): { email?: string; colleagueId?: string; context?: string } {
+  const dash = entry.indexOf(' - ')
+  const head = dash === -1 ? entry : entry.slice(0, dash)
+  const context = dash === -1 ? undefined : entry.slice(dash + 3)
+  const who = head.startsWith(A_COLLEAGUE) ? { colleagueId: head.slice(A_COLLEAGUE.length) } : { email: head }
+  return context === undefined ? who : { ...who, context }
+}
+
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
 
@@ -1214,13 +1228,24 @@ export function EntryChatPage() {
    * THE PEOPLE ALREADY HERE. A lead had to type every colleague's address in full, for people the
    * organisation already knows. Read once when signed in; empty for a stranger, who has nobody yet.
    */
-  const [colleagues, setColleagues] = useState<{ email: string; name: string | null }[]>([])
+  /* Id, name, role and team, never an address (U.4). A colleague is queued as "colleague:<id>" and
+     the server looks the address up when the check-in is made. */
+  const [colleagues, setColleagues] = useState<{ id: string; name: string; role: string; team: string | null }[]>([])
   useEffect(() => {
     if (!user) return
     authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
   }, [user])
   /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
-  function colleagueNamed(label: string): { email: string; name: string | null } | null {
+  /** A queued entry as a person reads it: a colleague by name, anybody else by the address typed. */
+  function shownAs(head: string): string {
+    if (!head.startsWith(A_COLLEAGUE)) return head
+    return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+  }
+  function shownEntry(entry: string): string {
+    const dash = entry.indexOf(' - ')
+    return dash === -1 ? shownAs(entry) : `${shownAs(entry.slice(0, dash))} - ${entry.slice(dash + 3)}`
+  }
+  function colleagueNamed(label: string): { id: string; name: string; team: string | null } | null {
     const name = label.split(' - ')[0].trim().toLowerCase()
     if (name.length < 2) return null
     const hits = colleagues.filter(c => {
@@ -1230,9 +1255,10 @@ export function EntryChatPage() {
     })
     return hits.length === 1 ? hits[0] : null
   }
-  function queueColleague(c: { email: string; name: string | null }, note?: string, key?: string) {
-    const entry = note ? `${c.email} - ${note}` : c.email
-    setInviteAdded(prev => (prev.some(e => e === c.email || e.startsWith(`${c.email} - `)) ? prev : [...prev, entry]))
+  function queueColleague(c: { id: string; name: string }, note?: string, key?: string) {
+    const head = `${A_COLLEAGUE}${c.id}`
+    const entry = note ? `${head} - ${note}` : head
+    setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, entry]))
     if (key) setQueuedFromSuggestion(prev => new Set(prev).add(key))
   }
   /* The note that travels with a queued address, remembered when the field opens so Save can
@@ -2071,11 +2097,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' - ')
-          if (dashIdx === -1) return { email: entry }
-          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
-        }),
+        contributors: inviteAdded.map(asAContributor),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2348,11 +2370,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' - ')
-          if (dashIdx === -1) return { email: entry }
-          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
-        }),
+        contributors: inviteAdded.map(asAContributor),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -3618,7 +3636,7 @@ export function EntryChatPage() {
                       onClick={() => queueColleague(colleagueNamed(label)!, label, key)}
                       style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
-                      + Add {colleagueNamed(label)!.name ?? colleagueNamed(label)!.email} ({colleagueNamed(label)!.email})
+                      + Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
                     </button>
                   ) : (
                     <button
@@ -3965,7 +3983,7 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
+                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => shownAs(e.split(' - ')[0])).join(', ')}. Invites go out when you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
@@ -4203,7 +4221,7 @@ export function EntryChatPage() {
               {inviteAdded.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
                   {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
+                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 6, padding: '5px 10px' }}>✓ {shownEntry(e)}</div>
                   ))}
                 </div>
               )}
@@ -4211,11 +4229,11 @@ export function EntryChatPage() {
               {/* Colleagues, picked the way a group chat picks them: search, tick, one button. Each goes on the list without a note; notes can be added on Setup. */}
               {!inviteContextFor && !bulkInviteMode && (
                 <PeoplePicker
-                  people={colleagues.filter((c) => c.email !== user?.email)}
-                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0])}
+                  people={colleagues.filter((c) => c.id !== user?.id)}
+                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0]).filter((h) => h.startsWith(A_COLLEAGUE)).map((h) => h.slice(A_COLLEAGUE.length))}
                   onAdd={(picked) => {
                     for (const c of picked) queueColleague(c)
-                    toast.success(picked.length === 1 ? `${picked[0].name ?? picked[0].email} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
+                    toast.success(picked.length === 1 ? `${picked[0].name} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
                   }}
                 />
               )}
