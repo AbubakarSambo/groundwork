@@ -6,6 +6,143 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The eight that are not right, each one, so you can read them yourself
+
+Only clearly right answers count, on your decision. **Sixteen of twenty-four.** Four short of the
+bar. Here are the other eight.
+
+### The three that are wrong
+
+**newmanager**
+
+> **It says:** "You, Daniel Park, and Tomi Balogun all have different ideas about what Daniel's new
+> manager role is for, so nobody is clear on how complex issues should be handled."
+>
+> **The right answer:** Daniel is still doing the individual work rather than managing, because he
+> is faster at it, and the team have noticed and read it as not being trusted. He thinks he is
+> helping. Name the behaviour and its effect, and do not call it a confidence problem.
+
+It has found a real thing, and it is not the thing. Nobody's account says the role is undefined;
+two accounts describe Daniel doing the work himself.
+
+**loans**
+
+> **It says:** "You are looking for a problem in borrower selection, but the record shows the
+> problem is in operations. Information that field officers have about non-delivery and theft is
+> not reaching you."
+>
+> **The right answer:** Five of the eight share one cause - the repayment schedule starts 30 days
+> after disbursement and these assets take two to three months to earn. That is the lending model,
+> not the people. One never took delivery at all. Separate the systemic five from the individual
+> one, and say the model needs the grace period changed.
+
+Half right. The non-delivery is the individual one; the systemic five are missing. **This morning's
+run had the grace period and this one does not.**
+
+**realign**
+
+> **It says:** "You believe the team's priority is retention, but Ruth Njeri, Marco Bianchi, and
+> Aisha Bello are all working on different things. The team does not have a single, shared plan."
+>
+> **The right answer:** All three got a different steer, and two of them got it from the CEO
+> directly, in conversations the team lead does not know happened. Identify the second source of
+> direction, not three people with poor focus.
+
+"Three people with poor focus" is close to word for word what it wrote. **This morning's run named
+the CEO and this one does not.**
+
+### The five that are close
+
+**advisor**
+
+> **It says:** "You and Peter Kimani are working towards different goals... you want a product
+> distribution agreement with a specific list of banks, but have not told Peter this."
+>
+> **Missing:** that Peter has no relationship at two of the three banks. The deliverable does not
+> exist on his side, and which one he can actually do is the useful half.
+
+**handover**
+
+> **It says:** "critical knowledge is not written down", and tells the lead to get the month-end
+> reconciliation written down as it is done.
+>
+> **Missing:** the second of the two things that exist only in her head - a payment arrangement
+> with a supplier that is in no contract. One of the two is named; the other is not.
+
+**recognition**
+
+> **It says:** the three of them have different ideas about which work mattered most.
+>
+> **Missing from the gap:** Victor, the contractor who wrote the migration script. He is named in
+> one of the actions, so the engine has him - he just is not in the sentence the reader remembers.
+
+**shock**
+
+> **It says:** "You are reconstructing a crisis that two team members saw coming, because the team
+> has no single way of reporting that a customer is at risk."
+>
+> **Missing:** the timeline. Two missed quarterly reviews, the champion leaving in July, support
+> tickets tripling in August - three signals, one per person, nobody holding all three. It has the
+> shape of the answer and none of the three facts.
+
+**workplan**
+
+> **It says:** "You are holding a budget of 180,000, while the plans from the team add up to
+> 254,000."
+>
+> **Missing:** why. Two leads have both costed the same contractor. It asks for the cost of one
+> named supplier, which is circling the answer without landing on it.
+
+The good news in that one is that the charge is gone: "a planning problem that you created" and
+"Tell you to set a budget for the work" are both absent, and a search of all twenty-four reports,
+as every reader, for that class of phrasing returns one hit, which is factual.
+
+## Testing the guess about loans and realign, and it was wrong
+
+My guess was that the new rule telling the judgement to read across the blocks was pulling it
+towards process findings. **It is not, and the test says so plainly.**
+
+I rebuilt the exact material each judgement was given and ran it under three instructions - the
+current one, one without the cross-block rule, one without either new rule - four samples each.
+
+| | loans, found the grace period | realign, found the CEO |
+| --- | --- | --- |
+| current, both new rules | 2 of 4 *(4 of 4 on a repeat)* | **0 of 4** |
+| without the cross-block rule | 3 of 4 | **0 of 4** |
+| without either new rule | 3 of 4 | **0 of 4** |
+
+**loans is sampling.** Six of eight under the current instruction across two goes, three of four
+under each of the others. There is no effect to find; the run-5 miss was a draw of the dice, and
+the right response is not a prompt change.
+
+**realign is not sampling. It is 0 of 12.** The CEO never appears under any instruction, so the
+judgement is not losing it - it was never given it.
+
+### And where it was lost, which is two steps upstream
+
+The record holds it. Two entries, in the engineers' own words:
+
+> "The CEO asked me to on September 2nd and said it was urgent."
+>
+> "The CEO mentioned it to me. He said it would really move the needle."
+
+Their per-person paragraph came out as:
+
+> "Participant A says Participant A's goal is for the referral scheme to be live. Participant A
+> began work on it on September 2nd."
+
+The work survived. The date survived. **Who asked did not.** The judgement is built from those
+paragraphs, so by the time it runs the fact is gone - which is why no instruction could recover it.
+
+So the fix is in the paragraph, not the judgement. The picture prompt now asks for who asked them
+for the work, where they said, with the reason it is the fact most easily lost: it sits next to the
+work rather than in it. Being tested on three fresh runs of that scenario now.
+
+**One more thing that was different, and I am not fixing it yet.** The run-1 realign report had
+divergences and the run-5 one has none at all, and the judgement is given the differences as well
+as the people. Across the run differences went up, 29 to 35, so this is not systemic. Noted rather
+than chased.
+
 ## The verified run: 1.5 is done on one condition and unclear on the other, 1.4 is not done
 
 **This run was checked against the database before I read a number from it**, which is the rule I
