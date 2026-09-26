@@ -480,6 +480,17 @@ export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>
   );
 }
 
+/**
+ * "YOU" AS THE OBJECT OF A PREPOSITION IS NOT THE SUBJECT OF THE VERB AFTER IT.
+ *
+ * "A key worry for you is that...", "Grace's own plan for you calls for two agreements", "which for
+ * you means the supplier acknowledging tickets". In all three the verb belongs to the noun before
+ * the preposition, and conjugating it to agree with "you" makes correct English wrong. Every
+ * agreement rule in `withNames` is held off by this.
+ */
+const NOT_THE_OBJECT_OF =
+  '(?<!\\b(?:for|to|with|on|at|from|of|about|between|against|by|in|than|like|towards|toward|upon|onto|into)\\s)';
+
 export function withNames(
   text: string,
   visible: Map<string, string>,
@@ -559,19 +570,44 @@ export function withNames(
        * rule would usually be right and would occasionally mangle a real sentence - and there is no
        * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
        * a report of this kind actually uses.
+       *
+       * THE LIST GREW BY FOUR, FOUND BY LOOKING RATHER THAN BY GUESSING. Every `you <word>s` across
+       * all twenty-four scenarios' served reports and boards was read, and four were genuine verbs
+       * left in the third person: "you blames the market", "this is work you owes Dele", "while you
+       * points to collecting customer bank statements", "Dr is leading the client meetings while
+       * you observes".
+       *
+       * AND FOUR IN THE SAME SEARCH WERE CORRECT ENGLISH, which is the argument for the closed list
+       * standing up in the open: "Grace's own plan for you calls for two signed distribution
+       * agreements" and "which for you means the supplier acknowledging tickets within four hours".
+       * The subject is the plan and the agreement; "you" is the object of "for". A general rule
+       * would have broken both.
        */
-      .replace(/\byou is\b/gi, (m) => (m[0] === 'Y' ? 'You are' : 'you are'))
-      .replace(/\byou was\b/gi, (m) => (m[0] === 'Y' ? 'You were' : 'you were'))
-      .replace(/\byou has\b/gi, (m) => (m[0] === 'Y' ? 'You have' : 'you have'))
-      .replace(/\byou does\b/gi, (m) => (m[0] === 'Y' ? 'You do' : 'you do'))
+      /**
+       * AND NOT WHERE "YOU" IS THE OBJECT OF A PREPOSITION, WHICH THE SAME SEARCH TURNED UP AS A
+       * LIVE BUG IN THE RULES BELOW. On a real lead's report:
+       *
+       *   "A key worry for you is that you didn't see this coming."
+       *
+       * `\byou is\b` would make that "A key worry for you are that...". The subject is "a key
+       * worry"; "for you" is where the worry lands. One signal separates this from every case the
+       * rules are for - a preposition immediately before "you" - and it is checkable rather than
+       * guessed, so it guards all of them rather than only the new verbs.
+       */
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you is\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You are' : 'you are'))
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you was\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You were' : 'you were'))
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you has\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You have' : 'you have'))
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you does\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You do' : 'you do'))
       .replace(
         new RegExp(
-          '\\byou (' +
+          `${NOT_THE_OBJECT_OF}you (` +
             [
               'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
               'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
               'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
               'appears', 'remains', 'intends', 'accepts', 'refers',
+              /* The four the twenty-four-scenario search actually produced. */
+              'blames', 'observes', 'owes', 'points',
             ].join('|') +
             ')\\b',
           'gi',
