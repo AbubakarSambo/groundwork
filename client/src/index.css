@@ -1780,3 +1780,11 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-one-label { width: 120px; color: var(--gw-sub); }
 .gw-one-value { flex: 1; color: var(--gw-text); min-width: 120px; }
 .gw-one-edit { display: flex; gap: 8px; align-items: center; flex: 1; flex-wrap: wrap; }
+/* The People page and one person's page: the page's box, and no sideways scroll on a phone (U.4). */
+.gw-people-page { box-sizing: border-box; width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.gw-people-page input, .gw-people-page select, .gw-people-page textarea { max-width: 100%; box-sizing: border-box; }
+@media (max-width: 480px) {
+  .gw-people-page { padding-left: 16px !important; padding-right: 16px !important; }
+  .gw-people-facts > div { grid-template-columns: 1fr; gap: 2px; }
+  .gw-one-label { width: auto; }
+}
