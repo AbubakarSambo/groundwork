@@ -476,3 +476,7 @@ reset page's address waits on item 12.
   people, or the raw direction, and a participant sees only their own finding. Screens must not
   print `.label` or `.participantLabel` ("Participant A"); they print `who`, which holds the name or
   "a colleague". There is a new `theOpening` on each report, which the board's summary should read.
+- **For U.19 (billing): the free trial.** You decided teams under 20 people get Groundwork free for 3
+  months. The limit and length live in the database, never in the screens. Billing must really grant
+  it before the sign-up's sentence is switched on. Every screen that mentions the free offer uses the
+  one shared sentence.
