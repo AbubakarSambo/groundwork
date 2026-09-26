@@ -13,9 +13,10 @@ Read this one from their side with:
 
 | # | Their request | Answer | Where it landed |
 | --- | --- | --- | --- |
+| 1 | Not in the requests file, but in their morning report of 26 September, under Needs Hafsah: the API will not start when `RESEND_API_KEY` is empty, although `api/.env.example` says to leave it empty. They suggested making the Resend client only when real sending is allowed, and adding a test. | **Done, and their diagnosis was exactly right.** The client is built on the first real send instead of at start-up. An empty key now behaves like a fake one, which is what the example file always promised. `new Resend('')` was confirmed to throw the error they saw, so the new tests do discriminate. | `email.service.ts`, `theResendClient()`, and `the-api-starts-with-an-empty-email-key.spec.ts`. The `re_test` workaround is no longer needed and still works. One existing test changed: it looked for the literal `this.resend.emails.send`, and now matches `.emails.send`. |
 
-*Nothing yet. Checked at 26 September, after merging `fe3f0223` — their requests file is still the
-empty template.*
+*Their requests file itself is still the empty template, checked at 26 September against
+`70be87ff`.*
 
 ---
 
@@ -31,3 +32,41 @@ screens workspace does not discover them by surprise.
 | `findings` is narrowed to the reader's own row for a participant | A participant's report shows one finding, not one per person |
 | Labels are positional now: `the initiator`, `Participant A`, `Participant B` | `.label` and `.participantLabel` are still raw and must not be printed. Print `who` instead, which carries the resolved name, or "a colleague" where the check-in does not name peers |
 | New column `Report.theOpening` | One or two plain sentences saying what is true across everybody. The board's summary reads this rather than slicing the report's first paragraph |
+| `whatToDo[].move` can still carry a label | Two of the twenty-four reports have "**Initiator:** tell Daniel Park that..." on the lead's own board. Fix 3 did not reach this field. The engine side is being fixed; if a screen prefixes anything itself, it should not |
+
+---
+
+## Two defects in the client that belong to you, not to me
+
+Found while reading the lead's board as a person on 26 September. Both are in
+`client/src/components/gw/TheJudgement.tsx`, which I have deliberately not touched so it does not
+conflict with your work.
+
+**Both join pieces with a colon, which the wording rule forbids.**
+
+`TheJudgement.tsx:102`, under "What this cannot tell you":
+
+```tsx
+<b style={{ fontWeight: 600 }}>{w.about}</b>{w.why ? `: ${w.why}` : ''}
+```
+
+A person reads "**The renewals target**: nobody said who set it." Two fragments and a colon, where
+the rule asks for plain, full sentences.
+
+`TheJudgement.tsx:121`, under "What the check-ins did not get to":
+
+```tsx
+{w.about}
+{typeof w.howManyMissedIt === 'number' && `: ${w.howManyMissedIt} conversation${...} never reached it`}
+```
+
+Same shape. Both read as a table row rather than as something written for a person.
+
+The engine can only half-fix this: I can make `about` and `why` full sentences, and I will, but as
+long as the screen joins them with a colon the result is two sentences with a colon between them.
+The screen should render them as two sentences, or as a sentence and a line under it.
+
+**And one thing that is now dead rather than broken.** `BoardPage.tsx:694` passes
+`table={(b as any).theTable}` to `TheJudgement`. Nothing is served in that field any more, for
+anybody, so the component guards on it and the "See the counts behind this" toggle never renders.
+The `table` prop and the `showTable` state can go whenever you are next in that file.
