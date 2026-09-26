@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { whenTheCheckInsLand, workingDaysOf, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
 
 /*
  * THE SCHEDULE, BEFORE IT IS SAVED (U.6, B1): #/new/setup.
@@ -21,9 +21,6 @@ export const THE_SETUP = {
   onADate: 'On a date',
   howOften: 'How often',
   notChosen: 'Not set yet. This will run every 2 weeks unless you pick one.',
-  onWhichDays: 'On which days',
-  weekdaysOnly: 'Weekdays only',
-  anyDay: 'Any day is fine',
   whenItEnds: 'When it ends',
   moreTimeLater: 'You can give it more time later.',
   whenIEndIt: 'When I end it',
@@ -43,7 +40,6 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 /** Monday first, as the prototype draws the week. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
-const WEEKDAYS = [1, 2, 3, 4, 5]
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const fromIso = (s: string) => new Date(`${s}T00:00:00`)
@@ -119,11 +115,12 @@ export function TheSetup(p: {
   anchorDay: number | null
   onAnchorDay: (d: number | null) => void
   workingDays: number[]
-  onWorkingDays: (days: number[]) => void
   startsOn: string
   onStartsOn: (s: string) => void
   endsOn: string
   onEndsOn: (s: string) => void
+  /** The shared day picker: <WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />. */
+  daysPicker: React.ReactNode
   today?: Date
 }) {
   const today = p.today ?? new Date()
@@ -131,8 +128,6 @@ export function TheSetup(p: {
   const [pickingADate, setPickingADate] = useState(!!p.startsOn && p.startsOn !== tomorrow)
   const [endingOnADate, setEndingOnADate] = useState(!!p.endsOn)
   const startMode = !p.startsOn ? 'now' : p.startsOn === tomorrow && !pickingADate ? 'tomorrow' : 'date'
-  const days = workingDaysOf(p.workingDays)
-  const weekdaysOnly = days.length === 5 && WEEKDAYS.every((d) => days.includes(d))
   const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: p.endsOn, workingDays: p.workingDays, today })
 
   return (
@@ -178,31 +173,9 @@ export function TheSetup(p: {
         )}
       </Section>
 
-      {p.cadence !== 'ONE_TIME' && p.cadence !== 'SEQUENTIAL' && (
-        <Section title={THE_SETUP.onWhichDays}>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-            {WEEK_ORDER.map((d) => {
-              const on = days.includes(d)
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={DAY_NAMES[d]}
-                  onClick={() => p.onWorkingDays(on ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b))}
-                  style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: on ? 'var(--gw-blue-bg)' : 'white', color: on ? 'var(--gw-navy)' : 'var(--gw-muted)' }}
-                >
-                  {DAY_SHORT[d]}
-                </button>
-              )
-            })}
-          </div>
-          <div style={row}>
-            <Choice on={weekdaysOnly} onClick={() => p.onWorkingDays([...WEEKDAYS])}>{THE_SETUP.weekdaysOnly}</Choice>
-            <Choice on={days.length === 0} onClick={() => p.onWorkingDays([])}>{THE_SETUP.anyDay}</Choice>
-          </div>
-        </Section>
-      )}
+      {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the
+          check-in's own Setup and this screen can never offer two different sets of choices. */}
+      {p.cadence !== 'ONE_TIME' && p.cadence !== 'SEQUENTIAL' && p.daysPicker}
 
       {opens && <p style={{ ...note, margin: '0 0 16px', color: 'var(--gw-text)' }}>{opens}</p>}
 

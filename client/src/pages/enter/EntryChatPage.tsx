@@ -39,6 +39,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot } from '@/components/gw/when-the-check-ins-land'
+import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -3721,7 +3722,7 @@ export function EntryChatPage() {
                 anchorDay={cadenceAnchorDay}
                 onAnchorDay={setCadenceAnchorDay}
                 workingDays={workingDays}
-                onWorkingDays={setWorkingDays}
+                daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
                 startsOn={checkInBy}
                 onStartsOn={setCheckInBy}
                 endsOn={lastCheckInBy}

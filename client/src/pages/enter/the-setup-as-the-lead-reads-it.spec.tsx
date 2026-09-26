@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { useState } from 'react'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { TheSetup, whenTheyOpen } from './TheSetup'
+import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import type { Cadence } from '@/components/gw/when-the-check-ins-land'
 
 /*
@@ -21,7 +22,7 @@ function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, cho
   return (
     <>
       <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={anchor} onAnchorDay={setAnchor}
-        workingDays={wd} onWorkingDays={setWd} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
+        workingDays={wd} daysPicker={<WhichDaysTheyWork value={wd} onChange={setWd} />} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
       <output data-testid="saved">{JSON.stringify({ c, s, e, wd })}</output>
     </>
   )
