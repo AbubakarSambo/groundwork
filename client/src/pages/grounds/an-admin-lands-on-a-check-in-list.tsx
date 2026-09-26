@@ -63,7 +63,7 @@ export function AdminFirstRun() {
     mutationFn: () => apiClient.post('/users/me/welcome-card/seen'),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['rollout'] }) },
     /* The product's own sentence for a press that did not land; the card stays, so they can press again. */
-    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
+    onError: () => toast.error('That did not go through, and nothing has changed. Try again.'),
   })
   if (!isAdmin || !data) return null
 

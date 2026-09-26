@@ -65,7 +65,7 @@ describe('the new admin', () => {
     const { toast } = await import('sonner')
     const err = vi.spyOn(toast, 'error')
     fireEvent.click(await screen.findByRole('button', { name: 'Got it' }))
-    await waitFor(() => expect(err).toHaveBeenCalledWith('That did not go through. Nothing has changed - try again.'))
+    await waitFor(() => expect(err).toHaveBeenCalledWith('That did not go through, and nothing has changed. Try again.'))
     expect(screen.getByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
   })
 
