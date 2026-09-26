@@ -488,6 +488,25 @@ replaced reset link says so as it opens, and both kinds of sign-up work from sta
 password, the person goes straight in. With the link, they are offered "Choose a password" and can
 choose "Keep using email links instead".
 
+### U.3 Organisations and joining: in progress
+
+What you have decided already shapes it: the organisation is named at sign-up, with a name suggested
+from the email address (built in U.2); someone who later signs up with the same email domain is
+offered to join (this waits for the safeguards question, item 11.2); the organisation's own web
+address comes later.
+
+Being built now, without needing any open answer: creating another organisation ("Create an
+organisation"), "Choose an organisation", the facts on an invitation (the organisation, the end date,
+how often it asks), a fresh link for an expired invitation, "Almost in" while an admin lets someone
+in (with a reminder allowed once a day), turning reminders back on or stopping all email from an
+email's link, asking the lead for more time when a check-in has ended, and the new admin's welcome
+card with "Get … going".
+
+Waiting for you (item 11): what the invitation says about who reads your words; the safeguards for
+joining by email domain; how the organisation's invite link behaves; whether to name the admin who is
+asked; 14 or 90 days for an invitation; more than one organisation of your own; and the welcome
+card's sentence.
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
