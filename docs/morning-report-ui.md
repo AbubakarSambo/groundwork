@@ -311,8 +311,141 @@ and admins can read what people said. So the prototype's "Nobody else reads your
 "Wairimu reads the report, not your words." contradict the settled rules, and so does today's
 panel.
 
-**Held:** the two prototype sentences "Nobody else reads your answers." and "Wairimu reads the report,
-not your words.", and today's panel. The rest of the prototype's invitation is being built.
+**Held, with today's behaviour, as you asked:** today's panel stays exactly as it is, and the two
+prototype sentences "Nobody else reads your answers." and "Wairimu reads the report, not your words."
+are left out. The rest of the prototype's invitation is being built.
+**My suggestion:** keep the prototype's first line, drop the two held sentences, and have the page say
+who can read the words from that check-in's real settings. Please also say whether an admin without
+access to a check-in can read its exact words, because that decides the A4 privacy rule too.
+
+#### Conflict B: the new admin's welcome card
+
+**What you decided:** the welcome card uses the prototype's wording.
+
+**The prototype's exact wording** (drawn on a new organisation's Today page; there is no `.txt` for it):
+- "You're an admin at Nyali Foods"
+- "You can see every board and report. They never see anyone's questions to Ask Groundwork, anyone's
+  own report, or a lead's private notes."
+- "Got it"
+
+**The product's wording today:** none. The product has no welcome card.
+
+**The rule in `docs/modules.md`, A4:** "Admins see boards and reports, never exact words and never
+performance plans, unless given access to that check-in."
+
+**The conflict:**
+1. "You can see every board and report." tells an admin they can see every check-in's board and
+   report, including performance plans. The A4 rule says they cannot, without access to that
+   check-in.
+2. A smaller wording problem: "They never see…" has nothing for "They" to point to. It probably means
+   "Nobody else sees…" or "You never see…".
+
+**Checked against `docs/decisions.md` rule 5:** the card's sentence is nearly rule 5 word for word.
+The only part it leaves out is "and never a performance plan unless given access to that check-in".
+So the real conflict is smaller than I first wrote: the card promises every board and report,
+including performance plans, where rule 5 excludes them without access.
+
+**Held:** the sentence "You can see every board and report. They never see anyone's questions to Ask
+Groundwork, anyone's own report, or a lead's private notes." The rest of the card is being built.
+**My suggestion:** use rule 5's own words, which match the prototype except for the one missing part:
+"You can see every board and report, including what people said in them. You never see anyone's
+questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a performance
+plan unless given access to that check-in." That also fixes "They".
+
+#### Also: the round "?" button
+
+The prototype's "Create an organisation" screen has no round "?" button (checked against `org-new.jpg`
+and `org-new.txt`); the product's floating Help button sat over the error message there. **Your
+decision, 26 September:** remove the "?" wherever the prototype does not have it, and put nothing in
+its place. That is being done in U.3.
+
+### 12. May the reset page say whose account it is? A privacy question (decided: no)
+
+The prototype's reset page says "For wairimu@baridi.co.ke. Once it's saved, you're signed out
+everywhere else." To show the address, the server would have to return the email of the account
+behind a reset link. A privacy test in the product records that this very check once gave away the
+address behind a link, and was fixed so it would not ("validateToken tells nobody whose link it
+is"). Putting the address back would change a privacy rule and weaken that test, so I have not done
+it. The page shows the address if the server ever sends it, and leaves it out otherwise.
+
+**My suggestion:** leave the address out. The person already knows which account they asked to reset,
+and the link could be forwarded to someone else.
+
+### 11. Organisations and joining (U.3): nine decisions (answered, two parts held)
+
+**Answered by you on 26 September, with the prototype's exact wording wherever it has it:**
+1. The invitation uses the prototype's wording, says what the person will see, and never says or
+   suggests that their words are private.
+2. Joining by email domain: the prototype's admin switch "Anyone with an @<domain> email", joining as
+   "Takes part", role changeable after, only after the email address is confirmed, never for public
+   email providers. That list is kept in one place on the server.
+3. One invite link per organisation, joining as "Takes part". Turning it off makes a new link.
+4. The admin is named, as in the prototype ("We've asked Grace Achieng", "Remind Grace"), only after
+   the person has accepted a real invitation.
+5. Invitations last 14 days, with the prototype's expired-link wording.
+6. A person can create more than one organisation, each with its own plan.
+7. The welcome card uses the prototype's wording, the free-trial sentence stays off until billing
+   gives it, and WhatsApp is not mentioned while it is not switched on.
+
+**Two of these conflict with something already written, so I have held both parts back. You
+decide.**
+
+**The admin rule, word for word from `docs/decisions.md`.** `docs/decisions.md` has no rule labelled
+"A4". Its rule about admins is rule 5, and it says:
+
+> 5. **Admins** see every board and report, including what people said in them. They never see
+> anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a
+> performance plan unless given access to that check-in.
+
+Rule 4 of the same file says: "What people say in check-ins can be shown word for word to the people
+in that check-in. There is no "Share my words" switch."
+
+This differs from the A4 rule in `docs/modules.md` ("Admins see boards and reports, never exact words
+and never performance plans, unless given access to that check-in."), which I quoted below before I
+had checked `decisions.md`. The two documents disagree about exact words. `decisions.md` says "These
+are settled", and it agrees with your U.3 answer that admins can read what people said. As you asked,
+both conflicts stay held with today's behaviour until you decide.
+
+#### Conflict A: what the invitation says about who reads your words
+
+**What you decided:** use the prototype's invitation wording, say what the person will see, and never
+say or suggest that their words are private, because people in the check-in and admins can read them.
+
+**The prototype's exact wording** (`docs/prototype/screens/A3-organisations-and-joining/join-invite.txt`):
+- "The people in this check-in, including your manager, can see what you say in it. Your questions to
+  Ask Groundwork stay private."
+- Under "Who sees your answers": "You see your own report straight away. Wairimu shares a team report
+  each evening. Nobody else reads your answers."
+- Under the button: "About two minutes. You make your account afterwards. Wairimu reads the report,
+  not your words."
+
+**The product's exact wording today** (`client/src/pages/invite/InvitePage.tsx`, the panel "What
+happens to what you write"):
+- "Nobody you work with reads it"
+- "Not your manager, not whoever set this up, not an admin. What they see is the shared report, which
+  is built by comparing what everyone said. Your own words about your own work can appear in it.
+  Anything you say about somebody else never does, and it never says who said what about whom."
+
+**The rule in `docs/modules.md`, A4** (older; see rule 5 above): "Admins see boards and reports, never
+exact words and never performance plans, unless given access to that check-in."
+
+**The conflict:**
+1. Inside the prototype itself, the first line says your manager can see what you say. But "Nobody
+   else reads your answers." and "Wairimu reads the report, not your words." suggest your words are
+   private, which you have ruled out.
+2. The product today says the opposite of your decision: nobody you work with reads your words, not
+   even an admin.
+3. Your answer says admins can read the words. The A4 rule says admins never see exact words unless
+   given access to that check-in.
+
+**Checked against `docs/decisions.md` rules 4 and 5:** they agree with you. People in the check-in
+and admins can read what people said. So the prototype's "Nobody else reads your answers." and
+"Wairimu reads the report, not your words." contradict the settled rules, and so does today's
+panel.
+
+**Held, with today's behaviour, as you asked:** today's panel stays exactly as it is, and the two
+prototype sentences "Nobody else reads your answers." and "Wairimu reads the report, not your words."
+are left out. The rest of the prototype's invitation is being built.
 **My suggestion:** keep the prototype's first line, drop the two held sentences, and have the page say
 who can read the words from that check-in's real settings. Please also say whether an admin without
 access to a check-in can read its exact words, because that decides the A4 privacy rule too.
