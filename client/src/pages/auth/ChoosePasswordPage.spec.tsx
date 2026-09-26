@@ -38,9 +38,9 @@ async function setPasswordWith(next: string) {
     </MemoryRouter>
     </QueryClientProvider>,
   )
-  /* U.2: the fields are found by the labels a person reads, and the button reads "Save password". */
+  /* U.2: the field is found by the label a person reads, and the button reads "Save password".
+     Choosing a first password has one box now, as in the prototype, with Show. */
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Passw0rdish' } })
-  fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Passw0rdish' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
   await waitFor(() => expect(mockedNavigate).toHaveBeenCalled())
   return mockedNavigate.mock.calls[0][0]

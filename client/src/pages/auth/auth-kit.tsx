@@ -195,6 +195,29 @@ export function PasswordRules({ password, confirm }: { password: string; confirm
   )
 }
 
+/**
+ * THE STRENGTH BAR, MADE ONLY OF THE RULES THE SERVER CHECKS.
+ *
+ * The prototype draws a four-part bar over "Strong enough". There is no strength score anywhere in
+ * the product, and inventing one would tell people a password is strong on grounds nobody checks. So
+ * the bar has one part per rule the server enforces today, each filled when its rule is met, and it
+ * says "Strong enough" only when every rule is. The rules are listed under it, so the bar never has
+ * to be read on its own.
+ */
+export function PasswordStrength({ password }: { password: string }) {
+  const rules = todaysPasswordRules(password)
+  const allMet = rules.every(r => r.met)
+  return (
+    <div className="gw-auth-strength">
+      <div className="gw-auth-strength-bar" aria-hidden>
+        {rules.map(r => <span key={r.text} className={r.met ? 'on' : undefined} />)}
+      </div>
+      {allMet && <p className="gw-auth-strength-ok" role="status">Strong enough</p>}
+      <PasswordRules password={password} />
+    </div>
+  )
+}
+
 /** A line saying something went wrong, read out as soon as it appears. */
 export function AuthError({ children }: { children: React.ReactNode }) {
   return <p className="gw-auth-error" role="alert">{children}</p>

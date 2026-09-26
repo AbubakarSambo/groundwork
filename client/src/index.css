@@ -1613,6 +1613,12 @@ body:has(.gw-sidebar-desktop) .gw-help-btn { display: none !important; }
 .gw-auth-rules li.met { color: var(--gw-green-t); }
 .gw-auth-rule-mark { width: 16px; text-align: center; flex-shrink: 0; }
 .gw-auth-actions { display: grid; gap: 10px; margin-top: 4px; }
+.gw-auth-strength { margin: -4px 0 16px; }
+.gw-auth-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
+.gw-auth-strength-bar span { height: 5px; border-radius: 3px; background: var(--gw-rule-2); }
+.gw-auth-strength-bar span.on { background: var(--gw-green-t); }
+.gw-auth-strength-ok { font-size: 14.5px; font-weight: 700; color: var(--gw-green-t); margin: 0 0 6px; }
+.gw-auth-strength .gw-auth-rules { margin: 0; }
 .gw-auth-error { font-size: 15px; line-height: 1.45; color: var(--gw-red-t); background: var(--gw-red-bg); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
 .gw-auth-notice { background: var(--gw-amber-bg); color: var(--gw-amber-t); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 12px 14px; margin: 0 0 16px; font-size: 15px; line-height: 1.5; }
 .gw-auth-notice p { margin: 0; }

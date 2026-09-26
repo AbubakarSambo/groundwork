@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/gw/kit'
-import { AuthCard, AuthError, PasswordField, PasswordRules } from './auth-kit'
+import { AuthCard, AuthError, PasswordField, PasswordRules, PasswordStrength } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
@@ -106,8 +106,9 @@ export function ChoosePasswordPage() {
     if (save.isPending) return
     setError('')
     if (!token) { setError('This link is missing its token. Open the most recent one from your inbox.'); return }
-    /* The same rules the list under the fields shows, and the server checks. */
-    if (!meetsTodaysPasswordRules(password, confirm)) {
+    /* The same rules the list under the fields shows, and the server checks. Choosing a first
+       password has one box, as in the prototype, with Show to check what was typed. */
+    if (!meetsTodaysPasswordRules(password, kind === 'reset' ? confirm : undefined)) {
       setError(password !== confirm && meetsTodaysPasswordRules(password)
         ? 'The two passwords are not the same. Type the same password in both boxes.'
         : 'Your password does not meet every rule in the list yet.')
@@ -138,9 +139,15 @@ export function ChoosePasswordPage() {
     )
   }
 
-  const title = kind === 'set' ? 'One last step' : 'Choose a new password'
+  /*
+   * CHOOSING A FIRST PASSWORD (A2, #/password), in the prototype's words. Choosing one is still
+   * required: whether somebody may keep using email links instead is waiting for Hafsah, so the
+   * prototype's "Keep using email links instead" is not offered. "You can keep using links too" is
+   * true either way: an account with a password can still ask for a sign-in link.
+   */
+  const title = kind === 'set' ? 'Choose a password' : 'Choose a new password'
   const sub = kind === 'set'
-    ? 'Set a password so you can sign back in to see the record and receive the report when it is ready.'
+    ? 'For signing in without an email link. You can keep using links too.'
     /* True: saving a new password raises the account's token epoch, which ends every other session. */
     : forAddress
       ? <>For <strong>{forAddress}</strong>. Once it’s saved, you’re signed out everywhere else.</>
@@ -163,14 +170,25 @@ export function ChoosePasswordPage() {
           onChange={setPassword}
           autoFocus
         />
-        <PasswordField
-          id="confirm-password"
-          label="Type it again"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={setConfirm}
-        />
-        <PasswordRules password={password} confirm={confirm} />
+        {kind === 'reset' ? (
+          <>
+            <PasswordField
+              id="confirm-password"
+              label="Type it again"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={setConfirm}
+            />
+            <PasswordRules password={password} confirm={confirm} />
+          </>
+        ) : (
+          <>
+            <PasswordStrength password={password} />
+            <p className="gw-auth-small" style={{ margin: '0 0 16px' }}>
+              Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
+            </p>
+          </>
+        )}
         {error && <AuthError>{error}</AuthError>}
         <div className="gw-auth-actions">
           <Button type="submit" wide disabled={save.isPending}>

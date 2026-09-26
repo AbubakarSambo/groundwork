@@ -105,3 +105,52 @@ describe('the rules, before anything is sent', () => {
     expect(authApi.resetPassword).not.toHaveBeenCalled()
   })
 })
+
+describe('"Choose a password", the first password from a set-up link (A2, #/password)', () => {
+  it('reads the prototype\'s words, without "Keep using email links instead"', () => {
+    const { container } = renderAt('/set-password?token=tok')
+    expect(readable(container)).toBe([
+      'Groundwork',
+      'Choose a password',
+      'For signing in without an email link. You can keep using links too.',
+      'Password', 'Show',
+      'At least 8 characters',
+      'A capital letter and a small letter',
+      'Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.',
+      'Save password',
+    ].join(''))
+    expect(screen.queryByText(/Keep using email links instead/)).toBeNull()
+    expect(screen.queryByLabelText('Type it again')).toBeNull()
+    expect(authApi.validateToken).not.toHaveBeenCalled()
+  })
+
+  it('the bar fills one part per rule met, and says "Strong enough" only when every rule is', () => {
+    const { container } = renderAt('/set-password?token=tok')
+    const parts = () => [...container.querySelectorAll('.gw-auth-strength-bar span')].map(s => s.className === 'on')
+    expect(parts()).toEqual([false, false])
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbourlamp' } })
+    expect(parts()).toEqual([true, false])
+    expect(screen.queryByText('Strong enough')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Harbourlamp' } })
+    expect(parts()).toEqual([true, true])
+    expect(screen.getByText('Strong enough')).toBeTruthy()
+  })
+
+  it('saving sends the one password to set-password, never to reset', async () => {
+    ;(authApi.setPassword as any).mockResolvedValue({ user: { id: 'u1' }, accessToken: 'a' })
+    renderAt('/set-password?token=tok&next=%2Fgrounds')
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    expect(await screen.findByText('Your check-ins')).toBeTruthy()
+    expect(authApi.setPassword).toHaveBeenCalledWith('tok', 'Harbour7lamp')
+    expect(authApi.resetPassword).not.toHaveBeenCalled()
+  })
+
+  it('a password that misses a rule is not sent', async () => {
+    renderAt('/set-password?token=tok')
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
+    expect(authApi.setPassword).not.toHaveBeenCalled()
+  })
+})
