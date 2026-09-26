@@ -110,6 +110,40 @@ the tour was taken is kept in the browser, like the pins.
 Feedback button. I kept it, because it is the pilot's one-tap way to send feedback. Say if it should
 go.
 
+### 10. Signing in (U.2): eight places where the prototype and the product disagree
+
+The prototype's sign-in screens say some things the product does not do, or does differently on
+purpose. I will build everything else in U.2 and leave these as they are until you decide.
+
+1. **"Teams of fewer than 20 people get 3 months free. No card needed."** The prototype's sign-up
+   says this. The product does not do it: its free plan is for up to 5 people, and three free months
+   are only given by Groundwork staff, one address at a time. **My suggestion:** leave the line out
+   until billing really does it.
+2. **"Work email" or "Email".** The prototype says "Your work email". The product changed it to
+   "Email" on purpose, because people who run a real business from a Gmail address read "work email"
+   as "not for you". **My suggestion:** keep "Email".
+3. **The password rules.** The product asks for at least 8 characters with a capital and a small
+   letter. The prototype asks for at least 8 characters, a number or a symbol, and not your email
+   address. **My suggestion:** the prototype's rules, which are easier to meet and just as strong,
+   checked the same way on the screen and in the backend.
+4. **Can someone skip choosing a password?** The prototype offers "Keep using email links instead".
+   The product made choosing a password compulsory after a test run where people with no password
+   could not get back in. The new sign-in screen will offer "Email me a sign-in link instead", which
+   fixes that. **My suggestion:** allow the skip.
+5. **How long a password reset link lasts.** The prototype says "It works for 30 minutes". The
+   product's link lasts an hour. **My suggestion:** say "an hour", which is true, rather than change
+   the link. Until you decide, the page says an hour.
+6. **The organisation's name at sign-up.** The product's sign-up asks "Your organisation
+   (optional)". The prototype's does not. **My suggestion:** move it into setting up the
+   organisation (U.3), where the prototype asks it.
+7. **An expired sign-up link.** For someone still signing up, the product already sends a fresh link
+   on its own when the old one has expired. The prototype's card asks for the address again.
+   **My suggestion:** for that case, say the new link is on its way, and use the prototype's card for
+   every other expired link.
+8. **"Anything you'd started is saved."** The prototype's sign-out page says this. Signing out
+   clears drafts kept in the browser today, so it may not be true. **My suggestion:** leave the line
+   out until it is checked, or keep drafts on the server.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
