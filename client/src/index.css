@@ -1554,3 +1554,18 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-phone-bar-item.on { color: var(--gw-text); font-weight: 700; }
 .gw-phone-bar-item.start { color: var(--gw-navy); }
 .gw-phone-bar-item:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
+
+/* ── "JUMP TO" (A1) ─────────────────────────────────────────── */
+.gw-rl-jump { display: flex; align-items: center; gap: 10px; width: calc(100% - 20px); margin: 0 10px 6px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 15px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; }
+.gw-rl-jump:hover { background: var(--gw-card); color: var(--gw-text); }
+.gw-rl-jump:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
+.gw-rl-jump kbd { margin-left: auto; font: inherit; font-size: 13px; color: var(--gw-sub); }
+.gw-jump-bg { background: rgba(26, 25, 22, .35); display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
+.gw-jump { width: 100%; max-width: 560px; background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 14px; box-shadow: 0 20px 60px rgba(26,25,22,.2); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
+.gw-jump-input { border: 0; border-bottom: 1px solid var(--gw-border); padding: 16px 18px; font: inherit; font-size: 17px; color: var(--gw-text); background: var(--gw-card); outline: none; min-width: 0; }
+.gw-jump-list { overflow-y: auto; padding: 6px; }
+.gw-jump-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 10px 12px 4px; }
+.gw-jump-item { display: flex; flex-direction: column; gap: 2px; min-height: 44px; justify-content: center; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gw-jump-item span { font-size: 13px; color: var(--gw-sub); }
+.gw-jump-item.on { background: var(--gw-page); box-shadow: inset 0 0 0 1px var(--gw-border); }
+.gw-jump-none { padding: 14px 12px; font-size: 15px; color: var(--gw-sub); }

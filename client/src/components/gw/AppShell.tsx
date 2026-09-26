@@ -19,6 +19,9 @@ import { pinnedFor, togglePin } from './pinned-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
+import { JumpTo } from './JumpTo'
+import { whatYouCanJumpTo } from './what-you-can-jump-to'
+import { useJumpStore } from '@/stores/jump'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import {
@@ -743,6 +746,9 @@ export function AppSidebar() {
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
   const adminItems = items.filter(i => (i as any).adminOnly)
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
+  /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
+  const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
+  const openJump = useJumpStore(s => s.show)
 
   const sidebarWidth = collapsed ? 64 : 256
 
@@ -893,6 +899,14 @@ export function AppSidebar() {
             {!collapsed && <span>Start a check-in</span>}
           </Button>}
         </div>
+
+        {/* "Jump to…  Ctrl K": find a check-in, a person or a page. */}
+        {isAuthenticated && (
+          <button type="button" className="gw-rl-jump" onClick={openJump} aria-label={collapsed ? 'Jump to' : undefined} title={collapsed ? 'Jump to' : undefined} aria-keyshortcuts="Control+K Meta+K">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.6" /><path d="M12.2 12.2 16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            {!collapsed && <><span>Jump to…</span><kbd>Ctrl K</kbd></>}
+          </button>
+        )}
 
         {/* Expanded: the check-ins, the pages across them, and the admin part. */}
         {!collapsed && (
@@ -1089,6 +1103,8 @@ export function AppSidebar() {
           )}
         </div>
       </aside>
+
+      {isAuthenticated && <JumpTo items={jumpItems} />}
 
       {/*
         THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the

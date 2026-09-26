@@ -5,6 +5,7 @@ import { useFeedbackStore } from '@/stores/feedback'
 import { navItemsFor } from '@/components/gw/AppShell'
 import { OrganisationChoices } from '@/components/gw/OrganisationChoices'
 import { Button } from '@/components/gw/kit'
+import { useJumpStore } from '@/stores/jump'
 
 /**
  * "MORE", ON A PHONE (A1, docs/prototype/screens/A1-look-and-layout/more-menu-phone.txt).
@@ -23,6 +24,7 @@ export function MorePage() {
   const navigate = useNavigate()
   const showHelp = useHelpStore(s => s.show)
   const showFeedback = useFeedbackStore(s => s.show)
+  const openJump = useJumpStore(s => s.show)
 
   const items = navItemsFor(user)
   const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
@@ -35,6 +37,8 @@ export function MorePage() {
       <h1 className="gw-t-title gw-more-h1">More</h1>
 
       <ul className="gw-more-list" aria-label="More">
+        {/* "Jump to", which the sidebar carries on a computer. The phone's bar has no room for it. */}
+        <li><button type="button" className="gw-more-item" onClick={openJump}><MoreIcon d="jump" /><b>Jump to…</b></button></li>
         {pages.map(item => (
           <li key={item.to}>
             <NavLink to={item.to} className="gw-more-item">{item.icon(false)}<b>{item.label}</b></NavLink>
@@ -76,7 +80,7 @@ export function MorePage() {
   )
 }
 
-function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' }) {
+function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' | 'jump' }) {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
       {d === 'settings' && (
@@ -89,6 +93,12 @@ function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' }) {
         <>
           <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M7.8 7.8a2.3 2.3 0 1 1 3.2 2.1c-.6.3-1 .8-1 1.4v.4M10 14.2v.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </>
+      )}
+      {d === 'jump' && (
+        <>
+          <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M13.2 13.2 17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </>
       )}
       {d === 'feedback' && (
