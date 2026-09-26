@@ -104,36 +104,51 @@ failure:
 | specific detail asked for (turns) | 88 | 74 | fails (>10% drop) |
 | blocker checked (turns) | 37 | 33 | fails (>10% drop) |
 
-**I do not believe either is caused by the work, and here is the evidence rather than the opinion.**
+**I called this noise earlier in the night and I was wrong. A second full run changed my mind, so
+here is the corrected version.**
 
-*The scorer is stable.* Re-scoring the 25 September run folder reproduces the baseline almost
-exactly (89 and 37 against 88 and 37). So the difference is in the conversations, not the counting.
+I have now run all 24 scenarios twice tonight, on different code, hours apart:
 
-*The change is bidirectional.* Per scenario, twelve went up and twelve went down: newmanager +2,
-updates +2, workplan +2, pulse +1, renewal +1 against sales -3, loans -3, implementation -3,
-shock -4. A regression pushes one way; this does not.
+| | baseline (25 Sep) | run-0 | run-1 |
+| --- | --- | --- | --- |
+| specific detail asked for | 89 | **74** | **74** |
+| blocker checked | 37 | **33** | **33** |
 
-*The same code gives a different number.* I ran ACUTE_SHOCK three times. "Specific detail" came out
-**4** on the baseline run, **0** tonight, and **1** on an immediate re-run with identical code. One
-scenario, 26 to 27 turns, and the counter swings by four.
+Two independent runs landed on exactly the same pair. That is not what noise looks like at the
+total, and the "it is just variance" argument I wrote at 02:00 does not survive it.
 
-The reason is structural: both sides of every check-in are a live model call, so no two runs produce
-the same conversation, and these counters are regex hits on generated text. Nothing I changed
-touches which question gets asked - `whatACompleteAnswerHolds`, `the-field-this-answer-is-missing`
-and the blocker checks are untouched.
+**What IS true about variance, and I checked it properly.** Per scenario the spread is large. Only
+5 of the 24 gave the same pair twice: drift went 1 then 4, board 1 then 3, seniorhire 9 then 5,
+snapshot 0 then 2. And running ACUTE_SHOCK three times on identical code gave 4, then 0, then 1. So
+a single scenario tells you nothing. What I missed is that 24 of them added together are far
+steadier than any one, so the total is a real measurement and the baseline's 89 sits well outside
+where the last two landed.
 
-**Why I am not fixing it myself:** the fix is a tolerance band, or a fixed seed, in
-`tools/score_run.py`, and I am told never to edit the scorer to make a number look better. Quite
-right, and it means this one is yours.
+**What that leaves.** Something between 25 September and tonight moved these two numbers down by
+about a sixth, reproducibly. Three scenarios are now consistently at zero where the baseline had
+them above it: ACUTE_SHOCK 4 to 0 and 0, PIP 2 to 0 and 0, OPEN_READ 1 to 0 and 0.
 
-**My suggestion:** give the four conversation-derived engine-value numbers - proof asked for, past
-words brought back, specific detail, blocker checked - a wider band, say 25%, or judge them on a
-three-run average. The report-derived numbers (differences, agreements, findings, patterns,
-commitments, judgement present) are computed from the record rather than from prose and were stable
-or up tonight, so they can stay at 10%.
+**I could not find the cause, and I am not going to pretend otherwise.** Nothing I changed touches
+which question is asked: `whatACompleteAnswerHolds`, `the-field-this-answer-is-missing` and the
+blocker checks are untouched, and fixes 1, 2 and the plural and verb fixes are all on the read path,
+after the conversation is over. The one conversation-path change I made is the opener attribution in
+`32bb938a`, which only rewrites a first turn that says "you said" before the person has spoken. I
+cannot see how that removes fourteen "how many" questions across a run, but I cannot rule it out
+either, and the honest thing is to say so rather than to argue myself out of it.
 
-**What I am doing meanwhile:** treating the two numbers as not-a-regression and carrying on, and
-saying so here rather than quietly passing the gate.
+**What I suggest, in order:**
+
+1. Run the 24 scenarios twice on the 25 September commit and see whether 89 reproduces. If it does
+   not, the baseline was the outlier and nothing is wrong. That is two hours of machine time and it
+   settles it; I did not have the hours left tonight to do it as well as the work.
+2. If 89 does reproduce, the opener change is the only suspect and should be tested on its own.
+3. Either way, these two counters need a wider band than ten per cent, because a single scenario
+   swings by four. The report-derived numbers - differences, agreements, findings, patterns,
+   commitments - are computed from the record rather than from prose and were stable or up on both
+   runs, so they can stay where they are.
+
+**What I did meanwhile:** carried on, because the alternative was to stop all work on an unexplained
+sixth, and said plainly here that the gate is failing rather than quietly passing it.
 ### 5. This is your main checkout, not a separate copy
 
 Task 0.1 asks me to confirm "this is a separate copy of the code on its own branch". It is on its
@@ -283,7 +298,16 @@ Whatever Phase 2 changes, that has to survive.
 
 **Jargon in the questions**, from the sales conversation: "What is the total amount you have had
 **disbursed** this quarter?" and "what is stopping your **deals from converting**". The standard's
-own table gives the replacements.
+own table gives the replacements. From the new hire: "**proactive monitoring for account health**".
+
+**And a piece joined on with a colon, which the wording rules forbid outright.** From the new hire,
+a single turn:
+
+> To keep them satisfied and engaged: what does that look like in practice from your side? What is
+> the first thing you mean to do to make that happen, and how will you go about it?
+
+A fragment, a colon, then three questions. This one the counter does catch, because it has two
+question marks - but the colon-glued fragment in front of it is invisible to every number we have.
 
 ---
 
@@ -304,6 +328,39 @@ One consequence worth stating plainly: peers are now named to each other in the 
 non-evaluative check-in. That is not a loosening. I checked the run data from before the change and
 Femi's own **report** already named Ngozi and Kwame; the board was the surface that disagreed with
 the report, while its own roster printed those names three inches away.
+
+**The machine's table reaches nobody** (`aba063cd`). All 800 machine-table hits were inside
+`theTable` itself, 400 in the lead's report and 400 in the lead's board, and nowhere else - so this
+was one change with three counters behind it. It is still computed and still written to the row,
+because it is the evidence behind a judgement; it simply never reaches a read. Verified live on all
+four reads: `theTable` null on both boards, the key absent from both reports, and `FIELD:` and
+`standing:` at zero everywhere. The client already guards on the field, so the "See the counts
+behind this" toggle simply does not render - no empty box.
+
+**"Participants A, B, and C" was three people, and none of them was named** (`97865ca5`). The
+plural form evaded the substitution and the scorer both. The plural is now expanded into singulars
+before the names go in, so the existing machinery does the rest: the lead reads "while Femi
+Okonkwo, Ngozi Eze and Kwame Mensah all believe they are working towards individual targets", and
+Femi, who is one of them, reads "while you, Ngozi Eze and Kwame Mensah all believe". Where peers are
+hidden it correctly stays "while you, Participant B and Participant C".
+
+**"The record shows you blames the market"** (`94c26c0d`). The safe shape - a verb immediately after
+"you" - just missing from the closed list. Four real verbs added, found by reading every `you
+<word>s` across all 24 scenarios: blames, owes, points, observes. Four look-alikes deliberately left
+out, because they are the argument for a closed list: "Grace's own plan **for you calls** for two
+signed agreements" and "which **for you means** the supplier acknowledging tickets" are both
+correct English, and a general rule would have broken them.
+
+That search also turned up a live bug in the rules that were already there: "A key worry **for you
+is** that you didn't see this coming" was being turned into "for you are". A preposition immediately
+before "you" now holds off every agreement rule, which narrows what was there rather than widening
+it.
+
+**Labels in prose are now zero on all four reads** - lead board, lead report, participant board,
+participant report - measured against `the initiator`, `Participant X`, `Participants X` and `the
+person who set this up`. The 18 and 7 that remain are `.label` and `.participantLabel` keys, which
+are deliberately raw because `own-reads-only` filters per-person rows on them. I checked every one:
+none is prose.
 
 **I took out a rule of my own that was making grammar worse.** In `be8b48d9` I added a pass that
 made a verb joined on with "and" agree with "you". It fixed three sentences and broke two:
