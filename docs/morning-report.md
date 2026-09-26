@@ -6,6 +6,73 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The two causes found, and both were the same shape
+
+I said the fix for realign was in the picture prompt. It was not, and finding that out took one
+more measurement than I wanted it to.
+
+### realign: nothing read INTENT
+
+The prompt rule went in and the CEO reached a finding **once in three runs**. I had fixed the
+writer without checking the supply, which is the mistake I had written up an hour earlier. So I
+checked the supply.
+
+`PersonFacts` — the only thing the per-person paragraph is written from — has slots for what they
+said it was for, where they say they are, what is in the way, and their numbers. **Nothing was fed
+by INTENT**, and every one of those CEO lines is an INTENT entry:
+
+> "The CEO asked me to build it. He said it was urgent."
+>
+> "The CEO mentioned it to me at dinner. He said it would really move the needle."
+
+Three or four of them, every run. The paragraph could not say it, whatever the prompt asked for.
+The one run in three that got through had a person who happened to repeat it inside a PROGRESS
+line, which *is* read. **The fact was arriving by accident.**
+
+`whyTheySayTheyAreOnIt` is a field now, preferring the entry that names a reason — asked, told,
+requested, instructed — over a later vague one, because "the CEO asked me to on September 2nd" is
+usually said first and recency alone would throw it away.
+
+**Four fresh runs: three of four now carry it, in the finding and in the gap, and the two always
+agree.** It was 0 of 12 in the isolated test and 0 of 1 live.
+
+> "The chief executive has given separate, urgent work to Ruth Njeri and Marco Bianchi, which
+> conflicts with your stated priority of retention."
+
+**And my first count of those four runs said one of four, not three.** My checker searched for
+"CEO" and the model writes "the chief executive" — because the wording rulebook tells it not to use
+acronyms. The engine was right and the measurement was wrong, which is the third time today a
+number has been the thing at fault. I only caught it because I printed the sentences beside the
+count rather than trusting the count.
+
+### workplan: the contractor survived into one paragraph of two
+
+Same shape. The judgement is built from one written paragraph per person, so a thing two people
+both named only reaches it if it survived into **both**. It survived into one.
+
+It is plainly in the record, in both accounts, in their own words:
+
+> **Chidi Eze:** "34k of that specifically allocated to Studio Lune for the brand refresh, starting
+> in October for eight weeks."
+>
+> **Sara Lindqvist:** "Studio Lune is booked and confirmed."
+
+Both booked the same contractor, for the same eight weeks, from the same month. Neither knows.
+
+So the engine counts it now rather than hoping the model spots it. `whatMoreThanOnePersonNamed`
+reads the records, finds the names appearing in more than one person's, and hands the judgement who
+named each and what each of them said. **Arithmetic, no model** — whether it matters is the
+judgement's job, noticing it is counting.
+
+`WorkMention` already existed and does a different job: one participant mentioning **another
+participant**. A supplier, a customer, a chief executive outside the check-in is nobody in the room,
+so nothing was watching for exactly the cases that explain these scenarios.
+
+Two things the tests caught on the way. "and" was in the list of words that join one name, so
+"Studio Lune and Acme Corp" came back as a single name nobody had said and both real names were
+lost. And the new read of the record filtered disputed rows but wrote the clause second, where the
+guard that checks every counting read looks for it first.
+
 ## The eight that are not right, each one, so you can read them yourself
 
 Only clearly right answers count, on your decision. **Sixteen of twenty-four.** Four short of the
