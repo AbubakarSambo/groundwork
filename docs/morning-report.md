@@ -6,6 +6,36 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The cause, found
+
+`conversation.service.ts:3164` puts the report LABEL into the interview prompt - the block that
+tells the engine what this person is waiting on and who from.
+
+> before fix 3: "waiting on Relationship officer, Ikeja. Target 14 approved facilities this quarter"
+> after fix 3: "waiting on **Participant B**"
+
+Fix 3 made labels positional, which is right for a stored report and wrong here. The label
+machinery exists so a report carries no names and they are swapped in per reader. An interview is
+with one known person, about a colleague that person named out loud themselves. Reducing that to
+"Participant B" took away the thing the engine reasons from, and there is no useful question to ask
+about Participant B.
+
+Six things ruled out first, each with a measurement rather than an argument: conversation length
+(identical, 69 turns), the findings block (fires more now, 6 and 5 against 3 and 2), the opener
+rewrite (the two old runs differ from each other as much as from the new), prompt version drift
+(`system` still v40), prompt trimming (identical - same blocks dropped, mean surviving engine
+94,154 chars against 94,139), and fix 1 reaching the conversation at all (it cannot - the
+conversation reads the raw report row). Two of those were hypotheses I had written up with some
+confidence, and the measurements killed both.
+
+**The privacy limit on the fix, which Hafsah added and which I had got wrong.** My first brief said
+"use the person's display name", which is too broad: a name in the prompt is a name the engine may
+say out loud. The rule is now, in order - the name the speaker used themselves; otherwise a real
+name only where that check-in shows names; and in an evaluation check-in, where the speaker did not
+name them, a description of what they do and nothing that identifies them. Never "Participant B".
+A test asserts that in a PIP run the reviewed person never sees a colleague's name they did not use
+themselves.
+
 ## Answered — thank you
 
 All four questions below were answered on 26 September and the answers are being worked through.
