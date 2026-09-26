@@ -74,6 +74,15 @@ describe('coming back to an invite link you have already used', () => {
     await waitFor(() => expect(navigated).toContain('/checkin/ci9'))
   })
 
+  /* U.3: somebody still waiting for an admin, coming back on the same browser. */
+  it('lands on "Almost in" when they are still waiting to be let in, never on the check-in', async () => {
+    ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: null, queuedForApproval: true })
+    renderInvite()
+    fireEvent.click(await screen.findByRole('button', { name: /Pick up where I left off/i }))
+    await waitFor(() => expect(navigated).toContain('/join/waiting'))
+    expect(navigated.some(to => to.startsWith('/checkin/') || to.startsWith('/grounds/'))).toBe(false)
+  })
+
   it('emails a way in rather than signing in a different browser', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ emailed: true, email: 'abubakar@x.test' })
     renderInvite()

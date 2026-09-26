@@ -138,6 +138,12 @@ export class ParticipantsService {
           where: { participantId: participant.id, status: { not: CheckInStatus.COMPLETED } },
           orderBy: { sessionNumber: 'asc' },
         });
+        /* STILL WAITING TO BE LET IN (U.3): coming back on the same browser must land on "Almost in",
+           never on a check-in that will refuse them. */
+        const waitingStill = await this.prisma.user.findUnique({ where: { id: participant.userId }, select: { awaitingOrgApproval: true } });
+        if (waitingStill?.awaitingOrgApproval) {
+          return { resumed: true as const, groundId: participant.groundId, checkInId: null, queuedForApproval: true, saying: WAITING_TO_BE_LET_IN };
+        }
         return { resumed: true as const, groundId: participant.groundId, checkInId: checkIn?.id ?? null };
       }
 

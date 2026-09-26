@@ -80,6 +80,11 @@ export function InvitePage() {
        * The middle case is the one that keeps a forwarded link worthless to
        * whoever received it, without the link ever being worthless to its owner.
        */
+      /* Queued for approval, first time or coming back: "Almost in", never a check-in that refuses them. */
+      if ((res as any).resumed && res.queuedForApproval) {
+        navigate('/join/waiting', { replace: true })
+        return
+      }
       if ((res as any).resumed) {
         /*
           REFRESH WHO THEY ARE BEFORE SENDING THEM ON.
