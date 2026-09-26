@@ -79,7 +79,9 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 - **Recognition is not steady.** The record now keeps Victor (change 2 works: three entries, from both people). But the check for "named by more than one person" did not fire, because both people started their sentence with his name, and that check skips a word at the start of a sentence.
 
 7. **`ceda16c4`: a name at the start of a sentence now counts when the same name is used elsewhere in the check-in.** I ran recognition twice more on it. Both were wrong. The first time, Amara's "Victor, the contractor, was responsible…" still did not count, because nobody used "Victor" mid-sentence. The second time, only Joseph mentioned Victor at all, so the check was right to stay quiet. That second run also accused the lead of "taking credit for the design work", which nobody said. I have written that down as a charge nobody made.
-8. **Being built now:** a name used as a possessive, such as "Victor's", counts as a name everywhere in that check-in.
+8. **`74f10ffe`: a name used as a possessive, such as "Victor's", now counts as a name everywhere in that check-in.** I ran recognition twice on it, and both times the check reported Victor as named by two people. The first was clearly right: "two other participants say the most critical work was done by Victor". The second was close. That time the simulated lead gave credit to three names who appear nowhere else, "Alex", "Sarah" and "David", and the judgement chose that as the bigger gap. It mentioned Victor only in an action.
+
+**Run-7, the full run of all 24 scenarios, started at about 01:05 on the code as it stands at `74f10ffe`.** It is the first of the two full runs allowed tonight.
 
 ### Where each changed scenario stands, across the clean re-runs
 
