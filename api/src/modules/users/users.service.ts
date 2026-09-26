@@ -339,19 +339,33 @@ export class UsersService {
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where: { organizationId, deletedAt: null },
+    /*
+     * EVERYONE WHO BELONGS HERE, FROM THE MEMBERSHIPS (U.4). This read `User.organizationId`, which
+     * is only the organisation a person last switched to: somebody who belongs here but was looking
+     * at another company fell off this list, and a guest who had switched in to look was on it as
+     * though they worked here. The memberships say who belongs, and with what role here; a guest's
+     * membership says "Guest", so they are listed as one, never as one of this organisation's people.
+     * The role is the membership's too, because `User.role` is the role in whichever organisation
+     * they are looking at.
+     */
+    const inThisOrganisation = { organizationId, user: { deletedAt: null } };
+    const [rows, total] = await Promise.all([
+      this.prisma.organizationMembership.findMany({
+        where: inThisOrganisation,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { user: { createdAt: 'desc' } },
         /* phoneNumber so the members list can show who can be reached on WhatsApp and who cannot.
-           It is the org's own roster, read by an admin of it. */
-        /* awaitingOrgApproval so the list can say "Waiting to be let in" beside them (U.4). */
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true, awaitingOrgApproval: true },
+           It is the org's own roster, read by an admin of it. awaitingOrgApproval so the list can
+           say "Waiting to be let in" beside them. */
+        select: {
+          role: true,
+          user: { select: { id: true, email: true, firstName: true, lastName: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true, awaitingOrgApproval: true } },
+        },
       }),
-      this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
+      this.prisma.organizationMembership.count({ where: inThisOrganisation }),
     ]);
+    const users = rows.map((r) => ({ ...r.user, role: r.role as string }));
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale

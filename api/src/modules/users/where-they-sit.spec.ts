@@ -81,14 +81,36 @@ describe('an admin sets where somebody sits', () => {
 });
 
 describe('the People list', () => {
-  it('counts and names only this organisation\'s check-ins, and says where each person sits', async () => {
+  /*
+   * Built from the memberships (U.4). Miriam belongs to Baridi but is looking at another
+   * organisation right now, so her account's organisationId and role are that one's. Peter is a
+   * guest from Ouma Agencies who has switched in to look. And Sam belongs only to Ouma.
+   */
+  const accounts: any = {
+    miriam: { id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', organizationId: 'ouma', role: 'ADMIN', isActive: true, isEmailVerified: true, createdAt: new Date('2026-07-01'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
+    peter: { id: 'peter', email: 'peter@ouma-agencies.co.ke', firstName: 'Peter', lastName: 'Ouma', organizationId: 'baridi', role: 'GUEST', isActive: true, isEmailVerified: true, createdAt: new Date('2026-09-22'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
+    sam: { id: 'sam', email: 'sam@ouma.co', firstName: 'Sam', lastName: 'O', organizationId: 'baridi', role: 'ADMIN', isActive: true, isEmailVerified: true, createdAt: new Date('2026-06-01'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
+  };
+  const memberships = [
+    { userId: 'miriam', organizationId: 'baridi', role: 'MEMBER', level: 'Sales rep', team: 'Sales', reportsToUserId: 'wairimu' },
+    { userId: 'miriam', organizationId: 'ouma', role: 'ADMIN', level: null, team: null, reportsToUserId: null },
+    { userId: 'peter', organizationId: 'baridi', role: 'GUEST', level: null, team: null, reportsToUserId: null },
+    { userId: 'peter', organizationId: 'ouma', role: 'ADMIN', level: null, team: null, reportsToUserId: null },
+    { userId: 'sam', organizationId: 'ouma', role: 'MEMBER', level: null, team: null, reportsToUserId: null },
+  ];
+  function aList() {
     const asked: any[] = [];
     const prisma: any = {
+      organizationMembership: {
+        findMany: jest.fn(async (args: any) => {
+          const mine = memberships.filter((m) => m.organizationId === args.where.organizationId && (!args.where.userId || args.where.userId.in.includes(m.userId)));
+          if (args.select?.user) return mine.map((m) => ({ role: m.role, user: accounts[m.userId] }));
+          return mine;
+        }),
+        count: jest.fn(async (args: any) => memberships.filter((m) => m.organizationId === args.where.organizationId).length),
+      },
       user: {
-        findMany: jest.fn(async (args: any) => args.where?.organizationId
-          ? [{ id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', isActive: true, isEmailVerified: true, createdAt: new Date('2026-07-01'), phoneNumber: null }]
-          : [{ id: 'wairimu', firstName: 'Wairimu', lastName: 'Kamau', email: 'w@baridi.co.ke' }]),
-        count: jest.fn(async () => 1),
+        findMany: jest.fn(async () => [{ id: 'wairimu', firstName: 'Wairimu', lastName: 'Kamau', email: 'w@baridi.co.ke' }]),
       },
       groundParticipant: {
         findMany: jest.fn(async (args: any) => {
@@ -96,15 +118,35 @@ describe('the People list', () => {
           return [{ userId: 'miriam', createdAt: new Date('2026-07-02'), partyType: 'PARTICIPANT', ground: { id: 'g1', label: 'Sales team, Q3' }, checkIns: [{ id: 'c1' }] }];
         }),
       },
-      organizationMembership: {
-        findMany: jest.fn(async () => [{ userId: 'miriam', level: 'Sales rep', team: 'Sales', reportsToUserId: 'wairimu' }]),
-      },
     };
-    const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
+    return { service: new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any), asked };
+  }
+
+  it('lists everyone who belongs here, whichever organisation they are looking at, with their role here', async () => {
+    const { service } = aList();
+    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const miriam = data.find((p: any) => p.id === 'miriam')!;
+    /* Her account says Ouma and ADMIN; here she takes part. */
+    expect(miriam.role).toBe('MEMBER');
+    expect(data.map((p: any) => p.id)).not.toContain('sam');
+    expect(meta.total).toBe(2);
+  });
+
+  it('a guest who switched in to look is listed as a guest, never as one of this organisation\'s people', async () => {
+    const { service } = aList();
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.find((p: any) => p.id === 'peter')!.role).toBe('GUEST');
+    /* And at Ouma, where he is an admin, he is one. */
+    const ouma = await aList().service.findAll('ouma', { page: 1, limit: 100 } as any);
+    expect(ouma.data.find((p: any) => p.id === 'peter')!.role).toBe('ADMIN');
+  });
+
+  it('counts and names only this organisation\'s check-ins, and says where each person sits', async () => {
+    const { service, asked } = aList();
     const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
     /* Another company's check-ins are never counted here: each person's load is private. */
-    expect(asked[0]).toEqual({ userId: { in: ['miriam'] }, ground: { organizationId: 'baridi' } });
-    expect(data[0]).toMatchObject({
+    expect(asked[0]).toEqual({ userId: { in: ['miriam', 'peter'] }, ground: { organizationId: 'baridi' } });
+    expect(data.find((p: any) => p.id === 'miriam')).toMatchObject({
       level: 'Sales rep', team: 'Sales', reportsTo: { id: 'wairimu', name: 'Wairimu Kamau' },
       checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }],
       checkInsOn: 1, checkInsAnswered: 1,
