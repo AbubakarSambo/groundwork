@@ -5,6 +5,8 @@ import { GroundsCron } from './grounds.cron';
 import { AskingForMoreTimeService } from './asking-for-more-time.service';
 import { AskingForMoreTimeController } from './asking-for-more-time.controller';
 import { ParticipantRequestsController } from './participant-requests.controller';
+import { TodayController } from './today.controller';
+import { WhatNeedsYouService } from './what-needs-you.service';
 import { BillingModule } from '../billing';
 import { PatternsModule } from '../patterns/patterns.module';
 import { UsageModule } from '../usage/usage.module';
@@ -21,8 +23,8 @@ import { ConversationModule } from '../conversation/conversation.module';
    * starting the thing finds it.
    */
   imports: [BillingModule, PatternsModule, UsageModule, ConversationModule],
-  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController],
-  providers: [GroundsService, GroundsCron, AskingForMoreTimeService],
+  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService],
   exports: [GroundsService],
 })
 export class GroundsModule {}
