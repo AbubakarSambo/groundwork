@@ -1,5 +1,6 @@
 import { Inject, forwardRef, Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { HowCheckInsWorkDto } from './dto/how-check-ins-work.dto';
+import { aRoleToInviteAs } from './the-role-an-invitation-gives';
 import { GroundsService } from '../grounds/grounds.service';
 import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -351,10 +352,10 @@ export class UsersController {
   @ApiOperation({ summary: 'Invite many people at once, or preview what would happen' })
   async inviteMany(
     @CurrentUser() user: CurrentUserData,
-    @Body() body: { pasted?: string; preview?: boolean },
+    @Body() body: { pasted?: string; preview?: boolean; role?: string },
   ) {
     const org = await this.usersService.organisationName(user.organizationId);
-    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true);
+    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true, aRoleToInviteAs(body?.role));
   }
 
   @Get(':id')

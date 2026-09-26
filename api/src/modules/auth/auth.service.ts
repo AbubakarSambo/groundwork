@@ -666,8 +666,19 @@ export class AuthService {
     return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}) };
   }
 
-  async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {
+  async teamInvite(
+    inviterOrgName: string,
+    inviteeEmail: string,
+    inviterOrganizationId?: string,
+    /**
+     * U.4: the role the admin chose on the People page ("Admin", "Can open check-ins", "Takes part"),
+     * and the name typed beside the address. Both optional: every other caller invites a member, and
+     * a missing name is still made from the address.
+     */
+    how: { role?: 'ADMIN' | 'LEAD' | 'MEMBER'; name?: string | null } = {},
+  ): Promise<{ message: string }> {
     const lower = inviteeEmail.toLowerCase();
+    const role = how.role ?? 'MEMBER';
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
 
@@ -684,7 +695,9 @@ export class AuthService {
       }
 
       const localPart = lower.split('@')[0].replace(/[._\-+]/g, ' ').trim();
-      const firstName = (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0]).slice(0, 40) || 'there';
+      const typed = (how.name ?? '').replace(/\s+/g, ' ').trim();
+      const firstName = (typed ? typed.split(' ')[0] : (localPart.charAt(0).toUpperCase() + localPart.slice(1).split(' ')[0])).slice(0, 40) || 'there';
+      const lastName = typed ? typed.split(' ').slice(1).join(' ').slice(0, 100) : '';
 
       const result = await this.prisma.$transaction(async (tx) => {
         let organizationId = inviterOrganizationId;
@@ -698,7 +711,8 @@ export class AuthService {
           organizationId = org.id;
         }
         const u = await tx.user.create({
-          data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
+          /* The role the admin chose here (U.4); the membership row the middleware makes copies it. */
+          data: { organizationId, email: lower, firstName, lastName, role: inviterOrganizationId ? role : 'MEMBER', isEmailVerified: false },
         });
         /*
          * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
@@ -741,8 +755,9 @@ export class AuthService {
           /* A person joining costs a seat here exactly as a new account does. */
           const canInvite = await this.billing.canInviteMember(inviterOrganizationId);
           if (!canInvite.allowed) throw new BadRequestException(canInvite.reason);
+          /* The role this organisation's admin chose for them here (U.4), never their role at home. */
           await this.prisma.organizationMembership.create({
-            data: { userId: user.id, organizationId: inviterOrganizationId, role: 'MEMBER' },
+            data: { userId: user.id, organizationId: inviterOrganizationId, role },
           });
           this.logger?.log?.(`Existing account ${lower} added to org ${inviterOrganizationId} as a member.`);
         }

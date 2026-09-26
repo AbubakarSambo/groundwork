@@ -1,3 +1,4 @@
+import { aRoleToInviteAs } from '../users/the-role-an-invitation-gives';
 import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -382,8 +383,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Invite a colleague to Groundwork as a member of the same org' })
-  async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string }) {
+  async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string; role?: string; name?: string }) {
     const orgName = (user as any).organizationName ?? 'Groundwork';
-    return this.authService.teamInvite(orgName, body.email, user.organizationId);
+    /* The role and the name chosen on the People page (U.4). */
+    return this.authService.teamInvite(orgName, body.email, user.organizationId, { role: aRoleToInviteAs(body.role), name: body.name ?? null });
   }
 }

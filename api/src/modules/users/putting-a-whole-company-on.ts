@@ -56,8 +56,53 @@ const LOOKS_LIKE_AN_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * a mail client's To field, or a chat message, and all three arrive differently. Angle brackets and
  * display names are stripped: "Ada Lovelace <ada@example.com>" is what a mail client hands over.
  */
+/**
+ * "ONE PER LINE: A NAME AND AN EMAIL" (U.4, the prototype's People page). A line with exactly one
+ * address and a name beside it - "Ada Obi, ada@x.com", or a name and an address in two spreadsheet
+ * columns - is that person, written the way a mail client writes them, "Ada Obi <ada@x.com>". A line
+ * with two or more addresses is left alone, so a pasted To field still splits as it did.
+ */
+const A_NAME = /^[\p{L}][\p{L}\p{M}' .-]*$/u;
+/*
+ * A NAME IS TWO WORDS OR MORE, or one in its own spreadsheet column. "oops, b@x.com" is a typo
+ * beside an address, and must still come back as its own "not an email" row rather than become
+ * somebody called Oops.
+ */
+const aFullName = (name: string, fromAColumn: boolean) => A_NAME.test(name) && (fromAColumn || name.includes(' '));
+function aPersonOnALine(line: string): { name: string; email: string } | null {
+  if (/<[^>]+>/.test(line)) return null;
+  const fromAColumn = line.includes('\t');
+  const parts = line.split(/[,;\t]+|\s{2,}/).map((p) => p.trim()).filter(Boolean);
+  const withAt = parts.filter((p) => p.includes('@'));
+  if (withAt.length !== 1) return null;
+  const rest = parts.filter((p) => !p.includes('@')).join(' ').replace(/\s+/g, ' ').trim();
+  if (!rest || !aFullName(rest, fromAColumn)) {
+    /* "Ada Obi ada@x.com", with single spaces. */
+    const m = line.trim().match(/^(.+?)\s+(\S+@\S+)$/);
+    if (m && aFullName(m[1].trim(), false)) return { name: m[1].trim(), email: m[2] };
+    return null;
+  }
+  return { name: rest, email: withAt[0] };
+}
+function withNamesWritten(pasted: string): string {
+  return (pasted ?? '').split(/\r?\n/).map((line) => {
+    const p = aPersonOnALine(line);
+    return p ? `${p.name} <${p.email}>` : line;
+  }).join('\n');
+}
+
+/** The names given beside addresses, by address, for the accounts the invitations make. */
+export function namesIn(pasted: string): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const line of (pasted ?? '').split(/\r?\n/)) {
+    const p = aPersonOnALine(line);
+    if (p) names.set(p.email.trim().toLowerCase(), p.name);
+  }
+  return names;
+}
+
 export function addressesIn(pasted: string): string[] {
-  return (pasted ?? '')
+  return withNamesWritten(pasted)
     .split(/[,;\n\r\t]+|\s{2,}/)
     .map((part) => {
       const angled = part.match(/<([^>]+)>/);

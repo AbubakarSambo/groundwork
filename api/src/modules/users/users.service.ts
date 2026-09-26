@@ -12,7 +12,7 @@ import { TokenType, CompanyStage } from '@prisma/client';
 import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
-import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
+import { addressesIn, namesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
@@ -285,7 +285,7 @@ export class UsersService {
     return org?.name ?? 'your team';
   }
 
-  async inviteMany(organizationId: string, orgName: string, pasted: string, preview: boolean) {
+  async inviteMany(organizationId: string, orgName: string, pasted: string, preview: boolean, role: 'ADMIN' | 'LEAD' | 'MEMBER' = 'MEMBER') {
     const addresses = addressesIn(pasted);
     if (addresses.length > MOST_IN_ONE_PASTE) {
       throw new BadRequestException(
@@ -313,11 +313,13 @@ export class UsersService {
      * A row that throws is reported as itself rather than ending the run. The whole point is that
      * an admin gets one answer per person.
      */
+    const names = namesIn(pasted);
     const sent: Row[] = [];
     for (const row of rows) {
       if (row.result !== 'invited') { sent.push(row); continue; }
       try {
-        await this.auth.teamInvite(orgName, row.email, organizationId);
+        /* The role chosen on the page, and the name typed beside the address (U.4). */
+        await this.auth.teamInvite(orgName, row.email, organizationId, { role, name: names.get(row.email) ?? null });
         sent.push(row);
       } catch {
         /* Almost always the seat gate closing mid-run. Named as what the admin has to act on. */
