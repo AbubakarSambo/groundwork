@@ -100,6 +100,10 @@ date, and not a word about who asked. Everything downstream then reads as three 
 their lead, when the record says they were following somebody else. Keep the work AND keep who
 asked for it.
 
+AND KEEP HOW THEY SAY THE WORK REALLY RUNS. Where a person's facts include a line saying how the
+work really runs, keep it in their paragraph with its names, dates and figures. It is often the
+whole finding.
+
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
 
@@ -149,6 +153,9 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
      line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */
   if (f.whyTheySayTheyAreOnIt) lines.push(`  why they say they are on this work, in their words: "${f.whyTheySayTheyAreOnIt}"`);
+  /* How they say the work really runs, where that differs from how it is supposed to. See
+     howTheySayTheWorkReallyRuns: OPERATING_DIFFERENCE lines, read by nothing until 26 September. */
+  for (const r of f.howTheySayTheWorkReallyRuns ?? []) lines.push(`  how they say the work really runs, in their words: "${r}"`);
   for (const n of f.numbers) {
     lines.push(`  a number: ${n.what} - target ${n.target}${n.soFar != null ? `, record has ${n.soFar}` : ''}, set by ${n.setBy}`);
   }

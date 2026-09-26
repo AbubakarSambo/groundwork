@@ -77,6 +77,32 @@ export interface PersonFacts {
    * inside a PROGRESS line, which IS read. That is the fact arriving by accident.
    */
   whyTheySayTheyAreOnIt: string | null;
+  /**
+   * HOW THEY SAY THE WORK REALLY RUNS, WHERE THAT IS NOT HOW IT IS SUPPOSED TO, in their own words.
+   * Up to two, and an empty list where they said nothing of the kind.
+   *
+   * These are OPERATING_DIFFERENCE lines, and until 26 September nothing here read them. Run 6
+   * stored fifteen of them across the twenty-four scenarios and every one was lost before the
+   * paragraph was written, which means before the judgement was written, because the judgement is
+   * built from the paragraphs. Among the fifteen were the facts four right answers rest on:
+   *
+   *   "I have a verbal 60-day payment arrangement with our main printing supplier, which I agreed
+   *    with their MD in 2022; our written terms state 30 days." (Patience, handing over. Her
+   *    paragraph said something minor about following up purchases instead.)
+   *   "Since March 11th, I've been almost entirely focused on inbound sales support as requested by
+   *    Nadia, which has meant no progress on the three partnerships." (Zainab. The judgement said
+   *    she had been "asked by somebody else", with the name and the date gone.)
+   *   "I'm faster at them, so it's quicker for me to just handle them." (Daniel, the new manager.
+   *    That sentence is, nearly word for word, the scenario's right answer.)
+   *   "Nobody explained that the repayments started immediately." (The loans scenario.)
+   *
+   * It is the same defect the INTENT field above was added for, one type along: the record held it,
+   * the writer was never given it, and no instruction downstream can put back what was never passed.
+   * The entries the conversation service writes against the company's written process are long
+   * "This is what they described... This is what the written process says..." sentences; they are
+   * passed through as they are.
+   */
+  howTheySayTheWorkReallyRuns: string[];
   numbers: ANumberTheyHold[];
   /** A number the lead set for them that they have never once mentioned. */
   aNumberSetForThemTheyHaveNeverSaid: { what: string; target: number } | null;
@@ -149,6 +175,24 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
   const namesAReason = intents.filter((s) => /\b(asked|told|said to|requested|instructed|direction from|came from|mentioned it to me|brought it up)\b/i.test(s.text));
   const why = latest(namesAReason) ?? latest(intents);
 
+  /*
+   * AND HOW THEY SAY THE WORK REALLY RUNS. See the field's note. Two at most, so one person's
+   * paragraph is not buried under them. The ones carrying a specific come first - a figure, a date,
+   * or somebody's name in the middle of the sentence - because "our written terms state 30 days" and
+   * "as requested by Nadia" are the lines the finding turns on, and "things are a bit informal here"
+   * is not. Among equals, the latest session wins, and the same sentence said twice counts once.
+   */
+  const carriesASpecific = (t: string): boolean => /\d/.test(t) || /[a-z,;:]\s+(?!I\b)[A-Z][A-Za-z]+/.test(t);
+  const ranked = said
+    .filter((s) => s.type === 'OPERATING_DIFFERENCE')
+    .map((s) => ({ session: s.session, text: clean(s.text) }))
+    .filter((s) => s.text)
+    .sort((a, b) => Number(carriesASpecific(b.text)) - Number(carriesASpecific(a.text)) || b.session - a.session)
+    .map((s) => s.text);
+  const howItReallyRuns = ranked
+    .filter((t, i) => ranked.findIndex((u) => u.toLowerCase() === t.toLowerCase()) === i)
+    .slice(0, 2);
+
   const setForThem = p.targets.filter((t) => t.yours && !t.setByThem && t.target != null);
   const own = p.targets.filter((t) => t.yours && t.setByThem && t.target != null);
 
@@ -176,7 +220,9 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
   const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [] });
   const doesNotAddUp = diffs.slice(0, 2).map((d) => clean(d.lines[2] ?? d.lines[0] ?? '')).filter(Boolean);
 
-  const hasGap = !!twoNumbers || !!neverSaid || doesNotAddUp.length > 0;
+  /* A difference between how the work runs and how it is supposed to run is something the lead
+     should look at, whoever turns out to be right about it. */
+  const hasGap = !!twoNumbers || !!neverSaid || doesNotAddUp.length > 0 || howItReallyRuns.length > 0;
 
   return {
     participantId: p.participantId,
@@ -186,6 +232,7 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     whereTheySayTheyAre: stand ? clean(stand.text) : null,
     whatTheySayIsInTheWay: worry ? clean(worry.text) : null,
     whyTheySayTheyAreOnIt: why ? clean(why.text) : null,
+    howTheySayTheWorkReallyRuns: howItReallyRuns,
     numbers,
     aNumberSetForThemTheyHaveNeverSaid: neverSaid,
     twoNumbersForOneTarget: twoNumbers,
