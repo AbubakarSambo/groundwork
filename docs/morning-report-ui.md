@@ -460,6 +460,12 @@ reviewed" in this report.
    on one person's page, because each person's load is private and it belongs to the You page (U.12);
    the check-in's "People and setup" tab (with B1 and B3); the read-only note on the board (U.10); and
    your own Settings page (`own-settings.txt`).
+9. **Changing someone who is looking at another organisation fails.** An admin who changes the role
+   or phone number of a person currently looking at a different organisation gets "User not found".
+   And when a role is changed, it is written to the person's account as a whole, which is their role
+   in whichever organisation they last looked at, not necessarily this one. **My recommendation:** find
+   and change the person through this organisation's membership, and write the role only there, as
+   the People list now does. That changes where roles are kept, so I have not done it without you.
 8. **"Changes apply straight away."** The prototype adds "and are noted with your name", but nothing
    records who changed a role. **Left out.** **My recommendation:** record it, then add the words back.
 
@@ -817,3 +823,6 @@ signed in (item 14). Item 15 lists what needs you.
   months. The limit and length live in the database, never in the screens. Billing must really grant
   it before the sign-up's sentence is switched on. Every screen that mentions the free offer uses the
   one shared sentence.
+- **For U.19 (billing): the head count on the People page.** "27 people, on the Growth plan…" comes
+  from billing's seat count, which still counts accounts by the organisation they last looked at. The
+  People list now counts real memberships, including guests, so the two numbers can differ.
