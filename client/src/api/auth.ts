@@ -37,6 +37,19 @@ export interface WaitingAtTheDoor {
 /** "Fewer than 20" or "20 or more": what they chose, and the line they were shown. */
 export type TeamSizeSaid = { said: 'fewer' | 'more'; line: number }
 
+/** What the person waiting to be let in reads about their own request (U.3). */
+export type MyWaiting =
+  | { waiting: false }
+  | {
+      waiting: true
+      organisationName: string
+      askedAt: string
+      /** Named only after a real invitation. */
+      admin: { name: string; firstName: string } | null
+      inviterFirstName: string | null
+      canRemindFrom: string
+    }
+
 export const authApi = {
   /* No `requestMagicLink`. It called /auth/register-magic-link, which creates accounts, and its only
      caller was the resend on "Check your email", where it failed for every existing account and wiped
@@ -110,6 +123,13 @@ export const authApi = {
 
   setPhoneNumber: (phoneNumber: string | null) =>
     apiClient.patch<User>('/auth/me', { phoneNumber }).then(r => r.data),
+
+  /** "Almost in" (U.3): my own request to be let into an organisation, if I am waiting. */
+  myWaiting: () =>
+    apiClient.get<MyWaiting>('/users/me/waiting').then(r => r.data),
+  /** "Remind Grace". Once a day, enforced on the server. */
+  remindAboutMyWaiting: () =>
+    apiClient.post<{ reminded: true; canRemindFrom: string }>('/users/me/waiting/remind').then(r => r.data),
 
   leaveOrg: () =>
     apiClient.post<{ left: boolean }>('/users/me/leave').then(r => r.data),

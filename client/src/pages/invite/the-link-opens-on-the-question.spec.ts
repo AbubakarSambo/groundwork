@@ -28,7 +28,8 @@ describe('the one-line link opens the question on every visit', () => {
     /* `straightToTheReport` joined it on 22 Sep 2026: a report link for somebody who answered through an open link goes straight through too. */
     expect(src).toMatch(/if \(preview && \(opensStraightOnTheQuestion\(preview\.scenario\) \|\| straightToTheReport\) && accept\.isIdle\) \{\s*accept\.mutate\(\)/);
     expect(src).not.toMatch(/&& !preview\.alreadyAccepted && accept\.isIdle/);
-    expect(src).toMatch(/\(opensStraightOnTheQuestion\(preview\.scenario\) \|\| straightToTheReport\) && !failed && !waiting && !emailedTo && \(accept\.isPending \|\| accept\.isIdle \|\| accept\.isSuccess\)/);
+    /* U.3: "waiting" left the page, because waiting for an admin is its own page now (/join/waiting). */
+    expect(src).toMatch(/\(opensStraightOnTheQuestion\(preview\.scenario\) \|\| straightToTheReport\) && !failed && !emailedTo && \(accept\.isPending \|\| accept\.isIdle \|\| accept\.isSuccess\)/);
   });
   it('and the server signs the link\'s own recipient in again for that situation', () => {
     const svc = require('fs').readFileSync(require('path').join(__dirname, '../../../../api/src/modules/participants/participants.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

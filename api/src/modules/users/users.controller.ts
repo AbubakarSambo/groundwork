@@ -81,6 +81,24 @@ export class UsersController {
     return this.grounds.releaseAnyoneWaitingForASeat(organizationId);
   }
 
+  /**
+   * THE PERSON WAITING TO BE LET IN, ABOUT THEIR OWN REQUEST (U.3, "Almost in"). Any signed-in
+   * person, because the person waiting is not an admin; each reads and reminds about their own only.
+   * Before `waiting/:id/...` so the path is not read as an id.
+   */
+  @Get('me/waiting')
+  @ApiOperation({ summary: 'My own request to be let into an organisation, if I am waiting' })
+  async myWaiting(@CurrentUser('id') userId: string) {
+    return this.door.myOwnRequest(userId);
+  }
+
+  @Post('me/waiting/remind')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remind the admin who was asked. Once a day.' })
+  async remindAboutMyWaiting(@CurrentUser('id') userId: string) {
+    return this.door.remind(userId);
+  }
+
   @Post('waiting/:id/approve')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Let somebody into the organisation. They can check in, and they hold a seat.' })

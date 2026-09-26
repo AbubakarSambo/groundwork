@@ -90,6 +90,7 @@ import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { OrgsPage } from '@/pages/org/OrgsPage'
+import { WaitingForAnAdminPage } from '@/pages/join/WaitingForAnAdminPage'
 import { useYourOrganisations } from '@/components/gw/your-organisations'
 import { takeJustSignedIn } from '@/lib/choose-an-organisation'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
@@ -404,6 +405,8 @@ export default function App() {
             {/* The QR code's own door: answer first, say who you are at the end. */}
             <Route path="/answer" element={<AnswerFirstPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />
+            {/* "Almost in" (A3): somebody from outside, waiting for an admin to let them in. */}
+            <Route path="/join/waiting" element={<RequireAuth><WaitingForAnAdminPage /></RequireAuth>} />
 
             {/* "Create an organisation" (A3). Plain RequireAuth: it is where somebody makes or names
                 one, so nothing about their organisation may be asked of them first. The old

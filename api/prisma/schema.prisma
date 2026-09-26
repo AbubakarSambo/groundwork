@@ -5081,6 +5081,13 @@ model MembershipRequest {
   /// Why it was declined, in the admin's words.
   reason          String?                 @db.Text
 
+  /// TRUE WHEN THE PERSON ACCEPTED A REAL INVITATION to a check-in, rather than a link shared with
+  /// many people. Only then does their "Almost in" page name the admin who was asked (Hafsah, 26
+  /// September). False for every request made before this and for the join link.
+  viaInvitation   Boolean                 @default(false) @map("via_invitation")
+  /// When the person last pressed "Remind". Once a day, counted from this or from when they asked.
+  lastRemindedAt  DateTime?               @map("last_reminded_at")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

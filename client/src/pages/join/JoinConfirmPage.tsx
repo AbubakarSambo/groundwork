@@ -24,7 +24,6 @@ export function JoinConfirmPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [problem, setProblem] = useState('')
-  const [waiting, setWaiting] = useState('')
   const started = useRef(false)
 
   useEffect(() => {
@@ -47,7 +46,8 @@ export function JoinConfirmPage() {
         } catch { /* the placeholder stands until the next profile read; the check-in still opens */ }
         /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
            message about something else, is the failure the register calls P4-B03. They are told here. */
-        if (res.queuedForApproval) { setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start.'); return }
+        /* "Almost in" (U.3), a page of its own that can be opened again. */
+        if (res.queuedForApproval) { navigate('/join/waiting', { replace: true }); return }
         navigate(`/checkin/${res.checkInId}`, {
           state: { groundId: res.groundId, sessionNumber: 1 },
           replace: true,
@@ -59,15 +59,6 @@ export function JoinConfirmPage() {
         setProblem(err?.response?.data?.message ?? 'That link did not work. Ask whoever sent it for a new one.')
       })
   }, [token, navigate, setAuth])
-
-  if (waiting) {
-    return (
-      <Arrival>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>You're in - almost.</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)', maxWidth: 420 }}>{waiting}</div>
-      </Arrival>
-    )
-  }
 
   if (problem) {
     return (

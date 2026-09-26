@@ -36,7 +36,6 @@ export function InvitePage() {
   /** Set when the server has emailed a fresh way in, instead of signing us in here. */
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
   /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
-  const [waiting, setWaiting] = useState('')
   /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
   const [failed, setFailed] = useState('')
   const [declinedQuietly, setDeclinedQuietly] = useState(false)
@@ -120,7 +119,8 @@ export function InvitePage() {
       /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
          message about something else and a retry that can never work, is P4-B03. Told here. */
       if (res.queuedForApproval) {
-        setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start. They have been asked.')
+        /* "Almost in" (U.3), a page of its own that can be opened again and says who was asked. */
+        navigate('/join/waiting', { replace: true })
         return
       }
       // Seamless handoff: straight into their session-1 check-in on the
@@ -192,18 +192,6 @@ export function InvitePage() {
    * on. Not an error, and not a dead end - just one more click, landing in the
    * inbox that was actually invited.
    */
-  if (waiting) {
-    return (
-      <InviteShell>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>🕐</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>One thing before you start</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{waiting}</div>
-        </div>
-      </InviteShell>
-    )
-  }
-
   if (emailedTo) {
     return (
       <InviteShell>
@@ -236,7 +224,7 @@ export function InvitePage() {
     )
   }
 
-  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !waiting && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
+  if (preview && (opensStraightOnTheQuestion(preview.scenario) || straightToTheReport) && !failed && !emailedTo && (accept.isPending || accept.isIdle || accept.isSuccess)) {
     return (
       <InviteShell>
         <div style={{ textAlign: 'center' }}>

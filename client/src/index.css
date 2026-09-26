@@ -1663,3 +1663,9 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }
 .gw-invite-facts h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; color: var(--gw-text); }
 .gw-invite-facts p { font-size: 14.5px; line-height: 1.55; margin: 0; color: var(--gw-text); }
+
+/* "Almost in" (A3, join-waiting.txt): the three steps, done and still to happen. */
+.gw-steps { list-style: none; margin: 8px 0 0; padding: 14px 18px; border: 1px solid var(--gw-border); border-radius: 10px; background: #fff; display: grid; gap: 10px; }
+.gw-steps li { display: flex; gap: 12px; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
+.gw-steps li > span[aria-hidden] { width: 18px; flex: none; color: var(--gw-sub); }
+.gw-steps li.done > span[aria-hidden] { color: var(--gw-green-t); }

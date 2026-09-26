@@ -297,6 +297,8 @@ export class ParticipantsService {
             email,
             requestedByUserId: ground.initiatorId,
             groundId: ground.id,
+            /* A real invitation, so their "Almost in" page may name the admin asked (U.3). */
+            viaInvitation: true,
           },
           /* A request already decided is not reopened by another invitation, and a pending one is
              left exactly as it is - the admin is looking at a list, not a moving target. */

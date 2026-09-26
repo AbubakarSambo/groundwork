@@ -28,6 +28,81 @@ export class WhoIsWaitingAtTheDoorService {
     private readonly email: EmailService,
   ) {}
 
+  /**
+   * THE PERSON WAITING, READING THEIR OWN REQUEST (U.3, #/join/waiting, "Almost in").
+   *
+   * Only their own, and only while it is pending. The admin is named only when they came through a
+   * real invitation (Hafsah, 26 September); a link shared with many people names nobody. Which admin:
+   * the one who holds the organisation (its owner) when they are an active admin, otherwise the
+   * admin who has been one longest. "Remind" reaches that same person.
+   */
+  async myOwnRequest(userId: string) {
+    const request = await this.prisma.membershipRequest.findFirst({
+      where: { userId, status: MembershipRequestStatus.PENDING },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, requestedByUserId: true,
+        organization: { select: { name: true } },
+      },
+    });
+    if (!request) return { waiting: false as const };
+    const admin = request.viaInvitation ? await this.theAdminAsked(request.organizationId) : null;
+    const inviter = request.requestedByUserId
+      ? await this.prisma.user.findUnique({ where: { id: request.requestedByUserId }, select: { firstName: true } })
+      : null;
+    return {
+      waiting: true as const,
+      organisationName: request.organization.name,
+      askedAt: request.createdAt.toISOString(),
+      admin: admin ? { name: [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim(), firstName: admin.firstName } : null,
+      inviterFirstName: request.viaInvitation ? (inviter?.firstName ?? null) : null,
+      canRemindFrom: this.nextRemindAt(request).toISOString(),
+    };
+  }
+
+  /** "Remind": once a day, counted from the ask or the last reminder, and only to the admin named. */
+  async remind(userId: string, now: Date = new Date()) {
+    const request = await this.prisma.membershipRequest.findFirst({
+      where: { userId, status: MembershipRequestStatus.PENDING },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, email: true, groundId: true, requestedByUserId: true },
+    });
+    if (!request) throw new NotFoundException('You are not waiting to be let in anywhere.');
+    if (!request.viaInvitation) throw new BadRequestException('There is nobody to remind for this request. The admins have already been asked.');
+    const next = this.nextRemindAt(request);
+    if (now < next) {
+      throw new BadRequestException('You can send a reminder once a day. You can send the next one tomorrow.');
+    }
+    const admin = await this.theAdminAsked(request.organizationId);
+    if (!admin) throw new BadRequestException('There is nobody to remind yet. The organisation has no admin who can let you in.');
+    await this.prisma.membershipRequest.update({ where: { id: request.id }, data: { lastRemindedAt: now } });
+    const [inviter, ground] = await Promise.all([
+      request.requestedByUserId ? this.prisma.user.findUnique({ where: { id: request.requestedByUserId }, select: { firstName: true, lastName: true, email: true } }) : null,
+      request.groundId ? this.prisma.ground.findUnique({ where: { id: request.groundId }, select: { label: true } }) : null,
+    ]);
+    const addedBy = inviter ? ([inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email) : 'somebody on your team';
+    await this.email
+      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', request.email, addedBy, ground?.label ?? null)
+      .catch((err: any) => this.logger.warn(`Reminder to ${admin.email} failed: ${err?.message}`));
+    return { reminded: true, canRemindFrom: this.nextRemindAt({ createdAt: request.createdAt, lastRemindedAt: now }).toISOString() };
+  }
+
+  private nextRemindAt(r: { createdAt: Date; lastRemindedAt: Date | null }): Date {
+    const last = r.lastRemindedAt && r.lastRemindedAt > r.createdAt ? r.lastRemindedAt : r.createdAt;
+    return new Date(last.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  /** The owner when they are an active admin; otherwise the admin who has been one longest. */
+  private async theAdminAsked(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { ownerUserId: true } });
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId, role: 'ADMIN', isActive: true, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+    return admins.find((a) => a.id === org?.ownerUserId) ?? admins[0] ?? null;
+  }
+
   /** Everybody waiting on this organisation, oldest first - a queue is answered in order. */
   async waiting(organizationId: string) {
     const rows = await this.prisma.membershipRequest.findMany({
