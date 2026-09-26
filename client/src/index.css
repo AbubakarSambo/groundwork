@@ -1579,13 +1579,3 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    floating help button. It stays on the pages that have no sidebar (setting up an organisation, an
    invitation), where it is still the only way to Help. */
 body:has(.gw-sidebar-desktop) .gw-help-btn { display: none !important; }
-
-/* ── THE SHORT TOUR (A1) ───────────────────────────────────── */
-.gw-tour-offer { position: fixed; z-index: 105; left: 10px; bottom: 76px; width: 236px; background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: 0 14px 40px rgba(26,25,22,.14); padding: 14px; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); display: flex; flex-direction: column; gap: 10px; }
-@media (max-width: 640px) { .gw-tour-offer { left: 16px; right: 16px; width: auto; bottom: 76px; } }
-.gw-tour-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.gw-tour-ring { position: fixed; z-index: 110; border-radius: 10px; box-shadow: 0 0 0 3px var(--gw-navy), 0 0 0 9999px rgba(26,25,22,.28); pointer-events: none; }
-.gw-tour-card { position: fixed; z-index: 111; width: 320px; max-width: calc(100vw - 32px); background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: 0 14px 40px rgba(26,25,22,.18); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-@media (max-width: 640px) { .gw-tour-card { width: auto; } }
-.gw-tour-count { font-size: 13px; font-weight: 700; color: var(--gw-sub); }
-.gw-tour-says { font-size: 16px; line-height: 1.5; color: var(--gw-text); }

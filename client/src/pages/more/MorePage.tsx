@@ -6,7 +6,6 @@ import { navItemsFor } from '@/components/gw/AppShell'
 import { OrganisationChoices } from '@/components/gw/OrganisationChoices'
 import { Button } from '@/components/gw/kit'
 import { useJumpStore } from '@/stores/jump'
-import { useTourStore } from '@/stores/tour'
 
 /**
  * "MORE", ON A PHONE (A1, docs/prototype/screens/A1-look-and-layout/more-menu-phone.txt).
@@ -26,7 +25,6 @@ export function MorePage() {
   const showHelp = useHelpStore(s => s.show)
   const showFeedback = useFeedbackStore(s => s.show)
   const openJump = useJumpStore(s => s.show)
-  const startTour = useTourStore(s => s.start)
 
   const items = navItemsFor(user)
   const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
@@ -50,7 +48,6 @@ export function MorePage() {
         <li><button type="button" className="gw-more-item" onClick={() => showHelp(0)}><MoreIcon d="help" /><b>Help</b></button></li>
         <li><NavLink to="/talk-to-us" className="gw-more-item"><MoreIcon d="talk" /><b>Talk to us</b></NavLink></li>
         <li><button type="button" className="gw-more-item" onClick={showFeedback}><MoreIcon d="feedback" /><b>Send feedback</b></button></li>
-        <li><button type="button" className="gw-more-item" onClick={startTour}><MoreIcon d="help" /><b>Take the short tour</b></button></li>
         {staffItems.map(item => (
           <li key={item.to}>
             <NavLink to={item.to} className="gw-more-item">{item.icon(false)}<b>{item.label}</b></NavLink>
