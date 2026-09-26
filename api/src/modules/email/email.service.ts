@@ -22,7 +22,8 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  /** Made on the first real send, never at start-up. See `theResendClient` below. */
+  private resend: Resend | null = null;
   private fromEmail: string;
   private frontendUrl: string;
 
@@ -31,7 +32,6 @@ export class EmailService implements OnModuleInit {
     private delivery: DeliveryService,
     private prisma: PrismaService,
   ) {
-    this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
     this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
   }
@@ -68,6 +68,28 @@ export class EmailService implements OnModuleInit {
   private keyIsAPlaceholder(): boolean {
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
+  }
+
+  /**
+   * THE CLIENT IS MADE ON THE FIRST REAL SEND, NOT WHEN THE API STARTS.
+   *
+   * Found by the screens workspace on 26 September 2026, setting up a second computer.
+   * `api/.env.example` says to leave `RESEND_API_KEY` empty, and with it empty the API would not
+   * start at all: the constructor built a Resend client, Resend refuses an empty key, and the whole
+   * process died with "Missing API key" before anything else ran.
+   *
+   * The service already knew better everywhere else. `keyIsAPlaceholder` treats an empty key,
+   * `re_...` and `re_test` as the same thing - nothing leaves this computer and every send is
+   * written to the log instead - and the send path below only reaches the client when
+   * `canSendForReal()` is true. The one line that made the client was never told.
+   *
+   * So it is made here, on demand, and an empty key now behaves exactly like a fake one, which is
+   * what the example file has always promised. Their workaround of setting `re_test` is no longer
+   * needed, though it still works.
+   */
+  private theResendClient(): Resend {
+    if (!this.resend) this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
+    return this.resend;
   }
 
   private canSendForReal(): boolean {
@@ -399,7 +421,7 @@ export class EmailService implements OnModuleInit {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
+    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
       this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
