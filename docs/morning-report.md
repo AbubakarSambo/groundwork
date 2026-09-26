@@ -6,6 +6,93 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## Your three decisions, done
+
+### 1. People's own words stay exactly as they said them
+
+The rulebook exempted quotations from **one** of its rules, the one about jargon. Every other rule
+in it — full sentences, no fragments, no colons, a capital letter to start, plainer words — read as
+applying to everything, quotations included.
+
+Nothing had gone wrong yet that I could measure. What made it worth doing anyway is that the
+wording score counts jargon **inside quoted material too**, so the cheapest way to improve the
+number was always to tidy up what somebody said, and nothing in the rules stood in the way of it.
+
+The exemption is now the first thing in the rulebook, before any rule it exempts, and it says what
+to do instead: write your own plain sentence around the quotation and leave the quotation
+untouched. A test pins the order, so a new rule cannot be added above it.
+
+### 2. Plain names for all 49 patterns
+
+In `docs/pattern-names.md`. Nothing switched on, no code reads it, the codes and internal names
+untouched. Checked against `pattern-library.ts` rather than against my own list: 49 in the
+document, 49 in the code, none missing and none invented.
+
+Most are a short sentence rather than a noun phrase, because several internal names are **labels on
+a person** — "Blame Shifting", "CEO-Pleasing", "Defensive Leadership", "Extractive Behaviour" — and
+the rule is that no label goes on a person.
+
+E4 and F5 are in a section of their own. They are never named to either person, and giving them a
+friendly plain name makes it *more* likely somebody puts them on a screen, not less.
+
+**One thing for you.** Your example was "Coordination Without Leverage" → "Coordinates without
+being in charge". The detector means something else by leverage: B5 is *"heavy communication, no
+reduction in blockers"* — coordinating that does not unblock anything, whatever the person's
+authority. Coordinating without authority is a different thing and often not a fault at all. I have
+written B5 to the detector's meaning and left your sentence beside it. It may be the detector that
+is named wrongly.
+
+### 3. Task 1.5
+
+**The forty-word floor is gone.** An empty brief still gets nothing, because there is nothing to
+read; everything else is read, and the validator throws out what does not hold up, which is the
+check that should have been doing this instead of a word count standing in front of it.
+
+**And the guard below it is gone too**, so no thin frame can take the judgement with it again. A
+room is judged from its people and their differences and never used the frame at all.
+
+**Nothing is anybody's fault unless an account says so.** The limit now sits directly after the
+rule that licensed it — the one inviting a finding about how the lead is running things — with the
+two sentences that made it: *"Nobody wrote the target down"* is what the record holds, *"You
+created this problem"* is a charge.
+
+**And the finding that was missed.** Nothing told the model to read *across* the blocks. The
+workplan answer — two leads have both costed the same contractor, and neither knows — is in neither
+person's account. It only exists between them.
+
+I have left one other forty-word floor alone, on `theSubjectsToCover`, deliberately. It decides
+whether a brief is worth splitting into separately-askable subjects for a broadcast, it does not
+block the judgement, and its reason holds: a one-line brief has one subject and the situation pack
+already asks about it.
+
+### And a privacy hole the change made visible
+
+`ALIGNMENT_FEED_ONLY_CODES` — F5, E4, LOW_SPEC_MULTI_DIM, COLLUSION_RISK — are documented as never
+to be named to either person directly, and are filtered out of the report, the board's alignment
+feed and the live conversation. **The room judgement's material was the one route with no filter on
+it, and the lead reads the judgement.** A cofounder ground handed it:
+
+> [E4 Founder Burden Imbalance]: absorbs operational load relative to the other founder
+
+about the other founder, to the founder.
+
+This was true of every ground that already had a frame. Making the judgement run more often is only
+what exposed it — the tripwire went red the moment those eight grounds started producing a
+judgement. It is filtered now, and asserted **across every prompt** rather than one, which is a
+stronger claim than the test made before.
+
+### Three tests changed, none weakened
+
+Two pattern tripwires kept whichever model call ran last, which was fine while report synthesis was
+the only one. A second call runs after it now, so both were asserting about the judgement while
+their names and headers both said synthesis — and both went red over a code the judgement is
+designed to receive. They pick out the synthesis call explicitly now.
+
+The engine-prompt ceiling moved from 118,000 to 119,000, by the rulebook's growth and no further,
+following the discipline its own comment set. It also now asserts outright that neither protocol is
+in the everybody-prompt, so the real claim no longer rides on a number that has to be raised each
+time the rulebook grows.
+
 ## CORRECTION: the reports were never empty, and the run was lying to me
 
 **The section below this one is wrong and I am leaving it there rather than deleting it, because
