@@ -114,6 +114,7 @@ import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferra
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
+import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
@@ -3962,6 +3963,30 @@ happened, and what is in the way.`;
         select: { code: true, observationText: true, seenInSessions: true, participantId: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
       const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
+      /*
+       * AND WHAT MORE THAN ONE PERSON'S RECORD NAMES, WHICH NOBODY IN THE CHECK-IN CAN SEE.
+       *
+       * The judgement is built from one written paragraph per person, so a thing two people both
+       * named only reaches it if it survived into both paragraphs - and on the workplan scenario
+       * it survived into one. The plan came to 141% of the budget because two leads had both
+       * costed the same design contractor for the same eight weeks, and the judgement reported
+       * the two totals and asked for one supplier's cost: circling it, because the fact was not
+       * in front of it.
+       *
+       * Counted off the records rather than written: see what-more-than-one-person-named.ts.
+       */
+      const perPersonTexts = await this.prisma.recordEntry.findMany({
+        where: { disputedAt: null, participant: { groundId } },
+        select: { text: true, participantId: true },
+      }).catch(() => [] as any[]);
+      const shared = whatMoreThanOnePersonNamed(
+        room!.people.map((p) => ({
+          who: p.who,
+          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => String(r.text ?? '')),
+        })),
+        room!.people.map((p) => p.who),
+      );
+      if (shared.length) this.logger.log(`The judgement on ${groundId} was given ${shared.length} thing(s) named by more than one person: ${shared.map((x) => x.name).join(', ')}.`);
       material = theRoom(
         room!.people.map((p) => ({
           who: p.who,
@@ -3990,6 +4015,7 @@ happened, and what is in the way.`;
         })),
         room!.differences,
         sessions,
+        namedByMoreThanOne(shared),
       );
       instruction = theJudgementOverARoom(
         'whoever called this check-in',

@@ -442,6 +442,9 @@ export function theRoom(
   people: SomebodyInTheRoom[],
   differences: { topic: string; positions: { who: string; view: string }[] }[],
   sessions: number,
+  /* What more than one person's record names. Counted, not judged - see
+     what-more-than-one-person-named.ts. Omitted where nothing is shared. */
+  sharedNames = '',
 ): string {
   const lines: string[] = [
     `${people.length} people, ${sessions} ${sessions === 1 ? 'session' : 'sessions'}.`,
@@ -463,7 +466,10 @@ export function theRoom(
       lines.push(`  ${d.topic}`);
       for (const pos of d.positions) lines.push(`    ${pos.who}: ${pos.view}`);
     }
+    lines.push('');
   }
+  /* Last, because it is the thing nobody in the check-in can see from where they sit. */
+  if (sharedNames.trim()) lines.push(sharedNames.trim());
   return lines.join('\n');
 }
 

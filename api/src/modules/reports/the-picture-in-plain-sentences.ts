@@ -86,6 +86,20 @@ they are waiting on. Where the record shows two numbers for one thing, or a numb
 have never mentioned, say so as a plain fact about what was and was not said - never as a criticism
 of them.
 
+AND WHO ASKED THEM FOR IT, WHERE THEY SAID. If somebody's account gives a reason they are doing
+this work rather than something else - a person who asked them, a request, an instruction, a
+conversation - that reason goes in their paragraph, named. It is usually the single most useful
+fact in the whole account, and it is the one most easily lost, because it sits next to the work
+rather than in it.
+
+A live example, and the paragraph that dropped it. Three engineers were each working on something
+different from the priority their lead had set, and two of them said in their own words that the
+company's chief executive had asked them to, on a named date. The paragraph came out as "their goal
+is for the referral scheme to be live, and they began work on it on 2 September" - the work, the
+date, and not a word about who asked. Everything downstream then reads as three people ignoring
+their lead, when the record says they were following somebody else. Keep the work AND keep who
+asked for it.
+
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
 
@@ -132,6 +146,9 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   if (f.whatTheySaidItWasFor) lines.push(`  they said this was for, in their words: "${f.whatTheySaidItWasFor}"`);
   if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported, in their words: "${f.whereTheySayTheyAre}"`);
   if (f.whatTheySayIsInTheWay) lines.push(`  what they named as being in the way, in their words: "${f.whatTheySayIsInTheWay}"`);
+  /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
+     line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */
+  if (f.whyTheySayTheyAreOnIt) lines.push(`  why they say they are on this work, in their words: "${f.whyTheySayTheyAreOnIt}"`);
   for (const n of f.numbers) {
     lines.push(`  a number: ${n.what} - target ${n.target}${n.soFar != null ? `, record has ${n.soFar}` : ''}, set by ${n.setBy}`);
   }

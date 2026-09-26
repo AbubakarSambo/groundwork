@@ -147,22 +147,30 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
      */
     let released = false;
     const wanted = people.length;
-    let seen = -1;
-    let unchanged = 0;
-    for (let i = 0; i < 45; i++) {
+    let written = 0;
+    for (let i = 0; i < 75; i++) {
       await new Promise((r) => setTimeout(r, 4000));
       try {
         const probe = await http(`/grounds/${gid}/report`, { token: tokens[email(lead)] });
-        const written = Array.isArray(probe?.findings) ? probe.findings.length : 0;
         if (!probe?.releasedAt && !probe?.sharedPicture) continue;
-        if (written >= wanted) { released = true; break; }
-        if (written === seen) unchanged++; else { unchanged = 0; seen = written; }
-        if (unchanged >= 3) {
-          released = true;
-          log(`    report settled at ${written} finding(s) for ${wanted} person/people after ${(i + 1) * 4}s`);
-          break;
-        }
+        released = true;
+        written = Array.isArray(probe?.findings) ? probe.findings.length : 0;
+        if (written >= wanted) break;
       } catch { /* not yet */ }
+    }
+    /*
+     * A SHORTFALL IS SAID OUT LOUD RATHER THAN QUIETLY WRITTEN TO THE FILE.
+     *
+     * The first version of this wait settled once three probes running showed the same number,
+     * which is twelve seconds, and under six parallel shards regeneration is nowhere near done by
+     * then - it settled at "1 finding for 3 people" and wrote that to the file as though it were
+     * the report. There is no cheap signal for "this report is final", so the only honest rule is
+     * to wait for one finding per person who checked in, up to five minutes, and to say plainly
+     * when it did not arrive. A run that prints this line is a run whose report numbers cannot be
+     * used, and that has to be visible rather than inferred afterwards from the database.
+     */
+    if (written < wanted) {
+      log(`    *** REPORT INCOMPLETE: ${written} finding(s) for ${wanted} person/people after 300s. Report numbers from this scenario are not usable. ***`);
     }
     const sess: any = { session: n, people, released };
     /* What the LEAD reads. */

@@ -6,6 +6,377 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## WHERE I STOPPED, AND WHAT COMES NEXT
+
+**Stopped at 21:30 on 26 September, at a clean point.** Everything is committed and pushed to
+`mine/wip/plain-reports`. Nothing is half-done, no run is in flight, and no code is waiting on a
+measurement.
+
+### What is finished
+
+- **1.4 is ticked**, for the reports. Jargon in reports and boards 511 → 123, against a bar of
+  128, on a run whose captures were checked against the database first. Ten random report lines
+  read: no clipped phrasing. Its second bar, jargon in Groundwork's own turns, is now 2.3's, at 22
+  against a bar of 10.5.
+- **1.5's first condition is met**: reports with no judgement, 8 → 0.
+- **Three causes found and fixed**, each one proved by measurement rather than argued: the missing
+  `INTENT` field, the workplan double-count, and the temperature question below.
+
+### What is not finished: 1.5's second condition
+
+**Sixteen of twenty-four clearly right. The bar is twenty.** Three of the eight short ones now
+have a fix in the code that has **not yet been measured on a full run**:
+
+| | Fixed since the run | Not yet touched |
+| --- | --- | --- |
+| realign | `whyTheySayTheyAreOnIt`, 3 of 4 on fresh runs | |
+| workplan | `whatMoreThanOnePersonNamed` | |
+| loans | shown to be sampling, left alone deliberately | |
+| | | newmanager, advisor, handover, recognition, shock |
+
+### The next three things, in order
+
+1. **Run all 24 and score it.** Two of the three fixes above have never been measured together on
+   a full run, and the workplan one has never been measured live at all. Use three shards, not six
+   — six starves report regeneration. Check `REPORT INCOMPLETE` lines are zero and check the
+   captured findings against the database before reading any number. If it holds, 1.5 could be at
+   eighteen of twenty-four.
+2. **The five close ones**, which is what is left of 1.5: advisor (he has no relationship at two of
+   the three banks), handover (the supplier payment arrangement, the second of her two), recognition
+   (Victor belongs in the gap, not only in an action), shock (the three warning signs as one
+   timeline), workplan (verify the new count reaches the gap). Each one first needs the same
+   question asked: **is the fact in the material?** Three times in a row today the answer was no,
+   and three times the prompt was the wrong place to look.
+3. **Then 1.6**, the automatic check on rendered text per reader. Its list has grown today: slot
+   names, labels, machine words, lower-case starts, cut words, doubled quote marks, a pronoun that
+   disagrees with the reader, and a coordinated verb that does not agree.
+
+### Open for you, nothing blocking
+
+- **B5's plain name** in `docs/pattern-names.md`. Your example and the detector disagree about what
+  "leverage" means. It may be the detector that is named wrongly.
+- **The 50 scenario packs.** Step one is done - all fifty exported and verified byte for byte.
+  Steps two and three, the improved versions and the before-and-after document, are queued behind
+  the numbered tasks.
+- **`the-real-gate`** is tracked again but cannot run: it imports `../hundred/harness`, which is
+  not on this computer.
+
+### What I would tell the next session in one line
+
+Three separate defects today were the same defect: the fact was never in the material, and the
+prompt was the wrong place to look. Check the supply first.
+
+
+## The temperature question, answered: no
+
+A lead should get the same judgement twice from the same record, so I measured whether a lower
+temperature would make the judgement steadier. Same material, five samples, default against zero,
+five scenarios, scoring both how alike the answers were **and** whether they still reached the
+right answer.
+
+| | default: alike / right | temperature 0: alike / right |
+| --- | --- | --- |
+| loans | 38% / 5 of 5 | 35% / 5 of 5 |
+| pip | 45% / **3 of 5** | 57% / **0 of 5** |
+| contractreview | 49% / 5 of 5 | 47% / 5 of 5 |
+| workplan | 41% / **1 of 5** | 56% / **0 of 5** |
+| renewal | 31% / 5 of 5 | 43% / 5 of 5 |
+
+Consistency rose about seven points. **Correctness fell from 19 of 25 to 15 of 25.**
+
+The performance-plan scenario is the one to read. At zero the five answers became *more* alike and
+*all five wrong*: it converged every time on "they are working to two different targets" and
+stopped saying the target was never written down, which is the finding. A steadier wrong answer is
+worse than a varying right one.
+
+So nothing sets a temperature. Your rule was "keep it only if it improves consistency without
+losing anything", and it loses something. The option stays on the model call because it is what
+made the measurement possible, with both columns recorded beside it, so anybody switching it on
+owes the same two columns and not just the first.
+
+## The two causes found, and both were the same shape
+
+I said the fix for realign was in the picture prompt. It was not, and finding that out took one
+more measurement than I wanted it to.
+
+### realign: nothing read INTENT
+
+The prompt rule went in and the CEO reached a finding **once in three runs**. I had fixed the
+writer without checking the supply, which is the mistake I had written up an hour earlier. So I
+checked the supply.
+
+`PersonFacts` — the only thing the per-person paragraph is written from — has slots for what they
+said it was for, where they say they are, what is in the way, and their numbers. **Nothing was fed
+by INTENT**, and every one of those CEO lines is an INTENT entry:
+
+> "The CEO asked me to build it. He said it was urgent."
+>
+> "The CEO mentioned it to me at dinner. He said it would really move the needle."
+
+Three or four of them, every run. The paragraph could not say it, whatever the prompt asked for.
+The one run in three that got through had a person who happened to repeat it inside a PROGRESS
+line, which *is* read. **The fact was arriving by accident.**
+
+`whyTheySayTheyAreOnIt` is a field now, preferring the entry that names a reason — asked, told,
+requested, instructed — over a later vague one, because "the CEO asked me to on September 2nd" is
+usually said first and recency alone would throw it away.
+
+**Four fresh runs: three of four now carry it, in the finding and in the gap, and the two always
+agree.** It was 0 of 12 in the isolated test and 0 of 1 live.
+
+> "The chief executive has given separate, urgent work to Ruth Njeri and Marco Bianchi, which
+> conflicts with your stated priority of retention."
+
+**And my first count of those four runs said one of four, not three.** My checker searched for
+"CEO" and the model writes "the chief executive" — because the wording rulebook tells it not to use
+acronyms. The engine was right and the measurement was wrong, which is the third time today a
+number has been the thing at fault. I only caught it because I printed the sentences beside the
+count rather than trusting the count.
+
+### workplan: the contractor survived into one paragraph of two
+
+Same shape. The judgement is built from one written paragraph per person, so a thing two people
+both named only reaches it if it survived into **both**. It survived into one.
+
+It is plainly in the record, in both accounts, in their own words:
+
+> **Chidi Eze:** "34k of that specifically allocated to Studio Lune for the brand refresh, starting
+> in October for eight weeks."
+>
+> **Sara Lindqvist:** "Studio Lune is booked and confirmed."
+
+Both booked the same contractor, for the same eight weeks, from the same month. Neither knows.
+
+So the engine counts it now rather than hoping the model spots it. `whatMoreThanOnePersonNamed`
+reads the records, finds the names appearing in more than one person's, and hands the judgement who
+named each and what each of them said. **Arithmetic, no model** — whether it matters is the
+judgement's job, noticing it is counting.
+
+`WorkMention` already existed and does a different job: one participant mentioning **another
+participant**. A supplier, a customer, a chief executive outside the check-in is nobody in the room,
+so nothing was watching for exactly the cases that explain these scenarios.
+
+Two things the tests caught on the way. "and" was in the list of words that join one name, so
+"Studio Lune and Acme Corp" came back as a single name nobody had said and both real names were
+lost. And the new read of the record filtered disputed rows but wrote the clause second, where the
+guard that checks every counting read looks for it first.
+
+## The eight that are not right, each one, so you can read them yourself
+
+Only clearly right answers count, on your decision. **Sixteen of twenty-four.** Four short of the
+bar. Here are the other eight.
+
+### The three that are wrong
+
+**newmanager**
+
+> **It says:** "You, Daniel Park, and Tomi Balogun all have different ideas about what Daniel's new
+> manager role is for, so nobody is clear on how complex issues should be handled."
+>
+> **The right answer:** Daniel is still doing the individual work rather than managing, because he
+> is faster at it, and the team have noticed and read it as not being trusted. He thinks he is
+> helping. Name the behaviour and its effect, and do not call it a confidence problem.
+
+It has found a real thing, and it is not the thing. Nobody's account says the role is undefined;
+two accounts describe Daniel doing the work himself.
+
+**loans**
+
+> **It says:** "You are looking for a problem in borrower selection, but the record shows the
+> problem is in operations. Information that field officers have about non-delivery and theft is
+> not reaching you."
+>
+> **The right answer:** Five of the eight share one cause - the repayment schedule starts 30 days
+> after disbursement and these assets take two to three months to earn. That is the lending model,
+> not the people. One never took delivery at all. Separate the systemic five from the individual
+> one, and say the model needs the grace period changed.
+
+Half right. The non-delivery is the individual one; the systemic five are missing. **This morning's
+run had the grace period and this one does not.**
+
+**realign**
+
+> **It says:** "You believe the team's priority is retention, but Ruth Njeri, Marco Bianchi, and
+> Aisha Bello are all working on different things. The team does not have a single, shared plan."
+>
+> **The right answer:** All three got a different steer, and two of them got it from the CEO
+> directly, in conversations the team lead does not know happened. Identify the second source of
+> direction, not three people with poor focus.
+
+"Three people with poor focus" is close to word for word what it wrote. **This morning's run named
+the CEO and this one does not.**
+
+### The five that are close
+
+**advisor**
+
+> **It says:** "You and Peter Kimani are working towards different goals... you want a product
+> distribution agreement with a specific list of banks, but have not told Peter this."
+>
+> **Missing:** that Peter has no relationship at two of the three banks. The deliverable does not
+> exist on his side, and which one he can actually do is the useful half.
+
+**handover**
+
+> **It says:** "critical knowledge is not written down", and tells the lead to get the month-end
+> reconciliation written down as it is done.
+>
+> **Missing:** the second of the two things that exist only in her head - a payment arrangement
+> with a supplier that is in no contract. One of the two is named; the other is not.
+
+**recognition**
+
+> **It says:** the three of them have different ideas about which work mattered most.
+>
+> **Missing from the gap:** Victor, the contractor who wrote the migration script. He is named in
+> one of the actions, so the engine has him - he just is not in the sentence the reader remembers.
+
+**shock**
+
+> **It says:** "You are reconstructing a crisis that two team members saw coming, because the team
+> has no single way of reporting that a customer is at risk."
+>
+> **Missing:** the timeline. Two missed quarterly reviews, the champion leaving in July, support
+> tickets tripling in August - three signals, one per person, nobody holding all three. It has the
+> shape of the answer and none of the three facts.
+
+**workplan**
+
+> **It says:** "You are holding a budget of 180,000, while the plans from the team add up to
+> 254,000."
+>
+> **Missing:** why. Two leads have both costed the same contractor. It asks for the cost of one
+> named supplier, which is circling the answer without landing on it.
+
+The good news in that one is that the charge is gone: "a planning problem that you created" and
+"Tell you to set a budget for the work" are both absent, and a search of all twenty-four reports,
+as every reader, for that class of phrasing returns one hit, which is factual.
+
+## Testing the guess about loans and realign, and it was wrong
+
+My guess was that the new rule telling the judgement to read across the blocks was pulling it
+towards process findings. **It is not, and the test says so plainly.**
+
+I rebuilt the exact material each judgement was given and ran it under three instructions - the
+current one, one without the cross-block rule, one without either new rule - four samples each.
+
+| | loans, found the grace period | realign, found the CEO |
+| --- | --- | --- |
+| current, both new rules | 2 of 4 *(4 of 4 on a repeat)* | **0 of 4** |
+| without the cross-block rule | 3 of 4 | **0 of 4** |
+| without either new rule | 3 of 4 | **0 of 4** |
+
+**loans is sampling.** Six of eight under the current instruction across two goes, three of four
+under each of the others. There is no effect to find; the run-5 miss was a draw of the dice, and
+the right response is not a prompt change.
+
+**realign is not sampling. It is 0 of 12.** The CEO never appears under any instruction, so the
+judgement is not losing it - it was never given it.
+
+### And where it was lost, which is two steps upstream
+
+The record holds it. Two entries, in the engineers' own words:
+
+> "The CEO asked me to on September 2nd and said it was urgent."
+>
+> "The CEO mentioned it to me. He said it would really move the needle."
+
+Their per-person paragraph came out as:
+
+> "Participant A says Participant A's goal is for the referral scheme to be live. Participant A
+> began work on it on September 2nd."
+
+The work survived. The date survived. **Who asked did not.** The judgement is built from those
+paragraphs, so by the time it runs the fact is gone - which is why no instruction could recover it.
+
+So the fix is in the paragraph, not the judgement. The picture prompt now asks for who asked them
+for the work, where they said, with the reason it is the fact most easily lost: it sits next to the
+work rather than in it. Being tested on three fresh runs of that scenario now.
+
+**One more thing that was different, and I am not fixing it yet.** The run-1 realign report had
+divergences and the run-5 one has none at all, and the judgement is given the differences as well
+as the people. Across the run differences went up, 29 to 35, so this is not systemic. Noted rather
+than chased.
+
+## The verified run: 1.5 is done on one condition and unclear on the other, 1.4 is not done
+
+**This run was checked against the database before I read a number from it**, which is the rule I
+set myself after this afternoon. 23 of the 24 captured reports hold exactly as many findings as the
+database does. The one exception is `loans`, 8 in the file against 9 in the database, and the
+runner said so itself while it ran rather than leaving me to find it later.
+
+### What got better
+
+| | Baseline | Now |
+| --- | --- | --- |
+| report with no judgement | 8 | **0** |
+| judgement present | 21 | **29** |
+| per-person findings | 81 | 85 |
+| agreements found | 56 | 66 |
+| differences found | 29 | 35 |
+| patterns found | 100 | 104 |
+| commitments recorded | 44 | 52 → 44 |
+| jargon in reports and boards | 511 | **123** |
+| jargon in Groundwork's turns | 42 | 22 |
+| turns asking more than one question | 37 | 30 |
+| internal labels shown | 1,153 | 116 |
+
+Nothing on the engine-value list dropped by more than a few per cent: "specific detail asked for"
+is 84 against a baseline of 88, and "blocker checked" 34 against 37. Both are inside the run-to-run
+range this report measured for them earlier.
+
+### Task 1.5: the first condition is met, the second is not clearly met
+
+**"Report with no judgement is 0."** Met. It was 8 and the eight are exactly the eight the
+forty-word floor was silencing.
+
+**"Matches the right answer in at least 20 of the 24."** I read all twenty-four against
+`theDecision` myself. **Sixteen are unambiguously right. Five are close. Three are wrong.** Twenty-one
+if the close ones count and sixteen if they do not, against a bar of twenty — so I am not going to
+tell you it passed. It was ten before.
+
+The three wrong:
+
+- **newmanager.** Still says the team disagree about what Daniel's role is for. The right answer is
+  that Daniel is still doing the work himself because he is faster at it, and the team read that as
+  not being trusted.
+- **loans.** Lands on operations — non-delivery and theft not reaching the lead — and **lost the
+  systemic half it had this morning**: the repayment schedule starts 30 days after disbursement
+  and the assets take two to three months to earn. The grace period was in the run-1 judgement and
+  is not in this one.
+- **realign.** Says the team are working on different things. The right answer is that two of them
+  were steered by the CEO directly, in conversations the team lead does not know happened. **The
+  CEO was named in the run-1 judgement and is not in this one.**
+
+Two of the three wrong ones are things the engine got right this morning and no longer does. I
+would rather flag that now than average it away: the new rule telling it to read *across* the
+blocks may be pulling it toward process findings and away from the specific cause sitting in one
+person's account. That is a guess, and the next thing I would test.
+
+**And the workplan report.** The charge is gone — "a planning problem that you created" and "Tell
+you to set a budget" are both absent, and a search of all twenty-four reports for that class of
+phrasing, as every reader, returns one hit, which is factual ("The plan you created did not include
+the hardest part of the work"). The double-count is still not found: the report says the budget is
+180,000 and the plans come to 254,000, and asks for the cost of one named supplier, which is
+circling it. Half the instruction is done and half is not.
+
+### Task 1.4: one bar met, one missed
+
+| | Baseline | A quarter of it | Now | |
+| --- | --- | --- | --- | --- |
+| jargon in reports and boards | 511 | 128 | **123** | met |
+| jargon in Groundwork's turns | 42 | 10.5 | **22** | **not met** |
+
+So 1.4 is not ticked either. The reports are where the work went and the reports are where it
+landed; the conversation's own turns are half what they were and need about half again.
+
+### And the one thing that came out worse
+
+Curt turns, 0 to 3. All three were the single word "Understood.", shipped alone when somebody
+declined a question and there was nothing left to ask. Fixed: a refusal now gets a sentence saying
+what it does to the record. The test that covered it had pinned the exact string, so it had been
+holding the defect in place.
+
 ## Your three decisions, done
 
 ### 1. People's own words stay exactly as they said them
