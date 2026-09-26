@@ -153,7 +153,7 @@ the tour was taken is kept in the browser, like the pins.
 Feedback button. I kept it, because it is the pilot's one-tap way to send feedback. Say if it should
 go.
 
-### 10. Signing in (U.2): nine places where the prototype and the product disagree
+### 10. Signing in (U.2): ten places where the prototype and the product disagree
 
 The prototype's sign-in screens say some things the product does not do, or does differently on
 purpose. I will build everything else in U.2 and leave these as they are until you decide.
@@ -193,6 +193,11 @@ purpose. I will build everything else in U.2 and leave these as they are until y
    this. It is not always true: a first Google sign-in creates the account and its organisation, and
    links an existing account to Google, before steps that can still fail. **My suggestion:** leave the
    line out, as it is now, unless the Google sign-in is changed to undo those steps when it fails.
+10. **A password at sign-up.** The prototype's sign-up asks for "Password" and "Type it again", with
+    the rules. The product's sign-up asks for no password: you choose one after opening the link.
+    **My suggestion:** follow the prototype only if you also allow skipping the password (decision 4);
+    otherwise keep choosing it after the link, as now. Until you decide, the sign-up says so plainly:
+    "We send you a link. Your account is made when you open it, and then you choose a password."
 
 ### 12. May the reset page say whose account it is? A privacy question
 
