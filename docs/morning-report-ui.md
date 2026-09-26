@@ -902,7 +902,7 @@ workspace's own new tests, which I have asked them to fix (request 4). After mer
 latest, its report tests passed again (1,258). **Not ticked,** because no review can sign in (item
 14).
 
-### U.6 Starting a check-in: first part built and tested, not yet reviewed
+### U.6 Starting a check-in: built and tested except one card, not yet reviewed
 
 - **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
   track?", "A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.",
@@ -954,6 +954,14 @@ The entry, grounds and related tests (885) and the type check pass. The panel wa
 browser with a saved conversation; the setup could not be, because it needs a finished conversation
 with the engine. **Still to build in U.6:** the lead's first check-in card, which waits on you (item
 17, point 5).
+
+**The full run** found two failures from U.6, both fixed without changing either test: one new screen
+scrolled itself instead of using the shared scroll helper, and the setup had brought in a second day
+picker. The product is meant to have exactly one, so the two can never disagree. The setup and the
+check-in's own settings now share one picker, with the prototype's words ("On which days", "Weekdays
+only", "Any day is fine"). Apart from those, every screen test (2,659) and API test passed, and the
+build is clean; the only other failure is the engine workspace's own (request 4). **Not ticked:** the
+lead's first check-in card waits on you, and no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
