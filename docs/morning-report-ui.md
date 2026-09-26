@@ -411,8 +411,8 @@ product does today. Done so far, on the screens only:
     One API test had been failing unseen since step 6, because only the screens' tests had been run on
     that step. It is fixed. From now on, the full API suite runs at the end of every task.
 
-Still to do: the backend parts (the reset page showing whose account it is, telling the screens that a link has just
-made the account, and sending a failed Google sign-in to the new page).
+All of U.2 that does not wait on you is built. It now goes to the tester and the reviewer. The
+reset page's address waits on item 12.
 
 ## Found on the way, for later tasks
 
