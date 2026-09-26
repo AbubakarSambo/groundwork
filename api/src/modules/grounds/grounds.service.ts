@@ -65,6 +65,7 @@ import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
+import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1033,7 +1034,7 @@ export class GroundsService {
             // No take limit here: completing a session always spawns the next
             // session's row, so "most recent row" is never the same as "most
             // recently completed" - we need the whole history to tell them apart.
-            checkIns: { select: { sessionNumber: true, status: true, completedAt: true, specificityLevel: true }, orderBy: { sessionNumber: 'asc' } },
+            checkIns: { select: { sessionNumber: true, status: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
           },
         },
         report: { select: { agreements: true, divergences: true, releasedAt: true } },
@@ -1066,9 +1067,8 @@ export class GroundsService {
          */
         memberCount: g.participants.length,
         members: g.participants.map((p) => {
-          // Specificity from the most recently COMPLETED session, not the most
-          // recent row (which is often the freshly-spawned NOT_STARTED next one).
-          const completed = p.checkIns.filter((c) => c.status === CheckInStatus.COMPLETED).sort((a, b) => b.sessionNumber - a.sessionNumber);
+          /* No read of how checkable anybody's answers were: that is theirs alone, and this roster
+             goes to admins. See how-checkable-is-yours-alone. */
           return {
             email: p.email,
             // Display name only, so the client never has to make one out of the address.
@@ -1076,7 +1076,6 @@ export class GroundsService {
             partyType: p.partyType,
             roleAsDescribed: p.roleAsDescribed,
             accepted: p.userId != null,
-            latestSpecificity: completed[0]?.specificityLevel ?? null,
           };
         }),
         contributedParties,
@@ -1452,6 +1451,14 @@ export class GroundsService {
     }
 
     if (!ground) throw new NotFoundException('Check-in not found');
+
+    /* How checkable each check-in was is a read of that person's answers, so each reader keeps
+       their own and nobody else's. See how-checkable-is-yours-alone. */
+    (ground as any).checkIns = howCheckableIsYoursAlone(
+      (ground.checkIns ?? []) as any[],
+      (ground.participants ?? []) as any[],
+      requestingUserId,
+    );
 
     // Computed display fields - derived here so the client never needs to repeat the logic.
     const alignment = alignmentRead((ground as any).report);

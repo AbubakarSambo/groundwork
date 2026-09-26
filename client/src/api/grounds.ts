@@ -74,7 +74,7 @@ export interface OrgRosterEntry {
   createdByAdmin: boolean
   lead: { id: string; firstName: string; lastName: string; email: string }
   memberCount: number
-  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean; latestSpecificity: string | null }[]
+  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean }[]
   contributedParties: number
   report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
   lastActivity: string | null
