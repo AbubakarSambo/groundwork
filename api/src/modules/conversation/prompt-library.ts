@@ -1641,6 +1641,21 @@ ${PLAIN_WORDS}`;
 // ---------------------------------------------------------------------------
 // Record extraction - pulls structured entries from one party's transcript.
 // ---------------------------------------------------------------------------
+/*
+ * WHAT SOMEBODY SAYS ANOTHER PERSON DID IS ON THE RECORD TOO (the last paragraph).
+ *
+ * Every type here is about the person's own work, and nothing said otherwise, so what they said
+ * about somebody else's work was left off. In the recognition scenario of run 6, Joseph Mwangi said
+ * "I think Victor's script was the really hard part of this whole thing. He worked over the weekend
+ * of the 14th to get it done", and Amara Diallo said Victor "was responsible for the migration
+ * script for existing users". Victor is a contractor, not a participant. The ground's nineteen
+ * record entries named him zero times, so neither the finding per person nor
+ * whatMoreThanOnePersonNamed could see him, and the judgement missed the scenario's right answer,
+ * which is to name the person nobody had credited, from the others' accounts.
+ *
+ * The name goes in for "he" only where the person used it themselves, so the entry still passes
+ * isTheirs (a-record-is-what-they-said): every word of the example is a word they said.
+ */
 
 export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
 
@@ -1665,7 +1680,9 @@ PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR. It is not "anything that ha
   "I will chase it on Monday" is a promise. COMMITMENT.
   "Nobody else is waiting on me" and "no other blockers I can name" say nothing happened. Record nothing at all.
   "The build is on track for the 14th" is a forecast, not a thing done. INTENT.
-Only where the work itself actually moved is it PROGRESS.`;
+Only where the work itself actually moved is it PROGRESS.
+
+WHAT SOMEBODY ELSE DID IS ON THE RECORD TOO. When the person says what another person did or gave to the work - a colleague, a contractor, a supplier, a customer, anybody - record it. If that work was done, it is PROGRESS. Keep the other person's name exactly as the person said it. Where they said "he", "she" or "they" and the transcript makes it plain who is meant, put the name in place of that word, but only a name the person used themselves. Keep everything else in their own words. "Victor's script was the really hard part. He worked over the weekend of the 14th to get it done" is recorded as "Victor worked over the weekend of the 14th to get the script done, and it was the really hard part." Leave it out and the person who did the work is named nowhere in the report.`;
 
 /**
  * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs

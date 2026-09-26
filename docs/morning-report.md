@@ -6,6 +6,94 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## TONIGHT, 26 to 27 September: where I am now
+
+This section is kept up to date as I go. If it stops partway, that is where I got to.
+
+### Run-6 is sound, and nothing is worse than the baseline
+
+- All 24 scenarios finished. No report was marked "REPORT INCOMPLETE" and every report was released.
+- In all 24, the captured report holds exactly as many findings as the database.
+- Every report was written by `report_synthesis` version 6, and the active `system` prompt is version 43. Both are the versions I expected.
+- The scorer says nothing got worse than the baseline.
+
+### How many judgements are clearly right: 17 of 24
+
+I read every judgement against the right answer for its scenario. Seventeen are clearly right, four are close, and three are wrong. The bar is twenty.
+
+Clearly right: advisor, cofounder, contractreview, crisis, discovery, implementation, newmanager, pip, project, pulse, realign, renewal, sales, seniorhire, snapshot, updates and workplan.
+
+Three of these were wrong or close last time and are right now. In realign, the judgement now names the chief executive as the second person giving directions. In newmanager, it now says Daniel is answering the hardest tickets himself instead of managing. In workplan, it now finds that two leads booked the same design firm, Studio Lune, at the same time.
+
+The four that are close:
+
+- **drift.** It says Zainab was asked by "somebody else" to do sales support. In fact Zainab says it was Nadia, and Nadia is the lead. The fact was in the record, but nothing passed it on to the judgement.
+- **handover.** It finds the year-end spreadsheet but only hints at the supplier arrangement. Both facts are in the record in Patience's own words. They never reached her part of the report.
+- **loans.** It says repayments start too early, but it does not separate the five borrowers who share that cause from the one who never received the machine, and it does not say the grace period should change.
+- **shock.** It joins two warning signs, not three. In this run nobody said first-hand that the quarterly reviews were missed, so only two of the three were in the material.
+
+The three that are wrong:
+
+- **board.** It says the three people define success differently. The right answer is that the plan assumes a launch in four months and the person responsible says twelve. In this run Wanjiru never gave a number of months. She said only that there is no licence yet and she is not counting on any sales. So the key fact was missing from the material. On run-5 it was there, and the judgement was right.
+- **openread.** It misses the Friday deploy freeze. The freeze is in the record seven times, so this time the judgement itself missed it. On run-5 it was right.
+- **recognition.** It never mentions Victor, the contractor who wrote the migration script. Two people named him, but the record kept only what each person said about their own work. So Victor was in nobody's record at all.
+
+Board and openread were right on run-5 and are wrong on run-6. Realign, newmanager and workplan went the other way. So some scenarios still change from run to run, and a single run cannot settle them.
+
+### The lower-temperature test: dropped
+
+I measured it last session. A lower temperature made the answers about seven points more alike, but the right answers fell from 19 of 25 to 15 of 25. In the performance-plan scenario, all five answers at the lower temperature agreed with each other and all five were wrong. A steadier wrong answer is worse than a varying right one, so nothing sets a temperature. That is still the decision.
+
+### Something that got worse since run-5, though not below the baseline
+
+Jargon in reports and boards rose from 123 on run-5 to 217 on run-6. Task 1.4's bar is 128, so 1.4's bar no longer holds on this run. Almost all of it is two words, "pipeline" in the sales scenario and "escalation" in the crisis scenario. The people themselves used jargon words 30 times on run-6 against 25 on run-5, and the reports repeated their words far more often. I have not changed anything for this yet. See "Needs Hafsah" below.
+
+### What I have changed tonight
+
+1. **`ce6e7fe8`: each person's finding now keeps what they say about how the work really runs.** The record stores these lines, but nothing that writes a person's finding read them. Run-6 stored 15 of them and lost every one. They include Patience's verbal supplier arrangement, "as requested by Nadia" in drift, and Daniel's "I'm faster at them, so it's quicker for me to just handle them" in newmanager.
+2. **`3c56f5eb`: the record now keeps what a person says somebody else did, with that person's name.** This is for recognition, where Victor was named by two people and stored by nobody.
+
+3. **`d7a6510e`: the lead's judgement is now told which name belongs to which person.** In drift, Zainab says she moved to sales support "as requested by Nadia", and Nadia is the lead. The judgement only knows people by their labels, so it treated Nadia as somebody outside the room, and the lead would have read "Tell you that Nadia has redirected Zainab". Now each person's block in the judgement's material says what other people's words call them. No text anyone reads is changed.
+
+I first built a stronger version, `8feedc64`, and undid it in `efd1c67e`. It replaced each name inside people's words with that person's label, so the stored report holds no names at all. The catch is that a quote from Zainab would then reach Nadia as "requested by you", which changes Zainab's words on screen. See "Needs Hafsah".
+
+**The first round of re-runs, on the first two changes:** handover and recognition are now clearly right. Handover names both things only in Patience's head, the verbal 60-day supplier terms and the spreadsheet on her own drive. Recognition names Victor, the contractor, from the other two people's accounts. Newmanager is still right. Drift's finding now keeps "at Nadia's request", which is what led to the third change. Loans is better but still close, and its report was incomplete (8 findings for 9 people), so it does not count. The second round, on all three changes, is running now.
+
+### Needs Hafsah
+
+- **Jargon in reports rose above 1.4's bar on this run,** mostly because the reports repeat the people's own words "pipeline" and "escalation". The rule is to never change people's own words. So the question is whether a report should still use a word the person used when that word is on the jargon list. I have not changed anything for this.
+- **Names inside people's words.** Reports are meant to be stored without names, but a name that somebody says, such as "as requested by Nadia", is stored as they said it. It is then shown to every reader, including a colleague who is not allowed to see names. I can swap each such name for the person's label, and the name is then put back correctly for each reader. The cost is that a quote reaches the person it names as "you": Nadia would read "as requested by you". Your rule is never to change people's own words, so I have not done this. It is ready in `8feedc64` if you want it.
+- The older open questions are unchanged and do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
+
+## WHERE THIS SESSION STOPPED, 26 September, evening
+
+**This session stopped early, and not because of the work.** It started in an empty folder and was moved into this repository partway through. The project's safety check runs before every command and every file edit, and it still looks for its script in the old folder. So everything after the move was refused, including editing this report. I did not touch the safety settings. The fix is a fresh session opened on this folder.
+
+### What is finished
+
+- **I am in step with the screens workspace.** I merged `mine/wip/prototype-ui`, which brought 65 commits covering sign-up, the free-trial setting in billing, and screens. None of it touches the engine's code. The merge was clean, and I pushed it to `mine/wip/plain-reports` as `51f55fbe`.
+- **There are no new requests from the screens workspace.** Their file now marks their two earlier requests as answered and accepted, which matches `docs/answers-from-engine.md`.
+- **I checked again that the run was safe.** It uses the local test database `gw_pw9_1786222102` and a Stripe test key. Real email cannot be sent, because the Resend key is a placeholder and `EMAIL_SENDS_FOR_REAL` is not set. WhatsApp is not set up.
+- **I rebuilt and restarted the local API.** The copy that was running had been built at 20:58, before the last session's final code changes. This run therefore measures the code as it is committed.
+- **The API tests pass, with one exception: 9,113 of 9,114.** The one failure came in with the merge. It is in the screens workspace's new test `api/src/modules/auth/the-password-rules.spec.ts`, at lines 74 to 80. That test reads `auth.service.ts` without removing comments first, and `a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts` rightly catches that. It is a flaw in how the test is written, not a fault in the product. Hafsah has passed it to the screens workspace directly.
+
+### What is in progress
+
+- **Run-6 is running.** All 24 scenarios are running in three batches, into `api/journey/all-24/run-6`. Each batch writes a file named `done-A`, `done-B` or `done-C` when it finishes.
+
+### What comes next, in order
+
+1. **Wait for all three done files.** Do not start a new run while this one is still going.
+2. **Check that the run is sound before reading any number.** No report should be marked "REPORT INCOMPLETE" in `run.log`. The findings in the captured reports should match the database. The reports should record the prompt versions that actually ran, which were `report_synthesis` v6 and `system` v43 last time.
+3. **Score run-6 against the baseline** with `tools/score_run.py`. Then read all 24 judgements against the right answer for each scenario. Last time 16 were clearly right, and the bar is 20.
+4. **Work on the ones that are still only close.** For each one, first check whether the missing fact is actually in the material, before changing any prompt.
+5. **Run the client tests.** They have not run yet, because they were blocked.
+6. **Then move to task 1.6,** the automatic check on the text each reader sees.
+
+### Needs Hafsah
+
+- Nothing about the product itself. The open questions from before are still open and still do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
+
 ## WHERE I STOPPED, AND WHAT COMES NEXT
 
 **Stopped at 21:30 on 26 September, at a clean point.** Everything is committed and pushed to
