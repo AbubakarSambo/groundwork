@@ -125,12 +125,43 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
       if (!rows[p.key] || !tokens[email(p)]) { people.push({ key: p.key, error: 'no sign-in' }); continue; }
       people.push(await runCheckIn(prisma, model, gid, s, p, rows[p.key], email(p), n));
     }
+    /*
+     * WAIT FOR THE FINAL REPORT, NOT FOR ANY REPORT. (26 September 2026.)
+     *
+     * This used to stop at the first probe that came back with a `sharedPicture`. A report is
+     * written after each person checks in, so the first one to exist is the one written after the
+     * LEAD checked in - it says "Only you have checked in so far" and carries one finding. Run the
+     * twenty-four one after another and the regeneration had usually caught up before this loop
+     * ran, so it happened to read the finished report. Run six scenarios at once against one
+     * server and it does not: the earlier report is already sitting there, the first probe returns
+     * it, and the loop breaks on the first pass.
+     *
+     * What that produced, measured: a sharded run wrote 35 findings across the twenty-four where
+     * the database held 73 - crisis 1 where the database had 3, cofounder 1 where it had 2 - and
+     * every wording count came out flattering, because a lead-only report is a third of the text.
+     * It cost most of an afternoon and a wrong conclusion about a prompt.
+     *
+     * So it waits for one finding per person who actually checked in this session, and settles for
+     * what it has once three probes running have shown the same number, which is how a scenario
+     * that genuinely produces fewer still finishes.
+     */
     let released = false;
-    for (let i = 0; i < 24; i++) {
+    const wanted = people.length;
+    let seen = -1;
+    let unchanged = 0;
+    for (let i = 0; i < 45; i++) {
       await new Promise((r) => setTimeout(r, 4000));
       try {
         const probe = await http(`/grounds/${gid}/report`, { token: tokens[email(lead)] });
-        if (probe?.releasedAt || probe?.sharedPicture) { released = true; break; }
+        const written = Array.isArray(probe?.findings) ? probe.findings.length : 0;
+        if (!probe?.releasedAt && !probe?.sharedPicture) continue;
+        if (written >= wanted) { released = true; break; }
+        if (written === seen) unchanged++; else { unchanged = 0; seen = written; }
+        if (unchanged >= 3) {
+          released = true;
+          log(`    report settled at ${written} finding(s) for ${wanted} person/people after ${(i + 1) * 4}s`);
+          break;
+        }
       } catch { /* not yet */ }
     }
     const sess: any = { session: n, people, released };
