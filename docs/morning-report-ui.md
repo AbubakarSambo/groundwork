@@ -519,12 +519,38 @@ reviewed" in this report.
    sample data, part of B5), the template library's running examples (sample data), "What this turns
    on" and "Or start from a ready-made check-in in the template library." (both point at those pages),
    and the supplier review board (B5).
+8. **The setup screen (#/new/setup): what is left out, and why.** "Opens at" and "Closes at":
+   nothing on the server keeps an opening time. Guests from another organisation: not built (item
+   15.7). "Do you check in too?": left out of the setup screen; the conversation already asks who
+   checks in, and the lead checks in once (point 4). "Where people answer": it lives on the check-in's
+   own Setup, and now shows only while WhatsApp is switched on as well as connected. "Or share a link"
+   is also on the check-in's own Setup, because the link only exists once the check-in does.
+   **My recommendation:** add an opening time to the check-in if the prototype's "from 4pm" matters.
+9. **Two lines of "Or share a link" are left out.** "Turn the link off": nothing on the server turns
+   the link off. "They don’t take a seat.": I did not check this against billing. **My
+   recommendation:** add a way to turn the link off (a new link, as the organisation's invite link
+   does), then put both lines back once billing confirms the second.
+10. **The prototype's own count is sample data.** Its "65 in all" for weekdays from 1 July to 30
+    September is 66 in 2026. The screen counts for real.
+11. **"Each check-in takes about two minutes after the first."** This is under "How often" in the
+    prototype. I left it out because nothing measures it. **My recommendation:** keep it out unless the
+    engine workspace confirms it.
+12. **The panel that fills in as you talk** has no "Change" buttons, and does not say "Add their
+    emails in the chat", because addresses are added on the save card. **My recommendation:** keep it
+    this way until adding people in the chat is built.
+
 7. **Wording I used where no screen has any:** "Send" and the placeholder "For example: our sales
    targets this quarter" on the signed-in first screen (taken from the signed-out one), the same
    placeholder in the list's box (the prototype's own is cut off in its picture), the link "Rather
    pick from a list? See every situation." for someone signed in (so the list can be reached), and
    "Where you are" as the name of the "Check-ins / New check-in" line for screen readers. Under "For
    example" in the "You picked" panel, the examples are the product's own, not the prototype's.
+   Also, in the setup: "Not set yet. This will run every 2 weeks unless you pick one." (today's
+   sentence, reworded), "On which day?" and "On which day of the month?" with "Any day" (today's
+   labels, kept so the day a check-in lands on can still be chosen), "Tomorrow, Wednesday 1 July."
+   without "from 4pm", "The check-in opens on Wednesday 1 July." for a single check-in, "From 1 July"
+   when only the start is set, "1 you mentioned: Daniel." before anyone is added, "Copied." after
+   "Copy", and "Download the QR code" saves the picture as check-in-qr-code.png.
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
@@ -903,9 +929,32 @@ signed in, word for word. One test changed: `describe-own-is-a-real-choice.spec.
 "describe your own" card from the page's source; that card is gone because the whole first screen is
 now the describe route, so it checks the same rule on the rendered screen. The entry, grounds,
 components and sign-in tests (1,630) and the type check pass. The screen was checked in the browser
-signed out; nothing signed in could be checked (item 14). **Still to build in U.6:** the setup screen
-(when it starts, which days, who is in it, guests, the share link), the panel that fills in as you
-talk, and the lead's first check-in card (item 17).
+signed out; nothing signed in could be checked (item 14).
+
+**Then, the same day:**
+- **The setup, before saving, in the prototype's words**, for signed-in and signed-out leads: "When it
+  starts" (Now, Tomorrow, On a date; "The first check-in opens at the start time." and "Adding
+  someone sends their invitation when it starts."), "How often" (Once, Every day, Every week, Every 2
+  weeks, Every month, When I choose), "On which days" (Mon to Sun, "Weekdays only", "Any day is
+  fine"), the dates ("Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until
+  30 September: 66 in all.") and "When it ends" (On a date, When I end it; "You can give it more time
+  later."). Each choice sets a field the server already keeps. The old schedule after the email step is
+  gone, so nothing is asked twice.
+- **"Or share a link"** on the check-in's Setup, in the prototype's words, with "Download the QR
+  code". "Where people answer this" now needs WhatsApp switched on, as well as connected.
+- **The panel that fills in as you talk**, beside the setup conversation on a wide screen: the name,
+  the situation, "2 of 4 set", "Fills in as you talk. You can start without all of it.", and "A
+  name", "How often", "When it runs", "Who’s in it" ("4 of 6 added", who is added, and "2 more you
+  mentioned: Samuel and Omar."), all from what the conversation already holds.
+
+Tests changed, each for old wording or an old place: `EntryChatPage.cadenceNotChosen.spec.tsx` (the
+schedule is before the save now, and the rhythms have the prototype's names),
+`the-invites-wait-if-you-say-so.spec.ts` and `what-the-setup-screen-owes-you.spec.ts` (they read the old
+"When should the invites go out?" choice; they now read the new one and its wiring to the start date).
+The entry, grounds and related tests (885) and the type check pass. The panel was checked in the
+browser with a saved conversation; the setup could not be, because it needs a finished conversation
+with the engine. **Still to build in U.6:** the lead's first check-in card, which waits on you (item
+17, point 5).
 
 ## Found on the way, for later tasks
 
