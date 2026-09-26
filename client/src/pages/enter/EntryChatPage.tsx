@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
  *
@@ -25,6 +25,8 @@ import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
 import { TheSetup } from './TheSetup'
+import { FillsInAsYouTalk } from './FillsInAsYouTalk'
+import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
@@ -2798,7 +2800,8 @@ export function EntryChatPage() {
 
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
             {/*
               * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
               *
@@ -3170,6 +3173,27 @@ export function EntryChatPage() {
                 </div>
               </div>
             )}
+          </div>
+          {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
+              screen. Built only from what this page already holds from the conversation. */}
+          {!atTheDoor && (
+            <div className="gw-fills-in" style={{ width: 300, flexShrink: 0, padding: '18px 20px 18px 0', overflowY: 'auto' }}>
+              <FillsInAsYouTalk
+                name={groundName}
+                situation={(() => {
+                  const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
+                  return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
+                })()}
+                cadence={cadence}
+                cadenceChosen={cadenceChosen}
+                workingDays={workingDays}
+                startsOn={checkInBy}
+                endsOn={lastCheckInBy}
+                mentioned={onboardingSelections.peopleNamed ?? []}
+                added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
+              />
+            </div>
+          )}
           </div>
         )}
 

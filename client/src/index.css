@@ -1868,3 +1868,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
   .gw-ci-table tbody tr + tr { border-top: 1px solid var(--gw-border); }
   .gw-ci-table td:nth-child(2) { color: var(--gw-sub); }
 }
+
+/* U.6: the setup panel that fills in as you talk sits beside the conversation on a wide screen only. */
+.gw-fills-in { display: none; }
+@media (min-width: 1000px) { .gw-fills-in { display: block; } }
