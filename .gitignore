@@ -58,7 +58,13 @@ api/journey/org-sim/out-verify/
 .vercel
 
 # Journey drivers written to run a whole setup end to end. Scratch, not product.
-api/journey/
+#
+# `api/journey/*` rather than `api/journey/`, and the difference is the whole section below.
+# A trailing slash excludes the DIRECTORY, and git will not look inside an excluded directory,
+# so not one of the `!` lines under here did anything - `the-real-gate` and `two-scenarios`
+# survived only because they were already tracked, and a new file in either would have been
+# ignored in silence, which is the exact thing those lines were written to prevent.
+api/journey/*
 
 # EXCEPT THE TWO THAT DEFINE DONE, which are not scratch and were one `rm` from gone.
 #
@@ -76,6 +82,23 @@ api/journey/
 # thing the team's standard depends on does not live outside the repo.
 !api/journey/the-real-gate/
 !api/journey/two-scenarios/
+
+# AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
+# 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
+# could not run the scenarios or the scorer - and no task on either list may be ticked without
+# them. The right answers themselves live here too, in `theDecision` on each scenario.
+#
+# SOURCE ONLY. Every run writes a folder of transcripts beside these files, and those stay out:
+# the directory is re-ignored and the files are named one at a time.
+!api/journey/all-24/
+api/journey/all-24/*
+!api/journey/all-24/run.ts
+!api/journey/all-24/scenarios.ts
+!api/journey/all-24/refresh.ts
+!api/journey/the-suite/
+api/journey/the-suite/*
+!api/journey/the-suite/run.ts
+!api/journey/the-suite/scenarios.ts
 
 # Audit and fix-plan working notes. Written while reading the product, kept on disk, never in a PR:
 # they are how the work was decided, not the work. The product docs (api-terms, edge-protection)
