@@ -7,10 +7,13 @@ import { authApi } from '@/api/auth'
 import { justSignedIn, takeJustSignedIn } from '@/lib/choose-an-organisation'
 
 /**
- * "CHOOSE AN ORGANISATION" (A3, #/orgs), AS THE PERSON READS IT. Wording from orgs.txt. No "3 new"
- * tags: that count waits for U.5's read of what needs you.
+ * "CHOOSE AN ORGANISATION" (A3, #/orgs), AS THE PERSON READS IT. Wording from orgs.txt. The "3 new"
+ * on each row comes from the server's read of what needs you (U.5), and shows only when it is more
+ * than nothing.
  */
 vi.mock('@/api/auth', () => ({ authApi: { myOrganizations: vi.fn(), switchOrganization: vi.fn() } }))
+vi.mock('@/api/today', () => ({ todayApi: { everywhere: vi.fn() } }))
+import { todayApi } from '@/api/today'
 const setAuth = vi.fn()
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth, isAuthenticated: true }) }))
 
@@ -26,7 +29,7 @@ function open() {
       <MemoryRouter initialEntries={['/orgs']}>
         <Routes>
           <Route path="/orgs" element={<OrgsPage />} />
-          <Route path="/grounds" element={<p>Your check-ins</p>} />
+          <Route path="/today" element={<p>Your Today page</p>} />
           <Route path="/org-new" element={<p>Create page</p>} />
         </Routes>
       </MemoryRouter>
@@ -38,6 +41,7 @@ const assign = vi.fn()
 beforeEach(() => {
   vi.clearAllMocks()
   ;(authApi.myOrganizations as any).mockResolvedValue(TWO)
+  ;(todayApi.everywhere as any).mockResolvedValue([])
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
 })
 
@@ -53,6 +57,21 @@ describe('what the person reads', () => {
     expect(screen.queryByText(/new$/)).toBeNull()
   })
 
+  it('"3 new" and "1 new", as orgs.txt has them, from the server\'s count for each organisation', async () => {
+    ;(todayApi.everywhere as any).mockResolvedValue([{ organizationId: 'o1', count: 3 }, { organizationId: 'o2', count: 1 }])
+    open()
+    expect(await screen.findByText('3 new')).toBeTruthy()
+    const rows = await screen.findAllByRole('button')
+    expect(rows.map(r => r.textContent)).toEqual(['BABaridi AppliancesAdmin3 new', 'KTKilimo Traders’ AssociationGuest1 new'])
+  })
+
+  it('says nothing new for an organisation where nothing needs you', async () => {
+    ;(todayApi.everywhere as any).mockResolvedValue([{ organizationId: 'o1', count: 0 }, { organizationId: 'o2', count: 2 }])
+    open()
+    expect(await screen.findByText('2 new')).toBeTruthy()
+    expect(screen.queryByText('0 new')).toBeNull()
+  })
+
   it('in one organisation, says so without promising a sidebar switch', async () => {
     ;(authApi.myOrganizations as any).mockResolvedValue([TWO[0]])
     open()
@@ -61,19 +80,19 @@ describe('what the person reads', () => {
 })
 
 describe('choosing', () => {
-  it('another organisation switches to it, storing (user, token), and opens its check-ins', async () => {
+  it('another organisation switches to it, storing (user, token), and opens its Today page', async () => {
     ;(authApi.switchOrganization as any).mockResolvedValue({ accessToken: 'tok', user: { id: 'u1' }, organization: { id: 'o2' } })
     open()
     fireEvent.click(await screen.findByRole('button', { name: /Kilimo/ }))
     await waitFor(() => expect(authApi.switchOrganization).toHaveBeenCalledWith('o2'))
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'tok'))
-    expect(assign).toHaveBeenCalledWith('/grounds')
+    expect(assign).toHaveBeenCalledWith('/today')
   })
 
-  it('the one you are in opens its check-ins without switching', async () => {
+  it('the one you are in opens its Today page without switching', async () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: /Baridi/ }))
-    expect(await screen.findByText('Your check-ins')).toBeTruthy()
+    expect(await screen.findByText("Your Today page")).toBeTruthy()
     expect(authApi.switchOrganization).not.toHaveBeenCalled()
   })
 })

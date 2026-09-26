@@ -1,9 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { todayApi } from '@/api/today'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { AuthCard } from '@/pages/auth/auth-kit'
+import { Tag } from '@/components/gw/kit'
 import { initialsOf, roleWord, useYourOrganisations, type YourOrganisation } from '@/components/gw/your-organisations'
 
 /**
@@ -14,26 +16,29 @@ import { initialsOf, roleWord, useYourOrganisations, type YourOrganisation } fro
  * organisation.ts), and reachable at its address. Each row shows the role they have there, so
  * choosing one needs no confirm box: the role is on the row before they press it.
  *
- * The prototype's "3 new" on each row waits for the one read of "what needs you" (U.5). A count this
- * page made up would be worse than none.
+ * "3 new" on each row is how many things need you in that organisation, from the server's one read of
+ * what needs you (GET /today/everywhere, U.5), counted with the role you have there. Nothing is shown
+ * for an organisation where nothing needs you, or while the count has not arrived.
  */
 export function OrgsPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const { myOrgs } = useYourOrganisations()
+  const { data: counts = [] } = useQuery({ queryKey: ['today-everywhere'], queryFn: todayApi.everywhere, retry: false })
+  const newIn = (id: string) => counts.find(c => c.organizationId === id)?.count ?? 0
 
   const open = useMutation({
     mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
+      window.location.assign('/today')
     },
     onError: () => toast.error('That organisation did not open. Try again.'),
   })
 
   function choose(o: YourOrganisation) {
     if (open.isPending) return
-    if (o.active) { navigate('/grounds', { replace: true }); return }
+    if (o.active) { navigate('/today', { replace: true }); return }
     open.mutate(o.id)
   }
 
@@ -53,6 +58,7 @@ export function OrgsPage() {
                 <b>{o.name}</b>
                 <span>{roleWord(o.role)}</span>
               </span>
+              {newIn(o.id) > 0 && <span className="gw-org-row-new"><Tag tone="attention">{newIn(o.id)} new</Tag></span>}
             </button>
           </li>
         ))}
