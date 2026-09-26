@@ -1527,3 +1527,10 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rl-menu-item:disabled { cursor: default; }
 .gw-rl-menu hr { border: 0; border-top: 1px solid var(--gw-border); margin: 6px 0; }
 .gw-rl-menu-note { padding: 8px 10px; font-size: 13px; color: var(--gw-sub); display: flex; flex-direction: column; gap: 8px; }
+/* Pinning a check-in to the top of the sidebar. Quiet until the row is pointed at or focused, and
+   always shown on a pinned row and on a device that cannot hover. */
+.gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; padding: 8px 3px; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 6px; }
+.gw-rail-row:hover .gw-pin, .gw-pin:focus-visible, .gw-pin.on { opacity: 1; }
+.gw-pin:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
+.gw-pin.on { color: var(--gw-navy); }
+@media (hover: none) { .gw-pin { opacity: 1; } }

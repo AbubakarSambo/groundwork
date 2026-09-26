@@ -16,6 +16,7 @@ import { useHelpStore } from '@/stores/help'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
+import { pinnedFor, togglePin } from './pinned-check-ins'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
@@ -737,6 +738,11 @@ export function AppSidebar() {
   const [orgOpen, setOrgOpen] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
   const [closedOpen, setClosedOpen] = useState(false)
+  /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
+  const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
+  /* Read again when a different person signs in on this browser, never someone else's. */
+  const pins = pinState.of === user?.id ? pinState.ids : pinnedFor(user?.id)
+  const flipPin = (groundId: string) => setPinState({ of: user?.id, ids: togglePin(user?.id, groundId, pins) })
   const orgRef = useClosesOnItsOwn(orgOpen, () => setOrgOpen(false))
   const meRef = useClosesOnItsOwn(meOpen, () => setMeOpen(false))
 
@@ -821,6 +827,10 @@ export function AppSidebar() {
     .slice()
     .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
   const closed = inRail.filter(g => isClosed(g))
+  /* Pinned ones sit above the rest under "Pinned", newest pin first; the rest keep their order. A closed
+     check-in is not offered a pin: it lives under "Closed". */
+  const pinned = pins.map(id => running.find(g => g.id === id)).filter((g): g is Ground => !!g)
+  const unpinned = running.filter(g => !pins.includes(g.id))
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user)
@@ -876,6 +886,18 @@ export function AppSidebar() {
               {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
               {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}
             </NavLink>
+            {!isClosed(g) && <button
+              type="button"
+              className={`gw-pin${pins.includes(g.id) ? ' on' : ''}`}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); flipPin(g.id) }}
+              aria-pressed={pins.includes(g.id)}
+              aria-label={pins.includes(g.id) ? `Unpin ${g.label}` : `Pin ${g.label} to the top`}
+              title={pins.includes(g.id) ? 'Unpin it' : 'Pin it to the top'}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+                <path d="M6 1.5h4l-.6 4.2 2.6 2.3v1.5H4V8l2.6-2.3L6 1.5zM8 9.5v5" fill={pins.includes(g.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+              </svg>
+            </button>}
             {mayRename(g) && <button
               type="button"
               className="gw-rename"
@@ -1055,13 +1077,19 @@ export function AppSidebar() {
             {isAuthenticated && (
               <>
                 {/* "Check-ins": the heading is the way to the whole list. */}
+                {pinned.length > 0 && (
+                  <>
+                    <div className="gw-rl-h"><span>Pinned</span></div>
+                    <ul className="gw-rl-list" aria-label="Pinned">{pinned.map(rowFor)}</ul>
+                  </>
+                )}
                 <div className="gw-rl-h">
                   <NavLink to="/grounds" className="gw-rl-h-link" title="See all your check-ins">Check-ins</NavLink>
                 </div>
                 {running.length === 0 && closed.length === 0 && (
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
                 )}
-                <ul className="gw-rl-list">{running.map(rowFor)}</ul>
+                <ul className="gw-rl-list">{unpinned.map(rowFor)}</ul>
                 {closed.length > 0 && (
                   <>
                     <button
