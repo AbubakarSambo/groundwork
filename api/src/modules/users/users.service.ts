@@ -347,7 +347,8 @@ export class UsersService {
         orderBy: { createdAt: 'desc' },
         /* phoneNumber so the members list can show who can be reached on WhatsApp and who cannot.
            It is the org's own roster, read by an admin of it. */
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true },
+        /* awaitingOrgApproval so the list can say "Waiting to be let in" beside them (U.4). */
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true, awaitingOrgApproval: true },
       }),
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
