@@ -58,6 +58,25 @@ export interface PersonFacts {
   whereTheySayTheyAre: string | null;
   /** The latest worry or tension they named. */
   whatTheySayIsInTheWay: string | null;
+  /**
+   * WHY THEY SAY THEY ARE ON THIS WORK RATHER THAN SOMETHING ELSE, in their own words.
+   *
+   * The realign scenario is what this is for. Three engineers were each working on something other
+   * than the priority their lead had set, and they said why, plainly and repeatedly: "The CEO
+   * asked me to on September 2nd and said it was urgent", "The CEO mentioned it to me at dinner".
+   * Those lines are on the record, typed INTENT, three or four of them per run.
+   *
+   * INTENT was read by nothing here. The picture is written from these fields, so the paragraph
+   * came out as "their goal is for the referral scheme to be live, and they began work on it on
+   * September 2nd" - the work, the date, and not who asked. The judgement is built from those
+   * paragraphs, so by then the only fact that explained the whole check-in was gone, and no
+   * instruction downstream could put it back: the CEO appeared zero times in twelve samples across
+   * three different judgement instructions.
+   *
+   * It reached the report once in three runs, and only because one person happened to repeat it
+   * inside a PROGRESS line, which IS read. That is the fact arriving by accident.
+   */
+  whyTheySayTheyAreOnIt: string | null;
   numbers: ANumberTheyHold[];
   /** A number the lead set for them that they have never once mentioned. */
   aNumberSetForThemTheyHaveNeverSaid: { what: string; target: number } | null;
@@ -120,6 +139,16 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
    */
   const worry = latest(said.filter((s) => s.type === 'WORRY' || s.type === 'TENSION'));
 
+  /*
+   * AND WHY THEY ARE ON IT, which is an INTENT line and was read by nothing. See the field's note.
+   * The latest one that names somebody or something as the reason is preferred over the latest
+   * plain one: "I took that as direction" is an intent, and "the CEO asked me to on September 2nd"
+   * is the one that explains the check-in.
+   */
+  const intents = said.filter((s) => s.type === 'INTENT');
+  const namesAReason = intents.filter((s) => /\b(asked|told|said to|requested|instructed|direction from|came from|mentioned it to me|brought it up)\b/i.test(s.text));
+  const why = latest(namesAReason) ?? latest(intents);
+
   const setForThem = p.targets.filter((t) => t.yours && !t.setByThem && t.target != null);
   const own = p.targets.filter((t) => t.yours && t.setByThem && t.target != null);
 
@@ -156,6 +185,7 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     whatTheySaidItWasFor: purpose ? clean(purpose.text) : null,
     whereTheySayTheyAre: stand ? clean(stand.text) : null,
     whatTheySayIsInTheWay: worry ? clean(worry.text) : null,
+    whyTheySayTheyAreOnIt: why ? clean(why.text) : null,
     numbers,
     aNumberSetForThemTheyHaveNeverSaid: neverSaid,
     twoNumbersForOneTarget: twoNumbers,

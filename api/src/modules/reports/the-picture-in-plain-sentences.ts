@@ -146,6 +146,9 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   if (f.whatTheySaidItWasFor) lines.push(`  they said this was for, in their words: "${f.whatTheySaidItWasFor}"`);
   if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported, in their words: "${f.whereTheySayTheyAre}"`);
   if (f.whatTheySayIsInTheWay) lines.push(`  what they named as being in the way, in their words: "${f.whatTheySayIsInTheWay}"`);
+  /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
+     line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */
+  if (f.whyTheySayTheyAreOnIt) lines.push(`  why they say they are on this work, in their words: "${f.whyTheySayTheyAreOnIt}"`);
   for (const n of f.numbers) {
     lines.push(`  a number: ${n.what} - target ${n.target}${n.soFar != null ? `, record has ${n.soFar}` : ''}, set by ${n.setBy}`);
   }
