@@ -89,6 +89,27 @@ export function oneWordNamesMidSentence(text: string): string[] {
   return out;
 }
 
+/*
+ * AND A NAME USED AS A POSSESSIVE ANYWHERE IS A NAME EVERYWHERE IN THE CHECK-IN.
+ *
+ * fix6-5, the recognition scenario again. Joseph said "Victor's script was the hardest part of
+ * this whole thing." Amara said "Victor, the contractor, was responsible for the migration
+ * script." Neither used "Victor" in the middle of a sentence, so Amara's did not count and Victor
+ * was still not reported as named by both. "Victor's" is as sure a sign of a name as a capital in
+ * the middle of a sentence, so it goes into the same set.
+ */
+export function oneWordNamesAsPossessives(text: string): string[] {
+  const out: string[] = [];
+  const words = /\b([A-Z][a-z]+)(?=['\u2019]s\b)/g;
+  let m: RegExpExecArray | null;
+  while ((m = words.exec(text)) !== null) {
+    const lower = m[1].toLowerCase();
+    if (NOT_A_NAME.has(lower) || A_CONTRACTION_NOT_A_POSSESSIVE.has(lower)) continue;
+    out.push(m[1]);
+  }
+  return out;
+}
+
 /**
  * Every name-shaped thing in one passage: capitalised runs, and acronyms like CEO or CFO.
  *
@@ -152,9 +173,16 @@ export function whatMoreThanOnePersonNamed(
 
   /** name (lower) -> who named it, in the order the people were given. */
   const namedBy = new Map<string, { display: string; who: Set<string> }>();
-  /* Every one-word name anybody here used mid-sentence, so the same word at a sentence start counts. */
+  /* Every one-word name anybody here used mid-sentence or as a possessive, so the same word at a
+     sentence start counts. The people in the check-in are never added: they say nothing here. */
   const usedElsewhere = new Set<string>();
-  for (const p of people) for (const t of p.texts) for (const n of oneWordNamesMidSentence(t)) usedElsewhere.add(n.toLowerCase());
+  for (const p of people) {
+    for (const t of p.texts) {
+      for (const n of [...oneWordNamesMidSentence(t), ...oneWordNamesAsPossessives(t)]) {
+        if (!banned.has(n.toLowerCase())) usedElsewhere.add(n.toLowerCase());
+      }
+    }
+  }
   for (const p of people) {
     const mine = new Set<string>();
     for (const t of p.texts) for (const n of namesIn(t, usedElsewhere)) mine.add(n);

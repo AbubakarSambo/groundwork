@@ -25,6 +25,19 @@ describe('a name at the start of a sentence still counts when the same name is u
     expect(victor!.asSaid.find((q) => q.who === 'Joseph Mensah')!.said).toBe(JOSEPH[0]);
   });
 
+  it('and where nobody used the name mid-sentence, a possessive anywhere makes it known (fix6-5)', () => {
+    const shared = whatMoreThanOnePersonNamed(
+      [
+        { who: 'Joseph Mensah', texts: ["Victor's script was the hardest part of this whole thing. He worked on it the weekend of the 14th."] },
+        { who: 'Amara Diallo', texts: ['Victor, the contractor, was responsible for the migration script that brought over the existing users.'] },
+      ],
+      ['Amara Diallo', 'Joseph Mensah'],
+    );
+    const victor = shared.find((s) => s.name === 'Victor');
+    expect(victor).toBeDefined();
+    expect([...victor!.who].sort()).toEqual(['Amara Diallo', 'Joseph Mensah']);
+  });
+
   it('and a possessive alone is enough, even where nobody used the name mid-sentence', () => {
     expect(namesIn(JOSEPH[0], new Set())).toContain('Victor');
   });
