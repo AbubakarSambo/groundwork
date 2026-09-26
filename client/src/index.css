@@ -1078,30 +1078,13 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 }
 .gw-fb-btn:hover { transform: scale(1.06); box-shadow: 0 4px 16px rgba(0,0,0,.22); }
 .gw-fb-label { font-size: 10px; color: var(--gw-muted); font-weight: 500; letter-spacing: .02em; }
-.gw-fb-panel {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 1001;
-  width: 320px;
-  background: white;
-  border: 1px solid var(--gw-border);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.07);
-  overflow: hidden;
-  transform-origin: bottom right;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.gw-fb-panel[data-open="false"] {
-  opacity: 0;
-  transform: translateY(8px) scale(0.96);
-  pointer-events: none;
-}
-.gw-fb-panel[data-open="true"] {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
+/* THE OLD FEEDBACK PANEL'S RULES ARE GONE. A `.gw-fb-panel` block from an earlier widget (fixed,
+   bottom 80px, right 20px, 320px wide, and an open/closed animation on data-open) still applied to
+   today's panel, which shares the class name. Its width lost to the inline width: 100%, but
+   `position: fixed; right: 20px` did not: on a 375px phone the sheet was 375px wide and pinned 20px
+   from the right, so it ran from -20 to 355 and "Cancel" was cut off. On a computer it sat fixed in
+   the bottom-right corner instead of in the middle of its overlay. Today's panel is laid out by its
+   overlay alone (centred, and a bottom sheet on a phone), so nothing here may position it. */
 .gw-fb-tabs {
   display: flex;
   border-bottom: 1px solid var(--gw-border);
