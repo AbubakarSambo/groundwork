@@ -213,3 +213,37 @@ export function theQuestionTheProductAsks(period: string, theDate: string): stri
      didNotSayTheDate looks for it. */
   return `When you say ${period.toLowerCase()}, do you mean ${theDate}?`;
 }
+
+/**
+ * A REPLY THAT IS OUR OWN INSTRUCTION, SENT TO A PERSON.
+ *
+ * Seen on the handover scenario (fix6-2). Jide said he had never done a year-end close. The reply
+ * left the date out, so the model was asked again with SAY_THE_DATE, and what came back was the
+ * instruction itself, lightly reworded: "You said "year-end", which is a period rather than a
+ * day, and 31 December 2026 is what the product reads that as..." It said the date, so the check
+ * let it through, and Jide read our note to the model as the product talking to him.
+ *
+ * So a retry is refused when it repeats the instruction: six or more words in a row taken from it,
+ * or one of the phrases only the instruction uses. The line the instruction asks for is in quotes
+ * inside it, and quoted text is left out of the comparison, so the right answer is never refused
+ * for being the right answer. Refused means the product asks the question itself.
+ */
+const ONLY_THE_INSTRUCTION_SAYS = ['rather than a day', 'what the product reads', 'write the reply again'];
+
+function wordsOf(text: string): string[] {
+  return (text ?? '').toLowerCase().match(/[a-z0-9']+/g) ?? [];
+}
+
+export function repeatsTheInstruction(reply: string, instruction: string, run = 6): boolean {
+  const low = (reply ?? '').toLowerCase();
+  if (ONLY_THE_INSTRUCTION_SAYS.some((p) => low.includes(p))) return true;
+  const theirs = wordsOf(reply);
+  if (theirs.length < run) return false;
+  const ours = wordsOf((instruction ?? '').replace(/"[^"]*"/g, ' '));
+  const runsOfOurs = new Set<string>();
+  for (let i = 0; i + run <= ours.length; i++) runsOfOurs.add(ours.slice(i, i + run).join(' '));
+  for (let i = 0; i + run <= theirs.length; i++) {
+    if (runsOfOurs.has(theirs.slice(i, i + run).join(' '))) return true;
+  }
+  return false;
+}

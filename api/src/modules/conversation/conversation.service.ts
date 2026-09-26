@@ -29,7 +29,7 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
-import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
+import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks, repeatsTheInstruction } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
@@ -1842,13 +1842,18 @@ export class ConversationService {
       if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
         const period = thePeriodTheyNamed(message)!;
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
+        const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
         const withTheDate = await this.anthropic
-          .respond(`${fullSystem}\n\n${SAY_THE_DATE(period, dateItHadToSay)}`, history)
+          .respond(`${fullSystem}\n\n${theInstruction}`, history)
           .catch(() => '');
         const second = withTheDate.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
           : null;
-        if (second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay) && !isADeadEnd(second.text, closingNow)) {
+        /* And never our own instruction handed to them as a reply: Jide read one (fix6-2). */
+        if (
+          second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay)
+          && !isADeadEnd(second.text, closingNow) && !repeatsTheInstruction(second.text, theInstruction)
+        ) {
           screened = second;
           this.logger.log(`Check-in ${checkIn.id}: the second try said the date.`);
         } else {
