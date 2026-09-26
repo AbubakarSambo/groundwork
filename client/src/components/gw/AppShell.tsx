@@ -230,10 +230,10 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 function FeedbackWidget() {
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
-  // `/feed` used to draw its own feedback button in its header, so the floating one was
-  // hidden there to avoid two. The page is gone (W13-13), so the floating trigger is
-  // simply always on.
-  const hideTrigger = false
+  /* HIDDEN ON "MORE" ONLY. That page has "Send feedback" in its own list, and on a phone the floating
+     button sat over the ticked organisation row there. Everywhere else it stays; the panel it opens
+     still opens from "Send feedback" on More. */
+  const hideTrigger = location.pathname === '/more'
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)

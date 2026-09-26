@@ -124,3 +124,28 @@ describe('switching organisation and signing out on a phone', () => {
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1', firstName: 'Adam' }, 'new-token'))
   })
 })
+
+describe('the floating Feedback button', () => {
+  it('is not drawn on "More", which has "Send feedback" in its own list', () => {
+    mount(PARTICIPANT)
+    expect(screen.queryByRole('button', { name: /^Feedback\. Drag to move/ })).toBeNull()
+    expect(within(main()).getByRole('button', { name: 'Send feedback' })).toBeInTheDocument()
+  })
+
+  it('and "Send feedback" there still opens the feedback panel', async () => {
+    mount(PARTICIPANT)
+    fireEvent.click(within(main()).getByRole('button', { name: 'Send feedback' }))
+    const { useFeedbackStore } = await import('@/stores/feedback')
+    expect(useFeedbackStore.getState().open).toBe(true)
+    useFeedbackStore.getState().hide()
+  })
+
+  it('but it is still on every other page', () => {
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [])
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/grounds']}><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>)
+    expect(screen.getByRole('button', { name: /^Feedback\. Drag to move/ })).toBeInTheDocument()
+  })
+})
