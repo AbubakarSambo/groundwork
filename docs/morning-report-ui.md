@@ -194,6 +194,18 @@ purpose. I will build everything else in U.2 and leave these as they are until y
    links an existing account to Google, before steps that can still fail. **My suggestion:** leave the
    line out, as it is now, unless the Google sign-in is changed to undo those steps when it fails.
 
+### 12. May the reset page say whose account it is? A privacy question
+
+The prototype's reset page says "For wairimu@baridi.co.ke. Once it's saved, you're signed out
+everywhere else." To show the address, the server would have to return the email of the account
+behind a reset link. A privacy test in the product records that this very check once gave away the
+address behind a link, and was fixed so it would not ("validateToken tells nobody whose link it
+is"). Putting the address back would change a privacy rule and weaken that test, so I have not done
+it. The page shows the address if the server ever sends it, and leaves it out otherwise.
+
+**My suggestion:** leave the address out. The person already knows which account they asked to reset,
+and the link could be forwarded to someone else.
+
 ### 11. Organisations and joining (U.3): nine decisions
 
 I will build what does not depend on these first, and leave each of these as the product does it
@@ -386,6 +398,18 @@ product does today. Done so far, on the screens only:
     replaced by a reset link, so nobody is let in without choosing a password.
 11. **"Your email is confirmed"** (commit `46b92a91`), shown once, when a link has just made the
     account.
+
+12. **An old link says so as the page opens** (commits `b12c31fa`, `9c1edde0`). A reset or "choose a
+    password" link that has run out now opens straight on "That link has expired", before anything
+    is typed. Also, opening "You're signed out" after a session had already lapsed no longer shows the
+    "you had been away" message instead.
+13. **The server says when a link has just made the account** (commit `3aa13097`), so "Your email is
+    confirmed" appears exactly then. Checked with a real new sign-up: "Your email is confirmed", the
+    address, then "Continue", which led to "Choose a password".
+14. **Every way back from Google lands on "Google sign-in didn't finish"** (commit `b558eac9`). Before,
+    pressing Cancel at Google left the person on a bare page from our server reading "Unauthorized".
+    One API test had been failing unseen since step 6, because only the screens' tests had been run on
+    that step. It is fixed. From now on, the full API suite runs at the end of every task.
 
 Still to do: the backend parts (the reset page showing whose account it is, telling the screens that a link has just
 made the account, and sending a failed Google sign-in to the new page).
