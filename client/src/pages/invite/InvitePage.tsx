@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { InvitationExpired } from './InvitationExpired'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
 import { useAuthStore } from '@/stores/auth'
@@ -445,7 +446,7 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
 
 /** "Baridi Appliances, until 30 September." */
 export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null }): string {
-  const until = p.endsAt ? new Date(p.endsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null
+  const until = p.endsAt ? whenItWas(p.endsAt, 'dayAndMonthLong', 'UTC') : null
   const org = (p.organisationName ?? '').trim()
   if (org && until) return `${org}, until ${until}.`
   if (org) return `${org}.`

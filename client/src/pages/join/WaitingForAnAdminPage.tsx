@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { authApi, type MyWaiting } from '@/api/auth'
 import { Button } from '@/components/gw/kit'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AuthCard, AuthError, AuthNotice } from '@/pages/auth/auth-kit'
 
 /**
@@ -49,7 +50,7 @@ export function WaitingForAnAdminPage() {
     <AuthCard title="Almost in" sub={youAreFromOutside(w)}>
       <ol className="gw-steps">
         <li className="done"><span aria-hidden>✓</span><span className="gw-sr-only">Done. </span>{admin ? 'You accepted the invitation' : 'You asked to join'}</li>
-        <li className="done"><span aria-hidden>✓</span><span className="gw-sr-only">Done. </span>{who ?? 'An admin'} was asked, {whenItWas(w.askedAt)}</li>
+        <li className="done"><span aria-hidden>✓</span><span className="gw-sr-only">Done. </span>{who ?? 'An admin'} was asked, {whenItWasAsked(w.askedAt)}</li>
         <li><span aria-hidden>○</span><span className="gw-sr-only">Still to happen. </span>{who ?? 'An admin'} lets you in</li>
       </ol>
       <p className="gw-auth-sub" style={{ marginTop: 16 }}>
@@ -82,13 +83,13 @@ export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>,
   return `You’re from outside ${w.organisationName}, so an admin there has to let you in.${asked}`
 }
 
-/** "yesterday at 4:12pm", "today at 9:05am", or "on 24 September at 4:12pm". */
-export function whenItWas(iso: string, now: Date = new Date()): string {
+/** "yesterday at 16:12", "today at 09:05", or "on 20 September at 16:12", in the shared date format. */
+export function whenItWasAsked(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
-  const time = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s/g, '').toLowerCase()
+  const time = whenItWas(d, 'time')
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const diff = Math.round((day(now) - day(d)) / 86_400_000)
   if (diff === 0) return `today at ${time}`
   if (diff === 1) return `yesterday at ${time}`
-  return `on ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })} at ${time}`
+  return `on ${whenItWas(d, 'dayAndMonthLong')} at ${time}`
 }

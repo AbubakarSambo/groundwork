@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Button, Tag } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthNotice } from '@/pages/auth/auth-kit'
 
@@ -27,7 +28,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
 
   const lead = data?.leadFirstName ?? null
   const until = data?.ranUntil
-    ? new Date(data.ranUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+    ? whenItWas(data.ranUntil, 'dayAndMonthLong', 'UTC')
     : null
   const sub = `${until ? `It ran until ${until}. ` : ''}Nothing new can be added until ${lead ?? 'the person who runs it'} gives it more time.`
   const asked = !!data?.askedAt || ask.isSuccess

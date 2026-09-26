@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { WaitingForAnAdminPage, whenItWas } from './WaitingForAnAdminPage'
+import { WaitingForAnAdminPage, whenItWasAsked } from './WaitingForAnAdminPage'
 import { authApi } from '@/api/auth'
 
 /**
@@ -36,7 +36,7 @@ describe('after a real invitation', () => {
     expect(screen.getByRole('heading', { name: 'Almost in' })).toBeTruthy()
     const steps = [...document.querySelectorAll('.gw-steps li')].map(li => li.textContent)
     expect(steps[0]).toBe('✓Done. You accepted the invitation')
-    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{1,2}:\d{2}(am|pm)$/)
+    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{2}:\d{2}$/)
     expect(steps[2]).toBe('○Still to happen. Grace lets you in')
     expect(screen.getByText('We’ll email you the moment Grace does, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.getByText('You can remind Grace once a day. Wairimu can see you’re waiting too.')).toBeTruthy()
@@ -80,10 +80,11 @@ describe('after a link shared with many people', () => {
 })
 
 describe('when it was asked, in words', () => {
+  /* In the product's one date format (lib/a-date-reads-the-same-everywhere.ts), so 16:12, not 4:12pm. */
   it('today, yesterday, or a date', () => {
     const now = new Date(2026, 8, 26, 12, 0)
-    expect(whenItWas(new Date(2026, 8, 26, 9, 5).toISOString(), now)).toBe('today at 9:05am')
-    expect(whenItWas(new Date(2026, 8, 25, 16, 12).toISOString(), now)).toBe('yesterday at 4:12pm')
-    expect(whenItWas(new Date(2026, 8, 20, 16, 12).toISOString(), now)).toBe('on 20 September at 4:12pm')
+    expect(whenItWasAsked(new Date(2026, 8, 26, 9, 5).toISOString(), now)).toBe('today at 09:05')
+    expect(whenItWasAsked(new Date(2026, 8, 25, 16, 12).toISOString(), now)).toBe('yesterday at 16:12')
+    expect(whenItWasAsked(new Date(2026, 8, 20, 16, 12).toISOString(), now)).toBe('on 20 September at 16:12')
   })
 })
