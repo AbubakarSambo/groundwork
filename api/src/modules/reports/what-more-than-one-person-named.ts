@@ -55,8 +55,48 @@ const startsASentence = (text: string, at: number): boolean => {
   return before === '' || /[.!?]$/.test(before);
 };
 
-/** Every name-shaped thing in one passage: capitalised runs, and acronyms like CEO or CFO. */
-export function namesIn(text: string): string[] {
+/*
+ * A NAME AT THE START OF A SENTENCE, WHEN THE SAME NAME IS USED ELSEWHERE.
+ *
+ * Seen on the recognition scenario (fix6-4). Amara said "Victor worked closely with me on the
+ * implementation" and "The migration of the existing users was a significant technical challenge
+ * that Victor handled very well." Joseph said "Victor's backend script relies on the front-end
+ * forms." Victor was not reported as named by both, because Joseph's only mention starts his
+ * sentence, and a one-word capital at the start of a sentence is skipped as probably just a
+ * capital letter.
+ *
+ * That rule stays for a word nobody uses anywhere else. But a word somebody in this check-in also
+ * used in the middle of a sentence is a name, wherever it sits, and so is a word with a possessive
+ * straight after it ("Victor's"). The words that take "'s" only as a contraction ("Let's",
+ * "Here's") are left out of the possessive rule.
+ */
+const A_CONTRACTION_NOT_A_POSSESSIVE = new Set([
+  'let', 'here', 'what', 'everyone', 'everybody', 'nobody', 'somebody', 'someone', 'anyone',
+  'today', 'tomorrow', 'yesterday', 'one', 'nothing', 'everything', 'something', 'now',
+]);
+
+const aPossessiveFollows = (text: string, end: number): boolean => /^['’]s\b/.test(text.slice(end));
+
+/** One-word names used in the middle of a sentence in this passage. */
+export function oneWordNamesMidSentence(text: string): string[] {
+  const out: string[] = [];
+  const words = /\b([A-Z][a-z]+)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = words.exec(text)) !== null) {
+    if (NOT_A_NAME.has(m[1].toLowerCase()) || startsASentence(text, m.index)) continue;
+    out.push(m[1]);
+  }
+  return out;
+}
+
+/**
+ * Every name-shaped thing in one passage: capitalised runs, and acronyms like CEO or CFO.
+ *
+ * `usedElsewhere`, when given, is the one-word names seen mid-sentence anywhere in this check-in
+ * (lower case). A one-word run at the start of a sentence then counts if it is one of them, or if a
+ * possessive follows it. Without it, nothing changes: a sentence-start word is skipped.
+ */
+export function namesIn(text: string, usedElsewhere?: Set<string>): string[] {
   const out: string[] = [];
   /*
    * "of" and "the" join one name - Bank of Kenya, Friends of the Trust. "and" does not: it joins
@@ -68,7 +108,15 @@ export function namesIn(text: string): string[] {
   while ((m = runs.exec(text)) !== null) {
     const name = m[1].replace(/\s+/g, ' ').trim();
     const oneWord = !name.includes(' ');
-    if (oneWord && (NOT_A_NAME.has(name.toLowerCase()) || startsASentence(text, m.index))) continue;
+    if (oneWord && NOT_A_NAME.has(name.toLowerCase())) continue;
+    if (oneWord && startsASentence(text, m.index)) {
+      const lower = name.toLowerCase();
+      const stillAName = !!usedElsewhere && (
+        usedElsewhere.has(lower)
+        || (aPossessiveFollows(text, m.index + m[1].length) && !A_CONTRACTION_NOT_A_POSSESSIVE.has(lower))
+      );
+      if (!stillAName) continue;
+    }
     out.push(name);
   }
   const acronyms = /\b([A-Z]{2,6})\b/g;
@@ -104,9 +152,12 @@ export function whatMoreThanOnePersonNamed(
 
   /** name (lower) -> who named it, in the order the people were given. */
   const namedBy = new Map<string, { display: string; who: Set<string> }>();
+  /* Every one-word name anybody here used mid-sentence, so the same word at a sentence start counts. */
+  const usedElsewhere = new Set<string>();
+  for (const p of people) for (const t of p.texts) for (const n of oneWordNamesMidSentence(t)) usedElsewhere.add(n.toLowerCase());
   for (const p of people) {
     const mine = new Set<string>();
-    for (const t of p.texts) for (const n of namesIn(t)) mine.add(n);
+    for (const t of p.texts) for (const n of namesIn(t, usedElsewhere)) mine.add(n);
     for (const n of mine) {
       const key = n.toLowerCase();
       if (banned.has(key)) continue;
