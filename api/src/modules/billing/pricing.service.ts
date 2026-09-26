@@ -54,6 +54,19 @@ export const FREE_MEMBER_LIMIT_KEY = 'pricing.freeMemberLimit';
 export const DEFAULT_FREE_MEMBER_LIMIT = 5;
 export const MAX_FREE_MEMBER_LIMIT = 1000;
 
+/**
+ * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR 3 MONTHS. Hafsah's decision of 26 September.
+ *
+ * The numbers live here, in the database, and every screen builds its sentence from them, so no
+ * screen can say a different number. Nothing here GRANTS the trial: billing does not do that yet
+ * (U.19). So it is off by default, and the screens say nothing about a trial until it is switched
+ * on, which must wait until billing really gives it. A promise on a screen that billing does not
+ * keep is the thing this exists to prevent.
+ */
+export const FREE_TRIAL_KEY = 'pricing.freeTrial';
+export interface FreeTrial { on: boolean; teamsUnder: number; months: number }
+export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 3 };
+
 @Injectable()
 export class PricingService {
   private readonly logger = new Logger(PricingService.name);
@@ -84,12 +97,53 @@ export class PricingService {
    * that has to make two requests to state one offer will eventually state half of it.
    */
   async publicPricing() {
-    const [plans, groundLimit, memberLimit] = await Promise.all([
+    const [plans, groundLimit, memberLimit, trial] = await Promise.all([
       this.listPlans(),
       this.getFreeGroundLimit(),
       this.getFreeMemberLimit(),
+      this.getFreeTrial(),
     ]);
-    return { plans, free: { groundLimit, memberLimit } };
+    return { plans, free: { groundLimit, memberLimit }, trial };
+  }
+
+  /** The trial's numbers and whether it is on. Never throws: a bad or missing row means the default, which is off. */
+  async getFreeTrial(): Promise<FreeTrial> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_TRIAL_KEY } });
+      const v = row?.value as Partial<FreeTrial> | undefined;
+      if (
+        v && typeof v.on === 'boolean' &&
+        Number.isInteger(v.teamsUnder) && (v.teamsUnder as number) >= 2 && (v.teamsUnder as number) <= 10_000 &&
+        Number.isInteger(v.months) && (v.months as number) >= 1 && (v.months as number) <= 24
+      ) {
+        return { on: v.on, teamsUnder: v.teamsUnder as number, months: v.months as number };
+      }
+    } catch (err) {
+      this.logger.warn(`Could not read the free trial, so it is off: ${(err as Error)?.message}`);
+    }
+    return { ...DEFAULT_FREE_TRIAL };
+  }
+
+  async setFreeTrial(input: Partial<FreeTrial>, adminUserId: string): Promise<FreeTrial> {
+    const now = await this.getFreeTrial();
+    const next: FreeTrial = {
+      on: typeof input.on === 'boolean' ? input.on : now.on,
+      teamsUnder: input.teamsUnder !== undefined ? Number(input.teamsUnder) : now.teamsUnder,
+      months: input.months !== undefined ? Number(input.months) : now.months,
+    };
+    if (!Number.isInteger(next.teamsUnder) || next.teamsUnder < 2 || next.teamsUnder > 10_000) {
+      throw new BadRequestException('The team size for the free trial must be a whole number between 2 and 10,000.');
+    }
+    if (!Number.isInteger(next.months) || next.months < 1 || next.months > 24) {
+      throw new BadRequestException('The free trial must last a whole number of months between 1 and 24.');
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: FREE_TRIAL_KEY },
+      create: { key: FREE_TRIAL_KEY, value: next as any, updatedBy: adminUserId },
+      update: { value: next as any, updatedBy: adminUserId },
+    });
+    this.logger.log(`Free trial set to ${JSON.stringify(next)} by ${adminUserId}`);
+    return next;
   }
 
   /** The seat cap for a plan, or null for unlimited. Throws for a plan with no row. */

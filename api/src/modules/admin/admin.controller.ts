@@ -115,6 +115,19 @@ export class AdminController {
     return { freeMemberLimit: await this.pricing.getFreeMemberLimit() };
   }
 
+  @Get('pricing/free-trial')
+  @ApiOperation({ summary: 'The free trial: whether it is on, the team size it is for, and how many months' })
+  async getFreeTrial() {
+    return this.pricing.getFreeTrial();
+  }
+
+  /** Switch it on only once billing really grants it (U.19); until then the screens stay quiet about it. */
+  @Patch('pricing/free-trial')
+  @ApiOperation({ summary: 'Change the free trial' })
+  async setFreeTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean; teamsUnder?: number; months?: number }) {
+    return this.pricing.setFreeTrial(body ?? {}, userId);
+  }
+
   @Patch('pricing/free-member-limit')
   @ApiOperation({ summary: 'Change the free member limit' })
   async setFreeMemberLimit(@CurrentUser('id') userId: string, @Body() body: { freeMemberLimit: number }) {

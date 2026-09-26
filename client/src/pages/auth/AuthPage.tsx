@@ -20,6 +20,7 @@ import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { aNameFromAnEmailAddress } from '@/lib/a-name-from-an-email-address'
+import { theFreeTrialSentence } from '@/lib/the-free-trial'
 
 
 
@@ -187,6 +188,20 @@ export function AuthPage() {
     staleTime: 10 * 60 * 1000,
     retry: false,
   })
+
+  /*
+   * THE FREE TRIAL'S SENTENCE, FROM THE SERVER'S NUMBERS (Hafsah, 26 September). Shown on sign-up
+   * only while the trial is switched on, which waits until billing really grants it (U.19). A failed
+   * read shows nothing, which is the safe direction.
+   */
+  const { data: pricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: billingApi.getPricing,
+    enabled: view === 'create',
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
+  const trialSentence = theFreeTrialSentence(pricing?.trial)
 
   const signIn = useMutation({
     mutationFn: () => authApi.login(email.trim().toLowerCase(), password),
@@ -476,7 +491,7 @@ export function AuthPage() {
     }
     const google = googleButton('Sign up with Google')
     return (
-      <AuthCard title="Create your account" sub="We send you a link to confirm your email. Your account is made when you open it.">
+      <AuthCard title="Create your account" sub={trialSentence ?? 'We send you a link to confirm your email. Your account is made when you open it.'}>
         {/*
           WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
           read it here, while they are deciding, rather than find out on their first invoice.

@@ -164,6 +164,8 @@ export interface LivePricingRow {
 export interface LivePricing {
   plans: LivePricingRow[]
   free: { groundLimit: number; memberLimit: number }
+  /** The free trial (Hafsah, 26 September). Off until billing really grants it (U.19); say nothing while off. */
+  trial?: { on: boolean; teamsUnder: number; months: number }
 }
 
 /**
