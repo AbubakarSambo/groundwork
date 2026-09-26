@@ -356,7 +356,8 @@ export class AuthService {
         });
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
-        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id);
+        /* This link has just made the account (U.2): the client says "Your email is confirmed". */
+        return { ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true };
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -403,7 +404,8 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id);
+      /* This link has just made the account and its organisation (U.2). */
+      return { ...(await this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true };
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
