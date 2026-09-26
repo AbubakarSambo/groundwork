@@ -429,6 +429,40 @@ sign in.
 Until then I keep building the next modules, with their tests, and leave each one "built, not
 reviewed" in this report.
 
+### 15. People, roles and access (U.4): what needs you
+
+1. **Admins and performance plans. A privacy question.** Today the backend lets every admin read and
+   run every check-in, performance plans included. Rule 5 in `docs/decisions.md` says an admin never
+   sees a performance plan unless given access to that check-in. I kept today's behaviour, so the
+   People page's role line "Admin: Manages people and billing, and can read every check-in." is true
+   today, but it goes against rule 5. **My recommendation:** change the backend so admins cannot open a
+   performance-plan check-in unless given access, with a privacy test, and then say so on the page.
+2. **"…and what someone writes in their own check-in stays theirs".** This is on the prototype's page
+   for one person (`one-person.txt`, "What an admin can see"). It contradicts rule 5, which lets admins
+   read what people said. **Left out**, as with the U.3 conflicts. **My recommendation:** drop it.
+3. **"Remove from Baridi" and "Free this seat" are not built.** Today's removal deletes the person's
+   whole account in every organisation, and it cannot be undone. The prototype promises "What they
+   shared stays", with an undo. **My recommendation:** a new removal that only ends this
+   organisation's membership, keeps the account, and can be undone.
+4. **Colleagues no longer carry email addresses**, as you decided. So the picker can no longer spot a
+   colleague who was invited but has not accepted yet. Picking them again simply re-sends their
+   invitation. **My recommendation:** accept that.
+5. **The People list still uses the organisation a person last switched to.** So someone who belongs
+   here but is looking at another organisation drops off the list, and a guest looking at this one
+   appears on it. Colleagues now read real memberships. **My recommendation:** do the same for the
+   People list.
+6. **"Team" and the staff record's "department" are two fields.** One access rule lets a lead read
+   their department's check-ins, using the staff record's department. The new "Team" is read by no
+   access rule. **My recommendation:** make them one field, but that changes an access rule, so it is
+   yours to decide.
+7. **Not built, waiting for other modules:** "Guest" as a choice when inviting (a guest is someone
+   from another organisation added to one check-in); "Region", which has no field; "Across check-ins"
+   on one person's page, because each person's load is private and it belongs to the You page (U.12);
+   the check-in's "People and setup" tab (with B1 and B3); the read-only note on the board (U.10); and
+   your own Settings page (`own-settings.txt`).
+8. **"Changes apply straight away."** The prototype adds "and are noted with your name", but nothing
+   records who changed a role. **Left out.** **My recommendation:** record it, then add the words back.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -717,6 +751,30 @@ review can run, it should also confirm that the rewritten waiting check really p
 still waiting never reaches the check-in. Two older copies of the dashed sentence "That did not go
 through. Nothing has changed - try again." remain, on the People page (fixed in U.4) and in "What you
 are carrying forward".
+
+### U.4 People, roles and access: partly built, being tested
+
+Seven commits so far, with the tests for each change:
+- **People an admin adds no longer wait for an admin.** Before, when Sahar set up a check-in for a
+  lead, everyone she added waited for her own approval, because the server asked whether the lead was
+  an admin. Each person now records who added them.
+- **Level, team and who someone reports to**, set by an admin for each organisation, with plain
+  refusals such as "Someone cannot report to themselves." These only describe the organisation. No
+  access rule reads them.
+- **Colleagues, as you decided:** a member sees each colleague's name, role and team, and nothing else.
+  A guest sees only the people on their own check-ins. Before, every member, and a guest, could get
+  everyone's email address. The People list also no longer counts a person's check-ins in other
+  organisations, which gave away their load elsewhere.
+- **Letting someone in now also tells whoever invited them**, as the prototype says.
+- **Inviting gives the role chosen**, and keeps a name typed beside an address.
+- **The People page and a page for one person**, from the prototype: "Waiting to be let in" with the
+  seats left, "Who reports to whom", "Everyone at …" with filters, "Invite people", "Who can open a
+  check-in", and "Help your team get started". The retry sentence there now reads "That did not go
+  through, and nothing has changed. Try again."
+
+The wording the builder had to write, where no screen has any, is listed in its commit notes. It is
+mostly small states such as "Nobody here matches that." and "Not set". No screen could be checked
+signed in (item 14). Item 15 lists what needs you.
 
 ## Found on the way, for later tasks
 
