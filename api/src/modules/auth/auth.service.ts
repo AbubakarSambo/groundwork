@@ -1226,23 +1226,12 @@ export class AuthService {
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber ? WhatsAppService.normalize(dto.phoneNumber) : null;
 
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
-    const orgUpdate: Record<string, unknown> = {};
-    if (dto.orgName !== undefined) orgUpdate.name = dto.orgName.trim();
-    if (dto.orgEmail !== undefined) orgUpdate.email = dto.orgEmail.trim();
-    if (dto.orgSlug !== undefined) {
-      const slug = dto.orgSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const existing = await this.prisma.organization.findUnique({ where: { slug } });
-      if (existing && existing.id !== user.organizationId) throw new ConflictException('Org code already taken');
-      orgUpdate.slug = slug;
+    /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
+    if (Object.keys(userUpdate).length) {
+      await this.prisma.user.update({ where: { id: userId }, data: userUpdate });
     }
-    if (dto.companyStage !== undefined) orgUpdate.companyStage = dto.companyStage;
-
-    await this.prisma.$transaction([
-      ...(Object.keys(userUpdate).length ? [this.prisma.user.update({ where: { id: userId }, data: userUpdate })] : []),
-      ...(Object.keys(orgUpdate).length ? [this.prisma.organization.update({ where: { id: user.organizationId }, data: orgUpdate })] : []),
-    ]);
 
     return this.getProfile(userId);
   }

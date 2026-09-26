@@ -7,7 +7,8 @@ import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
 import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested, IsEnum } from 'class-validator';
+import { CompanyStage } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { TeamSizeSaidDto } from '../auth/dto/create-organisation.dto';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
@@ -25,6 +26,9 @@ class RenameOrganizationDto {
    */
   @IsOptional() @IsEmail() @MaxLength(255) billingEmail?: string;
   @IsOptional() @ValidateNested() @Type(() => TeamSizeSaidDto) teamSize?: TeamSizeSaidDto;
+
+  /** Moved here from PATCH /auth/me, which let anybody set it (U.3). No screen sets it today. */
+  @IsOptional() @IsEnum(CompanyStage) companyStage?: CompanyStage;
 }
 
 @ApiTags('Users')
@@ -107,7 +111,7 @@ export class UsersController {
     @CurrentUser('organizationId') organizationId: string,
     @Body() dto: RenameOrganizationDto,
   ) {
-    return this.usersService.renameOrganization(organizationId, dto.name, { billingEmail: dto.billingEmail, teamSize: dto.teamSize });
+    return this.usersService.renameOrganization(organizationId, dto.name, { billingEmail: dto.billingEmail, teamSize: dto.teamSize, companyStage: dto.companyStage });
   }
 
   /**

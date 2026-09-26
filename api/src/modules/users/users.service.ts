@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { PaginationDto } from '../../common';
-import { TokenType } from '@prisma/client';
+import { TokenType, CompanyStage } from '@prisma/client';
 import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
@@ -691,7 +691,7 @@ export class UsersService {
   async renameOrganization(
     organizationId: string,
     name: string,
-    more: { billingEmail?: string; teamSize?: { said: 'fewer' | 'more'; line: number } } = {},
+    more: { billingEmail?: string; teamSize?: { said: 'fewer' | 'more'; line: number }; companyStage?: CompanyStage } = {},
   ) {
     const trimmed = name.trim();
     if (trimmed.length < 2) throw new BadRequestException('Give the organisation a name of at least two letters.');
@@ -703,6 +703,7 @@ export class UsersService {
         /* An empty billing email leaves the one it has: it is optional, and "You can add it later". */
         ...(billingEmail ? { email: billingEmail } : {}),
         ...(more.teamSize ? { teamSizeSaid: more.teamSize.said, teamSizeLine: more.teamSize.line } : {}),
+        ...(more.companyStage ? { companyStage: more.companyStage } : {}),
       },
       select: { id: true, name: true },
     });
