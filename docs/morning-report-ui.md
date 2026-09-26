@@ -487,6 +487,45 @@ reviewed" in this report.
 5. **One old invite route no longer has a button.** Inviting now goes through the People page.
    **My recommendation:** retire the old route in a later clean-up.
 
+### 17. Starting a check-in (U.6): what needs you
+
+1. **The situations' names.** The new list shows the prototype's names in sentence case, but eight
+   still differ in their words, for example "Support a raise, promotion, or recognition" where the
+   prototype says "Support a raise or promotion", and "Check in before a contract or renewal" where it
+   says "Check in before a renewal". The names are tied to the engine's own table, so I have asked the
+   engine workspace (request 5). Two of the prototype's names are narrower than ours ("recognition"
+   and "contract" drop out). **My recommendation:** take the prototype's names; the one line under
+   each still says what it covers.
+2. **Two one-line descriptions say a rhythm the product does not set.** "Set goals and keep the team on
+   track" reads "Targets, and a daily read on what’s actually moving." and "Keep a read on live work"
+   reads "…every week.", but those situations start every 2 weeks and monthly. I kept the prototype's
+   words. **My recommendation:** either keep them, since the rhythm is changed in setup, or change the
+   starting rhythm to match.
+3. **"Onboarding several people at once" is a card the prototype does not have.** It is kept, last
+   under "Something is starting", so nothing is lost. **My recommendation:** keep it.
+4. **"Do you check in too?"** The prototype's setup asks "Yes, I’m part of this" or "No, I only run
+   it", where "only run it" means no account of yours at all. Ours offers "I set this up and check in
+   myself" or "I check in once to set the context, then only they check in", so the lead always
+   checks in once. That is a product decision, so I kept ours. **My recommendation:** keep ours, since
+   the lead's first account is what everyone else's is read against, and use the prototype's wording
+   only when that is decided.
+5. **The lead's first check-in card ("You’re up first").** The prototype shows it after invitations
+   have gone ("Invitations have gone to 4 people."). In our flow the lead checks in before anyone is
+   invited, so that sentence would be false, and "Do it later today" has nowhere to keep the check-in
+   for someone signed out. I also found that the old card for this moment is never shown: nothing
+   ever turns it on. I have not built the card. **My recommendation:** decide whether invitations go
+   before or after the lead's first check-in; then I build the card with sentences that are true.
+6. **Not built, as `not-to-build.md` or the modules say:** the switchboard page (a design table with
+   sample data, part of B5), the template library's running examples (sample data), "What this turns
+   on" and "Or start from a ready-made check-in in the template library." (both point at those pages),
+   and the supplier review board (B5).
+7. **Wording I used where no screen has any:** "Send" and the placeholder "For example: our sales
+   targets this quarter" on the signed-in first screen (taken from the signed-out one), the same
+   placeholder in the list's box (the prototype's own is cut off in its picture), the link "Rather
+   pick from a list? See every situation." for someone signed in (so the list can be reached), and
+   "Where you are" as the name of the "Check-ins / New check-in" line for screen readers. Under "For
+   example" in the "You picked" panel, the examples are the product's own, not the prototype's.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -837,6 +876,36 @@ plain underlined line, not a second button). The only other failure is in two of
 workspace's own new tests, which I have asked them to fix (request 4). After merging the engine's
 latest, its report tests passed again (1,258). **Not ticked,** because no review can sign in (item
 14).
+
+### U.6 Starting a check-in: first part built and tested, not yet reviewed
+
+- **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
+  track?", "A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.",
+  five examples that fill the box ("Track the team’s targets for the quarter", "Sales are behind and I
+  don’t know why", "A new hire starts on Monday", "Someone isn’t delivering", "We have to choose a
+  supplier"), "Continue", and "Rather pick from a list? See every situation." Signed in: "Check-ins /
+  New check-in", "Set up a check-in", "Describe it in your own words. Nothing is sent to anyone until
+  you press send.", "What do you want your team to check in about?" and "Send". The name, the planned
+  sessions and the step bar no longer show before anything has been said.
+- **Every situation in one list:** "What do you want people to check in about?", under "Something is
+  starting", "Goals and plans", "Keeping a read", "About one person" and "Something has gone off",
+  each with the prototype's one line, then "Something else" with "Describe it". Picking a card now
+  only picks it. The "You picked" panel says "It starts the conversation with: “…” You can change
+  every word." and "Start with this", and, for someone signed out, "You don’t need an account to
+  start. We ask for your email when there’s something worth keeping."
+- **A bug fixed on the way:** choosing a card used to send its first message without its situation,
+  so the setup did not open with that situation's own first question. It now does.
+- **All 25 situations are already offered.** The modules doc says the backend lacks eight; it has
+  them. I asked the engine workspace to check their conversations and to rename the names (request 5).
+
+**Tested:** the new test reads the rendered first screen and list as someone signed out and someone
+signed in, word for word. One test changed: `describe-own-is-a-real-choice.spec.ts` read the old
+"describe your own" card from the page's source; that card is gone because the whole first screen is
+now the describe route, so it checks the same rule on the rendered screen. The entry, grounds,
+components and sign-in tests (1,630) and the type check pass. The screen was checked in the browser
+signed out; nothing signed in could be checked (item 14). **Still to build in U.6:** the setup screen
+(when it starts, which days, who is in it, guests, the share link), the panel that fills in as you
+talk, and the lead's first check-in card (item 17).
 
 ## Found on the way, for later tasks
 
