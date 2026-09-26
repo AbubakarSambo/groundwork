@@ -130,7 +130,11 @@ the prototype shows the list "Get … going" and nothing else. Apart from the de
 "Click-through", the word "tour" does not appear anywhere in `groundwork-prototype.html`. So there
 is no wording to copy, and the tour stays out.
 
-**Which do you want?** (a) no tour, with that card and list on Today as the welcome, built in U.3 and
+**Answered by you on 26 September: (a), no tour.** What you had seen was the demo bar's click-through.
+A new organisation's Today page will show the welcome card and the checklist, exactly as in the
+prototype, built in U.3 and U.5. Nothing more is needed in U.1.
+
+*Your question was:* (a) no tour, with that card and list on Today as the welcome, built in U.3 and
 U.5, word for word from the screen; or (b) a tour, with wording you give me. I suggest (a). Until
 you answer, the tour is the one open part of U.1.
 
@@ -220,7 +224,7 @@ and its copy of `docs/requests-to-engine.md` has no answers in it.
 
 ## Phase U. The prototype's screens and the suites
 
-### U.1 Look and layout: done (the tour waits for you)
+### U.1 Look and layout: done
 
 The builder split U.1 into 13 small changes. Done so far:
 
@@ -293,7 +297,7 @@ suite, apart from the known email key failure and two slow tests that pass on th
 after that passed the screen tests again. The reviewer passed it as Sahar, Hafsah, Adam and Kavon,
 at a computer's width and a phone's. The 24 scenarios could not be run (item 3).
 
-**Still open in U.1:** the short tour, which waits for you (item 8). The sidebar links to Today,
+**Still open in U.1:** nothing of U.1's own. You chose no tour (item 8). The sidebar links to Today,
 Company, You and Suites come with those pages, in U.5, U.12, U.15 and U.17.
 
 ## Found on the way, for later tasks

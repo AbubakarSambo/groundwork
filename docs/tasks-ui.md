@@ -25,7 +25,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 
 ## Phase U. The prototype's screens and the suites
 
-- [x] **U.1** A1 Look and layout: the colours, type, buttons, tags, the four marks, the sidebar, the phone layout, "Jump to" search, pinning, the short tour, help *(Done, except the short tour, which waits for Hafsah: the prototype has none to copy. The links to Today, Company, You and Suites come with those pages.)*
+- [x] **U.1** A1 Look and layout: the colours, type, buttons, tags, the four marks, the sidebar, the phone layout, "Jump to" search, pinning, the short tour, help *(Done. No tour, as Hafsah decided: a new organisation's Today page has the welcome card and checklist instead, built in U.3 and U.5. The links to Today, Company, You and Suites come with those pages.)*
 - [ ] **U.2** A2 Accounts and signing in
 - [ ] **U.3** A3 Organisations and joining (including joining by email domain, and your own web address and logo)
 - [ ] **U.4** A4 People, roles and access (levels, reporting lines, access to each check-in, "Check-ins wait for an admin", requests to an admin)
