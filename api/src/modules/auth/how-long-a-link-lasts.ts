@@ -79,7 +79,7 @@ export function whatToSayAboutADeadLink(input: {
   const { type, used, expired } = input;
 
   if (used && type === TokenType.PASSWORD_SETUP) {
-    return 'This link has already been used, so your password is set. Sign in with it - or use "Forgot your password?" if you cannot remember it.';
+    return 'This link has already been used, so your password is set. Sign in with it, or use "Forgot password?" if you cannot remember it.';
   }
   if (used && type === TokenType.PASSWORD_RESET) {
     return 'This link has already been used and your password was changed. Sign in with the new one, or ask for another reset.';
@@ -91,7 +91,7 @@ export function whatToSayAboutADeadLink(input: {
     return 'This link has already been used. Sign in from the sign-in page, or ask for a new link.';
   }
   if (expired) {
-    return 'This link has expired. Ask for a new one from the sign-in page - the new one arrives in a moment and nothing you have done is lost.';
+    return 'This link has expired. Ask for a new one from the sign-in page. The new one arrives in a moment, and nothing you have done is lost.';
   }
-  return 'This link did not work. Links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+  return 'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.';
 }

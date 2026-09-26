@@ -1121,7 +1121,7 @@ export class AuthService {
      * rather than ask for another link.
      */
     const NOT_A_LINK_WE_KNOW =
-      'This link did not work. Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+      'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.';
     if (!tokenRecord) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
 
     /*

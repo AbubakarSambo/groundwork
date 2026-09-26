@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, PasswordField, PasswordRules, PasswordStrength } from './auth-kit'
 import { whatTheLinkDid } from './a-link-that-has-expired'
-import { LinkExpired } from './LinkExpired'
+import { LinkExpired, LinkDidNotWork } from './LinkExpired'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
@@ -56,6 +56,8 @@ export function ChoosePasswordPage() {
   const [error, setError] = useState('')
   /* Set when the server says the link has run out: the page becomes "That link has expired". */
   const [expired, setExpired] = useState(false)
+  /* Set when the server says the link was used, is unknown, or is the wrong kind. */
+  const [didNotWork, setDidNotWork] = useState(false)
 
   /**
    * WHOSE PASSWORD THIS IS, WHEN THE SERVER SAYS.
@@ -103,8 +105,10 @@ export function ChoosePasswordPage() {
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message
-      if (whatTheLinkDid(msg) === 'expired') { setExpired(true); return }
-      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'This link did not work. Open the most recent one from your inbox, or ask for a new one from the sign-in page.'))
+      const what = whatTheLinkDid(msg)
+      if (what === 'expired') { setExpired(true); return }
+      if (what === 'did-not-work') { setDidNotWork(true); return }
+      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'That did not save, because something went wrong on our side. Please try again.'))
     },
   })
 
@@ -113,7 +117,7 @@ export function ChoosePasswordPage() {
        second call came back "invalid or expired" over the success of the first. */
     if (save.isPending) return
     setError('')
-    if (!token) { setError('This link is missing its token. Open the most recent one from your inbox.'); return }
+    if (!token) { setDidNotWork(true); return }
     /* The same rules the list under the fields shows, and the server checks. Choosing a first
        password has one box, as in the prototype, with Show to check what was typed. */
     if (!meetsTodaysPasswordRules(password, kind === 'reset' ? confirm : undefined)) {
@@ -135,19 +139,11 @@ export function ChoosePasswordPage() {
    * handled this properly, so the product held both behaviours for one problem.
    */
   if (expired || expiredOnOpen) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
+  if (didNotWork) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
-  if (!token) {
-    return (
-      <AuthCard
-        title="This link is missing its token."
-        sub="Password links are single use and expire. Open the most recent one from your inbox, or ask for a new one below."
-      >
-        <div className="gw-auth-actions">
-          <Button wide onClick={() => navigate('/auth?mode=member')}>Get a new link</Button>
-        </div>
-      </AuthCard>
-    )
-  }
+  /* A link with no token cannot work: the same card as any link that did not, with the way to ask
+     for a new one on it (U.2 review). */
+  if (!token) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
   /*
    * CHOOSING A FIRST PASSWORD (A2, #/password), in the prototype's words. Choosing one is still

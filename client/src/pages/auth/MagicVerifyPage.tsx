@@ -5,10 +5,9 @@ import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
-import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
 import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
-import { LinkExpired, LinkAlreadyResent } from './LinkExpired'
+import { LinkExpired, LinkAlreadyResent, LinkDidNotWork } from './LinkExpired'
 import { EmailConfirmed } from './EmailConfirmed'
 
 const COMMIT_KEY = 'gw_commit_payload'
@@ -172,20 +171,11 @@ export function MagicVerifyPage() {
     }
   }
 
-  function verifyErrorMessage(err: any): string {
-    const msg: string = err?.response?.data?.message ?? ''
-    if (msg.toLowerCase().includes('expired')) {
-      return 'This link has expired. Links are valid for 24 hours - please request a fresh one.'
-    }
-    if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('already')) {
-      return 'This link has already been used. Please request a new one to sign in again.'
-    }
-    return 'This link is not valid. It may have been replaced by a newer one - use the most recent link from your inbox.'
-  }
+
 
   useEffect(() => {
     const token = params.get('token')
-    if (!token) { setError('Invalid link - no token found.'); return }
+    if (!token) { setError('This link has no token.'); return }
 
     // One flow per token, ever. Verifying flips the auth state, which swaps
     // the route into the authed shell and REMOUNTS this page mid-flight; the
@@ -210,11 +200,11 @@ export function MagicVerifyPage() {
           res = await authApi.verifyEmail(token)
         } catch (err: any) {
           /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
-             with LinkProblem and the sentence below. */
+             with "This link did not work" (LinkDidNotWork). */
           const said = err?.response?.data?.message
           const what = whatTheLinkDid(said)
-          if (what) return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
-          return { kind: 'verifyError', message: verifyErrorMessage(err) }
+          if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
+          return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
         }
         setAuth(res.user, res.accessToken)
 
@@ -561,20 +551,17 @@ export function MagicVerifyPage() {
   if (deadLink?.what === 'resent') return <LinkAlreadyResent sentence={deadLink.sentence} />
   if (deadLink?.what === 'expired') return <LinkExpired kind="sign-in" />
 
+  /* A link already used, one we do not know, or none at all: the account card, with one plain
+     message and a way to ask for a new one (U.2 review). It used to be LinkProblem under the old
+     header, with the page's or the server's own sentence. */
+  if (error) return <LinkDidNotWork kind="sign-in" />
+
   return (
     <Arrival>
-      {!error ? (
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
-        </div>
-      ) : (
-        <div style={{ padding: '0 20px' }}>
-          {/* This one already had a way out. It uses the shared version so all three
-              arrival routes say the same thing. W8-62. */}
-          <LinkProblem kind="sign-in" detail={error} />
-        </div>
-      )}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
+      </div>
     </Arrival>
   )
 }

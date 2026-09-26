@@ -94,10 +94,16 @@ describe('an old sign-in link (/verify-email)', () => {
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 
-  it('a link already used stays with LinkProblem, because a fresh link is not the answer to it', async () => {
+  it('a link already used gets "This link did not work" on the card, with a way to ask for a new one', async () => {
+    /* U.2 review: this used to be LinkProblem under the old header, with the server's sentence. */
     ;(authApi.verifyEmail as any).mockRejectedValue(refused('This link has already been used, so your address is confirmed. Sign in from the sign-in page.'))
-    renderAt('/verify-email?token=t3')
-    expect(await screen.findByText('This sign-in link did not work')).toBeTruthy()
+    const { container } = renderAt('/verify-email?token=t3')
+    await screen.findByRole('heading', { name: 'This link did not work' })
+    expect(readable(container)).toBe(
+      'Groundwork' + 'This link did not work' +
+      'Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one below.' +
+      'Email' + 'Send me a new link',
+    )
     expect(screen.queryByText('That link has expired')).toBeNull()
   })
 
@@ -183,7 +189,8 @@ describe('the sentences the server sends are the ones this page reads', () => {
   it('no "already used" sentence reads as expired', () => {
     const used = [...lifetimes.matchAll(/'(This link has already been used[^']*)'/g)].map(m => m[1])
     expect(used.length).toBeGreaterThan(2)
-    for (const s of used) expect(whatTheLinkDid(s)).toBeNull()
+    /* They read as "did not work" (U.2 review), never as expired. */
+    for (const s of used) expect(whatTheLinkDid(s)).toBe('did-not-work')
   })
 })
 
@@ -209,5 +216,35 @@ describe('as the page opens, when the server already says the link has run out',
     renderAt('/reset-password?token=used-one')
     await waitFor(() => expect(authApi.validateToken).toHaveBeenCalled())
     expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeTruthy()
+  })
+})
+
+describe('"This link did not work", for a used, unknown or missing link (U.2 review)', () => {
+  const DID_NOT_WORK = 'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.'
+
+  it('/verify-email with no token at all', async () => {
+    renderAt('/verify-email')
+    expect(await screen.findByRole('heading', { name: 'This link did not work' })).toBeTruthy()
+    expect(authApi.verifyEmail).not.toHaveBeenCalled()
+  })
+
+  it('the reset page, after Save, when the server does not know the link: a new reset link, same answer for any address', async () => {
+    ;(authApi.resetPassword as any).mockRejectedValue(refused(DID_NOT_WORK))
+    renderAt('/reset-password?token=unknown')
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    await screen.findByRole('heading', { name: 'This link did not work' })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a new link' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(authApi.forgotPassword).toHaveBeenCalledWith('wairimu@baridi.test')
+  })
+
+  it('the server\'s sentence for an unknown link reads as "did not work"', () => {
+    const service = readFileSync(join(__dirname, '../../../../api/src/modules/auth/auth.service.ts'), 'utf8')
+    const s = service.match(/const NOT_A_LINK_WE_KNOW =\s*'([^']+)'/)?.[1]
+    expect(s).toBe(DID_NOT_WORK)
+    expect(whatTheLinkDid(s)).toBe('did-not-work')
   })
 })

@@ -25,6 +25,37 @@ import { LinkSentPanel } from './LinkSentPanel'
  * address (no answer, a server error, too many tries) is shown as a failure.
  */
 export function LinkExpired({ kind }: { kind: 'sign-in' | 'reset' }) {
+  return (
+    <AskForAFreshLink
+      kind={kind}
+      title="That link has expired"
+      sub="Links from our emails work for a short while. Nothing is lost; ask for a fresh one."
+      button="Send me a fresh link"
+    />
+  )
+}
+
+/**
+ * "THIS LINK DID NOT WORK", for a link already used or one we do not know. U.2 review.
+ *
+ * These used to get the old page: a "GROUNDWORK" header, a ✕, and whatever the server or this page
+ * had written ("This link is not valid. It may have been replaced by a newer one - use the most
+ * recent link from your inbox."). They get the account card now, with one plain message, and the
+ * same way to ask for a new link as an expired one. It does not say which of the two it was:
+ * telling a stranger whether a link was once real is a small clue about links they do not hold.
+ */
+export function LinkDidNotWork({ kind }: { kind: 'sign-in' | 'reset' }) {
+  return (
+    <AskForAFreshLink
+      kind={kind}
+      title="This link did not work"
+      sub="Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one below."
+      button="Send me a new link"
+    />
+  )
+}
+
+function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'reset'; title: string; sub: string; button: string }) {
   const trap = useTheTrap()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
@@ -51,17 +82,14 @@ export function LinkExpired({ kind }: { kind: 'sign-in' | 'reset' }) {
   }
 
   return (
-    <AuthCard
-      title="That link has expired"
-      sub="Links from our emails work for a short while. Nothing is lost; ask for a fresh one."
-    >
+    <AuthCard title={title} sub={sub}>
       <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email.trim())) { setError(NOT_AN_ADDRESS); return } send.mutate() }}>
         {trap.field}
         <AuthField id="expired-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); setError('') }} autoFocus />
         {error && <AuthError>{error}</AuthError>}
         <div className="gw-auth-actions">
           <Button type="submit" wide disabled={send.isPending}>
-            {send.isPending ? 'Sending…' : 'Send me a fresh link'}
+            {send.isPending ? 'Sending…' : button}
           </Button>
         </div>
       </form>

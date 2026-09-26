@@ -29,9 +29,11 @@ describe('destinations', () => {
     expect(invite).toContain('Nothing has been shared and nobody is told.')
   })
   it('the lost-token exit lands on the link form, not the password form', () => {
+    /* U.2 review: a link with no token opens "This link did not work", which carries the way to ask
+       for a new link on the card itself, so there is no button to the password form at all. */
     const choose = read('auth/ChoosePasswordPage.tsx')
     expect(choose).not.toContain("navigate('/auth')")
-    expect(choose).toContain("navigate('/auth?mode=member')")
+    expect(choose).toContain('if (!token) return <LinkDidNotWork')
   })
   /* The label moved inside the clip's menu when the composer was rebuilt to the shape everybody
      knows; what this holds is the same thing, which is that it is not rendered at all with nothing
