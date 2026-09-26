@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BadRequestException } from '@nestjs/common';
@@ -72,10 +73,25 @@ describe('not your email address, which only the service can check', () => {
 });
 
 describe('a password somebody already has keeps working', () => {
-  it('signing in compares against the hash and applies no rule', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'auth.service.ts'), 'utf8');
-    const login = src.slice(src.indexOf('async login('), src.indexOf('async verifyEmail('));
-    expect(login).toContain('bcrypt.compare(dto.password, user.passwordHash)');
-    expect(login).not.toMatch(/isTheirEmail|A_NUMBER_OR_A_SYMBOL|MinLength/);
+  /*
+   * Checked by what happens, not by reading the source (U.2 re-review): a text match on login() also
+   * matched words in its comments, which a-guard-that-a-comment-satisfies-is-not-a-guard forbids.
+   */
+  it('an account whose password breaks the new rules (short, letters only, even their address) still signs in', async () => {
+    for (const old of ['abc', 'HarbourLamp', 'wairimu@baridi.test']) {
+      const account = {
+        id: 'u1', email: 'wairimu@baridi.test', firstName: 'Wairimu', lastName: '', role: 'MEMBER', organizationId: 'o1',
+        isActive: true, deletedAt: null, isEmailVerified: true, googleId: null, tokenEpoch: 0,
+        passwordHash: await bcrypt.hash(old, 4), organization: { id: 'o1', name: 'Baridi', slug: 'baridi' },
+      };
+      const prisma: any = {
+        user: { findUnique: jest.fn(async () => account) },
+        organizationMembership: { count: jest.fn(async () => 0) },
+      };
+      const svc = new AuthService(prisma, { sign: () => 'a-session' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
+      const res = await svc.login({ email: 'wairimu@baridi.test', password: old } as any);
+      expect(res.accessToken).toBe('a-session');
+      expect(res.needsPassword).toBe(false);
+    }
   });
 });
