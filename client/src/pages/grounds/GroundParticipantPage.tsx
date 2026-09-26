@@ -1,4 +1,5 @@
-import { howItEnded } from '@/lib/a-ground-that-has-ended'
+import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
+import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useEffect, useRef, useState } from 'react'
@@ -70,6 +71,7 @@ export function GroundParticipantPage() {
     setSearchParams(next, { replace: true })
   }
   const [showPaywall, setShowPaywall] = useState(false)
+  const [seenOutOfTime, setSeenOutOfTime] = useState(false)
   /* Focus goes back to whatever opened it when it closes. */
   const paywallOpener = useRef<HTMLElement | null>(null)
   useEffect(() => {
@@ -289,6 +291,13 @@ export function GroundParticipantPage() {
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
   if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}><GroundGone /></div>
+
+  /* "This check-in reached its end date" (A3, U.3): what a person taking part meets first on a check-in
+     that ran out of time, with a way to ask the lead for more and a way on to their own work. */
+  const isInitiatorHere = ((ground as any).participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR'
+  if (hasStalled((ground as any).status) && !isInitiatorHere && !seenOutOfTime && tab === 'checkin') {
+    return <OutOfTime groundId={id!} onOpenMyWork={() => { setSeenOutOfTime(true); goTab('record') }} />
+  }
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /**

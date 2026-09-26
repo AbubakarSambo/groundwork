@@ -1292,6 +1292,9 @@ model GroundParticipant {
   /// The two stamps of the invite-expiry sweep (grounds.cron.ts), so each mail goes once.
   inviteExpiryWarnedAt       DateTime?         @map("invite_expiry_warned_at")
   inviteLapsedToldAt         DateTime?         @map("invite_lapsed_told_at")
+  /// When this person last asked the lead for more time on a check-in that ran out (U.3, "Ask Wairimu
+  /// for more time"). Once a day, so a lead is not flooded by one person pressing again.
+  moreTimeAskedAt            DateTime?         @map("more_time_asked_at")
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]           @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?         @map("last_nudged_at") // throttles reminder emails (B1)

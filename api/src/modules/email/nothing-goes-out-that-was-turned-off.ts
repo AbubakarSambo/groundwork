@@ -165,6 +165,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
+  /* A person in the check-in asked the lead for it; the lead gets their request (U.3). */
+  sendMoreTimeAsked: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
   sendLateCorrectionNotice: 'asked for',

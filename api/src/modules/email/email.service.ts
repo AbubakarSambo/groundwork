@@ -204,6 +204,22 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendSomebodyIsWaiting');
   }
 
+  /**
+   * "ASK WAIRIMU FOR MORE TIME" (U.3, #/join/outoftime). The lead gets the request with one button,
+   * which opens the check-in where giving it more time is one press and reopens it.
+   */
+  async sendMoreTimeAsked(to: string, leadFirstName: string | null, who: string, checkInLabel: string, groundId: string): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} asked for more time on ${checkInLabel}`,
+      html: this.layout(
+        `<p>${greeting(leadFirstName)}</p>
+         <p><strong>${escapeHtml(who)}</strong> asked you to give <strong>${escapeHtml(checkInLabel)}</strong> more time. It reached its end date, so nobody can add to it until you do. Everything already in it is kept.</p>
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds/${encodeURIComponent(groundId)}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Give it more time →</a></p>`,
+      ),
+    }, undefined, 'sendMoreTimeAsked');
+  }
+
   /** And the answer, to the person who was waiting. */
   async sendYouAreInNow(to: string, organizationName: string): Promise<void> {
     await this.sendEmail({

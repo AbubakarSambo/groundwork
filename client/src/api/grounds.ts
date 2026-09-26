@@ -78,7 +78,23 @@ export interface OrgRosterEntry {
   lastActivity: string | null
 }
 
+/** "Out of time" (U.3): where a check-in that ran past its end date stands, for a person taking part. */
+export interface MoreTimeStanding {
+  outOfTime: boolean
+  checkInName: string
+  leadFirstName: string | null
+  ranUntil: string | null
+  /** Set when they already asked today. */
+  askedAt: string | null
+}
+
 export const groundsApi = {
+  /** "Ask Wairimu for more time" (U.3). */
+  moreTime: (id: string) =>
+    apiClient.get<MoreTimeStanding>(`/grounds/${id}/more-time`).then(r => r.data),
+  askForMoreTime: (id: string) =>
+    apiClient.post<{ asked: true; askedAt: string }>(`/grounds/${id}/more-time`).then(r => r.data),
+
   list: () =>
     apiClient.get<Ground[]>('/grounds').then(r => (Array.isArray(r.data) ? r.data : [])),
 
