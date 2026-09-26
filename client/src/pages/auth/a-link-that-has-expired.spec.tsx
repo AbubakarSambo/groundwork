@@ -212,9 +212,18 @@ describe('as the page opens, when the server already says the link has run out',
     expect(authApi.validateToken).toHaveBeenCalledWith('old-setup', 'PASSWORD_SETUP')
   })
 
-  it('a used or unknown link ({ valid: false } and nothing else) keeps the form, and the server still decides on save', async () => {
+  /* Changed in the U.2 re-review: a link replaced by a newer one, used or unknown used to keep the form
+     until Save. It now opens on "This link did not work", as an expired one opens on its card. */
+  it('a used, replaced or unknown link ({ valid: false } and nothing else) opens on "This link did not work"', async () => {
     ;(authApi.validateToken as any).mockResolvedValue({ valid: false })
     renderAt('/reset-password?token=used-one')
+    expect(await screen.findByRole('heading', { name: 'This link did not work' })).toBeTruthy()
+    expect(screen.queryByLabelText('New password')).toBeNull()
+  })
+
+  it('a check that fails keeps the form: the server decides on save', async () => {
+    ;(authApi.validateToken as any).mockRejectedValue(new Error('offline'))
+    renderAt('/reset-password?token=offline-one')
     await waitFor(() => expect(authApi.validateToken).toHaveBeenCalled())
     expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeTruthy()
   })

@@ -86,6 +86,9 @@ export function ChoosePasswordPage() {
   /* A link that has run out opens straight on "That link has expired", rather than after a password
      has been typed twice. The server says `expired` only for a real, unused link of this kind. */
   const expiredOnOpen = linkCheck?.expired === true
+  /* And one the server does not hold as working (used, replaced by a newer one, unknown) opens on
+     "This link did not work", rather than after a password has been typed (U.2 re-review). */
+  const didNotWorkOnOpen = linkCheck?.valid === false && linkCheck?.expired !== true
   const forAddress = typeof linkCheck?.email === 'string' && looksLikeAnAddress(linkCheck.email) ? linkCheck.email : null
 
   /**
@@ -147,7 +150,7 @@ export function ChoosePasswordPage() {
    * handled this properly, so the product held both behaviours for one problem.
    */
   if (expired || expiredOnOpen) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
-  if (didNotWork) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
+  if (didNotWork || didNotWorkOnOpen) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
   /* A link with no token cannot work: the same card as any link that did not, with the way to ask
      for a new one on it (U.2 review). */
