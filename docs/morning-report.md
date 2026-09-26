@@ -258,29 +258,6 @@ carried on rather than stopping the night's work over the layout.
 **My suggestion:** leave it. If you would rather I worked in a worktree, say so and I will move the
 branch into one; nothing depends on the path.
 
-### 6. The API will not start when the email key is empty
-
-*Found by the screens workspace on 26 September 2026, while setting up the second computer.*
-
-The example settings file, `api/.env.example`, says to leave `RESEND_API_KEY` empty. When it is
-empty, the API crashes as it starts, with the error "Missing API key". The cause is
-`api/src/modules/email/email.service.ts`, line 34. The email service creates a Resend client as soon
-as the API starts, and Resend refuses an empty key.
-
-This contradicts the email service itself. Its own check, `keyIsAPlaceholder()`, already treats an
-empty key as "no email leaves this computer, and every send is written to the log instead". Only the
-line that creates the client was never told.
-
-**What I did for now:** on the second computer, you set `RESEND_API_KEY=re_test`. The code already
-treats that value as fake and never sends with it, and `EMAIL_SENDS_FOR_REAL=false` also stops all
-sending. The API now starts, and its log says that no email leaves this computer.
-
-**My suggested fix, as its own small task:** create the Resend client only when real sending is
-allowed, that is, when `canSendForReal()` is true. Otherwise leave it out, so an empty key behaves
-exactly like a fake one. Add a test that the email service starts with an empty key and sends
-nothing. When that is in, `re_test` is no longer needed and the key can stay empty, as the example
-says.
-
 
 
 ---
