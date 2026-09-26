@@ -28,6 +28,22 @@ export interface GroundDocument {
    * document is private to its uploader and there is nothing to choose.
    */
   visibility?: 'OPEN' | 'CLOSED' | 'OWN'
+  /** Whether the reader uploaded it. Only the uploader may move or delete it. */
+  mine?: boolean
+  /** What the uploader said it is for. Sent to the uploader alone. */
+  usedFor?: string | null
+  /** True for a few minutes after upload, while the read has not landed yet. */
+  stillReading?: boolean
+  /**
+   * WHAT THE READ TOOK AND LEFT OUT, item by item, with the page it is on. Asked of the engine
+   * workspace (docs/requests-to-engine.md, request 6); absent until it is sent, and the Add a
+   * document step shows only what is there.
+   */
+  read?: {
+    pages?: number | null
+    took?: { what: string; detail?: string | null; page?: number | null }[]
+    leftOut?: { what: string; page?: number | null; why: string }[]
+  } | null
 }
 
 export const documentsApi = {
@@ -64,6 +80,10 @@ export const documentsApi = {
      accepts, not the subset one caller offers. See api/src/modules/documents/documents.service.ts. */
   setVisibility: (groundId: string, docId: string, visibility: 'OPEN' | 'OWN' | 'CLOSED') =>
     apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/visibility`, { visibility }).then(r => r.data),
+
+  /** What your own document should be used for, said after it is read. Blank clears it. */
+  setNote: (groundId: string, docId: string, note: string) =>
+    apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/note`, { note }).then(r => r.data),
 
   remove: (groundId: string, docId: string) =>
     apiClient.delete(`/grounds/${groundId}/documents/${docId}`).then(r => r.data),

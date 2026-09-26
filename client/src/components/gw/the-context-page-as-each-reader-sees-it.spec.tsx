@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ContextPage } from './ContextPage'
 import { documentsApi } from '@/api/documents'
@@ -78,6 +78,19 @@ describe('Wairimu, who leads it', () => {
     expect(screen.getByText('It starts private to you. You choose who can read it.')).toBeTruthy()
     const order = [...document.querySelectorAll('[data-gw-document]')].map((n) => n.getAttribute('data-gw-document'))
     expect(order).toEqual(['d1', 'd2'])
+  })
+})
+
+describe('adding a document from the page', () => {
+  it('uploads the file privately, then shows what was read and asks who can read it', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
+    ;(documentsApi.upload as any).mockResolvedValue({ id: 'd3', name: 'Sales playbook.docx', visibility: 'OWN', mine: true })
+    draw('lead', 'u-lead')
+    const file = new File(['x'], 'Sales playbook.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    fireEvent.change(document.getElementById('ga-doc-upload') as HTMLInputElement, { target: { files: [file] } })
+    expect(await screen.findByText('Add it to Context')).toBeTruthy()
+    expect(documentsApi.upload).toHaveBeenCalledWith('g1', file, false, undefined)
+    expect(screen.getByText('Who can read it')).toBeTruthy()
   })
 })
 

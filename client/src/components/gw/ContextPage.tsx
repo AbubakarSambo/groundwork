@@ -11,6 +11,7 @@ import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { TargetsBand } from '@/components/gw/TargetsBand'
+import { AddADocument } from '@/components/gw/AddADocument'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
@@ -124,10 +125,14 @@ export function ContextPage({
    * Optional, and skippable in one click: most files do not need it, and a required box in front
    * of an upload is a reason not to upload.
    */
-  const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
+  /*
+   * SINCE U.7 THE QUESTION IS ASKED AFTER THE READ, NOT BEFORE THE UPLOAD. The prototype's "Add a
+   * document" uploads the file (private to its uploader, as always), shows what was read from it,
+   * and then asks what it is for and who can read it. AddADocument.tsx is that step.
+   */
+  const [reviewing, setReviewing] = useState<{ id: string; name: string; note?: string } | null>(null)
   /** The promise this upload is answering, where it was started from one. */
   const [attachingFor, setAttachingFor] = useState<string | null>(null)
-  const [whatToLookFor, setWhatToLookFor] = useState('')
 
   /**
    * WRITING OR REWRITING THE BRIEF.
@@ -163,8 +168,10 @@ export function ContextPage({
      * pressed a button and is watching the button. A silent success and a silent failure look
      * identical, so the honest reading was "I do not know whether that worked".
      */
-    onSuccess: (res: any, { file }) => {
-      toast.success(`Uploaded ${file.name}`)
+    onSuccess: (res: any, { file, note }) => {
+      /* The step that follows is the confirmation: it names the file and says what was read. */
+      if (res?.id) setReviewing({ id: res.id, name: file.name, note })
+      else toast.success(`Uploaded ${file.name}`)
       /* A record of a conversation is taken on their word, and the word is said back to them - the
          server no longer refuses and asks first. See a-conversation-belongs-to-the-people-in-it.ts. */
       if (res?.assumed) toast.message(res.assumed, { duration: 9000 })
@@ -697,6 +704,18 @@ export function ContextPage({
               Context page). Shared ones first, so "what are we all working from" is the first row
               somebody reads; each card still says who reads it, with the same controls and rules.
             */}
+            {reviewing && (
+              <AddADocument
+                key={reviewing.id}
+                groundId={id}
+                docId={reviewing.id}
+                fileName={reviewing.name}
+                contextEnabled={contextEnabled}
+                startingNote={reviewing.note}
+                onChooseAnother={() => { setReviewing(null); document.getElementById('ga-doc-upload')?.click() }}
+                onClose={() => setReviewing(null)}
+              />
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
             {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
@@ -709,7 +728,7 @@ export function ContextPage({
             {[
               ...docs.filter((d: any) => d.visibility === 'OPEN'),
               ...docs.filter((d: any) => d.visibility !== 'OPEN'),
-            ].map((doc: any) => (
+            ].filter((d: any) => d.id !== reviewing?.id).map((doc: any) => (
               <div key={doc.id} data-gw-document={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>
@@ -973,8 +992,8 @@ export function ContextPage({
                    * one question left to ask here is what to look for in it.
                    */
                   if (f) {
-                    /* Prefilled with what they said they would show, where that is why they are here. */
-                    setWhatToLookFor(attachingFor ?? ''); setAskingWhatToLookFor({ file: f, consented: false })
+                    /* Carrying what they said they would show, where that is why they are here. */
+                    uploadDoc.mutate({ file: f, consented: false, note: attachingFor ?? undefined })
                     setAttachingFor(null)
                   }
                   e.target.value = ''
@@ -982,50 +1001,6 @@ export function ContextPage({
             </div>
             </div>
 
-            {/*
-              * WHAT TO LOOK FOR, ASKED ONCE, SKIPPABLE.
-              *
-              * The chat asks this as a file is attached and nothing here did, so a document arrived
-              * with no idea what mattered about it. Skip is a real answer and sits first, because
-              * most files need nothing said about them and a required box before an upload is a
-              * reason not to upload.
-              */}
-            {askingWhatToLookFor && (
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, background: 'var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-                  {askingWhatToLookFor.file.name}
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 9 }}>
-                  Anything you want read out of this? One line is enough, and you can skip it.
-                </div>
-                <textarea
-                  autoFocus
-                  value={whatToLookFor}
-                  onChange={e => setWhatToLookFor(e.target.value)}
-                  placeholder="e.g. the hardware interface dates in section 4, not the rest of it"
-                  style={{ width: '100%', boxSizing: 'border-box', minHeight: 58, resize: 'none', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', marginBottom: 9 }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented })
-                      setAskingWhatToLookFor(null)
-                    }}
-                    style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >Skip and upload</button>
-                  <button
-                    type="button"
-                    disabled={!whatToLookFor.trim()}
-                    onClick={() => {
-                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented, note: whatToLookFor })
-                      setAskingWhatToLookFor(null)
-                    }}
-                    style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: whatToLookFor.trim() ? 'pointer' : 'not-allowed', opacity: whatToLookFor.trim() ? 1 : 0.5, fontFamily: 'inherit' }}
-                  >Upload with this</button>
-                </div>
-              </div>
-            )}
 
 
 
