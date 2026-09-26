@@ -212,3 +212,11 @@ describe('signing in again never lands on "You\'re signed out"', () => {
     expect(screen.queryByText('Signed out again')).toBeNull()
   })
 })
+
+describe('"Create your account" says what happens next, truthfully', () => {
+  it('the link makes the account, and then a password is chosen, because that step is required today', async () => {
+    renderAt('/auth?mode=signup')
+    expect(await screen.findByText('We send you a link. Your account is made when you open it, and then you choose a password.')).toBeTruthy()
+    expect(screen.queryByText(/No password to choose/)).toBeNull()
+  })
+})

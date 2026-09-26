@@ -435,7 +435,7 @@ export function AuthPage() {
 
   if (view === 'create') {
     return (
-      <AuthCard title="Create your account" sub="No password to choose. We send you a link, and your account is made when you open it.">
+      <AuthCard title="Create your account" sub="We send you a link. Your account is made when you open it, and then you choose a password.">
         {/*
           WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
           read it here, while they are deciding, rather than find out on their first invoice.
@@ -487,7 +487,7 @@ export function AuthPage() {
       <AuthCard
         title="Get a sign-in link"
         sub={isSignup
-          ? 'Enter your email. We will send you a link that creates your account. No password to choose.'
+          ? 'Enter your email. We will send you a link that creates your account. When you open it, you choose a password.'
           : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
       >
         <form noValidate onSubmit={submitLink}>
