@@ -29,7 +29,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [x] **U.2** A2 Accounts and signing in *(Done, with every sign-in decision Hafsah made on 26 September.)*
 - [ ] **U.3** A3 Organisations and joining *(Built and tested on 27 September. Not ticked: the review could not sign in; see Needs Hafsah, item 14, in docs/morning-report-ui.md.)* (including joining by email domain, and your own web address and logo)
 - [ ] **U.4** A4 People, roles and access *(Built and tested on 27 September, apart from the parts waiting for Hafsah (item 15). Not ticked: the review could not sign in; see item 14.)* (levels, reporting lines, access to each check-in, "Check-ins wait for an admin", requests to an admin)
-- [ ] **U.5** C1 Today and the check-ins list
+- [ ] **U.5** C1 Today and the check-ins list *(Built and tested on 27 September. Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.6** B1 Starting a check-in (the screens; the 8 new situations' conversation instructions belong to the engine workspace, so request them)
 - [ ] **U.7** B2 Context (including a plan turned into proposals, and what a target assumes)
 - [ ] **U.8** B3 The check-in screens: the header, pause, suggested answers, the + button for proof, the end card, the Done page (show the engine's current output; request suggested answers and marks)

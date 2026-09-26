@@ -808,7 +808,7 @@ every screen test and every API test passed (2,612 and 9,264), and the build is 
 the engine workspace's latest, its conversation and report tests passed again (3,532). **Not ticked,**
 because no review can sign in (item 14).
 
-### U.5 Today and the check-ins list: built, being tested
+### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
 - **A privacy leak closed.** The check-ins list used to send every participant the whole record for
   each check-in: the join link, other people's email addresses when the lead keeps them private, and
@@ -830,6 +830,13 @@ because no review can sign in (item 14).
 
 Wording the builder had to write, where no screen has any, includes "Nothing needs you right now." and
 "What needs you did not load. Nothing you have written is affected." Item 16 lists what needs you.
+
+**Tested:** every screen test (2,643) and the build passed. In the API suite, one test looked for a
+button's style in its old place and now follows it to the stylesheet, checking the same promise (a
+plain underlined line, not a second button). The only other failure is in two of the engine
+workspace's own new tests, which I have asked them to fix (request 4). After merging the engine's
+latest, its report tests passed again (1,258). **Not ticked,** because no review can sign in (item
+14).
 
 ## Found on the way, for later tasks
 
