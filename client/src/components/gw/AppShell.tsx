@@ -15,6 +15,7 @@ import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
+import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
@@ -714,10 +715,12 @@ function useClosesOnItsOwn(open: boolean, close: () => void) {
  * whether each round is complete. Nothing on a row is about how a person is doing.
  */
 export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  /* Folded or open, remembered on this device between visits. See `where-the-sidebar-was-left`. */
+  const [collapsed, setCollapsed] = useState(sidebarWasFolded)
 
   useEffect(() => {
     document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '64px' : '256px')
+    rememberSidebarFolded(collapsed)
   }, [collapsed])
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
