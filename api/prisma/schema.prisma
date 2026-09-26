@@ -499,6 +499,12 @@ model Organization {
 
   companyStage CompanyStage? @map("company_stage")
 
+  /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
+  /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
+  /// while the trial is on. Nothing grants a trial from it yet (U.19); it is kept so billing can.
+  teamSizeSaid String? @map("team_size_said")
+  teamSizeLine Int?    @map("team_size_line")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

@@ -48,7 +48,7 @@ export function whyNotAnotherWorkspace(
    * trap was.
    */
   if (alreadyOwnsOne) {
-    return 'You already have your own workspace. Switch to it from the organisation menu.';
+    return 'You already have an organisation of your own, so you cannot create another one yet. You can switch to it at any time from the top of the sidebar.';
   }
   return null;
 }

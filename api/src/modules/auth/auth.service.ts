@@ -78,6 +78,14 @@ function theSameShapeAsANewAddress(draft: unknown): { draftToken?: string } {
   return draft ? { draftToken: crypto.randomBytes(32).toString('hex') } : {};
 }
 
+/** What "Create an organisation" sends. Every part is optional: the organisation menu's one-press door sends none. */
+export interface WhatANewOrganisationIsGiven {
+  name?: string;
+  billingEmail?: string;
+  /** "fewer" or "more" than `line` people, where `line` is the trial's team size they were shown. */
+  teamSize?: { said: 'fewer' | 'more'; line: number };
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -1124,8 +1132,16 @@ export class AuthService {
          * server-side for the reason `mayOpenCheckIns` is: the copy that drifts is the one deciding
          * whether somebody can reach the product at all.
          */
+        /*
+         * NOT THE CONTACT EMAIL ANY MORE (U.3). The prototype's "Create an organisation" asks for a
+         * billing email as optional ("Not shown to your team. You can add it later."), so an empty
+         * one is a finished organisation, not an unfinished one. The one thing an organisation
+         * cannot be without is its name, and every door names it at creation - so this is true
+         * only for a nameless organisation, which should not exist, and it still never sends
+         * somebody who belongs elsewhere to set up a workspace they did not ask for.
+         */
         mustSetUpOrganisation:
-          user.role === 'ADMIN' && !user.organization.email && !belongsElsewhere,
+          user.role === 'ADMIN' && !(user.organization.name ?? '').trim() && !belongsElsewhere,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *
@@ -1360,7 +1376,7 @@ export class AuthService {
    * they already had stays exactly as it was, so a real employee who presses this by accident is
    * one switch away from where they were.
    */
-  async startMyOwnWorkspace(userId: string) {
+  async startMyOwnWorkspace(userId: string, what: WhatANewOrganisationIsGiven = {}) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
@@ -1375,12 +1391,22 @@ export class AuthService {
     const refusal = whyNotAnotherWorkspace({ alreadyOwnsOne: !!owned });
     if (refusal) throw new BadRequestException(refusal);
 
-    const name = whatTheirWorkspaceIsCalled(user.firstName, user.lastName);
+    /*
+     * THE NAME THEY TYPED ON "Create an organisation", or their own name's workspace when this is
+     * the one-press door from the organisation menu. Never the email domain.
+     */
+    const name = (what.name ?? '').trim() || whatTheirWorkspaceIsCalled(user.firstName, user.lastName);
     /* From the NAME, never the email domain - the same rule as `register`. */
     const slug = await this.generateUniqueSlug(name);
+    /* The billing email is optional. Without one, bills go to the person who made it, as at every other door. */
+    const billingEmail = (what.billingEmail ?? '').trim().toLowerCase() || user.email;
+
+    /* What they said about their team's size, beside the line they were shown. Nothing grants a
+       trial from it yet (U.19); it is kept so that billing can, rather than asked again. */
+    const sizeSaid = what.teamSize ? { teamSizeSaid: what.teamSize.said, teamSizeLine: what.teamSize.line } : {};
 
     const org = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.organization.create({ data: { name: name, slug: slug, email: user.email } });
+      const created = await tx.organization.create({ data: { name: name, slug: slug, email: billingEmail, ...sizeSaid } });
       /*
        * AND SOMEBODY HOLDS IT.
        *

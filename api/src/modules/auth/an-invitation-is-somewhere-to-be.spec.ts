@@ -15,7 +15,7 @@ import { AuthService } from './auth.service';
  * the condition and passed while the real one was broken.
  */
 describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
-  function make(opts: { role: string; orgEmail: string | null; otherMemberships: number }) {
+  function make(opts: { role: string; orgName?: string; orgEmail: string | null; otherMemberships: number }) {
     const prisma: any = {
       user: {
         findUnique: jest.fn(async () => ({
@@ -29,7 +29,7 @@ describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
           emailNotifications: true,
           organization: {
             id: 'org-own',
-            name: 'Her workspace',
+            name: opts.orgName ?? 'Her workspace',
             slug: 'her-workspace',
             email: opts.orgEmail,
             careFeeStatus: null,
@@ -50,8 +50,10 @@ describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
     return { service, prisma };
   }
 
-  it('an admin whose only organisation has no contact email is told to finish it', async () => {
-    const { service } = make({ role: 'ADMIN', orgEmail: null, otherMemberships: 0 });
+  /* U.3: the billing email is optional on "Create an organisation", so an empty one no longer means
+     unfinished. What an organisation cannot be without is its name. */
+  it('an admin whose only organisation has no name is told to finish it', async () => {
+    const { service } = make({ role: 'ADMIN', orgName: '', orgEmail: null, otherMemberships: 0 });
     const me = await service.getProfile('u1');
     expect((me as any).mustSetUpOrganisation).toBe(true);
   });
@@ -59,7 +61,7 @@ describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
   it('THE REPORTED BUG: an admin of an unfinished workspace who belongs elsewhere is not', async () => {
     // Added as a participant to another company's check-in. Still ADMIN of her own empty
     // workspace, so the old rule matched and sent her to /org/setup on every sign-in.
-    const { service } = make({ role: 'ADMIN', orgEmail: null, otherMemberships: 1 });
+    const { service } = make({ role: 'ADMIN', orgName: '', orgEmail: null, otherMemberships: 1 });
     const me = await service.getProfile('u1');
     expect((me as any).mustSetUpOrganisation).toBe(false);
   });
@@ -72,14 +74,20 @@ describe('GW-ORG-SETUP: who is actually told to set an organisation up', () => {
     });
   });
 
+  it('an admin with a named organisation and no billing email is not asked (U.3)', async () => {
+    const { service } = make({ role: 'ADMIN', orgEmail: null, otherMemberships: 0 });
+    const me = await service.getProfile('u1');
+    expect((me as any).mustSetUpOrganisation).toBe(false);
+  });
+
   it('an admin whose organisation is already set up is never asked again', async () => {
     const { service } = make({ role: 'ADMIN', orgEmail: 'team@x.test', otherMemberships: 0 });
     const me = await service.getProfile('u1');
     expect((me as any).mustSetUpOrganisation).toBe(false);
   });
 
-  it('a member is never asked, even with no contact email and nowhere else to be', async () => {
-    const { service } = make({ role: 'MEMBER', orgEmail: null, otherMemberships: 0 });
+  it('a member is never asked, even with no name, no contact email and nowhere else to be', async () => {
+    const { service } = make({ role: 'MEMBER', orgName: '', orgEmail: null, otherMemberships: 0 });
     const me = await service.getProfile('u1');
     expect((me as any).mustSetUpOrganisation).toBe(false);
   });

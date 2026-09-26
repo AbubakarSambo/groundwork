@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
@@ -6,7 +6,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { GoogleCallbackGuard } from './google-callback.guard';
-import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto, CreateOrganisationDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
 /**
@@ -274,6 +274,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Create your own organisation and switch into it, keeping the one you were listed in' })
   async startMyOwnWorkspace(@CurrentUser() user: CurrentUserData) {
     return this.authService.startMyOwnWorkspace(user.id);
+  }
+
+  /**
+   * "CREATE AN ORGANISATION" (U.3). The same door as start-my-own-workspace, with the name the person
+   * typed, an optional billing email and what they said about the team's size. It keeps that door's
+   * rule of one organisation of your own until Hafsah decides otherwise (morning report, item 11.6).
+   */
+  @Post('organizations')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create an organisation, become its owner, and switch into it' })
+  async createOrganisation(@CurrentUser() user: CurrentUserData, @Body() dto: CreateOrganisationDto) {
+    const name = (dto.name ?? '').trim();
+    if (name.length < 2) throw new BadRequestException('Give the organisation a name of at least two letters.');
+    return this.authService.startMyOwnWorkspace(user.id, { name, billingEmail: dto.billingEmail, teamSize: dto.teamSize });
   }
 
   @Get('me')

@@ -35,7 +35,7 @@ describe('and only one of them', () => {
 
   /* A person with nine empty workspaces has a switcher worse than the trap was. */
   it('and somebody who already has one is told where it is', () => {
-    expect(whyNotAnotherWorkspace({ alreadyOwnsOne: true })).toContain('already have your own workspace');
+    expect(whyNotAnotherWorkspace({ alreadyOwnsOne: true })).toContain('You already have an organisation of your own');
   });
 });
 
