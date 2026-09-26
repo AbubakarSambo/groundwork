@@ -551,6 +551,54 @@ reviewed" in this report.
     emails in the chat", because addresses are added on the save card. **My recommendation:** keep it
     this way until adding people in the chat is built.
 
+### 18. Context (U.7): what needs you
+
+1. **A private document and everyone's questions.** Under "Only you", the prototype's "Add a
+   document" says "The check-in still uses it for everyone’s questions, but only you can open it."
+   Today that is not true: a private document shapes only its uploader's own questions, and a
+   document everyone's check-in reads is one everyone can open. Making it true would change who a
+   document reaches, which is a privacy rule, so I kept today's rule and used the product's own
+   sentence: "Only you can see this. It supports your own account and nobody else can open it."
+   **My recommendation:** allow it for the lead's documents only (the check-in may use them for
+   everyone's questions, and nobody else can open them or be quoted them), with a privacy test, and
+   then use the prototype's sentence.
+2. **"You can remove it later; what was taken from it goes with it."** Only the first half is
+   always true: numbers already confirmed into targets stay when the document is removed. I show
+   "You can remove it later." **My recommendation:** keep it this way, or remove confirmed numbers
+   with the document (a separate change, with a test).
+3. **"From a plan" is not on the page yet.** Its sentence promises proposals "for you to check one
+   by one". Today a pasted or attached plan becomes one proposal with one yes, in the context chat.
+   I asked the engine workspace for separate proposals (request 6). **My recommendation:** keep it
+   off until then, rather than show a promise the product does not keep.
+4. **"Your notes on each person".** The prototype's Context page shows the lead's notes on each
+   person ("Only you see these", "Shapes the questions his check-in asks. Never shown to him as your
+   words."). On 22 September you said the lead's read of a person should not be on this page, so I
+   kept it off. **My recommendation:** keep your decision, unless you now want it back as the
+   prototype has it (it is private to the lead either way, enforced by the server).
+5. **Not built yet, and why.** "Waiting for you to confirm" and the context chat's cards ("Picked up:
+   Rule. It would go in How we work") need the engine's separate proposals (request 6). "What counts"
+   (definitions such as Qualified, with "Confirmed 2 Sep") needs a kind of line the product does not
+   keep yet. "Where this stood on day one" is the board's starting state, for U.10. "Each person's
+   card" with "Their check-in asks" and "Told their number" needs the engine (request 6). The
+   Company context page (#/company/kijani/context) needs organisation-wide priorities, versions and
+   a handbook that do not exist yet; I suggest building it with the Company page in U.15.
+6. **"Change who sees them" is one setting for the whole check-in.** The prototype's link sits over
+   the targets, but the product decides who sees numbers for the whole check-in, not for each target.
+   The link opens the check-in's settings, where "Show everyone each other’s numbers" lives.
+   **My recommendation:** keep one setting.
+7. **Wording no screen has, which I wrote with the fewest words.** Under the brief, for anyone but
+   the lead: "Wairimu’s words, from setup. Everyone reads this before they answer." (the lead's first
+   name in place of "Your"). Beside a target: "Seen by you and Wairimu" for the person whose share it
+   is, and "Seen by Aisha and Wairimu" for an admin; "No number set" when a target has no number.
+   Under a target: "Say what it assumes", "Change what it assumes", the box's hint "One thing on each
+   line.", "Save" and "Cancel"; "What Sales assumes" when a target has no number. In "Add a
+   document": "Reading it now." (the context chat's words), "Read just now. Here’s what the check-in
+   will use." when the read gives no page count, and "Q3 price list.pdf is in Context." after "Add it
+   to Context". In the first-time "Add a document" card, the old paragraph is now plain sentences:
+   "The check-in reads it, and says where it does not match what you have told it. It can be proof
+   of what has happened, such as meeting notes, a transcript from Gemini or another notetaker, or a
+   photo of what was agreed. It can also be the brief, plan or scope this work was set against."
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -962,6 +1010,44 @@ check-in's own settings now share one picker, with the prototype's words ("On wh
 only", "Any day is fine"). Apart from those, every screen test (2,659) and API test passed, and the
 build is clean; the only other failure is the engine workspace's own (request 4). **Not ticked:** the
 lead's first check-in card waits on you, and no review can sign in (item 14).
+
+### U.7 Context: built and tested, not yet reviewed
+
+- **Targets, in the prototype's table.** Context now has a "Targets" band: each target's name, its
+  number, whose it is ("The whole team", or the person), and who sees it. The lead reads "Seen by
+  everyone" and "Seen by Aisha and you", with "Change who sees them" and "Each person sees their own
+  share and the team’s totals, never someone else’s share." Aisha reads the team target and her own
+  share, "Seen by you and Wairimu", and nothing about anyone else's share: the server sends her only
+  those rows, as it already did.
+- **What a target assumes.** Under each target: "What the target of 25 assumes", the lines, and "If
+  one of these stops being true, the target needs a second look." (the prototype's board words). The
+  lead writes them with "Say what it assumes". This is new storage (`assumes` on each target, one
+  migration), written only by the lead and read only by whoever may read the target.
+- **What this check-in is for.** The brief in quotes, then "Your words, from setup. Everyone reads
+  this before they answer." and "Rewrite". Anyone else reads "Wairimu’s words, from setup."
+- **Documents, as cards.** Shared ones first. Each card shows what it is for ("Checks price
+  objections"), which the server now sends to the person who uploaded it and to nobody else. "Add a
+  document" is the last card: "It starts private to you. You choose who can read it."
+- **Add a document.** Choosing a file uploads it, private as always, and opens the prototype's step:
+  the file's name, "Choose a different file", "What should it be used for? One line is enough; you
+  can skip it.", "What it took from the document", "Who can read it" ("Only you", "Everyone in this
+  check-in", "They can open it from Context."), "Add it to Context" and "Cancel", which removes the
+  file. What it is for can now be said after the file is read (a new route, uploader only).
+- **Asked of the engine (request 6):** a plan turned into proposals confirmed one by one, what a
+  target assumes when it is said in a check-in, a document read item by item with pages and what was
+  left out, and two lines for the lead's card on each person. Decisions for you are in item 18.
+
+**Tested:** new tests read what each person sees, rendered: the targets as the lead, Aisha and an
+admin (`targets-as-each-reader-sees-them.spec.tsx`), the Context page as each of them
+(`the-context-page-as-each-reader-sees-it.spec.tsx`), and "Add a document" (`adding-a-document.spec.tsx`).
+On the server: `what-a-target-assumes.spec.ts` (who reads it, and only the lead writes it) and
+`what-a-document-is-for.spec.ts` (the line goes to its uploader only). Five tests changed, each for
+old wording or because the targets table moved to its own file: `a-line-is-changed-by-talking-about-it`,
+`the-brief-answers-this-bands-question`, `the-lead-is-not-a-third-person`, `the-brief-is-editable`
+and `what-the-upload-box-promises-is-true` (the privacy sentence is now the prototype's, still chosen
+by the setting and still shown before any upload). Only the tests for the changed files and the type
+checks were run, as you asked; the full suites wait for the end of the module. No screen could be
+checked signed in (item 14).
 
 ## Found on the way, for later tasks
 
