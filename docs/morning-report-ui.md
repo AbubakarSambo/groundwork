@@ -271,3 +271,11 @@ Company, You and Suites as those pages are built.
   prototype's People page shows. A guest from another organisation may only see the people in
   their own check-in. Nobody may see anyone's load, private notes, or anything beyond name, role and
   team. This will be enforced in the backend, with a test for the guest case.
+- **"Talk to us" asks a signed-in person for what we already know.** It opens a page headed "Request
+  a call", with "A coach in the room" already chosen, and asks for the name, organisation and email
+  address we already hold. To look at with help and small states (U.20).
+- **The organisation card's sentence is vague.** "You are in Coamana because your address was on
+  their list." does not say which address or whose list. Something like "You are in Coamana because
+  your email address was on its list of people." To look at in U.3.
+- **The check-ins card calls the lead by name.** Hafsah reads "Led by Hafsah Jumare · 5
+  participants" about her own check-in, where it should say "you". To fix in U.5.
