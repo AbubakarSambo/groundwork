@@ -419,3 +419,52 @@ expression can tell which. It was putting newly wrong grammar on the lead's boar
 reverted. The safe half stays: a verb sitting *immediately* after "you" ("you is" to "you are") is
 not in doubt and is untouched. Coordinated verbs move to fix 8, where the reader is known and a
 single line can be rewritten properly.
+
+---
+
+## "A colleague", not "Participant B" (task 1.1, the last piece)
+
+Hafsah decided the open question: in evaluation check-ins (PIP, RECOGNITION, CONTRACT_RENEWAL) a
+colleague stays unnamed to the person being reviewed, and what they are CALLED is "a colleague"
+when there is one, and "one colleague", "another colleague" when there are several, used the same
+way through the whole report.
+
+What Amara Diallo used to read in her own recognition report:
+
+> Participant B built the front end for the new onboarding flow. Participant B believes the success
+> was due to the clean and responsive design.
+
+and what she reads now:
+
+> A colleague built the front end for the new onboarding flow. A colleague believes the success was
+> due to the clean and responsive design.
+
+Blessing Okafor, in the contract-renewal report:
+
+> A colleague has been in weekly contact with the delivery partner. A colleague interpreted the
+> partner's requests as an attempt to get ahead, rather than a genuine problem.
+
+Nobody's entitlement changed. The phrase is worked out once from the whole party list, in the order
+`labelsForParties` hands its labels out, so one person is one phrase in the picture, the judgement,
+the divergences, the board and the engagement header. The branch it replaces printed the person's
+JOB - "Managing Partner expects two large projects" - to a reader who may not know who they are,
+which is exactly what her decision rules out; two tests that pinned that are changed, with the
+reason in the commit.
+
+**Read live on the running server.** PIP is unchanged, because Nathan's only other party is his
+lead and she is named to him - there is no colleague in it to mention. The sales check-in
+(OKR_ALIGNMENT), where peers ARE named, is byte-for-byte identical before and after. Re-serving all
+24 scenarios through this build and scoring against run-1: "internal labels shown" 138 to 110, and
+every engine-value and conversation number unchanged. All 9,006 API tests pass.
+
+**Two things for Hafsah.**
+
+1. Her words cover one colleague and two. I carried the same pattern on for a third and beyond ("a
+   third colleague", "a fourth colleague"), and past the twelfth everybody left is "another
+   colleague", which says less rather than more and so cannot give anybody away. Say if you want
+   something different for a big cohort.
+2. The lead can also be unnameable, though only when the product holds no name for them at all:
+   `User.firstName` is a required column, but `PATCH /auth/profile` trims what it is given and
+   accepts an empty string. That reader still knows who their lead is, so they read "your lead"
+   ("the lead" for somebody who is not on the check-in) rather than "the initiator". Not her
+   wording, so it is flagged here too.
