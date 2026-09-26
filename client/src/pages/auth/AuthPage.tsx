@@ -17,7 +17,8 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { Button } from '@/components/gw/kit'
-import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField } from './auth-kit'
+import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
+import { meetsTodaysPasswordRules } from './password-rules'
 
 
 
@@ -144,6 +145,13 @@ export function AuthPage() {
   // workspace", derived from the address, and nobody was ever asked. W10-2.
   const [firstName, setFirstName] = useState('')
   const [orgName, setOrgName] = useState('')
+  /*
+   * AN EMAIL LINK, OR A PASSWORD, AT SIGN-UP (U.2, Hafsah's decision of 26 September). The link is
+   * the default, as it has always been; choosing a password shows the two boxes and the rules.
+   */
+  const [signInBy, setSignInBy] = useState<'link' | 'password'>('link')
+  const [newPassword, setNewPassword] = useState('')
+  const [newConfirm, setNewConfirm] = useState('')
   const [error, setError] = useState('')
   const [linkSent, setLinkSent] = useState(arrivedSent)
   const [resetSent, setResetSent] = useState(false)
@@ -286,7 +294,7 @@ export function AuthPage() {
     }
   }
   const createAccount = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled),
+    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
     onSuccess: () => { setSentBy('create'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
@@ -298,10 +306,18 @@ export function AuthPage() {
         setError('Too many attempts. Wait a minute and try again.')
         return
       }
-      // A 409 means the address already has an account, and saying so here is safe:
-      // they just told us they are new, so it is the useful answer rather than a leak.
-      if (status === 409) {
-        setError('That address already has an account. Sign in instead.')
+      /*
+       * NO "THAT ADDRESS ALREADY HAS AN ACCOUNT". Hafsah's rule (26 September): sign-up never says
+       * whether an address has an account. entry-save answers an existing address exactly as a new
+       * one (the person is sent a sign-in link), so there is no 409 to read here any more.
+       *
+       * A password the server refused comes back as its own sentence ("Your password needs a number
+       * or a symbol."), which is shown as it is.
+       */
+      const said = err?.response?.data?.message
+      const sentence = Array.isArray(said) ? said[0] : said
+      if (typeof sentence === 'string' && /password/i.test(sentence)) {
+        setError(sentence.replace(/^The request did not validate: /, ''))
         return
       }
       /*
@@ -434,8 +450,22 @@ export function AuthPage() {
   }
 
   if (view === 'create') {
+    const submitCreate = (e: React.FormEvent) => {
+      e.preventDefault()
+      setError('')
+      const wrong = whatIsWrongWithTheAddress(email)
+      if (wrong) { setError(wrong); return }
+      if (signInBy === 'password' && !meetsTodaysPasswordRules(newPassword, newConfirm, email)) {
+        setError(newPassword !== newConfirm && meetsTodaysPasswordRules(newPassword, undefined, email)
+          ? 'The two passwords are not the same. Type the same password in both boxes.'
+          : 'Your password does not meet every rule in the list yet.')
+        return
+      }
+      createAccount.mutate()
+    }
+    const google = googleButton('Sign up with Google')
     return (
-      <AuthCard title="Create your account" sub="We send you a link. Your account is made when you open it, and then you choose a password.">
+      <AuthCard title="Create your account" sub="We send you a link to confirm your email. Your account is made when you open it.">
         {/*
           WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
           read it here, while they are deciding, rather than find out on their first invoice.
@@ -447,14 +477,19 @@ export function AuthPage() {
           </p>
         )}
 
-        <form noValidate onSubmit={e => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } createAccount.mutate() }}>
+        {/* Google first, as the prototype draws it. Same door as sign-in: an existing Google account
+            signs in, a new one gets its own organisation. findOrCreateGoogleUser decides which. */}
+        {google && (
+          <>
+            <div className="gw-auth-actions">{google}</div>
+            <p className="gw-auth-or">or with your email</p>
+          </>
+        )}
+
+        <form noValidate onSubmit={submitCreate}>
           {trap.field}
           <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
-          {/*
-            "EMAIL", NOT "WORK EMAIL". Nothing in the product requires a company address, and
-            somebody who runs a real company from a Gmail address reads "Work email" as "not for
-            you". The prototype says "Work email"; which to use is waiting for Hafsah.
-          */}
+          {/* "Email", not "Work email": Hafsah's decision of 26 September. Nothing requires a company address. */}
           <AuthField id="signup-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} />
           {/*
             ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
@@ -463,14 +498,32 @@ export function AuthPage() {
           <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgName(v); clearNotices() }} />
           <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>What your organisation will be called. You can change it later.</p>
 
+          <fieldset className="gw-auth-choice">
+            <legend className="gw-auth-label">How would you like to sign in?</legend>
+            <label>
+              <input type="radio" name="sign-in-by" value="link" checked={signInBy === 'link'} onChange={() => { setSignInBy('link'); clearNotices() }} />
+              With a link we email you
+            </label>
+            <label>
+              <input type="radio" name="sign-in-by" value="password" checked={signInBy === 'password'} onChange={() => { setSignInBy('password'); clearNotices() }} />
+              With a password
+            </label>
+          </fieldset>
+
+          {signInBy === 'password' && (
+            <>
+              <PasswordField id="signup-password" label="Password" autoComplete="new-password" value={newPassword} onChange={v => { setNewPassword(v); clearNotices() }} />
+              <PasswordField id="signup-confirm" label="Type it again"
+              spokenAs="password you typed again" autoComplete="new-password" value={newConfirm} onChange={v => { setNewConfirm(v); clearNotices() }} />
+              <PasswordRules password={newPassword} confirm={newConfirm} email={email.trim() || null} />
+            </>
+          )}
+
           {error && <AuthError>{error}</AuthError>}
           <div className="gw-auth-actions">
             <Button type="submit" wide disabled={createAccount.isPending}>
               {createAccount.isPending ? 'Sending…' : 'Create account'}
             </Button>
-            {/* Same door as sign-in: an existing Google account signs in, a new one gets its own
-                organisation. findOrCreateGoogleUser decides which, not this button. */}
-            {googleButton('Sign up with Google')}
           </div>
         </form>
 
@@ -487,7 +540,7 @@ export function AuthPage() {
       <AuthCard
         title="Get a sign-in link"
         sub={isSignup
-          ? 'Enter your email. We will send you a link that creates your account. When you open it, you choose a password.'
+          ? 'Enter your email. We will send you a link that creates your account.'
           : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
       >
         <form noValidate onSubmit={submitLink}>

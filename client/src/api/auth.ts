@@ -75,8 +75,10 @@ export const authApi = {
   // longer depends on which browser opens the magic link.
   /* `hp` is the honeypot — see components/gw/a-field-nobody-can-see.tsx. Sent as `_hp`, which is
      the name the two older endpoints already use. */
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}) }).then(r => r.data),
+  /* `password` only when the person chose one at sign-up (U.2). The server uses it only for an
+     address with no account, and answers the same either way. */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),

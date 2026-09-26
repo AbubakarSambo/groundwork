@@ -217,9 +217,45 @@ describe('signing in again never lands on "You\'re signed out"', () => {
 })
 
 describe('"Create your account" says what happens next, truthfully', () => {
-  it('the link makes the account, and then a password is chosen, because that step is required today', async () => {
+  /* Since Hafsah's decision of 26 September, a password is optional and can be chosen here. */
+  it('the link confirms the email and makes the account; nothing promises or denies a password', async () => {
     renderAt('/auth?mode=signup')
-    expect(await screen.findByText('We send you a link. Your account is made when you open it, and then you choose a password.')).toBeTruthy()
+    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
     expect(screen.queryByText(/No password to choose/)).toBeNull()
+  })
+})
+
+describe('signing up with a password, if the person prefers (Hafsah, 26 September)', () => {
+  it('the link is the default; choosing a password shows the two boxes and the prototype\'s rules', async () => {
+    const { container } = renderAt('/auth?mode=signup')
+    await screen.findByRole('heading', { name: 'Create your account' })
+    expect((screen.getByLabelText('With a link we email you') as HTMLInputElement).checked).toBe(true)
+    expect(screen.queryByLabelText('Type it again')).toBeNull()
+    fireEvent.click(screen.getByLabelText('With a password'))
+    expect(readable(container)).toContain(['Password', 'Show', 'Type it again', 'Show', 'At least 8 characters', 'A number or a symbol', 'Not your email address', 'Both passwords match', 'Create account'].join(''))
+  })
+
+  it('sends the password with the sign-up, and shows "Check your email"', async () => {
+    ;(authApi.entrySave as any).mockResolvedValue({ message: 'ok', email: 'x' })
+    renderAt('/auth?mode=signup')
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Wairimu' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByLabelText('With a password'))
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(authApi.entrySave).toHaveBeenCalledWith('wairimu@baridi.test', { payload: { firstName: 'Wairimu' } }, '', 'harbour7lamp')
+  })
+
+  it('a password that is the email address typed above is caught before anything is sent', async () => {
+    renderAt('/auth?mode=signup')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByLabelText('With a password'))
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
+    expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 })

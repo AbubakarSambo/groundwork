@@ -109,7 +109,9 @@ describe('the rules, before anything is sent', () => {
 })
 
 describe('"Choose a password", the first password from a set-up link (A2, #/password)', () => {
-  it('reads the prototype\'s words, without "Keep using email links instead"', () => {
+  /* Hafsah's decision of 26 September: choosing a password is optional, so the prototype's
+     "Keep using email links instead" is offered (it was left out while that waited on her). */
+  it('reads the prototype\'s words, including "Keep using email links instead"', () => {
     const { container } = renderAt('/set-password?token=tok')
     expect(readable(container)).toBe([
       'Groundwork',
@@ -121,8 +123,8 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
       'Not your email address',
       'Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.',
       'Save password',
+      'Keep using email links instead',
     ].join(''))
-    expect(screen.queryByText(/Keep using email links instead/)).toBeNull()
     expect(screen.queryByLabelText('Type it again')).toBeNull()
     /* U.2 step 12: a set-up link is checked as the page opens too, so an old one shows the expired card. */
     expect(authApi.validateToken).toHaveBeenCalledWith('tok', 'PASSWORD_SETUP')
@@ -155,6 +157,14 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
+    expect(authApi.setPassword).not.toHaveBeenCalled()
+  })
+})
+
+describe('"Keep using email links instead"', () => {
+  it('without a session, goes to the sign-in link form, and no password is sent', async () => {
+    renderAt('/set-password?token=tok&next=%2Fgrounds')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep using email links instead' }))
     expect(authApi.setPassword).not.toHaveBeenCalled()
   })
 })

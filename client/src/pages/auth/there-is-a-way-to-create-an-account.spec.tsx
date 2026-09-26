@@ -107,6 +107,8 @@ describe('the create-account door', () => {
       { payload: { firstName: 'Sam Taylor', orgName: 'Acme Ltd' } },
       /* The honeypot, empty: a person never meets the field. */
       '',
+      /* No password: the email link is the default way to sign in (U.2). */
+      undefined,
     ))
   })
 
@@ -118,7 +120,7 @@ describe('the create-account door', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     /* The third argument is the honeypot — empty for a person who never sees the field. See
        components/gw/a-field-nobody-can-see.tsx. */
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, ''))
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, '', undefined))
   })
 })
 
@@ -148,15 +150,19 @@ describe('a failure is not a success', () => {
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
   })
 
-  it('but an address that already has an account is told plainly', async () => {
-    // Safe here and only here: they just said they are new, so it is the useful answer
-    // rather than an enumeration oracle.
+  it('and never says an address already has an account', async () => {
+    /*
+     * Changed by Hafsah's rule of 26 September: sign-up never reveals whether an address has an
+     * account. This test used to require "already has an account" on a 409. entry-save answers an
+     * existing address exactly as a new one now, so a 409 is only a refusal like any other.
+     */
     ;(authApi.entrySave as any).mockRejectedValue({ response: { status: 409 } })
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
-    await waitFor(() => expect(screen.getByText(/already has an account/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(screen.queryByText(/already has an account/i)).toBeNull()
   })
 })
 

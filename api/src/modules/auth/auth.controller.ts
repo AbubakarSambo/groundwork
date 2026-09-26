@@ -307,7 +307,7 @@ export class AuthController {
     if (dto._hp) {
       return { message: 'Check your email for your sign-in link.', email: dto.email.toLowerCase() };
     }
-    return this.authService.entrySave(dto.email, dto.draft);
+    return this.authService.entrySave(dto.email, dto.draft, dto.password);
   }
 
   @Post('request-password-setup')

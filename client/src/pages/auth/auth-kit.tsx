@@ -131,9 +131,12 @@ export function AuthField({ id, label, type = 'text', value, onChange, autoCompl
  * refusing them. The button is a real button, so the keyboard reaches it and a screen reader says
  * whether the password is showing.
  */
-export function PasswordField({ id, label, value, onChange, autoComplete, autoFocus }: {
+export function PasswordField({ id, label, value, onChange, autoComplete, autoFocus, spokenAs }: {
   id: string
   label: string
+  /** What "Show the …" says aloud. Defaults to the label ("Show the new password"); a second box
+      says "the password you typed again", because "Show the type it again" is not a sentence. */
+  spokenAs?: string
   value: string
   onChange: (v: string) => void
   autoComplete: 'current-password' | 'new-password'
@@ -161,7 +164,7 @@ export function PasswordField({ id, label, value, onChange, autoComplete, autoFo
           onClick={() => setShown(s => !s)}
           aria-controls={id}
           aria-pressed={shown}
-          aria-label={shown ? `Hide the ${label.toLowerCase()}` : `Show the ${label.toLowerCase()}`}
+          aria-label={`${shown ? 'Hide' : 'Show'} the ${spokenAs ?? label.toLowerCase()}`}
         >
           {shown ? 'Hide' : 'Show'}
         </button>

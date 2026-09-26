@@ -65,6 +65,13 @@ describe('verify-email says justCreated only when this link made the account', (
     expect(res.passwordSetupToken).toEqual(expect.any(String));
   });
 
+  it('a sign-up that chose a password gets it on the account, so no password step follows', async () => {
+    const res = await service({ pending: { ...waiting, passwordHash: 'a-bcrypt-hash' } }).verifyEmail({ token: 'link' } as any);
+    expect(res.justCreated).toBe(true);
+    expect(res.needsPassword).toBe(false);
+    expect(res).not.toHaveProperty('passwordSetupToken');
+  });
+
   it('a waiting sign-up whose company already listed them joins it: that is a new account too', async () => {
     const listed = [{ id: 'person-1', organizationId: 'o1', email: 'wairimu@baridi.test', active: true, linkedUserId: null }];
     const res = await service({ pending: waiting, listedAs: listed }).verifyEmail({ token: 'link' } as any);

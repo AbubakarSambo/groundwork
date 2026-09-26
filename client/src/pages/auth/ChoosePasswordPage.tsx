@@ -48,6 +48,7 @@ export function ChoosePasswordPage() {
    * may be opened in a browser where somebody else is signed in, so it does not use it.
    */
   const signedInEmail = useAuthStore(s => s.user?.email ?? null)
+  const signedIn = useAuthStore(s => !!s.isAuthenticated)
 
   /**
    * Which of the two links they opened. The endpoints are genuinely different -
@@ -153,10 +154,10 @@ export function ChoosePasswordPage() {
   if (!token) return <LinkDidNotWork kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
   /*
-   * CHOOSING A FIRST PASSWORD (A2, #/password), in the prototype's words. Choosing one is still
-   * required: whether somebody may keep using email links instead is waiting for Hafsah, so the
-   * prototype's "Keep using email links instead" is not offered. "You can keep using links too" is
-   * true either way: an account with a password can still ask for a sign-in link.
+   * CHOOSING A FIRST PASSWORD (A2, #/password), in the prototype's words. Choosing one is optional
+   * (Hafsah's decision of 26 September), so the prototype's "Keep using email links instead" is
+   * offered. "You can keep using links too" is true either way: an account with a password can still
+   * ask for a sign-in link.
    */
   const title = kind === 'set' ? 'Choose a password' : 'Choose a new password'
   const sub = kind === 'set'
@@ -188,6 +189,7 @@ export function ChoosePasswordPage() {
             <PasswordField
               id="confirm-password"
               label="Type it again"
+              spokenAs="password you typed again"
               autoComplete="new-password"
               value={confirm}
               onChange={setConfirm}
@@ -209,6 +211,26 @@ export function ChoosePasswordPage() {
           </Button>
         </div>
       </form>
+      {kind === 'set' && (
+        <div className="gw-auth-links">
+          {/*
+            NO PASSWORD, AND THAT IS FINE. Opening the email link has signed this person in, so
+            skipping goes on to where they were going. Somebody here without a session (a set-up
+            link from an invitation) is sent to ask for a sign-in link instead, which is what
+            "email links" means for them. The unused set-up link simply runs out.
+          */}
+          <button
+            type="button"
+            className="gw-auth-link"
+            onClick={() => {
+              try { sessionStorage.removeItem('gw_next') } catch { /* */ }
+              navigate(signedIn ? next : '/auth?mode=member', { replace: true })
+            }}
+          >
+            Keep using email links instead
+          </button>
+        </div>
+      )}
     </AuthCard>
   )
 }

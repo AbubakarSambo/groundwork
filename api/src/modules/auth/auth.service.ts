@@ -469,9 +469,17 @@ export class AuthService {
     // magic link - before this, the transcript lived only in the originating
     // browser's localStorage and a link opened anywhere else lost the ground.
     draft?: { payload?: Record<string, any>; history?: unknown[] },
+    /* A password chosen at sign-up (U.2). Used only for an address with no account. */
+    password?: string,
   ): Promise<{ message: string; email: string; draftToken?: string }> {
     const lower = email.toLowerCase();
     const message = 'Check your email for your sign-in link.';
+
+    /*
+     * CHECKED BEFORE THE ADDRESS IS LOOKED UP, so the answer cannot differ between an address that
+     * has an account and one that does not. The other two rules are on the request (EntrySaveDto).
+     */
+    if (password !== undefined && isTheirEmail(password, lower)) throw new BadRequestException(IS_THEIR_EMAIL);
 
     if (draft && JSON.stringify(draft).length > 500_000) {
       throw new BadRequestException('Draft too large');
@@ -522,6 +530,9 @@ export class AuthService {
       const dt = draft ? crypto.randomBytes(32).toString('hex') : undefined;
       const typedOrgName = typeof draft?.payload?.orgName === 'string' ? draft.payload.orgName.trim().slice(0, 120) : '';
 
+      /* Hashed here and held on the waiting sign-up, never on a User, which must not exist yet (GW-001). */
+      const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+
       await this.prisma.pendingSignup.upsert({
         where: { email: lower },
         create: {
@@ -529,6 +540,7 @@ export class AuthService {
           token,
           firstName,
           orgName: typedOrgName || null,
+          ...(passwordHash ? { passwordHash } : {}),
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
@@ -563,6 +575,8 @@ export class AuthService {
         update: {
           token,
           expiresAt: expiresAtFor('verify an address'),
+          /* A password sent again replaces the one before; a request without one leaves it alone. */
+          ...(passwordHash ? { passwordHash } : {}),
           ...(draft
             ? {
                 firstName,

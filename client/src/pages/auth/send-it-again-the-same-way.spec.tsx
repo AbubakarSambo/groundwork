@@ -88,7 +88,10 @@ describe('a sign-up still waiting for its link to be opened', () => {
 
     await pressSendAgain()
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledTimes(2))
-    expect((authApi.entrySave as any).mock.calls[1]).toEqual(first)
+    /* The same address, name and organisation. A password chosen at sign-up is not sent again: the
+       server keeps the one it holds when a request carries none (U.2). */
+    expect((authApi.entrySave as any).mock.calls[1].slice(0, 3)).toEqual(first.slice(0, 3))
+    expect((authApi.entrySave as any).mock.calls[1][3]).toBeUndefined()
     expect((authApi as any).requestMagicLink).not.toHaveBeenCalled()
     expect(screen.queryByText(/did not send/i)).toBeNull()
   })
