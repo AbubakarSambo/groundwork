@@ -56,7 +56,7 @@ export interface PersonFacts {
   whatTheySaidItWasFor: string | null;
   /** The latest thing they reported, preferring one with a number in it. */
   whereTheySayTheyAre: string | null;
-  /** The latest worry or tension they named. */
+  /** The latest worry or tension they named, preferring one in that session with a detail in it. */
   whatTheySayIsInTheWay: string | null;
   /**
    * WHY THEY SAY THEY ARE ON THIS WORK RATHER THAN SOMETHING ELSE, in their own words.
@@ -119,6 +119,9 @@ const clean = (t: string): string =>
 
 const latest = <T extends { session: number }>(xs: T[]): T | undefined => [...xs].sort((a, b) => b.session - a.session)[0];
 
+/** A figure, a date, or somebody's name in the middle of the sentence. */
+const carriesASpecific = (t: string): boolean => /\d/.test(t) || /[a-z,;:]\s+(?!I\b)[A-Z][A-Za-z]+/.test(t);
+
 /** Has this person said the figure, in any of its shapes: 400,000, 400k, $400,000, 0.4m? */
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, mn: 1e6, bn: 1e9, thousand: 1e3, million: 1e6, billion: 1e9 };
 export function everMentioned(said: AThingOnRecord[], figure: number): boolean {
@@ -163,7 +166,19 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
    * carries a remark about the product - see a-remark-about-the-tool-is-not-the-work - and this
    * takes whatever the latest real worry is.
    */
-  const worry = latest(said.filter((s) => s.type === 'WORRY' || s.type === 'TENSION'));
+  /*
+   * AND THE WORRY WITH THE DETAIL IN IT. run-7, the pulse scenario: Fatima's record held "some
+   * approvals are stalled", "Four purchase approvals have been sitting since the 9th, waiting for
+   * Ahmed's manager" and "Ahmed's manager is on leave until the 28th", all in one session. `latest`
+   * keeps the first of equals, so the finding read "some approvals are stalled" and lost the fact
+   * the right answer turns on. Within the latest session, one carrying a specific is preferred -
+   * the same test as how the work really runs, below - and otherwise it is as before.
+   */
+  const worries = said.filter((s) => s.type === 'WORRY' || s.type === 'TENSION');
+  const latestWorry = latest(worries);
+  const worry = latestWorry
+    ? worries.find((s) => s.session === latestWorry.session && carriesASpecific(clean(s.text))) ?? latestWorry
+    : undefined;
 
   /*
    * AND WHY THEY ARE ON IT, which is an INTENT line and was read by nothing. See the field's note.
@@ -182,7 +197,6 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
    * "as requested by Nadia" are the lines the finding turns on, and "things are a bit informal here"
    * is not. Among equals, the latest session wins, and the same sentence said twice counts once.
    */
-  const carriesASpecific = (t: string): boolean => /\d/.test(t) || /[a-z,;:]\s+(?!I\b)[A-Z][A-Za-z]+/.test(t);
   const ranked = said
     .filter((s) => s.type === 'OPERATING_DIFFERENCE')
     .map((s) => ({ session: s.session, text: clean(s.text) }))
