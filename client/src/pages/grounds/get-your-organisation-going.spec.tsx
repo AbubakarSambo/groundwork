@@ -59,6 +59,16 @@ describe('the new admin', () => {
     expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
   })
 
+  it('"Got it" that does not go through says so, and the card stays', async () => {
+    open(ADMIN)
+    vi.spyOn(apiClient, 'post').mockRejectedValue(new Error('offline'))
+    const { toast } = await import('sonner')
+    const err = vi.spyOn(toast, 'error')
+    fireEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+    await waitFor(() => expect(err).toHaveBeenCalledWith('That did not go through. Nothing has changed - try again.'))
+    expect(screen.getByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
+  })
+
   it('once every step is done and the card was read, nothing is left', async () => {
     const { container } = open(ADMIN, { ...NEW, people: 3, admins: 2, checkIns: 1, welcomeCardSeen: true })
     await waitFor(() => expect(apiClient.get).toHaveBeenCalled())

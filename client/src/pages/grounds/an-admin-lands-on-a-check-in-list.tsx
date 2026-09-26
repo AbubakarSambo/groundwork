@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -61,6 +62,8 @@ export function AdminFirstRun() {
   const gotIt = useMutation({
     mutationFn: () => apiClient.post('/users/me/welcome-card/seen'),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['rollout'] }) },
+    /* The product's own sentence for a press that did not land; the card stays, so they can press again. */
+    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
   })
   if (!isAdmin || !data) return null
 
