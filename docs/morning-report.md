@@ -332,7 +332,53 @@ question marks - but the colon-glued fragment in front of it is invisible to eve
 
 ---
 
-## The baseline test — first result, and it is not what either of us guessed
+## The baseline test — the answer, and it splits in two
+
+Both runs of the 25 September code are done. `docs/baseline-candidate.json` is written, as asked:
+the average of those two runs.
+
+| | specific detail | blocker | proof asked | past words |
+| --- | --- | --- | --- | --- |
+| baseline as saved (25 Sep) | 89 | 37 | 42 | 25 |
+| old code, run A | 81 | 34 | 35 | 36 |
+| old code, run B | 87 | 35 | 48 | 18 |
+| **old code, mean → the candidate** | **84** | **34.5** | **41.5** | **27** |
+| new code, run-0 | 74 | 33 | 46 | 32 |
+| new code, run-1 | 74 | 33 | 54 | 27 |
+
+**"Blocker checked" is settled and there is nothing wrong with it.** The old code's own mean is
+34.5; the new code gives 33. That is 4% down, well inside the gate. The saved baseline's 37 was
+simply the top of its range. Nothing to fix.
+
+**"Specific detail asked for" is a real drop, and I have not found the cause.** The old code gives
+81 and 87; the new code gives 74 twice. And it concentrates: NEW_HIRE alone accounts for six of the
+ten, so I ran that one scenario six times.
+
+| NEW_HIRE, "specific detail" | |
+| --- | --- |
+| old code | 14, 12 |
+| new code | 9, 5, 8 |
+
+Six samples, no overlap, and the turn counts are identical at 69. That is not sampling.
+
+**What I ruled out, each with a measurement rather than an argument:**
+
+- *Conversation length.* Identical: 69 Groundwork turns on every run of NEW_HIRE, old and new.
+- *The findings block that feeds the lead's later sessions* (`conversation.service.ts:4378` reads
+  `report.findings` where a finding has both a gap and a headline). This was my best guess, because
+  fix 2 changed who writes that headline. It is wrong: the new code produces **more** of them, 6
+  and 5 against the old code's 3 and 2, so that block fires more often, not less.
+- *The opener rewrite,* the only other conversation-path change I made. The openers differ between
+  the two OLD runs as much as they differ from the new ones - the model writes a fresh one each
+  time - so there is no systematic difference to blame.
+- *Prompt drift between the two servers.* They share a database, so the old server could have
+  re-seeded the engine prompt and changed it for both. It did not: `system` is still v40 and
+  `report_synthesis` still v3, unchanged since 23 and 15 September.
+
+**So I am doing what you said and not moving on.** A bisect is running now: NEW_HIRE on each of the
+three fix commits in turn, to find which one moves the number. That is the next thing in the log.
+
+## The first result, before both runs were in
 
 The first of the two runs of the 25 September code is in.
 
