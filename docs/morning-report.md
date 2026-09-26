@@ -1,10 +1,116 @@
 # Morning report
 
-**Night of 25–26 September 2026.** Branch `fix/plain-reports`. Nothing left this computer.
+**Night of 25–26 September 2026.** Branch `wip/plain-reports`. Nothing left this computer.
 
 This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
+
+## Task 1.5, found while the 1.4 run was going: one number is why eight reports have no judgement
+
+I did not expect this to have a single cause. It has one, and it is a threshold written for a
+different question.
+
+`theFrameFor` in `conversation.service.ts:6477` decides whether a check-in's brief is detailed
+enough to derive a frame of fields from, and it says:
+
+> under forty words a brief is a question, not a specification
+
+That is a reasonable thing to believe about *fields*. But `judgeTheAnswers` in
+`reports.service.ts:3878` then opens with `if (!Array.isArray(frame) || !frame.length) return null`,
+so no frame means no judgement at all — the function returns before it does anything.
+
+The eight reports with no judgement are exactly the eight whose brief is under forty words:
+
+| Judged | Brief | | No judgement | Brief |
+| --- | --- | --- | --- | --- |
+| drift | 40 words | | board | 39 words |
+| workplan | 41 | | shock | 39 |
+| discovery | 41 | | crisis | 37 |
+| recognition | 43 | | contractreview | 36 |
+| advisor, renewal | 44 | | openread | 32 |
+| handover, realign | 46 | | snapshot | 27 |
+| implementation | 47 | | pulse | 24 |
+| pip | 48 | | updates | 16 |
+| the other four | 57–96 | | | |
+
+`drift` is judged at exactly forty words. `board` is not, at thirty-nine. Nothing else separates the
+two groups — all sixteen and all eight are one-session check-ins with two to four people, all eight
+have their findings and their shared picture, and every one of the eight has zero fitted check-ins,
+because the fit needs the frame too.
+
+**And the room read never needed the frame.** When a check-in is a room rather than a population,
+the material handed to the model is `theRoom(people, differences, sessions)` — built from who is in
+it and what they disagree about. The frame and the counted table are the *population* path. So the
+guard at the top is throwing away a judgement that would not have used the thing it is guarding.
+
+That is the fix for 1.5 and it is small. I have not made it yet: the 1.4 measurement is still
+running and I am not changing the engine underneath it.
+
+The other half of 1.5 — whether the judgement matches `theDecision` in at least twenty of the
+twenty-four — is measured next, on the sixteen that have one.
+
+## And the other half of 1.5, measured: ten of twenty-four reach the right answer
+
+I read every one of the twenty-four judgements against the right answer in `theDecision`, which the
+product never sees. **First I got this wrong and caught it**: my script took the first session's
+report, so on the four multi-session scenarios I was reading a judgement written when only the lead
+had spoken. "This check-in has not collected any information from Femi Okonkwo, Ngozi Eze, or
+Kwame Mensah" is not a defect — at that point it was true. Read at the last session, sales is one of
+the best of the twenty-four. The numbers below are from the final session in every case.
+
+| | Scenario | What it does with the right answer |
+| --- | --- | --- |
+| **Right** | cofounder | Names who owns product as the live disagreement, does not smooth it |
+| | project | Scope, not timeline: "like-for-like gateway swap or the new reconciliation work" |
+| | renewal | Lands on our own cut-off, not the partner's performance |
+| | recognition | Names Victor, the uncredited contractor, and says to credit him |
+| | realign | Names the CEO as the second source of direction |
+| | pip | "The problem is that Nathan does not know what you think the problem is" |
+| | implementation | Separates deployed from in use, and names the Kano printer |
+| | sales | Separates all four: Ngozi's credit committee, Femi's customers, Kwame counting the wrong thing |
+| | seniorhire | The gap is in the brief: "Tobi believes their job is to manage the relationship, not the money" |
+| | loans | Names the non-delivery and says to build in a grace period |
+| **Close** | advisor | Gets the role disagreement, misses that he has no relationship at two of the three banks |
+| | drift | Gets the substitution, never names who made the March request |
+| | handover | "Exists only in the head of Patience Nkemdirim" — neither of the two specifics named |
+| **Wrong** | newmanager | Says Daniel thinks the job is metrics. He is doing the work himself because he is faster |
+| | discovery | A disagreement about the goal of the discovery, not about what the customer said. "Audit" never appears |
+| | workplan | Misses the double-counted contractor entirely, and see below |
+| **None** | the eight | The forty-word floor above |
+
+**Ten of twenty-four right, thirteen if the three close ones count. The bar is twenty.** So 1.5 is
+not one fix. The forty-word floor recovers eight reports from silence, but silence to *something*
+is not silence to *right*, and I would rather say that now than discover it at the end.
+
+### The workplan report accuses the lead of something nobody said
+
+This is the one I would fix first whatever the score says. The lead opens their own report and
+reads, word for word:
+
+> You are describing a spending problem, but the record shows a planning problem **that you
+> created**. You have not set a budget or done the work **they said they would**, which makes it
+> impossible for Chidi Eze and Sara Lindqvist to make realistic plans.
+>
+> - Tell **you** to set a budget for the work.
+> - Ask **you** to speak with the leads **they** said they would.
+
+Four things are wrong in six lines. "A planning problem that you created" is a charge nobody in the
+check-in made — the thing 1.5 says must never happen. "the work they said they would" is about the
+reader and says "they". "Tell you to set a budget" is an instruction addressed to nobody. And the
+actual finding — the plan comes to 141% of the budget because two leads have both costed the same
+contractor, and neither knows — is not in the report at all.
+
+### A label in prose that the scorer does not count
+
+Also live on the lead's report, in newmanager:
+
+> **Initiator:** tell Daniel Park that the manager's role is to coach and develop people.
+
+Two of these across the twenty-four, both in `whatToDo[].move`. Fix 3 cleaned the prose but this
+field is not on its path, and the scorer's label list does not catch a capitalised "Initiator:" at
+the start of a sentence, so it counted zero. This is the second time a number said clean and the
+rendered line was not.
 
 ## The 50 scenario packs — step one done, and they can be read now
 
