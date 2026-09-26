@@ -93,7 +93,7 @@ describe('the menu has to be on the screen', () => {
 
   it('is not there on the pages that are deliberately bare', () => {
     /* Those carry their own header - see a-page-with-no-way-out. Being bare there is the design. */
-    const { container } = shell('/org/setup')
+    const { container } = shell('/org-new')
     expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
   })
 

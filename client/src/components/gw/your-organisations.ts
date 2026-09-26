@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
@@ -18,25 +19,13 @@ export type YourOrganisation = { id: string; name: string; slug: string; role: s
 export function useYourOrganisations() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const setAuth = useAuthStore(s => s.setAuth)
+  const navigate = useNavigate()
 
   const { data: myOrgs = [] } = useQuery({
     queryKey: ['my-organizations'],
     queryFn: authApi.myOrganizations,
     enabled: isAuthenticated,
     retry: false,
-  })
-
-  const startOwn = useMutation({
-    mutationFn: () => authApi.startMyOwnWorkspace(),
-    onSuccess: (res) => {
-      /* (user, token), the order setAuth takes. This was written (token, user), which stored the token
-         as the person and the person as the token the moment somebody started their own workspace. */
-      setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
-    },
-    /* The server says why when it refuses (it is already their own, or it could not be made), and the
-       person needs to be told which, not left looking at a button that did nothing. */
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
   })
 
   const switchOrg = useMutation({
@@ -64,13 +53,12 @@ export function useYourOrganisations() {
   */
   const onlyOneNotChosen = myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN'
 
+  /* "Create an organisation" (A3, #/org-new) asks its name first. No confirm box: the page is the question. */
   function startMyOwnWorkspace() {
-    if (startOwn.isPending || !myOrgs[0]) return
-    if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
-    startOwn.mutate()
+    navigate('/org-new')
   }
 
-  return { myOrgs, chooseOrganisation, switching: switchOrg.isPending, onlyOneNotChosen, startMyOwnWorkspace, starting: startOwn.isPending }
+  return { myOrgs, chooseOrganisation, switching: switchOrg.isPending, onlyOneNotChosen, startMyOwnWorkspace }
 }
 
 /** Two letters for a square: the first letters of the first two words, or the first two letters. */

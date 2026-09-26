@@ -31,7 +31,7 @@ function chromelessPaths(): string[] {
 /** Where a route's page component lives. Only the ones this repo actually has files for. */
 const PAGE_FOR: Record<string, string> = {
   '/auth': 'pages/auth/AuthPage.tsx',
-  '/org/setup': 'pages/org/OrgSetupPage.tsx',
+  '/org-new': 'pages/org/OrgNewPage.tsx',
   '/set-password': 'pages/auth/SetPasswordPage.tsx',
   '/reset-password': 'pages/auth/ResetPasswordPage.tsx',
   '/verify-email': 'pages/auth/MagicVerifyPage.tsx',
@@ -42,7 +42,7 @@ describe('a page with no way out', () => {
   it('reads the real list, so this cannot pass by finding nothing', () => {
     const paths = chromelessPaths()
     expect(paths.length).toBeGreaterThan(5)
-    expect(paths).toContain('/org/setup')
+    expect(paths).toContain('/org-new')
   })
 
   it('gives every chromeless page a way out of it', () => {
@@ -83,27 +83,17 @@ describe('a page with no way out', () => {
     ].join('\n')).toEqual([])
   })
 
-  it('org setup in particular has both, because somebody can still land on it', () => {
+  it('"Create an organisation" has a way off it, though nothing holds anybody there', () => {
     /*
-     * THE PREMISE CHANGED, THE REQUIREMENT DID NOT.
-     *
-     * This used to read "since every route redirects an admin to it". That redirect is gone (fix
-     * plan F6): the organisation's address is optional, nothing mails it, and the payment step
-     * asks for one when it needs it - so a second address is no longer a wall in front of the
-     * whole product. The page is still reachable from settings, and a chromeless page anybody can
-     * land on still needs a way out.
-     *
-     * The `useEffect` assertion went with the redirect. It was there because the page used to
-     * bounce you to /grounds during render once the address was filled in, which logged a React
-     * warning every visit. There is nothing to bounce to now, so requiring the effect would be
-     * requiring the bug's dressing without the bug.
+     * U.3: /org/setup is now an old address that goes to /org-new, "Create an organisation". No guard
+     * sends anybody there any more (fix plan F6 took the redirect away, and U.3 made the billing email
+     * optional), so the stricter rule for a page you are held on no longer applies. It still needs a
+     * way off: the Groundwork mark on its card goes to the marketing site, and "Cancel" goes back.
      */
-    const src = readFileSync(join(ROOT, 'src/pages/org/OrgSetupPage.tsx'), 'utf8')
-    expect(src).toContain('MARKETING_URL')
-    /* U.2: signing out is a trip to /signout ("You're signed out"), which ends the session as it
-       opens, so that every Sign out in the product lands on the same page. */
-    expect(src).toMatch(/logout\s*\(|navigate\('\/signout'/)
-    /* And nothing navigates during render, which is what the old effect was protecting against. */
+    const src = readFileSync(join(ROOT, 'src/pages/org/OrgNewPage.tsx'), 'utf8')
+    expect(src).toMatch(/<AuthCard\b/)
+    expect(src).toMatch(/>Cancel</)
+    /* And nothing navigates during render. */
     expect(src).not.toMatch(/^\s*if \([^)]*\)\s*(?:return\s*)?<Navigate/m)
   })
 })

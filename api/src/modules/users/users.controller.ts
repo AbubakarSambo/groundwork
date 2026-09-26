@@ -7,7 +7,9 @@ import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
 import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { TeamSizeSaidDto } from '../auth/dto/create-organisation.dto';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
 
 class RenameOrganizationDto {
@@ -16,6 +18,13 @@ class RenameOrganizationDto {
   @MinLength(2)
   @MaxLength(120)
   name: string;
+
+  /**
+   * THE REST OF "Create an organisation", for the organisation a first Google sign-in has just made
+   * (U.3). Both optional: the Settings rename sends only the name.
+   */
+  @IsOptional() @IsEmail() @MaxLength(255) billingEmail?: string;
+  @IsOptional() @ValidateNested() @Type(() => TeamSizeSaidDto) teamSize?: TeamSizeSaidDto;
 }
 
 @ApiTags('Users')
@@ -98,7 +107,7 @@ export class UsersController {
     @CurrentUser('organizationId') organizationId: string,
     @Body() dto: RenameOrganizationDto,
   ) {
-    return this.usersService.renameOrganization(organizationId, dto.name);
+    return this.usersService.renameOrganization(organizationId, dto.name, { billingEmail: dto.billingEmail, teamSize: dto.teamSize });
   }
 
   /**

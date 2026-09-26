@@ -87,7 +87,7 @@ import { MorePage } from '@/pages/more/MorePage'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
-import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
+import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
@@ -384,10 +384,11 @@ export default function App() {
             <Route path="/answer" element={<AnswerFirstPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />
 
-            {/* Post-auth setup: an org admin whose org is missing contact email / stage / plan is
-                sent here by RequireOrgSetup before reaching anything else below. Plain RequireAuth,
-                not RequireOrgSetup, so this route itself can never redirect-loop. */}
-            <Route path="/org/setup" element={<RequireAuth><OrgSetupPage /></RequireAuth>} />
+            {/* "Create an organisation" (A3). Plain RequireAuth: it is where somebody makes or names
+                one, so nothing about their organisation may be asked of them first. The old
+                /org/setup address goes to it, with its query, because links to it are out there. */}
+            <Route path="/org-new" element={<RequireAuth><OrgNewPage /></RequireAuth>} />
+            <Route path="/org/setup" element={<KeepTheQuery to="/org-new" />} />
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
             <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />

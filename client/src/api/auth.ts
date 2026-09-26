@@ -34,6 +34,9 @@ export interface WaitingAtTheDoor {
   forCheckIn: string | null
 }
 
+/** "Fewer than 20" or "20 or more": what they chose, and the line they were shown. */
+export type TeamSizeSaid = { said: 'fewer' | 'more'; line: number }
+
 export const authApi = {
   /* No `requestMagicLink`. It called /auth/register-magic-link, which creates accounts, and its only
      caller was the resend on "Check your email", where it failed for every existing account and wiped
@@ -117,8 +120,20 @@ export const authApi = {
    * now nobody could correct it, though the name is on every page the team
    * sees. Admin only, server-enforced.
    */
-  renameOrganization: (name: string) =>
-    apiClient.patch<{ id: string; name: string }>('/users/organization', { name }).then(r => r.data),
+  renameOrganization: (name: string, more?: { billingEmail?: string; teamSize?: TeamSizeSaid }) =>
+    apiClient.patch<{ id: string; name: string }>('/users/organization', { name, ...(more ?? {}) }).then(r => r.data),
+
+  /**
+   * "CREATE AN ORGANISATION" (U.3). Makes it, makes you its owner, and returns a token scoped to it,
+   * exactly like a switch. The server keeps the rule of one organisation of your own for now.
+   */
+  createOrganisation: (what: { name: string; billingEmail?: string; teamSize?: TeamSizeSaid }) =>
+    apiClient
+      .post<{ accessToken: string; user: any; organization: { id: string; name: string; slug: string } }>(
+        '/auth/organizations',
+        what,
+      )
+      .then(r => r.data),
 
   /**
    * WHO IS WAITING TO BE LET INTO THIS ORGANISATION.
@@ -170,21 +185,6 @@ export const authApi = {
       .get<{ id: string; name: string; slug: string; role: string; active: boolean }[]>(
         '/auth/my-organizations',
         { skipForbiddenToast: true, skipNotFoundToast: true },
-      )
-      .then(r => r.data),
-
-  /**
-   * THE DOOR OUT OF SOMEBODY ELSE'S ORGANISATION.
-   *
-   * Somebody whose address was on a roster is joined to that organisation when they verify. Right
-   * for an employee, wrong for a respondent or a contact who signed up to use Groundwork for their
-   * own work - and with one membership there was nothing to switch to. Returns a token scoped to
-   * the new workspace, exactly like a switch, because that is what it ends with.
-   */
-  startMyOwnWorkspace: () =>
-    apiClient
-      .post<{ accessToken: string; user: any; organization: { id: string; name: string; slug: string } }>(
-        '/auth/start-my-own-workspace',
       )
       .then(r => r.data),
 

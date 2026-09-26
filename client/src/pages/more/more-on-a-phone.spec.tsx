@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/gw/AppShell'
@@ -130,18 +130,26 @@ describe('switching organisation and signing out on a phone', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
-  it('"Start my own workspace" stores the person as the person and the token as the token', async () => {
-    /* It called setAuth(token, user), the wrong way round, so the new workspace's session was saved
-       with the token where the person belongs. Found while moving the switcher into one place. */
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const assign = vi.fn()
-    vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, assign } as any)
-    vi.spyOn(authApi, 'startMyOwnWorkspace').mockResolvedValue({ accessToken: 'new-token', user: { id: 'u1', firstName: 'Adam' }, organization: { id: 'o9', name: 'Adam', slug: 'adam' } } as any)
-    const setAuth = vi.fn()
-    mount(PARTICIPANT)
-    useAuthStore.setState({ setAuth } as any)
+  /* U.3: "Start my own workspace" opens "Create an organisation" (#/org-new), which asks the name
+     first, instead of making one straight away after a confirm box. Storing (user, token) the right
+     way round is now tested on that page (pages/org/OrgNewPage.spec.tsx). */
+  it('"Start my own workspace" opens "Create an organisation"', async () => {
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [{ id: 'o1', name: 'Coamana', slug: 'coamana', role: 'MEMBER', active: true }])
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/more']}>
+          <Routes>
+            <Route path="/more" element={<AppShell><MorePage /></AppShell>} />
+            <Route path="/org-new" element={<p>The create page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
     fireEvent.click(within(main()).getByRole('button', { name: 'Start my own workspace' }))
-    await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1', firstName: 'Adam' }, 'new-token'))
+    expect(await screen.findByText('The create page')).toBeInTheDocument()
   })
 })
 

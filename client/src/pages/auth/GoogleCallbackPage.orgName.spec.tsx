@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { GoogleCallbackPage } from './GoogleCallbackPage'
 import { authApi } from '@/api/auth'
@@ -52,28 +52,12 @@ function renderCallback(query: string) {
 describe('naming the workspace after a Google sign-up', () => {
   beforeEach(() => { vi.clearAllMocks(); navigated.length = 0 })
 
-  it('asks when the server made an organisation for them', async () => {
+  /* U.3: the question moved to "Create an organisation" (#/org-new), which names the organisation the
+     server made rather than making a second one. Saving and skipping are tested there
+     (pages/org/OrgNewPage.spec.tsx). */
+  it('sends them to name it when the server made an organisation for them', async () => {
     renderCallback('?code=c1&new=true&nameOrg=true')
-    expect(await screen.findByText(/What should we call your workspace/i)).toBeTruthy()
-    // Nothing has moved on yet - they are being asked, not redirected past it.
-    expect(navigated).toHaveLength(0)
-  })
-
-  it('saves the name they give and carries on', async () => {
-    renderCallback('?code=c1&new=true&nameOrg=true')
-    const box = await screen.findByPlaceholderText(/team or company name/i)
-    fireEvent.change(box, { target: { value: 'Meridian Health' } })
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
-
-    await waitFor(() => expect(authApi.renameOrganization).toHaveBeenCalledWith('Meridian Health'))
-    await waitFor(() => expect(navigated).toContain('/start'))
-  })
-
-  it('lets them skip without saving anything', async () => {
-    renderCallback('?code=c1&new=true&nameOrg=true')
-    fireEvent.click(await screen.findByRole('button', { name: /Skip for now/i }))
-
-    await waitFor(() => expect(navigated).toContain('/start'))
+    await waitFor(() => expect(navigated).toContain('/org-new?naming=1'))
     expect(authApi.renameOrganization).not.toHaveBeenCalled()
   })
 
@@ -81,12 +65,12 @@ describe('naming the workspace after a Google sign-up', () => {
     // THE ONE THAT MATTERS: nameOrg=false, so straight through.
     renderCallback('?code=c1&new=true&nameOrg=false')
     await waitFor(() => expect(navigated).toContain('/start'))
-    expect(screen.queryByText(/What should we call your workspace/i)).toBeNull()
+    expect(navigated).not.toContain('/org-new?naming=1')
   })
 
   it('never asks a returning user', async () => {
     renderCallback('?code=c1&new=false&nameOrg=false')
     await waitFor(() => expect(navigated).toContain('/'))
-    expect(screen.queryByText(/What should we call your workspace/i)).toBeNull()
+    expect(navigated).not.toContain('/org-new?naming=1')
   })
 })

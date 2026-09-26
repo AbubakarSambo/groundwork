@@ -94,9 +94,8 @@ const REACHED_FROM_OUTSIDE = [
    */
   '/billing/callback',
   /**
-   * `RequireOrgSetup` and `RootRoute` redirect an admin with an incomplete org here - both live in
-   * App.tsx, which this scan excludes on purpose (every route would trivially "link" to itself
-   * otherwise). Nothing should link to it directly; arriving is the redirect's job, not a click's.
+   * An old address, kept because links to it are out there: it goes to /org-new ("Create an
+   * organisation", U.3), which the organisation menu links to. Nothing should link to the old one.
    */
   '/org/setup',
   /**

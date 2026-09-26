@@ -688,12 +688,22 @@ export class UsersService {
    * workspace"). That default is fine; having no way to correct it is not,
    * because the name is on every page the whole team sees.
    */
-  async renameOrganization(organizationId: string, name: string) {
+  async renameOrganization(
+    organizationId: string,
+    name: string,
+    more: { billingEmail?: string; teamSize?: { said: 'fewer' | 'more'; line: number } } = {},
+  ) {
     const trimmed = name.trim();
-    if (trimmed.length < 2) throw new BadRequestException('An organization name needs at least two characters');
+    if (trimmed.length < 2) throw new BadRequestException('Give the organisation a name of at least two letters.');
+    const billingEmail = (more.billingEmail ?? '').trim().toLowerCase();
     const org = await this.prisma.organization.update({
       where: { id: organizationId },
-      data: { name: trimmed },
+      data: {
+        name: trimmed,
+        /* An empty billing email leaves the one it has: it is optional, and "You can add it later". */
+        ...(billingEmail ? { email: billingEmail } : {}),
+        ...(more.teamSize ? { teamSizeSaid: more.teamSize.said, teamSizeLine: more.teamSize.line } : {}),
+      },
       select: { id: true, name: true },
     });
     return org;

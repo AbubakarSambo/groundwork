@@ -7,7 +7,7 @@ import { useYourOrganisations, initialsOf, roleWord } from './your-organisations
  */
 export function OrganisationChoices() {
   const user = useAuthStore(s => s.user)
-  const { myOrgs, chooseOrganisation, switching, onlyOneNotChosen, startMyOwnWorkspace, starting } = useYourOrganisations()
+  const { myOrgs, chooseOrganisation, switching, onlyOneNotChosen, startMyOwnWorkspace } = useYourOrganisations()
   const orgName = user?.organizationName ?? 'Your organisation'
 
   return (
@@ -37,8 +37,8 @@ export function OrganisationChoices() {
       {onlyOneNotChosen && (
         <div className="gw-rl-menu-note">
           <p>You are in {myOrgs[0].name} because your address was on their list.</p>
-          <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace} disabled={starting}>
-            {starting ? 'Starting…' : 'Start my own workspace'}
+          <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace}>
+            Start my own workspace
           </button>
         </div>
       )}

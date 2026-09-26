@@ -50,7 +50,6 @@ describe('every Sign out in the product lands on it', () => {
     ['components/gw/AppShell.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/],
     ['pages/more/MorePage.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}>Sign out</],
     ['pages/settings/SettingsPage.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/],
-    ['pages/org/OrgSetupPage.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/],
     ['pages/ops/OpsLayout.tsx', /window\.location\.href = '\/signout'/],
   ]
   for (const [file, door] of doors) {
