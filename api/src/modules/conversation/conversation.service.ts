@@ -6475,8 +6475,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const already = (ground as any).whatACompleteAnswerHolds as AField[] | null;
     if (Array.isArray(already) && already.length) return already;
     const brief = (ground.brief ?? '').trim();
-    /* The same floor as the subjects: under forty words a brief is a question, not a specification. */
-    if (brief.split(/\s+/).length < 40) return [];
+    /*
+     * NO WORD COUNT DECIDES WHETHER A CHECK-IN GETS READ. (Hafsah, 26 September 2026: "The
+     * judgement must run whatever the length of the lead's description, so remove the 40-word
+     * threshold.")
+     *
+     * This used to refuse any brief under forty words, on the reasoning that such a brief is a
+     * question rather than a specification. Reasonable about a frame of fields. Catastrophic
+     * downstream, because `judgeTheAnswers` opens with a return on an empty frame: the eight
+     * reports in the twenty-four with no judgement at all were exactly the eight grounds whose
+     * brief was under forty words. `drift` was judged at exactly forty. `board` was not, at
+     * thirty-nine. A lead who writes plainly got no judgement, and nothing anywhere said why.
+     *
+     * An empty brief still gets nothing, because there is nothing to read. Everything else is
+     * read, and `theFrameFrom` throws out what does not hold up - which is the check that should
+     * have been doing this work all along, rather than a word count standing in front of it.
+     */
+    if (!brief) return [];
 
     const read = await this.anthropic.extract<{ fields?: unknown[] }>(
       READ_THE_FRAME,

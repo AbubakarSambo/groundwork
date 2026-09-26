@@ -136,10 +136,21 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
       report: { findUnique: jest.fn(async () => null), upsert: jest.fn(async (args: any) => ({ id: 'r1', ...args.create })) },
     };
     const reportPrompts: any = { getActive: jest.fn(async () => ({ id: 'pv-1', content: 'base synthesis prompt.' })) };
+    /*
+     * THE SYNTHESIS CALL, PICKED OUT RATHER THAN ASSUMED. (26 September 2026.)
+     *
+     * This kept whichever `extract` ran last, which was fine while synthesis was the only one.
+     * Once the room judgement stopped returning early on a ground with no frame, a second call
+     * ran after it and this held the JUDGEMENT's material - so the assertion below, which is about
+     * what reaches the report, was reading a different prompt entirely and went red over the
+     * judgement being handed a pattern it is designed to be handed.
+     *
+     * What the assertion is about is unchanged: the report's corpus must not carry the observation.
+     */
     let reportCorpus = '';
     const reportAnthropic: any = {
       extract: jest.fn(async (sys: string, messages: { content: string }[]) => {
-        reportCorpus = messages[0].content;
+        if (!String(sys ?? '').includes('You are writing the judgement over a check-in')) reportCorpus = messages[0].content;
         return { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '', concernFlags: [{ label: 'founder', observation: 'Completion was claimed without downstream confirmation.' }] };
       }),
     };

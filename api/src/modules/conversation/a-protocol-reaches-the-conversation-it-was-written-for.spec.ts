@@ -85,9 +85,23 @@ describe('a protocol reaches the conversation it was written for, and no others'
    * two protocols are over 7,000 characters between them, so the headroom here is still less than
    * either of them.
    */
+  /*
+   * AND IT MOVED A SECOND TIME, 26 September 2026, for the same reason and by the same rule. The
+   * rulebook gained two paragraphs: a quotation is exempt from every rule in it, and a rule about
+   * a field is about how each entry reads and never about how many there are. Both are the
+   * rulebook growing, so the ceiling moves by them and no further - 119,000 against 118,412
+   * leaves under six hundred characters of headroom, a fraction of either protocol.
+   *
+   * THE SIZE IS A PROXY, SO THE THING ITSELF IS NOW ASSERTED TOO. A ceiling that has to be raised
+   * whenever the rulebook grows is a ceiling that will eventually be raised past a protocol
+   * without anybody noticing. The two lines below say outright that neither protocol is in the
+   * everybody-prompt, which is what this test is actually for, and they do not move.
+   */
   it('the everybody-prompt is smaller by the two of them', () => {
     expect(FAILING_RELATIONSHIP_PROTOCOL.length + RECALL_SESSION_PROTOCOL.length).toBeGreaterThan(7000);
-    expect(ENGINE_RULES.length).toBeLessThan(118000);
+    expect(ENGINE_RULES).not.toContain(FAILING_RELATIONSHIP_PROTOCOL);
+    expect(ENGINE_RULES).not.toContain(RECALL_SESSION_PROTOCOL);
+    expect(ENGINE_RULES.length).toBeLessThan(119000);
   });
 
   /* And the rulebook is in it, imported rather than retyped, which is the reason it grew. */

@@ -26,6 +26,15 @@
  */
 export const PLAIN_WORDS = `HOW TO WRITE ANYTHING A PERSON WILL READ
 
+EVERY RULE BELOW IS ABOUT WORDS YOU WRITE. NONE OF THEM IS ABOUT WORDS SOMEBODY SAID.
+A quotation is what a person actually said, and it is kept exactly as they said it: their wording,
+their jargon, their fragments, their capital letters. Never tidy a quotation, never shorten one,
+never make one a full sentence, never swap a word in one for a plainer word. If a rule below would
+change what is inside quotation marks, the rule does not apply there. Where their own words are not
+plain enough to stand alone, write your own plain sentence around the quotation and leave the
+quotation untouched. A quotation that has been improved is no longer evidence of anything, and this
+product's whole value is that what somebody said is still what they said.
+
 Write every sentence as a full sentence, with a subject and a verb. Never a fragment, never a label
 followed by a colon and an answer.
 
@@ -36,7 +45,7 @@ Never join pieces with colons, dots, arrows or slashes. Never write a list of la
 Use the words the team itself used. Avoid management jargon. Do not write bottleneck, alignment,
 leverage, stakeholders, deliverables, escalate, escalation, cadence, pipeline, KPI, actionable,
 synergy or bandwidth. Write "waiting for", "stuck", "open applications", "went back about it"
-instead. The one exception is a quotation: when you are repeating what somebody actually said, use
+instead. As above, a quotation is exempt: when you are repeating what somebody actually said, use
 their words exactly, jargon and all, inside quotation marks.
 
 Never write "vs." or "vs". Two things that disagree are a sentence, not a heading. Write "The lead

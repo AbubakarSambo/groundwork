@@ -3874,7 +3874,23 @@ happened, and what is in the way.`;
       .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true } })
       .then((g) => (((g as any)?.whatACompleteAnswerHolds ?? []) as AField[]))
       .catch(() => [] as AField[]);
-    if (!Array.isArray(frame) || !frame.length) return null;
+
+    /*
+     * A ROOM IS JUDGED WITHOUT A FRAME, BECAUSE A ROOM READ NEVER USED ONE.
+     *
+     * This used to return here on an empty frame, for every check-in. But the frame and the
+     * counted table are the POPULATION path: below the counting floor the material handed to the
+     * model is `theRoom(people, differences, sessions)`, built from who is in the check-in and
+     * what they disagree about, and it does not touch either. So the guard was throwing away a
+     * judgement that would not have used the thing being guarded.
+     *
+     * What that cost: eight of the twenty-four reports had no judgement at all, and they were
+     * exactly the eight whose brief fell under the forty-word floor upstream. The floor is gone
+     * now (see `theFrameFor`), and this is the second half of the same fix - so that a frame that
+     * comes back thin for any other reason cannot silently take the judgement with it.
+     */
+    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
+    if (!asARoom && (!Array.isArray(frame) || !frame.length)) return null;
 
     const rows = await this.prisma.checkIn.findMany({
       /*
@@ -3918,18 +3934,19 @@ happened, and what is in the way.`;
      * one-person-is-one-answer.ts for what that produced in front of a customer.
      */
     const answers = onePerPerson(perSession);
-    if (!answers.length) return null;
+    /* Same reason as the frame above: a room is read from its people, not from fitted answers. */
+    if (!asARoom && !answers.length) return null;
 
-    const reads = whatTheNumbersSay(frame, answers);
+    const canCount = Array.isArray(frame) && frame.length > 0 && answers.length > 0;
+    const reads = canCount ? whatTheNumbersSay(frame, answers) : [];
     const assessments = reads.map(howGoodIsThis);
-    const table = theTable(reads, assessments, howManyPeople(answers));
+    const table = canCount ? theTable(reads, assessments, howManyPeople(answers)) : '';
 
     /*
      * A ROOM IS NOT A POPULATION. Below the counting floor the table is every field marked THIN and
      * the judgement writes recommendations off proportions of four. The room read is written from
      * the people instead. Same schema out, so nothing downstream knows which one ran.
      */
-    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
     let material = table;
     let instruction = theJudgementInstruction(
       'whoever called this check-in',
@@ -3951,8 +3968,23 @@ happened, and what is in the way.`;
           isLead: p.isLead,
           role: p.role,
           finding: p.finding,
+          /*
+           * AND THE SAME EXCLUSION THE SYNTHESIS CORPUS HAS, WHICH THIS PATH NEVER GOT.
+           *
+           * `ALIGNMENT_FEED_ONLY_CODES` - F5, E4, LOW_SPEC_MULTI_DIM, COLLUSION_RISK - are
+           * documented as never to be named to either person directly, and they are filtered out
+           * of the report corpus, the board's alignment feed and the live conversation for that
+           * reason. This material was the one route with no filter on it, and the judgement built
+           * from it is read by the lead: a cofounder ground handed it "[E4 Founder Burden
+           * Imbalance]: absorbs operational load relative to the other founder" and "[F5 Cofounder
+           * Burden Asymmetry]: operational absorption", about the other founder, to the founder.
+           *
+           * Found on 26 September by the pattern-wiring tripwire, which went red when the room
+           * judgement started running on grounds that used to return early. It was true on every
+           * ground that already had a frame; the change only made it visible.
+           */
           patterns: (seen as any[])
-            .filter((x) => x.participantId === p.participantId && (x.observationText ?? '').trim())
+            .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
         })),

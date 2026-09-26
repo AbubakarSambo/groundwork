@@ -487,6 +487,10 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
       ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
       : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
     '',
+    'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
+    '',
+    'THE SAME THING IN TWO BLOCKS IS USUALLY THE FINDING, and it is the thing most often missed. Read across the blocks for one name, one number, one supplier, one piece of work appearing in two people\'s accounts who do not know about each other. Two people costing the same contractor into two different plans is the reason the budget does not add up, and neither of them can see it from where they sit. Nobody will tell you this in their own block; it only exists between them. Where you find one, it is almost always the gap.',
+    '',
     'WRITE LIKE A PERSON TALKING TO ANOTHER PERSON. The reader runs a business. Say the thing.',
     '  No metaphors. No "landscape", "journey", "ecosystem", "lens", "unlock", "leverage", "navigate".',
     '  No "it is worth noting", "it is important to", "this suggests that", "there appears to be".',
