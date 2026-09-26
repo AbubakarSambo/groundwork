@@ -752,7 +752,7 @@ export function ChatPage() {
   return (
     /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
        height had just subtracted. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/* Header */}
       {/**
         * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.

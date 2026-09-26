@@ -17,18 +17,18 @@
   --color-gw-blue-bg: #EEF4FB;
   --color-gw-blue-t: #0C447C;
   --color-gw-blue-b: #B5D4F4;
-  --color-gw-border: #E2E0DB;
+  --color-gw-border: #EDE5D6;
   --color-gw-muted: #9B9590;
   --color-gw-sub: #6B6560;
   --color-gw-text: #1A1916;
 
   --color-primary: #0C447C;
   --color-primary-foreground: #ffffff;
-  --color-background: #EDECEA;
+  --color-background: #FDFBF6;
   --color-foreground: #1A1916;
   --color-muted: #EDECEA;
   --color-muted-foreground: #6B6560;
-  --color-border: #E2E0DB;
+  --color-border: #EDE5D6;
   --color-secondary: #f1f5f9;
   --color-secondary-foreground: #64748b;
   --color-destructive: #791F1F;
@@ -37,6 +37,24 @@
 }
 
 :root {
+  /*
+   * THE APP OPENS IN LIGHT MODE, and says so. Without this line a phone set to dark mode is free to
+   * paint the form controls, scrollbars and the page behind them dark, under a product whose every
+   * colour below is a light one. A dark theme for anyone who picks it is a separate piece of work.
+   */
+  color-scheme: light;
+
+  /*
+   * THE PAGE. The design system's "Paper": cream and white, no grey.
+   *
+   * This used to be --gw-bg (#EDECEA, a warm grey), and --gw-bg had two jobs: it was the page, and
+   * it was the tinted fill inside white cards (progress tracks, pills, quoted boxes, about ninety of
+   * them). The prototype's page is nearly white, and a nearly white fill inside a white card would
+   * simply vanish. So the page has its own name now, and --gw-bg keeps the fill job. Every full-page
+   * wrapper, and every bar that sits flat on the page, uses this one.
+   */
+  --gw-page: #FDFBF6;
+
   /*
    * FIVE NAMES THAT WERE USED AND NEVER DEFINED.
    *
@@ -54,7 +72,7 @@
    */
   --gw-card: #FFFFFF;
   --gw-slate: #F5F3EF;
-  --gw-line: #E2E0DB;
+  --gw-line: #EDE5D6;
   --gw-ink: #1A1916;
   --gw-green: #085041;
   --gw-navy: #0C447C;
@@ -81,7 +99,10 @@
      on purpose: that one is for the heading above it. */
   --gw-blue-body: #4A6A9A;
   --gw-blue-b: #B5D4F4;
-  --gw-border: #E2E0DB;
+  /* The line between things. The design system calls it "Rule": a warm cream line, not a grey one,
+     so it belongs on the cream page below. Every border that was typed as #E2E0DB in this file now
+     reads this token, so they all moved together. */
+  --gw-border: #EDE5D6;
   /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
      Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
      the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
@@ -125,7 +146,7 @@
    * --gw-bg. Same tokens and same names as the marketing site's, so the app and
    * the site can finally be read against each other. W14-8.
    */
-  --gw-paper: #FBFAF8;
+  --gw-paper: #FDFBF6; /* the same as --gw-page: the design system calls the page "Paper" */
   --gw-paper-2: #F5F3EF;
 
   /**
@@ -168,7 +189,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
   color: var(--gw-text);
-  background: var(--gw-bg);
+  background: var(--gw-page);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -219,7 +240,7 @@ body {
 
 .gw-msg-ai {
   background: #EDECEA;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   align-self: flex-start;
   border-bottom-left-radius: 3px;
   color: #1A1916;
@@ -234,7 +255,7 @@ body {
 
 .gw-msg-loading {
   background: #EDECEA;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   align-self: flex-start;
   color: #9B9590;
   font-style: italic;
@@ -273,7 +294,7 @@ body {
 /* ── CHAT INPUT BAR ──────────────────────────────────────── */
 .gw-chat-bar {
   padding: 10px 14px;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   display: flex;
   gap: 8px;
   background: white;
@@ -283,7 +304,7 @@ body {
 .gw-chat-actions {
   padding: 8px 14px;
   background: white;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
@@ -297,7 +318,7 @@ body {
   padding: 8px 10px;
   font-size: 13px;
   line-height: 1.4;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   background: #EDECEA;
   font-family: inherit;
@@ -334,7 +355,7 @@ body {
   justify-content: space-between;
   padding: 12px 16px;
   background: white;
-  border-bottom: 1px solid #E2E0DB;
+  border-bottom: 1px solid var(--gw-border);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -354,7 +375,7 @@ body {
   cursor: pointer;
   padding: 5px 10px;
   border-radius: var(--gw-radius);
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   background: white;
   font-family: inherit;
   transition: background 0.1s;
@@ -389,7 +410,7 @@ body {
   color: var(--gw-text);
   font-size: 13px;
   font-weight: 400;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   cursor: pointer;
   margin-top: 8px;
   font-family: inherit;
@@ -403,7 +424,7 @@ body {
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12px;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   background: #EDECEA;
   color: var(--gw-sub);
   cursor: pointer;
@@ -486,7 +507,7 @@ body {
 .gw-pill-amber { background: #FDF3E3; color: #8A5C1A; }
 .gw-pill-red   { background: #FCEBEB; color: #791F1F; }
 .gw-pill-blue  { background: #EEF4FB; color: #0C447C; }
-.gw-pill-gray  { background: #EDECEA; color: #6B6560; border: 1px solid #E2E0DB; }
+.gw-pill-gray  { background: #EDECEA; color: #6B6560; border: 1px solid var(--gw-border); }
 
 /* ── PERSON ROWS ─────────────────────────────────────────── */
 .gw-prow {
@@ -495,7 +516,7 @@ body {
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--gw-radius);
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   background: white;
   cursor: pointer;
   transition: all 0.15s;
@@ -503,7 +524,7 @@ body {
 }
 .gw-prow:hover { border-color: #9B9590; background: #EDECEA; }
 .gw-prow-static { cursor: default; }
-.gw-prow-static:hover { border-color: #E2E0DB; background: white; }
+.gw-prow-static:hover { border-color: var(--gw-border); background: white; }
 
 .gw-av {
   width: 32px;
@@ -525,14 +546,14 @@ body {
 
 /* ── STEPS PROGRESS ──────────────────────────────────────── */
 .gw-steps { display: flex; gap: 4px; margin-bottom: 18px; }
-.gw-step { height: 3px; flex: 1; border-radius: 2px; background: #E2E0DB; }
+.gw-step { height: 3px; flex: 1; border-radius: 2px; background: var(--gw-border); }
 .gw-step-done { background: #0C447C; }
 .gw-step-active { background: #60A5FA; }
 
 /* ── CARD ────────────────────────────────────────────────── */
 .gw-card {
   background: white;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   overflow: hidden;
 }
@@ -540,7 +561,7 @@ body {
 /* ── SCROLLBAR ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E2E0DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9B9590; }
 
 /* ── TABS (ground admin / participant) ───────────────────── */
@@ -654,7 +675,7 @@ body {
      hidden, and there is no affordance to get right. */
   display: flex; flex-wrap: wrap; gap: 8px;
   padding: 10px 0 10px; margin-bottom: 4px;
-  background: var(--gw-bg); border-bottom: 1px solid var(--gw-border);
+  background: var(--gw-page); border-bottom: 1px solid var(--gw-border);
 }
 .cg-jump a {
   flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
@@ -855,7 +876,7 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: white;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   z-index: 100;
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom, 0);

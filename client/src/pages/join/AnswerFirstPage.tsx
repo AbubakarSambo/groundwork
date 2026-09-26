@@ -185,7 +185,7 @@ export function AnswerFirstPage() {
   if (!what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-muted)' }}>One moment.</p></div>
 
   return (
-    <div style={{ background: 'var(--gw-bg)', minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--gw-page)', minHeight: '100dvh' }}>
       <div style={card}>
         {/*
           THE BRIEF STOPS EATING A THIRD OF THE PHONE.
@@ -280,7 +280,7 @@ export function AnswerFirstPage() {
           <div style={{
             position: 'sticky', bottom: 0, marginTop: 14,
             paddingTop: 10, paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
-            background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)',
+            background: 'var(--gw-page)', borderTop: '1px solid var(--gw-border)',
           }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea

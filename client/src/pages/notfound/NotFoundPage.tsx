@@ -23,7 +23,7 @@ export function NotFoundPage() {
   }, [location.pathname, location.search])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       <div className="gw-hdr">
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of

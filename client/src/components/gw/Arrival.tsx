@@ -29,7 +29,7 @@ export function Arrival({ title, sub, children, wide }: {
   wide?: boolean
 }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       <div className="gw-hdr">
         <GroundworkLogo />
       </div>

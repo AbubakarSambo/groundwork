@@ -2454,7 +2454,7 @@ export function EntryChatPage() {
 
   if (showAdminBriefing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '24px 20px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', padding: '24px 20px' }}>
         <div style={{ maxWidth: 480, width: '100%' }}>
           <div style={{ marginBottom: 24 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
@@ -2515,7 +2515,7 @@ export function EntryChatPage() {
   return (
     /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
        does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)', position: 'relative', overflow: 'hidden' }}>
 
       {/* Session header */}
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>

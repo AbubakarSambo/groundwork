@@ -18,8 +18,19 @@ import { join } from 'path'
  */
 const CSS = readFileSync(join(__dirname, 'index.css'), 'utf8')
 
-/** The four grounds text actually sits on in this product. */
-const GROUNDS = { card: '#FFFFFF', bg: '#EDECEA', paper: '#FBFAF8', slate: '#F5F3EF' }
+/**
+ * The grounds text actually sits on in this product, read from the stylesheet rather than typed
+ * here. They were typed here, which meant that when the page moved from grey to cream this test went
+ * on measuring every colour against a grey page nobody could see any more. `--gw-page` is the page
+ * itself; `--gw-bg` is now the tinted fill inside cards.
+ */
+const GROUNDS = {
+  card: '#FFFFFF',
+  page: tokenValue('--gw-page'),
+  bg: tokenValue('--gw-bg'),
+  paper: tokenValue('--gw-paper'),
+  slate: tokenValue('--gw-slate'),
+}
 
 /** Tokens used as a text colour somewhere. Add to this when a new one is. */
 const TEXT_TOKENS = [

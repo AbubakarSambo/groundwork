@@ -735,14 +735,14 @@ export function PromptVersioningPage() {
 
   if (!user?.isPlatformAdmin) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Platform admin access required.</div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
       <div className="gw-hdr">
         <div className="gw-logo">Prompt management</div>
         <div style={{ display: 'flex', gap: 8 }}>

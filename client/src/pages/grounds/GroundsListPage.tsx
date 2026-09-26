@@ -370,7 +370,7 @@ export function GroundsListPage() {
   const [declineReason, setDeclineReason] = useState('')
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       <div className="gw-hdr">
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <svg width="18" height="14" viewBox="0 0 22 17" fill="none">

@@ -1050,7 +1050,7 @@ export function CreateGroundPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/*
         * SAID, RATHER THAN QUIETLY DONE.
         *
@@ -1535,7 +1535,7 @@ export function CreateGroundPage() {
                 so the bar is FIXED to the real viewport instead. Suite L
                 enforces its visibility at 1366x768 and 1280x720. */}
             <div style={{ height: 76 }} />
-            <div className="cg-fixed-bar" style={{ background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
+            <div className="cg-fixed-bar" style={{ background: 'var(--gw-page)', borderTop: '1px solid var(--gw-border)', padding: '10px 20px', zIndex: 20 }}>
               <div style={{ width: 'min(560px, 100%)' }}>
                 {/* On the free-text path, the description has to have been read
                     before we move on - otherwise the ground silently becomes
