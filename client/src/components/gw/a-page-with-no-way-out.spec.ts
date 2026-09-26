@@ -35,6 +35,7 @@ const PAGE_FOR: Record<string, string> = {
   '/set-password': 'pages/auth/SetPasswordPage.tsx',
   '/reset-password': 'pages/auth/ResetPasswordPage.tsx',
   '/verify-email': 'pages/auth/MagicVerifyPage.tsx',
+  '/google-failed': 'pages/auth/GoogleFailedPage.tsx',
 }
 
 describe('a page with no way out', () => {

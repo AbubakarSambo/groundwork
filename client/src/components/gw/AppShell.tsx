@@ -1241,7 +1241,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const bare = justTheQuestion(location.search)
 
   const CHROMELESS = [
-    '/auth', '/auth/sent', '/auth/google/callback',
+    '/auth', '/auth/sent', '/auth/google/callback', '/google-failed',
     '/set-password', '/reset-password', '/verify-email',
     '/invite', '/join', '/answer', '/login', '/org/setup',
   ]

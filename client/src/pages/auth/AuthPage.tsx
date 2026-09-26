@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { billingApi } from '@/api/billing'
@@ -359,16 +359,15 @@ export function AuthPage() {
     </Button>
   ) : null
 
+  /* The API still sends a failed Google sign-in to /auth?why=google-signin-failed. It has its own
+     page now, which says what happened and offers the two ways on (A2, #/google-failed). */
+  if (googleFailed) return <Navigate to="/google-failed" replace />
+
   /* THE SIGN-IN SCREEN (A2, #/signin). The prototype's two halves: the form, and the dark panel. */
   if (view === 'password' && !linkSent) {
     return (
       <AuthSplit title="Sign in" sub="Use your password, or we’ll email you a link that signs you in.">
         {passwordlessNotice && <AuthNotice title="Check your email">{passwordlessNotice}</AuthNotice>}
-        {googleFailed && !error && (
-          <AuthNotice role="alert">
-            Google sent you back, but we could not finish signing you in. Your email and password still work here. We have a note of what went wrong at our end.
-          </AuthNotice>
-        )}
         {sessionExpired && !error && (
           <AuthNotice>
             You were signed out because you had been away a while. Sign in and we will take you back to where you were. Nothing you wrote has been lost.

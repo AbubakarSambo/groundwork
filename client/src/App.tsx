@@ -13,6 +13,7 @@ import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
+import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
@@ -356,6 +357,8 @@ export default function App() {
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
                 only renders when /auth/methods says google is available. */}
             <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+            {/* One page for every way a Google sign-in can fail. A2. */}
+            <Route path="/google-failed" element={<GoogleFailedPage />} />
             {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
             <Route path="/set-password" element={<ChoosePasswordPage />} />
             <Route path="/reset-password" element={<ChoosePasswordPage />} />
