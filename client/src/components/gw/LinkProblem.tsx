@@ -37,10 +37,12 @@ export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-
       <div style={{ fontSize: 26, marginBottom: 12, color: 'var(--gw-sub)' }}>✕</div>
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This {what} did not work</div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 20 }}>
-        {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.`}
-        {kind === 'sign-in'
+        {/* A sentence of the page's or the server's own already says what to do. Adding the general
+            one after it said the same thing twice ("ask whoever added you to send a new invite. Ask
+            whoever invited you to send a new one"), found in the running app in U.3. */}
+        {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.${kind === 'sign-in'
           ? ' Ask for a new one below.'
-          : ' Ask whoever invited you to send a new one - they can do that from the check-in.'}
+          : ' Ask whoever invited you to send a new one - they can do that from the check-in.'}`}
       </div>
 
       <button className="gw-btn" onClick={() => navigate('/auth')}>

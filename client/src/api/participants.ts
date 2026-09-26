@@ -11,7 +11,17 @@ export interface InvitePreview {
   /** They answered through an open link and have no sign-in yet; a report link should go straight through. */
   hasAnswered?: boolean
   nameGiven?: string | null
+  /** U.3: the organisation, the lead's first name, the end date and how often it asks. */
+  organisationName?: string | null
+  leadFirstName?: string | null
+  endsAt?: string | null
+  schedule?: string
+  /** An expired invitation carries only this and the lead's first name. */
+  expired?: false
 }
+
+/** What an expired invitation's preview is: nothing but the lead's first name. */
+export interface ExpiredInvitePreview { expired: true; leadFirstName: string | null }
 
 export interface AcceptInviteResponse {
   accessToken: string
@@ -25,7 +35,10 @@ export interface AcceptInviteResponse {
 
 export const participantsApi = {
   preview: (token: string) =>
-    apiClient.get<InvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
+    apiClient.get<InvitePreview | ExpiredInvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
+  /** "Send me a fresh link" (U.3). Always the same reply, whoever asks. */
+  freshLink: (token: string, email: string) =>
+    apiClient.post<{ says: string }>('/participants/fresh-link', { token, email }).then((r) => r.data),
   accept: (token: string, names?: { firstName?: string; lastName?: string }) =>
     apiClient.post<AcceptInviteResponse>('/participants/accept', { token, ...names }).then((r) => r.data),
   // Fix a bounced/wrong address and resend the invite. Server-guarded:
