@@ -1,3 +1,4 @@
+import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
@@ -1351,6 +1352,63 @@ export class AuthService {
    */
   private generateToken(user: ASessionHolder, via: SignedInVia = 'password') {
     return this.jwtService.sign(sessionClaims(user, via));
+  }
+
+  /**
+   * "WHERE DO YOU WORK?" (A3, #/welcome, U.3). What a signed-in person may join, and nothing else:
+   *
+   *   - Organisations that let anyone with this person's email domain join, when their address is
+   *     confirmed and the domain is not a public mail provider. No head count is given.
+   *   - Invitations still open for their exact address, in organisations they are not in yet, which
+   *     they join as a guest in that one check-in.
+   *
+   * Never an organisation they are already in, and never anything about anybody else.
+   */
+  async whereCanIJoin(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
+    if (!user) throw new NotFoundException('User not found');
+    const mine = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
+    const inIt = new Set(mine.map((m) => m.organizationId));
+    const domain = theDomainOf(user.email);
+    const byDomain = user.isEmailVerified && domain && mayBeJoinedBy(domain)
+      ? await this.prisma.organization.findMany({ where: { joinDomain: domain }, select: { id: true, name: true } })
+      : [];
+    const invitations = await this.prisma.groundParticipant.findMany({
+      where: {
+        email: { equals: user.email, mode: 'insensitive' }, userId: null, inviteToken: { not: null },
+        OR: [{ inviteTokenExpiresAt: null }, { inviteTokenExpiresAt: { gt: new Date() } }],
+      },
+      select: { inviteToken: true, ground: { select: { label: true, organizationId: true, organization: { select: { name: true } } } } },
+      take: 20,
+    });
+    return {
+      byDomain: byDomain.filter((o) => !inIt.has(o.id)).map((o) => ({ id: o.id, name: o.name, domain: domain! })),
+      asAGuest: invitations
+        .filter((i) => i.ground && !inIt.has(i.ground.organizationId))
+        .map((i) => ({ organisationName: i.ground.organization?.name ?? '', checkInName: i.ground.label, invitePath: `/invite?token=${i.inviteToken}` })),
+    };
+  }
+
+  /** "Join": by email domain, as "Takes part", through the seat check, then into it. */
+  async joinByDomain(userId: string, organizationId: string, via: SignedInVia = 'password') {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
+    if (!user) throw new NotFoundException('User not found');
+    const domain = theDomainOf(user.email);
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, joinDomain: true } });
+    const allowed = !!org && !!domain && user.isEmailVerified && mayBeJoinedBy(domain) && org.joinDomain === domain;
+    /* Not "not found": from the person's side this is a refusal, said the same way whatever the reason. */
+    if (!allowed) throw new ForbiddenException('You cannot join that organisation with your email address. Ask somebody there to invite you.');
+    const already = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } }, select: { id: true },
+    });
+    if (!already) {
+      const room = await this.billing.canInviteMember(organizationId);
+      if (!room.allowed) {
+        throw new BadRequestException(`${org!.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`);
+      }
+      await this.prisma.organizationMembership.create({ data: { userId, organizationId, role: ROLE_FOR_SOMEBODY_EXPECTED as any } });
+    }
+    return this.switchOrganization(userId, organizationId, via);
   }
 
   /**

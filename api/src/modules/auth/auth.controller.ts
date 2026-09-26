@@ -262,6 +262,23 @@ export class AuthController {
     return { name: aNameFromAnEmailAddress(email ?? '') };
   }
 
+  /** "Where do you work?" (U.3): organisations this person may join by email domain, and open invitations. */
+  @Get('where-can-i-join')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Organisations I may join by email domain, and invitations open for my address' })
+  async whereCanIJoin(@CurrentUser() user: CurrentUserData) {
+    return this.authService.whereCanIJoin(user.id);
+  }
+
+  /** "Join" on "Where do you work?": by email domain, as "Takes part". Returns a token for it. */
+  @Post('join-by-domain')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join an organisation that lets anyone with my email domain join' })
+  async joinByDomain(@CurrentUser() user: CurrentUserData, @Body() dto: SwitchOrganizationDto) {
+    return this.authService.joinByDomain(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
+  }
+
   @Get('my-organizations')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'The organisations this person belongs to, with the active one marked' })

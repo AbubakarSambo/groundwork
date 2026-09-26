@@ -19,6 +19,10 @@
  *   the company to anybody who obtains one address at that domain — a contractor,
  *   a former employee, an alias. The roster row is a customer's own assertion
  *   that this named person is theirs; a domain is a guess about everybody at once.
+ *   (Joining by email domain, U.3, is not this rule changing. Nobody is put into a
+ *   company automatically: an admin switches it on for their own confirmed domain,
+ *   and the person chooses to join on "Where do you work?". See auth.service
+ *   `joinByDomain`.)
  *
  *   THEY JOIN AS A MEMBER, AND THERE IS NO ARGUMENT THAT ARRIVES. Being listed on
  *   a roster is not authority over the organisation. Nobody becomes an admin by

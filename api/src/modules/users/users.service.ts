@@ -15,6 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
@@ -80,6 +81,49 @@ export class UsersService {
       whatsappConnected: !!wa?.enabled,
       welcomeCardSeen: !!reader?.welcomeCardSeenAt,
     };
+  }
+
+  /**
+   * "WHO CAN JOIN": "Anyone with an @baridi.co.ke email" (A4 people.txt; U.3, Hafsah, 26 September).
+   *
+   * The domain is always the admin's own confirmed address's, so nobody can switch it on for a
+   * company they are not at, and never a public mail provider. One organisation per domain.
+   */
+  async joiningByDomain(organizationId: string, adminId: string) {
+    const [org, admin] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { joinDomain: true } }),
+      this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } }),
+    ]);
+    const domain = theDomainOf(admin?.email);
+    return {
+      on: !!org?.joinDomain,
+      domain: org?.joinDomain ?? (domain && mayBeJoinedBy(domain) ? domain : null),
+      /* Why it cannot be switched on, in a sentence, or null when it can. */
+      whyNot: org?.joinDomain ? null : this.whyNoDomain(domain, !!admin?.isEmailVerified),
+    };
+  }
+
+  private whyNoDomain(domain: string | null, verified: boolean): string | null {
+    if (!domain || !verified) return 'Your own email address has to be confirmed before people can join by its domain.';
+    if (!mayBeJoinedBy(domain)) return 'Your email address is at a public mail service, so there is no company domain for people to join by.';
+    return null;
+  }
+
+  async setJoiningByDomain(organizationId: string, adminId: string, on: boolean) {
+    if (!on) {
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: null } });
+      return this.joiningByDomain(organizationId, adminId);
+    }
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } });
+    const domain = theDomainOf(admin?.email);
+    const why = this.whyNoDomain(domain, !!admin?.isEmailVerified);
+    if (why) throw new BadRequestException(why);
+    const taken = await this.prisma.organization.findFirst({ where: { joinDomain: domain!, id: { not: organizationId } }, select: { id: true } });
+    if (taken) {
+      throw new ConflictException(`Another organisation on Groundwork already lets people with an @${domain} email join it, so this one cannot. Talk to us if it is your company's domain.`);
+    }
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: domain! } });
+    return this.joiningByDomain(organizationId, adminId);
   }
 
   /** "Got it" on the new admin's welcome card (U.3). Their own row only. */

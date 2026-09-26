@@ -7,7 +7,7 @@ import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
 import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested, IsEnum, IsBoolean } from 'class-validator';
 import { CompanyStage } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { TeamSizeSaidDto } from '../auth/dto/create-organisation.dto';
@@ -29,6 +29,10 @@ class RenameOrganizationDto {
 
   /** Moved here from PATCH /auth/me, which let anybody set it (U.3). No screen sets it today. */
   @IsOptional() @IsEnum(CompanyStage) companyStage?: CompanyStage;
+}
+
+class JoiningByDomainDto {
+  @IsBoolean() on!: boolean;
 }
 
 @ApiTags('Users')
@@ -138,6 +142,25 @@ export class UsersController {
    * On the organisation rather than on a settings module of its own, next to the rename, because
    * that is what they are: facts about this organisation that only an admin may change.
    */
+  /** "Who can join": anyone with this organisation's email domain (U.3). */
+  @Get('organization/joining')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Whether anyone with the organisation\'s email domain can join, and which domain' })
+  async joining(@CurrentUser('organizationId') organizationId: string, @CurrentUser('id') userId: string) {
+    return this.usersService.joiningByDomain(organizationId, userId);
+  }
+
+  @Patch('organization/joining')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Let anyone with your own email domain join, or stop it' })
+  async setJoining(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: JoiningByDomainDto,
+  ) {
+    return this.usersService.setJoiningByDomain(organizationId, userId, dto.on);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })

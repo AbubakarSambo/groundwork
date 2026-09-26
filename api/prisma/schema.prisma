@@ -499,6 +499,12 @@ model Organization {
 
   companyStage CompanyStage? @map("company_stage")
 
+  /// JOINING BY EMAIL DOMAIN (U.3, Hafsah, 26 September): "Anyone with an @baridi.co.ke email can
+  /// join", as "Takes part". Set only while an admin has it switched on, and only to that admin's own
+  /// confirmed domain, never a public mail provider (common/an-email-domain.ts). Unique, so one domain
+  /// belongs to one organisation. Null means nobody joins by domain.
+  joinDomain String? @unique @map("join_domain")
+
   /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
   /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
   /// while the trial is on. Nothing grants a trial from it yet (U.19); it is kept so billing can.
