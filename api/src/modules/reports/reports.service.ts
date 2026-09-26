@@ -67,7 +67,8 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, displayName } from './party-labels';
+import { aNameInTheirWordsIsTheLabel, type ALabelAndItsName } from './a-name-in-their-words-is-the-label';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
@@ -993,7 +994,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1001,6 +1002,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // One labelling rule, shared with the read path so a stored label always
     // resolves back to the same person. See party-labels.ts.
     const labelById = labelsForParties(parties as any);
+    /*
+     * AND EACH PERSON'S NAME BESIDE THEIR LABEL, SO A NAME INSIDE SOMEBODY'S WORDS CAN BECOME THE LABEL.
+     *
+     * Zainab said "as requested by Nadia", and every model below was told about "the initiator" and
+     * never that the initiator is Nadia. So the judgement told the lead to "tell the initiator that
+     * Nadia has redirected" Zainab, which the lead read about herself. See
+     * a-name-in-their-words-is-the-label. The names are the ones displayName already serves at the
+     * read, from the same rows, without the organisation and never the address; they are used here
+     * only to take names OUT of what a model reads, and nothing stored carries them.
+     */
+    const namesInThisCheckIn: ALabelAndItsName[] = (parties as any[]).map((p) => ({
+      label: labelById.get(p.id) ?? '',
+      name: displayName({ ...p, organisationGiven: null }, false),
+    }));
 
     /*
      * DISPUTED LINES COME THROUGH HERE, LABELLED. See
@@ -1014,7 +1029,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true } },
       },
-    })).map(withTheDisputeAttached);
+    })).map(withTheDisputeAttached)
+      /* A name in their words becomes that person's label here, once, so every read below - the
+         corpus, the facts about each person, the network read - gets the same text. Before the
+         dispute is attached would be the same; after it, the objection is covered too. */
+      .map((r) => ({ ...r, text: aNameInTheirWordsIsTheLabel(r.text, namesInThisCheckIn) }));
 
     // GW-41: fetch the full version object so we can stamp promptVersionId on the
     // report. Without this, Outcome records have no prompt attribution and the
@@ -2211,6 +2230,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participantId: p.id,
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
+      namesInThisCheckIn,
       differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
         topic: String(d?.topic ?? ''),
         positions: (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({
@@ -3862,6 +3882,8 @@ happened, and what is in the way.`;
     room?: {
       people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
       leadName: string | null;
+      /* Each person's label and name, so their own words reach the judgement with labels in them too. */
+      namesInThisCheckIn?: ALabelAndItsName[];
       differences: { topic: string; positions: { who: string; view: string }[] }[];
     },
   ): Promise<{ judgement: any; table: string } | null> {
@@ -3975,6 +3997,7 @@ happened, and what is in the way.`;
        *
        * Counted off the records rather than written: see what-more-than-one-person-named.ts.
        */
+      const theirWords = (t: string) => aNameInTheirWordsIsTheLabel(t, room!.namesInThisCheckIn ?? []);
       const perPersonTexts = await this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId } },
         select: { text: true, participantId: true },
@@ -3982,7 +4005,10 @@ happened, and what is in the way.`;
       const shared = whatMoreThanOnePersonNamed(
         room!.people.map((p) => ({
           who: p.who,
-          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => String(r.text ?? '')),
+          /* Their words with every name in this check-in already a label, the same as the corpus. This
+             read comes straight off the table, so without it "Nadia" reached the judgement as a
+             stranger here too - and was even counted as something two people named. */
+          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => theirWords(String(r.text ?? ''))),
         })),
         room!.people.map((p) => p.who),
       );
@@ -4011,7 +4037,7 @@ happened, and what is in the way.`;
           patterns: (seen as any[])
             .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
-          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
         room!.differences,
         sessions,
