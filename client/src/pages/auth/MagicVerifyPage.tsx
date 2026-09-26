@@ -38,6 +38,11 @@ type VerifyOutcome =
 // enough - both mounts must await the SAME promise.
 const verifyFlows = new Map<string, Promise<VerifyOutcome>>()
 
+/** Whether this browser holds a check-in described before the address was given (the entry chat's copies). */
+function aCheckInIsBeingMade(): boolean {
+  try { return !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token') } catch { return false }
+}
+
 export function MagicVerifyPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -560,7 +565,9 @@ export function MagicVerifyPage() {
     <Arrival>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
+        {/* Only somebody who described a check-in before giving their address has one being made
+            (U.2 re-review). Everybody else is only having their address confirmed. */}
+        <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}</div>
       </div>
     </Arrival>
   )

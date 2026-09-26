@@ -91,3 +91,19 @@ describe('without justCreated, which the server does not send yet', () => {
     expect(screen.queryByText('Your email is confirmed')).toBeNull()
   })
 })
+
+describe('while the link is being checked', () => {
+  it('says "Confirming your email…" when no check-in is being made', async () => {
+    vi.mocked(authApi.verifyEmail).mockReturnValue(new Promise(() => {}) as any)
+    open()
+    expect(await screen.findByText('Confirming your email…')).toBeTruthy()
+    expect(screen.queryByText('Setting up your check-in…')).toBeNull()
+  })
+
+  it('and "Setting up your check-in…" only when a check-in described before sign-up is waiting', async () => {
+    localStorage.setItem('gw_commit_payload', JSON.stringify({ groundLabel: 'Q3' }))
+    vi.mocked(authApi.verifyEmail).mockReturnValue(new Promise(() => {}) as any)
+    open()
+    expect(await screen.findByText('Setting up your check-in…')).toBeTruthy()
+  })
+})
