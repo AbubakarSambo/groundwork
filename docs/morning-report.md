@@ -83,6 +83,34 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 
 **Run-7, the full run of all 24 scenarios, started at about 01:05 on the code as it stands at `74f10ffe`.** It is the first of the two full runs allowed tonight.
 
+### Run-7: sound, one number worse than the baseline, and 14 of 24 clearly right
+
+**The run is sound.** All 24 scenarios finished. No report was incomplete, every report was released, every captured report matches the database, and every one was written by `report_synthesis` version 6.
+
+**The checker fails it on one number: one curt turn, against none at the baseline.** It is the closing turn of Elena Rossi's check-in in crisis, which reads only "Speak soon." None of tonight's changes caused it. An older guard wrongly took "What you said is now in the record, and the report will be ready for you." to be a promise she never made. It cut the sentence and left two words. That is being fixed now.
+
+**Everything else holds or improved against run-6.** Jargon in reports and boards fell from 217 to 141, and jargon in Groundwork's turns fell from 41 to 25. That puts 2.3's bar in reach, though 1.4's bar of 128 is still not met. Among the engine-value numbers, "past words brought back" rose from 25 to 30 and "blocker checked" from 42 to 46. "Specific detail asked for", "agreements found", "patterns found" and "commitments recorded" came down from run-6's high, but all stay above the baseline.
+
+**The judgements: 14 clearly right, 6 close, 4 wrong.** That is fewer than run-6's 17, and I am not going to present it as progress.
+
+- **Clearly right:** board, cofounder, contractreview, crisis, discovery, handover, implementation, newmanager, pip, project, realign, renewal, seniorhire and workplan. Board and handover were not right on run-6.
+- **Close:**
+  - advisor: it misses that Peter has no relationship at two of the three banks.
+  - loans: it separates four situations, but names only two of the five borrowers whose repayments came too early.
+  - recognition: it names Victor, but as a script the work is waiting on rather than as the person nobody credited.
+  - sales: it puts Femi and Kwame together.
+  - shock: it has two of the three warning signs and no timeline.
+  - updates: this time Daniel never said Priti was the one he was waiting on.
+- **Wrong:**
+  - drift: it says "You have mistaken Zainab Suleiman for somebody named Zainab". This is the names-in-people's-words problem again: the judgement cannot tell that the "Zainab" in the lead's words is the same person as Zainab's label.
+  - openread: once again the two engineers did not clearly agree about the freeze.
+  - pulse: it charged the lead, "Your review process is the reason Fatima Sow's work is stalled". Her finding also took the vague "some approvals are stalled" instead of "Ahmed's manager is on leave until the 28th", which was in the record.
+  - snapshot: it told the lead to stop running the check-in.
+
+**Why it went down, as far as I can tell.** I compared each slipped scenario's findings on run-6 and run-7. In sales, advisor, updates and snapshot, the simulated people said different things this time, and the missing fact was not in the material. Pulse is different: the fact was in the record, and the code picked the vaguer of two worries from the same session. That is the next fix. I found no case where one of tonight's changes pushed out a fact that had been there before.
+
+**Still to fix before the second full run:** the two-word close, the choice of worry, and the "Tell you…" actions. The instruction I added for those actions barely helped (4 on run-6, 3 on run-7), so they will be rewritten in code before the report is stored.
+
 ### Where each changed scenario stands, across the clean re-runs
 
 | Scenario | Clearly right | Why it moves |
