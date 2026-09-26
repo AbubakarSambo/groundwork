@@ -57,7 +57,19 @@ Jargon in reports and boards rose from 123 on run-5 to 217 on run-6. Task 1.4's 
 
 I first built a stronger version, `8feedc64`, and undid it in `efd1c67e`. It replaced each name inside people's words with that person's label, so the stored report holds no names at all. The catch is that a quote from Zainab would then reach Nadia as "requested by you", which changes Zainab's words on screen. See "Needs Hafsah".
 
-**The first round of re-runs, on the first two changes:** handover and recognition are now clearly right. Handover names both things only in Patience's head, the verbal 60-day supplier terms and the spreadsheet on her own drive. Recognition names Victor, the contractor, from the other two people's accounts. Newmanager is still right. Drift's finding now keeps "at Nadia's request", which is what led to the third change. Loans is better but still close, and its report was incomplete (8 findings for 9 people), so it does not count. The second round, on all three changes, is running now.
+**The first round of re-runs, on the first two changes:** handover and recognition are now clearly right. Handover names both things only in Patience's head, the verbal 60-day supplier terms and the spreadsheet on her own drive. Recognition names Victor, the contractor, from the other two people's accounts. Newmanager is still right. Drift's finding now keeps "at Nadia's request", which is what led to the third change. Loans is better but still close, and its report was incomplete (8 findings for 9 people), so it does not count. **The third change made things worse, so I undid it (`cb440666`).** Once the judgement was given people's names, it wrote those names into the stored report, where only labels belong. Drift's stored judgement read "Nadia and Zainab have a different understanding". Renewal's began with the lead's full name. Both came back with no actions at all. That second round does not count.
+
+**A clean second round, on the first two changes only:** handover is right again, so two rounds out of two. Newmanager is right again. Recognition names Victor again, so two out of two, though it now asks who he is rather than crediting him. Drift is right this time. It says Zainab moved to sales support because of your own instruction in March, "help sales out for a couple of weeks". It needed only the first two changes. On round one, on the same code, it was not right, so drift is still unsteady. Loans is much better: it sets the four situations apart and says repayments started before the businesses earned. But the loans report was incomplete again (6 findings for 9 people), so it cannot count.
+
+### A conversation bug that was eating the handover check-in, now fixed
+
+In handover, Patience names both things only she knows. Then Groundwork asks "Year-end - so 31 December 2026?" and asks it again every time she answers "No, the last year-end was 31 December 2023", seven times in a row, until her check-in runs out of questions. The code reads the word "year-end" in each answer as a deadline, and never remembers that it has already asked. The same question also once sent Jide the product's own hidden instruction, word for word, as his reply.
+
+4. **`5dcab1de`: the date question is now asked once, only about a real deadline, and in a full sentence:** "When you say year-end, do you mean 31 December 2026?" It is not asked when the person has already given a date, and it is not asked about a word like "year-end" that is not a deadline.
+5. **`124e2a4c`: a reply that repeats our own instruction is never sent.** If the model's second try repeats the instruction, the product asks its own one-line question instead.
+6. **`a5f6e8dc`: every action in the judgement is now something the reader does.** Before, the lead read actions like "Tell you what Blessing Okafor's record says" and "Ask you to decide what Zainab should work on". There were 8 of these on run-5 and 4 on run-6.
+
+Changes 4 to 6 are not yet measured. Next I re-run handover, drift, loans, recognition and renewal on them, then do one full run of all 24.
 
 ### Needs Hafsah
 
