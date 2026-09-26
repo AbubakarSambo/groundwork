@@ -469,6 +469,20 @@ reply carried an extra item, a draft token, only for addresses with no account. 
 same either way, but the reply itself told an outsider which addresses have accounts. That breaks your
 rule that the door gives one answer, so the reply is being made the same for every address.
 
+**Fixed** (commit `363ee431`): every address now gets the same fields back. The draft route also answers
+a made-up token the same as a real one, so the tell cannot move there. Nothing is ever written to an
+existing account. This touched `api/src/modules/entry/entry.service.ts`, the draft storage for the
+entry chat. It is not engine code, but the engine workspace changed the same file recently, so I will
+watch it at the next merge. Three small fixes came with it: "Confirming your email…" instead of
+"Setting up your check-in…" when no check-in is being set up (`00ca8ebe`); a replaced reset link says
+so as the page opens (`b48f5d1c`); and a refused password reads as one plain sentence, "Your password
+needs a number or a symbol." (`4a075e94`). That last one changed the shared error filter, narrowly:
+messages already written as full sentences are passed on as they are.
+
+The tester had also found a failing test that one of the new tests caused, by reading the code's text
+with its comments. It now signs in for real instead (`f5c36f39`). Both full suites pass: 9,097 API
+tests and 2,524 screen tests.
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
