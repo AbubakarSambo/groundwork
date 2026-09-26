@@ -22,7 +22,9 @@ import { describe, it, expect } from 'vitest'
  * Checked as source: the value is that the confirm exists and names the role, and a jsdom
  * test of `window.confirm` proves the mock more than the product.
  */
-const SRC = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
+/* The switcher lives in one place now, used by the sidebar on a computer and by "More" on a phone
+   (A1), so this reads that place rather than the sidebar. */
+const SRC = readFileSync(join(__dirname, 'your-organisations.ts'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the switcher asks first', () => {

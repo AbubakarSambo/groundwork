@@ -70,9 +70,13 @@ describe('who sees what', () => {
 })
 
 describe('one gate, used by all three renderers', () => {
-  it('the collapsed rail, the expanded rail and the mobile bar all call it', () => {
+  it('the collapsed rail, the expanded rail and the phone\'s "More" page all call it', () => {
     // The bug was three copies of the rule. This is the check that there is one.
-    expect((SHELL.match(/navItemsFor\(user\)/g) ?? []).length).toBe(3)
+    // The phone's doors moved from the bottom bar to "More" (A1), so the third caller is that page.
+    const MORE = readFileSync(join(__dirname, '../../pages/more/MorePage.tsx'), 'utf8')
+    expect((SHELL.match(/navItemsFor\(user\)/g) ?? []).length).toBe(2)
+    expect((MORE.match(/navItemsFor\(user\)/g) ?? []).length).toBe(1)
+    expect(MORE).not.toMatch(/NAV_ITEMS/)
   })
 
   it('and none of them filters on its own', () => {

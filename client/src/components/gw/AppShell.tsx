@@ -1,12 +1,11 @@
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
-import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail, openRound } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
@@ -18,6 +17,8 @@ import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
 import { pinnedFor, togglePin } from './pinned-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
+import { OrganisationChoices } from './OrganisationChoices'
+import { initialsOf, roleWord } from './your-organisations'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import {
@@ -37,17 +38,9 @@ const NAV_ITEMS = [
      * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
      * What was redundant was the name.
      */
-    /* WHAT THE BOTTOM BAR CALLS IT (`short`, below). Measured at 320px: this label is 64px wide in
-       a 64px cell on a customer's five-item bar and a 53px cell on our six-item one, so it
-       overflows and - because the cell centres it - loses its START rather than its end.
-       "ll check-ins" is not a truncated label, it reads as a different one. Type size cannot fix
-       it: 8.5px still overflows, and that is not a size to ask a thumb to read. So the bar gets the
-       short name and the rail keeps the full one, which is the only place "All" was ever doing work.
-       The note sits ABOVE the label deliberately: `two-things-called-check-ins.spec.ts` reads a
-       fixed window after `label:` to check this item still points at /grounds, and a comment
-       wedged between the two pushed the route out of its view. */
+    /* The phone's bottom bar no longer draws these items (A1): it has its own few, and the rest are
+       on "More". So there is no short name to keep; each item has the one name it is called. */
     label: 'All check-ins',
-    short: 'Check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -108,9 +101,8 @@ const NAV_ITEMS = [
   {
     /* A route with no door is a page nobody finds. This one is admin-only because every endpoint
        behind it is, and a nav item that leads to a refusal is worse than no nav item. */
-    /* The design system's name for it. The bottom bar keeps the short one until it is rebuilt. */
+    /* The design system's name for it. */
     label: 'Connections',
-    short: 'Connect',
     to: '/org/integrations',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -123,7 +115,6 @@ const NAV_ITEMS = [
   },
   {
     label: 'Plan and billing',
-    short: 'Billing',
     to: '/billing',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -143,10 +134,7 @@ const NAV_ITEMS = [
      * identical word one inch away. Renaming the page's link and leaving this one would have moved
      * the collision rather than removed it.
      */
-    /* Same measurement, same reason as All check-ins. Only platform admins see this one, so it is
-       our own bar that breaks worst - which is no reason to leave it broken. */
     label: 'Platform ops',
-    short: 'Ops',
     to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
@@ -586,46 +574,6 @@ function FeedbackWidget() {
 }
 
 /**
- * ONE ITEM OF THE BOTTOM BAR ON A PHONE. The desktop sidebar draws its own doors; this is only the
- * bar, which is replaced by the prototype's five (Today, Check-ins, Start, Chat, More) in a later step.
- */
-function BottomBarItem({ item }: { item: typeof NAV_ITEMS[0] }) {
-  const location = useLocation()
-  const active = location.pathname.startsWith(item.to)
-  const user = useAuthStore(s => s.user)
-  if (item.adminOnly && user?.role !== 'ADMIN') return null
-  if ((item as any).platformAdminOnly && !user?.isPlatformAdmin) return null
-
-  return (
-    <NavLink
-      to={item.to}
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-        padding: '6px 4px', borderRadius: 10, color: active ? 'var(--gw-navy)' : 'var(--gw-sub)',
-        textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
-        background: 'transparent', flex: 1, minWidth: 0,
-        /**
-         * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
-         *
-         * Five items across 375px with 12px of side padding each left too little room, so the two
-         * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
-         * tall, so the second line was clipped as well as wrong.
-         *
-         * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
-         * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
-         * than to a broken word.
-         */
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}
-    >
-      {item.icon(active)}
-      {/* The short name where there is one. See the note on the item itself. */}
-      {(item as { short?: string }).short ?? item.label}
-    </NavLink>
-  )
-}
-
-/**
  * A BADGE ONLY EARNS ITS ROW IF IT CHANGES WHETHER YOU CLICK.
  *
  * The rule above says a ground that is not ACTIVE says so. In practice almost nothing IS
@@ -656,23 +604,6 @@ function GroundStatusBadge({ status }: { status: string }) {
   const tone = isReady ? 'proven' : isWaiting ? 'attention' : 'plain'
   const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
   return <span className={`gw-rail-bdg gw-rail-bdg-${tone}`}>{label}</span>
-}
-
-/** Two letters for a square: the first letters of the first two words, or the first two letters. */
-function initialsOf(name: string | null | undefined): string {
-  const words = (name ?? '').trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return '?'
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
-}
-
-/** What the person is in this organisation, in one ordinary word. */
-function roleWord(role: string | null | undefined): string {
-  const r = (role ?? '').toUpperCase()
-  if (r === 'ADMIN') return 'Admin'
-  if (r === 'LEAD') return 'Lead'
-  if (r === 'GUEST') return 'Guest'
-  return 'Member'
 }
 
 /** A small menu that closes on Escape or a click anywhere outside it. */
@@ -746,31 +677,6 @@ export function AppSidebar() {
   const orgRef = useClosesOnItsOwn(orgOpen, () => setOrgOpen(false))
   const meRef = useClosesOnItsOwn(meOpen, () => setMeOpen(false))
 
-  const { data: myOrgs = [] } = useQuery({
-    queryKey: ['my-organizations'],
-    queryFn: authApi.myOrganizations,
-    enabled: isAuthenticated,
-    retry: false,
-  })
-  const setAuth = useAuthStore(s => s.setAuth)
-  const startOwn = useMutation({
-    mutationFn: () => authApi.startMyOwnWorkspace(),
-    onSuccess: (res: any) => {
-      setAuth(res.accessToken, res.user)
-      window.location.assign('/grounds')
-    },
-    /* The server says why when it refuses (it is already their own, or it could not be made), and the
-       person needs to be told which, not left looking at a button that did nothing. */
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
-  })
-  const switchOrg = useMutation({
-    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
-    onSuccess: (res) => {
-      setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
-    },
-    onError: () => toast.error('Could not switch organisation. Try again.'),
-  })
   const { data: grounds = [] } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
@@ -973,58 +879,7 @@ export function AppSidebar() {
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
                 <div className="gw-rl-menu-h">Organisations</div>
-                {myOrgs.length === 0 && (
-                  <div className="gw-rl-menu-item static">
-                    <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}><b>{orgName}</b><span className="gw-rl-org-role">{roleWord(user?.role)}</span></span>
-                    <span aria-label="You are in this organisation">✓</span>
-                  </div>
-                )}
-                {myOrgs.map(o => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    className="gw-rl-menu-item"
-                    onClick={() => {
-                      if (o.active || switchOrg.isPending) return
-                      const asRole = o.role.toLowerCase()
-                      if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
-                      switchOrg.mutate(o.id)
-                    }}
-                    disabled={switchOrg.isPending}
-                    aria-current={o.active ? 'true' : undefined}
-                    title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
-                  >
-                    <span className="gw-rl-sq" aria-hidden>{initialsOf(o.name)}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}><b>{o.name}</b><span className="gw-rl-org-role">{roleWord(o.role)}</span></span>
-                    {o.active && <span aria-label="You are in this organisation">✓</span>}
-                  </button>
-                ))}
-                {/*
-                  AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
-
-                  Hafsah, 23 September 2026: "someone is my account and created their own account and
-                  keep showing up to my account. And they cannot switch to their." Somebody joined to a
-                  company because their address was on its roster has exactly one organisation, so they
-                  are offered the door to their own.
-                */}
-                {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
-                  <div className="gw-rl-menu-note">
-                    <p>You are in {myOrgs[0].name} because your address was on their list.</p>
-                    <button
-                      type="button"
-                      className="gw-b gw-b-secondary gw-b-small gw-b-wide"
-                      onClick={() => {
-                        if (startOwn.isPending) return
-                        if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
-                        startOwn.mutate()
-                      }}
-                      disabled={startOwn.isPending}
-                    >
-                      {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
-                    </button>
-                  </div>
-                )}
+                <OrganisationChoices />
               </div>
             )}
           </div>
@@ -1235,7 +1090,13 @@ export function AppSidebar() {
         </div>
       </aside>
 
+      {/*
+        THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
+        prototype. Today and Chat are left out until those pages exist, so nothing here leads nowhere.
+        Everything else a phone used to show in this bar is on "More", through the same gate.
+      */}
       <nav
+        aria-label="Main"
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
           background: 'var(--gw-card)', borderTop: '1px solid var(--gw-border)',
@@ -1244,10 +1105,41 @@ export function AppSidebar() {
         }}
         className="gw-sidebar-mobile"
       >
-        {/* Was unfiltered, so a team member on a phone saw People and Billing and got bounced. */}
-        {navItemsFor(user).map(item => <BottomBarItem key={item.to} item={item} />)}
+        {isAuthenticated ? (
+          <>
+            <NavLink to="/grounds" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="checkins" />Check-ins
+            </NavLink>
+            {user?.mayOpenCheckIns !== false && (
+              <NavLink to="/start?new=1" className="gw-phone-bar-item start">
+                <PhoneIcon d="start" />Start
+              </NavLink>
+            )}
+            <NavLink to="/more" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="more" />More
+            </NavLink>
+          </>
+        ) : (
+          <NavLink to="/auth" className="gw-phone-bar-item">Sign in</NavLink>
+        )}
       </nav>
     </>
+  )
+}
+
+/** The bottom bar's icons, drawn in the text colour. */
+function PhoneIcon({ d }: { d: 'checkins' | 'start' | 'more' }) {
+  if (d === 'start') {
+    return <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden><path d="M13 5v16M5 13h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  }
+  if (d === 'more') {
+    return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden><circle cx="5" cy="11" r="1.8" fill="currentColor" /><circle cx="11" cy="11" r="1.8" fill="currentColor" /><circle cx="17" cy="11" r="1.8" fill="currentColor" /></svg>
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
+      <path d="M3.5 6h10M3.5 11h10M3.5 16h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15 14.5l1.8 1.8 3.2-3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 

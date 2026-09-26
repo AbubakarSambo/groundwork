@@ -1,0 +1,47 @@
+import { useAuthStore } from '@/stores/auth'
+import { useYourOrganisations, initialsOf, roleWord } from './your-organisations'
+
+/**
+ * THE LIST OF YOUR ORGANISATIONS, with the one you are in ticked: in the sidebar's organisation menu
+ * and on the phone's "More" page. Choosing another asks first (see your-organisations).
+ */
+export function OrganisationChoices() {
+  const user = useAuthStore(s => s.user)
+  const { myOrgs, chooseOrganisation, switching, onlyOneNotChosen, startMyOwnWorkspace, starting } = useYourOrganisations()
+  const orgName = user?.organizationName ?? 'Your organisation'
+
+  return (
+    <>
+      {myOrgs.length === 0 && (
+        <div className="gw-rl-menu-item static">
+          <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{orgName}</b><span className="gw-rl-org-role">{roleWord(user?.role)}</span></span>
+          <span aria-label="You are in this organisation">✓</span>
+        </div>
+      )}
+      {myOrgs.map(o => (
+        <button
+          key={o.id}
+          type="button"
+          className="gw-rl-menu-item"
+          onClick={() => chooseOrganisation(o)}
+          disabled={switching}
+          aria-current={o.active ? 'true' : undefined}
+          title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
+        >
+          <span className="gw-rl-sq" aria-hidden>{initialsOf(o.name)}</span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{o.name}</b><span className="gw-rl-org-role">{roleWord(o.role)}</span></span>
+          {o.active && <span aria-label="You are in this organisation">✓</span>}
+        </button>
+      ))}
+      {onlyOneNotChosen && (
+        <div className="gw-rl-menu-note">
+          <p>You are in {myOrgs[0].name} because your address was on their list.</p>
+          <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace} disabled={starting}>
+            {starting ? 'Starting…' : 'Start my own workspace'}
+          </button>
+        </div>
+      )}
+    </>
+  )
+}

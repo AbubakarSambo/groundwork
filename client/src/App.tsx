@@ -82,6 +82,7 @@ import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { MorePage } from '@/pages/more/MorePage'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
@@ -530,6 +531,8 @@ export default function App() {
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
             <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
+            {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
+            <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
