@@ -398,7 +398,7 @@ at a computer's width and a phone's. The 24 scenarios could not be run (item 3).
 **Still open in U.1:** nothing of U.1's own. You chose no tour (item 8). The sidebar links to Today,
 Company, You and Suites come with those pages, in U.5, U.12, U.15 and U.17.
 
-### U.2 Accounts and signing in: in progress
+### U.2 Accounts and signing in: done
 
 Nine things here wait for your decision (item 10 above). Until you decide, each keeps what the
 product does today. Done so far, on the screens only:
@@ -482,6 +482,11 @@ messages already written as full sentences are passed on as they are.
 The tester had also found a failing test that one of the new tests caused, by reading the code's text
 with its comments. It now signs in for real instead (`f5c36f39`). Both full suites pass: 9,097 API
 tests and 2,524 screen tests.
+
+**U.2 is ticked.** The final review passed: every address gets the same answer from the server, a
+replaced reset link says so as it opens, and both kinds of sign-up work from start to finish. With a
+password, the person goes straight in. With the link, they are offered "Choose a password" and can
+choose "Keep using email links instead".
 
 ## Found on the way, for later tasks
 
