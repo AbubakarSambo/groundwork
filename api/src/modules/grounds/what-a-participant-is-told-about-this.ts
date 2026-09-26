@@ -68,6 +68,8 @@ export interface AGoalTheyMaySee {
  * another person on the check-in. What fails the check is dropped sentence by sentence; a rewrite
  * that leaves nothing falls back to the filtered brief.
  */
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
 export const THE_TELLING_PROMPT = [
   'Write the "About this check-in" box: two or three sentences for a person taking part, read before their first answer.',
   'You are given what the person who set the check-in up wrote. It is addressed to the product, in their voice, and may include instructions on how to interview people. None of that is for the participant.',
@@ -96,6 +98,18 @@ export const THE_TELLING_PROMPT = [
   'Name the lead\'s own subjects, in their words: the places, the products, the people, the risks they actually listed. A long brief needs at least three of them; a telling that names none of them is refused.',
   'Say nothing about what happens to the answers - not the report, not who receives it, not that it is consolidated. The page already says that.',
   'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',
+  '',
+  PLAIN_WORDS,
+  '',
+  /*
+   * WRITTEN ONCE FOR EVERY PARTICIPANT, SO "YOU" IS THE PERSON READING IT AND NOBODY IS NAMED.
+   *
+   * This box is the odd one out. It is written once, like the report, but every reader of it is a
+   * participant and the box is about their own taking part, so "you" means the reader here and is
+   * correct. What it must never do is name anybody else, and the rule two paragraphs up already
+   * says so - said again here because the rulebook above tells every other surface to use names.
+   */
+  'ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people\'s names. This box names nobody except the organisations and places the situation is about. "You" is the person reading it, which is right; every other person stays out of it.',
 ].join('\n');
 
 const ADDRESSED_TO_THE_PRODUCT = /\b(the product|groundwork|the model|the interviewer|the assistant|the lead wants|the lead would like|the lead needs|the manager wants)\b/i;

@@ -82,11 +82,11 @@ TWO RULES OVER EVERYTHING. Give names and wording exactly as the document writes
 
 export const WHAT_A_DOCUMENT_HOLDS_SCHEMA = {
   name: 'emit_what_the_document_holds',
-  description: 'Emit the numbers and dates this document sets, and one line saying what it is.',
+  description: 'Emit the numbers and dates this document sets, and one plain, full sentence saying what it is.',
   input_schema: {
     type: 'object',
     properties: {
-      whatItIs: { type: 'string', description: 'One plain line: what kind of document this is.' },
+      whatItIs: { type: 'string', description: 'One plain, full sentence saying what kind of document this is.' },
       forOnePerson: {
         type: 'array',
         items: {

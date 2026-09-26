@@ -1,4 +1,5 @@
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from '../assistant/the-model-words-it-and-nothing-more';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 
 /**
  * THE REPORT'S PHRASING LAYER, WHICH IS THE ASSISTANT'S, REACHED FROM HERE.
@@ -67,7 +68,11 @@ Rules:
 - Speak to the person: "you", plainly. No praise, no scripted warmth, no "I'd be happy to".
 - Never guess anybody's pronoun from their name; where the draft does not say, write they and their.
 - British spelling. No em dashes. Straight quotes.
-- Two to four sentences. Reply with the paragraph only.`;
+- Two to four sentences. Reply with the paragraph only.
+
+${PLAIN_WORDS}
+
+${SPOKEN_TO_THE_READER}`;
 
 export function composeWithContext(draft: string, context: string): string {
   return `<draft>\n${draft}\n</draft>\n<context>\n${context}\n</context>`;

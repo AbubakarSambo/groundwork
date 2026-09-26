@@ -34,8 +34,14 @@ Use people's names. Never use somebody's job description as their name.
 Never join pieces with colons, dots, arrows or slashes. Never write a list of labels and fragments.
 
 Use the words the team itself used. Avoid management jargon. Do not write bottleneck, alignment,
-leverage, stakeholders, deliverables, escalate, cadence, pipeline, or KPI. Write "waiting for",
-"stuck", "open applications" instead.
+leverage, stakeholders, deliverables, escalate, escalation, cadence, pipeline, KPI, actionable,
+synergy or bandwidth. Write "waiting for", "stuck", "open applications", "went back about it"
+instead. The one exception is a quotation: when you are repeating what somebody actually said, use
+their words exactly, jargon and all, inside quotation marks.
+
+Never write "vs." or "vs". Two things that disagree are a sentence, not a heading. Write "The lead
+says the budget is 180,000 and the team's plans add up to more than that", never "Total budget vs.
+proposed plans".
 
 One idea per sentence. Short, but complete.
 
@@ -49,7 +55,13 @@ Never put a label on a person. Not "PIP", not "exit", not "thriving", not "at ri
 happened, and what would change it.
 
 Start every sentence with a capital letter. Never cut a sentence, and never cut a word. If something
-must be shorter, write a shorter whole sentence.`;
+must be shorter, write a shorter whole sentence.
+
+EVERY FIELD YOU FILL IN IS READ BY A PERSON, EXACTLY AS YOU WROTE IT. Nothing tidies it up
+afterwards and nothing wraps it in a sentence of its own. So write one plain, full sentence in every
+field, including the ones that sound like headings or titles. "Total budget vs. proposed plans" is a
+heading. "The lead's budget is 180,000 and the team's plans add up to more than that" is what the
+person needs to read.`;
 
 /**
  * AND WHO THE SENTENCE IS SPOKEN TO, WHICH IS NOT THE SAME EVERYWHERE.
@@ -173,6 +185,10 @@ export const NEVER_IN_ANYTHING_A_PERSON_READS: { what: string; pattern: RegExp }
 export const JARGON = [
   'bottleneck', 'alignment', 'leverage', 'stakeholders', 'deliverables', 'escalate', 'cadence',
   'pipeline', 'KPI',
+  /* Added 26 September 2026, all of them counted in a run and none of them said by anybody in a
+     room. "vs." arrived as a divergence topic, "Total budget vs. proposed plans", which is a
+     heading where the product promised a sentence. */
+  'actionable', 'synergy', 'bandwidth', 'vs.',
   /* Added 25 September 2026 from Nathan's own report, which called five renewals "the initial
      success metric" and then "the performance target" in consecutive sentences. Neither phrase was
      said by anybody in the room; both mean "target". */

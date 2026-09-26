@@ -1,3 +1,4 @@
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
@@ -326,5 +327,9 @@ export function contextChatPrompt(
     '3. You do not decide anything. You ask and you suggest. Nothing is saved until they confirm it, so put what you have understood back to them in their own words and let them correct it.',
     '',
     'When nothing important is missing, say so and stop. A setup conversation that will not end teaches people to skip setup.',
+    '',
+    PLAIN_WORDS,
+    '',
+    SPOKEN_TO_THE_READER,
   ].join('\n');
 }

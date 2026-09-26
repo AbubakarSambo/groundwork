@@ -1,4 +1,5 @@
 import { GroundScenario, PartyType } from '@prisma/client';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from './plain-words';
 import {
   buildIntakeBlock, ENGINE_RULES, FAILING_RELATIONSHIP_PROTOCOL, RECALL_SESSION_PROTOCOL,
 } from './prompt-library';
@@ -71,8 +72,28 @@ describe('a protocol reaches the conversation it was written for, and no others'
     expect(block({ sessionMode: 'recall' })).toContain('PROTOCOL: RECALL_SESSION');
   });
 
+  /*
+   * THE CEILING MOVED ONCE, ON 26 SEPTEMBER 2026, AND HERE IS WHY.
+   *
+   * What this test is for is that the two protocols were lifted OUT of the everybody-prompt and are
+   * now fed only to the conversation each was written for. The ceiling is how that is held: pasting
+   * either one back in would push the prompt over it.
+   *
+   * The one wording rulebook then went in - `PLAIN_WORDS` and `SPOKEN_TO_THE_READER`, imported from
+   * plain-words.ts, about 2,500 characters - and the prompt went to 117,169. That is the rulebook
+   * arriving, not a protocol coming back, so the ceiling moves by the rulebook and no further. The
+   * two protocols are over 7,000 characters between them, so the headroom here is still less than
+   * either of them.
+   */
   it('the everybody-prompt is smaller by the two of them', () => {
     expect(FAILING_RELATIONSHIP_PROTOCOL.length + RECALL_SESSION_PROTOCOL.length).toBeGreaterThan(7000);
-    expect(ENGINE_RULES.length).toBeLessThan(115000);
+    expect(ENGINE_RULES.length).toBeLessThan(118000);
+  });
+
+  /* And the rulebook is in it, imported rather than retyped, which is the reason it grew. */
+  it('carries the one wording rulebook, both halves of it', () => {
+    expect(ENGINE_RULES).toContain(PLAIN_WORDS);
+    expect(ENGINE_RULES).toContain(SPOKEN_TO_THE_READER);
+    expect(ENGINE_RULES).toContain('Never write "vs." or "vs"');
   });
 });
