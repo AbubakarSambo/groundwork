@@ -112,6 +112,43 @@ field is not on its path, and the scorer's label list does not catch a capitalis
 the start of a sentence, so it counted zero. This is the second time a number said clean and the
 rendered line was not.
 
+## The last suspect for the "specific detail" drop is wrong, and the prompt is never cut for length
+
+The open question in this report was: fix 2 makes one block appear more often, the engine prompt is
+trimmed to fit, so the trimmer has to drop something else — possibly the blocks that ask for a
+number or a date.
+
+**There is no trimmer.** The log line I based that on —
+
+> `Check-in …: engine 114920 to 101767 chars, leaving out GOAL ALIGNMENT …`
+
+— does not come from a length budget. It comes from `onlyTheRulesThisTurnNeeds`
+(`only-the-rules-this-turn-needs.ts:118`), which drops sections by **what kind of turn it is**, and
+nothing else. There is no size, no budget and no cut anywhere in it: the whole function is a split
+on the separator rule, a fixed set of headings to drop, and a re-join. `whatWasLeftOut` returns the
+reason for each, which is why every log line carries one.
+
+Measured across the 751 exclusions in run-1, this holds exactly:
+
+| Block left out | Times | Why, from the log itself |
+| --- | --- | --- |
+| GOAL ALIGNMENT | 751 of 751 | It is the fallback for a situation with no pack, and every situation has one |
+| RETURNING USER OPENING | 628 | Session one has nobody returning |
+| Twelve more, together | 87 | Written for a conversation underway; an opener is written before anybody has spoken |
+
+The eighty-seven are one per check-in, on **eighty-seven distinct check-ins**, every one cut to the
+same size within a thousand characters. That is eighty-seven openers, not eighty-seven prompts that
+ran out of room.
+
+**And 1.4 did not change it.** Plain wording made the engine prompt longer, 114,920 to 117,169
+characters, which is what I would expect and is the thing that would have mattered if a budget
+existed. The set of blocks left out is identical before and after, and so is the proportion: 87 of
+751 in run-1, 23 of 198 in run-2 so far — 11.6% both times.
+
+So the drop in "specific detail asked for", 88 to 74, has **no identified cause**, and the two-hour
+bisect the last section proposed would have been looking in the wrong place. I have not opened it
+again tonight; the numbered tasks come first and this is written down so it is not lost.
+
 ## The 50 scenario packs — step one done, and they can be read now
 
 Your instruction was: copy all 50 into files first, so they can be read and compared; then write
