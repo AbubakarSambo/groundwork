@@ -173,6 +173,9 @@ purpose. I will build everything else in U.2 and leave these as they are until y
    The product made choosing a password compulsory after a test run where people with no password
    could not get back in. The new sign-in screen will offer "Email me a sign-in link instead", which
    fixes that. **My suggestion:** allow the skip.
+   *Found while building:* even today, someone with no password who opens a sign-in link with
+   nothing to save is sent straight to their check-ins, without the password step. So the step is
+   already skippable on that one path. Your decision settles both.
 5. **How long a password reset link lasts.** The prototype says "It works for 30 minutes". The
    product's link lasts an hour. **My suggestion:** say "an hour", which is true, rather than change
    the link. Until you decide, the page says an hour.
@@ -329,8 +332,16 @@ product does today. Done so far, on the screens only:
    builder found that signing out from "More" on a phone could sign the person straight back out
    after they signed in again. That is fixed.
 
-Still to do: the reset page, the "choose a password" page, the "That link has expired" card, then the
-backend parts (the reset page showing whose account it is, telling the screens that a link has just
+8. **The reset page** (commit `03c7288f`): "Choose a new password", "Once it's saved, you're signed out
+   everywhere else.", with the rules ticked as you type.
+9. **"Choose a password"** (commit `ae23b026`), with a bar made only of the rules the server really
+   checks, and "Strong enough" once every rule is met. No score is invented.
+10. **"That link has expired"** (commit `d793ff7e`), with "Send me a fresh link". An old reset link is
+    replaced by a reset link, so nobody is let in without choosing a password.
+11. **"Your email is confirmed"** (commit `46b92a91`), shown once, when a link has just made the
+    account.
+
+Still to do: the backend parts (the reset page showing whose account it is, telling the screens that a link has just
 made the account, and sending a failed Google sign-in to the new page).
 
 ## Found on the way, for later tasks
