@@ -6,6 +6,27 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## Answered — thank you
+
+All four questions below were answered on 26 September and the answers are being worked through.
+Kept here with their answers so the reasoning is not lost.
+
+1. **"Participant B"** — decided: colleagues stay unnamed in evaluation check-ins, and are called
+   "a colleague", or "one colleague" and "another colleague" where there are several, used the same
+   way through a whole report. Being built now. *One small extension I made and am flagging: her
+   words cover one and two. For a third and beyond I have continued the same pattern - "a third
+   colleague", "a fourth colleague" - rather than inventing a different scheme.*
+2. **The 50 database-only scenario packs** — decided: copy all 50 into files first, write improved
+   versions as NEW versions that are NOT switched on, and produce a before-and-after document with
+   one example conversation per situation. Nothing deleted or overwritten. Queued behind item 3.
+3. **The two numbers that went down** — decided: run the 25 September commit twice in a separate
+   worktree and score both, before any more conversation changes. **Running now.** If the old code
+   also gives about 74 and 33, the baseline was a lucky run and I write
+   `docs/baseline-candidate.json` as the average of the two. If it gives about 89 and 37, something
+   we changed affects the questions and I find it before anything else.
+4. **The main checkout** — fine to carry on, given the keys, the mail and the database are all as
+   checked.
+
 ## Needs Hafsah
 
 ### 1. "Participant B" is unavoidable today, and only you can choose what replaces it
@@ -310,6 +331,29 @@ A fragment, a colon, then three questions. This one the counter does catch, beca
 question marks - but the colon-glued fragment in front of it is invisible to every number we have.
 
 ---
+
+## The baseline test — set up and running
+
+Her item 3, and it comes before any further conversation change.
+
+A worktree at `/tmp/gw-baseline` holds `ed2b4996`, the commit immediately before fix 1, so it is
+this branch with fixes 1, 2 and 3 and everything after them removed and nothing else different.
+Its own server runs on port 3001 against the same local database; the harness there points at 3001.
+Two full 24-scenario runs, scored the same way as everything else.
+
+Two things went wrong in the setup and are worth recording, because both would have produced a
+confident wrong answer:
+
+- **`prisma generate` in the worktree rewrote the shared client.** The two checkouts share
+  `node_modules`, so generating from the older schema removed `theOpening` from the client the main
+  checkout builds against. The running server survived because it had already loaded the client,
+  but the next rebuild of main would have failed. Fixed by generating from the NEW schema and using
+  that for both - the old code never mentions `theOpening`, so a superset client is harmless to it,
+  and I confirmed the old commit still builds and boots against it.
+- **The first run produced nothing at all.** `GOOGLE_APPLICATION_CREDENTIALS` is a relative path,
+  so in the worktree it resolved to a directory that does not exist and every model call failed.
+  Had I not looked at the log, I would have scored an empty run and reported that the old code asks
+  no questions either. Linked the credentials in and started again.
 
 ## Log
 
