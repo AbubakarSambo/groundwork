@@ -1933,7 +1933,7 @@ Anything under THEY ATTACHED "filename" is a document they gave us, and it count
 
 1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
 
-   - name: the aim as a short phrase, in their words. "Sell 500 trucks", not "Sales objective".
+   - name: the aim as one plain, full sentence, in their words. It is read on its own beside the other aims, so somebody who reads only this sentence should know what is being aimed at. "They want to sell 500 trucks by the end of the year", not "Sales objective" and not "Sell 500 trucks".
 
    - target: the NUMBER they are aiming at, where they said one. 500 for "sell 500 trucks by the end of the year". 150 for "150 each". Leave it out where no number was said: an aim without a number is a real aim and a wrong number is worse than none.
 
@@ -2060,9 +2060,9 @@ export const OPERATING_DIFFERENCE_PROMPT = `You are given a transcript and the c
 Find places where what the person described DIFFERS from what is written. Nothing else.
 
 For each one:
-   - about: which written process it concerns, in a few words.
-   - theirAccount: what they described, in their own words as far as possible.
-   - whatIsWritten: what the document says, in its words.
+   - about: one plain, full sentence saying which written process this is about. "This is about how a refund gets approved." It is read on its own at the start of the entry, so never a heading and never a fragment.
+   - theirAccount: what they described, in their own words as far as possible, written as one or more plain, full sentences.
+   - whatIsWritten: what the document says, in its words, written as one or more plain, full sentences.
    - neverTold: true only if they said, or plainly implied, that nobody had told them this.
 
 RULES.

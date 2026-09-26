@@ -7382,8 +7382,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const told = d.neverTold
         ? ' They said nobody had told them this, so it is worth checking who should have.'
         : '';
-      const text = `On ${about}, they described: ${theirs}. What is written here: ${written}. `
-        + `Which is right is worth settling - the written one may be out of date.${told}`;
+      /*
+       * AND IT IS BUILT OUT OF WHOLE SENTENCES, NOT JOINED WITH COLONS.
+       *
+       * What this used to write, and what a person read: "On the refund process, they described:
+       * {their words}. What is written here: {the document}." Two colon joins and a fragment where
+       * the first sentence should be, which is the pattern fix 2 took out of the reports and which
+       * survived here because this entry is written in the conversation service rather than in a
+       * report. `about` is one full sentence now, so it opens the entry on its own.
+       */
+      const text = `${about} This is what they described. ${theirs} This is what the written process says. `
+        + `${written} Which of the two is right is worth settling, because the written one may be out of date.${told}`;
 
       /* The card's key groups this theme across sessions. */
       const key = cards.find((c: any) => about.toLowerCase().includes(String(c.key).toLowerCase()))?.key
