@@ -718,7 +718,7 @@ export class AuthService {
     return { message: 'Invite sent.' };
   }
 
-  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string; devUrl?: string }> {
+  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
     const message = 'If an account with that email exists, a sign-in link has been sent.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -739,11 +739,13 @@ export class AuthService {
       data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
-    const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
+    await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, email, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address. The development link is in the server log, where the
+       email service writes every link it would have sent; it is never in the answer, because a
+       devUrl only for addresses that have an account says which addresses do (U.2 review). */
+    return { message, email };
   }
 
   async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
@@ -760,7 +762,7 @@ export class AuthService {
     return { token };
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string; devUrl?: string }> {
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
     const message = 'If an account with that email exists, a password reset link has been sent.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
@@ -775,11 +777,11 @@ export class AuthService {
       data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
-    const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
+    await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address; the development link is in the server log only. See memberSignin. */
+    return { message };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<AuthResponseDto> {
