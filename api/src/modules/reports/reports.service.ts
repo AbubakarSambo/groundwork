@@ -88,6 +88,14 @@ import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
   whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime,
 } from './what-the-record-shows-over-time';
+/*
+ * THE ONE WORDING RULEBOOK, SPLIT BY SURFACE. The post-report guide is written to one person in the
+ * moment, so it gets the rules themselves. The synthesis rules are appended to the shared report's
+ * prompt, which is written once in labels and rendered for each reader, so they get the examples
+ * and the rule about writing labels rather than "you". Imported, never retyped - see plain-words.ts
+ * for what happened the last time three surfaces each kept their own copy.
+ */
+import { PLAIN_WORDS, PLAIN_WORDS_EXAMPLES, WRITTEN_ONCE_FOR_SEVERAL_READERS } from '../conversation/plain-words';
 import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
@@ -192,6 +200,19 @@ export const POST_REPORT_GUIDE_PROMPT = [
   'DO NOT ASSUME A MEETING. There may be no conversation scheduled, and there may never be a room. Never write "in the room", "in our meeting", "on the call", or "this session". The opening line is something they could say in a corridor, a message, or a one-to-one - so write it as words they could use, not as an agenda item for an event that may not exist.',
   '',
   'Brief and direct - no more than 3 sentences per item.',
+  '',
+  PLAIN_WORDS,
+  '',
+  /*
+   * AND THE ONE PLACE THE RULEBOOK HAS TO GIVE WAY, SAID OUT LOUD RATHER THAN LEFT TO CHANCE.
+   *
+   * The rulebook says to use people's names, because on nearly every other surface a label where a
+   * name belongs is the defect. This guide is the exception: it is written from one person's own
+   * check-in and from the shared picture, and a name or a lifted phrase in it tells that person who
+   * said what. The guide is discarded before anybody reads it if it carries one, so the two rules
+   * have to be ranked here instead of leaving the model to guess which wins.
+   */
+  'ONE EXCEPTION TO THE RULES ABOVE, AND IT IS THE NAMING ONE. The rulebook says to use people\'s names. This guide names nobody, so write "the other view" or "how somebody else saw it" instead, exactly as the no-naming rule further up says. Everything else in the rulebook holds here: full sentences, plain words, no fragments, no management words.',
 ].join('\n');
 
 /**
@@ -253,7 +274,19 @@ export const REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            topic: { type: 'string' },
+            /*
+             * A TOPIC HAD NO DESCRIPTION AT ALL, AND CAME BACK AS A HEADING.
+             *
+             * On the workplan run it wrote "Total budget vs. proposed plans" and that string was
+             * printed as the difference, on the lead's report, the lead's board and everybody
+             * else's. It names the subject and says nothing about the disagreement, and "vs." is
+             * the shape the wording rules exist to stop.
+             */
+            topic: {
+              type: 'string',
+              description:
+                'What the people here disagree about, written as one plain, full sentence that names both sides of it. Somebody who reads only this sentence should understand the disagreement. Never a heading, never a fragment, and never "vs." - a live report wrote "Total budget vs. proposed plans", which tells a reader the subject and nothing else. Write "The lead says the budget is 180,000 and the team\'s plans add up to more than that" instead.',
+            },
             positions: {
               type: 'array',
               description: "Where each person stands on this topic. Two on a two-person ground; more on a project or team ground.",
@@ -269,7 +302,7 @@ export const REPORT_SCHEMA = {
             evidence: {
               type: 'array',
               items: { type: 'string' },
-              description: "1-2 short supporting references for this gap, taken from what people actually said (brief paraphrase or short quote). Grounds the gap in what was actually said; omit if nothing supports it.",
+              description: 'One or two plain, full sentences saying what people actually said that shows this gap. Each one is read on its own under the gap, so write a whole sentence, never a fragment and never a label with a colon after it. A short quotation of somebody\'s own words inside the sentence is fine and keeps their wording exactly. Omit the list if nothing in the record supports the gap.',
             },
             settledBy: {
               type: 'string',
@@ -311,7 +344,7 @@ export const REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'Who this inference is about, using the same label as above.' },
-            reason: { type: 'string', description: 'Brief explanation of what this was concluded from, given no participant stated it.' },
+            reason: { type: 'string', description: 'One plain, full sentence saying what this was concluded from, given nobody said it themselves.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },
@@ -324,7 +357,7 @@ export const REPORT_SCHEMA = {
           type: 'object',
           properties: {
             label: { type: 'string', description: "Whose record references this contributor (e.g. 'the project owner')." },
-            evidence: { type: 'string', description: 'Brief paraphrase of what the record says about this uncredited contributor.' },
+            evidence: { type: 'string', description: 'One plain, full sentence saying what the record holds about this person, who was not credited.' },
           },
           required: ['label', 'evidence'],
         },
@@ -436,7 +469,13 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
 15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
-13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.`;
+13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.
+
+15. AND HOW EVERY SENTENCE OF IT IS WRITTEN. These two blocks are the product's one wording rulebook, and they override anything above or below them that disagrees.
+
+${PLAIN_WORDS_EXAMPLES}
+
+${WRITTEN_ONCE_FOR_SEVERAL_READERS}`;
 
 @Injectable()
 export class ReportsService {
@@ -669,6 +708,8 @@ export class ReportsService {
       'If saying anything would mean inventing a consequence this gap does not point to,',
       'return an empty string. Never a filler sentence, and never something dramatic to fill',
       'the space - reaching is the worse failure of the two.',
+      '',
+      PLAIN_WORDS,
     ].join('\n');
 
     const AT_STAKE_SCHEMA = {
@@ -754,6 +795,10 @@ export class ReportsService {
       'If the lines are too thin or too scattered to say anything true in one sentence, return an',
       'empty string. An empty string is a correct answer here and a vague sentence is not - the',
       'fragments are shown either way, so nothing is lost by declining.',
+      '',
+      PLAIN_WORDS,
+      '',
+      'ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people\'s names. You have not been told this person\'s name and must not guess one, so the no-pronoun, no-name rule further up wins. Everything else in the rulebook holds.',
     ].join('\n');
 
     const SAYING_SCHEMA = {
@@ -3829,7 +3874,23 @@ happened, and what is in the way.`;
       .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true } })
       .then((g) => (((g as any)?.whatACompleteAnswerHolds ?? []) as AField[]))
       .catch(() => [] as AField[]);
-    if (!Array.isArray(frame) || !frame.length) return null;
+
+    /*
+     * A ROOM IS JUDGED WITHOUT A FRAME, BECAUSE A ROOM READ NEVER USED ONE.
+     *
+     * This used to return here on an empty frame, for every check-in. But the frame and the
+     * counted table are the POPULATION path: below the counting floor the material handed to the
+     * model is `theRoom(people, differences, sessions)`, built from who is in the check-in and
+     * what they disagree about, and it does not touch either. So the guard was throwing away a
+     * judgement that would not have used the thing being guarded.
+     *
+     * What that cost: eight of the twenty-four reports had no judgement at all, and they were
+     * exactly the eight whose brief fell under the forty-word floor upstream. The floor is gone
+     * now (see `theFrameFor`), and this is the second half of the same fix - so that a frame that
+     * comes back thin for any other reason cannot silently take the judgement with it.
+     */
+    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
+    if (!asARoom && (!Array.isArray(frame) || !frame.length)) return null;
 
     const rows = await this.prisma.checkIn.findMany({
       /*
@@ -3873,18 +3934,19 @@ happened, and what is in the way.`;
      * one-person-is-one-answer.ts for what that produced in front of a customer.
      */
     const answers = onePerPerson(perSession);
-    if (!answers.length) return null;
+    /* Same reason as the frame above: a room is read from its people, not from fitted answers. */
+    if (!asARoom && !answers.length) return null;
 
-    const reads = whatTheNumbersSay(frame, answers);
+    const canCount = Array.isArray(frame) && frame.length > 0 && answers.length > 0;
+    const reads = canCount ? whatTheNumbersSay(frame, answers) : [];
     const assessments = reads.map(howGoodIsThis);
-    const table = theTable(reads, assessments, howManyPeople(answers));
+    const table = canCount ? theTable(reads, assessments, howManyPeople(answers)) : '';
 
     /*
      * A ROOM IS NOT A POPULATION. Below the counting floor the table is every field marked THIN and
      * the judgement writes recommendations off proportions of four. The room read is written from
      * the people instead. Same schema out, so nothing downstream knows which one ran.
      */
-    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
     let material = table;
     let instruction = theJudgementInstruction(
       'whoever called this check-in',
@@ -3906,8 +3968,23 @@ happened, and what is in the way.`;
           isLead: p.isLead,
           role: p.role,
           finding: p.finding,
+          /*
+           * AND THE SAME EXCLUSION THE SYNTHESIS CORPUS HAS, WHICH THIS PATH NEVER GOT.
+           *
+           * `ALIGNMENT_FEED_ONLY_CODES` - F5, E4, LOW_SPEC_MULTI_DIM, COLLUSION_RISK - are
+           * documented as never to be named to either person directly, and they are filtered out
+           * of the report corpus, the board's alignment feed and the live conversation for that
+           * reason. This material was the one route with no filter on it, and the judgement built
+           * from it is read by the lead: a cofounder ground handed it "[E4 Founder Burden
+           * Imbalance]: absorbs operational load relative to the other founder" and "[F5 Cofounder
+           * Burden Asymmetry]: operational absorption", about the other founder, to the founder.
+           *
+           * Found on 26 September by the pattern-wiring tripwire, which went red when the room
+           * judgement started running on grounds that used to return early. It was true on every
+           * ground that already had a frame; the change only made it visible.
+           */
           patterns: (seen as any[])
-            .filter((x) => x.participantId === p.participantId && (x.observationText ?? '').trim())
+            .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
         })),

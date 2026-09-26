@@ -51,6 +51,29 @@ describe('what gets written down', () => {
     expect(written[0].text).not.toMatch(/\b(wrong|incorrect|does not understand|gap in)\b/i);
   });
 
+  /*
+   * AND IT IS READ AS SENTENCES, NOT AS A ROW JOINED WITH COLONS. (Task 1.4, 26 September 2026.)
+   *
+   * What a person used to read here: "On contracting, they described: I send the contract to the
+   * client myself. What is written here: Legal signs every contract." Two colon joins and a
+   * fragment in front. The tests above all passed on that, because they check that both halves are
+   * present and that nothing accuses anybody - which was true. This one checks the shape of the
+   * sentence a person actually reads.
+   */
+  it('reads as whole sentences, with nothing joined by a colon', async () => {
+    const { s, written } = svc({ differences: [difference({ about: 'This is about how a contract gets signed.' })] });
+    await s.extractOperatingDifferences('c1', 'ed', 'g1');
+    const text: string = written[0].text;
+    expect(text).not.toContain(':');
+    expect(text.startsWith('This is about how a contract gets signed.')).toBe(true);
+    expect(text).toContain('This is what they described.');
+    expect(text).toContain('This is what the written process says.');
+    /* Every sentence starts with a capital letter, which a fragment after a colon does not. */
+    for (const sentence of text.split(/(?<=\.)\s+/).filter(Boolean)) {
+      expect(sentence[0]).toBe(sentence[0].toUpperCase());
+    }
+  });
+
   it('points a never-told difference at whoever should have told them', async () => {
     const { s, written } = svc({ differences: [difference({ neverTold: true })] });
     await s.extractOperatingDifferences('c1', 'ed', 'g1');

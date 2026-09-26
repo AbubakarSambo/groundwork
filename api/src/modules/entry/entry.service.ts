@@ -42,6 +42,7 @@ import { oneScriptOnly } from '../conversation/one-script-per-conversation';
 import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
+import { PLAIN_WORDS } from '../conversation/plain-words';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
@@ -264,7 +265,7 @@ Rules:
 - Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
 - Address the person directly as "you" and call it "what you shared". NEVER refer to them as "this account" or "the user".
 - CRITICAL: only this person has checked in. Alignment needs more than one person and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The ceiling when one person has answered is "Clear" (what they said is clear). Reserve "Aligned" for when somebody else has checked in separately.
-- alignmentReached items are things this person has said clearly - they are "clear, waiting on everybody else", never agreed by both. Each title is a heading a person reads next to other headings, so it names the settled thing in two to five words. "The quarterly target is clear" works; "quarter" does not.
+- alignmentReached items are things this person has said clearly - they are "clear, waiting on everybody else", never agreed by both. Each title is the first line of a card and a person reads it on its own, so write it as one plain, full sentence. "The quarterly target of five hundred contracts is clear" works; "quarter" does not.
 - The alignment status reflects THIS session only. No cross-reference yet, because nobody else has checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -296,7 +297,11 @@ Rules:
 - In mentionedPeople, list any person named or meaningfully referenced in the conversation who is not the person checking in. If someone was already confirmed as a participant in this check-in earlier in the conversation, still include them - the admin needs to see the full cast. Omit only truly anonymous or generic references with no name or identifiable role.
 - In suggestedParties, name any role whose independent account would materially change or strengthen this check-in's picture, but who was not mentioned by the person checking in. Typical triggers: a regulated sector with a clinical or compliance lead whose sign-off affects decisions described; a multi-layer authority structure where a board or chair sits above the mandate-giver; a finance function that controls data the person says they need. Do not suggest roles already confirmed as participants. If nothing is missing, return an empty array.
 - Authorship backstop: scan the conversation for any language where the person describes work produced by others - "I guided", "I helped them", "we built", "I shaped", "I oversaw", "I developed with". If the authorship of any output was not explicitly anchored to a named person during the session, add an entry in areasRequiringAlignment with title "Authorship not anchored" and observation "This session contains claims about work involving others where it was not made clear who produced the output. What was shared cannot confirm who authored what."
-- Clinical trigger: if the conversation mentions clinical work, patients, protocols, regulated procedures, medical decisions, or compliance sign-off, add a suggestedParties entry for a clinical lead, compliance officer, or protocol authority if not already named as a participant.`;
+- Clinical trigger: if the conversation mentions clinical work, patients, protocols, regulated procedures, medical decisions, or compliance sign-off, add a suggestedParties entry for a clinical lead, compliance officer, or protocol authority if not already named as a participant.
+
+${PLAIN_WORDS}
+
+ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people's names. This report is written before anybody else has checked in, and the rule further up says to name nobody else personally - that rule wins. Say "the others" or name the role. Everything else in the rulebook holds: full sentences, plain words, no fragments, no management words, and the reader is "you".`;
 
 const ENTRY_REPORT_SCHEMA = {
   name: 'emit_entry_report',
@@ -337,7 +342,7 @@ const ENTRY_REPORT_SCHEMA = {
                * sibling field below already says this; it was the one that had been read back.
                */
               description:
-                'A short noun phrase naming what is unresolved, two to five words, sentence case. It is rendered as a card heading beside others like "Ownership of the board update" and "Escalation path not adopted", so it must read as a heading on its own. Never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
+                'One plain, full sentence saying what is unresolved. It is the first line of a card and it is read on its own, beside others like "Nobody has said who owns the board update" and "The way to raise a problem has not been agreed", so a person who reads only this sentence should know what is open. Never a heading and never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
             },
             observation: { type: 'string', description: 'What is unclear or unstated.' },
             whyItMatters: { type: 'string', description: 'Why leaving this unresolved causes problems.' },
@@ -354,7 +359,7 @@ const ENTRY_REPORT_SCHEMA = {
             title: {
               type: 'string',
               description:
-                'A short noun phrase naming what is settled, two to five words, sentence case. It is rendered as a card heading beside others like "Evidence baseline established" and "Team named", so it must read as a heading on its own. Never a bare noun lifted from the conversation: a live report produced the single word "quarter" as a heading, which tells the reader nothing.',
+                'One plain, full sentence saying what is settled. It is the first line of a card and it is read on its own, beside others like "You and the team agreed what counts as evidence" and "Everybody who is taking part has been named", so a person who reads only this sentence should know what was settled. Never a heading and never a bare noun lifted from the conversation: a live report produced the single word "quarter", which tells the reader nothing.',
             },
             note: { type: 'string', description: 'What is clear and agreed in this account.' },
           },

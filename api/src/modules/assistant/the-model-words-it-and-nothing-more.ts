@@ -18,7 +18,15 @@
  * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
  * deadline the record does not have. Found by reading what came back rather than that it came back.
  */
-export const STYLE_VERSION = 'v3';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
+
+/*
+ * v4, 26 September 2026: the one wording rulebook arrived in this style. The cache key already
+ * hashes the whole system prompt, so a changed style rewords everything anyway; the version is
+ * bumped because it is what the assistant records against each reply, and a reply worded under the
+ * old rules and one worded under the new should not both read as v3.
+ */
+export const STYLE_VERSION = 'v4';
 
 /**
  * Kept as a versioned template separate from the engine, per §10.3 - so somebody can change how
@@ -39,7 +47,11 @@ Rules:
 - British spelling. No em dashes. Straight quotes.
 - Shorter than the draft where you can, never longer.
 - If the draft is already the clearest way to say it, return it unchanged.
-- Reply with the wording only. No preamble, no explanation, no quotes around it.`;
+- Reply with the wording only. No preamble, no explanation, no quotes around it.
+
+${PLAIN_WORDS}
+
+${SPOKEN_TO_THE_READER}`;
 
 /**
  * WHAT WOULD MAKE US KEEP THE DRAFT INSTEAD.

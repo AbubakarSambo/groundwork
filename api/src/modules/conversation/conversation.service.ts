@@ -58,6 +58,7 @@ import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
 import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
+import { PLAIN_WORDS } from './plain-words';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
@@ -337,7 +338,11 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.`;
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.
+
+${PLAIN_WORDS}
+
+ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people's names. You have not been told anybody's name and must not invent one, so the rule two paragraphs up wins: no name, not theirs and not anybody else's. Everything else in the rulebook holds, including the full sentences and the plain words.`;
 
 /**
  * The conversation engine. Drives a single party's check-in.
@@ -6470,8 +6475,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const already = (ground as any).whatACompleteAnswerHolds as AField[] | null;
     if (Array.isArray(already) && already.length) return already;
     const brief = (ground.brief ?? '').trim();
-    /* The same floor as the subjects: under forty words a brief is a question, not a specification. */
-    if (brief.split(/\s+/).length < 40) return [];
+    /*
+     * NO WORD COUNT DECIDES WHETHER A CHECK-IN GETS READ. (Hafsah, 26 September 2026: "The
+     * judgement must run whatever the length of the lead's description, so remove the 40-word
+     * threshold.")
+     *
+     * This used to refuse any brief under forty words, on the reasoning that such a brief is a
+     * question rather than a specification. Reasonable about a frame of fields. Catastrophic
+     * downstream, because `judgeTheAnswers` opens with a return on an empty frame: the eight
+     * reports in the twenty-four with no judgement at all were exactly the eight grounds whose
+     * brief was under forty words. `drift` was judged at exactly forty. `board` was not, at
+     * thirty-nine. A lead who writes plainly got no judgement, and nothing anywhere said why.
+     *
+     * An empty brief still gets nothing, because there is nothing to read. Everything else is
+     * read, and `theFrameFrom` throws out what does not hold up - which is the check that should
+     * have been doing this work all along, rather than a word count standing in front of it.
+     */
+    if (!brief) return [];
 
     const read = await this.anthropic.extract<{ fields?: unknown[] }>(
       READ_THE_FRAME,
@@ -7377,8 +7397,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const told = d.neverTold
         ? ' They said nobody had told them this, so it is worth checking who should have.'
         : '';
-      const text = `On ${about}, they described: ${theirs}. What is written here: ${written}. `
-        + `Which is right is worth settling - the written one may be out of date.${told}`;
+      /*
+       * AND IT IS BUILT OUT OF WHOLE SENTENCES, NOT JOINED WITH COLONS.
+       *
+       * What this used to write, and what a person read: "On the refund process, they described:
+       * {their words}. What is written here: {the document}." Two colon joins and a fragment where
+       * the first sentence should be, which is the pattern fix 2 took out of the reports and which
+       * survived here because this entry is written in the conversation service rather than in a
+       * report. `about` is one full sentence now, so it opens the entry on its own.
+       */
+      const text = `${about} This is what they described. ${theirs} This is what the written process says. `
+        + `${written} Which of the two is right is worth settling, because the written one may be out of date.${told}`;
 
       /* The card's key groups this theme across sessions. */
       const key = cards.find((c: any) => about.toLowerCase().includes(String(c.key).toLowerCase()))?.key

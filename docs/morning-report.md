@@ -1,10 +1,447 @@
 # Morning report
 
-**Night of 25–26 September 2026.** Branch `fix/plain-reports`. Nothing left this computer.
+**Night of 25–26 September 2026.** Branch `wip/plain-reports`. Nothing left this computer.
 
 This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
+
+## Your three decisions, done
+
+### 1. People's own words stay exactly as they said them
+
+The rulebook exempted quotations from **one** of its rules, the one about jargon. Every other rule
+in it — full sentences, no fragments, no colons, a capital letter to start, plainer words — read as
+applying to everything, quotations included.
+
+Nothing had gone wrong yet that I could measure. What made it worth doing anyway is that the
+wording score counts jargon **inside quoted material too**, so the cheapest way to improve the
+number was always to tidy up what somebody said, and nothing in the rules stood in the way of it.
+
+The exemption is now the first thing in the rulebook, before any rule it exempts, and it says what
+to do instead: write your own plain sentence around the quotation and leave the quotation
+untouched. A test pins the order, so a new rule cannot be added above it.
+
+### 2. Plain names for all 49 patterns
+
+In `docs/pattern-names.md`. Nothing switched on, no code reads it, the codes and internal names
+untouched. Checked against `pattern-library.ts` rather than against my own list: 49 in the
+document, 49 in the code, none missing and none invented.
+
+Most are a short sentence rather than a noun phrase, because several internal names are **labels on
+a person** — "Blame Shifting", "CEO-Pleasing", "Defensive Leadership", "Extractive Behaviour" — and
+the rule is that no label goes on a person.
+
+E4 and F5 are in a section of their own. They are never named to either person, and giving them a
+friendly plain name makes it *more* likely somebody puts them on a screen, not less.
+
+**One thing for you.** Your example was "Coordination Without Leverage" → "Coordinates without
+being in charge". The detector means something else by leverage: B5 is *"heavy communication, no
+reduction in blockers"* — coordinating that does not unblock anything, whatever the person's
+authority. Coordinating without authority is a different thing and often not a fault at all. I have
+written B5 to the detector's meaning and left your sentence beside it. It may be the detector that
+is named wrongly.
+
+### 3. Task 1.5
+
+**The forty-word floor is gone.** An empty brief still gets nothing, because there is nothing to
+read; everything else is read, and the validator throws out what does not hold up, which is the
+check that should have been doing this instead of a word count standing in front of it.
+
+**And the guard below it is gone too**, so no thin frame can take the judgement with it again. A
+room is judged from its people and their differences and never used the frame at all.
+
+**Nothing is anybody's fault unless an account says so.** The limit now sits directly after the
+rule that licensed it — the one inviting a finding about how the lead is running things — with the
+two sentences that made it: *"Nobody wrote the target down"* is what the record holds, *"You
+created this problem"* is a charge.
+
+**And the finding that was missed.** Nothing told the model to read *across* the blocks. The
+workplan answer — two leads have both costed the same contractor, and neither knows — is in neither
+person's account. It only exists between them.
+
+I have left one other forty-word floor alone, on `theSubjectsToCover`, deliberately. It decides
+whether a brief is worth splitting into separately-askable subjects for a broadcast, it does not
+block the judgement, and its reason holds: a one-line brief has one subject and the situation pack
+already asks about it.
+
+### And a privacy hole the change made visible
+
+`ALIGNMENT_FEED_ONLY_CODES` — F5, E4, LOW_SPEC_MULTI_DIM, COLLUSION_RISK — are documented as never
+to be named to either person directly, and are filtered out of the report, the board's alignment
+feed and the live conversation. **The room judgement's material was the one route with no filter on
+it, and the lead reads the judgement.** A cofounder ground handed it:
+
+> [E4 Founder Burden Imbalance]: absorbs operational load relative to the other founder
+
+about the other founder, to the founder.
+
+This was true of every ground that already had a frame. Making the judgement run more often is only
+what exposed it — the tripwire went red the moment those eight grounds started producing a
+judgement. It is filtered now, and asserted **across every prompt** rather than one, which is a
+stronger claim than the test made before.
+
+### Three tests changed, none weakened
+
+Two pattern tripwires kept whichever model call ran last, which was fine while report synthesis was
+the only one. A second call runs after it now, so both were asserting about the judgement while
+their names and headers both said synthesis — and both went red over a code the judgement is
+designed to receive. They pick out the synthesis call explicitly now.
+
+The engine-prompt ceiling moved from 118,000 to 119,000, by the rulebook's growth and no further,
+following the discipline its own comment set. It also now asserts outright that neither protocol is
+in the everybody-prompt, so the real claim no longer rides on a number that has to be raised each
+time the rulebook grows.
+
+## CORRECTION: the reports were never empty, and the run was lying to me
+
+**The section below this one is wrong and I am leaving it there rather than deleting it, because
+the mistake is the useful part.** I concluded from a 24-scenario run that one sentence in the
+wording rulebook had emptied the reports — participants gone, agreements gone. It had not. The
+engine wrote every one of those reports correctly. The *run* read the wrong one.
+
+`run.ts` waited for a report to exist and then read it. A report is written after each person
+checks in, so the first one that exists is the one written after the **lead** checked in: "Only you
+have checked in so far", one finding. Run the twenty-four one after another, as the morning's run
+was, and regeneration has caught up by the time the loop runs, so it happens to read the finished
+report. Run six at once against one server and it does not.
+
+Proved by asking the database what it actually holds for those same grounds:
+
+| | Findings in the file | Findings in the database |
+| --- | --- | --- |
+| crisis | 1 | **3** |
+| board | 1 | **3** |
+| cofounder | 1 | **2** |
+| advisor | 1 | **2** |
+| across the twenty-four | 35 | **73** |
+
+**Two things I wrote earlier are therefore withdrawn.**
+
+*"One sentence in the rulebook emptied the reports"* — no. The rulebook change stays, because the
+same ambiguity did measurably collapse the rewriting pass, and that was read from the server log,
+which no capture race can touch. But on the report side it is now an unproven precaution, not a
+proven fix, and I would rather say that than let a tidy story stand.
+
+*"1.4 hit its bar: jargon in reports 511 → 43"* — worthless, and flattering in the obvious
+direction. That was measured over lead-only reports, which are about a third of the text. **Task
+1.4 is not proven and is not ticked.** A corrected run is going now.
+
+The runner waits for one finding per person who checked in, and settles once three probes running
+show the same number, so a scenario that genuinely produces fewer still finishes.
+
+**What I should have done.** I caught exactly this mistake earlier today, on task 1.5, when a script
+read session one of three and I noticed the judgement was right to say nobody had answered yet. I
+wrote it up as a correction. Then I made the same mistake again four hours later, in a different
+shape, and this time it survived two runs, a fix, a commit and a report section before the database
+contradicted it. The lesson is not "read the last session" — it is that a number off a harness is
+not evidence until something independent agrees with it.
+
+## The same sentence emptied the reports, and the wording score looked excellent while it did
+
+The 24-scenario run on the fixed composer came back, and the wording numbers are the best they have
+been:
+
+| | Baseline | Run 1 (this morning) | This run |
+| --- | --- | --- | --- |
+| jargon in reports and boards | 511 | 402 | **43** |
+| internal labels shown | 1,153 | 138 | 53 |
+| sentence starting in lower case | 579 | 0 | 3 |
+| specific detail asked for | 88 | 74 | **94** |
+
+1.4's bar was a quarter of the baseline, which is 128. Forty-three is a third of that. The drop in
+"specific detail asked for" that this report spent the small hours chasing is also gone, without
+anybody finding its cause.
+
+**And the reports were empty.** Not shorter. Empty.
+
+| | Findings | Agreements |
+| --- | --- | --- |
+| crisis | 3 → 1. Priya Raman's and Ben Carter's accounts, gone | 3 → 0 |
+| pip | 2 → 1. Nathan Owusu's account, gone | 3 → 0 |
+| cofounder | 2 → **0**. Nothing at all | 4 → 0 |
+
+Twenty-two of the twenty-four lost their agreements entirely and kept only the lead's own finding.
+Across the run: per-person findings 81 to 44, agreements 56 to 11, differences 29 to 14, patterns
+100 to 83.
+
+**It is the same sentence as the composer, doing the same thing to a different shape.** The
+rulebook says
+
+> EVERY FIELD YOU FILL IN IS READ BY A PERSON ... So write **one plain, full sentence in every
+> field**
+
+Right about a field holding one sentence. Wrong about a field holding a list. The model was
+obedient: one sentence per field, so one entry per list. In the rewriting pass the same sentence
+turned nine lines into one. Here it turns three people into one.
+
+The rulebook now says the rule is about how each entry is written and never about how many there
+are — fill in every entry the field asks for, one for each person, each agreement, each difference,
+and never merge, drop, or shorten a list because the sentences got longer. The original rule is
+untouched, so nothing of 1.4 is undone.
+
+Proved at the prompt that actually runs, not from the file: `report_synthesis` re-seeded to **v5**
+(`21400c24-7003-44e7-874f-75174ee64ce4`) and `system` to **v42**, both active, both carrying the new
+text. The run measuring it is going now.
+
+**Two things worth taking from this beyond the fix.** The first is that a report with excellent
+wording and no participants in it passes every wording check we have; the scorer's problem list went
+almost all to zero on exactly the run where the product stopped working. The second is that nothing
+in the code changed to cause either failure, and no test on the code could have found either — both
+were one sentence of English doing something reasonable in the wrong place.
+
+## Task 1.4 was putting jargon back, and the only place it showed was the log
+
+This is the one I would not have found by reading the code, and the code reads correctly.
+
+The report has a rewriting pass: the engine writes a draft that is already true, the model says it
+better, and a guard throws the rewrite away if the model invents a number, drops a number, or
+changes the shape. Task 1.4 wired the plain-words rulebook into the rules that pass runs under. The
+rulebook ends with
+
+> EVERY FIELD YOU FILL IN IS READ BY A PERSON ... So write **one plain, full sentence** in every
+> field
+
+which is right about a field. This pass is not handed a field. It is handed a block of eight or
+nine separate claims, one per line, and it is required to send back the same number of lines. So
+the model did the only sensible thing with the rule it was given, and sent back one sentence for
+the whole block. The guard then refused the lot and shipped the engine's own words - jargon and all.
+
+**The change made to remove jargon was quietly putting it back.** The two runs say it exactly:
+
+| Refusals | Before the rulebook reached this pass | After |
+| --- | --- | --- |
+| Wrong number of lines back | 420 of 1,208 (35%) | 111 of 192 (58%) |
+| A line failed the guard | 788 | 81 |
+| The commonest shape failures | 9 out 8 back, 10 out 9 back, 11 out 8 back | 8 out **1** back, 13 out **1** back, 14 out **1** back |
+
+Before, the model was missing by one line. After, it was collapsing the whole block into a single
+sentence.
+
+The prompt never told it how many lines to send back - it was handed `<draft>` and nothing else.
+It does now: the count, in both directions, and merging, splitting, adding and dropping each
+forbidden by name, including the line that holds no number and no name, which was the one most
+often lost. The guard is untouched.
+
+Two more 1.4 stragglers went with it, both fields a person reads. The aim on the board was asked
+for as "a short phrase" by one prompt while the schema at the other end of the same feature already
+asked for a full sentence. And the operating-difference entry was built by gluing:
+
+> On contracting, **they described:** I send the contract to the client myself. **What is written
+> here:** Legal signs every contract.
+
+That is the pattern fix 2 removed from the reports; it survived because this entry is written in
+the conversation service rather than in a report. It reads as whole sentences now. Its three
+existing tests all passed on the glued version, because they check that both halves are there and
+that nobody is accused - both of which were true.
+
+### And I lost the first run, by my own hand
+
+The first 24-scenario run for 1.4 got four scenarios in and died at 15:05. The cause was me: the
+six shards were background children of the builder helper, and when I stopped that helper - it had
+finished its work and was waking every minute to say it was still waiting - the shards went with
+it. All six stopped in the same second, which is what gave it away.
+
+No measurement was lost that mattered, because the run would have been measuring the broken
+composer above. The run now going is on the fixed code and is detached from anything I can stop.
+
+## Task 1.5, found while the 1.4 run was going: one number is why eight reports have no judgement
+
+I did not expect this to have a single cause. It has one, and it is a threshold written for a
+different question.
+
+`theFrameFor` in `conversation.service.ts:6477` decides whether a check-in's brief is detailed
+enough to derive a frame of fields from, and it says:
+
+> under forty words a brief is a question, not a specification
+
+That is a reasonable thing to believe about *fields*. But `judgeTheAnswers` in
+`reports.service.ts:3878` then opens with `if (!Array.isArray(frame) || !frame.length) return null`,
+so no frame means no judgement at all — the function returns before it does anything.
+
+The eight reports with no judgement are exactly the eight whose brief is under forty words:
+
+| Judged | Brief | | No judgement | Brief |
+| --- | --- | --- | --- | --- |
+| drift | 40 words | | board | 39 words |
+| workplan | 41 | | shock | 39 |
+| discovery | 41 | | crisis | 37 |
+| recognition | 43 | | contractreview | 36 |
+| advisor, renewal | 44 | | openread | 32 |
+| handover, realign | 46 | | snapshot | 27 |
+| implementation | 47 | | pulse | 24 |
+| pip | 48 | | updates | 16 |
+| the other four | 57–96 | | | |
+
+`drift` is judged at exactly forty words. `board` is not, at thirty-nine. Nothing else separates the
+two groups — all sixteen and all eight are one-session check-ins with two to four people, all eight
+have their findings and their shared picture, and every one of the eight has zero fitted check-ins,
+because the fit needs the frame too.
+
+**And the room read never needed the frame.** When a check-in is a room rather than a population,
+the material handed to the model is `theRoom(people, differences, sessions)` — built from who is in
+it and what they disagree about. The frame and the counted table are the *population* path. So the
+guard at the top is throwing away a judgement that would not have used the thing it is guarding.
+
+That is the fix for 1.5 and it is small. I have not made it yet: the 1.4 measurement is still
+running and I am not changing the engine underneath it.
+
+The other half of 1.5 — whether the judgement matches `theDecision` in at least twenty of the
+twenty-four — is measured next, on the sixteen that have one.
+
+## And the other half of 1.5, measured: ten of twenty-four reach the right answer
+
+I read every one of the twenty-four judgements against the right answer in `theDecision`, which the
+product never sees. **First I got this wrong and caught it**: my script took the first session's
+report, so on the four multi-session scenarios I was reading a judgement written when only the lead
+had spoken. "This check-in has not collected any information from Femi Okonkwo, Ngozi Eze, or
+Kwame Mensah" is not a defect — at that point it was true. Read at the last session, sales is one of
+the best of the twenty-four. The numbers below are from the final session in every case.
+
+| | Scenario | What it does with the right answer |
+| --- | --- | --- |
+| **Right** | cofounder | Names who owns product as the live disagreement, does not smooth it |
+| | project | Scope, not timeline: "like-for-like gateway swap or the new reconciliation work" |
+| | renewal | Lands on our own cut-off, not the partner's performance |
+| | recognition | Names Victor, the uncredited contractor, and says to credit him |
+| | realign | Names the CEO as the second source of direction |
+| | pip | "The problem is that Nathan does not know what you think the problem is" |
+| | implementation | Separates deployed from in use, and names the Kano printer |
+| | sales | Separates all four: Ngozi's credit committee, Femi's customers, Kwame counting the wrong thing |
+| | seniorhire | The gap is in the brief: "Tobi believes their job is to manage the relationship, not the money" |
+| | loans | Names the non-delivery and says to build in a grace period |
+| **Close** | advisor | Gets the role disagreement, misses that he has no relationship at two of the three banks |
+| | drift | Gets the substitution, never names who made the March request |
+| | handover | "Exists only in the head of Patience Nkemdirim" — neither of the two specifics named |
+| **Wrong** | newmanager | Says Daniel thinks the job is metrics. He is doing the work himself because he is faster |
+| | discovery | A disagreement about the goal of the discovery, not about what the customer said. "Audit" never appears |
+| | workplan | Misses the double-counted contractor entirely, and see below |
+| **None** | the eight | The forty-word floor above |
+
+**Ten of twenty-four right, thirteen if the three close ones count. The bar is twenty.** So 1.5 is
+not one fix. The forty-word floor recovers eight reports from silence, but silence to *something*
+is not silence to *right*, and I would rather say that now than discover it at the end.
+
+### The workplan report accuses the lead of something nobody said
+
+This is the one I would fix first whatever the score says. The lead opens their own report and
+reads, word for word:
+
+> You are describing a spending problem, but the record shows a planning problem **that you
+> created**. You have not set a budget or done the work **they said they would**, which makes it
+> impossible for Chidi Eze and Sara Lindqvist to make realistic plans.
+>
+> - Tell **you** to set a budget for the work.
+> - Ask **you** to speak with the leads **they** said they would.
+
+Four things are wrong in six lines. "A planning problem that you created" is a charge nobody in the
+check-in made — the thing 1.5 says must never happen. "the work they said they would" is about the
+reader and says "they". "Tell you to set a budget" is an instruction addressed to nobody. And the
+actual finding — the plan comes to 141% of the budget because two leads have both costed the same
+contractor, and neither knows — is not in the report at all.
+
+### A label in prose that the scorer does not count
+
+Also live on the lead's report, in newmanager:
+
+> **Initiator:** tell Daniel Park that the manager's role is to coach and develop people.
+
+Two of these across the twenty-four, both in `whatToDo[].move`. Fix 3 cleaned the prose but this
+field is not on its path, and the scorer's label list does not catch a capitalised "Initiator:" at
+the start of a sentence, so it counted zero. This is the second time a number said clean and the
+rendered line was not.
+
+## The last suspect for the "specific detail" drop is wrong, and the prompt is never cut for length
+
+The open question in this report was: fix 2 makes one block appear more often, the engine prompt is
+trimmed to fit, so the trimmer has to drop something else — possibly the blocks that ask for a
+number or a date.
+
+**There is no trimmer.** The log line I based that on —
+
+> `Check-in …: engine 114920 to 101767 chars, leaving out GOAL ALIGNMENT …`
+
+— does not come from a length budget. It comes from `onlyTheRulesThisTurnNeeds`
+(`only-the-rules-this-turn-needs.ts:118`), which drops sections by **what kind of turn it is**, and
+nothing else. There is no size, no budget and no cut anywhere in it: the whole function is a split
+on the separator rule, a fixed set of headings to drop, and a re-join. `whatWasLeftOut` returns the
+reason for each, which is why every log line carries one.
+
+Measured across the 751 exclusions in run-1, this holds exactly:
+
+| Block left out | Times | Why, from the log itself |
+| --- | --- | --- |
+| GOAL ALIGNMENT | 751 of 751 | It is the fallback for a situation with no pack, and every situation has one |
+| RETURNING USER OPENING | 628 | Session one has nobody returning |
+| Twelve more, together | 87 | Written for a conversation underway; an opener is written before anybody has spoken |
+
+The eighty-seven are one per check-in, on **eighty-seven distinct check-ins**, every one cut to the
+same size within a thousand characters. That is eighty-seven openers, not eighty-seven prompts that
+ran out of room.
+
+**And 1.4 did not change it.** Plain wording made the engine prompt longer, 114,920 to 117,169
+characters, which is what I would expect and is the thing that would have mattered if a budget
+existed. The set of blocks left out is identical before and after, and so is the proportion: 87 of
+751 in run-1, 23 of 198 in run-2 so far — 11.6% both times.
+
+So the drop in "specific detail asked for", 88 to 74, has **no identified cause**, and the two-hour
+bisect the last section proposed would have been looking in the wrong place. I have not opened it
+again tonight; the numbered tasks come first and this is written down so it is not lost.
+
+## The 50 scenario packs — step one done, and they can be read now
+
+Your instruction was: copy all 50 into files first, so they can be read and compared; then write
+improved versions as NEW versions that are not switched on; then a before-and-after document; and
+never delete or overwrite the old ones.
+
+**Step one is done.** `docs/scenario-packs/current/` holds all fifty, one file each, with the key,
+the version and the activation date at the top of every one. `docs/scenario-packs/README.md` is an
+index with the character counts. **All 50 match the database byte for byte**, checked by reading
+each file back and comparing — the export is a faithful copy, not a re-rendering.
+
+They add up to about 260KB, and they are stranger to read together than apart: some run to four
+pages, some to four lines. `scenario.pip.initiator` is at version 5 and opens
+
+> MOMENT: Helping somebody get back on track.
+
+while `scenario.workplan_budget.initiator` is still at version 1 from 26 August.
+
+Editing these files changes nothing at runtime, and the header of every one says so, because that
+is exactly the trap: only `system` and `report_synthesis` are re-seeded from files on boot.
+
+**Steps two and three are not started.** Writing fifty improved versions is not a mechanical job -
+each one is a situation's own voice, several revised eight times - and the before-and-after
+document needs a conversation run per situation on both the old and the new pack, which is a run of
+its own. It is queued behind the numbered tasks rather than squeezed in beside them.
+
+## Task 1.4, and the jargon is mostly not the AI
+
+Measured before touching anything, on run-1, all 24 scenarios:
+
+| | now | baseline | target |
+| --- | --- | --- | --- |
+| jargon in reports and boards | 234 | 511 | 127 |
+| jargon in Groundwork's turns | 15 | 42 | 10 |
+
+**163 of the 234 are one sentence the product writes itself**, repeated on every dependency row:
+
+> ... "their bank statements"; nothing on record about **escalating** it.
+
+That is `what-the-record-shows-over-time.ts`, not a prompt. Rewriting that one sentence takes
+reports and boards from 234 to about 71, under the target on its own.
+
+Three other things are in that count and only one is a wording problem:
+
+- **A quotation of what somebody said.** `Fatima Sow: "I would escalate the issue"`. Her word, and
+  the rules say to use the words the team itself used. **I am not rewriting it.** If the scorer
+  keeps counting it, the scorer is counting something correct, and I would rather tell you that
+  than launder what she said.
+- **Pattern names.** "Alignment Creator", "Coordination Without Leverage" are 2 of the 49 named
+  codes in the pattern library. Renaming those is a product decision, not tidying, so they are
+  untouched. Whether they are ever shown to a person at all is being checked - if they are
+  internal only, they do not matter here.
+- **The rest is prompts,** which is what fix 6 was actually meant to be, and is much smaller than
+  the number suggested.
 
 ## The fix, and what the numbers do and do not prove
 

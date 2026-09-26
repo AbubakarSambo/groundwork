@@ -230,12 +230,12 @@ function aboutWaiting(d: Dependency): string {
   const from = d.who ? ` from ${d.who}` : '';
   const it = theThing(d.what);
   if (d.escalated) {
-    return `You have escalated this already: ${it}. Put a date on when you need it by, and say what you will do if it does not arrive.`;
+    return `You have already taken ${it} to somebody above them. Put a date on when you need it by, and say what you will do if it does not arrive.`;
   }
   if (d.daysOld >= 14) {
-    return `You have been waiting ${howLong(d.daysOld)}${from} for this, without escalating: ${it}. Put the request in writing with a date, or take it to whoever is above them.`;
+    return `You have been waiting ${howLong(d.daysOld)}${from} for ${it}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`;
   }
-  return `Put this in writing${from}, with the date you need it by: ${it}.`;
+  return `Put ${it} in writing${from}, with the date you need it by.`;
 }
 
 /**
@@ -317,7 +317,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       const items = andList(notYet.map((d) => theThing(d.what)));
       actions.push(
         oldest >= 14
-          ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, without escalating. Put the request in writing with a date, or take it to whoever is above them.`
+          ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
           : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
       );
       const kind = whatKindOfThing(notYet);
@@ -325,7 +325,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     }
     if (escalated.length) {
       actions.push(
-        `You have escalated ${andList(escalated.map((d) => theThing(d.what)))} already. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
+        `You have already taken ${andList(escalated.map((d) => theThing(d.what)))} to somebody above them. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
       );
     }
   }

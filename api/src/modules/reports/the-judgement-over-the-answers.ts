@@ -30,6 +30,17 @@
  * the only thing left to say is atmosphere. The fix is upstream of the writing, in the frame; this
  * is what becomes possible once the frame is there.
  */
+/*
+ * THE RULES, AND DELIBERATELY NEITHER OF THE TWO SURFACE HALVES.
+ *
+ * The judgement is stored in labels and name-swapped on the way out, which would normally mean
+ * WRITTEN_ONCE_FOR_SEVERAL_READERS. But the room judgement is handed the lead's real name and told
+ * to use it, and the population judgement is told to name who to start with, so that half would
+ * contradict two instructions further down that were each written to fix a live defect. The rules
+ * themselves - full sentences, plain words, no labels on people - hold either way, so those go in
+ * and the naming stays where it already is.
+ */
+import { PLAIN_WORDS } from '../conversation/plain-words';
 import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 
@@ -356,6 +367,8 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
     '4. WHAT THIS CANNOT TELL YOU. Every field the table marks THIN or SPLIT, and what it would take to know. A reader who cannot see the edge of the data calls the whole thing abstract.',
     '',
     '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
+    '',
+    PLAIN_WORDS,
   ].join('\n');
 }
 
@@ -474,6 +487,10 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
       ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
       : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
     '',
+    'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
+    '',
+    'THE SAME THING IN TWO BLOCKS IS USUALLY THE FINDING, and it is the thing most often missed. Read across the blocks for one name, one number, one supplier, one piece of work appearing in two people\'s accounts who do not know about each other. Two people costing the same contractor into two different plans is the reason the budget does not add up, and neither of them can see it from where they sit. Nobody will tell you this in their own block; it only exists between them. Where you find one, it is almost always the gap.',
+    '',
     'WRITE LIKE A PERSON TALKING TO ANOTHER PERSON. The reader runs a business. Say the thing.',
     '  No metaphors. No "landscape", "journey", "ecosystem", "lens", "unlock", "leverage", "navigate".',
     '  No "it is worth noting", "it is important to", "this suggests that", "there appears to be".',
@@ -492,6 +509,8 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
     '4. WHAT THIS CANNOT TELL YOU. What is not on the record, and what it would take to know. Somebody who has said little is a gap in the record, not a finding about them.',
     '',
     '5. WHAT WE FAILED TO ASK. Anything the check-in should have asked and did not. Ours to own.',
+    '',
+    PLAIN_WORDS,
   ].filter(Boolean).join('\n');
 }
 

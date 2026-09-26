@@ -4,6 +4,14 @@ import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
+/*
+ * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
+ * one: three surfaces with their own copy is how three surfaces come to disagree about whether a
+ * person may be called "the initiator". ENGINE_RULES speaks to one person in the moment, so it gets
+ * the half that says to write "you"; REPORT_SYNTHESIS is written once in labels and rendered for
+ * several readers, so it gets the rules without it and the label rule arrives with SYNTHESIS_RULES.
+ */
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from './plain-words';
 
 /**
  * THE MOAT - exact Part 3 wording.
@@ -1462,6 +1470,12 @@ a person → team member, founder, cofounder: never "employee" or "staff"
 PRODUCT IDENTITY:
 Never describe Groundwork as a tracking tool, monitoring tool, performance tool, or management tool.
 If asked what Groundwork is: "Groundwork is a contribution intelligence layer. It gives people a private space to build an honest record of their work, and gives founders clarity on what is actually happening across their team."
+
+═══════════════════════════════════════════════════════════
+
+${PLAIN_WORDS}
+
+${SPOKEN_TO_THE_READER}
 `;
 
 // ---------------------------------------------------------------------------
@@ -1618,7 +1632,11 @@ If a party completed significantly fewer exchanges, provided less specific infor
 
 "One party's record contains fewer exchanges than the others. The shared picture and gap below reflect what is available from the records present. A further session from that party would strengthen the cross-reference."
 
-Do not use a thin or absent record to imply evasion. Note it factually.`;
+Do not use a thin or absent record to imply evasion. Note it factually.
+
+═══════════════════════════════════════════════════════════
+
+${PLAIN_WORDS}`;
 
 // ---------------------------------------------------------------------------
 // Record extraction - pulls structured entries from one party's transcript.
@@ -1915,7 +1933,7 @@ Anything under THEY ATTACHED "filename" is a document they gave us, and it count
 
 1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
 
-   - name: the aim as a short phrase, in their words. "Sell 500 trucks", not "Sales objective".
+   - name: the aim as one plain, full sentence, in their words. It is read on its own beside the other aims, so somebody who reads only this sentence should know what is being aimed at. "They want to sell 500 trucks by the end of the year", not "Sales objective" and not "Sell 500 trucks".
 
    - target: the NUMBER they are aiming at, where they said one. 500 for "sell 500 trucks by the end of the year". 150 for "150 each". Leave it out where no number was said: an aim without a number is a real aim and a wrong number is worse than none.
 
@@ -2042,9 +2060,9 @@ export const OPERATING_DIFFERENCE_PROMPT = `You are given a transcript and the c
 Find places where what the person described DIFFERS from what is written. Nothing else.
 
 For each one:
-   - about: which written process it concerns, in a few words.
-   - theirAccount: what they described, in their own words as far as possible.
-   - whatIsWritten: what the document says, in its words.
+   - about: one plain, full sentence saying which written process this is about. "This is about how a refund gets approved." It is read on its own at the start of the entry, so never a heading and never a fragment.
+   - theirAccount: what they described, in their own words as far as possible, written as one or more plain, full sentences.
+   - whatIsWritten: what the document says, in its words, written as one or more plain, full sentences.
    - neverTold: true only if they said, or plainly implied, that nobody had told them this.
 
 RULES.
@@ -2260,7 +2278,7 @@ export const EXPECTATION_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: "The aim as a short phrase, in their own words." },
+            name: { type: 'string', description: 'The aim as one plain, full sentence, in their own words. It is read on its own beside the other aims, so never a heading and never a fragment.' },
             target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
             by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
           },
@@ -4556,7 +4574,19 @@ export const NEW_STARTING_REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            topic: { type: 'string' },
+            /*
+             * A TOPIC HAD NO DESCRIPTION AT ALL, AND CAME BACK AS A HEADING.
+             *
+             * On the workplan run it wrote "Total budget vs. proposed plans" and that string was
+             * printed as the difference, on the lead's report, the lead's board and everybody
+             * else's. It names the subject and says nothing about the disagreement, and "vs." is
+             * the shape the wording rules exist to stop.
+             */
+            topic: {
+              type: 'string',
+              description:
+                'What the people here disagree about, written as one plain, full sentence that names both sides of it. Somebody who reads only this sentence should understand the disagreement. Never a heading, never a fragment, and never "vs." - a live report wrote "Total budget vs. proposed plans", which tells a reader the subject and nothing else. Write "The lead says the budget is 180,000 and the team\'s plans add up to more than that" instead.',
+            },
             positions: {
               type: 'array',
               description: "Every diverging party's position on this topic.",
@@ -4572,7 +4602,7 @@ export const NEW_STARTING_REPORT_SCHEMA = {
             evidence: {
               type: 'array',
               items: { type: 'string' },
-              description: '1-2 short supporting references drawn from the parties\' own records.',
+              description: 'One or two plain, full sentences saying what people actually said that shows this gap. Each one is read on its own under the gap, so write a whole sentence and never a fragment.',
             },
           },
           required: ['topic', 'positions'],
@@ -4617,7 +4647,7 @@ export const NEW_STARTING_REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'The party label this inference is about.' },
-            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+            reason: { type: 'string', description: 'One plain, full sentence saying why this was concluded rather than taken from what somebody said.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },
@@ -4641,7 +4671,19 @@ export const RECOGNITION_REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            topic: { type: 'string' },
+            /*
+             * A TOPIC HAD NO DESCRIPTION AT ALL, AND CAME BACK AS A HEADING.
+             *
+             * On the workplan run it wrote "Total budget vs. proposed plans" and that string was
+             * printed as the difference, on the lead's report, the lead's board and everybody
+             * else's. It names the subject and says nothing about the disagreement, and "vs." is
+             * the shape the wording rules exist to stop.
+             */
+            topic: {
+              type: 'string',
+              description:
+                'What the people here disagree about, written as one plain, full sentence that names both sides of it. Somebody who reads only this sentence should understand the disagreement. Never a heading, never a fragment, and never "vs." - a live report wrote "Total budget vs. proposed plans", which tells a reader the subject and nothing else. Write "The lead says the budget is 180,000 and the team\'s plans add up to more than that" instead.',
+            },
             positions: {
               type: 'array',
               description: "Every diverging party's position on this topic.",
@@ -4657,7 +4699,7 @@ export const RECOGNITION_REPORT_SCHEMA = {
             evidence: {
               type: 'array',
               items: { type: 'string' },
-              description: '1-2 short supporting references drawn from the parties\' own records.',
+              description: 'One or two plain, full sentences saying what people actually said that shows this gap. Each one is read on its own under the gap, so write a whole sentence and never a fragment.',
             },
           },
           required: ['topic', 'positions'],
@@ -4700,7 +4742,7 @@ export const RECOGNITION_REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference.' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'The party label this inference is about.' },
-            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+            reason: { type: 'string', description: 'One plain, full sentence saying why this was concluded rather than taken from what somebody said.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },
@@ -4724,7 +4766,19 @@ export const DRIFT_REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            topic: { type: 'string' },
+            /*
+             * A TOPIC HAD NO DESCRIPTION AT ALL, AND CAME BACK AS A HEADING.
+             *
+             * On the workplan run it wrote "Total budget vs. proposed plans" and that string was
+             * printed as the difference, on the lead's report, the lead's board and everybody
+             * else's. It names the subject and says nothing about the disagreement, and "vs." is
+             * the shape the wording rules exist to stop.
+             */
+            topic: {
+              type: 'string',
+              description:
+                'What the people here disagree about, written as one plain, full sentence that names both sides of it. Somebody who reads only this sentence should understand the disagreement. Never a heading, never a fragment, and never "vs." - a live report wrote "Total budget vs. proposed plans", which tells a reader the subject and nothing else. Write "The lead says the budget is 180,000 and the team\'s plans add up to more than that" instead.',
+            },
             positions: {
               type: 'array',
               description: "Every diverging party's position on this topic.",
@@ -4740,7 +4794,7 @@ export const DRIFT_REPORT_SCHEMA = {
             evidence: {
               type: 'array',
               items: { type: 'string' },
-              description: '1-2 short supporting references drawn from the parties\' own records.',
+              description: 'One or two plain, full sentences saying what people actually said that shows this gap. Each one is read on its own under the gap, so write a whole sentence and never a fragment.',
             },
           },
           required: ['topic', 'positions'],
@@ -4788,7 +4842,7 @@ export const DRIFT_REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference.' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'The party label this inference is about.' },
-            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+            reason: { type: 'string', description: 'One plain, full sentence saying why this was concluded rather than taken from what somebody said.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },

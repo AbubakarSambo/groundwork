@@ -673,7 +673,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(
           somebodyHoldsIt
             ? 'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.'
-            : `What they say is in the way is outside this check-in${theirs[0]?.onLabel ? ` (${theirs[0].onLabel})` : ''}, with nothing on record about escalating it. That is a thing to ask about, not a reason to read this as blocked.`,
+            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${theirs[0].onLabel}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
         );
       }
       /*

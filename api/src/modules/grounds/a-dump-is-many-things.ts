@@ -85,7 +85,7 @@ NOTES. Anything else worth keeping that is not a rule, a decision, an uncertaint
 
 EVERY LINE IN THOSE FOUR LISTS IS ONE SHORT PLAIN SENTENCE, twelve words or fewer, in the words the team would use. The paste is somebody thinking out loud: "dont sell AI lol sell knowing whats happening / fewer surprises / better decisions" is read back as "Sell fewer surprises and better decisions, not the technology". Keep the meaning and every specific - a name, a place, a number - and drop the aside, the swearing and the thinking-out-loud. Never invent a specific that is not there.
 
-WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One line each, as a decision, not as a task.
+WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been: "whether the target stays at 12m", "whether the 30-day rule is official". One plain, full sentence each, written as a decision, not as a task.
 
 WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, or says explicitly not to treat as fact or as a target: two numbers for the same thing, a figure somebody mentioned but nobody approved, a task nobody knows is finished. Say the competing versions where the paste gives both.
 
@@ -141,7 +141,7 @@ export const A_DUMP_SCHEMA = {
       waysOfWorking: { type: 'array', description: 'How this team works. One short plain sentence each.', items: { type: 'string' } },
       strategy: { type: 'array', description: 'How this team wins work and what it leads with. One short plain sentence each.', items: { type: 'string' } },
       notes: { type: 'array', description: 'Anything else worth keeping that is not a rule, a decision, an uncertainty or a job. One short plain sentence each.', items: { type: 'string' } },
-      openDecisions: { type: 'array', description: 'What still has to be decided, one line each.', items: { type: 'string' } },
+      openDecisions: { type: 'array', description: 'What still has to be decided, one plain, full sentence each.', items: { type: 'string' } },
       notSettled: { type: 'array', description: 'What the paste contradicts itself about or says not to treat as fact. Give both versions where it gives both.', items: { type: 'string' } },
       aboutPeople: {
         type: 'array',

@@ -46,6 +46,8 @@ export type TheDirection = {
   outOf: number;
 };
 
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
 export const THE_LISTS: (keyof Omit<TheDirection, 'outOf'>)[] = [
   'regions', 'markets', 'valueChains', 'actors', 'dataGaps', 'networks', 'pilots', 'nextTwelveMonths',
 ];
@@ -68,8 +70,12 @@ RULES, AND THEY MATTER MORE THAN COVERAGE:
 - One thing per item. If two people named the same thing in different words, that is ONE item with both labels.
 - namedBy is the list of participant labels that named it, written exactly as they are given to you, in full: "Participant P", not "P". Never invent a label, never include one that did not say it. Somebody's label appears in an item only if their own account contains it.
 - Leave a list empty rather than filling it. An empty list is a finding: nobody named a pilot.
-- asSaid is one short phrase from one of those accounts, under 15 words, in their words.
+- asSaid is one short passage from one of those accounts, under 15 words, in their own words exactly as they wrote them. It is a quotation, so never tidy it up and never reword it.
 - Never name a person, an organisation somebody works for, or anything that would identify who said what beyond the label.
+
+${PLAIN_WORDS}
+
+The rules above are about the sentences you write. A name taken from the room and the asSaid quotation are the room's own words, so they keep the room's wording exactly.
 
 Answer by calling the_direction with the eight lists. Nothing else.`;
 

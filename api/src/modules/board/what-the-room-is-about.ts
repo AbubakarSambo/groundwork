@@ -1,3 +1,5 @@
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
 /**
  * WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, COUNTED ACROSS EVERYBODY.
  *
@@ -54,7 +56,7 @@ You will be given lines, each with the name of the person who said it.
 
 Give back three things.
 
-AIMS. Group the lines into what people are trying to achieve. Put lines that are the same aim in different words together: "get more farmers buying from us" and "grow our customer base among smallholders" are one aim. Keep aims that differ apart, even when they sound similar: "lend money and get it back" and "reach the places where hunger is worst" are two aims, not one. Name each aim in a short phrase in the group's own words, and list everybody who holds it. Expect a handful of aims across a large group, not one per person.
+AIMS. Group the lines into what people are trying to achieve. Put lines that are the same aim in different words together: "get more farmers buying from us" and "grow our customer base among smallholders" are one aim. Keep aims that differ apart, even when they sound similar: "lend money and get it back" and "reach the places where hunger is worst" are two aims, not one. Write each aim as one plain, full sentence in the group's own words, and list everybody who holds it. Expect a handful of aims across a large group, not one per person.
 
 PLACES. Every place named that somebody could point at on a map and go to: a state, a city, a local government area, a named market, a corridor. Use the name as it was said. List who named it.
 
@@ -62,7 +64,11 @@ Leave out the whole country everybody is already in. On a board about Nigeria, "
 
 THINGS. Every crop, commodity, product or line of work named: rice, maize, poultry, fertiliser, cold storage, credit. Use the word as it was said, singular. List who named it.
 
-Leave out anything you had to guess at. A short honest answer beats a long one with invented entries in it.`;
+Leave out anything you had to guess at. A short honest answer beats a long one with invented entries in it.
+
+${PLAIN_WORDS}
+
+A place name and the word for a thing are the room's own words, so they stay exactly as they were said. The rules above are about the sentences you write around them.`;
 
 export const WHAT_THE_ROOM_IS_ABOUT_SCHEMA = {
   name: 'emit_what_the_room_is_about',
@@ -75,7 +81,7 @@ export const WHAT_THE_ROOM_IS_ABOUT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            aim: { type: 'string', description: 'The aim in a short phrase, in their own words.' },
+            aim: { type: 'string', description: 'The aim as one plain, full sentence, in their own words. It is read on its own beside the other aims, so somebody who reads only this sentence should know what the group is trying to do. Never a heading and never a fragment.' },
             held: { type: 'array', items: { type: 'string' }, description: 'Names of the people holding it.' },
           },
           required: ['aim', 'held'],
