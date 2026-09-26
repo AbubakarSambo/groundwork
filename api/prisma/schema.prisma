@@ -505,6 +505,13 @@ model Organization {
   /// belongs to one organisation. Null means nobody joins by domain.
   joinDomain String? @unique @map("join_domain")
 
+  /// THE ORGANISATION'S OWN INVITE LINK (U.3): /j/<code>, where the code is the organisation's name
+  /// with a random part, such as "baridi-7k2p". Joining through it gives "Takes part". Null while an
+  /// admin has it off; turning it on again makes a new code, so an old link stops working.
+  inviteLinkCode     String? @unique @map("invite_link_code")
+  /// The admin who turned it on, named on the link's page as the prototype does.
+  inviteLinkByUserId String? @map("invite_link_by_user_id")
+
   /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
   /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
   /// while the trial is on. Nothing grants a trial from it yet (U.19); it is kept so billing can.

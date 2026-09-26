@@ -1286,7 +1286,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   )
   /* The pages a link in an email opens, with a token in the address (U.3). They are a card of their
      own, as the prototype draws them, whoever happens to be signed in on this browser. */
-  const fromAnEmail = ['/stop-reminders/', '/unsubscribe/'].some(p => location.pathname.startsWith(p))
+  const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
   const showSidebar =
     (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiClient } from '@/api/client'
+import { TheInviteLink } from './TheInviteLink'
 
 /**
  * "WHO CAN JOIN" ON THE PEOPLE PAGE (A4 people.txt, lines 236 to 238; built in U.3).
@@ -10,7 +11,7 @@ import { apiClient } from '@/api/client'
  * address's, and the server refuses a public mail service or a domain another organisation holds,
  * in its own sentence, which is shown here.
  *
- * The organisation's own invite link ("Baridi's invite link") is added under it in a later step.
+ * The organisation's own invite link ("Baridi's invite link") sits under it (TheInviteLink.tsx).
  */
 interface Joining { on: boolean; domain: string | null; whyNot: string | null }
 
@@ -54,6 +55,7 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
         <p>{data.whyNot}</p>
       )}
       {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+      <TheInviteLink orgName={orgName} />
     </section>
   )
 }

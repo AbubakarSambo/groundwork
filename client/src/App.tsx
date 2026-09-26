@@ -91,6 +91,7 @@ import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { OrgsPage } from '@/pages/org/OrgsPage'
 import { WelcomePage } from '@/pages/org/WelcomePage'
+import { JoinByLinkPage } from '@/pages/join/JoinByLinkPage'
 import { StopRemindersPage } from '@/pages/mail/StopRemindersPage'
 import { WaitingForAnAdminPage } from '@/pages/join/WaitingForAnAdminPage'
 import { useYourOrganisations } from '@/components/gw/your-organisations'
@@ -429,6 +430,8 @@ export default function App() {
             <Route path="/orgs" element={<RequireAuth><OrgsPage /></RequireAuth>} />
             {/* "Where do you work?" (A3): join by email domain, as a guest, or create one. */}
             <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
+            {/* An organisation's own invite link (A3, #/j/baridi). Public: the person may not have an account yet. */}
+            <Route path="/j/:code" element={<JoinByLinkPage />} />
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
             <Route path="/grounds" element={<RequireOrgSetup><HomeOrChooseAnOrganisation /></RequireOrgSetup>} />
