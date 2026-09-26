@@ -55,7 +55,8 @@ describe('what the page says', () => {
     expect(readable(container)).toBe(
       'Groundwork' +
       'Google sign-in didn’t finish' +
-      'It usually works on a second try; or use an email link instead.' +
+      /* Hafsah, 26 September: full sentences, no semicolon, and no "Nothing was created or changed." */
+      'Google did not finish signing you in. It usually works if you try again. You can also sign in with an email link instead.' +
       'Try Google again' +
       'Email me a sign-in link',
     )

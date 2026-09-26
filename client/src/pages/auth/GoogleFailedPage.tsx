@@ -12,8 +12,10 @@ import { AuthCard } from './auth-kit'
  * "Sign-in did not complete" with one button back. Both come here now: the callback page navigates
  * here, and `/auth?why=google-signin-failed` (where the API still sends people) redirects here.
  *
- * The words are the prototype's (docs/prototype/screens/A2-accounts-and-signing-in/google-failed.txt)
- * except one sentence. The prototype opens with "Nothing was created or changed." That is not always
+ * The heading is the prototype's (docs/prototype/screens/A2-accounts-and-signing-in/google-failed.txt).
+ * The sentence under it is in full sentences (Hafsah, 26 September): the prototype's "It usually works
+ * on a second try; or use an email link instead." joined two pieces with a semicolon. And one of its
+ * sentences is left out. The prototype opens with "Nothing was created or changed." That is not always
  * true here: a first Google sign-in makes the account and its organisation before the last step, and
  * an existing account is linked to Google before its checks run, so a failure after either has
  * created or changed something. A line we cannot stand behind is left out until it is true.
@@ -32,7 +34,7 @@ export function GoogleFailedPage() {
   return (
     <AuthCard
       title="Google sign-in didn’t finish"
-      sub="It usually works on a second try; or use an email link instead."
+      sub="Google did not finish signing you in. It usually works if you try again. You can also sign in with an email link instead."
     >
       <div className="gw-auth-actions">
         {methods?.google && (
