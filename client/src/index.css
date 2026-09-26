@@ -1820,3 +1820,51 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 @media (max-width: 900px) {
   .gw-today { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 24px 16px 96px; }
 }
+
+/* ── THE CHECK-INS LIST (C1, U.5), as check-ins.jpg draws it: a white table per section, four
+   columns on a computer; on a phone each row becomes a short stack, and nothing is wider than the
+   screen. */
+.gw-ci-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.gw-ci-h1 { margin: 0 0 4px; color: var(--gw-text); }
+.gw-ci-sub { margin: 0; color: var(--gw-sub); }
+.gw-ci-section { margin-bottom: 32px; }
+.gw-ci-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.gw-ci-section-head h2 { margin: 0; color: var(--gw-text); }
+.gw-ci-section-head span { color: var(--gw-sub); }
+.gw-ci-table-wrap { border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; overflow: hidden; }
+.gw-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.gw-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); }
+.gw-ci-table th:nth-child(1) { width: 34%; }
+.gw-ci-table th:nth-child(2) { width: 26%; }
+.gw-ci-table th:nth-child(3) { width: 19%; }
+.gw-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
+.gw-ci-table tbody tr:first-child td { border-top: none; }
+.gw-ci-table tbody tr { cursor: pointer; }
+.gw-ci-table tbody tr:hover td { background: var(--gw-page); }
+.gw-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; }
+.gw-ci-table-name:hover, .gw-ci-table-name:focus-visible { text-decoration: underline; }
+.gw-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
+.gw-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
+.gw-ci-table td a { color: var(--gw-text); }
+.gw-ci-note { margin: 10px 0 0; color: var(--gw-sub); }
+.gw-ci-quiet { color: var(--gw-sub); }
+.gw-ci-empty { text-align: center; padding: 48px 20px; }
+.gw-ci-empty h2 { margin: 0 0 8px; color: var(--gw-text); }
+.gw-ci-empty p { margin: 0 auto 14px; max-width: 360px; color: var(--gw-sub); }
+.gw-ci-link { background: none; border: none; padding: 0; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--gw-navy); text-decoration: underline; cursor: pointer; }
+.gw-ci-waiting { margin-bottom: 24px; padding: 16px 18px; border-radius: 12px; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
+.gw-ci-waiting h2 { margin: 0 0 4px; color: var(--gw-amber-t); }
+.gw-ci-waiting > p { margin: 0 0 12px; color: var(--gw-sub); }
+.gw-ci-waiting-one { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
+.gw-ci-waiting-one p { margin: 2px 0 0; color: var(--gw-sub); }
+.gw-ci-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.gw-ci-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
+@media (max-width: 760px) {
+  .gw-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .gw-ci-table, .gw-ci-table tbody, .gw-ci-table tr, .gw-ci-table td { display: block; width: auto; }
+  .gw-ci-table td { border-top: none; padding: 2px 16px; }
+  .gw-ci-table td:first-child { padding-top: 14px; }
+  .gw-ci-table td:last-child { padding-bottom: 14px; }
+  .gw-ci-table tbody tr + tr { border-top: 1px solid var(--gw-border); }
+  .gw-ci-table td:nth-child(2) { color: var(--gw-sub); }
+}

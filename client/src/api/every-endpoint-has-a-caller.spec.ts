@@ -51,6 +51,8 @@ const KNOWN: Record<string, string> = {
     'POST /grounds/:id/activate, distinct from report activation. Approve and confirm-lead appear to cover the same ground now. Probably dead; not deleting a state-changing route on an assumption.',
   'promptsApi.create':
     'Creating a new prompt version. The versioning page can activate and test existing prompts but not add one, so new prompts are a database job today.',
+  'authApi.teamInvite':
+    'POST /auth/team-invite, one address at a time. Its only button was "Invite a team member" on the check-ins list, which went when the list was rebuilt to the prototype (U.5). Inviting now happens on People (POST /users/invitations, U.4), with a role and many addresses at once, and from the new organisation\'s checklist on Today. Kept, not deleted: whether this route retires is a call for the other workspace and Hafsah.',
   'groundsApi.getMediatorBrief':
     'A structural brief to hand a facilitator. Works, no UI. Where it belongs is a product call, and more live now that the coaching offer exists.',
 }

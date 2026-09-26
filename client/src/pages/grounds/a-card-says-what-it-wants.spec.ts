@@ -19,9 +19,12 @@ import { railAttention } from '@/lib/rail-attention'
  * it knows about report readiness, which `railAttention` does not. The defect was the chip, not the
  * order.
  */
-const SRC = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
+/* U.5: the list is the prototype's table now, and each row's "Needs you" is worked out in
+   how-a-row-reads.ts. The checks below read that file; the rule they hold is unchanged. */
+const SRC = readFileSync(join(__dirname, 'how-a-row-reads.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+const LIST = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ')
 
 /** A ground shaped the way the list receives one. */
 const ground = (over: Record<string, unknown> = {}) => ({
@@ -36,20 +39,14 @@ const doneFor = (participantId: string, sessionNumber = 1) =>
   ({ participantId, sessionNumber, status: 'COMPLETED', availableFrom: null })
 
 describe('a card says what it wants', () => {
-  it('the chip is driven by the shared rule, not by the scenario', () => {
+  it('the tag is driven by the shared rule, not by the scenario', () => {
     expect(SRC).toContain('railAttention')
-    expect(SRC).not.toContain('>{g.moment}</span>')
+    expect(SRC).not.toMatch(/\bg\.moment\b/)
   })
 
-  it('and the card actually calls it, which the first version of this test did not check', () => {
-    /*
-     * The first version asserted that `whatThisWants` existed and named every state. Replacing the
-     * call site with `null` left all of that true and the suite green, while the chip rendered
-     * "Nothing due" on every card. A guard that survives the defect it exists for is not a guard.
-     */
-    expect(SRC).toMatch(/const w = whatThisWants\(g, myUserId\)/)
-    expect(SRC).toContain('{w.text}')
-    expect(SRC).toContain('background: w.bg')
+  it('and the row actually calls it, and the page draws what it says', () => {
+    expect(SRC).toMatch(/const a = railAttention\(g as never, me, now\)/)
+    expect(LIST).toContain('<Tag tone={reads.needs.tone}>{reads.needs.text}</Tag>')
   })
 
   it('an open round of mine reads as my turn', () => {
@@ -77,14 +74,16 @@ describe('a card says what it wants', () => {
     expect(railAttention(ground({ checkIns: [openFor('p-me', 1, nextWeek)] }) as any, 'u-me').kind).toBe('none')
   })
 
-  it('and every state the rule can return has words on the card', () => {
-    /* If a fifth kind is added, this fails rather than the card silently showing nothing. */
-    for (const kind of ['overdue', 'yours', 'waiting']) expect(SRC).toContain(`case '${kind}'`)
-    expect(SRC).toContain('Nothing due')
+  it('and every state the rule can return is answered', () => {
+    /* If a fifth kind is added, this fails rather than the row silently showing nothing. 'none'
+       leaves "Needs you" empty, as the prototype does (U.5); "Nothing due" went with the cards. */
+    expect(SRC).toContain("a.kind === 'yours' || a.kind === 'overdue'")
+    expect(SRC).toContain("a.kind === 'waiting'")
   })
 
   it('the list keeps its own ordering, which knows about reports', () => {
     expect(SRC).toContain('reportWaitingForMe')
     expect(SRC).toContain("g.status === 'REPORT_READY'")
+    expect(LIST).toMatch(/tone === 'proven' \? 0/)
   })
 })

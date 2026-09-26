@@ -77,9 +77,11 @@ describe('and it shows where somebody is looking', () => {
   })
 
   it('and in the list, before whose turn it is', () => {
-    const list = at('pages/grounds/GroundsListPage.tsx')
-    expect(list).toContain('const out = whenItRunsOut(g as any)')
-    expect(list.indexOf('whenItRunsOut(g as any)')).toBeLessThan(list.indexOf('railAttention(g as any, myUserId)'))
+    /* U.5: each row's "Needs you" is worked out in how-a-row-reads.ts now. Running out is still
+       said before whose turn it is. */
+    const list = at('pages/grounds/how-a-row-reads.ts')
+    expect(list).toContain('const out = whenItRunsOut(g as never)')
+    expect(list.indexOf("out.state === 'soon'")).toBeLessThan(list.indexOf("a.kind === 'yours' || a.kind === 'overdue'"))
     /* And one that already ran out says so rather than reading as nothing to do. */
     expect(list).toContain("text: 'Out of time'")
   })

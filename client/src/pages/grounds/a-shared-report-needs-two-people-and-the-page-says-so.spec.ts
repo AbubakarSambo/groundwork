@@ -29,9 +29,10 @@ describe('a check-in with one person on it', () => {
   })
 
   it('and on the list row, without opening it', () => {
-    const list = read('GroundsListPage.tsx')
-    expect(list).toContain('Needs a second person for a shared report')
-    expect(list).toMatch(/filter\(\(p: any\) => !p\.managingOnly\)\.length < 2 && <span/)
+    /* U.5: the row reads it as a sentence under "Where it stands", from how-a-row-reads.ts. */
+    const list = read('how-a-row-reads.ts')
+    expect(list).toContain("'It needs a second person for a shared report.'")
+    expect(list).toMatch(/filter\(p => !p\.managingOnly\)\.length < 2\) also = /)
   })
 
   it('which matches the rule the server releases by', () => {

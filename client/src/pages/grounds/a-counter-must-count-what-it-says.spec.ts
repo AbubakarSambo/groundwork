@@ -23,45 +23,47 @@ import { join } from 'path'
 const SRC = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('the tile says what it counts', () => {
-  it('is no longer labelled "Reports ready"', () => {
+/*
+ * U.5: THE TILES WENT, AND THE RULE THEY WERE HELD TO STAYS. The list was rebuilt to the prototype's
+ * sections ("You run 3 open", "You're in 2 open", "Finished"), so there is no "Waiting for you to
+ * read" tile and no attention banner any more. What these checks protected still holds, and is now
+ * checked where it lives: each count counts exactly the rows under it, a report nobody has read still
+ * raises its hand and sorts to the top, the legacy REPORT_READY status still counts, and a session
+ * past its date still surfaces. The rendered counts are checked in
+ * the-check-ins-list-as-each-reader-reads-it.spec.tsx.
+ */
+const ROW = readFileSync(join(__dirname, 'how-a-row-reads.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+
+describe('each count says what it counts', () => {
+  it('is no longer labelled "Reports ready", nor anything else that counts one thing and says another', () => {
     expect(CODE).not.toMatch(/label: 'Reports ready'/)
   })
 
-  it('and names the thing it actually measures', () => {
-    expect(CODE).toMatch(/label: 'Waiting for you to read'/)
-  })
-
-  it('while still counting the live signal, not the dead status', () => {
-    /**
-     * The value was already correct and had been fixed once - the old version counted grounds in
-     * REPORT_READY and sat permanently at zero. This must not regress to that.
-     */
-    expect(CODE).toMatch(/const reportsReady = grounds\.filter\(g => \(g as any\)\.reportWaitingForMe\)\.length/)
+  it('"N open" counts exactly the rows in that section', () => {
+    expect(CODE).toMatch(/<Section title="You run" count=\{youRun\.length\}><CheckInsTable label="You run" rows=\{youRun\} \/>/)
+    expect(CODE).toMatch(/count=\{youreIn\.length\}>\s*<CheckInsTable label="You’re in" rows=\{youreIn\} \/>/)
+    expect(CODE).toContain('{count} open')
+    expect(CODE).toMatch(/const open = rows\.filter\(r => !isFinished\(r\.g\)\)/)
   })
 })
 
 describe('a report nobody has read can raise its hand', () => {
-  it('the attention filter reads the live signal', () => {
-    expect(CODE).toMatch(/reportWaitingForMe \|\| g\.status === 'REPORT_READY' \|\| \(g\.overdue \?\? 0\) > 0/)
+  it('reads the live signal', () => {
+    expect(ROW).toMatch(/g\.reportWaitingForMe \|\| g\.status === 'REPORT_READY'\) needs = \{ text: 'Your report is ready'/)
   })
 
   it('and so does the ordering, so it sorts to the top', () => {
-    const sort = CODE.slice(CODE.indexOf('const urgency ='))
-    expect(sort.slice(0, 200)).toMatch(/reportWaitingForMe/)
+    const sort = CODE.slice(CODE.indexOf('function byWhatNeedsYou'))
+    expect(sort.slice(0, 300)).toMatch(/tone === 'proven' \? 0/)
   })
 
   it('but the legacy status still counts, because old rows carry it', () => {
-    /**
-     * Deliberately kept rather than deleted. Grounds written before the release change really are
-     * REPORT_READY, and dropping the test would silently stop surfacing them.
-     */
-    expect(CODE).toMatch(/g\.status === 'REPORT_READY'/)
+    expect(ROW).toMatch(/g\.status === 'REPORT_READY'/)
   })
 
-  it('an overdue check-in still surfaces too', () => {
-    /** The control: this was the only thing that worked before, and it must keep working. */
-    expect(CODE).toMatch(/\(g\.overdue \?\? 0\) > 0/)
+  it('a session past its date still surfaces, and says how long ago it opened', () => {
+    expect(ROW).toMatch(/a\.kind === 'yours' \|\| a\.kind === 'overdue'\) needs = \{ text: 'Your turn'/)
+    expect(ROW).toMatch(/a\.kind === 'overdue'\) stands = `It opened \$\{a\.daysLate\} days ago`/)
   })
 })
 
