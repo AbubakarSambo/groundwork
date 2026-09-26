@@ -69,6 +69,16 @@ screens as part of U.1. If you want it as a page for Groundwork staff only, say 
   request." The database step took 17.6 seconds, against a 5 second limit, while the computer was
   running both test suites. It worked the second time. It may only happen under heavy load.
 
+### 6. Pinned check-ins are kept in the browser, for now
+
+Pinning a check-in to the top of the sidebar works. The backend has no place for a person's own
+preferences outside the engine, and I did not want to add a table without asking. So each person's
+pins are kept in their browser, under their own name, and are cleared when they sign out.
+
+**The cost:** pins do not follow a person to another computer or phone, and they are gone after
+signing out. **My suggestion:** add a small list of pinned check-ins to each person's account, read
+and saved through the same place as the rest of their account. Say yes and I will add it.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
@@ -117,7 +127,41 @@ The builder split U.1 into 13 small changes. Done so far:
    the colours from the stylesheet. Nothing was loosened: every text colour must still reach
    4.5 to 1. All tests pass, apart from the email key bug in item 1 above.
 
-Still to do: the fills inside cards and the softer text colour, the two typefaces, buttons and
-tags, the four marks, the light sidebar, remembering the folded sidebar, pinning, the phone bar and
+2. **Cream fills inside cards, and warm brown secondary text** (commit `10953c64`). The prototype's
+   fainter text colour, `#85705A`, is not readable enough on its own cream fill (4.18 to 1, where
+   4.5 is needed). So I used `#7D6A55`, the same brown made only as dark as it needs to be to pass.
+3. **The two typefaces** (commit `8b57a773`). Everything is in Atkinson Hyperlegible, and body text
+   is 16 instead of 13. Names and big numbers are in Literata. Both come from the app itself, not
+   from Google. Nothing scrolls sideways at a phone's width.
+4. **The buttons, tags and "What needs you" rows** (commit `a2b6cddc`). They are built and tested,
+   and they appear on the page as the sidebar and Today are built.
+5. **The four marks and the stage ladder** (commit `4a9763a1`). A mark shows only when the record
+   has one. With no mark, or with a value the screen does not know, nothing is drawn, so nobody sees
+   a proof that was never checked. The engine does not send marks yet, so I asked for them
+   (request 2 in `docs/requests-to-engine.md`).
+
+6. **The light sidebar** (commit `84298e9a`). It has the organisation card and menu, "+ Start a
+   check-in", the check-ins with a dot and a badge each, "Closed" folding out, and your name at the
+   bottom with "Settings, help, sign out". Nothing was lost. Every page the old dark rail gave
+   someone is still there for them: Boards under the check-ins; People, Connections and Plan and
+   billing under the organisation's name, for admins; your settings, help, feedback, and Platform
+   ops for staff, in your own menu.
+7. **A folded sidebar stays folded** the next time you open the app (commit `4286316f`).
+8. **Pinning a check-in** to the top of the sidebar (commit `3ace4c34`). See item 6 above.
+
+**The first review sent it back.** The reviewer signed in as Sahar, Hafsah and Abubakar, at a
+computer's width and a phone's. A lead or admin could not pin, because the rename pencil's tap area
+covered the pin. The hover text on each check-in read in clipped pieces ("2 of 12 sessions done. 1
+open."), and its count did not match the card beside it. Pinning your only check-in left an empty
+heading. These are being fixed now.
+
+Still to do: remembering the folded sidebar, pinning, the phone bar and
 "More" page, "Jump to", help and "Talk to us", the short tour, and the sidebar links to Today,
 Company, You and Suites as those pages are built.
+
+## Found on the way, for later tasks
+
+- **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
+  rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital
+  letters. The progress number shows 0 first, then the real figure.
+- **The board (U.10)** is still grey-blue with dark cards, not cream.
