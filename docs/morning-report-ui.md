@@ -91,20 +91,12 @@ their home in the app, since leaving the app by accident is easy and confusing. 
 
 ### 8. Wording no prototype screen shows, which I had to write
 
-No prototype screen shows the short tour or the open "Jump to" box, so the builder wrote these.
-Please read them and change anything you like.
+**Answered by you on 26 September: the tour must not have invented wording.** The prototype has its
+own short tour, so its wording is now being copied from the prototype's screen, step by step. The
+wording the builder first wrote for it is being replaced.
 
-- The tour's offer: "New to Groundwork? A short tour shows you where things are. It takes under a
-  minute." with "Start the tour" and "Not now".
-- Step 1, on the organisation card: "This is your organisation. Open it to see every organisation
-  you belong to and move between them."
-- Step 2, on "Start a check-in": "Start a check-in here. You say what it is about and who is in it,
-  and each person answers on their own."
-- Step 3, on the check-ins list: "Your check-ins are here, with the ones that need you first. "Your
-  turn" means a session is ready for you."
-- Step 4, on "Jump to": "Choose "Jump to", or press Ctrl K, to find a check-in, a person or a page."
-- Step 5, on your name at the bottom: "Your settings, Help, "Talk to us" and signing out are here.
-  You can take this tour again from here too."
+These two lines are still written by us, because no prototype screen shows them:
+
 - "Jump to", when nothing matches: "Nothing matches that. Try part of a name."
 - At the foot of the Help window: "Tell us what you need and somebody will come back to you within
   two working days." This is the sentence our own "Talk to us" page already opens with.
@@ -221,6 +213,8 @@ Company, You and Suites as those pages are built.
   letters. The progress number shows 0 first, then the real figure.
 - **The board (U.10)** is still grey-blue with dark cards, not cream.
 - **Any member can list everyone in the organisation.** `/users/colleagues` returns every person
-  in the organisation to any member. "Jump to" does not use it for that reason. This may be
-  intended, for choosing people when starting a check-in, but I will look at it in U.4 (people,
-  roles and access).
+  in the organisation to any member. "Jump to" does not use it for that reason. **Answered by you on
+  26 September, to do in U.4:** a member may see colleagues' names, roles and teams, as the
+  prototype's People page shows. A guest from another organisation may only see the people in
+  their own check-in. Nobody may see anyone's load, private notes, or anything beyond name, role and
+  team. This will be enforced in the backend, with a test for the guest case.
