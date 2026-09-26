@@ -469,6 +469,24 @@ reviewed" in this report.
 8. **"Changes apply straight away."** The prototype adds "and are noted with your name", but nothing
    records who changed a role. **Left out.** **My recommendation:** record it, then add the words back.
 
+### 16. Today and the check-ins list (U.5): what needs you
+
+1. **The Connections door on the new admin's card promises "your numbers, your own address".**
+   Neither exists yet; they come with connections (U.18). I kept the prototype's words, as you asked.
+   **My recommendation:** keep them, since U.18 will make them true.
+2. **The engine's short summary of how each check-in is going is no longer on the list,** because the
+   prototype's table has no place for it. The board still shows it. **My recommendation:** leave it on
+   the board only. Related, and worth checking: the list still sends each check-in's latest session
+   picture to every reader, even before it has been shared.
+3. **Finished check-ins show no tag for how they ended.** The prototype shows "Kept", but an ending can
+   also be letting someone go, which would be a label on a person. **My recommendation:** show no tag.
+4. **Not built, because nothing in the product holds these yet:** the message Groundwork writes first;
+   "Since yesterday", "Your deals" and the chief executive's priorities (asked of the engine, request
+   3); "The weekly report shares itself at 6:30pm" with "Hold it" (reports are not shared
+   automatically); a lead's question to one person; and "Send it to him on WhatsApp".
+5. **One old invite route no longer has a button.** Inviting now goes through the People page.
+   **My recommendation:** retire the old route in a later clean-up.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -789,6 +807,29 @@ so it is left out." The full run found one missing style for the People pages, n
 every screen test and every API test passed (2,612 and 9,264), and the build is clean. After merging
 the engine workspace's latest, its conversation and report tests passed again (3,532). **Not ticked,**
 because no review can sign in (item 14).
+
+### U.5 Today and the check-ins list: built, being tested
+
+- **A privacy leak closed.** The check-ins list used to send every participant the whole record for
+  each check-in: the join link, other people's email addresses when the lead keeps them private, and
+  the report's findings before it was released. Now each reader gets only what the check-in's own page
+  would give them.
+- **Today**, from the prototype: "Morning, Wairimu", the date and one line on how things stand (for
+  example "In Sales team, Q3, 2 of 3 have checked in for session 2; Omar hasn't yet."), then "What
+  needs you", most important first, each with one button, and "Coming up". A name such as Omar's is
+  shown only to whoever runs the check-in, or an admin. It is built by the server from what that
+  reader may already open.
+- **The new admin's welcome card and "Get … going" are on Today**, with the doors People, Connections,
+  and Plan and billing. The held sentence stays out (item 11, conflict B).
+- **Today is in the sidebar with its count**, first on the phone bar, and in "Jump to". Signing in now
+  lands on Today. "Choose an organisation" shows "3 new" beside each organisation.
+- **The check-ins list, rebuilt** in full sentences from the reader's side: "You run 2 open", "You're
+  in 2 open", "Finished". A row reads, for example, "6 people. Daily, weekdays. Session 6 of 12." and
+  "Waiting on Omar". The capitals, tiles and clipped pieces are gone, and the lead is "you", never
+  their own name.
+
+Wording the builder had to write, where no screen has any, includes "Nothing needs you right now." and
+"What needs you did not load. Nothing you have written is affected." Item 16 lists what needs you.
 
 ## Found on the way, for later tasks
 
