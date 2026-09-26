@@ -1,5 +1,4 @@
 import { useHelpStore } from '@/stores/help'
-import { useAuthStore } from '@/stores/auth'
 import { HOW_TO_STEPS } from './how-a-check-in-is-run'
 
 /**
@@ -286,23 +285,9 @@ export function HelpModal() {
   )
 }
 
-export function HelpButton() {
-  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const show = useHelpStore(s => s.show)
-  if (!isAuthenticated) return null
-  return (
-    <button
-      onClick={() => show(0)}
-      title="Help"
-      className="gw-help-btn"
-      style={{
-        position: 'fixed', bottom: 72, right: 20, zIndex: 8000,
-        width: 38, height: 38, borderRadius: '50%',
-        background: 'var(--gw-navy)', color: 'white', border: 'none',
-        fontSize: 16, fontWeight: 700, cursor: 'pointer',
-        boxShadow: '0 2px 12px rgba(12,68,124,0.35)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >?</button>
-  )
-}
+/*
+ * THE FLOATING "?" IS GONE (U.3, Hafsah, 26 September). The prototype has no floating help button on
+ * any screen, and on "Create an organisation" it covered the error message. Help is in the person's
+ * own menu ("Settings, help, sign out") on a computer and on "More" on a phone, as the prototype
+ * draws it. Nothing replaces it on the account-card pages, by her decision.
+ */

@@ -979,13 +979,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   .gw-tabs-fade { display: block; }
 }
 
-/* ── HELP BUTTON MOBILE OFFSET ───────────────────────────── */
-@media (max-width: 640px) {
-  .gw-help-btn {
-    bottom: calc(72px + 56px) !important;
-  }
-}
-
 /* ── FEEDBACK TRIGGER MOBILE OFFSET ───────────────────────
    The bottom nav bar is a fixed 60px strip on mobile; without this the
    trigger's inline `bottom: 20px` sits inside that strip and overlaps the
@@ -1581,11 +1574,6 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-help-talk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 24px 20px; border-top: 1px solid var(--gw-border); }
 .gw-help-talk p { font-size: 14.5px; color: var(--gw-sub); line-height: 1.5; flex: 1; min-width: 200px; }
 
-/* THE FLOATING "?" STANDS DOWN WHERE THE SIDEBAR IS. Its menu ("Settings, help, sign out") and "More"
-   on a phone both carry Help and "Talk to us" now, as the prototype draws it, and the prototype has no
-   floating help button. It stays on the pages that have no sidebar (setting up an organisation, an
-   invitation), where it is still the only way to Help. */
-body:has(.gw-sidebar-desktop) .gw-help-btn { display: none !important; }
 
 /* ── SIGNING IN (A2) ─────────────────────────────────────────
    Built by AuthCard, AuthSplit, AuthField, PasswordField and PasswordRules in

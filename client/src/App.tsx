@@ -94,7 +94,7 @@ import { useYourOrganisations } from '@/components/gw/your-organisations'
 import { takeJustSignedIn } from '@/lib/choose-an-organisation'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
-import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
+import { HelpModal } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
@@ -353,7 +353,6 @@ export default function App() {
           <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
-          <HelpButton />
           <AppShell>
           {/* A render error in one page used to blank the entire app. W8-63. */}
           <PageCrash>

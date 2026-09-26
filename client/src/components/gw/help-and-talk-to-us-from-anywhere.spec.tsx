@@ -60,10 +60,12 @@ describe('help and "Talk to us" from anywhere', () => {
     expect(page).toContain('Tell us what you need and somebody will come back to you within two working days.')
   })
 
-  it('the floating "?" stands down wherever the sidebar\'s menu carries Help, and stays where it does not', () => {
+  /* U.3: U.1 kept the floating "?" on pages with no sidebar. Hafsah decided on 26 September that it goes
+     wherever the prototype does not have it, which is everywhere, with nothing in its place. */
+  it('there is no floating "?" on any page', () => {
     const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8')
-    expect(CSS).toMatch(/body:has\(\.gw-sidebar-desktop\) \.gw-help-btn \{ display: none !important; \}/)
-    // The button itself is still rendered for every signed-in page, so pages with no sidebar keep it.
-    expect(readFileSync(join(__dirname, '../../App.tsx'), 'utf8')).toContain('<HelpButton />')
+    expect(CSS).not.toMatch(/\.gw-help-btn/)
+    expect(readFileSync(join(__dirname, '../../App.tsx'), 'utf8')).not.toContain('<HelpButton')
+    expect(readFileSync(join(__dirname, 'HelpModal.tsx'), 'utf8')).not.toMatch(/export function HelpButton/)
   })
 })

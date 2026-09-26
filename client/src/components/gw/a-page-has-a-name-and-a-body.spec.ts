@@ -43,7 +43,7 @@ describe('a page has a name and a body', () => {
      * therefore pointless. Its position relative to the other chrome is the whole feature.
      */
     const skip = APP.indexOf('href="#main"')
-    for (const later of ['<Toaster', '<HelpModal', '<HelpButton', '<AppShell']) {
+    for (const later of ['<Toaster', '<HelpModal', '<AppShell']) {
       expect(APP.indexOf(later)).toBeGreaterThan(skip)
     }
   })
