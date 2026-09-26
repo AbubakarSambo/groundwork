@@ -278,8 +278,8 @@ export class AuthController {
 
   /**
    * "CREATE AN ORGANISATION" (U.3). The same door as start-my-own-workspace, with the name the person
-   * typed, an optional billing email and what they said about the team's size. It keeps that door's
-   * rule of one organisation of your own until Hafsah decides otherwise (morning report, item 11.6).
+   * typed, an optional billing email and what they said about the team's size. A person may have
+   * more than one organisation of their own, each with its own plan (Hafsah, 26 September).
    */
   @Post('organizations')
   @ApiBearerAuth()

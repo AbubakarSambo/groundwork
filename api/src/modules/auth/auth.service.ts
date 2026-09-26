@@ -1,4 +1,4 @@
-import { whatTheirWorkspaceIsCalled, whyNotAnotherWorkspace } from './a-roster-row-is-not-a-life-sentence';
+import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
@@ -1372,13 +1372,12 @@ export class AuthService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    /* Theirs is one they are the ADMIN of. A membership somebody else gave them is not theirs. */
-    const owned = await this.prisma.organizationMembership.findFirst({
-      where: { userId, role: 'ADMIN' as any },
-      select: { organizationId: true },
-    });
-    const refusal = whyNotAnotherWorkspace({ alreadyOwnsOne: !!owned });
-    if (refusal) throw new BadRequestException(refusal);
+    /*
+     * MORE THAN ONE OF YOUR OWN, AS THE PROTOTYPE HAS IT (Hafsah, 26 September). This used to refuse
+     * a second organisation you administer ("a person with nine empty workspaces has a switcher worse
+     * than the trap was"). She decided a person can create more than one, each with its own plan, so
+     * there is no refusal here any more. Each new one starts on the free tier of its own.
+     */
 
     /*
      * THE NAME THEY TYPED ON "Create an organisation", or their own name's workspace when this is

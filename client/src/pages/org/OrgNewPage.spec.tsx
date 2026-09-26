@@ -126,13 +126,17 @@ describe('creating it', () => {
   })
 })
 
+/* Was "somebody who already has an organisation of their own is told before they type anything".
+   Hafsah, 26 September: a person can create more than one, so they get the form like anybody else. */
 describe('somebody who already has an organisation of their own', () => {
-  it('is told before they type anything, and only offered Cancel', async () => {
+  it('can create another', async () => {
     ;(authApi.myOrganizations as any).mockResolvedValue([{ id: 'o1', name: 'Coamana', slug: 'c', role: 'ADMIN', active: true }])
+    ;(authApi.createOrganisation as any).mockResolvedValue({ accessToken: 't', user: {}, organization: {} })
     open()
-    expect(await screen.findByText(/You already have an organisation of your own, so you cannot create another one yet\. You can switch to it at any time from the top of the sidebar\./)).toBeTruthy()
-    expect(screen.queryByLabelText('Organisation name')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
+    fireEvent.change(await screen.findByLabelText('Organisation name'), { target: { value: 'Nyali Foods' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create it' }))
+    await waitFor(() => expect(authApi.createOrganisation).toHaveBeenCalled())
+    expect(screen.queryByText(/already have an organisation/)).toBeNull()
   })
 })
 
@@ -145,13 +149,6 @@ describe('naming the organisation a first Google sign-in made', () => {
     await waitFor(() => expect(authApi.renameOrganization).toHaveBeenCalledWith('Nyali Foods', { billingEmail: undefined, teamSize: undefined }))
     expect(authApi.createOrganisation).not.toHaveBeenCalled()
     expect(await screen.findByText('Start a check-in')).toBeTruthy()
-  })
-
-  it('is never told they already have one, because that one is the one being named', async () => {
-    ;(authApi.myOrganizations as any).mockResolvedValue([{ id: 'o1', name: "Kofi's Workspace", slug: 'k', role: 'ADMIN', active: true }])
-    open('/org-new?naming=1')
-    expect(await screen.findByLabelText('Organisation name')).toBeTruthy()
-    expect(screen.queryByText(/already have an organisation/)).toBeNull()
   })
 
   it('Cancel keeps the name it was given and carries on', async () => {

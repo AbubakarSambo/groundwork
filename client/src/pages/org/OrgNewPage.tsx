@@ -6,7 +6,7 @@ import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { AuthCard, AuthError, AuthField, AuthNotice } from '@/pages/auth/auth-kit'
+import { AuthCard, AuthError, AuthField } from '@/pages/auth/auth-kit'
 import { Button } from '@/components/gw/kit'
 
 /**
@@ -25,8 +25,8 @@ import { Button } from '@/components/gw/kit'
  * uses the answer, so while the trial is off the question would serve nothing. While it is on, the
  * trial is said in the one shared sentence (lib/the-free-trial.ts), never in words of this page's own.
  *
- * ONE ORGANISATION OF YOUR OWN, FOR NOW. The server refuses a second one until Hafsah decides
- * (morning report, item 11.6). Somebody who already has one is told so before they type anything.
+ * MORE THAN ONE OF YOUR OWN. Hafsah decided on 26 September that a person can create more than one
+ * organisation, each with its own plan, as the prototype allows. So nobody is turned away here.
  */
 export function OrgNewPage() {
   const navigate = useNavigate()
@@ -47,14 +47,6 @@ export function OrgNewPage() {
   })
   const trialSentence = theFreeTrialSentence(pricing?.trial)
   const line = pricing?.trial?.teamsUnder
-
-  const { data: myOrgs } = useQuery({
-    queryKey: ['my-organizations'],
-    queryFn: authApi.myOrganizations,
-    enabled: !naming,
-    retry: false,
-  })
-  const alreadyHasOne = !naming && (myOrgs ?? []).some(o => o.role?.toUpperCase() === 'ADMIN')
 
   const teamSize: TeamSizeSaid | undefined = trialSentence && line ? { said: size, line } : undefined
 
@@ -97,20 +89,6 @@ export function OrgNewPage() {
   }
 
   const sub = 'Its check-ins, people and plan are separate from any other organisation you’re in. You’ll be its owner.'
-
-  if (alreadyHasOne) {
-    return (
-      <AuthCard title="Create an organisation" sub={sub}>
-        <AuthNotice>
-          You already have an organisation of your own, so you cannot create another one yet. You can switch to it at any
-          time from the top of the sidebar.
-        </AuthNotice>
-        <div className="gw-auth-actions">
-          <Button kind="quiet" wide onClick={cancel}>Cancel</Button>
-        </div>
-      </AuthCard>
-    )
-  }
 
   return (
     <AuthCard title="Create an organisation" sub={sub}>

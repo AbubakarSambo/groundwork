@@ -8,7 +8,7 @@ import { AuthController } from './auth.controller';
  * The organisation gets the name the person typed, the billing email they gave (or their own address
  * when they gave none, because Stripe needs somewhere to send a bill), and what they said about the
  * team's size. They become its admin and its holder, keep the organisation they were in, and are
- * switched into the new one. One organisation of your own stays the rule until Hafsah decides.
+ * switched into the new one. They may have more than one of their own (Hafsah, 26 September).
  */
 function make(opts: { ownsOne?: boolean } = {}) {
   const created: any[] = [];
@@ -99,12 +99,12 @@ describe('creating an organisation', () => {
     expect(created[0].name).toBe("Wairimu's workspace");
   });
 
-  it('refuses a second organisation of your own, in a plain sentence, until Hafsah decides', async () => {
+  /* Was "refuses a second organisation of your own". Hafsah, 26 September: more than one is allowed. */
+  it('makes a second organisation for somebody who already has one of their own', async () => {
     const { service, created } = make({ ownsOne: true });
-    await expect(service.startMyOwnWorkspace('u1', { name: 'Another' })).rejects.toThrow(
-      'You already have an organisation of your own, so you cannot create another one yet. You can switch to it at any time from the top of the sidebar.',
-    );
-    expect(created).toHaveLength(0);
+    await service.startMyOwnWorkspace('u1', { name: 'Another' });
+    expect(created).toHaveLength(1);
+    expect(created[0].name).toBe('Another');
   });
 });
 
