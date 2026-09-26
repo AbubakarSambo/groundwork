@@ -65,7 +65,13 @@ import {
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { displayName, labelsForParties } from '../reports/party-labels';
+import { displayName } from '../reports/party-labels';
+import { peersAreNamedOn } from '../reports/peers-are-named';
+import {
+  plainWordsForEveryoneElse,
+  whatToCallThem,
+  whoIsOnThisGround,
+} from './a-colleague-in-an-interview-has-a-name';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
@@ -2859,6 +2865,9 @@ export class ConversationService {
             createdAt: true,
             managingOnly: true,
             roleAsDescribed: true,
+            /* The name somebody typed at the end of an open-link check-in; they have no sign-in to
+               carry one, and without this they were "a teammate" to everybody. */
+            nameGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -2879,6 +2888,23 @@ export class ConversationService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+
+    /*
+     * WHAT THIS INTERVIEW MAY CALL THE OTHER PEOPLE IN IT.
+     *
+     * Read once, here, because four separate blocks below put a colleague into the prompt and each
+     * of them had its own answer - one used the REPORT's labeller and told the engine somebody was
+     * waiting on "Participant B", which is a slot in a template and not something a question can
+     * be built out of. Two others handed over a real name in check-ins where the report and the
+     * board deliberately withhold one.
+     *
+     * `peersMayBeNamed` is the same rule the report and the board apply - see peers-are-named.
+     * `plainWords` is the wording the reports already use for somebody this reader may not have
+     * the name of. The three rules for choosing between them are in whatToCallThem.
+     */
+    const peersMayBeNamed = peersAreNamedOn(ground as any);
+    const whoIsHere = whoIsOnThisGround((ground.participants ?? []) as any);
+    const plainWords = plainWordsForEveryoneElse((ground.participants ?? []) as any, checkIn.participantId);
 
     const wholeEngine = await this.prompts.getActiveContent('system');
 
@@ -3006,8 +3032,18 @@ export class ConversationService {
         select: { id: true, user: { select: { firstName: true } }, roleAsDescribed: true },
       }).catch(() => [] as any[]);
       for (const p of owed) {
-        /* A sentence is not a name - see a-name-is-short.ts. */
-        const name = p.user?.firstName?.trim() || aNameOrNothing(p.roleAsDescribed);
+        /*
+         * AND NOT IN A CHECK-IN THAT DOES NOT NAME PEOPLE TO EACH OTHER.
+         *
+         * This named a colleague to whoever was answering, in every kind of check-in. On a PIP the
+         * report withholds that name and the interview handed it over. Plain words instead - see
+         * whatToCallThem - so the sentence still has somebody in it and gives nobody away.
+         */
+        const name = whatToCallThem({
+          person: whoIsHere.get(p.id) ?? (p as any),
+          peersMayBeNamed,
+          plainWords,
+        });
         if (name) nameByParticipantId.set(p.id, name);
       }
     }
@@ -3151,9 +3187,6 @@ export class ConversationService {
         select: { text: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
-    /* A ground whose participants were not selected on this read has none to label, and an
-       undefined list is not an empty one as far as the labeller is concerned. */
-    const labelOf = labelsForParties((ground.participants ?? []) as any);
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
       /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
       targets: (objectivesOnRecord as any[])
@@ -3161,7 +3194,14 @@ export class ConversationService {
         .map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
       inTheWay: (inTheWayRows as any[]).map((d) => ({
         what: d.what,
-        on: d.onParticipantId ? (labelOf.get(d.onParticipantId) ?? d.onLabel ?? null) : (d.onLabel ?? null),
+        /* Their own word for whoever they meant first, then a name where this check-in allows one,
+           then plain words. Never a positional label - see whatToCallThem. */
+        on: whatToCallThem({
+          person: d.onParticipantId ? whoIsHere.get(d.onParticipantId) : null,
+          speakerCalledThem: d.onLabel,
+          peersMayBeNamed,
+          plainWords,
+        }),
         since: d.createdAt,
         escalated: !!d.escalatedAt,
         then: d.then,
@@ -3380,10 +3420,10 @@ export class ConversationService {
       otherParties: (ground.participants ?? [])
         .filter((p) => p.id !== checkIn.participantId && !p.managingOnly)
         .map((p) => ({
-          label:
-            displayName(p as any) ??
-            aNameOrNothing(p.roleAsDescribed) ??
-            'a teammate',
+          /* A name where this check-in names people to each other, plain words where it does not.
+             Never a positional label, and never a role in an evaluation - see whatToCallThem. */
+          label: whatToCallThem({ person: p as any, peersMayBeNamed, plainWords, fallback: 'a teammate' })
+            ?? 'a teammate',
         })),
       /**
        * THE LEAD'S FRAMING OF THE SITUATION, READ BY EVERY SESSION.
@@ -3412,7 +3452,10 @@ export class ConversationService {
                 const row = expectationByParticipant.get(p.id);
                 if (!row?.text?.trim()) return null;
                 return {
-                  label: displayName(p as any) ?? aNameOrNothing(p.roleAsDescribed) ?? 'a teammate',
+                  /* The lead's own conversation, and a lead always reads their own team by name -
+                     which is why this one passes `peersMayBeNamed: true` rather than the ground's rule. */
+                  label: whatToCallThem({ person: p as any, peersMayBeNamed: true, plainWords, fallback: 'a teammate' })
+                    ?? 'a teammate',
                   text: row.text.trim(),
                 };
               })
@@ -4519,9 +4562,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (!latestMessage.trim()) return '';
       const ground = await this.prisma.ground.findUnique({
         where: { id: checkIn.groundId },
-        select: { mode: true },
+        select: { mode: true, scenario: true, peersVisibleToEachOther: true },
       });
       if (ground?.mode !== 'SHARED') return '';
+      /*
+       * AND WHETHER THIS CHECK-IN NAMES PEOPLE TO EACH OTHER AT ALL.
+       *
+       * This block tells the engine to say a fact back to the person, and the fact came with the
+       * names of whoever raised it. Mode was the only gate, and an evaluation check-in is SHARED
+       * by default - so on a PIP the report withheld a colleague's name and this handed it to the
+       * person being reviewed in the next question. The fact still gets said; without the names it
+       * reads "Somebody else on this check-in has already named the same thing".
+       */
+      const mayName = peersAreNamedOn(ground as any);
       const rows = await this.prisma.groundDependency.findMany({
         where: {
           groundId: checkIn.groundId,
@@ -4538,8 +4591,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       const others = rows.map((r: any) => ({
         what: r.what ?? '',
-        raisedBy: [r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
-          || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null),
+        raisedBy: mayName
+          ? ([r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
+            || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null))
+          : null,
         owned: !!r.onParticipantId,
       }));
       return whatIsWorthSaying({ shared: true, theyJustSaid: latestMessage, others });

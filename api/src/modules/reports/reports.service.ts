@@ -29,6 +29,7 @@ import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing
 import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
+import { peersAreNamedOn } from './peers-are-named';
 
 /**
  * The catalogue by code, so both coaching surfaces read the same plain words.
@@ -4455,8 +4456,8 @@ happened, and what is in the way.`;
   }
 
   private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
-    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
-    return (ground as any).peersVisibleToEachOther ?? !evaluative;
+    /* One copy of the rule, shared with the board, the grounds page and the interview. See peers-are-named. */
+    return peersAreNamedOn(ground);
   }
 
   /**

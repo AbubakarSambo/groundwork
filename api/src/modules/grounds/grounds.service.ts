@@ -33,6 +33,7 @@ import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
+import { peersAreNamedOn, peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -1619,8 +1620,8 @@ export class GroundsService {
     // ground: hidden where the period decides something about a person, shown
     // where it does not. The lead always sees everyone - running the ground is
     // the job.
-    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
-    const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
+    /* One copy of the rule, shared with the board, the reports and the interview. See peers-are-named. */
+    const peersVisible = peersAreNamedOn(ground as any);
     const hidePeers = !peersVisible && !viewerRunsThisGround;
 
     /**
@@ -1993,7 +1994,7 @@ export class GroundsService {
        * control can tell "not set, using the default" from "set to this deliberately".
        */
       peersVisibleEffective: peersVisible,
-      peersDefaultVisible: !evaluative,
+      peersDefaultVisible: peersAreNamedByDefaultOn(ground as any),
       /*
        * AND THE TWO THAT HAD NO WAY IN. Both were read by the board and the conversation and
        * travelled to nobody, so a control for either would have read its own default forever and

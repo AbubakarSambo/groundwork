@@ -66,6 +66,7 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { ReportsService } from '../reports/reports.service';
+import { peersAreNamedOn } from '../reports/peers-are-named';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -293,8 +294,8 @@ export class BoardService {
      * Never hidden from whoever RUNS the check-in - its lead, the admin who set it up, or an admin
      * of the organisation. The rule is between the parties.
      */
-    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(family);
-    const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
+    /* One copy of the rule, shared with the grounds page, the reports and the interview. See peers-are-named. */
+    const peersVisible = peersAreNamedOn(ground as any);
     /* `viewer` and `adminHere` are read once at the door above - see the note there. */
     const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
