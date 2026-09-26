@@ -73,9 +73,17 @@ describe('and an empty workspace says so', () => {
   it('as a line rather than a second button', () => {
     /* That screen was deliberately cleared of a third button for one action, and this is not the
        action - see the note above it. */
+    /* U.5: the rebuilt list styles it with a class in index.css instead of inline styles, so the
+       check follows the class there. The promise is the same: no fill, no border, underlined. */
     const at = LIST.indexOf('Or try it on your own first');
     const open = LIST.lastIndexOf('<button', at);
-    expect(LIST.slice(open, at)).toContain("background: 'none'");
-    expect(LIST.slice(open, at)).toContain('textDecoration');
+    const tag = LIST.slice(open, at);
+    const cls = (tag.match(/className="([^"]+)"/) ?? [])[1];
+    expect(cls).toBeTruthy();
+    const CSS = readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'index.css'), 'utf8');
+    const rule = (CSS.match(new RegExp(`\\.${cls}\\s*\\{([^}]*)\\}`)) ?? [])[1] ?? '';
+    expect(rule).toMatch(/background:\s*none/);
+    expect(rule).toMatch(/border:\s*none/);
+    expect(rule).toMatch(/text-decoration:\s*underline/);
   });
 });
