@@ -43,7 +43,7 @@ function mount(user: any = ADAM) {
 /** What the sidebar reads, heading by heading, top to bottom. */
 function read(rail: HTMLElement): string[] {
   const out: string[] = []
-  rail.querySelectorAll('.gw-rl-h, .gw-ci-nm').forEach(el => out.push(el.classList.contains('gw-rl-h') ? `## ${el.textContent}` : el.textContent ?? ''))
+  rail.querySelectorAll('.gw-rl-h, .gw-ci-nm, .gw-rl-empty').forEach(el => out.push(el.classList.contains('gw-rl-h') ? `## ${el.textContent}` : el.textContent ?? ''))
   return out
 }
 
@@ -112,5 +112,30 @@ describe('pinning a check-in', () => {
     window.localStorage.setItem('gw-pinned-u-adam', JSON.stringify(['g-gone', 'g2']))
     const { rail } = mount()
     expect(read(rail).slice(0, 2)).toEqual(['## Pinned', 'Leadership, Q3'])
+  })
+
+  it('with every check-in pinned, the "Check-ins" heading stays and says why it is empty', () => {
+    const { rail } = mount()
+    for (const n of ['Coamana growth, Q3', 'Leadership, Q3', 'Supplier review']) {
+      fireEvent.click(within(rail).getByRole('button', { name: `Pin ${n} to the top` }))
+    }
+    expect(read(rail)).toEqual([
+      '## Pinned', 'Supplier review', 'Leadership, Q3', 'Coamana growth, Q3',
+      '## Check-ins', 'All your check-ins are pinned above.',
+    ])
+    expect(within(rail).getByRole('link', { name: 'Check-ins' })).toHaveAttribute('href', '/grounds')
+  })
+
+  it('and with only one check-in, it says that one is pinned', () => {
+    useAuthStore.setState({ user: ADAM, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [GROUNDS[0]])
+    qc.setQueryData(['my-organizations'], [])
+    const { container } = render(
+      <QueryClientProvider client={qc}><MemoryRouter><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>,
+    )
+    const rail = container.querySelector('.gw-sidebar-desktop') as HTMLElement
+    fireEvent.click(within(rail).getByRole('button', { name: 'Pin Coamana growth, Q3 to the top' }))
+    expect(read(rail)).toEqual(['## Pinned', 'Coamana growth, Q3', '## Check-ins', 'Your only check-in is pinned above.'])
   })
 })

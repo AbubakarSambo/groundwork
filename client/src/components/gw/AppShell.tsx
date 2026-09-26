@@ -1089,6 +1089,10 @@ export function AppSidebar() {
                 {running.length === 0 && closed.length === 0 && (
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
                 )}
+                {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
+                {unpinned.length === 0 && pinned.length > 0 && (
+                  <p className="gw-rl-empty">{running.length === 1 ? 'Your only check-in is pinned above.' : 'All your check-ins are pinned above.'}</p>
+                )}
                 <ul className="gw-rl-list">{unpinned.map(rowFor)}</ul>
                 {closed.length > 0 && (
                   <>
