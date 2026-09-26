@@ -26,7 +26,7 @@ export function MorePage() {
   const openJump = useJumpStore(s => s.show)
 
   const items = navItemsFor(user)
-  const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
+  const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && i.to !== '/today')  /* Today is in the phone's bar */
   const adminItems = items.filter(i => (i as { adminOnly?: boolean }).adminOnly)
   const staffItems = items.filter(i => (i as { platformAdminOnly?: boolean }).platformAdminOnly)
   const orgName = user?.organizationName ?? 'Your organisation'

@@ -7,7 +7,7 @@
  * company's display timezone once it knows it, so a board dated there says the same day to
  * everybody who opens it.
  */
-export type DatePurpose = 'day' | 'dayAndMonth' | 'dayAndMonthLong' | 'full' | 'monthAndYear' | 'dayAndTime' | 'time'
+export type DatePurpose = 'day' | 'dayAndMonth' | 'dayAndMonthLong' | 'full' | 'monthAndYear' | 'dayAndTime' | 'time' | 'weekdayAndDay' | 'weekday' | 'hourOfDay'
 
 export const THE_LANGUAGE = 'en-GB'
 
@@ -19,6 +19,9 @@ const OPTIONS: Record<DatePurpose, Intl.DateTimeFormatOptions> = {
   monthAndYear: { month: 'short', year: 'numeric' },
   dayAndTime: { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
   time: { hour: '2-digit', minute: '2-digit' },
+  weekdayAndDay: { weekday: 'long', day: 'numeric', month: 'long' },
+  weekday: { weekday: 'long' },
+  hourOfDay: { hour: 'numeric', minute: '2-digit', hour12: true },
 }
 
 let theDisplayTimezone: string | undefined

@@ -39,6 +39,23 @@ describe('the new admin', () => {
     expect(text).not.toMatch(/You can see every board and report|They never see/)
   })
 
+  it('the welcome card has the prototype\'s doors, with no Suites door until that page exists', async () => {
+    open(ADMIN)
+    await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
+    const doors = [...document.querySelectorAll('.gw-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
+    expect(doors).toEqual([
+      ['People', 'Invite people, set roles and teams, let guests in', '/org/members'],
+      ['Connections', 'Your numbers, your own address', '/org/integrations'],
+      ['Plan and billing', 'Seats, the card and invoices', '/billing'],
+    ])
+  })
+
+  it('the Connections door names WhatsApp only while WhatsApp is switched on', async () => {
+    open(ADMIN, { ...NEW, whatsappOn: true })
+    await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
+    expect(screen.getByText('WhatsApp, your numbers, your own address')).toBeTruthy()
+  })
+
   it('with WhatsApp switched on, the fourth row, and "0 of 4 done", as the prototype has it', async () => {
     open(ADMIN, { ...NEW, whatsappOn: true })
     expect(await screen.findByText('0 of 4 done')).toBeTruthy()

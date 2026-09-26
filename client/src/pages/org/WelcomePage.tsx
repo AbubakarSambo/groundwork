@@ -25,7 +25,7 @@ export function WelcomePage() {
     mutationFn: (organizationId: string) => authApi.joinByDomain(organizationId),
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
+      window.location.assign('/today')
     },
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not work, and you have not joined. Try again.'),
   })

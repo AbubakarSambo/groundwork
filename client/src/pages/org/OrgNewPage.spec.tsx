@@ -87,7 +87,7 @@ describe('creating it', () => {
     await waitFor(() => expect(authApi.createOrganisation).toHaveBeenCalledWith({ name: 'Nyali Foods', billingEmail: undefined, teamSize: undefined }))
     /* (user, token), the order setAuth takes. It was once stored the wrong way round. */
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'new-token'))
-    expect(assign).toHaveBeenCalledWith('/grounds')
+    expect(assign).toHaveBeenCalledWith('/today')
   })
 
   it('sends the size they chose, with the line they were shown, while the trial is on', async () => {

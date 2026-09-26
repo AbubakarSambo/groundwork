@@ -1,0 +1,153 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { TodayPage } from './TodayPage'
+import { whenItComes } from './when-it-comes'
+import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
+
+/**
+ * TODAY (C1, #/today), AS EACH READER READS IT. The page shows what the server's read gives this
+ * reader (GET /today, see api/src/modules/grounds/what-needs-you.spec.ts for what each reader is
+ * given). Wording from today-lead.txt, today-admin.txt and today-participant-with-groundwork-message.txt.
+ */
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn() } }))
+import { todayApi } from '@/api/today'
+
+const MORNING = new Date(2026, 8, 23, 9, 0)
+const tomorrowAt4 = new Date(2026, 8, 24, 16, 0).toISOString()
+const friday = new Date(2026, 8, 25, 9, 0).toISOString()
+
+const LEAD_READ = {
+  count: 3,
+  line: 'In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.',
+  needs: [
+    { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: null, action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
+    { key: 'end-k', kind: 'decide', title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: { label: 'Decide', to: '/grounds/k' }, groundId: 'k', organizationId: 'o' },
+    { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: null, action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
+  ],
+  comingUp: [
+    { at: tomorrowAt4, what: 'Sales team, Q3, session 39 opens', to: '/grounds/s' },
+    { at: friday, what: 'Kwame, first 90 days ends', to: '/grounds/k' },
+  ],
+}
+
+const PARTICIPANT_READ = {
+  count: 2,
+  line: 'Your check-in for Sales team, Q3 is open.',
+  needs: [
+    { key: 'report-s', kind: 'ready', title: 'The report for Sales team, Q3 is ready', detail: 'Three deals moved stage.', action: { label: 'Read it', to: '/grounds/s/report' }, groundId: 's', organizationId: 'o' },
+    { key: 'own-s', kind: 'ready', title: 'Your own report for Sales team, Q3', detail: 'Only you see it.', action: { label: 'Read it', to: '/checkin/c4/report' }, groundId: 's', organizationId: 'o' },
+  ],
+  comingUp: [],
+}
+
+const NEW_ORG = { people: 1, admins: 1, checkIns: 0, paying: false, connected: false, whatsappOn: false, whatsappConnected: false, welcomeCardSeen: false }
+
+function open(user: any, read: any, rollout: any = NEW_ORG, path = '/today') {
+  ;(todayApi.get as any).mockResolvedValue(read)
+  vi.spyOn(apiClient, 'get').mockResolvedValue({ data: rollout } as any)
+  useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><TodayPage /></MemoryRouter></QueryClientProvider>)
+}
+
+const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'MEMBER', organizationName: 'Baridi Appliances' }
+const MIRIAM = { id: 'u-m', firstName: 'Miriam', role: 'MEMBER', organizationName: 'Baridi Appliances' }
+const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 'Nyali Foods', organization: { name: 'Nyali Foods' } }
+
+beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(MORNING)
+})
+afterEach(() => { vi.useRealTimers() })
+
+const rows = () => [...document.querySelectorAll('.gw-need')].map(li => ({
+  title: li.querySelector('.gw-need-h')?.textContent,
+  detail: li.querySelector('.gw-need-s')?.textContent ?? null,
+  action: [...li.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]),
+}))
+
+describe('Today, as the lead', () => {
+  it('greets her, says the date and who has checked in, in full sentences', async () => {
+    open(WAIRIMU, LEAD_READ)
+    expect(screen.getByRole('heading', { level: 1, name: 'Morning, Wairimu' })).toBeTruthy()
+    expect(await screen.findByText('Wednesday 23 September. In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.')).toBeTruthy()
+  })
+
+  it('lists what needs her, most important first, each with the one button that does it', async () => {
+    open(WAIRIMU, LEAD_READ)
+    expect(await screen.findByText('3 things, most important first')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'What needs you' })).toBeTruthy()
+    expect(rows()).toEqual([
+      { title: 'Your first check-in for Faith, first 90 days', detail: null, action: [['Start it', '/checkin/f1']] },
+      { title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: [['Decide', '/grounds/k']] },
+      { title: 'Your own check-in for Leadership, Q3', detail: null, action: [['Start it', '/checkin/l2']] },
+    ])
+  })
+
+  it('says what is coming up, in her own time', async () => {
+    open(WAIRIMU, LEAD_READ)
+    const aside = await screen.findByRole('complementary', { name: 'Coming up' })
+    expect([...aside.querySelectorAll('li')].map(li => li.textContent)).toEqual([
+      'Tomorrow, 4pmSales team, Q3, session 39 opens',
+      'FridayKwame, first 90 days ends',
+    ])
+    expect(within(aside).getByRole('link', { name: 'Sales team, Q3, session 39 opens' })).toHaveAttribute('href', '/grounds/s')
+  })
+
+  it('a member never sees the admin’s welcome card or checklist', async () => {
+    open(WAIRIMU, LEAD_READ)
+    await screen.findByText('3 things, most important first')
+    expect(document.body.textContent).not.toMatch(/You’re an admin|going$|Get .* going/)
+  })
+})
+
+describe('Today, as a participant', () => {
+  it('reads her turn in the line, her report and her own report, and nothing about anyone else', async () => {
+    open(MIRIAM, PARTICIPANT_READ)
+    expect(await screen.findByText('Wednesday 23 September. Your check-in for Sales team, Q3 is open.')).toBeTruthy()
+    expect(rows()).toEqual([
+      { title: 'The report for Sales team, Q3 is ready', detail: 'Three deals moved stage.', action: [['Read it', '/grounds/s/report']] },
+      { title: 'Your own report for Sales team, Q3', detail: 'Only you see it.', action: [['Read it', '/checkin/c4/report']] },
+    ])
+    expect(screen.queryByRole('complementary', { name: 'Coming up' })).toBeNull()
+  })
+})
+
+describe('Today, for a new organisation’s admin', () => {
+  it('starts with the welcome card, its doors, and "Get <organisation> going", and says nothing needs you yet', async () => {
+    open(GRACE, { count: 0, line: null, needs: [], comingUp: [] })
+    expect(await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
+    expect(screen.getByText('Nothing needs you right now.')).toBeTruthy()
+    expect(screen.getByText('Wednesday 23 September.')).toBeTruthy()
+    expect(screen.queryByText(/most important first/)).toBeNull()
+    /* The held sentence stays out until Hafsah decides it. */
+    expect(document.body.textContent).not.toMatch(/You can see every board and report|They never see/)
+  })
+})
+
+describe('when the read fails', () => {
+  it('says so, says nothing written is affected, and offers to try again', async () => {
+    ;(todayApi.get as any).mockRejectedValue(new Error('offline'))
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: NEW_ORG } as any)
+    useAuthStore.setState({ user: WAIRIMU, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><TodayPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('What needs you did not load. Nothing you have written is affected.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    expect(screen.queryByText('Nothing needs you right now.')).toBeNull()
+  })
+})
+
+describe('the words for when', () => {
+  it('today and tomorrow with the hour, then the day of the week, then the date', () => {
+    expect(whenItComes(new Date(2026, 8, 23, 18, 0), MORNING)).toBe('Today, 6pm')
+    expect(whenItComes(new Date(2026, 8, 24, 16, 30), MORNING)).toBe('Tomorrow, 4:30pm')
+    expect(whenItComes(new Date(2026, 8, 28, 9, 0), MORNING)).toBe('Monday')
+    expect(whenItComes(new Date(2026, 9, 1, 9, 0), MORNING)).toBe('1 October')
+  })
+})

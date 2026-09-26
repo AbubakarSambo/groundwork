@@ -2,12 +2,18 @@ import { toast } from 'sonner'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { Link } from 'react-router-dom'
 import { Button, Tag } from '@/components/gw/kit'
 
 /**
  * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
  * checklist, "Get <organisation> going". Hafsah decided on 26 September that a new organisation's
- * home shows these exactly as the prototype does, instead of a tour. U.5 moves them onto Today.
+ * Today page shows these exactly as the prototype does, instead of a tour. U.3 built them on the
+ * check-ins list; U.5 moved them onto Today (pages/today/TodayPage.tsx), where the prototype has them.
+ *
+ * THE CARD'S DOORS, as the prototype draws them under the heading: People, Connections, Suites, and
+ * Plan and billing, each with its line. Suites is left out until the Suites page exists (U.17), so no
+ * door leads nowhere. Connections names WhatsApp only while WhatsApp is switched on in Groundwork.
  *
  * WHAT IS HELD. The welcome card's sentence "You can see every board and report. They never see
  * anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes." goes further
@@ -54,6 +60,15 @@ export function getItGoing(f: RolloutFacts): Step[] {
   return steps
 }
 
+/** The welcome card's doors, in the prototype's words. Connections names WhatsApp only while it is on. */
+export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; line: string; to: string }[] {
+  return [
+    { title: 'People', line: 'Invite people, set roles and teams, let guests in', to: '/org/members' },
+    { title: 'Connections', line: f.whatsappOn ? 'WhatsApp, your numbers, your own address' : 'Your numbers, your own address', to: '/org/integrations' },
+    { title: 'Plan and billing', line: 'Seats, the card and invoices', to: '/billing' },
+  ]
+}
+
 export function AdminFirstRun() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
@@ -79,8 +94,20 @@ export function AdminFirstRun() {
     <div className="gw-first-run">
       {showWelcome && (
         <section className="gw-welcome-card" aria-label="Welcome">
-          <h2>You’re an admin at {orgName}</h2>
-          <Button kind="secondary" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
+          <div className="gw-welcome-card-head">
+            <h2>You’re an admin at {orgName}</h2>
+            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
+          </div>
+          <ul className="gw-welcome-doors">
+            {doorsFor(data).map(d => (
+              <li key={d.to}>
+                <Link to={d.to} className="gw-welcome-door">
+                  <b>{d.title}</b>
+                  <span>{d.line}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {!finished && (

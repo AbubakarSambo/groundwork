@@ -38,7 +38,7 @@ export function JoinByLinkPage() {
 
   const join = useMutation({
     mutationFn: () => apiClient.post(`/join-links/${encodeURIComponent(code)}/join`).then(r => r.data.data ?? r.data),
-    onSuccess: (res: any) => { setAuth(res.user, res.accessToken); window.location.assign('/grounds') },
+    onSuccess: (res: any) => { setAuth(res.user, res.accessToken); window.location.assign('/today') },
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not work, and you have not joined. Try again.'),
   })
 

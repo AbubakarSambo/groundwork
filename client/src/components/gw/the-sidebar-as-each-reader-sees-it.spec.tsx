@@ -50,10 +50,11 @@ const GROUNDS = [
   },
 ]
 
-function shell(user: any, orgs: any[] = [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true }]) {
+function shell(user: any, orgs: any[] = [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true }], today: any = { count: 0, needs: [], line: null, comingUp: [] }) {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
   qc.setQueryData(['grounds'], GROUNDS)
+  qc.setQueryData(['today'], today)
   qc.setQueryData(['my-organizations'], orgs)
   const out = render(
     <QueryClientProvider client={qc}>
@@ -178,5 +179,23 @@ describe('the sidebar, as a participant and as an admin read it', () => {
       expect(within(rail).getByRole('link', { name })).toHaveAttribute('href', href)
     }
     expect((rail.querySelector('.gw-rl-org') as HTMLElement)).toHaveTextContent('Admin')
+  })
+})
+
+describe('Today in the sidebar (C1, U.5), as layout-computer.txt draws it', () => {
+  it('sits first under the check-ins, goes to Today, and carries the count the server gives', () => {
+    const { rail } = shell(LEAD, undefined, { count: 5, needs: [], line: null, comingUp: [] })
+    const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
+    expect(pages[0].getAttribute('href')).toBe('/today')
+    expect(pages[0].textContent).toBe('Today55 things need you')
+    expect(within(pages[0] as HTMLElement).getByText('5 things need you')).toHaveClass('gw-sr-only')
+  })
+
+  it('says one thing in the singular, and shows no count when nothing needs you', () => {
+    const one = shell(LEAD, undefined, { count: 1, needs: [], line: null, comingUp: [] })
+    expect(one.rail.querySelector('.gw-rl-pages a')?.textContent).toBe('Today11 thing needs you')
+    one.unmount()
+    const none = shell(LEAD)
+    expect(none.rail.querySelector('.gw-rl-pages a')?.textContent).toBe('Today')
   })
 })

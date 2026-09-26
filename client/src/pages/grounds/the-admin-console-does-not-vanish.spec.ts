@@ -11,12 +11,18 @@ import { join } from 'path'
  */
 const CARD = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
 const LIST = readFileSync(join(__dirname, 'GroundsListPage.tsx'), 'utf8')
+/* U.5: the card and checklist moved onto Today, where the prototype has them. */
+const TODAY = readFileSync(join(__dirname, '..', 'today', 'TodayPage.tsx'), 'utf8')
 
 describe('it stays past the first check-in', () => {
-  it('is not mounted inside the empty-list branch any more', () => {
-    /* It used to hide the moment somebody opened a check-in, which is step two of five. */
-    const mount = LIST.slice(LIST.indexOf('<AdminFirstRun />') - 400, LIST.indexOf('<AdminFirstRun />'))
-    expect(mount).not.toContain('grounds.length === 0')
+  it('is mounted on Today, and not inside any empty branch', () => {
+    /* It used to hide the moment somebody opened a check-in, which is step two of five. On Today it
+       sits above the page, whatever the page holds, and decides for itself when it is finished. */
+    const i = TODAY.indexOf('<AdminFirstRun />')
+    expect(i).toBeGreaterThan(-1)
+    const mount = TODAY.slice(i - 400, i)
+    expect(mount).not.toMatch(/length === 0|isLoading|isError/)
+    expect(LIST.replace(/\/\*[\s\S]*?\*\//g, ' ')).not.toContain('<AdminFirstRun />')
   })
 
   /* U.3: the card is now the prototype's "Get <organisation> going" (see

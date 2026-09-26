@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
+import { todayApi } from '@/api/today'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
@@ -30,6 +31,18 @@ import {
 } from './a-button-that-gets-out-of-the-way'
 
 const NAV_ITEMS = [
+  {
+    /* TODAY (C1, U.5): what needs you now, first under the check-ins, with its count, as
+       layout-computer.txt draws it ("Today 5"). Everybody has one. */
+    label: 'Today',
+    to: '/today',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2.5" y="3.5" width="15" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M2.5 7.5h15M6.5 2v3M13.5 2v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
   {
     /*
      * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
@@ -686,6 +699,10 @@ export function AppSidebar() {
     enabled: isAuthenticated,
   })
 
+  /* Today's count beside "Today": the same read as the page, so the two cannot disagree. */
+  const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: isAuthenticated, retry: false })
+  const todayCount = today?.count ?? 0
+
   const location = useLocation()
   const isEntryPage = !isAuthenticated && location.pathname === '/start'
   const { groundName, setGroundName } = useEntryStore()
@@ -999,6 +1016,13 @@ export function AppSidebar() {
                         <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive ? ' on' : ''}`}>
                           {item.icon(location.pathname.startsWith(item.to))}
                           <span>{item.label}</span>
+                          {/* How many things need you, from the server's one read. Nothing when none. */}
+                          {item.to === '/today' && todayCount > 0 && (
+                            <span className="gw-rl-count">
+                              <span aria-hidden>{todayCount}</span>
+                              <span className="gw-sr-only">{todayCount === 1 ? '1 thing needs you' : `${todayCount} things need you`}</span>
+                            </span>
+                          )}
                         </NavLink>
                       </li>
                     ))}
@@ -1124,7 +1148,7 @@ export function AppSidebar() {
 
       {/*
         THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
-        prototype. Today and Chat are left out until those pages exist, so nothing here leads nowhere.
+        prototype. Chat is left out until that page exists, so nothing here leads nowhere.
         Everything else a phone used to show in this bar is on "More", through the same gate.
       */}
       <nav
@@ -1139,6 +1163,9 @@ export function AppSidebar() {
       >
         {isAuthenticated ? (
           <>
+            <NavLink to="/today" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="today" />Today
+            </NavLink>
             <NavLink to="/grounds" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
               <PhoneIcon d="checkins" />Check-ins
             </NavLink>
@@ -1160,7 +1187,10 @@ export function AppSidebar() {
 }
 
 /** The bottom bar's icons, drawn in the text colour. */
-function PhoneIcon({ d }: { d: 'checkins' | 'start' | 'more' }) {
+function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'more' }) {
+  if (d === 'today') {
+    return <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden><rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M3 8.5h16M7.5 2.5v3M14.5 2.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+  }
   if (d === 'start') {
     return <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden><path d="M13 5v16M5 13h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
   }

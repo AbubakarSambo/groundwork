@@ -64,7 +64,7 @@ export function OrgNewPage() {
       }
       /* (user, token), the order setAuth takes, and a full load so every page reads the new organisation. */
       setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
+      window.location.assign('/today')
     },
     onError: (e: any) => {
       setProblem(e?.response?.data?.message ?? 'That did not work, and nothing was created. Try again.')

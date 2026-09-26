@@ -38,21 +38,28 @@ const hrefOf = (root: HTMLElement, name: string) =>
 beforeEach(() => { vi.restoreAllMocks(); window.localStorage.clear() })
 
 describe('the bottom bar', () => {
-  it('has Check-ins, Start and More for somebody who may start a check-in', () => {
+  /* U.5: Today exists now, so it comes first, as layout-phone.txt has it (Today, Check-ins, Start,
+     Chat, More). These tests used to check that Today was left out while its page did not exist. */
+  it('has Today, Check-ins, Start and More for somebody who may start a check-in', () => {
     mount(PARTICIPANT)
     expect([...bar().querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Check-ins', '/grounds'], ['Start', '/start?new=1'], ['More', '/more'],
+      ['Today', '/today'], ['Check-ins', '/grounds'], ['Start', '/start?new=1'], ['More', '/more'],
     ])
   })
 
   it('and no Start for somebody the server would refuse', () => {
     mount(LEAD)
-    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Check-ins', 'More'])
+    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Today', 'Check-ins', 'More'])
   })
 
-  it('leaves out Today and Chat, whose pages do not exist yet, rather than leading nowhere', () => {
+  it('leaves out Chat, whose page does not exist yet, rather than leading nowhere', () => {
     mount(ADMIN)
-    expect(bar()).not.toHaveTextContent(/Today|Chat/)
+    expect(bar()).not.toHaveTextContent(/Chat/)
+  })
+
+  it('and "More" does not offer Today a second time, since the bar has it', () => {
+    mount(ADMIN)
+    expect(within(main()).queryByRole('link', { name: 'Today' })).toBeNull()
   })
 })
 

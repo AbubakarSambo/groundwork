@@ -39,7 +39,8 @@ describe('the bottom bar on a phone', () => {
   it('says a few short words, each fitting a third of a 320px screen', () => {
     const bar = stripped.slice(stripped.indexOf('className="gw-sidebar-mobile"'), stripped.indexOf('</nav>', stripped.indexOf('className="gw-sidebar-mobile"')))
     const words = [...bar.matchAll(/<PhoneIcon d="[a-z]+" \/>([A-Za-z -]+)\n/g)].map(m => m[1].trim())
-    expect(words).toEqual(['Check-ins', 'Start', 'More'])
+    /* U.5: Today came first when its page came, as layout-phone.txt has it. */
+    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'More'])
     /* 13px bold is about 7.5px a character; a third of 320 is 106. */
     for (const w of words) expect(w.length * 7.5).toBeLessThan(320 / 3)
   })

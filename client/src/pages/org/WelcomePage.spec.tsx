@@ -53,7 +53,7 @@ describe('where do you work', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Join Baridi Appliances' }))
     await waitFor(() => expect(authApi.joinByDomain).toHaveBeenCalledWith('baridi'))
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'tok'))
-    expect(assign).toHaveBeenCalledWith('/grounds')
+    expect(assign).toHaveBeenCalledWith('/today')
   })
 
   it('a refusal is said in the server\'s own sentence', async () => {

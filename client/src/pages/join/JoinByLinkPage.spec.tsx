@@ -63,7 +63,7 @@ describe('the link, for somebody signed in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Join Baridi Appliances' }))
     await waitFor(() => expect(post).toHaveBeenCalledWith('/join-links/baridi-7k2p/join'))
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'tok'))
-    expect(assign).toHaveBeenCalledWith('/grounds')
+    expect(assign).toHaveBeenCalledWith('/today')
     expect(screen.queryByRole('button', { name: 'I already have an account' })).toBeNull()
   })
 })

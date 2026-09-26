@@ -1,4 +1,3 @@
-import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
@@ -613,14 +612,8 @@ export function GroundsListPage() {
 
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
 
-            {/*
-              * AN ADMIN'S ROLLOUT, WHICH DOES NOT END WHEN THE FIRST CHECK-IN OPENS.
-              *
-              * This used to be inside the empty-list branch, so it vanished the moment somebody
-              * opened one - which is step two of five. It hid the list exactly when it started
-              * being useful. It decides for itself when it is finished, and hides then.
-              */}
-            {!isLoading && !isError && <AdminFirstRun />}
+            {/* The welcome card and "Get <organisation> going" are on Today now (U.5), where the
+                prototype has them. See pages/today/TodayPage.tsx. */}
 
             {!isLoading && isError && (
               /* Could not load. Say which of the two things happened, and offer the one that helps. */

@@ -33,6 +33,7 @@ function ChatRedirect() {
   return <Navigate to={`/checkin/${checkInId}`} replace />
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
+import { TodayPage } from '@/pages/today/TodayPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
@@ -317,11 +318,12 @@ function RootRoute() {
     )
   }
   /**
-   * Signed in, the root IS your grounds - her ask, and it was already true. Worth stating rather
-   * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
-   * and it is easy to read this as unreachable.
+   * Signed in, the root is Today (C1, U.5), as in the prototype, where home is #/today. It was the
+   * check-ins list until Today existed. Worth stating rather than leaving as an unlabelled
+   * fall-through, because the signed-out branch above returns early and it is easy to read this as
+   * unreachable.
    */
-  return <HomeOrChooseAnOrganisation />
+  return <HomeOrChooseAnOrganisation home="today" />
 }
 
 /**
@@ -330,9 +332,11 @@ function RootRoute() {
  *   - Somebody whose confirmed email domain an organisation lets join is offered it first, on
  *     "Where do you work?" (#/welcome).
  *   - Otherwise somebody in two or more organisations is asked which to open (#/orgs).
- *   - Everybody else, and everybody after that, gets their check-ins.
+ *   - Everybody else lands on Today (C1, U.5), as in the prototype. After that, the check-ins list is
+ *     at its own address, and the root is Today.
  */
-function HomeOrChooseAnOrganisation() {
+export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' | 'list' }) {
+  const { search } = useLocation()
   const { myOrgs, loaded } = useYourOrganisations()
   const [justIn] = useState(() => stillToChoose())
   const offers = useQuery({ queryKey: ['where-can-i-join'], queryFn: authApi.whereCanIJoin, enabled: justIn, retry: false })
@@ -348,7 +352,10 @@ function HomeOrChooseAnOrganisation() {
   }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])
   if (go === 'welcome') return <Navigate to="/welcome" replace />
   if (go === 'orgs') return <Navigate to="/orgs" replace />
-  return <GroundsListPage />
+  if (!justIn) return home === 'today' ? <Navigate to={`/today${search}`} replace /> : <GroundsListPage />
+  /* Just signed in, and still finding out whether to offer an organisation first. Said, not blank. */
+  if (go === null) return <p className="gw-t-body" style={{ padding: 32, color: 'var(--gw-sub)' }}>Loading…</p>
+  return <Navigate to={`/today${search}`} replace />
 }
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
@@ -436,6 +443,8 @@ export default function App() {
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
             <Route path="/grounds" element={<RequireOrgSetup><HomeOrChooseAnOrganisation /></RequireOrgSetup>} />
+            {/* Today (C1, U.5): what needs you now. Home after signing in, as in the prototype. */}
+            <Route path="/today" element={<RequireOrgSetup><TodayPage /></RequireOrgSetup>} />
             {/*
               * REFUSED AT THE DOOR, NOT ON SUBMIT. Both of these were behind RequireOrgSetup alone,
               * so a member who typed the address got the whole flow and was turned away at the end.

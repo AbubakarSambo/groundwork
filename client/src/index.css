@@ -1507,6 +1507,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rl-nav.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-rl-nav.on svg { color: var(--gw-navy); }
 .gw-rl-nav.icon { width: 44px; height: 40px; padding: 0; justify-content: center; }
+/* Today's count (C1): a round amber mark with the number, at the end of the row. */
+.gw-rl-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--gw-amber-t); color: #fff; font-size: 13px; font-weight: 700; }
 .gw-rl-needs { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .gw-rl-ini { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; text-decoration: none; }
 .gw-rl-ini.turn { background: var(--gw-green-t); color: #fff; }
@@ -1656,6 +1658,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-org-row-text { display: flex; flex-direction: column; min-width: 0; }
 .gw-org-row-text b { font-size: 16px; }
 .gw-org-row-text span { font-size: 14.5px; color: var(--gw-sub); }
+.gw-org-row-new { margin-left: auto; flex: none; }
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
@@ -1676,7 +1679,13 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 
 /* A new organisation's welcome card and "Get <organisation> going" (A3, U.3; moves to Today in U.5). */
 .gw-first-run { display: grid; gap: 14px; margin-bottom: 18px; }
-.gw-welcome-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gw-welcome-card { display: grid; gap: 12px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gw-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gw-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.gw-welcome-door { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; text-decoration: none; color: var(--gw-text); height: 100%; box-sizing: border-box; }
+.gw-welcome-door b { font-size: 14.5px; }
+.gw-welcome-door span { font-size: 13px; line-height: 1.4; color: var(--gw-sub); }
+.gw-welcome-door:hover, .gw-welcome-door:focus-visible { border-color: var(--gw-navy); }
 .gw-welcome-card h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
 .gw-get-going { padding: 16px 20px; border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; }
 .gw-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -1787,4 +1796,27 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
   .gw-people-page { padding-left: 16px !important; padding-right: 16px !important; }
   .gw-people-facts > div { grid-template-columns: 1fr; gap: 2px; }
   .gw-one-label { width: auto; }
+}
+
+/* â”€â”€ TODAY (C1, U.5): the page and "Coming up" beside it, as today-lead.jpg draws them.
+   On a phone the aside drops under the page, and nothing is wider than the screen. */
+.gw-today { box-sizing: border-box; width: 100%; max-width: 1140px; margin: 0 auto; padding: 40px 32px 80px; display: grid; grid-template-columns: minmax(0, 700px) minmax(0, 340px); gap: 48px; align-items: start; overflow-wrap: anywhere; }
+.gw-today-main { min-width: 0; }
+.gw-today-h1 { margin: 0 0 8px; color: var(--gw-text); }
+.gw-today-line { margin: 0 0 32px; font-size: 17px; line-height: 1.5; color: var(--gw-sub); }
+.gw-today-in { margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: var(--gw-green-bg); color: var(--gw-green-t); font-size: 14.5px; line-height: 1.5; }
+.gw-today-section { margin-bottom: 32px; }
+.gw-today-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.gw-today-section-head h2 { margin: 0; color: var(--gw-text); }
+.gw-today-section-head span { color: var(--gw-sub); }
+.gw-today-quiet { color: var(--gw-sub); }
+.gw-today-quiet p { margin: 0 0 10px; }
+.gw-today-aside h2 { margin: 0 0 12px; color: var(--gw-text); }
+.gw-coming-up { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gw-coming-up li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
+.gw-coming-up b { color: var(--gw-text); }
+.gw-coming-up a { color: var(--gw-text); text-decoration: none; }
+.gw-coming-up a:hover, .gw-coming-up a:focus-visible { text-decoration: underline; }
+@media (max-width: 900px) {
+  .gw-today { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 24px 16px 96px; }
 }

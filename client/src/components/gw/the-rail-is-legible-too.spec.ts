@@ -77,8 +77,9 @@ describe('the rail is legible too', () => {
       for (const m of body.matchAll(/(?:^|;|\s)color:\s*([^;]+);/g)) {
         const v = m[1].trim()
         if (!ALLOWED.test(v)) bad.push(`${sel.trim()} color: ${v}`)
-        // White text only where the rule also paints a solid dark fill under it.
-        if (v === '#fff' && !/background:\s*var\(--gw-(navy|green-t)\)/.test(body)) bad.push(`${sel.trim()} is white on no fill`)
+        // White text only where the rule also paints a solid dark fill under it. Amber-t (#8A5C1A)
+        // joined in U.5 for Today's count, as the prototype draws it: white on it is about 5.8 to 1.
+        if (v === '#fff' && !/background:\s*var\(--gw-(navy|green-t|amber-t)\)/.test(body)) bad.push(`${sel.trim()} is white on no fill`)
       }
     }
     expect(bad).toEqual([])

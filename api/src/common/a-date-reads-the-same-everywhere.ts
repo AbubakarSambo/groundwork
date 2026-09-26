@@ -24,7 +24,13 @@ export type DatePurpose =
   /** 12 Sep, 14:05 */
   | 'dayAndTime'
   /** 14:05 */
-  | 'time';
+  | 'time'
+  /** Wednesday 23 September (Today's date line, C1) */
+  | 'weekdayAndDay'
+  /** Friday */
+  | 'weekday'
+  /** 4:00 pm */
+  | 'hourOfDay';
 
 export const THE_LANGUAGE = 'en-GB';
 
@@ -36,6 +42,9 @@ const OPTIONS: Record<DatePurpose, Intl.DateTimeFormatOptions> = {
   monthAndYear: { month: 'short', year: 'numeric' },
   dayAndTime: { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
   time: { hour: '2-digit', minute: '2-digit' },
+  weekdayAndDay: { weekday: 'long', day: 'numeric', month: 'long' },
+  weekday: { weekday: 'long' },
+  hourOfDay: { hour: 'numeric', minute: '2-digit', hour12: true },
 };
 
 /**
