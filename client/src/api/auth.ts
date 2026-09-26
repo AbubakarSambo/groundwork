@@ -198,6 +198,10 @@ export const authApi = {
   googleExchange: (code: string) =>
     apiClient.get<{ accessToken: string }>(`/auth/google/exchange?code=${encodeURIComponent(code)}`).then(r => r.data),
 
+  /** The organisation name suggested from an address at sign-up. The public-mail list is the server's. */
+  nameFromAddress: (email: string) =>
+    apiClient.get<{ name: string | null }>('/auth/name-from-address', { params: { email } }).then(r => r.data),
+
   /** The organisations this person belongs to, with the active one marked. */
   myOrganizations: () =>
     apiClient

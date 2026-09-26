@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { authApi } from '@/api/auth'
 import { billingApi } from '@/api/billing'
 import { aFreeRunLine, worthAsking } from './what-is-waiting-for-this-address'
@@ -19,7 +20,6 @@ import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
-import { aNameFromAnEmailAddress } from '@/lib/a-name-from-an-email-address'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 
 
@@ -158,7 +158,17 @@ export function AuthPage() {
    * types in the box, what they typed stays.
    */
   const [orgTouched, setOrgTouched] = useState(false)
-  const suggestedOrg = aNameFromAnEmailAddress(email)
+  /* Asked of the server, which holds the one list of public mail domains (U.3). Only once the box
+     holds an address, and a failed read suggests nothing, which is the safe direction. */
+  const typedAddress = view === 'create' && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
+  const { data: suggestion } = useQuery({
+    queryKey: ['name-from-address', typedAddress],
+    queryFn: () => authApi.nameFromAddress(typedAddress),
+    enabled: !!typedAddress,
+    staleTime: Infinity,
+    retry: false,
+  })
+  const suggestedOrg = typedAddress ? (suggestion?.name ?? null) : null
   useEffect(() => {
     if (view === 'create' && !orgTouched) setOrgName(suggestedOrg ?? '')
   }, [suggestedOrg, orgTouched, view])

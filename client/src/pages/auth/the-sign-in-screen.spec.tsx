@@ -12,8 +12,13 @@ import { authApi } from '@/api/auth'
  * except the email label, which stays "Email" until Hafsah decides on "Your work email".
  */
 
+/* U.3: the suggested name now comes from the server, which holds the one list of public mail domains.
+   This stands in for it with two of its answers. */
 vi.mock('@/api/auth', () => ({
-  authApi: { entrySave: vi.fn(), login: vi.fn(), forgotPassword: vi.fn(), methods: vi.fn() },
+  authApi: {
+    entrySave: vi.fn(), login: vi.fn(), forgotPassword: vi.fn(), methods: vi.fn(),
+    nameFromAddress: vi.fn(async (e: string) => ({ name: /@coamana\./.test(e) ? 'Coamana' : /@baridi\./.test(e) ? 'Baridi' : null })),
+  },
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
 
@@ -240,6 +245,8 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     renderAt('/auth?mode=signup')
     fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Wairimu' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    /* The suggestion arrives from the server now (U.3). */
+    await waitFor(() => expect((screen.getByLabelText('Your organisation (optional)') as HTMLInputElement).value).toBe('Baridi'))
     fireEvent.click(screen.getByLabelText('With a password'))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
@@ -266,7 +273,7 @@ describe('the organisation\'s name, suggested from the address (Hafsah, 26 Septe
     renderAt('/auth?mode=signup')
     fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'hafsah@coamana.com' } })
     const org = screen.getByLabelText('Your organisation (optional)') as HTMLInputElement
-    expect(org.value).toBe('Coamana')
+    await waitFor(() => expect(org.value).toBe('Coamana'))
     expect(screen.getByText('We suggested this from your email address. You can change it now or later.')).toBeTruthy()
     fireEvent.change(org, { target: { value: 'Coamana Group' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'hafsah@coamana.co.ke' } })

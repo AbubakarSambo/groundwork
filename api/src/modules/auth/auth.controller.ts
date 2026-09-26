@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { GoogleCallbackGuard } from './google-callback.guard';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto, CreateOrganisationDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
+import { aNameFromAnEmailAddress } from '../../common/an-email-domain';
 
 /**
  * HOW MANY SIGN-INS A MINUTE, AND WHY IT IS A KNOB.
@@ -246,6 +247,19 @@ export class AuthController {
   @ApiOperation({ summary: 'Exchange a one-time OAuth code for a JWT' })
   async googleExchange(@Query('code') code: string) {
     return this.authService.redeemOAuthExchangeCode(code);
+  }
+
+  /**
+   * THE ORGANISATION NAME SUGGESTED FROM AN ADDRESS, at sign-up (U.2, U.3). The list of public mail
+   * domains lives on the server only (common/an-email-domain.ts), so the screen asks here. Says
+   * nothing about whether the address or its organisation is known.
+   */
+  @Public()
+  @Get('name-from-address')
+  @Throttle({ global: { limit: 60, ttl: 60_000 } })
+  @ApiOperation({ summary: 'The organisation name suggested from an email address, or null' })
+  nameFromAddress(@Query('email') email: string) {
+    return { name: aNameFromAnEmailAddress(email ?? '') };
   }
 
   @Get('my-organizations')
