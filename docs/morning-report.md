@@ -6,6 +6,59 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The same sentence emptied the reports, and the wording score looked excellent while it did
+
+The 24-scenario run on the fixed composer came back, and the wording numbers are the best they have
+been:
+
+| | Baseline | Run 1 (this morning) | This run |
+| --- | --- | --- | --- |
+| jargon in reports and boards | 511 | 402 | **43** |
+| internal labels shown | 1,153 | 138 | 53 |
+| sentence starting in lower case | 579 | 0 | 3 |
+| specific detail asked for | 88 | 74 | **94** |
+
+1.4's bar was a quarter of the baseline, which is 128. Forty-three is a third of that. The drop in
+"specific detail asked for" that this report spent the small hours chasing is also gone, without
+anybody finding its cause.
+
+**And the reports were empty.** Not shorter. Empty.
+
+| | Findings | Agreements |
+| --- | --- | --- |
+| crisis | 3 → 1. Priya Raman's and Ben Carter's accounts, gone | 3 → 0 |
+| pip | 2 → 1. Nathan Owusu's account, gone | 3 → 0 |
+| cofounder | 2 → **0**. Nothing at all | 4 → 0 |
+
+Twenty-two of the twenty-four lost their agreements entirely and kept only the lead's own finding.
+Across the run: per-person findings 81 to 44, agreements 56 to 11, differences 29 to 14, patterns
+100 to 83.
+
+**It is the same sentence as the composer, doing the same thing to a different shape.** The
+rulebook says
+
+> EVERY FIELD YOU FILL IN IS READ BY A PERSON ... So write **one plain, full sentence in every
+> field**
+
+Right about a field holding one sentence. Wrong about a field holding a list. The model was
+obedient: one sentence per field, so one entry per list. In the rewriting pass the same sentence
+turned nine lines into one. Here it turns three people into one.
+
+The rulebook now says the rule is about how each entry is written and never about how many there
+are — fill in every entry the field asks for, one for each person, each agreement, each difference,
+and never merge, drop, or shorten a list because the sentences got longer. The original rule is
+untouched, so nothing of 1.4 is undone.
+
+Proved at the prompt that actually runs, not from the file: `report_synthesis` re-seeded to **v5**
+(`21400c24-7003-44e7-874f-75174ee64ce4`) and `system` to **v42**, both active, both carrying the new
+text. The run measuring it is going now.
+
+**Two things worth taking from this beyond the fix.** The first is that a report with excellent
+wording and no participants in it passes every wording check we have; the scorer's problem list went
+almost all to zero on exactly the run where the product stopped working. The second is that nothing
+in the code changed to cause either failure, and no test on the code could have found either — both
+were one sentence of English doing something reasonable in the wrong place.
+
 ## Task 1.4 was putting jargon back, and the only place it showed was the log
 
 This is the one I would not have found by reading the code, and the code reads correctly.
