@@ -1669,3 +1669,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-steps li { display: flex; gap: 12px; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
 .gw-steps li > span[aria-hidden] { width: 18px; flex: none; color: var(--gw-sub); }
 .gw-steps li.done > span[aria-hidden] { color: var(--gw-green-t); }
+
+/* "Stop these reminders" (A3, stop.txt): the two ways on, in a soft box. */
+.gw-stop-choices { display: grid; gap: 14px; justify-items: stretch; text-align: left; margin-top: 4px; padding: 18px 20px; border: 1px solid var(--gw-border); border-radius: 10px; background: var(--gw-page); }
+.gw-stop-choices .gw-b { width: 100%; }

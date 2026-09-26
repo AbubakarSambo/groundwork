@@ -90,6 +90,7 @@ import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
 import { OrgsPage } from '@/pages/org/OrgsPage'
+import { StopRemindersPage } from '@/pages/mail/StopRemindersPage'
 import { WaitingForAnAdminPage } from '@/pages/join/WaitingForAnAdminPage'
 import { useYourOrganisations } from '@/components/gw/your-organisations'
 import { takeJustSignedIn } from '@/lib/choose-an-organisation'
@@ -590,7 +591,8 @@ export default function App() {
                 mail to stop must not need an account to say so, and the unsubscribe link had been
                 pointing at a route that did not exist, so it drew the not-found page below. */}
             <Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} />
-            <Route path="/stop-reminders/:token" element={<StopMailPage which="stop-reminders" />} />
+            {/* "Stop these reminders" (A3, #/stop), with the check-in's name and the prototype's two ways on. */}
+            <Route path="/stop-reminders/:token" element={<StopRemindersPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </PageCrash>
