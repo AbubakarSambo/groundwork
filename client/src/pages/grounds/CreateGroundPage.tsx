@@ -15,7 +15,7 @@ import { theWordsForPickingASituation } from './whose-situation-is-it'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
-interface ScenarioCard {
+export interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
   // key (the realignment card and the describe-your-own card both use
   // REALIGN_TEAM's pack), so selection tracks the card, while what is SENT to

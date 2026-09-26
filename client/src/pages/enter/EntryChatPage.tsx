@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
+import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -9,12 +9,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
  * already exported and already the thing the signed-in picker reads. Moving it into lib/ is the
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
-import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
-import { theWordsForPickingASituation } from '@/pages/grounds/whose-situation-is-it'
-
-/* One pair of sentences for the freeform card, shared with the setup step. */
-const THE_WORDS = theWordsForPickingASituation()
-import { SituationCard } from '@/components/gw/SituationCard'
+import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
@@ -28,6 +23,8 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
+import { TheDoor } from './TheDoor'
+import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
@@ -1101,6 +1098,8 @@ export function EntryChatPage() {
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  /* U.6: the first screen shows one box; "See every situation" swaps it for the whole list. */
+  const [seeingEverySituation, setSeeingEverySituation] = useState(false)
   /**
    * THE CARD'S SCENARIO KEY, WHICH IS NOT THE SAME THING AS ITS LABEL.
    *
@@ -1145,9 +1144,6 @@ export function EntryChatPage() {
    * the same twenty-two situations, behaving differently. Reported as a regression, and it is one
    * in the sense that matters: the two screens agreed yesterday and do not today.
    */
-  const [situationGroup, setSituationGroup] = useState<string>(SITUATION_GROUPS[0]?.key ?? '')
-  /** Which card has its examples open. One at a time, so the grid never doubles in height. */
-  const [openCardInfo, setOpenCardInfo] = useState<string | null>(null)
   // Once the user dismisses the natural-close banner, never re-show it
   const [endPromptDismissed, setEndPromptDismissed] = useState(false)
 
@@ -1195,6 +1191,7 @@ export function EntryChatPage() {
    */
   function pickADifferentSituation() {
     setPickedSituation(null)
+    setSeeingEverySituation(false)
     /* Or the next situation is set up with the last one's first question. */
     setPickedScenario(null)
     setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
@@ -1771,7 +1768,12 @@ export function EntryChatPage() {
   }
 
   // AI-driven onboarding send
-  async function sendOnboarding(text: string) {
+  /*
+   * `scenarioNow` is the situation this very turn starts from. Setting state and sending in the same
+   * click left the send reading the old state, so a card's first turn went out with no situation
+   * and its own first question was never asked. Passed straight through, it cannot be stale.
+   */
+  async function sendOnboarding(text: string, scenarioNow?: string | null) {
     if (!text.trim() || onboardingLoading) return
     const userTurn: Turn = { role: 'user', content: text.trim() }
     const newHistory = [...onboardingHistory, userTurn]
@@ -1796,7 +1798,7 @@ export function EntryChatPage() {
       let draft = ''
       const res = await entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
-        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { draft += text; setOnboardingDraft(draft) },
         /*
@@ -2471,6 +2473,19 @@ export function EntryChatPage() {
     } catch { /* */ }
   }
 
+  /*
+   * AT THE DOOR: nothing has been said and nothing picked. The prototype's first screen has no name,
+   * no plan and no steps on it, because there is nothing yet to name, plan or step through.
+   */
+  const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
+  /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
+  function describeItInYourOwnWords(text: string) {
+    setSeeingEverySituation(false)
+    setPickedSituation('other')
+    setPickedScenario(null)
+    sendOnboarding(text, null)
+  }
+
   if (showAdminBriefing) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', padding: '24px 20px' }}>
@@ -2537,6 +2552,7 @@ export function EntryChatPage() {
     <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)', position: 'relative', overflow: 'hidden' }}>
 
       {/* Session header */}
+      {!atTheDoor && (
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
         {user && (
           <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
@@ -2633,10 +2649,11 @@ export function EntryChatPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Phase stepper: makes which phase you are in legible at a glance.
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
-      {(() => {
+      {!atTheDoor && (() => {
         /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
         const step = phase === 'onboarding' ? 1 : (closed || showSave ? 3 : 2)
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
@@ -2681,7 +2698,7 @@ export function EntryChatPage() {
         * want to take. The confirmation still stands in front of it, so nothing is thrown away by
         * a stray click.
         */}
-      {(
+      {!atTheDoor && (
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
           {confirmClear ? (
             <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2881,125 +2898,30 @@ export function EntryChatPage() {
                 )
               })}
 
-              {/* Situation cards - shown only before user has sent first message */}
-              {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
-                <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  {/* Seventeen situations will not fit above the fold at a
-                      laptop height - measured: even stripping the descriptions
-                      leaves 152px over, so the old "everything visible at once"
-                      rule is unreachable rather than merely expensive. The
-                      descriptions stay, because recognising your own situation
-                      matters MORE as the list gets longer. What was missing is
-                      any signal that the first screen is not the whole set. */}
-                  {/* DESCRIBE YOUR OWN, FIRST. It used to sit at the bottom under "None of these?",
-                      which is the right words for the end of a list and the wrong ones for the top:
-                      nothing has come before it to be none of. Same order as /grounds/new. */}
-                  <button
-                    onClick={() => { setPickedSituation('other'); setPickedScenario(null) }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                      textAlign: 'left', padding: '14px 16px', borderRadius: 10,
-                      border: '1.5px solid var(--gw-navy)', background: 'white',
-                      cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      {/* Her words, and the same pair the setup step asks with - see whose-situation-is-it. */}
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{THE_WORDS.describeOwnQuestion}</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{THE_WORDS.describeOwnHelp}</div>
-                    </div>
-                    <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
-                  </button>
-
-                  {/*
-                    THE SECOND ROUTE, DRAWN AS ONE. This was 11px in the muted grey - the size and
-                    colour used for captions - directly under a full-width bordered card, so two
-                    ways in read as one way in and a remark about it.
-                  */}
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>
-                    {OR_PICK_ONE_THAT_FITS}
-                  </div>
-                  <select
-                    className="gw-select"
-                    value={situationGroup}
-                    onChange={(e) => setSituationGroup(e.target.value)}
-                    aria-label="Which kind of situation"
-                    style={{ marginBottom: 10 }}
-                  >
-                    {SITUATION_GROUPS.map(g => (
-                      <option key={g.key} value={g.key}>
-                        {/* COUNTED FROM WHAT THE GROUP ACTUALLY RENDERS. This counted the entry
-                            chat's own list while the grid below now renders the catalogue's, so a
-                            situation present in one and not the other would have shown a number that
-                            did not match the cards under it. */}
-                        {g.heading} ({SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === g.key).length})
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* One block per group, driven by SITUATION_GROUPS. This was
-                      two hand-copied sixty-line blocks differing only by their
-                      filter, which is how this picker fell eight cards behind
-                      /grounds/new without anyone noticing. */}
-                  {/* ONE GROUP AT A TIME, chosen above. Every group at once is what the "scroll for
-                      the rest" line existed to apologise for. */}
-                  {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
-                    const cards = SITUATION_CARDS.filter(c => c.group === group.key)
-                    if (!cards.length) return null
-                    return (
-                      <div key={group.key}>
-                        {/*
-                          * THE SAME CARD AS /grounds/new, BECAUSE IT IS LITERALLY THE SAME COMPONENT.
-                          *
-                          * This block used to draw its own: a smaller title, a 9.5px italic "typically
-                          * 90 days", and an "i" that opened a paragraph. The wizard drew a coloured
-                          * tag, the moment you would open the app, and a "How it runs" disclosure.
-                          * Same twenty-two situations, same groups, two different objects - and
-                          * reported twice, the second time after the LISTS had been reconciled:
-                          * "the scenario cards on the entry chat still look different from what's in
-                          * the wizard".
-                          *
-                          * It renders SCENARIOS now, the catalogue the signed-in picker reads, rather
-                          * than a second list of the same situations. What stays here is the one thing
-                          * that is genuinely different about this door: clicking does not select, it
-                          * SENDS - there is no Continue on a chat - so the sentence that starts the
-                          * conversation is looked up from the card.
-                          */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 8 }}>
-                          {SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === group.key).map(card => (
-                            <SituationCard
-                              key={card.cardKey}
-                              card={card}
-                              label={card.label}
-                              expanded={openCardInfo === card.label}
-                              onToggleExpanded={() => setOpenCardInfo(openCardInfo === card.label ? null : card.label)}
-                              onPick={() => {
-                                const said = whatThisCardSays(card.label)
-                                if (!said) return
-                                setPickedSituation(card.label)
-                                setPickedScenario(card.scenario)
-                                sendOnboarding(said)
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {/*
-                    * THE DESCRIBE-YOUR-OWN CARD USED TO BE HERE, AT THE BOTTOM.
-                    *
-                    * Its whole history is people trying to make the last item in a list findable:
-                    * first it looked disabled, then it was made to look like every other card and
-                    * became eighteenth in a scroll of near-identical tiles, then it was given an
-                    * accent edge and an arrow. Each fix was right about the problem and could not
-                    * reach it, because the problem was the position.
-                    *
-                    * It is the first thing on the picker now, above the dropdown, and its words
-                    * changed with the move: "None of these?" is the right question at the end of a
-                    * list and the wrong one at the top, where nothing has come before it to be none
-                    * of.
-                    */}
+              {/*
+                * THE WAY IN (U.6, B1). The prototype's first screen: one box, five examples and a
+                * link to every situation (TheDoor), or the list itself (EverySituation). Sending
+                * words from either is describing it in your own words, which clears any situation
+                * a card had set; starting from a card sends that card's own sentence, as the old
+                * grid did.
+                */}
+              {atTheDoor && (
+                <div style={{ alignSelf: 'stretch', width: '100%', paddingTop: 24 }}>
+                  {seeingEverySituation ? (
+                    <EverySituation
+                      signedIn={!!user}
+                      openerFor={(card) => whatThisCardSays(card.label)}
+                      onSend={describeItInYourOwnWords}
+                      onDescribe={() => { setSeeingEverySituation(false); setPickedSituation('other'); setPickedScenario(null) }}
+                      onStart={(card, opener) => {
+                        setPickedSituation(card.label)
+                        setPickedScenario(card.scenario)
+                        sendOnboarding(opener, card.scenario)
+                      }}
+                    />
+                  ) : (
+                    <TheDoor signedIn={!!user} onSend={describeItInYourOwnWords} onSeeEverySituation={() => setSeeingEverySituation(true)} />
+                  )}
                 </div>
               )}
 
