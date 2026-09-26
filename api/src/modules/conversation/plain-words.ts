@@ -61,7 +61,13 @@ EVERY FIELD YOU FILL IN IS READ BY A PERSON, EXACTLY AS YOU WROTE IT. Nothing ti
 afterwards and nothing wraps it in a sentence of its own. So write one plain, full sentence in every
 field, including the ones that sound like headings or titles. "Total budget vs. proposed plans" is a
 heading. "The lead's budget is 180,000 and the team's plans add up to more than that" is what the
-person needs to read.`;
+person needs to read.
+
+THIS IS ABOUT HOW EACH ENTRY IS WRITTEN, NEVER ABOUT HOW MANY THERE ARE. Where a field holds a list,
+fill in EVERY entry it asks for, and write each entry as its own plain, full sentence. One entry for
+each person, each agreement, each difference. Never merge two entries into one, never leave an entry
+out, and never send back a shorter list because the sentences are longer. A report that gives one
+person's account when three people answered is wrong, however well that one sentence reads.`;
 
 /**
  * AND WHO THE SENTENCE IS SPOKEN TO, WHICH IS NOT THE SAME EVERYWHERE.
