@@ -245,7 +245,8 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     await screen.findByRole('heading', { name: 'Check your email' })
-    expect(authApi.entrySave).toHaveBeenCalledWith('wairimu@baridi.test', { payload: { firstName: 'Wairimu' } }, '', 'harbour7lamp')
+    /* "Baridi" is the organisation name suggested from the address, which they left as it was. */
+    expect(authApi.entrySave).toHaveBeenCalledWith('wairimu@baridi.test', { payload: { firstName: 'Wairimu', orgName: 'Baridi' } }, '', 'harbour7lamp')
   })
 
   it('a password that is the email address typed above is caught before anything is sent', async () => {
@@ -257,5 +258,25 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
     expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+})
+
+describe('the organisation\'s name, suggested from the address (Hafsah, 26 September)', () => {
+  it('a company address suggests its name, which the person can change and keep', async () => {
+    renderAt('/auth?mode=signup')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'hafsah@coamana.com' } })
+    const org = screen.getByLabelText('Your organisation (optional)') as HTMLInputElement
+    expect(org.value).toBe('Coamana')
+    expect(screen.getByText('We suggested this from your email address. You can change it now or later.')).toBeTruthy()
+    fireEvent.change(org, { target: { value: 'Coamana Group' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'hafsah@coamana.co.ke' } })
+    expect(org.value).toBe('Coamana Group')
+    expect(screen.getByText('What your organisation will be called. You can change it later.')).toBeTruthy()
+  })
+
+  it('a public mail address suggests nothing', async () => {
+    renderAt('/auth?mode=signup')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'hafsah@gmail.com' } })
+    expect((screen.getByLabelText('Your organisation (optional)') as HTMLInputElement).value).toBe('')
   })
 })

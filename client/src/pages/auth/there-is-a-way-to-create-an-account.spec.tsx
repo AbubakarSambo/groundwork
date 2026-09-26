@@ -112,15 +112,17 @@ describe('the create-account door', () => {
     ))
   })
 
+  /* A Gmail address, because a company address now suggests its organisation's name (U.2, Hafsah's
+     decision of 26 September); a public mail address suggests nothing, so the box stays empty. */
   it('the organisation is optional, because a naming decision should not block signing up', async () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/Your name/i))
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam' } })
-    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
+    fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@gmail.com' } })
     fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     /* The third argument is the honeypot — empty for a person who never sees the field. See
        components/gw/a-field-nobody-can-see.tsx. */
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, '', undefined))
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@gmail.com', { payload: { firstName: 'Sam' } }, '', undefined))
   })
 })
 

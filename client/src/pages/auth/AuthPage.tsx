@@ -19,6 +19,7 @@ import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
+import { aNameFromAnEmailAddress } from '@/lib/a-name-from-an-email-address'
 
 
 
@@ -150,6 +151,16 @@ export function AuthPage() {
    * the default, as it has always been; choosing a password shows the two boxes and the rules.
    */
   const [signInBy, setSignInBy] = useState<'link' | 'password'>('link')
+  /*
+   * THE ORGANISATION'S NAME, SUGGESTED FROM THE ADDRESS UNTIL THEY TYPE ONE (Hafsah, 26 September).
+   * hafsah@coamana.com suggests "Coamana"; a public mail address suggests nothing. Once the person
+   * types in the box, what they typed stays.
+   */
+  const [orgTouched, setOrgTouched] = useState(false)
+  const suggestedOrg = aNameFromAnEmailAddress(email)
+  useEffect(() => {
+    if (view === 'create' && !orgTouched) setOrgName(suggestedOrg ?? '')
+  }, [suggestedOrg, orgTouched, view])
   const [newPassword, setNewPassword] = useState('')
   const [newConfirm, setNewConfirm] = useState('')
   const [error, setError] = useState('')
@@ -495,8 +506,12 @@ export function AuthPage() {
             ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
             because a person signing up to try it should not be stopped by a naming decision.
           */}
-          <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgName(v); clearNotices() }} />
-          <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>What your organisation will be called. You can change it later.</p>
+          <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
+          <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
+            {!orgTouched && suggestedOrg && orgName === suggestedOrg
+              ? 'We suggested this from your email address. You can change it now or later.'
+              : 'What your organisation will be called. You can change it later.'}
+          </p>
 
           <fieldset className="gw-auth-choice">
             <legend className="gw-auth-label">How would you like to sign in?</legend>
