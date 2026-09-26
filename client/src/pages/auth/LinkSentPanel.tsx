@@ -32,8 +32,13 @@ const WAIT_SECONDS = 30
  * typed was set to nothing. So the caller, which knows what sent the first link, says how to send it
  * again.
  */
-export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent }: {
+export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forReset }: {
   email: string
+  /**
+   * A password-reset link rather than a sign-in link. The sentence stays the same whether or not the
+   * address has an account, because saying which would tell a stranger who is registered here.
+   */
+  forReset?: boolean
   /** Sends the link again, the same way the first one was sent. */
   resend: () => Promise<unknown>
   onUseDifferent: () => void
@@ -57,7 +62,9 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent }: {
   return (
     <AuthCard
       title="Check your email"
-      sub={<>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
+      sub={forReset
+        ? <>If there is an account for <strong>{email}</strong>, we sent it a link to choose a new password. The link works for an hour.</>
+        : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
     >
       {failed && <AuthError>{failed}</AuthError>}
       <div className="gw-auth-actions">

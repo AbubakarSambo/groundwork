@@ -101,3 +101,18 @@ describe('a sign-up still waiting for its link to be opened', () => {
     expect(await screen.findByRole('alert')).toBeTruthy()
   })
 })
+
+describe('a password-reset link', () => {
+  it('is sent again through forgot-password, never through a sign-up route', async () => {
+    ;(authApi.forgotPassword as any).mockResolvedValue({ message: 'ok' })
+    renderAt('/auth')
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }))
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }))
+    await screen.findByText('Check your email')
+    await pressSendAgain()
+    await waitFor(() => expect(authApi.forgotPassword).toHaveBeenCalledTimes(2))
+    expect((authApi.forgotPassword as any).mock.calls[1]).toEqual(['wairimu@baridi.test'])
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+})

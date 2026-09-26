@@ -506,35 +506,34 @@ export function AuthPage() {
     )
   }
 
-  /* view === 'forgot' */
+  /* FORGOT YOUR PASSWORD (A2, #/forgot), and "Check your email" once the reset link has gone. */
+  if (resetSent) {
+    return (
+      <LinkSentPanel
+        forReset
+        email={email}
+        /* The reset goes again through forgot-password, the door that sent it. */
+        resend={() => authApi.forgotPassword(email.trim().toLowerCase())}
+        onUseDifferent={() => setResetSent(false)}
+      />
+    )
+  }
   return (
-    <AuthCard title="Sign in">
-      {!resetSent ? (
-        <>
-          <p className="gw-auth-sub">Enter your email and we will send you a link to reset your password.</p>
-          <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
-            <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
-            {error && <AuthError>{error}</AuthError>}
-            <div className="gw-auth-actions">
-              <Button type="submit" wide disabled={sendReset.isPending}>
-                {sendReset.isPending ? 'Sending…' : 'Send reset link'}
-              </Button>
-            </div>
-          </form>
-          <div className="gw-auth-links">
-            <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="gw-auth-sub">
-            <strong>Check your email.</strong> If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
-          </p>
-          <div className="gw-auth-links">
-            <button type="button" className="gw-auth-link" onClick={() => { setResetSent(false); setView('password') }}>Back to sign in</button>
-          </div>
-        </>
-      )}
+    <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
+      <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
+        {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
+        <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+        {error && <AuthError>{error}</AuthError>}
+        <div className="gw-auth-actions">
+          <Button type="submit" wide disabled={sendReset.isPending}>
+            {sendReset.isPending ? 'Sending…' : 'Email me a reset link'}
+          </Button>
+        </div>
+      </form>
+      <div className="gw-auth-links">
+        <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</button>
+        <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</button>
+      </div>
     </AuthCard>
   )
 }

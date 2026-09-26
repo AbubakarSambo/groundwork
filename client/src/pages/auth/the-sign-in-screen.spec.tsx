@@ -141,3 +141,51 @@ describe('"Check your email", as the person who asked for a link reads it', () =
     expect(((await screen.findByLabelText('Email')) as HTMLInputElement).value).toBe('wairimu@baridi.tset')
   })
 })
+
+describe('"Forgot your password?", as a signed-out visitor reads it', () => {
+  async function openForgot() {
+    const r = renderAt('/auth')
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }))
+    await screen.findByRole('heading', { name: 'Forgot your password?' })
+    return r
+  }
+
+  it('reads the prototype\'s words, with the true lifetime of the link', async () => {
+    const { container } = await openForgot()
+    expect(readable(container)).toBe([
+      'Groundwork',
+      'Forgot your password?',
+      'We’ll email you a link to choose a new one. It works for an hour.',
+      'Email',
+      'Email me a reset link',
+      'Back to sign in',
+      'New here? Sign up',
+    ].join(''))
+    // The server's reset link lasts an hour (HOW_LONG['reset a password']), not the prototype's 30 minutes.
+    expect(readable(container)).not.toMatch(/30 minutes/)
+  })
+
+  it('once sent, gives the same answer whether or not the address has an account', async () => {
+    ;(authApi.forgotPassword as any).mockRejectedValueOnce({ response: { status: 404 } })
+    const { container } = await openForgot()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'nobody@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a reset link' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(readable(container)).toBe([
+      'Groundwork',
+      'Check your email',
+      'If there is an account for nobody@baridi.test, we sent it a link to choose a new password. The link works for an hour.',
+      'Send it again',
+      'You can send it again in 30 seconds.',
+      'Wrong address? Use a different one',
+    ].join(''))
+    expect(authApi.forgotPassword).toHaveBeenCalledWith('nobody@baridi.test')
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+
+  it('"New here? Sign up" opens the sign-up form', async () => {
+    await openForgot()
+    fireEvent.click(screen.getByRole('button', { name: 'New here? Sign up' }))
+    expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeTruthy()
+  })
+})
