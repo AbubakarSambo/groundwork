@@ -1481,8 +1481,20 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-rl-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .gw-rl-pages { margin-top: 12px; }
 .gw-rl-empty { font-size: 13px; color: var(--gw-sub); padding: 6px 10px; }
-.gw-rail-row { display: flex; align-items: flex-start; gap: 0; }
-.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; min-height: 36px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
+.gw-rail-row { position: relative; display: flex; align-items: flex-start; gap: 0; }
+/* THE NAME KEEPS ITS ROOM. The pin and the pencil used to be two 32px buttons always in the row,
+   which with the 72px "Your turn" left the name about 57px and broke it mid-word ("Coaman / a").
+   Now they sit over the right of the row, on the card colour, only while the row is pointed at or
+   something in it has focus. They are still there for the keyboard (focus reveals them) and still
+   the full 32x36 each. On a device that cannot hover they sit in the row, and the badge moves under
+   the name instead of squeezing it. */
+.gw-row-acts { position: absolute; top: 0; right: 0; display: flex; background: var(--gw-card); border-radius: 8px; opacity: 0; pointer-events: none; }
+.gw-rail-row:hover .gw-row-acts, .gw-rail-row:focus-within .gw-row-acts { opacity: 1; pointer-events: auto; }
+.gw-rail-row:focus-within .gw-pin { opacity: 1; }
+@media (hover: none) {
+  .gw-row-acts { position: static; opacity: 1; pointer-events: auto; background: none; }
+}
+.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 36px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
 .gw-ci-row:hover { background: var(--gw-card); }
 .gw-ci-row.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-ci-row.closed { color: var(--gw-sub); }
@@ -1490,7 +1502,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-ci-dot-turn { background: var(--gw-green-t); }
 .gw-ci-dot-late { background: var(--gw-red-t); }
 /* Long names wrap rather than being cut off: a name that loses its end is a different name. */
-.gw-ci-nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.gw-ci-nm { flex: 1 1 110px; min-width: 110px; overflow-wrap: break-word; word-break: normal; }
 .gw-rail-bdg { flex: none; font-size: 13px; font-weight: 700; line-height: 1.2; border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
 .gw-rail-bdg-turn { background: var(--gw-green-t); color: #fff; }
 .gw-rail-bdg-late { background: var(--gw-red-bg); color: var(--gw-red-t); box-shadow: inset 0 0 0 1px var(--gw-red-b); }

@@ -798,6 +798,9 @@ export function AppSidebar() {
               {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
               {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}
             </NavLink>
+            {/* The row's two buttons take no width until the row is pointed at or focused, so the name
+                keeps its room and breaks only between words. On a touch screen they sit in the row. */}
+            {(!isClosed(g) || mayRename(g)) && <span className="gw-row-acts">
             {!isClosed(g) && <button
               type="button"
               className={`gw-pin${pins.includes(g.id) ? ' on' : ''}`}
@@ -817,6 +820,7 @@ export function AppSidebar() {
               title={`Rename ${g.label}`}
               aria-label={`Rename ${g.label}`}
             >✎</button>}
+            </span>}
           </div>
         )}
       </li>

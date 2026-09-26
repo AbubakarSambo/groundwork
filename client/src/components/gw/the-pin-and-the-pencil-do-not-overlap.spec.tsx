@@ -61,7 +61,9 @@ describe('the pin and the rename pencil on a sidebar row', () => {
     const pin = within(rail).getByRole('button', { name: 'Pin Coamana growth, Q3 to the top' })
     const pencil = within(rail).getByRole('button', { name: 'Rename Coamana growth, Q3' })
     expect(pin.nextElementSibling).toBe(pencil)
-    expect(pin.parentElement).toHaveClass('gw-rail-row')
+    // Together, in the row's own group of buttons, which sits over the right of the row.
+    expect(pin.parentElement).toHaveClass('gw-row-acts')
+    expect(pin.parentElement!.parentElement).toHaveClass('gw-rail-row')
   })
 
   it('and the middle of each is its own, not the other\'s', () => {
@@ -89,5 +91,30 @@ describe('the pin and the rename pencil on a sidebar row', () => {
   it('both are the full height of the row, so a thumb does not have to be exact', () => {
     expect(px(declsFor('gw-pin').height)).toBe(36)
     expect(px(declsFor('gw-rename').height)).toBe(36)
+  })
+
+  it('and until the row is pointed at or focused they take no width from the name', () => {
+    /*
+     * Found in the final review at 1440px: two 32px buttons always in the row, plus "Your turn",
+     * left the name about 57px, so "Coamana growth, Q3 paying customers" broke mid-word.
+     */
+    const acts = CSS.match(/\.gw-row-acts \{([^}]*)\}/)![1]
+    expect(acts).toMatch(/position: absolute/)
+    expect(acts).toMatch(/opacity: 0/)
+    expect(acts).toMatch(/pointer-events: none/)
+    expect(CSS).toMatch(/\.gw-rail-row:hover \.gw-row-acts, \.gw-rail-row:focus-within \.gw-row-acts \{ opacity: 1; pointer-events: auto; \}/)
+  })
+
+  it('on a touch screen, with no hover, they are in the row and can be tapped', () => {
+    expect(CSS).toMatch(/@media \(hover: none\) \{\s*\.gw-row-acts \{ position: static; opacity: 1; pointer-events: auto;/)
+  })
+
+  it('the name keeps room for whole words, and breaks only between them', () => {
+    const nm = CSS.match(/\.gw-ci-nm \{([^}]*)\}/)![1]
+    expect(nm).toMatch(/min-width: 110px/)
+    expect(nm).toMatch(/word-break: normal/)
+    expect(nm).not.toMatch(/overflow-wrap: anywhere/)
+    // When the name and the badge do not fit side by side, the badge goes under the name.
+    expect(CSS).toMatch(/\.gw-ci-row \{[^}]*flex-wrap: wrap/)
   })
 })
