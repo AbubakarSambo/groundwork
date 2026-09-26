@@ -239,7 +239,42 @@ it. The page shows the address if the server ever sends it, and leaves it out ot
 **My suggestion:** leave the address out. The person already knows which account they asked to reset,
 and the link could be forwarded to someone else.
 
-### 11. Organisations and joining (U.3): nine decisions
+### 11. Organisations and joining (U.3): nine decisions (answered, two parts held)
+
+**Answered by you on 26 September, with the prototype's exact wording wherever it has it:**
+1. The invitation uses the prototype's wording, says what the person will see, and never says or
+   suggests that their words are private.
+2. Joining by email domain: the prototype's admin switch "Anyone with an @<domain> email", joining as
+   "Takes part", role changeable after, only after the email address is confirmed, never for public
+   email providers. That list is kept in one place on the server.
+3. One invite link per organisation, joining as "Takes part". Turning it off makes a new link.
+4. The admin is named, as in the prototype ("We've asked Grace Achieng", "Remind Grace"), only after
+   the person has accepted a real invitation.
+5. Invitations last 14 days, with the prototype's expired-link wording.
+6. A person can create more than one organisation, each with its own plan.
+7. The welcome card uses the prototype's wording, the free-trial sentence stays off until billing
+   gives it, and WhatsApp is not mentioned while it is not switched on.
+
+**Two of these conflict with something already written, so, as you asked, I have not chosen. Both
+parts are held back; everything else is being built.**
+
+- **The invitation (answer 1).** You said never to suggest the words are private, because people in
+  the check-in and admins can read them. The prototype's own invitation, which you asked me to use,
+  says both "The people in this check-in, including your manager, can see what you say in it." and,
+  further down, "Nobody else reads your answers." and "Wairimu reads the report, not your words." The
+  last two do suggest privacy. Also, the A4 rule in `docs/modules.md` says "Admins see boards and
+  reports, never exact words and never performance plans, unless given access to that check-in."
+  That differs from "admins can read them". **Held:** those two sentences. The rest of the prototype's
+  invitation is being built. **My suggestion:** drop the two sentences, and state who can read the
+  words from the check-in's real sharing settings. Also tell me whether admins can read exact words
+  without access to the check-in, because that decides the A4 privacy rule too.
+- **The welcome card (answer 7).** Its first line, "You can see every board and report.", tells an
+  admin they can see everything. The same A4 rule says admins never see performance plans or exact
+  words unless given access to that check-in. **Held:** that one sentence. The rest of the card is
+  being built. **My suggestion:** "You can see the boards and reports of every check-in, except
+  performance plans and anyone's exact words, unless you are given access to that check-in." Or
+  change the A4 rule instead, if admins should see everything.
+
 
 I will build what does not depend on these first, and leave each of these as the product does it
 today until you decide.
