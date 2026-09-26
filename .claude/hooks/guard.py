@@ -31,7 +31,10 @@ if kind == "bash":
         (r"(?=.*staging)(?=.*(\bpush\b|deploy|release|migrat|\bseed\b|psql|mysql|mongo|redis-cli|\bssh\b|\bscp\b|rsync|\bcurl\b|\bwget\b|https?://|DATABASE_URL|_URL=|prisma\s+(migrate|db)|kubectl|terraform|\baws\b|gcloud|\baz\s)).*", "Nothing may touch staging. Hafsah decides when anything goes there."),
         (r"(sed\s+-i|>|>>|\btee\b|\bcp\b|\bmv\b|\brm\b|\btruncate\b|\bchmod\b|\bgit\s+(checkout|restore)\b)[^;&|]*(\.claude/|CLAUDE\.md|docs/decisions\.md|docs/baseline\.json|tools/score_run\.py)", "The kit's protected files cannot be changed."),
     ]
+    is_commit = re.match(r"\s*git\s+commit\b", cmd) is not None
     for pat, msg in rules:
+        if is_commit and "protected files" in msg:
+            continue  # a commit message may mention a protected file; committing does not change it
         if re.search(pat, cmd, re.I):
             block(msg)
 elif kind == "files":

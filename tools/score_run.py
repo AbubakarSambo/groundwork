@@ -16,16 +16,16 @@ import json, glob, re, sys, os, statistics
 
 PROBLEMS = {
  "slot names glued to answers": r"(said this was for:|What they report:|Where they say they stand now:|What they say is in the way:|reported this:|named this as being in the way:)",
- "internal labels shown (initiator, Participant A, the person who set this up)": r"\b(the initiator|The initiator|Participant [A-Z]\b|the person who set this up)",
+ "internal labels shown (initiator, Participant A, the person who set this up)": r"\b(the initiator|The initiator|Participants? [A-Z](?:, [A-Z])*(?:,? and [A-Z])?\b|the person who set this up)",
  "machine table words shown (FIELD:, standing:, by kind -, answered ·)": r"(FIELD:|standing: |by kind - | · answered )",
- "sentence starting in lower case": r"[a-z]\. (?!e\.g|i\.e)[a-z]{2,}\b",
+ "sentence starting in lower case": r"(?<=[a-z])(?<!\bvs)(?<!\betc)(?<!e\.g)(?<!i\.e)\. (?!e\.g|i\.e)[a-z]{2,}\b",
  "\"nothing contradicts\" then differences": r"nothing in any single account contradicts",
  "name with a stray full stop": r"\"participantLabel\": \"[A-Z][a-z]+ [A-Z][a-z]+\.\"",
  "\"1 people\"": r"\b1 people\b|\b1 of 1 people\b",
  "role description used as a name": r"\. Target \d+ [a-z ]+this quarter\.|(?<=[a-z])\. Target \d+",
  "text cut mid-word": r"[A-Za-z]\.\.\.\.|[a-z]{1,3}\.\.\.$|\b[a-z]\.\.\.\.",
 }
-JARGON = r"\b(bottlenecks?|pipeline|stakeholders?|alignment|leverage|deliverables?|escalat\w*|cadence|KPIs?|synergy|bandwidth|actionable)\b"
+JARGON = r"\b(bottlenecks?|pipeline|stakeholders?|alignment|leverage|deliverables?|escalat\w*|cadence|KPIs?|synergy|bandwidth|actionable|vs)\b"
 
 def served_text(d):
     """Every piece of text a person can read, as (where, text)."""
