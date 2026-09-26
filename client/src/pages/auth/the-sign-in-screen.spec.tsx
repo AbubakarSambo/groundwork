@@ -91,7 +91,8 @@ describe('"Email me a sign-in link instead"', () => {
   it('with no address typed, says so and sends nothing', async () => {
     renderAt('/auth')
     fireEvent.click(await screen.findByRole('button', { name: 'Email me a sign-in link instead' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('That address does not look right.')
+    /* U.2 review: with nothing typed it says what to do, not that something typed is wrong. */
+    expect((await screen.findByRole('alert')).textContent).toBe('Type your email address first.')
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 })

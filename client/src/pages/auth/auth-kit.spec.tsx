@@ -65,16 +65,16 @@ describe('PasswordRules shows the rules the server checks today, ticked as they 
   it('nothing typed: every rule is waiting, and says so in words', () => {
     render(<PasswordRules password="" confirm="" />)
     expect(rows()).toEqual([
-      { text: '○Not yet: At least 8 characters', met: false },
-      { text: '○Not yet: A capital letter and a small letter', met: false },
-      { text: '○Not yet: Both passwords match', met: false },
+      { text: '○Not met yet, At least 8 characters', met: false },
+      { text: '○Not met yet, A capital letter and a small letter', met: false },
+      { text: '○Not met yet, Both passwords match', met: false },
     ])
   })
 
   it('a good password typed twice: every rule is ticked', () => {
     render(<PasswordRules password="Harbour7lamp" confirm="Harbour7lamp" />)
     expect(rows().every(r => r.met)).toBe(true)
-    expect(rows()[0].text).toBe('✓Done: At least 8 characters')
+    expect(rows()[0].text).toBe('✓Met, At least 8 characters')
   })
 
   it('without a second box there is no "Both passwords match"', () => {

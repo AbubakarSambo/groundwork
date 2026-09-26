@@ -82,7 +82,7 @@ describe('the rules, before anything is sent', () => {
     renderAt('/reset-password?token=tok')
     fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Harbour7lamp' } })
     const met = () => screen.getAllByRole('listitem').filter(li => li.className.includes('met')).map(li => li.textContent)
-    expect(met()).toEqual(['✓Done: At least 8 characters', '✓Done: A capital letter and a small letter'])
+    expect(met()).toEqual(['✓Met, At least 8 characters', '✓Met, A capital letter and a small letter'])
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Harbour7lamp' } })
     expect(met()).toHaveLength(3)
   })

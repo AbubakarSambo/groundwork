@@ -187,7 +187,8 @@ export function PasswordRules({ password, confirm }: { password: string; confirm
       {rules.map(r => (
         <li key={r.text} className={r.met ? 'met' : undefined}>
           <span className="gw-auth-rule-mark" aria-hidden>{r.met ? '✓' : '○'}</span>
-          <span className="gw-sr-only">{r.met ? 'Done: ' : 'Not yet: '}</span>
+          {/* Read aloud as "Met, at least 8 characters" or "Not met yet, at least 8 characters". */}
+          <span className="gw-sr-only">{r.met ? 'Met, ' : 'Not met yet, '}</span>
           {r.text}
         </li>
       ))}

@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
-import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField } from './auth-kit'
 
@@ -330,7 +330,7 @@ export function AuthPage() {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
+    { const wrong = whatIsWrongWithTheAddress(e2); if (wrong) { setError(wrong); return } }
     if (!password) { setError('Enter your password.'); return }
     signIn.mutate()
   }
@@ -338,7 +338,7 @@ export function AuthPage() {
   /** "Email me a sign-in link instead", from the sign-in screen: a link to the address typed above. */
   function askForALink() {
     setError('')
-    if (!looksLikeAnAddress(email.trim())) { setError(NOT_AN_ADDRESS); return }
+    { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } }
     sendLink.mutate()
   }
 
@@ -346,7 +346,7 @@ export function AuthPage() {
     e.preventDefault()
     setError('')
     const e2 = email.trim()
-    if (!looksLikeAnAddress(e2)) { setError(NOT_AN_ADDRESS); return }
+    { const wrong = whatIsWrongWithTheAddress(e2); if (wrong) { setError(wrong); return } }
     sendLink.mutate()
   }
 
@@ -447,7 +447,7 @@ export function AuthPage() {
           </p>
         )}
 
-        <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
+        <form noValidate onSubmit={e => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } createAccount.mutate() }}>
           {trap.field}
           <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
           {/*
@@ -521,7 +521,7 @@ export function AuthPage() {
   }
   return (
     <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
-      <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
+      <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } sendReset.mutate() }}>
         {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
         <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
         {error && <AuthError>{error}</AuthError>}

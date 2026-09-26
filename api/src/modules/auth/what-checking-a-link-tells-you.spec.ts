@@ -61,3 +61,13 @@ describe('everything else gets only { valid: false }', () => {
     expect(await svc.validateToken('t', 'PASSWORD_RESET')).toEqual({ valid: false });
   });
 });
+
+describe('a request that carries no link at all', () => {
+  it('no token, or not a string, is { valid: false }, never a server error, and looks nothing up', async () => {
+    const { svc, findUnique } = service(row());
+    expect(await svc.validateToken(undefined as any, 'PASSWORD_RESET')).toEqual({ valid: false });
+    expect(await svc.validateToken('', 'PASSWORD_RESET')).toEqual({ valid: false });
+    expect(await svc.validateToken(['a', 'b'] as any, 'PASSWORD_RESET')).toEqual({ valid: false });
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+});

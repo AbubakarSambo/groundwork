@@ -912,6 +912,9 @@ export class AuthService {
    * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
    */
   async validateToken(token: string, type: string): Promise<{ valid: boolean; expired?: true }> {
+    /* A request with no token, or a token that is not a string (?token=a&token=b arrives as an
+       array), is not a link: say so, instead of a 500 from hashing nothing. U.2 review. */
+    if (typeof token !== 'string' || !token) return { valid: false };
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 

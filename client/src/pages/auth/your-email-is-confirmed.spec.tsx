@@ -48,7 +48,8 @@ describe('when the link has just created the account', () => {
     const { container } = open()
     await screen.findByRole('heading', { name: 'Your email is confirmed' })
     expect(readable(container)).toBe(
-      'Groundwork' + 'Your email is confirmed' + 'wairimu@baridi.test. You’ll get sign-in links and reports here.' + 'Continue',
+      /* U.2 review: one sentence, not an address and a sentence joined by a full stop. */
+      'Groundwork' + 'Your email is confirmed' + 'We’ll send sign-in links and reports to wairimu@baridi.test.' + 'Continue',
     )
     expect(navigated).not.toHaveBeenCalled()
   })
@@ -67,10 +68,10 @@ describe('when the link has just created the account', () => {
     expect(navigated).toHaveBeenCalledWith('/set-password?token=pst&next=%2Fgrounds', { replace: true })
   })
 
-  it('with no address on the response, the sentence starts at "You’ll get" rather than guessing', async () => {
+  it('with no address on the response, it says "this address" rather than guessing', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user: { ...user, email: undefined }, accessToken: 't', justCreated: true })
     open()
-    expect((await screen.findByText(/You’ll get sign-in links/)).textContent).toBe('You’ll get sign-in links and reports here.')
+    expect((await screen.findByText(/sign-in links and reports/)).textContent).toBe('We’ll send sign-in links and reports to this address.')
   })
 
   it('is never shown in front of a failure', async () => {

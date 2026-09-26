@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { Button } from '@/components/gw/kit'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
-import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { AuthCard, AuthError, AuthField } from './auth-kit'
 import { LinkSentPanel } from './LinkSentPanel'
 
@@ -83,7 +83,7 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
 
   return (
     <AuthCard title={title} sub={sub}>
-      <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email.trim())) { setError(NOT_AN_ADDRESS); return } send.mutate() }}>
+      <form noValidate onSubmit={e => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } send.mutate() }}>
         {trap.field}
         <AuthField id="expired-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); setError('') }} autoFocus />
         {error && <AuthError>{error}</AuthError>}

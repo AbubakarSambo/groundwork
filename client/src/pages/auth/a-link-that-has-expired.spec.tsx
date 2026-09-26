@@ -111,7 +111,8 @@ describe('an old sign-in link (/verify-email)', () => {
     ;(authApi.verifyEmail as any).mockRejectedValue(refused('This verification link has expired. Please request a new one.'))
     renderAt('/verify-email?token=t4')
     fireEvent.click(await screen.findByRole('button', { name: 'Send me a fresh link' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('That address does not look right.')
+    /* U.2 review: with nothing typed it says what to do first. */
+    expect((await screen.findByRole('alert')).textContent).toBe('Type your email address first.')
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 
