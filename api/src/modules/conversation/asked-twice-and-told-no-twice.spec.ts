@@ -150,7 +150,8 @@ describe('the question asked again comes out', () => {
       .readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/withoutTheQuestionAskedAgain\(screened\.text, earlierAsks\)/);
-    expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text\)/);
+    /* The same condition, and since fix7-2 a cut that leaves a fragment counts as nothing else in it. */
+    expect(src).toMatch(/if \(withoutIt\.trim\(\) && withoutIt !== screened\.text && !aCutThatLeavesAFragment\(screened\.text, withoutIt\)\)/);
   });
 });
 
