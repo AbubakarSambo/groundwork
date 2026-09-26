@@ -8,7 +8,7 @@ import { useYourOrganisations, initialsOf, roleWord } from './your-organisations
  */
 export function OrganisationChoices() {
   const user = useAuthStore(s => s.user)
-  const { myOrgs, chooseOrganisation, switching, onlyOneNotChosen, startMyOwnWorkspace } = useYourOrganisations()
+  const { myOrgs, chooseOrganisation, onlyOneNotChosen, startMyOwnWorkspace } = useYourOrganisations()
   const orgName = user?.organizationName ?? 'Your organisation'
 
   return (
@@ -26,9 +26,8 @@ export function OrganisationChoices() {
           type="button"
           className="gw-rl-menu-item"
           onClick={() => chooseOrganisation(o)}
-          disabled={switching}
           aria-current={o.active ? 'true' : undefined}
-          title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
+          title={o.active ? 'You are in this organisation' : `Choose ${o.name}`}
         >
           <span className="gw-rl-sq" aria-hidden>{initialsOf(o.name)}</span>
           <span style={{ flex: 1, minWidth: 0 }}><b>{o.name}</b><span className="gw-rl-org-role">{roleWord(o.role)}</span></span>

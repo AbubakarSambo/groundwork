@@ -91,17 +91,32 @@ describe('"More", as a lead and a participant read it', () => {
 })
 
 describe('switching organisation and signing out on a phone', () => {
-  it('lists your organisations with the one you are in ticked, and asks before switching', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  /* U.3: the browser confirm box is replaced by the prototype's "Choose an organisation" page. One tap
+     on another organisation opens that page; nothing switches from the menu itself. */
+  it('lists your organisations with the one you are in ticked, and one tap opens "Choose an organisation"', async () => {
     const sw = vi.spyOn(authApi, 'switchOrganization')
-    mount(PARTICIPANT, [
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [
       { id: 'o1', name: 'Coamana', slug: 'c', role: 'MEMBER', active: true },
       { id: 'o2', name: 'Kilimo Traders', slug: 'k', role: 'ADMIN', active: false },
     ])
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/more']}>
+          <Routes>
+            <Route path="/more" element={<AppShell><MorePage /></AppShell>} />
+            <Route path="/orgs" element={<p>The chooser</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
     expect(within(main()).getByRole('heading', { name: 'Organisations' })).toBeInTheDocument()
     expect(within(main()).getByLabelText('You are in this organisation')).toBeInTheDocument()
+    expect(within(main()).getByRole('link', { name: 'Join or create an organisation' })).toHaveAttribute('href', '/org-new')
     fireEvent.click(within(main()).getByRole('button', { name: /Kilimo Traders/ }))
-    expect(confirm).toHaveBeenCalledWith("Switch to Kilimo Traders? You will see Kilimo Traders's check-ins instead of this organisation's, as a admin.")
+    expect(await screen.findByText('The chooser')).toBeInTheDocument()
     expect(sw).not.toHaveBeenCalled()
   })
 

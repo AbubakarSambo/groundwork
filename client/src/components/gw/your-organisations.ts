@@ -1,5 +1,4 @@
-import { toast } from 'sonner'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
@@ -11,14 +10,14 @@ import { useAuthStore } from '@/stores/auth'
  * so the two can never ask different questions or switch differently. Phones had no way to switch
  * organisation at all before the "More" page.
  *
- * Nothing switches without a confirm that names the organisation and the role you will have there,
- * because the role change is the part nobody expects. The one you are in is not offered.
+ * Nothing switches from one click here: choosing another organisation opens "Choose an organisation"
+ * (#/orgs), whose rows say the role you will have there, because the role change is the part nobody
+ * expects. The one you are in is not offered.
  */
 export type YourOrganisation = { id: string; name: string; slug: string; role: string; active: boolean }
 
 export function useYourOrganisations() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const setAuth = useAuthStore(s => s.setAuth)
   const navigate = useNavigate()
 
   const { data: myOrgs = [], isFetched: loaded } = useQuery({
@@ -28,20 +27,16 @@ export function useYourOrganisations() {
     retry: false,
   })
 
-  const switchOrg = useMutation({
-    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
-    onSuccess: (res) => {
-      setAuth(res.user, res.accessToken)
-      window.location.assign('/grounds')
-    },
-    onError: () => toast.error('Could not switch organisation. Try again.'),
-  })
-
-  /* No confirm box (U.3): every row already says the role you will have there, as the prototype's
-     "Choose an organisation" does. The one you are in is not switched to again. */
+  /*
+   * ONE CLICK IN THE MENU NEVER SWITCHES (W8-71, and U.3). A stray click on a row used to change which
+   * organisation's data you saw and your role in one go, which is why a browser confirm box stood in
+   * front of it. The confirm box is replaced by the prototype's own page: the row opens "Choose an
+   * organisation" (#/orgs), where every row says the role you will have there before you press it.
+   * The one you are in is not offered again.
+   */
   function chooseOrganisation(o: YourOrganisation) {
-    if (o.active || switchOrg.isPending) return
-    switchOrg.mutate(o.id)
+    if (o.active) return
+    navigate('/orgs')
   }
 
   /*
@@ -58,7 +53,7 @@ export function useYourOrganisations() {
     navigate('/org-new')
   }
 
-  return { myOrgs, loaded, chooseOrganisation, switching: switchOrg.isPending, onlyOneNotChosen, startMyOwnWorkspace }
+  return { myOrgs, loaded, chooseOrganisation, onlyOneNotChosen, startMyOwnWorkspace }
 }
 
 /** Two letters for a square: the first letters of the first two words, or the first two letters. */
