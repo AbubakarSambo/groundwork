@@ -304,6 +304,35 @@ at a computer's width and a phone's. The 24 scenarios could not be run (item 3).
 **Still open in U.1:** nothing of U.1's own. You chose no tour (item 8). The sidebar links to Today,
 Company, You and Suites come with those pages, in U.5, U.12, U.15 and U.17.
 
+### U.2 Accounts and signing in: in progress
+
+Nine things here wait for your decision (item 10 above). Until you decide, each keeps what the
+product does today. Done so far, on the screens only:
+
+1. **The parts every account screen is built from** (commit `1679086b`): the white card on the cream
+   page, the password box with "Show", and the password rules, ticked as each is met.
+2. **A real bug fixed: "Send another link" never worked** (commit `be63e930`). For someone who
+   already had an account, every resend said "That link did not send". For someone still signing
+   up, it replaced the name they had typed with one guessed from their email address, and wiped the
+   organisation they had typed. Now it sends again the same way as the first link.
+3. **The sign-in screen**, as in the prototype (commit `c1b9d61f`): "Use your password, or we'll email
+   you a link that signs you in.", with the dark panel "Short check-ins, and proof of what actually
+   moved." It now has "Email me a sign-in link instead". Before, a person with no password had no
+   visible way to ask for a link.
+4. **"Check your email"** (commit `988bdc33`): "We sent a sign-in link to … Open it on any device."
+   and "Send it again". The list that promised a password step is gone.
+5. **"Forgot your password?"** (commit `5582d25e`). The page used to be headed "Sign in". It says the
+   link works for an hour, which is true, until you decide (decision 5).
+6. **"Google sign-in didn't finish"** (commit `8ac050cd`), one page for both ways a Google sign-in can
+   fail.
+7. **"You're signed out"** (commit `fc5700e2`). Every sign-out button now goes there. On the way, the
+   builder found that signing out from "More" on a phone could sign the person straight back out
+   after they signed in again. That is fixed.
+
+Still to do: the reset page, the "choose a password" page, the "That link has expired" card, then the
+backend parts (the reset page showing whose account it is, telling the screens that a link has just
+made the account, and sending a failed Google sign-in to the new page).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
