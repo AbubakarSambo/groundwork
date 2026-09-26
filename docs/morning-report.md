@@ -127,6 +127,12 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 
 - **Jargon in reports rose above 1.4's bar on this run,** mostly because the reports repeat the people's own words "pipeline" and "escalation". The rule is to never change people's own words. So the question is whether a report should still use a word the person used when that word is on the jargon list. I have not changed anything for this.
 - **Names inside people's words.** Reports are meant to be stored without names, but a name that somebody says, such as "as requested by Nadia", is stored as they said it. It is then shown to every reader, including a colleague who is not allowed to see names. I can swap each such name for the person's label, and the name is then put back correctly for each reader. The cost is that a quote reaches the person it names as "you": Nadia would read "as requested by you". Your rule is never to change people's own words, so I have not done this. It is ready in `8feedc64` if you want it.
+
+  **Why it matters, measured tonight.** This one problem made three judgements wrong in three different ways:
+  - Drift was wrong in four runs out of six. Twice it treated Nadia, the lead, as "another leader". Once it wrote "You have mistaken Zainab Suleiman for somebody named Zainab".
+  - Pulse was wrong once. Fatima was waiting for "Ahmed's manager", and Ahmed is the lead. The judgement told Ahmed that both people were "blocked waiting for your approval" and told him to approve the purchases himself.
+
+  **A middle way, if you prefer it.** The names could be swapped for labels only in what the model reads. Then, inside quotation marks, the product would put the name back before storing. Paraphrases would say "at your request", and quotations would keep the person's words. The cost is that a quote would carry the full name ("Nadia Haddad") where the person may have said only "Nadia". I have not built this.
 - The older open questions are unchanged and do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
 
 ## WHERE THIS SESSION STOPPED, 26 September, evening
