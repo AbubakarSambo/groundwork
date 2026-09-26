@@ -6,21 +6,34 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
-## NEW SESSION, 26 September, from 21:35 (a different account, same branch)
+## WHERE THIS SESSION STOPPED, 26 September, evening
 
-Picked up exactly where the section below stopped.
+**This session stopped early, and not because of the work.** It started in an empty folder and was moved into this repository partway through. The project's safety check runs before every command and every file edit, and it still looks for its script in the old folder. So everything after the move was refused, including editing this report. I did not touch the safety settings. The fix is a fresh session opened on this folder.
 
-- **In step with the screens workspace.** Merged `mine/wip/prototype-ui` (65 commits, all sign-up,
-  billing's free-trial setting and screens; nothing in the engine's code). Clean merge, pushed as
-  `51f55fbe`. No new requests: their file now marks both of theirs answered or accepted, which
-  mirrors `docs/answers-from-engine.md`.
-- **Safe to run, checked again.** Local test database `gw_pw9_1786222102`, Stripe `sk_test_`,
-  Resend placeholder with `EMAIL_SENDS_FOR_REAL` unset, WhatsApp unset.
-- **The API that was running was out of date.** It served `dist/` built at 20:58, before the
-  last session's final code commits. Rebuilt and restarted, so this run measures the code as it
-  is committed.
-- **Run-6 started**: all 24, three shards, into `api/journey/all-24/run-6`. This is step 1 below.
-  The tester helper is running every test suite on the merge at the same time.
+### What is finished
+
+- **I am in step with the screens workspace.** I merged `mine/wip/prototype-ui`, which brought 65 commits covering sign-up, the free-trial setting in billing, and screens. None of it touches the engine's code. The merge was clean, and I pushed it to `mine/wip/plain-reports` as `51f55fbe`.
+- **There are no new requests from the screens workspace.** Their file now marks their two earlier requests as answered and accepted, which matches `docs/answers-from-engine.md`.
+- **I checked again that the run was safe.** It uses the local test database `gw_pw9_1786222102` and a Stripe test key. Real email cannot be sent, because the Resend key is a placeholder and `EMAIL_SENDS_FOR_REAL` is not set. WhatsApp is not set up.
+- **I rebuilt and restarted the local API.** The copy that was running had been built at 20:58, before the last session's final code changes. This run therefore measures the code as it is committed.
+- **The API tests pass, with one exception: 9,113 of 9,114.** The one failure came in with the merge. It is in the screens workspace's new test `api/src/modules/auth/the-password-rules.spec.ts`, at lines 74 to 80. That test reads `auth.service.ts` without removing comments first, and `a-guard-that-a-comment-satisfies-is-not-a-guard.spec.ts` rightly catches that. It is a flaw in how the test is written, not a fault in the product. Hafsah has passed it to the screens workspace directly.
+
+### What is in progress
+
+- **Run-6 is running.** All 24 scenarios are running in three batches, into `api/journey/all-24/run-6`. Each batch writes a file named `done-A`, `done-B` or `done-C` when it finishes.
+
+### What comes next, in order
+
+1. **Wait for all three done files.** Do not start a new run while this one is still going.
+2. **Check that the run is sound before reading any number.** No report should be marked "REPORT INCOMPLETE" in `run.log`. The findings in the captured reports should match the database. The reports should record the prompt versions that actually ran, which were `report_synthesis` v6 and `system` v43 last time.
+3. **Score run-6 against the baseline** with `tools/score_run.py`. Then read all 24 judgements against the right answer for each scenario. Last time 16 were clearly right, and the bar is 20.
+4. **Work on the ones that are still only close.** For each one, first check whether the missing fact is actually in the material, before changing any prompt.
+5. **Run the client tests.** They have not run yet, because they were blocked.
+6. **Then move to task 1.6,** the automatic check on the text each reader sees.
+
+### Needs Hafsah
+
+- Nothing about the product itself. The open questions from before are still open and still do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
 
 ## WHERE I STOPPED, AND WHAT COMES NEXT
 
