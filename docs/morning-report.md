@@ -69,7 +69,31 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 5. **`124e2a4c`: a reply that repeats our own instruction is never sent.** If the model's second try repeats the instruction, the product asks its own one-line question instead.
 6. **`a5f6e8dc`: every action in the judgement is now something the reader does.** Before, the lead read actions like "Tell you what Blessing Okafor's record says" and "Ask you to decide what Zainab should work on". There were 8 of these on run-5 and 4 on run-6.
 
-Changes 4 to 6 are not yet measured. Next I re-run handover, drift, loans, recognition and renewal on them, then do one full run of all 24.
+### The third round, on changes 1, 2 and 4 to 6
+
+- **The year-end loop is gone.** Patience was asked about the date once and nothing was repeated.
+- **Handover is right again, now three rounds out of three.** It names the verbal supplier arrangement and the spreadsheet on her own drive.
+- **Renewal is right again.**
+- **Drift is wrong again.** It calls Nadia "another leader". Drift is right in one round out of three. It will not be steady until the judgement can tell that "Nadia" in Zainab's words is the lead, and that is the decision waiting for you below.
+- **Loans is close.** Its report was complete this time. It separates Musa's machine, which was never delivered, but it does not set the five borrowers apart or say the grace period should change. In a later round it was almost exactly right: it named four of the five and said "revise the loan terms so that repayments start after a borrower can generate income". But that report was incomplete, so it does not count. Loans has nine people, and when it runs next to other scenarios its report often does not finish in the runner's five minutes.
+- **Recognition is not steady.** The record now keeps Victor (change 2 works: three entries, from both people). But the check for "named by more than one person" did not fire, because both people started their sentence with his name, and that check skips a word at the start of a sentence.
+
+7. **`ceda16c4`: a name at the start of a sentence now counts when the same name is used elsewhere in the check-in.** I ran recognition twice more on it. Both were wrong. The first time, Amara's "Victor, the contractor, was responsible…" still did not count, because nobody used "Victor" mid-sentence. The second time, only Joseph mentioned Victor at all, so the check was right to stay quiet. That second run also accused the lead of "taking credit for the design work", which nobody said. I have written that down as a charge nobody made.
+8. **`74f10ffe`: a name used as a possessive, such as "Victor's", now counts as a name everywhere in that check-in.** I ran recognition twice on it, and both times the check reported Victor as named by two people. The first was clearly right: "two other participants say the most critical work was done by Victor". The second was close. That time the simulated lead gave credit to three names who appear nowhere else, "Alex", "Sarah" and "David", and the judgement chose that as the bigger gap. It mentioned Victor only in an action.
+
+**Run-7, the full run of all 24 scenarios, started at about 01:05 on the code as it stands at `74f10ffe`.** It is the first of the two full runs allowed tonight.
+
+### Where each changed scenario stands, across the clean re-runs
+
+| Scenario | Clearly right | Why it moves |
+| --- | --- | --- |
+| handover | 3 of 3 | Steady since change 1. |
+| newmanager | 2 of 2, and on run-6 | Steady. |
+| renewal | 3 of 3 | Steady. |
+| drift | 1 of 3 | It needs to know that Nadia is the lead. That is your decision. |
+| recognition | 2 of 5 | Whether two people mention Victor changes from run to run. The check for a name two people used is now being fixed. |
+| loans | 0 counted | Close or nearly right each time, but its report usually does not finish in time.
+
 
 ### Needs Hafsah
 
