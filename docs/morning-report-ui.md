@@ -153,7 +153,7 @@ the tour was taken is kept in the browser, like the pins.
 Feedback button. I kept it, because it is the pilot's one-tap way to send feedback. Say if it should
 go.
 
-### 10. Signing in (U.2): eight places where the prototype and the product disagree
+### 10. Signing in (U.2): nine places where the prototype and the product disagree
 
 The prototype's sign-in screens say some things the product does not do, or does differently on
 purpose. I will build everything else in U.2 and leave these as they are until you decide.
@@ -186,6 +186,10 @@ purpose. I will build everything else in U.2 and leave these as they are until y
 8. **"Anything you'd started is saved."** The prototype's sign-out page says this. Signing out
    clears drafts kept in the browser today, so it may not be true. **My suggestion:** leave the line
    out until it is checked, or keep drafts on the server.
+9. **"Nothing was created or changed."** The prototype's "Google sign-in didn't finish" page says
+   this. It is not always true: a first Google sign-in creates the account and its organisation, and
+   links an existing account to Google, before steps that can still fail. **My suggestion:** leave the
+   line out, as it is now, unless the Google sign-in is changed to undo those steps when it fails.
 
 ### Decisions I made on my own
 
