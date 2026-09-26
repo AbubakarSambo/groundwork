@@ -25,10 +25,12 @@ describe('what the setup screen owes you', () => {
 
   it('offers a date for the invites rather than a day nobody set', () => {
     /* "As soon as I save" or "On the day it starts", with no start date set by default, is a
-       choice between now and now. */
-    expect(PAGE).toContain('On a date I pick')
+       choice between now and now. U.6: the choice is the prototype's "Now", "Tomorrow" or "On a
+       date" in TheSetup, and the old wording moved out of this page with it, so this reads there. */
+    const SETUP = readFileSync(join(__dirname, 'TheSetup.tsx'), 'utf8')
+    expect(SETUP).toContain("onADate: 'On a date'")
     expect(PAGE).not.toContain('On the day it starts')
-    expect(PAGE).toContain('The invites go out on the morning of that date')
+    expect(SETUP).toContain('Adding someone sends their invitation when it starts.')
   })
 
   it('keeps the plan when the check-in starts', () => {

@@ -24,6 +24,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
+import { TheSetup } from './TheSetup'
 import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
@@ -35,8 +36,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
-import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
-import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { whatIsSetAndWhatIsNot } from '@/components/gw/when-the-check-ins-land'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -3689,45 +3689,20 @@ export function EntryChatPage() {
                 It always did set a date; the label just never said so. It says so now, and the date
                 field it opens is the answer to the question the button asks.
               */}
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginBottom: 12 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7 }}>When should the invites go out?</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: checkInBy ? 0 : 8 }}>
-                  <button
-                    onClick={() => setCheckInBy('')}
-                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
-                      border: `1px solid ${!checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: !checkInBy ? 'var(--gw-navy)' : 'white', color: !checkInBy ? 'white' : 'var(--gw-text)' }}
-                  >
-                    As soon as I save
-                  </button>
-                  <button
-                    onClick={() => { if (!checkInBy) { const d = new Date(); d.setDate(d.getDate() + 1); setCheckInBy(d.toISOString().slice(0, 10)) } }}
-                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
-                      border: `1px solid ${checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: checkInBy ? 'var(--gw-navy)' : 'white', color: checkInBy ? 'white' : 'var(--gw-text)' }}
-                  >
-                    On a date I pick
-                  </button>
-                </div>
-                {checkInBy ? (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 9, flexWrap: 'wrap' }}>
-                    <input
-                      type="date"
-                      value={checkInBy}
-                      min={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setCheckInBy(e.target.value)}
-                      style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Your work is saved now. The invites go out on the morning of that date, and nobody hears anything before then.
-                    </span>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                    Everyone named gets their invite the moment you press save.
-                  </div>
-                )}
-              </div>
+              {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
+              <TheSetup
+                cadence={cadence}
+                cadenceChosen={cadenceChosen}
+                onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
+                anchorDay={cadenceAnchorDay}
+                onAnchorDay={setCadenceAnchorDay}
+                workingDays={workingDays}
+                onWorkingDays={setWorkingDays}
+                startsOn={checkInBy}
+                onStartsOn={setCheckInBy}
+                endsOn={lastCheckInBy}
+                onEndsOn={setLastCheckInBy}
+              />
 
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
@@ -3932,149 +3907,16 @@ export function EntryChatPage() {
               />
               {/* Asked one step earlier now, where both the email and Google paths pass. */}
 
-              <FieldLabel>
-                How often does everyone check in?
-                {!cadenceChosen && (
-                  <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this will run every 2 weeks unless you pick.</span>
-                )}
-              </FieldLabel>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
-                  const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
-                  return (
-                  <button key={c} onClick={() => { setCadence(c); setCadenceChosen(true) }} style={{
-                    flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${cadenceChosen && cadence === c ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                    background: cadenceChosen && cadence === c ? 'var(--gw-blue-bg)' : 'white',
-                    color: cadenceChosen && cadence === c ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                  }}>
-                    {labels[c]}
-                  </button>
-                )})}
-              </div>
-              {/* Weekday anchor for weekly-style cadences ("every Monday") */}
-              {(cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && (
-                <div style={{ marginBottom: 8 }}>
-                  <FieldLabel>On which day? (optional)</FieldLabel>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
-                      <button key={d} onClick={() => setCadenceAnchorDay(cadenceAnchorDay === i ? null : i)} style={{
-                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        border: `1px solid ${cadenceAnchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                        background: cadenceAnchorDay === i ? 'var(--gw-blue-bg)' : 'white', color: cadenceAnchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                      }}>{d}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/*
-                WHICH DAYS THIS TEAM WORKS.
-
-                A daily cadence was +1 day flat, so it landed on Saturdays and Sundays, and daily is
-                the one rhythm with no day picker - so "weekdays only" could not be said at all.
-                Offered for every rhythm rather than only daily, because a fortnightly anchor lands
-                on a weekend too, just more quietly.
-
-                Nothing is pre-selected. Monday to Friday is one region's office week, not a fact
-                about anybody's: field teams work Saturdays and the week starts on Sunday across
-                much of where this is used.
-              */}
-              {cadence !== 'ONE_TIME' && (
-                <div style={{ marginBottom: 8 }}>
-                  <WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />
-                </div>
-              )}
-
-              {/* Day-of-month anchor for monthly ("on the 1st") */}
-              {cadence === 'MONTHLY' && (
-                <div style={{ marginBottom: 8 }}>
-                  <FieldLabel>On which day of the month? (optional)</FieldLabel>
-                  <select value={cadenceAnchorDay ?? ''} onChange={e => setCadenceAnchorDay(e.target.value ? Number(e.target.value) : null)}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: cadenceAnchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}>
-                    <option value="">No fixed day (every ~30 days)</option>
-                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                {cadence === 'ONE_TIME' ? 'Single session · one answer per person, no follow-up cadence.' :
-                 cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
-                 cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
-                 cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
-                 cadence === 'SEQUENTIAL' ? 'No fixed schedule · when you check in, your team gets their next check-in. Good for cascading updates to a group (e.g. field officers).' :
-                 `Every 2 weeks${cadenceAnchorDay != null ? ` · on ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cadenceAnchorDay]}` : ''} · typical resolution in 6-8 weeks.`}
-              </div>
-              {cadence === 'ONE_TIME' ? (
-                <>
-                  <FieldLabel>Complete by</FieldLabel>
-                  <input
-                    type="date" value={checkInBy}
-                    onChange={e => setCheckInBy(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                  />
-                </>
-              ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <FieldLabel>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></FieldLabel>
-                    <input
-                      type="date" value={checkInBy}
-                      onChange={e => setCheckInBy(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <FieldLabel>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></FieldLabel>
-                    <input
-                      type="date" value={lastCheckInBy}
-                      onChange={e => setLastCheckInBy(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: lastCheckInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                    />
-                  </div>
-                </div>
-              )}
-              {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
-                <div style={{ fontSize: 11.5, color: 'var(--gw-danger)', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
-              )}
-
-              {/*
-                WHAT THE FOUR FIELDS ACTUALLY PRODUCE.
-
-                A rhythm, a day of the week, a start date and a set of working days are four
-                controls nobody can compose in their head, and the only way to find out what they
-                produced was to wait for the first check-in to open on the wrong day. It says
-                "would" rather than "will" because nothing is scheduled until the check-in exists.
-              */}
-              {(() => {
-                const dates = whenTheCheckInsLand({
-                  cadence: cadence as CadenceName,
-                  anchorDay: cadenceAnchorDay,
+              {/* U.6: the schedule is set before saving now, in TheSetup. What is still missing stays said here. */}
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                {whatIsSetAndWhatIsNot({
+                  name: groundName,
+                  cadenceChosen,
                   startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
                   workingDays,
-                  howMany: cadence === 'DAILY' ? 5 : 4,
-                })
-                return (
-                  <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
-                      {dates.length > 1 ? 'Check-ins would open on' : 'The check-in would open on'}
-                    </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-                      {dates.map(sayTheDate).join(' · ')}{dates.length > 1 ? ' · and on from there' : ''}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
-                      {whatIsSetAndWhatIsNot({
-                        name: groundName,
-                        cadenceChosen,
-                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
-                        workingDays,
-                        peopleAdded: inviteAdded.length,
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
+                  peopleAdded: inviteAdded.length,
+                })}
+              </div>
             </div>
 
             {/* Invite contributors - before create account */}

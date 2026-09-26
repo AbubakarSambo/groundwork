@@ -22,16 +22,26 @@ describe('the invites wait if you say so', () => {
   const page = strip(readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8'))
   const block = strip(readFileSync(join(__dirname, '../../components/gw/WhatThisCheckInStillNeeds.tsx'), 'utf8'))
 
-  it('asks when the invites should go out, and offers both answers', () => {
-    expect(page).toContain('When should the invites go out?')
-    expect(page).toContain('As soon as I save')
-    expect(page).toContain('On a date I pick')
+  /*
+   * U.6: the question is now the prototype's "When it starts" (setup.txt), with "Now", "Tomorrow" and
+   * "On a date", in TheSetup. It is the same field: the start date is what the invitations wait
+   * for, and the screen says so ("Adding someone sends their invitation when it starts."). The old
+   * strings "When should the invites go out?", "As soon as I save" and "On a date I pick" are gone
+   * with it, so these two tests now read TheSetup and its wiring instead.
+   */
+  it('asks when it starts, and offers now, tomorrow or a date', () => {
+    const setup = strip(readFileSync(join(__dirname, 'TheSetup.tsx'), 'utf8'))
+    expect(setup).toContain("whenItStarts: 'When it starts'")
+    expect(setup).toContain("now: 'Now'")
+    expect(setup).toContain("tomorrow: 'Tomorrow'")
+    expect(setup).toContain("onADate: 'On a date'")
+    expect(setup).toContain("invitationsWhenItStarts: 'Adding someone sends their invitation when it starts.'")
   })
 
-  it('wires holding them to the start date, which is what actually delays the mail', () => {
-    const choice = page.slice(page.indexOf('When should the invites go out?'))
-    expect(choice).toMatch(/setCheckInBy\(''\)/)
-    expect(choice).toMatch(/setCheckInBy\(d\.toISOString\(\)/)
+  it('wires the start to the start date, which is what actually delays the mail', () => {
+    const choice = page.slice(page.indexOf('<TheSetup'))
+    expect(choice).toMatch(/startsOn=\{checkInBy\}/)
+    expect(choice).toMatch(/onStartsOn=\{setCheckInBy\}/)
   })
 
   it('and says which one is happening, rather than one line for both', () => {

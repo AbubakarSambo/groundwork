@@ -1,0 +1,89 @@
+import { describe, it, expect } from 'vitest'
+import { useState } from 'react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
+import { TheSetup, whenTheyOpen } from './TheSetup'
+import type { Cadence } from '@/components/gw/when-the-check-ins-land'
+
+/*
+ * THE SCHEDULE, AS THE LEAD READS IT BEFORE SAVING (U.6, B1). Word for word against
+ * docs/prototype/screens/B1-starting-a-check-in/setup.txt, on the rendered panel, with the prototype's
+ * own dates: today is Tuesday 30 June, so "Tomorrow" is Wednesday 1 July.
+ */
+const TODAY = new Date(2026, 5, 30)
+
+function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[] }) {
+  const [c, setC] = useState<Cadence>(cadence)
+  const [picked, setPicked] = useState(chosen)
+  const [anchor, setAnchor] = useState<number | null>(null)
+  const [wd, setWd] = useState<number[]>(days)
+  const [s, setS] = useState(start)
+  const [e, setE] = useState(end)
+  return (
+    <>
+      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={anchor} onAnchorDay={setAnchor}
+        workingDays={wd} onWorkingDays={setWd} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
+      <output data-testid="saved">{JSON.stringify({ c, s, e, wd })}</output>
+    </>
+  )
+}
+const saved = () => JSON.parse(screen.getByTestId('saved').textContent ?? '{}')
+
+describe('the setup, as the lead reads it', () => {
+  it('reads the prototype’s sections, in its words', () => {
+    render(<Harness />)
+    const starts = screen.getByRole('region', { name: 'When it starts' })
+    expect(within(starts).getByText('The first check-in opens at the start time.')).toBeTruthy()
+    expect(within(starts).getAllByRole('button').map((b) => b.textContent)).toEqual(['Now', 'Tomorrow', 'On a date'])
+    expect(within(starts).getByText('Adding someone sends their invitation when it starts.')).toBeTruthy()
+    const often = screen.getByRole('region', { name: 'How often' })
+    expect(within(often).getAllByRole('button').map((b) => b.textContent)).toEqual(['Once', 'Every day', 'Every week', 'Every 2 weeks', 'Every month', 'When I choose'])
+    expect(within(often).getByText('Not set yet. This will run every 2 weeks unless you pick one.')).toBeTruthy()
+    const days = screen.getByRole('region', { name: 'On which days' })
+    expect(within(days).getAllByRole('button').map((b) => b.textContent)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Weekdays only', 'Any day is fine'])
+    const ends = screen.getByRole('region', { name: 'When it ends' })
+    expect(within(ends).getByText('You can give it more time later.')).toBeTruthy()
+    expect(within(ends).getAllByRole('button').map((b) => b.textContent)).toEqual(['On a date', 'When I end it'])
+    for (const notBuilt of ['Opens at', 'Closes at', 'Do you check in too?', 'WhatsApp', 'Guest']) {
+      expect(document.body.textContent, notBuilt).not.toContain(notBuilt)
+    }
+  })
+
+  it('“Tomorrow” says the day and saves it as the start date', () => {
+    render(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
+    expect(screen.getByText('Tomorrow, Wednesday 1 July.')).toBeTruthy()
+    expect(saved().s).toBe('2026-07-01')
+    fireEvent.click(screen.getByRole('button', { name: 'Now' }))
+    expect(saved().s).toBe('')
+  })
+
+  it('says which days the check-ins open, as the prototype does', () => {
+    render(<Harness start="2026-07-01" end="2026-09-30" cadence="DAILY" chosen days={[1, 2, 3, 4, 5]} />)
+    /* The prototype's sample says 65; counted for real, 1 July to 30 September 2026 has 66 weekdays
+       (23 in July, 21 in August, 22 in September). The sentence is the prototype's; the number is true. */
+    expect(screen.getByText('Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September: 66 in all.')).toBeTruthy()
+    expect(screen.queryByText(/Not set yet/)).toBeNull()
+  })
+
+  it('“Any day is fine” and “Weekdays only” set the days people work', () => {
+    render(<Harness cadence="DAILY" chosen />)
+    fireEvent.click(screen.getByRole('button', { name: 'Weekdays only' }))
+    expect(saved().wd).toEqual([1, 2, 3, 4, 5])
+    fireEvent.click(screen.getByRole('button', { name: 'Any day is fine' }))
+    expect(saved().wd).toEqual([])
+  })
+
+  it('“When I end it” clears the end date', () => {
+    render(<Harness start="2026-07-01" end="2026-09-30" cadence="WEEKLY" chosen />)
+    fireEvent.click(screen.getByRole('button', { name: 'When I end it' }))
+    expect(saved().e).toBe('')
+  })
+
+  it('once, and when I choose, have no days to pick and no end', () => {
+    render(<Harness cadence="ONE_TIME" chosen start="2026-07-01" />)
+    expect(screen.queryByRole('region', { name: 'On which days' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'When it ends' })).toBeNull()
+    expect(screen.getByText('The check-in opens on Wednesday 1 July.')).toBeTruthy()
+    expect(whenTheyOpen({ cadence: 'SEQUENTIAL', anchorDay: null, startsOn: '', endsOn: '', workingDays: [], today: TODAY })).toBeNull()
+  })
+})

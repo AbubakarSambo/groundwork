@@ -1,0 +1,222 @@
+import { useState } from 'react'
+import { whenTheCheckInsLand, workingDaysOf, type Cadence } from '@/components/gw/when-the-check-ins-land'
+
+/*
+ * THE SCHEDULE, BEFORE IT IS SAVED (U.6, B1): #/new/setup.
+ *
+ * Wording from docs/prototype/screens/B1-starting-a-check-in/setup.txt. Every choice here sets
+ * something the server really keeps: the start date (`checkInBy`, the ground's startsAt, which is
+ * also when the invitations go out), the rhythm, the day it lands on, the days people work, and the
+ * end date (`lastCheckInBy`). The prototype's "Opens at" and "Closes at", guests, and "Do you check
+ * in too?" are not here: nothing keeps an opening time, guests are not built, and who checks in is
+ * already asked in the conversation. See item 17 of docs/morning-report-ui.md.
+ */
+
+export const THE_SETUP = {
+  whenItStarts: 'When it starts',
+  opensAtTheStart: 'The first check-in opens at the start time.',
+  invitationsWhenItStarts: 'Adding someone sends their invitation when it starts.',
+  now: 'Now',
+  tomorrow: 'Tomorrow',
+  onADate: 'On a date',
+  howOften: 'How often',
+  notChosen: 'Not set yet. This will run every 2 weeks unless you pick one.',
+  onWhichDays: 'On which days',
+  weekdaysOnly: 'Weekdays only',
+  anyDay: 'Any day is fine',
+  whenItEnds: 'When it ends',
+  moreTimeLater: 'You can give it more time later.',
+  whenIEndIt: 'When I end it',
+} as const
+
+export const HOW_OFTEN: [Cadence, string][] = [
+  ['ONE_TIME', 'Once'],
+  ['DAILY', 'Every day'],
+  ['WEEKLY', 'Every week'],
+  ['FORTNIGHTLY', 'Every 2 weeks'],
+  ['MONTHLY', 'Every month'],
+  ['SEQUENTIAL', 'When I choose'],
+]
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+/** Monday first, as the prototype draws the week. */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
+const WEEKDAYS = [1, 2, 3, 4, 5]
+
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const fromIso = (s: string) => new Date(`${s}T00:00:00`)
+function tomorrowOf(today: Date): string { const d = new Date(today); d.setDate(d.getDate() + 1); return iso(d) }
+
+/** "Wednesday 1 July" */
+export function theDay(d: Date): string {
+  return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
+
+/**
+ * "Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September: 65 in all."
+ * Without an end date the count is unknown, so the sentence stops at "and on from there". One check-in
+ * says the one day. "When I choose" has no dates, so it says nothing.
+ */
+export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; startsOn: string; endsOn: string; workingDays: number[]; today?: Date }): string | null {
+  if (a.cadence === 'SEQUENTIAL') return null
+  const startsAt = a.startsOn ? fromIso(a.startsOn) : null
+  if (a.cadence === 'ONE_TIME') {
+    const [only] = whenTheCheckInsLand({ cadence: 'ONE_TIME', anchorDay: null, startsAt, workingDays: a.workingDays, today: a.today })
+    return `The check-in opens on ${theDay(only)}.`
+  }
+  const end = a.endsOn ? fromIso(a.endsOn) : null
+  const all = whenTheCheckInsLand({ cadence: a.cadence, anchorDay: a.anchorDay, startsAt, workingDays: a.workingDays, today: a.today, howMany: end ? 400 : 5 })
+  const inRange = end ? all.filter((d) => d <= end) : all
+  if (!inRange.length) return null
+  const shown = inRange.slice(0, 5)
+  const words = shown.map((d, i) => {
+    const sameMonth = i > 0 && d.getMonth() === shown[i - 1].getMonth()
+    return sameMonth ? `${DAY_SHORT[d.getDay()]} ${d.getDate()}` : `${DAY_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+  })
+  const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+  if (!end) return `Check-ins open on ${words.join(', ')} and on from there.`
+  if (inRange.length <= 5) return `Check-ins open on ${list}: ${inRange.length} in all.`
+  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}: ${inRange.length} in all.`
+}
+
+function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      style={{
+        padding: '7px 13px', borderRadius: 999, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
+        border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+        background: on ? 'var(--gw-navy)' : 'white', color: on ? 'white' : 'var(--gw-text)',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={title} style={{ marginBottom: 16 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 3px' }}>{title}</h3>
+      {help && <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 8px', lineHeight: 1.5 }}>{help}</p>}
+      {children}
+    </section>
+  )
+}
+
+const row = { display: 'flex', gap: 6, flexWrap: 'wrap' as const }
+const note = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '8px 0 0' }
+const dateInput = { padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
+
+export function TheSetup(p: {
+  cadence: Cadence
+  cadenceChosen: boolean
+  onCadence: (c: Cadence) => void
+  anchorDay: number | null
+  onAnchorDay: (d: number | null) => void
+  workingDays: number[]
+  onWorkingDays: (days: number[]) => void
+  startsOn: string
+  onStartsOn: (s: string) => void
+  endsOn: string
+  onEndsOn: (s: string) => void
+  today?: Date
+}) {
+  const today = p.today ?? new Date()
+  const tomorrow = tomorrowOf(today)
+  const [pickingADate, setPickingADate] = useState(!!p.startsOn && p.startsOn !== tomorrow)
+  const [endingOnADate, setEndingOnADate] = useState(!!p.endsOn)
+  const startMode = !p.startsOn ? 'now' : p.startsOn === tomorrow && !pickingADate ? 'tomorrow' : 'date'
+  const days = workingDaysOf(p.workingDays)
+  const weekdaysOnly = days.length === 5 && WEEKDAYS.every((d) => days.includes(d))
+  const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: p.endsOn, workingDays: p.workingDays, today })
+
+  return (
+    <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+      <Section title={THE_SETUP.whenItStarts} help={THE_SETUP.opensAtTheStart}>
+        <div style={row}>
+          <Choice on={startMode === 'now'} onClick={() => { setPickingADate(false); p.onStartsOn('') }}>{THE_SETUP.now}</Choice>
+          <Choice on={startMode === 'tomorrow'} onClick={() => { setPickingADate(false); p.onStartsOn(tomorrow) }}>{THE_SETUP.tomorrow}</Choice>
+          <Choice on={startMode === 'date'} onClick={() => { setPickingADate(true); if (!p.startsOn) p.onStartsOn(tomorrow) }}>{THE_SETUP.onADate}</Choice>
+        </div>
+        {startMode === 'date' && (
+          <input type="date" aria-label={THE_SETUP.onADate} value={p.startsOn} min={iso(today)} onChange={(e) => p.onStartsOn(e.target.value)} style={{ ...dateInput, marginTop: 8 }} />
+        )}
+        {startMode === 'tomorrow' && <p style={note}>{`Tomorrow, ${theDay(fromIso(tomorrow))}.`}</p>}
+        {startMode === 'date' && p.startsOn && <p style={note}>{`${theDay(fromIso(p.startsOn))}.`}</p>}
+        <p style={note}>{THE_SETUP.invitationsWhenItStarts}</p>
+      </Section>
+
+      <Section title={THE_SETUP.howOften}>
+        {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen}</p>}
+        <div style={row}>
+          {HOW_OFTEN.map(([c, label]) => (
+            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => p.onCadence(c)}>{label}</Choice>
+          ))}
+        </div>
+        {(p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && (
+          <label style={{ display: 'block', ...note }}>
+            {'On which day? '}
+            <select value={p.anchorDay ?? ''} onChange={(e) => p.onAnchorDay(e.target.value === '' ? null : Number(e.target.value))} style={dateInput}>
+              <option value="">Any day</option>
+              {WEEK_ORDER.map((d) => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
+            </select>
+          </label>
+        )}
+        {p.cadence === 'MONTHLY' && (
+          <label style={{ display: 'block', ...note }}>
+            {'On which day of the month? '}
+            <select value={p.anchorDay ?? ''} onChange={(e) => p.onAnchorDay(e.target.value === '' ? null : Number(e.target.value))} style={dateInput}>
+              <option value="">Any day</option>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </label>
+        )}
+      </Section>
+
+      {p.cadence !== 'ONE_TIME' && p.cadence !== 'SEQUENTIAL' && (
+        <Section title={THE_SETUP.onWhichDays}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+            {WEEK_ORDER.map((d) => {
+              const on = days.includes(d)
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={DAY_NAMES[d]}
+                  onClick={() => p.onWorkingDays(on ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b))}
+                  style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: on ? 'var(--gw-blue-bg)' : 'white', color: on ? 'var(--gw-navy)' : 'var(--gw-muted)' }}
+                >
+                  {DAY_SHORT[d]}
+                </button>
+              )
+            })}
+          </div>
+          <div style={row}>
+            <Choice on={weekdaysOnly} onClick={() => p.onWorkingDays([...WEEKDAYS])}>{THE_SETUP.weekdaysOnly}</Choice>
+            <Choice on={days.length === 0} onClick={() => p.onWorkingDays([])}>{THE_SETUP.anyDay}</Choice>
+          </div>
+        </Section>
+      )}
+
+      {opens && <p style={{ ...note, margin: '0 0 16px', color: 'var(--gw-text)' }}>{opens}</p>}
+
+      {p.cadence !== 'ONE_TIME' && (
+        <Section title={THE_SETUP.whenItEnds} help={THE_SETUP.moreTimeLater}>
+          <div style={row}>
+            <Choice on={endingOnADate} onClick={() => setEndingOnADate(true)}>{THE_SETUP.onADate}</Choice>
+            <Choice on={!endingOnADate} onClick={() => { setEndingOnADate(false); p.onEndsOn('') }}>{THE_SETUP.whenIEndIt}</Choice>
+          </div>
+          {endingOnADate && (
+            <input type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} style={{ ...dateInput, marginTop: 8 }} />
+          )}
+        </Section>
+      )}
+    </div>
+  )
+}
