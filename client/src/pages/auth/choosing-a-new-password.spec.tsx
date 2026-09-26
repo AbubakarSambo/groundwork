@@ -51,7 +51,8 @@ describe('what the page says', () => {
       'New password', 'Show',
       'Type it again', 'Show',
       'At least 8 characters',
-      'A capital letter and a small letter',
+      'A number or a symbol',
+      'Not your email address',
       'Both passwords match',
       'Save password',
     ].join(''))
@@ -82,9 +83,9 @@ describe('the rules, before anything is sent', () => {
     renderAt('/reset-password?token=tok')
     fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Harbour7lamp' } })
     const met = () => screen.getAllByRole('listitem').filter(li => li.className.includes('met')).map(li => li.textContent)
-    expect(met()).toEqual(['✓Met, At least 8 characters', '✓Met, A capital letter and a small letter'])
+    expect(met()).toEqual(['✓Met, At least 8 characters', '✓Met, A number or a symbol', '✓Met, Not your email address'])
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Harbour7lamp' } })
-    expect(met()).toHaveLength(3)
+    expect(met()).toHaveLength(4)
   })
 
   it('two different passwords are caught here, in plain words, and nothing is sent', async () => {
@@ -98,8 +99,9 @@ describe('the rules, before anything is sent', () => {
 
   it('a password that misses a rule is caught here too', async () => {
     renderAt('/reset-password?token=tok')
-    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'harbour7lamp' } })
-    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
+    /* Letters only: no number or symbol (the prototype's rule, Hafsah's decision of 26 September). */
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'harbourlamp' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbourlamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
     expect(authApi.resetPassword).not.toHaveBeenCalled()
@@ -115,7 +117,8 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
       'For signing in without an email link. You can keep using links too.',
       'Password', 'Show',
       'At least 8 characters',
-      'A capital letter and a small letter',
+      'A number or a symbol',
+      'Not your email address',
       'Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.',
       'Save password',
     ].join(''))
@@ -128,12 +131,12 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
   it('the bar fills one part per rule met, and says "Strong enough" only when every rule is', () => {
     const { container } = renderAt('/set-password?token=tok')
     const parts = () => [...container.querySelectorAll('.gw-auth-strength-bar span')].map(s => s.className === 'on')
-    expect(parts()).toEqual([false, false])
+    expect(parts()).toEqual([false, false, false])
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbourlamp' } })
-    expect(parts()).toEqual([true, false])
+    expect(parts()).toEqual([true, false, true])
     expect(screen.queryByText('Strong enough')).toBeNull()
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Harbourlamp' } })
-    expect(parts()).toEqual([true, true])
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
+    expect(parts()).toEqual([true, true, true])
     expect(screen.getByText('Strong enough')).toBeTruthy()
   })
 

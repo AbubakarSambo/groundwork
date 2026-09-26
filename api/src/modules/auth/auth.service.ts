@@ -36,6 +36,7 @@ import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 import { whatToSayAboutADeadLink, expiresAtFor, howLongInWords } from './how-long-a-link-lasts';
+import { isTheirEmail, IS_THEIR_EMAIL } from './the-password-rules';
 import { THE_SAME_ANSWER_EITHER_WAY, type WhyTheyCouldNotSignIn } from './one-answer-at-the-door';
 
 type UserWithOrg = {
@@ -135,6 +136,7 @@ export class AuthService {
      * The password hash rides along on that record rather than on a User, because the User is
      * precisely the thing that must not exist yet.
      */
+    if (isTheirEmail(dto.password, dto.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const token = crypto.randomBytes(32).toString('hex');
 
@@ -429,6 +431,7 @@ export class AuthService {
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_SETUP, { allowExpiredMessage: 'This invitation link has expired. Please ask your admin to resend the invite.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -782,6 +785,7 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_RESET, { allowExpiredMessage: 'This reset link has expired. Please request a new one.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {

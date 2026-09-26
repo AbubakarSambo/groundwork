@@ -173,15 +173,14 @@ export function PasswordField({ id, label, value, onChange, autoComplete, autoFo
 /**
  * THE RULES A NEW PASSWORD HAS TO MEET, TICKED AS THEY ARE MET.
  *
- * These are the rules the server enforces today (see password-rules.ts), not the prototype's. The
- * prototype's rules are a decision waiting for Hafsah, and a list that promised rules the server
- * does not check would let somebody meet every one and still be refused.
+ * The prototype's rules, which the server checks too (see password-rules.ts). A list that promised
+ * rules the server does not check would let somebody meet every one and still be refused.
  *
  * Each mark is also said in words, for anyone who cannot see a tick.
  */
-export function PasswordRules({ password, confirm }: { password: string; confirm?: string }) {
+export function PasswordRules({ password, confirm, email }: { password: string; confirm?: string; email?: string | null }) {
   const listId = useId()
-  const rules = todaysPasswordRules(password, confirm)
+  const rules = todaysPasswordRules(password, confirm, email)
   return (
     <ul className="gw-auth-rules" id={listId} aria-label="What your password needs">
       {rules.map(r => (
@@ -205,8 +204,8 @@ export function PasswordRules({ password, confirm }: { password: string; confirm
  * says "Strong enough" only when every rule is. The rules are listed under it, so the bar never has
  * to be read on its own.
  */
-export function PasswordStrength({ password }: { password: string }) {
-  const rules = todaysPasswordRules(password)
+export function PasswordStrength({ password, email }: { password: string; email?: string | null }) {
+  const rules = todaysPasswordRules(password, undefined, email)
   const allMet = rules.every(r => r.met)
   return (
     <div className="gw-auth-strength">
@@ -214,7 +213,7 @@ export function PasswordStrength({ password }: { password: string }) {
         {rules.map(r => <span key={r.text} className={r.met ? 'on' : undefined} />)}
       </div>
       {allMet && <p className="gw-auth-strength-ok" role="status">Strong enough</p>}
-      <PasswordRules password={password} />
+      <PasswordRules password={password} email={email} />
     </div>
   )
 }

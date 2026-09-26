@@ -1,21 +1,32 @@
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+
 /**
- * THE RULES A NEW PASSWORD HAS TO MEET, AS THE SERVER CHECKS THEM TODAY.
+ * THE RULES A NEW PASSWORD HAS TO MEET: THE PROTOTYPE'S, HAFSAH'S DECISION OF 26 SEPTEMBER.
  *
- * The server's rule lives in api/src/modules/auth/dto/set-password.dto.ts and reset-password.dto.ts:
- * at least 8 characters, with at least one uppercase and one lowercase letter. This file says the
- * same thing in words a person reads, so the list on screen can never promise less than the server
- * will accept.
+ *   At least 8 characters
+ *   A number or a symbol
+ *   Not your email address
+ *   Both passwords match      (only where there are two boxes)
  *
- * The prototype asks for different rules ("A number or a symbol", "Not your email address"). Which
- * rules to use is waiting for Hafsah. Until she decides, these stay the product's rules, and when
- * they change they change here and in those two DTOs together.
+ * The server checks the same rules (api/src/modules/auth/the-password-rules.ts: the first two on the
+ * request, "not your email address" in the service), so the list on screen never promises less than
+ * the server accepts. They replace "a capital letter and a small letter".
+ *
+ * "NOT YOUR EMAIL ADDRESS" WHEN THE PAGE DOES NOT KNOW THE ADDRESS. The reset page is not told whose
+ * link it is (Hafsah: the address stays off that page). A password that is not shaped like an email
+ * address cannot be anybody's email address, so without the address that is what is checked; the
+ * server checks the real one and says so if it matches.
  */
 export interface PasswordRule { text: string; met: boolean }
 
-export function todaysPasswordRules(password: string, confirm?: string): PasswordRule[] {
+export function todaysPasswordRules(password: string, confirm?: string, email?: string | null): PasswordRule[] {
+  const notTheirEmail = email
+    ? password.length > 0 && password.trim().toLowerCase() !== email.trim().toLowerCase()
+    : password.length > 0 && !looksLikeAnAddress(password.trim())
   const rules: PasswordRule[] = [
     { text: 'At least 8 characters', met: password.length >= 8 },
-    { text: 'A capital letter and a small letter', met: /[A-Z]/.test(password) && /[a-z]/.test(password) },
+    { text: 'A number or a symbol', met: /[^A-Za-z]/.test(password) },
+    { text: 'Not your email address', met: notTheirEmail },
   ]
   if (confirm !== undefined) {
     rules.push({ text: 'Both passwords match', met: password.length > 0 && password === confirm })
@@ -23,6 +34,6 @@ export function todaysPasswordRules(password: string, confirm?: string): Passwor
   return rules
 }
 
-export function meetsTodaysPasswordRules(password: string, confirm?: string): boolean {
-  return todaysPasswordRules(password, confirm).every(r => r.met)
+export function meetsTodaysPasswordRules(password: string, confirm?: string, email?: string | null): boolean {
+  return todaysPasswordRules(password, confirm, email).every(r => r.met)
 }

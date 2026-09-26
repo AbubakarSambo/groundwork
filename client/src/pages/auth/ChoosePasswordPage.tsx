@@ -42,6 +42,12 @@ export function ChoosePasswordPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
+  /*
+   * WHOSE ADDRESS "NOT YOUR EMAIL ADDRESS" IS CHECKED AGAINST. Only on the set-up page, where opening
+   * the email link has just signed this person in, so the signed-in account is theirs. The reset page
+   * may be opened in a browser where somebody else is signed in, so it does not use it.
+   */
+  const signedInEmail = useAuthStore(s => s.user?.email ?? null)
 
   /**
    * Which of the two links they opened. The endpoints are genuinely different -
@@ -49,6 +55,7 @@ export function ChoosePasswordPage() {
    * existing one - so the token is only valid at its own.
    */
   const kind: Kind = useLocation().pathname === '/reset-password' ? 'reset' : 'set'
+  const theirEmail = kind === 'set' ? signedInEmail : null
 
   const token = params.get('token') ?? ''
   const [password, setPassword] = useState('')
@@ -120,8 +127,8 @@ export function ChoosePasswordPage() {
     if (!token) { setDidNotWork(true); return }
     /* The same rules the list under the fields shows, and the server checks. Choosing a first
        password has one box, as in the prototype, with Show to check what was typed. */
-    if (!meetsTodaysPasswordRules(password, kind === 'reset' ? confirm : undefined)) {
-      setError(password !== confirm && meetsTodaysPasswordRules(password)
+    if (!meetsTodaysPasswordRules(password, kind === 'reset' ? confirm : undefined, theirEmail)) {
+      setError(password !== confirm && meetsTodaysPasswordRules(password, undefined, theirEmail)
         ? 'The two passwords are not the same. Type the same password in both boxes.'
         : 'Your password does not meet every rule in the list yet.')
       return
@@ -189,7 +196,7 @@ export function ChoosePasswordPage() {
           </>
         ) : (
           <>
-            <PasswordStrength password={password} />
+            <PasswordStrength password={password} email={theirEmail} />
             <p className="gw-auth-small" style={{ margin: '0 0 16px' }}>
               Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
             </p>

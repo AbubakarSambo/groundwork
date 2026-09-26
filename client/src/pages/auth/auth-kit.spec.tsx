@@ -59,14 +59,15 @@ describe('PasswordField', () => {
   })
 })
 
-describe('PasswordRules shows the rules the server checks today, ticked as they are met', () => {
+describe('PasswordRules shows the prototype\'s rules, which the server checks too, ticked as they are met', () => {
   const rows = () => screen.getAllByRole('listitem').map(li => ({ text: li.textContent, met: li.className.includes('met') }))
 
   it('nothing typed: every rule is waiting, and says so in words', () => {
     render(<PasswordRules password="" confirm="" />)
     expect(rows()).toEqual([
       { text: '○Not met yet, At least 8 characters', met: false },
-      { text: '○Not met yet, A capital letter and a small letter', met: false },
+      { text: '○Not met yet, A number or a symbol', met: false },
+      { text: '○Not met yet, Not your email address', met: false },
       { text: '○Not met yet, Both passwords match', met: false },
     ])
   })
@@ -82,13 +83,20 @@ describe('PasswordRules shows the rules the server checks today, ticked as they 
     expect(screen.queryByText('Both passwords match')).toBeNull()
   })
 
-  it('the rules match the server\'s: 8 characters, an uppercase and a lowercase letter', () => {
-    // The same cases the server's @MinLength(8) and /^(?=.*[A-Z])(?=.*[a-z]).*$/ decide.
-    expect(meetsTodaysPasswordRules('Abcdefgh')).toBe(true)
-    expect(meetsTodaysPasswordRules('Abcdefg')).toBe(false)
-    expect(meetsTodaysPasswordRules('abcdefgh')).toBe(false)
-    expect(meetsTodaysPasswordRules('ABCDEFGH')).toBe(false)
-    expect(meetsTodaysPasswordRules('Abcdefgh', 'Abcdefgx')).toBe(false)
-    expect(todaysPasswordRules('Abcdefgh', 'Abcdefgh').map(r => r.met)).toEqual([true, true, true])
+  /*
+   * Hafsah's decision of 26 September: the prototype's rules replace "a capital letter and a small
+   * letter". The same cases the server decides (api/src/modules/auth/the-password-rules.spec.ts).
+   */
+  it('the rules match the server\'s: 8 characters, a number or a symbol, not your email address', () => {
+    expect(meetsTodaysPasswordRules('harbour7lamp')).toBe(true)
+    expect(meetsTodaysPasswordRules('harbour lamp')).toBe(true)
+    expect(meetsTodaysPasswordRules('harb7ur')).toBe(false)
+    expect(meetsTodaysPasswordRules('HarbourLamp')).toBe(false)
+    expect(meetsTodaysPasswordRules('harbour7lamp', 'harbour7lamx')).toBe(false)
+    expect(meetsTodaysPasswordRules('wairimu@baridi.test', undefined, 'Wairimu@Baridi.test')).toBe(false)
+    expect(meetsTodaysPasswordRules('wairimu@baridi.test', undefined, 'someone@else.test')).toBe(true)
+    /* Without the address, a password shaped like an email address is not ticked; the server checks the real one. */
+    expect(meetsTodaysPasswordRules('wairimu@baridi.test')).toBe(false)
+    expect(todaysPasswordRules('harbour7lamp', 'harbour7lamp').map(r => r.met)).toEqual([true, true, true, true])
   })
 })
