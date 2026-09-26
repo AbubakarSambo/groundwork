@@ -19,7 +19,9 @@ export interface VerifyEmailResponse {
    */
   justCreated?: boolean
 }
-export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
+/** `expired` is true only for a real, unused link of the asked kind that has run out. The server never
+ *  sends `email` or `firstName` today: which address a link is for is a privacy decision for Hafsah. */
+export interface ValidateTokenResponse { valid: boolean; expired?: boolean; email?: string; firstName?: string }
 
 
 export interface WaitingAtTheDoor {

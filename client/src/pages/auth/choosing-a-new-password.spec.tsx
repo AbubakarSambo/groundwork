@@ -121,7 +121,8 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
     ].join(''))
     expect(screen.queryByText(/Keep using email links instead/)).toBeNull()
     expect(screen.queryByLabelText('Type it again')).toBeNull()
-    expect(authApi.validateToken).not.toHaveBeenCalled()
+    /* U.2 step 12: a set-up link is checked as the page opens too, so an old one shows the expired card. */
+    expect(authApi.validateToken).toHaveBeenCalledWith('tok', 'PASSWORD_SETUP')
   })
 
   it('the bar fills one part per rule met, and says "Strong enough" only when every rule is', () => {

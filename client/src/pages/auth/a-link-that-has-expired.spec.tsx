@@ -186,3 +186,28 @@ describe('the sentences the server sends are the ones this page reads', () => {
     for (const s of used) expect(whatTheLinkDid(s)).toBeNull()
   })
 })
+
+describe('as the page opens, when the server already says the link has run out', () => {
+  it('an old reset link opens straight on the card, before any password is typed', async () => {
+    ;(authApi.validateToken as any).mockResolvedValue({ valid: false, expired: true })
+    const { container } = renderAt('/reset-password?token=old-on-open')
+    await screen.findByRole('heading', { name: 'That link has expired' })
+    expect(readable(container)).toBe(THE_CARD)
+    expect(authApi.validateToken).toHaveBeenCalledWith('old-on-open', 'PASSWORD_RESET')
+    expect(authApi.resetPassword).not.toHaveBeenCalled()
+  })
+
+  it('and so does an old set-up link', async () => {
+    ;(authApi.validateToken as any).mockResolvedValue({ valid: false, expired: true })
+    renderAt('/set-password?token=old-setup')
+    expect(await screen.findByRole('heading', { name: 'That link has expired' })).toBeTruthy()
+    expect(authApi.validateToken).toHaveBeenCalledWith('old-setup', 'PASSWORD_SETUP')
+  })
+
+  it('a used or unknown link ({ valid: false } and nothing else) keeps the form, and the server still decides on save', async () => {
+    ;(authApi.validateToken as any).mockResolvedValue({ valid: false })
+    renderAt('/reset-password?token=used-one')
+    await waitFor(() => expect(authApi.validateToken).toHaveBeenCalled())
+    expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeTruthy()
+  })
+})

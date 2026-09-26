@@ -69,10 +69,13 @@ export function ChoosePasswordPage() {
   const { data: linkCheck } = useQuery({
     queryKey: ['validate-token', kind, token],
     queryFn: () => authApi.validateToken(token, kind === 'reset' ? 'PASSWORD_RESET' : 'PASSWORD_SETUP'),
-    enabled: kind === 'reset' && !!token,
+    enabled: !!token,
     retry: false,
     staleTime: Infinity,
   })
+  /* A link that has run out opens straight on "That link has expired", rather than after a password
+     has been typed twice. The server says `expired` only for a real, unused link of this kind. */
+  const expiredOnOpen = linkCheck?.expired === true
   const forAddress = typeof linkCheck?.email === 'string' && looksLikeAnAddress(linkCheck.email) ? linkCheck.email : null
 
   /**
@@ -131,7 +134,7 @@ export function ChoosePasswordPage() {
    * password and pressing it. `/reset-password` did the same. `/invite` already
    * handled this properly, so the product held both behaviours for one problem.
    */
-  if (expired) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
+  if (expired || expiredOnOpen) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
 
   if (!token) {
     return (

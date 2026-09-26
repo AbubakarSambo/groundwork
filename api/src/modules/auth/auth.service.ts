@@ -909,13 +909,25 @@ export class AuthService {
    * VALID, AND NOTHING ELSE. This returned the address and first name behind an unused set-password
    * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
    */
-  async validateToken(token: string, type: string): Promise<{ valid: boolean }> {
+  async validateToken(token: string, type: string): Promise<{ valid: boolean; expired?: true }> {
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 
     const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token: hashed(token) }, select: { usedAt: true, expiresAt: true, type: true } });
-    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt < new Date() || tokenRecord.type !== tokenType) {
+    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.type !== tokenType) {
       return { valid: false };
+    }
+    /*
+     * AN UNUSED LINK OF THE RIGHT KIND THAT HAS RUN OUT SAYS SO. U.2.
+     *
+     * So the reset and set-password pages can open on "That link has expired" and offer a fresh one,
+     * instead of letting somebody type a password twice and only then be told. It says nothing the
+     * holder does not already know: they hold the link, and only a real, unused link of this kind
+     * gets this answer. An unknown, used or wrong-kind link still gets only { valid: false }, and
+     * nothing here ever names the account (see a-secret-is-not-readable-from-the-table).
+     */
+    if (tokenRecord.expiresAt < new Date()) {
+      return { valid: false, expired: true };
     }
     return { valid: true };
   }
