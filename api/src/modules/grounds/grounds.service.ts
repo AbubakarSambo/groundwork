@@ -1317,7 +1317,31 @@ export class GroundsService {
          * what-a-manager-needs-at-a-glance for why the blockers are counted there rather than here.
          */
         const glance = going.glance;
-        return { ...rest, alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance };
+        /*
+         * ONLY WHAT THIS READER MAY SEE (C1, U.5). The row used to go out whole, to every reader of the
+         * list, so a participant was handed three things the check-in's own page keeps from them:
+         *   - the broadcast join link, which the page gives only to the lead and an admin of the
+         *     organisation (see join-token-visibility.spec.ts);
+         *   - other people's email addresses, which the page hides while the lead keeps contact
+         *     details private (restrictExternalVisibility, the same rule as get());
+         *   - the report's agreements and differences, before it was released to them. The list only
+         *     needs them to count, and the count (`alignment`) is already worked out above.
+         * The audit log goes too: nothing on any screen reads it from here.
+         */
+        const { joinToken, groundAuditLog: _log, report: fullReport, participants: allParticipants, ...safe } = rest;
+        const mayShareTheLink = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId);
+        const hideContact = !!(rest as any).restrictExternalVisibility;
+        const participants = ((allParticipants ?? []) as any[]).map((p) => ({
+          ...p,
+          email: hideContact && !isInitiator && !(userId && p.userId === userId) ? null : p.email,
+        }));
+        return {
+          ...safe,
+          participants,
+          ...(mayShareTheLink ? { joinToken } : {}),
+          report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
+          alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance,
+        };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
