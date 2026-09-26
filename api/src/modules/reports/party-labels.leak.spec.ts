@@ -59,12 +59,17 @@ describe('collapsing a bare label', () => {
     const all = [...labelsForParties(parties).values()];
     const visible = namesVisibleTo('p-a', parties);
     const out = withNames('participant B said the handover was late.', visible, all);
-    /* Still the label and never the name. Its casing is normalised to the form the counting table
-       and the attributions print, because one person spelled three ways on one screen reads as the
-       product not knowing who anybody is. */
-    expect(out).toBe('Participant B said the handover was late.');
+    /*
+     * CHANGED 26 SEPTEMBER 2026, AND ONLY IN WHAT THE UNNAMEABLE PERSON IS CALLED. This used to
+     * assert "Participant B said the handover was late." - the raw label, tidied to the casing the
+     * counting table printed. Hafsah decided the word: somebody whose name this reader may not see
+     * is "a colleague". The rule under test is untouched and still asserted on the next two lines:
+     * B's name never appears, and neither does anybody else's.
+     */
+    expect(out).toBe('A colleague said the handover was late.');
     expect(out).not.toContain('Abubakar');
     expect(out).not.toContain('Kavon');
+    expect(out).not.toMatch(/[Pp]articipant [A-Z]\b/);
   });
 
   it('does nothing at all without the full label set', () => {

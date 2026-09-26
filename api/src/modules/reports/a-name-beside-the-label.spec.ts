@@ -34,6 +34,8 @@ describe('a name beside the label', () => {
   /* The rule this must not break, from the note in applyNames. */
   it('and the label key is still never substituted', () => {
     expect(SRC).toMatch(/const NEVER_NAMED = new Set\(\['label', 'participantLabel'\]\)/);
-    expect(SRC).toMatch(/engagement: theNamesBesideTheLabels\(walkTextOnly\(report\.engagement\), visible\)/);
+    /* The third argument, added 26 September 2026, is the plain phrase for somebody this reader
+       may not name. It is read the same way `visible` is - never into `label`. */
+    expect(SRC).toMatch(/engagement: theNamesBesideTheLabels\(\s*walkTextOnly\(report\.engagement\),\s*visible/);
   });
 });

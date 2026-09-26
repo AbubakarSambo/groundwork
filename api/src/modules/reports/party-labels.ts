@@ -111,6 +111,9 @@ function inAStableOrder(parties: LabelParty[]): LabelParty[] {
   return [...parties].sort((a, b) => when(a) - when(b) || String(a.id).localeCompare(String(b.id)));
 }
 
+/** The label every check-in gives the person who set it up. Written once, read in two places. */
+export const THE_LEADS_LABEL = 'the initiator';
+
 export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
   const parties = inAStableOrder(unordered);
   const labelById = new Map<string, string>();
@@ -167,7 +170,7 @@ export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
    */
   for (const p of parties) {
     if (p.partyType === PartyType.INITIATOR) {
-      labelById.set(p.id, 'the initiator');
+      labelById.set(p.id, THE_LEADS_LABEL);
     } else {
       /*
        * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
@@ -481,6 +484,95 @@ export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>
 }
 
 /**
+ * WHAT SOMEBODY IS CALLED WHEN THIS READER MAY NOT HAVE THEIR NAME.
+ *
+ * Read live on run-1, in the report Amara Diallo opens about her own launch:
+ *
+ *   "Participant B built the front end for the project. Participant B says the hardest part of
+ *    the work was Victor's script."
+ *
+ * and in the one Blessing Okafor opens about the logistics contract:
+ *
+ *   "Participant B says the most frequent issue has been around handover times."
+ *
+ * Nothing is leaking. Both are evaluation check-ins, where `peersAreNamed` is false and a
+ * colleague's name deliberately never reaches the person being reviewed. The rule is right; the
+ * WORD is wrong. "Participant B" is a slot in a template, and reading it about yourself makes the
+ * product look like it has lost track of who is in the room.
+ *
+ * HAFSAH DECIDED THE WORD, 26 September 2026: "in evaluation check-ins (PIP, RECOGNITION,
+ * CONTRACT_RENEWAL), colleagues stay unnamed to the person being reviewed. Use plain words:
+ * 'a colleague' when there is one; 'one colleague', 'another colleague' when there are several,
+ * used the same way through the whole report. Never 'Participant B', and never a job title or
+ * detail that would give them away."
+ *
+ * HER WORDS COVER ONE AND TWO. A cohort can have more, so the same pattern is carried on - "a
+ * third colleague", "a fourth colleague" - and beyond the twelfth everybody left is "another
+ * colleague", which says less rather than more and so cannot give anybody away. That extension is
+ * mine and is flagged to her.
+ *
+ * THE SAME PERSON IS THE SAME PHRASE EVERYWHERE THIS READER LOOKS. The order comes from the
+ * parties themselves - `labelsForParties` hands its labels out in a stable order, and this walks
+ * them in that order - and not from the order sentences happen to mention people in. So whoever is
+ * "one colleague" in the shared picture is "one colleague" in the judgement, in the divergences,
+ * and on the board.
+ *
+ * AND NEVER A JOB TITLE. The branch this replaces printed `handleOf(label)` for a long label,
+ * which is a role description - "Relationship officer" - handed to the very person the check-in is
+ * about. A phrase that carries no detail cannot do that.
+ *
+ * THE LEAD IS NOT A COLLEAGUE. `namesVisibleTo` always offers the lead's name to everybody, so the
+ * lead is unnameable only when the product holds no name for them at all: `User.firstName` is a
+ * required column but `PATCH /auth/profile` trims what it is given and accepts an empty string, so
+ * a lead who blanks their first name has no name to show a peer. That reader still knows who the
+ * lead is, so they read "your lead" rather than a placeholder, and a reader who is not on the
+ * check-in at all reads "the lead".
+ */
+const AFTER_THE_SECOND = [
+  'a third colleague', 'a fourth colleague', 'a fifth colleague', 'a sixth colleague',
+  'a seventh colleague', 'an eighth colleague', 'a ninth colleague', 'a tenth colleague',
+  'an eleventh colleague', 'a twelfth colleague',
+];
+
+export function plainWordsForTheUnnameable(
+  /** Every label on this check-in, in the order `labelsForParties` handed them out. */
+  known: Iterable<string>,
+  /** The names this reader may see, from `namesVisibleTo`. */
+  visible: Map<string, string>,
+  /** The reader's own label, which is already being turned into "you". */
+  viewerLabel?: string | null,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  const mine = (viewerLabel ?? '').trim().toLowerCase();
+  const unnameable = [...known]
+    .map((l) => (l ?? '').trim())
+    .filter((l) => l && !visible.has(l) && l.toLowerCase() !== mine);
+
+  const lead = unnameable.find((l) => l.toLowerCase() === THE_LEADS_LABEL);
+  if (lead) out.set(lead, viewerLabel ? 'your lead' : 'the lead');
+
+  const colleagues = unnameable.filter((l) => l.toLowerCase() !== THE_LEADS_LABEL);
+  if (colleagues.length === 1) {
+    out.set(colleagues[0], 'a colleague');
+  } else {
+    colleagues.forEach((l, i) => {
+      const phrase = i === 0 ? 'one colleague' : i === 1 ? 'another colleague' : AFTER_THE_SECOND[i - 2];
+      out.set(l, phrase ?? 'another colleague');
+    });
+  }
+  return out;
+}
+
+/** Whether the text before this point has just ended a sentence, so the phrase needs a capital. */
+function aSentenceIsStarting(whole: string, offset: number): boolean {
+  const before = whole.slice(0, offset);
+  if (!before.trim()) return true;
+  return /(?:[.!?]["')\]]?\s|\n)\s*$/.test(before);
+}
+
+const withACapital = (s: string) => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : s);
+
+/**
  * "YOU" AS THE OBJECT OF A PREPOSITION IS NOT THE SUBJECT OF THE VERB AFTER IT.
  *
  * "A key worry for you is that...", "Grace's own plan for you calls for two agreements", "which for
@@ -750,12 +842,32 @@ export function withNames(
    * Last, so it can only tidy what the substitutions above chose to leave. It never reveals
    * anything: the text is identical apart from a capital letter.
    */
+  /**
+   * AND A PERSON THIS READER MAY NOT NAME IS STILL CALLED SOMETHING A PERSON WOULD SAY.
+   *
+   * The phrases are worked out once, from the whole party list, so the same person is the same
+   * phrase in every line of this reader's report and board. See plainWordsForTheUnnameable.
+   */
+  const plainly = plainWordsForTheUnnameable(known, visible, opts?.viewerLabel);
   for (const label of known) {
     if (visible.has(label)) continue;
     /* Without its trailing stop, the way the finding prints it: "...networks next said this was for" left the
        lead's whole role sentence on a participant's card (run 8, 21 Sep 2026) because the label ended in
        a full stop and the sentence did not. */
     const escaped = escapeRe(withoutTrailingStop(label));
+    const phrase = plainly.get(label.trim());
+    if (phrase) {
+      /*
+       * THE ARTICLE COMES WITH IT, AND THE CAPITAL STAYS. The model writes "The Participant B
+       * built the front end", so the phrase has to swallow that "The" or the sentence reads "The a
+       * colleague built the front end"; and a phrase that opens a sentence has to open it with a
+       * capital, or every one of these becomes a lower-case sentence start.
+       */
+      const withArticle = new RegExp(`(?<![\\w])(?:[Tt]he\\s+)?${escaped}(?:\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
+      out = out.replace(withArticle, (_m: string, offset: number, whole: string) =>
+        (aSentenceIsStarting(whole, offset) ? withACapital(phrase) : phrase));
+      continue;
+    }
     /* A label this reader may not resolve stays a label - but a paragraph of one is printed as its
        handle, "Managing Partner", not as the person's whole self-description in the middle of a
        sentence. Only when the handle is unambiguous among the parties. */

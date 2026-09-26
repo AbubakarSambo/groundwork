@@ -66,7 +66,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
@@ -4371,7 +4371,11 @@ happened, and what is in the way.`;
        * `who` is what a page prints. `label` is what the filters match. Same permission rule as
        * every other name on this read: a reader who may not see somebody gets the label back.
        */
-      engagement: theNamesBesideTheLabels(walkTextOnly(report.engagement), visible),
+      engagement: theNamesBesideTheLabels(
+        walkTextOnly(report.engagement),
+        visible,
+        plainWordsForTheUnnameable(allLabels, visible, readerLabel),
+      ),
       inferences: walkTextOnly(report.inferences),
     };
   }
@@ -6060,13 +6064,25 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
  * Structural only: it adds one key and changes nothing else, so nothing that matches on `label`
  * can be affected by it.
  */
-export function theNamesBesideTheLabels(engagement: any, visible: Map<string, string>): any {
+export function theNamesBesideTheLabels(
+  engagement: any,
+  visible: Map<string, string>,
+  /**
+   * AND A PLAIN PHRASE WHERE THERE IS NO NAME TO PUT.
+   *
+   * `who` is the field a page prints, and it fell back to the raw label - so the header of the
+   * report Amara Diallo opens listed her colleague as "Participant B" while the paragraph below it
+   * called him something a person would say. Same map the prose uses, so the header and the
+   * paragraph cannot disagree about what one person is called. See plainWordsForTheUnnameable.
+   */
+  plainly?: Map<string, string>,
+): any {
   if (!engagement || typeof engagement !== 'object' || !Array.isArray(engagement.parties)) return engagement;
   return {
     ...engagement,
     parties: engagement.parties.map((p: any) => {
       const label = typeof p?.label === 'string' ? p.label : null;
-      const name = label ? visible.get(label) : null;
+      const name = label ? visible.get(label) ?? plainly?.get(label.trim()) : null;
       return name ? { ...p, who: name } : { ...p, who: label ?? null };
     }),
   };

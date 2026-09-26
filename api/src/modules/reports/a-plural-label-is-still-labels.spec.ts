@@ -95,13 +95,21 @@ describe('what the lead now reads, the whole sentence', () => {
     );
   });
 
-  it('and somebody they may not see stays a label rather than becoming a name', () => {
-    /* A cohort where peers are hidden: the reader keeps their own and the lead's, and the other
-       two stay labels. The wall is not weakened by expanding the plural. */
+  it('and somebody they may not see becomes a plain phrase rather than a name', () => {
+    /*
+     * A cohort where peers are hidden: the reader keeps their own and the lead's, and the other
+     * two are not named. The wall is not weakened by expanding the plural.
+     *
+     * CHANGED 26 SEPTEMBER 2026. This asserted "you, Participant B and Participant C", which
+     * pinned the slot name. Hafsah decided the wording: two people this reader may not name are
+     * "one colleague" and "another colleague". The wall itself is what this case is for and is
+     * still asserted below - neither name appears.
+     */
     const visible = namesVisibleTo('p-a', parties, false);
     const out = withNames(SENTENCE, visible, KNOWN, { viewerLabel: 'Participant A' });
-    expect(out).toContain('you, Participant B and Participant C');
+    expect(out).toContain('you, one colleague and another colleague');
     expect(out).not.toContain('Ngozi');
     expect(out).not.toContain('Kwame');
+    expect(out).not.toMatch(/[Pp]articipant [A-Z]\b/);
   });
 });
