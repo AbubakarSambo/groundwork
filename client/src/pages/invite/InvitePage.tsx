@@ -287,106 +287,45 @@ export function InvitePage() {
   return (
     <Arrival wide>
       <div>
-        <h1 className="gw-ttl">{preview.initiatorName} wants to hear your version</h1>
-        <div className="gw-sub-t">
-          A Groundwork session about: <strong>{preview.groundLabel}</strong>.
+        {/*
+          THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3).
+
+          Two of its sentences are held while Hafsah decides, because they say the words are private
+          and people in the check-in and admins can read them: "Nobody else reads your answers." and
+          "Wairimu reads the report, not your words." Until then today's panel, "What happens to what
+          you write", stays exactly as it was, below. "Your number" is shown only when the record holds
+          this person's share of a target, which the invitation does not carry yet.
+        */}
+        <h1 className="gw-ttl">{theInvitation(preview)}</h1>
+        {(preview.organisationName || preview.endsAt) && (
+          <div className="gw-sub-t">{whereAndUntil(preview)}</div>
+        )}
+
+        <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
+          The people in this check-in, including your manager, can see what you say in it. Your questions to Ask
+          Groundwork stay private.
         </div>
 
         {preview.roleAsDescribed && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            {/*
-              NOT "YOUR ROLE AS DESCRIBED", because of who wrote the words underneath it.
-
-              That string comes from the entry flow's people list, where the assistant describes
-              each person TO THE LEAD - "Nadia - Your new HR assistant and the subject of this
-              check-in". Handed to Nadia under "Your role as described", it reads as her own role
-              written in somebody else's second person: whose new HR assistant?
-
-              Attributed instead. The words are unchanged and the reader can now tell they are
-              somebody else's account of why they were added, which is exactly what they are - and
-              the invitation already says, two paragraphs down, that she is not expected to agree
-              with any of it.
-            */}
+            {/* Attributed, because somebody else wrote it about them. */}
             Your part in this: <strong>{preview.roleAsDescribed}</strong>
           </div>
         )}
 
-        {/*
-          THE ONE SENTENCE THAT WAS NOT TRUE, ON THE FIRST PAGE AN INVITED PERSON READS.
-
-          It said "Nobody ever reads what you write - not {initiator}, not anyone." What is written
-          is read: it is summarised, cross referenced against what other people said, and the
-          result is put in front of them. Promising otherwise is worse than promising nothing,
-          because the moment somebody works out what the product actually does, everything else on
-          this page stops counting.
-
-          So it says the true thing, and the true thing is already written down: this is the first
-          of the four claims in what-happens-to-what-you-write.ts, which is calibrated line by line
-          and even carries a "the part we are not going to dress up". That file was the standard
-          this box should always have met. Your own words about your own work can appear in the
-          report; what you say about somebody else never does. Saying "your wording is never shown"
-          would have been a second false promise pointing the other way.
-
-          "Your account stays private" went with it. Here it means somebody's version of events and
-          in a product it reads as a login, and it was carrying the false claim anyway.
-        */}
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          What you write builds the shared report: <strong>where what you said and what they said
-          agree or differ</strong>, and what to do next.
-        </div>
-
-        {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
-            Without saying so, an invitation to describe work involving another
-            person reads as being asked to give evidence about them. That is the
-            wrong idea of what this is and it changes what people write: they
-            either soften everything or aim it at the person. Saying your own
-            side is part of it, before anyone types anything, is the difference
-            between a shared picture and a witness statement. */}
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-          You'll be asked how the shared work is going, including your own side of it. This is not a
-          form about somebody else.
-        </div>
-
-        {/* FOUR THINGS, ONE SCREEN. (G28, and G27's ordering rule)
-            A participant gets a link in an email from somebody who did not
-            explain it, and decides in about four seconds whether this is a thing
-            that helps them or a thing being done to them. Everything above
-            answers what it is and what happens to their words. This answers the
-            three questions they actually have next, in the order they have them.
-
-            PURPOSE BEFORE PERFORMANCE (G27): why you specifically comes first.
-            Not what we want from you - what this is for and why your account
-            changes it. Somebody who understands why they matter writes a
-            different check-in from somebody complying with a request, and the
-            ordering is the whole of the difference. */}
-        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without what you are seeing, the picture is everybody else's.
+        <div className="gw-invite-facts">
+          {preview.schedule && (
+            <div>
+              <h2>What it asks</h2>
+              <p>{preview.schedule}</p>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>What it takes.</b> About ten minutes, in a chat, whenever suits you. It asks questions and you answer in your own words.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              {/*
-                AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
-                stroke - `releasedAt` is stamped once - which made "at the same moment" true of the
-                stamp and false of the reading: a party then meets an activation gate the lead does
-                not, and until they press it is closed. Somebody told they get it at the same moment
-                as their manager clicks through, finds a button, and reads that as the promise being
-                withdrawn at the last step. Ruled out 11 September; what is true is that it is the
-                SAME report and opening it is one press.
-              */}
-              <b>What you get back.</b> The same report {preview.initiatorName} gets. You open your
-              copy with one press when it lands, plus a short private note meant only for you.
-            </div>
+          )}
+          <div>
+            <h2>Who sees your answers</h2>
+            <p>
+              You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
+              with everyone in it.
+            </p>
           </div>
         </div>
 
@@ -445,14 +384,12 @@ export function InvitePage() {
             </div>
           </div>
           <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>
-            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Add my version →'}</span>
+            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
           </button>
         </form>
 
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-          This also saves your place, so you can come back any time to add to
-          the record - and see the shared report once everyone has checked in.
-          We'll email you a link for returning later.
+          About two minutes. You make your account afterwards.
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center' }}>
@@ -510,4 +447,19 @@ function LoadingCard() {
   return (
     <div role="status" style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading invite…</div>
   )
+}
+
+/** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */
+export function theInvitation(p: { leadFirstName?: string | null; initiatorName: string; groundLabel: string }): string {
+  const who = (p.leadFirstName ?? '').trim() || p.initiatorName.trim() || 'Someone'
+  return `${who} invited you to “${p.groundLabel}”`
+}
+
+/** "Baridi Appliances, until 30 September." */
+export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null }): string {
+  const until = p.endsAt ? new Date(p.endsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null
+  const org = (p.organisationName ?? '').trim()
+  if (org && until) return `${org}, until ${until}.`
+  if (org) return `${org}.`
+  return `Until ${until}.`
 }

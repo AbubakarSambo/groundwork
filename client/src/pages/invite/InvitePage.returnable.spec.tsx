@@ -106,7 +106,7 @@ describe('coming back to an invite link you have already used', () => {
     })
     renderInvite()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add my version/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Answer today’s check-in now/i }))
 
     await waitFor(() => expect(navigated).toContain('/checkin/ci1'))
   })

@@ -1,92 +1,95 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { InvitePage, theInvitation, whereAndUntil } from './InvitePage'
 
 /**
- * THE FIRST THING A PARTICIPANT EVER SEES. (G28, and G27's ordering rule)
+ * THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3).
  *
- * They get a link in an email from somebody who did not explain it, and decide in
- * about four seconds whether this is a thing that helps them or a thing being
- * done to them. Get that wrong and either they do not turn up, or they turn up
- * and write the defensive version - which is worse, because it looks like an
- * account and is not one.
+ * WAS: "the three questions, in the order somebody has them" (G27, G28): "Why you.", then "What it
+ * takes." (about ten minutes), then "What you get back.". The prototype replaces those three with its
+ * own card: the lead's invitation, the organisation and end date, one box on who can see what you
+ * say, "What it asks", "Who sees your answers", and "Answer today's check-in now". Hafsah asked for
+ * the prototype's page (26 September), so this file now reads that, rendered as the person sees it.
  *
- * PURPOSE BEFORE PERFORMANCE is the ordering rule, and it is not decoration. Why
- * YOU comes before what it takes, which comes before what you get. Somebody who
- * understands why they matter writes a different check-in from somebody complying
- * with a request, and the order is the whole of the difference.
- *
- * Asserted against the source rather than a render, because what is being held is
- * the ORDER of three blocks and the absence of a fourth thing - neither of which
- * a DOM query distinguishes from any other page of text.
+ * HELD while she decides: "Nobody else reads your answers." and "Wairimu reads the report, not your
+ * words." are not shown, and today's panel "What happens to what you write" stays as it was.
  */
-const SRC = readFileSync(join(__dirname, 'InvitePage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const participantsApi = vi.hoisted(() => ({ preview: vi.fn(), accept: vi.fn() }))
+vi.mock('@/api', () => ({ participantsApi }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
 
-describe('the three questions, in the order somebody has them', () => {
-  it('says why you, first', () => {
-    expect(SRC).toMatch(/<b>Why you\.<\/b>/)
+const PREVIEW = {
+  groundLabel: 'Sales team, Q3',
+  initiatorName: 'Wairimu Kamau',
+  leadFirstName: 'Wairimu',
+  organisationName: 'Baridi Appliances',
+  endsAt: '2026-09-30T00:00:00.000Z',
+  schedule: 'A short check-in each weekday.',
+  scenario: 'NEW_PROJECT',
+  roleAsDescribed: null,
+  alreadyAccepted: false,
+}
+
+function open(preview: any = PREVIEW) {
+  participantsApi.preview.mockResolvedValue(preview)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/invite?token=t']}>
+        <Routes><Route path="/invite" element={<InvitePage />} /></Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('the invitation a participant reads', () => {
+  it('in the prototype\'s words, in its order', async () => {
+    open()
+    expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
+    const text = document.body.textContent ?? ''
+    const order = [
+      'Baridi Appliances, until 30 September.',
+      'The people in this check-in, including your manager, can see what you say in it.',
+      'What it asks',
+      'A short check-in each weekday.',
+      'Who sees your answers',
+      'You see your own report straight away. Wairimu shares a team report',
+      'What happens to what you write',
+      'Answer today’s check-in now',
+      'About two minutes. You make your account afterwards.',
+    ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
+    expect(order.every(i => i > -1)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
 
-  it('then what it takes', () => {
-    expect(SRC).toMatch(/<b>What it takes\.<\/b>/)
+  it('leaves out the two held sentences, and the old three questions', async () => {
+    open()
+    await screen.findByText('Who sees your answers')
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/Nobody else reads your answers/)
+    expect(text).not.toMatch(/reads the report, not your words/)
+    expect(text).not.toMatch(/Why you\.|What it takes\.|What you get back\./)
+    expect(text).not.toMatch(/About ten minutes/)
   })
 
-  it('then what you get back', () => {
-    expect(SRC).toMatch(/<b>What you get back\.<\/b>/)
-  })
-
-  it('and PURPOSE comes before EFFORT, which is the rule not the layout', () => {
-    // THE REGRESSION. Lead with "ten minutes" and the whole thing reads as a
-    // task to be got through. Lead with why they matter and it reads as being
-    // asked for something only they have.
-    const why = SRC.indexOf('<b>Why you.</b>')
-    const takes = SRC.indexOf('<b>What it takes.</b>')
-    const get = SRC.indexOf('<b>What you get back.</b>')
-    expect(why).toBeGreaterThan(-1)
-    expect(why).toBeLessThan(takes)
-    expect(takes).toBeLessThan(get)
+  it('shows no "Your number" block, because the invitation carries no share of a target', async () => {
+    open()
+    await screen.findByText('Who sees your answers')
+    expect(screen.queryByText('Your number')).toBeNull()
   })
 })
 
-describe('what it promises them', () => {
-  it('the same report the person running it gets, and the press that opens it', () => {
-    /*
-     * THE TIMING CLAIM IS GONE, AND THE PROMISE THAT MATTERS IS NOT.
-     *
-     * `releasedAt` is stamped once, so "released to everybody at once" was true of the stamp. It
-     * was not true of the reading: a party then meets an activation gate the lead is exempt from,
-     * and reports.service.ts checks each participant's own ReportActivation before returning
-     * anything. Somebody told they get it at the same moment as their manager clicks through,
-     * finds a button, and reads that as the promise being withdrawn at the last step.
-     *
-     * Ruled out by the owner on 11 September: the sentence claims sameness the product does not
-     * deliver. What is true and worth saying is that it is the SAME REPORT, and that opening it is
-     * one press. Both are asserted here.
-     */
-    expect(SRC).toMatch(/The same report \{preview\.initiatorName\} gets/)
-    expect(SRC).toMatch(/open your\s+copy with one press/)
+describe('the two lines built from the record', () => {
+  it('names the lead by first name', () => {
+    expect(theInvitation(PREVIEW)).toBe('Wairimu invited you to “Sales team, Q3”')
+    expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to “Sales team, Q3”')
   })
 
-  it('and their own private note', () => {
-    // The half that makes it worth their ten minutes rather than only worth the
-    // lead's. It exists, it is theirs, and nobody else reads it.
-    expect(SRC).toMatch(/private note meant only for you/)
-  })
-
-  it('without claiming the report is identical for everybody', () => {
-    // The claim that was false on the marketing page for weeks. Names are
-    // substituted at the read, so "the same report" is about timing and source,
-    // not about every word matching.
-    expect(SRC).not.toMatch(/exactly what .* sees/i)
-    expect(SRC).not.toMatch(/identical/i)
-  })
-})
-
-describe('and it still says the thing that was already right', () => {
-  it('you are in this, not reporting on somebody else', () => {
-    // Kept, and kept ABOVE the new block: an invitation to describe work
-    // involving another person reads as being asked to give evidence about them
-    // unless something says otherwise.
-    expect(SRC).toMatch(/This is not a\s*\n?\s*form about somebody else/)
+  it('says the organisation and the end date, or whichever there is', () => {
+    expect(whereAndUntil(PREVIEW)).toBe('Baridi Appliances, until 30 September.')
+    expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('Baridi Appliances.')
+    expect(whereAndUntil({ organisationName: null, endsAt: '2026-09-30T00:00:00.000Z' })).toBe('Until 30 September.')
   })
 })
