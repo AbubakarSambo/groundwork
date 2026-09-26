@@ -444,8 +444,21 @@ product does today. Done so far, on the screens only:
     One API test had been failing unseen since step 6, because only the screens' tests had been run on
     that step. It is fixed. From now on, the full API suite runs at the end of every task.
 
-All of U.2 that does not wait on you is built. It now goes to the tester and the reviewer. The
-reset page's address waits on item 12.
+**The first review sent it back**, for four things a person read wrongly: the sign-up said "No
+password to choose" and then asked for one; "You're signed out" was followed by the fragment "On this
+device."; the wrong-password answer joined two pieces with a dash; and used or unknown links still got
+the old error page. All four are fixed (commits `84e7a04a`, `f0949752`, `7b5e83d1`, `7e5711d3`), with
+three smaller ones and a server error when a link had no token (`4e09a0f6`). Two security fixes came
+out of the same review: forgot-password now answers every address exactly the same (`2ce55140`), and a
+new reset link stops the older ones working (`b06907aa`).
+
+**Then your decisions were built:** the Google failure page in full sentences, saying what to do next
+(`bb777d97`); the prototype's password rules on the screen and on the server (`94cc837d`); sign-up
+with an email link or a password, and no forced password step after a link (`70a561d9`); the
+organisation's name suggested from the email address (`90431cea`); and the free trial as a setting in
+the database, switched off until billing gives it (`bacdb6cf`).
+
+It is now with the tester and the reviewer again.
 
 ## Found on the way, for later tasks
 
