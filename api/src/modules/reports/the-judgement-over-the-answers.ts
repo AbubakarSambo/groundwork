@@ -435,44 +435,6 @@ export interface SomebodyInTheRoom {
   patterns: { code: string; name: string; observation: string; seenInSessions: number[] }[];
   /** What they said they would do and nobody has closed. */
   openCommitments: string[];
-  /**
-   * WHAT OTHER PEOPLE'S WORDS CALL THEM, SO A NAME IN SOMEBODY'S WORDS IS KNOWN TO BE THIS PERSON.
-   *
-   * The drift run: Zainab said she moved to sales "as requested by Nadia", and the judgement was
-   * told about "the initiator" and never that the initiator is Nadia. So it wrote "Tell the
-   * initiator that Nadia has redirected Participant A", and the lead read that about herself. The
-   * people's words are not touched; the judgement, which only the lead reads, is simply told which
-   * name belongs to which label. See whatOtherPeoplesWordsCallThem.
-   */
-  namesInOtherPeoplesWords?: string[];
-}
-
-/**
- * THE NAMES A PERSON IS CALLED BY IN OTHER PEOPLE'S WORDS: their full name, and their first name
- * where nobody else in the check-in has the same one. A first name two people share is left out,
- * because telling the judgement "Grace" is one of them when it could be either is how one person's
- * account ends up on the other. The address is never a name here.
- *
- * @param people every person on the check-in, with the name `displayName` serves at the read.
- */
-export function whatOtherPeoplesWordsCallThem(
-  people: { id: string; name: string | null | undefined }[],
-): Map<string, string[]> {
-  const clean = people.map((p) => ({ id: p.id, name: (p.name ?? '').replace(/\s+/g, ' ').trim() }))
-    .filter((p) => p.name && !p.name.includes('@'));
-  const firstOf = (n: string) => n.split(' ')[0];
-  const howMany = new Map<string, number>();
-  for (const p of clean) howMany.set(firstOf(p.name).toLowerCase(), (howMany.get(firstOf(p.name).toLowerCase()) ?? 0) + 1);
-  const out = new Map<string, string[]>();
-  for (const p of clean) {
-    const first = firstOf(p.name);
-    const names = [p.name];
-    if (first !== p.name && howMany.get(first.toLowerCase()) === 1) names.push(first);
-    /* A single name somebody else also goes by is as ambiguous as a shared first name. */
-    if (first === p.name && (howMany.get(first.toLowerCase()) ?? 0) > 1) continue;
-    out.set(p.id, names);
-  }
-  return out;
 }
 
 /** The room, as the model is given it. One block per person, and the differences between them. */
@@ -490,7 +452,6 @@ export function theRoom(
   ];
   for (const p of people) {
     lines.push(`--- ${p.who}${p.isLead ? ' (RUNS THIS CHECK-IN - not one of the people being checked in on)' : ''}`);
-    if (p.namesInOtherPeoplesWords?.length) lines.push(`    other people's words call them: ${p.namesInOtherPeoplesWords.join(', or ')}`);
     if (p.role) lines.push(`    taken on for: ${p.role}`);
     if (p.finding) lines.push(`    what the record holds: ${p.finding}`);
     for (const x of p.patterns) {
@@ -531,8 +492,6 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
     leadName
       ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
       : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
-    '',
-    'A NAME IN SOMEBODY\'S WORDS MAY BE SOMEBODY IN THIS ROOM. Each block says what other people\'s words call that person. When somebody\'s words name a person in this room by their name, it is that person: say it about them, using their label exactly as given, and never treat them as somebody outside the room.',
     '',
     'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
     '',

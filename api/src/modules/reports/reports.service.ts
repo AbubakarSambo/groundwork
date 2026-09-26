@@ -67,7 +67,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, displayName } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
@@ -79,7 +79,7 @@ import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 import {
   whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
-  thisIsARoom, theRoom, theJudgementOverARoom, THE_ROOM_JUDGEMENT_SCHEMA, whatOtherPeoplesWordsCallThem,
+  thisIsARoom, theRoom, theJudgementOverARoom, THE_ROOM_JUDGEMENT_SCHEMA,
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
 import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
@@ -993,7 +993,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -2196,11 +2196,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * last part is written, and it is handed nothing but the table, with every sentence required to
      * carry a number that is already in it.
      */
-    /* The names displayName serves at the read, from the same rows the labels come from: no organisation,
-       never the address. Told to the lead's judgement only - see whatOtherPeoplesWordsCallThem. */
-    const namesInOtherPeoplesWords = whatOtherPeoplesWordsCallThem(
-      (parties as any[]).map((p) => ({ id: p.id, name: displayName({ ...p, organisationGiven: null }, false) })),
-    );
     const theJudgement = await this.judgeTheAnswers(groundId, {
       /*
        * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
@@ -2214,7 +2209,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
         role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
         finding: findings.find((f) => f.participantId === p.id)?.text ?? null,
         participantId: p.id,
-        namesInOtherPeoplesWords: namesInOtherPeoplesWords.get(p.id) ?? [],
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
       differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
@@ -3866,7 +3860,7 @@ happened, and what is in the way.`;
   private async judgeTheAnswers(
     groundId: string,
     room?: {
-      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string; namesInOtherPeoplesWords?: string[] }[];
+      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
       leadName: string | null;
       differences: { topic: string; positions: { who: string; view: string }[] }[];
     },
@@ -3990,8 +3984,7 @@ happened, and what is in the way.`;
           who: p.who,
           texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => String(r.text ?? '')),
         })),
-        /* Their names as well as their labels, so "Nadia" is never counted as a thing two people named. */
-        [...room!.people.map((p) => p.who), ...room!.people.flatMap((p) => p.namesInOtherPeoplesWords ?? [])],
+        room!.people.map((p) => p.who),
       );
       if (shared.length) this.logger.log(`The judgement on ${groundId} was given ${shared.length} thing(s) named by more than one person: ${shared.map((x) => x.name).join(', ')}.`);
       material = theRoom(
@@ -4019,7 +4012,6 @@ happened, and what is in the way.`;
             .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
-          namesInOtherPeoplesWords: p.namesInOtherPeoplesWords ?? [],
         })),
         room!.differences,
         sessions,
