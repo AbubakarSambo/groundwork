@@ -258,6 +258,22 @@ and the link could be forwarded to someone else.
 **Two of these conflict with something already written, so I have held both parts back. You
 decide.**
 
+**The admin rule, word for word from `docs/decisions.md`.** `docs/decisions.md` has no rule labelled
+"A4". Its rule about admins is rule 5, and it says:
+
+> 5. **Admins** see every board and report, including what people said in them. They never see
+> anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a
+> performance plan unless given access to that check-in.
+
+Rule 4 of the same file says: "What people say in check-ins can be shown word for word to the people
+in that check-in. There is no "Share my words" switch."
+
+This differs from the A4 rule in `docs/modules.md` ("Admins see boards and reports, never exact words
+and never performance plans, unless given access to that check-in."), which I quoted below before I
+had checked `decisions.md`. The two documents disagree about exact words. `decisions.md` says "These
+are settled", and it agrees with your U.3 answer that admins can read what people said. As you asked,
+both conflicts stay held with today's behaviour until you decide.
+
 #### Conflict A: what the invitation says about who reads your words
 
 **What you decided:** use the prototype's invitation wording, say what the person will see, and never
@@ -278,8 +294,8 @@ happens to what you write"):
   is built by comparing what everyone said. Your own words about your own work can appear in it.
   Anything you say about somebody else never does, and it never says who said what about whom."
 
-**The rule in `docs/modules.md`, A4:** "Admins see boards and reports, never exact words and never
-performance plans, unless given access to that check-in."
+**The rule in `docs/modules.md`, A4** (older; see rule 5 above): "Admins see boards and reports, never
+exact words and never performance plans, unless given access to that check-in."
 
 **The conflict:**
 1. Inside the prototype itself, the first line says your manager can see what you say. But "Nobody
@@ -289,6 +305,11 @@ performance plans, unless given access to that check-in."
    even an admin.
 3. Your answer says admins can read the words. The A4 rule says admins never see exact words unless
    given access to that check-in.
+
+**Checked against `docs/decisions.md` rules 4 and 5:** they agree with you. People in the check-in
+and admins can read what people said. So the prototype's "Nobody else reads your answers." and
+"Wairimu reads the report, not your words." contradict the settled rules, and so does today's
+panel.
 
 **Held:** the two prototype sentences "Nobody else reads your answers." and "Wairimu reads the report,
 not your words.", and today's panel. The rest of the prototype's invitation is being built.
@@ -318,12 +339,17 @@ performance plans, unless given access to that check-in."
 2. A smaller wording problem: "They never see…" has nothing for "They" to point to. It probably means
    "Nobody else sees…" or "You never see…".
 
+**Checked against `docs/decisions.md` rule 5:** the card's sentence is nearly rule 5 word for word.
+The only part it leaves out is "and never a performance plan unless given access to that check-in".
+So the real conflict is smaller than I first wrote: the card promises every board and report,
+including performance plans, where rule 5 excludes them without access.
+
 **Held:** the sentence "You can see every board and report. They never see anyone's questions to Ask
 Groundwork, anyone's own report, or a lead's private notes." The rest of the card is being built.
-**My suggestion:** "You can see the boards and reports of every check-in, except performance plans
-and anyone's exact words, unless you are given access to that check-in. You never see anyone's
-questions to Ask Groundwork, anyone's own report, or a lead's private notes." Or change the A4 rule,
-if admins should see everything.
+**My suggestion:** use rule 5's own words, which match the prototype except for the one missing part:
+"You can see every board and report, including what people said in them. You never see anyone's
+questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a performance
+plan unless given access to that check-in." That also fixes "They".
 
 #### Also: the round "?" button covers the error on "Create an organisation"
 
