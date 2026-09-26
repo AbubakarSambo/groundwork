@@ -203,9 +203,23 @@ export function AuthPage() {
     },
   })
 
+  /*
+   * HOW THE LINK ON SCREEN WAS SENT, SO "SEND IT AGAIN" SENDS IT THE SAME WAY.
+   *
+   * A sign-in link, and `/auth/sent` (the marketing home's SaveCard sends one before it arrives
+   * here), go through `entrySave` with nothing but the address: for an account that exists that is a
+   * sign-in link, and for a sign-up still waiting it keeps everything already saved and only renews
+   * the link. A new account goes through `entrySave` again with the name and organisation typed, so
+   * the second link carries exactly what the first did.
+   */
+  const [sentBy, setSentBy] = useState<'link' | 'create'>('link')
+  const sendTheLinkAgain = () => sentBy === 'create'
+    ? authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled)
+    : authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled)
+
   const sendLink = useMutation({
     mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled),
-    onSuccess: () => setLinkSent(true),
+    onSuccess: () => { setSentBy('link'); setLinkSent(true) },
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
      *
@@ -264,14 +278,15 @@ export function AuthPage() {
     return () => window.clearTimeout(at)
   }, [email, view])
 
+  function whatTheyTyped() {
+    return {
+      ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
+      ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
+    }
+  }
   const createAccount = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), {
-      payload: {
-        ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
-        ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
-      },
-    }, trap.filled),
-    onSuccess: () => setLinkSent(true),
+    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled),
+    onSuccess: () => { setSentBy('create'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
@@ -639,6 +654,7 @@ export function AuthPage() {
         {linkSent && (
           <LinkSentPanel
             email={email}
+            resend={sendTheLinkAgain}
             onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
           />
         )}

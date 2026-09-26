@@ -10,12 +10,6 @@ export interface MagicLinkResponse { message: string; email: string }
 export interface VerifyEmailResponse { accessToken: string; user: User; needsPassword?: boolean; passwordSetupToken?: string }
 export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
 
-export interface MagicLinkBody {
-  email: string
-  organizationName?: string
-  firstName?: string
-  lastName?: string
-}
 
 export interface WaitingAtTheDoor {
   id: string
@@ -28,8 +22,9 @@ export interface WaitingAtTheDoor {
 }
 
 export const authApi = {
-  requestMagicLink: (body: MagicLinkBody) =>
-    apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
+  /* No `requestMagicLink`. It called /auth/register-magic-link, which creates accounts, and its only
+     caller was the resend on "Check your email", where it failed for every existing account and wiped
+     a waiting sign-up's typed name. The resend goes through entrySave now. U.2. */
 
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),

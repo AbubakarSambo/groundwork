@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { authApi } from '@/api/auth'
 import { TextAction } from '@/components/gw/kit'
 
 /**
@@ -16,7 +15,22 @@ import { TextAction } from '@/components/gw/kit'
  * because `SaveCard` sends people to it and old links may exist - it just renders
  * the same page now rather than a second one.
  */
-export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseDifferent: () => void }) {
+/*
+ * THE RESEND GOES BACK THROUGH THE DOOR THAT SENT THE FIRST LINK.
+ *
+ * It used to call `/auth/register-magic-link` whatever sent the first one. That route creates
+ * accounts, so for an address that already had one it answered 409 and every resend of a sign-in
+ * link said "That link did not send". For somebody still signing up it rewrote the waiting sign-up:
+ * the first name they typed became one guessed from their address, and the organisation name they
+ * typed was set to nothing. So the caller, which knows what sent the first link, says how to send it
+ * again.
+ */
+export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent }: {
+  email: string
+  /** Sends the link again, the same way the first one was sent. */
+  resend: () => Promise<unknown>
+  onUseDifferent: () => void
+}) {
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
 
@@ -28,7 +42,7 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
 
   const [resendFailed, setResendFailed] = useState('')
   const resend = useMutation({
-    mutationFn: () => authApi.requestMagicLink({ email }),
+    mutationFn: sendAgain,
     onSuccess: () => { setCountdown(30); setCanResend(false) },
     onError: () => setResendFailed('That link did not send. Try again in a moment.')
   })
