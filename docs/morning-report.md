@@ -109,7 +109,14 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 
 **Why it went down, as far as I can tell.** I compared each slipped scenario's findings on run-6 and run-7. In sales, advisor, updates and snapshot, the simulated people said different things this time, and the missing fact was not in the material. Pulse is different: the fact was in the record, and the code picked the vaguer of two worries from the same session. That is the next fix. I found no case where one of tonight's changes pushed out a fact that had been there before.
 
-**Still to fix before the second full run:** the two-word close, the choice of worry, and the "Tell you…" actions. The instruction I added for those actions barely helped (4 on run-6, 3 on run-7), so they will be rewritten in code before the report is stored.
+### Four more fixes after run-7
+
+9. **`38223cfe`: a close is never cut down to two words.** "What you said is now in the record" is no longer read as a promise. If a cut would still leave a stub on the closing turn, the product sends "Thank you. Your check-in is saved." instead.
+10. **`3951f8a1`: "what is in their way" now keeps the worry that has the detail in it.** Tested on pulse. Fatima's finding now reads "Four approvals have been waiting for Ahmed's manager since the 9th", and that judgement was clearly right. On a second pulse run, the judgement mistook "Ahmed's manager" for Ahmed, the lead. That is the names problem again.
+11. **`d7d2ba27`: every action that tells the reader to do something is now written as the thing to do.** "Tell the initiator to get Chidi and Sara in a room" is stored as "Get Chidi Eze and Sara Lindqvist in a room". Tested on workplan and project, and both came back clean and right. The same test runs also got crisis clearly right: "the on-call rota was actually out of date, naming an employee who had left the company". But that crisis report was incomplete, so it does not count.
+12. **`3a76beae`: no guard can now cut a reply down to a fragment.** A project run sent Ifeoma just "Before we close,", because a guard cut the question that followed. Every cutting guard now keeps the reply as it was when the cut would leave a fragment. The only exceptions are an invented promise or number, and on a closing turn those become the plain close.
+
+**Run-8, the second and last full run tonight, started at about 02:15 on `3a76beae`.**
 
 ### Where each changed scenario stands, across the clean re-runs
 
