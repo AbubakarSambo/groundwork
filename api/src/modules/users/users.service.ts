@@ -326,7 +326,7 @@ export class UsersService {
         sent.push({ email: row.email, result: 'no seat' });
       }
     }
-    return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent) };
+    return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent, true) };
   }
 
   /** See UsersController.colleagues and common/colleagues.ts: name, role and team, and a guest sees only their own check-ins' people. */

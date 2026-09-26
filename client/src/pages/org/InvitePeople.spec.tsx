@@ -12,7 +12,7 @@ beforeEach(() => { vi.restoreAllMocks() })
 describe('invite people (A4 people.txt)', () => {
   it('a clean list goes in one press, with the role chosen', async () => {
     const post = vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({
-      data: { preview: body.preview, seatsLeft: 70, rows: [{ email: 'faith@baridi.co.ke', result: 'invited' }], summary: body.preview ? '1 will be invited.' : '1 invited.' },
+      data: { preview: body.preview, seatsLeft: 70, rows: [{ email: 'faith@baridi.co.ke', result: 'invited' }], summary: body.preview ? '1 person will be invited.' : '1 person was invited.' },
     }) as any)
     wrap(<InvitePeople />)
     fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'Faith Kerubo, faith@baridi.co.ke' } })
@@ -21,11 +21,15 @@ describe('invite people (A4 people.txt)', () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'Faith Kerubo, faith@baridi.co.ke', preview: false, role: 'ADMIN' }))
     expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'Faith Kerubo, faith@baridi.co.ke', preview: true, role: 'ADMIN' })
     expect(await screen.findByText('Invited')).toBeTruthy()
+    /* The server's sentence, in the panel and in the toast. */
+    expect(screen.getByText('1 person was invited.')).toBeTruthy()
+    const { toast } = await import('sonner')
+    expect(toast.success).toHaveBeenCalledWith('1 person was invited.')
   })
 
   it('a list with a problem shows what would happen to each line, and sends only the ones that can go, after that is read', async () => {
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue({
-      data: { preview: true, seatsLeft: 1, rows: [{ email: 'oops', result: 'not an email' }, { email: 'b@x.com', result: 'invited' }, { email: 'c@x.com', result: 'no seat' }], summary: '1 will be invited. 2 cannot be.' },
+      data: { preview: true, seatsLeft: 1, rows: [{ email: 'oops', result: 'not an email' }, { email: 'b@x.com', result: 'invited' }, { email: 'c@x.com', result: 'no seat' }], summary: '1 person will be invited. 1 line is not an email address. 1 person has no seat on your plan.' },
     } as any)
     wrap(<InvitePeople />)
     fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'oops, b@x.com, c@x.com' } })
@@ -34,6 +38,7 @@ describe('invite people (A4 people.txt)', () => {
     expect(screen.getByText('Will be invited')).toBeTruthy()
     expect(screen.getByText('No seat on your plan')).toBeTruthy()
     expect(screen.getByText('Your plan has room for 1 more person.')).toBeTruthy()
+    expect(screen.getByText('1 person will be invited. 1 line is not an email address. 1 person has no seat on your plan.')).toBeTruthy()
     expect(post).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Send 1 invitation' })).toBeTruthy()
   })

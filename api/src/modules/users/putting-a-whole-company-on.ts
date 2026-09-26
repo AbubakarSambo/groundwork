@@ -144,14 +144,29 @@ export function planFor(
 }
 
 /** One line an admin can read before they email their company. */
-export function summarise(rows: Row[]): string {
+/**
+ * THE LINE AN ADMIN READS BEFORE, AND AFTER, EMAILING THEIR COMPANY: full sentences (U.4). It read
+ * "2 to invite, 1 repeated", pieces joined with commas. What will be sent comes first, and what is
+ * blocked for want of a seat last, because that is the one that needs a decision. `sent` changes
+ * the tense once the invitations have gone.
+ */
+export function summarise(rows: Row[], sent = false): string {
   const n = (r: RowResult) => rows.filter((x) => x.result === r).length;
-  const parts: string[] = [];
-  if (n('invited')) parts.push(`${n('invited')} to invite`);
-  if (n('already here')) parts.push(`${n('already here')} already here`);
-  if (n('repeated')) parts.push(`${n('repeated')} repeated`);
-  if (n('not an email')) parts.push(`${n('not an email')} not an address`);
-  /* Last and phrased as the blocker it is, because it is the one that needs a decision. */
-  if (n('no seat')) parts.push(`${n('no seat')} with no seat on your plan`);
-  return parts.length ? parts.join(', ') : 'Nothing to send';
+  const one = (k: number) => k === 1;
+  const said: string[] = [];
+  const invited = n('invited');
+  if (invited) {
+    said.push(sent
+      ? (one(invited) ? '1 person was invited.' : `${invited} people were invited.`)
+      : (one(invited) ? '1 person will be invited.' : `${invited} people will be invited.`));
+  }
+  const here = n('already here');
+  if (here) said.push(one(here) ? '1 person is already here.' : `${here} people are already here.`);
+  const twice = n('repeated');
+  if (twice) said.push(one(twice) ? '1 address was listed twice, so it is left out.' : `${twice} addresses were listed twice, so they are left out.`);
+  const bad = n('not an email');
+  if (bad) said.push(one(bad) ? '1 line is not an email address.' : `${bad} lines are not email addresses.`);
+  const noSeat = n('no seat');
+  if (noSeat) said.push(one(noSeat) ? '1 person has no seat on your plan.' : `${noSeat} people have no seat on your plan.`);
+  return said.length ? said.join(' ') : 'There is nobody new to invite.';
 }
