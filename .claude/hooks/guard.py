@@ -75,6 +75,12 @@ if kind == "bash":
             block(msg)
 elif kind == "files":
     path = inp.get("file_path") or inp.get("path") or ""
+    import os
+    # A settings file may be CREATED once, on a new computer, when none exists. Changing an existing one stays blocked.
+    if re.search(r"(^|/)(api|client)/\.env$", path) and data.get("tool_name") == "Write":
+        full = path if os.path.isabs(path) else os.path.join(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd(), path)
+        if not os.path.exists(full):
+            sys.exit(0)
     protected = [r"(^|/)\.env", r"(^|/)docs/decisions\.md$", r"(^|/)docs/baseline\.json$", r"(^|/)tools/score_run\.py$", r"(^|/)\.claude/", r"(^|/)CLAUDE\.md$"]
     for pat in protected:
         if re.search(pat, path):
