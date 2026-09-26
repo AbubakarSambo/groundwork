@@ -273,6 +273,14 @@ export function HelpModal() {
         {tab === 2 && <Tab2 onBack={() => go(1)} onNext={() => go(3)} />}
         {tab === 3 && <Tab3 onBack={() => go(2)} onNext={() => go(4)} />}
         {tab === 4 && <Tab4 onBack={() => go(3)} onClose={hide} />}
+
+        {/* "TALK TO US", ON EVERY TAB (A1: help and "Talk to us" from anywhere). The sentence is the
+            one the request page itself opens with, so the promise is the same in both places. A plain
+            link, so it works wherever this window is opened, inside the app's pages or not. */}
+        <div className="gw-help-talk">
+          <p>Tell us what you need and somebody will come back to you within two working days.</p>
+          <a href="/talk-to-us" className="gw-b gw-b-secondary gw-b-small" onClick={hide}>Talk to us</a>
+        </div>
       </div>
     </div>
   )

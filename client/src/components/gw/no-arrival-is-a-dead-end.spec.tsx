@@ -71,7 +71,9 @@ describe('none of the arrival pages rolls its own', () => {
   for (const rel of ARRIVALS) {
     it(`${rel.split('/').pop()} uses the shared state`, () => {
       const src = readFileSync(join(SRC, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-      expect(src).toContain('LinkProblem')
+      /* U.2 review: the sign-in link's dead state is the account card's "This link did not work"
+         (LinkDidNotWork), which has its way out on it too: a box to ask for a new link. */
+      expect(src).toMatch(/LinkProblem|LinkDidNotWork/)
     })
   }
 

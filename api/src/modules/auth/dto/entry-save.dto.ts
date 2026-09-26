@@ -1,4 +1,5 @@
-import { IsEmail, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { AT_LEAST, A_NUMBER_OR_A_SYMBOL, NO_NUMBER_OR_SYMBOL, TOO_SHORT } from '../the-password-rules';
 
 /**
  * THE DOOR EVERYBODY ACTUALLY WALKS.
@@ -20,6 +21,21 @@ export class EntrySaveDto {
   @IsOptional()
   @IsObject()
   draft?: { payload?: Record<string, unknown>; history?: unknown[] };
+
+  /**
+   * A PASSWORD, IF THE PERSON SIGNING UP CHOSE ONE. U.2, Hafsah's decision of 26 September.
+   *
+   * Sign-up offers an email link or a password. The password is only ever used for an address with
+   * no account: it is hashed onto the waiting sign-up, and `verifyEmail` copies it onto the account
+   * when the link is opened, so nothing exists before the address is proved. For an address that
+   * already has an account it is ignored, and the answer is the same.
+   */
+  @IsOptional()
+  @IsString()
+  @MinLength(AT_LEAST, { message: TOO_SHORT })
+  @MaxLength(100)
+  @Matches(A_NUMBER_OR_A_SYMBOL, { message: NO_NUMBER_OR_SYMBOL })
+  password?: string;
 
   /**
    * A FIELD A PERSON CANNOT SEE. Filled in means a bot.

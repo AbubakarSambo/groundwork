@@ -36,6 +36,7 @@ import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 import { whatToSayAboutADeadLink, expiresAtFor, howLongInWords } from './how-long-a-link-lasts';
+import { isTheirEmail, IS_THEIR_EMAIL } from './the-password-rules';
 import { THE_SAME_ANSWER_EITHER_WAY, type WhyTheyCouldNotSignIn } from './one-answer-at-the-door';
 
 type UserWithOrg = {
@@ -135,6 +136,7 @@ export class AuthService {
      * The password hash rides along on that record rather than on a User, because the User is
      * precisely the thing that must not exist yet.
      */
+    if (isTheirEmail(dto.password, dto.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const token = crypto.randomBytes(32).toString('hex');
 
@@ -227,6 +229,7 @@ export class AuthService {
 
     if (!user.passwordHash) {
       if (user.googleId) {
+        await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
           data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -238,6 +241,7 @@ export class AuthService {
       }
       // Participant accounts are created without a password. Auto-send a setup
       // link so they can get back in without needing to contact anyone.
+      await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -356,7 +360,8 @@ export class AuthService {
         });
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
-        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id);
+        /* This link has just made the account (U.2): the client says "Your email is confirmed". */
+        return { ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true };
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -403,7 +408,8 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id);
+      /* This link has just made the account and its organisation (U.2). */
+      return { ...(await this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true };
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -425,6 +431,7 @@ export class AuthService {
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_SETUP, { allowExpiredMessage: 'This invitation link has expired. Please ask your admin to resend the invite.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -462,9 +469,17 @@ export class AuthService {
     // magic link - before this, the transcript lived only in the originating
     // browser's localStorage and a link opened anywhere else lost the ground.
     draft?: { payload?: Record<string, any>; history?: unknown[] },
+    /* A password chosen at sign-up (U.2). Used only for an address with no account. */
+    password?: string,
   ): Promise<{ message: string; email: string; draftToken?: string }> {
     const lower = email.toLowerCase();
     const message = 'Check your email for your sign-in link.';
+
+    /*
+     * CHECKED BEFORE THE ADDRESS IS LOOKED UP, so the answer cannot differ between an address that
+     * has an account and one that does not. The other two rules are on the request (EntrySaveDto).
+     */
+    if (password !== undefined && isTheirEmail(password, lower)) throw new BadRequestException(IS_THEIR_EMAIL);
 
     if (draft && JSON.stringify(draft).length > 500_000) {
       throw new BadRequestException('Draft too large');
@@ -515,6 +530,9 @@ export class AuthService {
       const dt = draft ? crypto.randomBytes(32).toString('hex') : undefined;
       const typedOrgName = typeof draft?.payload?.orgName === 'string' ? draft.payload.orgName.trim().slice(0, 120) : '';
 
+      /* Hashed here and held on the waiting sign-up, never on a User, which must not exist yet (GW-001). */
+      const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+
       await this.prisma.pendingSignup.upsert({
         where: { email: lower },
         create: {
@@ -522,6 +540,7 @@ export class AuthService {
           token,
           firstName,
           orgName: typedOrgName || null,
+          ...(passwordHash ? { passwordHash } : {}),
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
@@ -556,6 +575,8 @@ export class AuthService {
         update: {
           token,
           expiresAt: expiresAtFor('verify an address'),
+          /* A password sent again replaces the one before; a request without one leaves it alone. */
+          ...(passwordHash ? { passwordHash } : {}),
           ...(draft
             ? {
                 firstName,
@@ -716,7 +737,7 @@ export class AuthService {
     return { message: 'Invite sent.' };
   }
 
-  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string; devUrl?: string }> {
+  async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
     const message = 'If an account with that email exists, a sign-in link has been sent.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -737,18 +758,17 @@ export class AuthService {
       data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
-    const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
+    await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send member sign-in email to ${email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, email, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address. The development link is in the server log, where the
+       email service writes every link it would have sent; it is never in the answer, because a
+       devUrl only for addresses that have an account says which addresses do (U.2 review). */
+    return { message, email };
   }
 
   async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId, type: TokenType.PASSWORD_SETUP, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
@@ -758,30 +778,28 @@ export class AuthService {
     return { token };
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string; devUrl?: string }> {
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
     const message = 'If an account with that email exists, a password reset link has been sent.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
 
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, type: TokenType.PASSWORD_RESET, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_RESET);
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
-    const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
+    await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
       this.logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`);
-      return { devUrl: undefined };
     });
-    return { message, ...(result.devUrl ? { devUrl: result.devUrl } : {}) };
+    /* The same answer for every address; the development link is in the server log only. See memberSignin. */
+    return { message };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<AuthResponseDto> {
     const tokenRecord = await this.consumeToken(dto.token, TokenType.PASSWORD_RESET, { allowExpiredMessage: 'This reset link has expired. Please request a new one.' });
+    if (isTheirEmail(dto.password, tokenRecord.user.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -909,13 +927,28 @@ export class AuthService {
    * VALID, AND NOTHING ELSE. This returned the address and first name behind an unused set-password
    * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
    */
-  async validateToken(token: string, type: string): Promise<{ valid: boolean }> {
+  async validateToken(token: string, type: string): Promise<{ valid: boolean; expired?: true }> {
+    /* A request with no token, or a token that is not a string (?token=a&token=b arrives as an
+       array), is not a link: say so, instead of a 500 from hashing nothing. U.2 review. */
+    if (typeof token !== 'string' || !token) return { valid: false };
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 
     const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token: hashed(token) }, select: { usedAt: true, expiresAt: true, type: true } });
-    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt < new Date() || tokenRecord.type !== tokenType) {
+    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.type !== tokenType) {
       return { valid: false };
+    }
+    /*
+     * AN UNUSED LINK OF THE RIGHT KIND THAT HAS RUN OUT SAYS SO. U.2.
+     *
+     * So the reset and set-password pages can open on "That link has expired" and offer a fresh one,
+     * instead of letting somebody type a password twice and only then be told. It says nothing the
+     * holder does not already know: they hold the link, and only a real, unused link of this kind
+     * gets this answer. An unknown, used or wrong-kind link still gets only { valid: false }, and
+     * nothing here ever names the account (see a-secret-is-not-readable-from-the-table).
+     */
+    if (tokenRecord.expiresAt < new Date()) {
+      return { valid: false, expired: true };
     }
     return { valid: true };
   }
@@ -953,8 +986,24 @@ export class AuthService {
    * Only the verification path needs it: that is where the promise "you will be asked to set a
    * password" is made, and where it was being broken.
    */
+  /**
+   * A NEW PASSWORD LINK ENDS THE OLDER ONES. U.2 review, Hafsah's rule of 26 September.
+   *
+   * An older reset or set-up link must stop working as soon as a newer one is sent, so a link left
+   * in an old email, a forwarded message or a shared inbox cannot be used after the person has asked
+   * for another. Every place in this service that makes a reset or set-up link calls this first.
+   * Marked used rather than deleted, so an old link opened later says it did not work.
+   */
+  private async aNewLinkEndsTheOlderOnes(userId: string, type: 'PASSWORD_RESET' | 'PASSWORD_SETUP'): Promise<void> {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId, type: type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.PASSWORD_SETUP, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
   private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
     if (!res.needsPassword) return res;
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: {
@@ -1107,7 +1156,7 @@ export class AuthService {
      * rather than ask for another link.
      */
     const NOT_A_LINK_WE_KNOW =
-      'This link did not work. Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
+      'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.';
     if (!tokenRecord) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
 
     /*

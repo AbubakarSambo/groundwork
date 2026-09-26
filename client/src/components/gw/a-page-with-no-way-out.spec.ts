@@ -35,6 +35,7 @@ const PAGE_FOR: Record<string, string> = {
   '/set-password': 'pages/auth/SetPasswordPage.tsx',
   '/reset-password': 'pages/auth/ResetPasswordPage.tsx',
   '/verify-email': 'pages/auth/MagicVerifyPage.tsx',
+  '/google-failed': 'pages/auth/GoogleFailedPage.tsx',
 }
 
 describe('a page with no way out', () => {
@@ -66,8 +67,10 @@ describe('a page with no way out', () => {
        * The stricter rule belongs only to a page a guard HOLDS you on, where an in-app route
        * loops straight back. `/org/setup` is the one of those, and the next test asserts it.
        */
-      const leavesTheApp = src.includes('MARKETING_URL')
-      const endsTheSession = /\blogout\s*\(/.test(src)
+      /* The account screens are built from AuthCard and AuthSplit (pages/auth/auth-kit.tsx), whose
+         Groundwork mark is the link to the marketing site. U.2. */
+      const leavesTheApp = src.includes('MARKETING_URL') || /<Auth(Card|Split|Brand)\b/.test(src)
+      const endsTheSession = /\blogout\s*\(/.test(src) || /navigate\('\/signout'/.test(src)
       const goesSomewhere = /navigate\(\s*['`]\//.test(src) || /<Link\b/.test(src)
       if (!leavesTheApp && !endsTheSession && !goesSomewhere) stranded.push(`${path} (${file})`)
     }
@@ -97,7 +100,9 @@ describe('a page with no way out', () => {
      */
     const src = readFileSync(join(ROOT, 'src/pages/org/OrgSetupPage.tsx'), 'utf8')
     expect(src).toContain('MARKETING_URL')
-    expect(src).toMatch(/logout\s*\(/)
+    /* U.2: signing out is a trip to /signout ("You're signed out"), which ends the session as it
+       opens, so that every Sign out in the product lands on the same page. */
+    expect(src).toMatch(/logout\s*\(|navigate\('\/signout'/)
     /* And nothing navigates during render, which is what the old effect was protecting against. */
     expect(src).not.toMatch(/^\s*if \([^)]*\)\s*(?:return\s*)?<Navigate/m)
   })

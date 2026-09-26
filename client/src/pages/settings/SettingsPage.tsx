@@ -496,7 +496,7 @@ export function SettingsPage() {
           <Sec title="This device" />
           <Card pad={false}>
             <button
-              onClick={() => { logout(); navigate('/auth') }}
+              onClick={() => navigate('/signout', { replace: true })}
               style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Sign out</div>

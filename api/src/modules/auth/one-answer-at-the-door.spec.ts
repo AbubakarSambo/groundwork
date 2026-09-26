@@ -73,3 +73,13 @@ describe('and the sign-in path gives no other answer', () => {
     expect(login).toContain('sendAddPasswordEmail');
   });
 });
+
+describe('the one answer is written the way a person reads', () => {
+  it('in full sentences, with nothing joined by a dash', () => {
+    expect(THE_SAME_ANSWER_EITHER_WAY).toBe(
+      'If that address has an account here, we have emailed you a way in, so check your inbox. ' +
+      'If you have a password and it did not work, check it and try again.',
+    );
+    expect(THE_SAME_ANSWER_EITHER_WAY).not.toMatch(/ - /);
+  });
+});

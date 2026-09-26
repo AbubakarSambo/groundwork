@@ -7,15 +7,22 @@ export interface MagicLinkResponse { message: string; email: string }
  * flag must read as "no password step needed" rather than sending everybody to set one. The server
  * computes it in `buildAuthResponse`, so every door returns it.
  */
-export interface VerifyEmailResponse { accessToken: string; user: User; needsPassword?: boolean; passwordSetupToken?: string }
-export interface ValidateTokenResponse { valid: boolean; email?: string; firstName?: string }
-
-export interface MagicLinkBody {
-  email: string
-  organizationName?: string
-  firstName?: string
-  lastName?: string
+export interface VerifyEmailResponse {
+  accessToken: string
+  user: User
+  needsPassword?: boolean
+  passwordSetupToken?: string
+  /**
+   * True when opening this link has just created the account (a waiting sign-up became real). The
+   * page then says "Your email is confirmed" before going on. Not sent by the server yet; absent, the
+   * page goes straight on, as it always has.
+   */
+  justCreated?: boolean
 }
+/** `expired` is true only for a real, unused link of the asked kind that has run out. The server never
+ *  sends `email` or `firstName` today: which address a link is for is a privacy decision for Hafsah. */
+export interface ValidateTokenResponse { valid: boolean; expired?: boolean; email?: string; firstName?: string }
+
 
 export interface WaitingAtTheDoor {
   id: string
@@ -28,8 +35,9 @@ export interface WaitingAtTheDoor {
 }
 
 export const authApi = {
-  requestMagicLink: (body: MagicLinkBody) =>
-    apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
+  /* No `requestMagicLink`. It called /auth/register-magic-link, which creates accounts, and its only
+     caller was the resend on "Check your email", where it failed for every existing account and wiped
+     a waiting sign-up's typed name. The resend goes through entrySave now. U.2. */
 
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
@@ -67,14 +75,24 @@ export const authApi = {
   // longer depends on which browser opens the magic link.
   /* `hp` is the honeypot — see components/gw/a-field-nobody-can-see.tsx. Sent as `_hp`, which is
      the name the two older endpoints already use. */
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}) }).then(r => r.data),
+  /* `password` only when the person chose one at sign-up (U.2). The server uses it only for an
+     address with no account, and answers the same either way. */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
 
   login: (email: string, password: string) =>
     apiClient.post<VerifyEmailResponse>('/auth/login', { email, password }).then(r => r.data),
+
+  /**
+   * Whether a link from an email still works, before anybody types into the page it opened. The
+   * server may say whose address the link is for (the reset page shows it); when it does not, the
+   * page says nothing about the address.
+   */
+  validateToken: (token: string, type: 'PASSWORD_RESET' | 'PASSWORD_SETUP' | 'EMAIL_VERIFICATION') =>
+    apiClient.get<ValidateTokenResponse>('/auth/validate-token', { params: { token, type } }).then(r => r.data),
 
   forgotPassword: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/forgot-password', { email }).then(r => r.data),

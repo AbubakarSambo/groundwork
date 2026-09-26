@@ -28,7 +28,6 @@ export function GoogleCallbackPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
-  const [error, setError] = useState<string | null>(null)
   const exchanged = useRef(false)
 
   const code = params.get('code')
@@ -52,7 +51,7 @@ export function GoogleCallbackPage() {
     exchanged.current = true
 
     if (!code) {
-      setError('That sign-in link was incomplete. Please try again.')
+      navigate('/google-failed', { replace: true })
       return
     }
 
@@ -105,7 +104,8 @@ export function GoogleCallbackPage() {
         // Deliberately vague: the failure modes here are an expired code, a
         // reused code, or a server that cannot reach Google, and none of them
         // are the person's fault or worth explaining on a sign-in screen.
-        setError('That sign-in could not be completed. Please try again.')
+        // One page says so for every way Google can fail (A2, #/google-failed).
+        navigate('/google-failed', { replace: true })
       }
     })()
   }, [code, isNewUser, navigate, setAuth, shouldNameOrg])
@@ -175,20 +175,7 @@ export function GoogleCallbackPage() {
         <span className="gw-logo">Groundwork</span>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
-        {error ? (
-          <>
-            <h1 className="gw-ttl" style={{ textAlign: 'center' }}>Sign-in did not complete</h1>
-            <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 320, margin: '8px auto 18px' }}>{error}</div>
-            <button
-              onClick={() => navigate('/login', { replace: true })}
-              style={{ fontSize: 13, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit', margin: '0 auto' }}
-            >
-              Back to sign in
-            </button>
-          </>
-        ) : (
-          <div className="gw-sub-t" style={{ textAlign: 'center' }}>Signing you in…</div>
-        )}
+        <div className="gw-sub-t" style={{ textAlign: 'center' }}>Signing you in…</div>
       </div>
     </div>
   )

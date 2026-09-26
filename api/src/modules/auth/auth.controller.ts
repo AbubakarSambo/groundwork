@@ -5,6 +5,7 @@ import { IsString } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { GoogleCallbackGuard } from './google-callback.guard';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
@@ -195,10 +196,13 @@ export class AuthController {
 
   @Public()
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleCallbackGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(@Req() req: any, @Res() res: any) {
     const frontendUrl = this.configService.get<string>('google.frontendUrl');
+    /* Cancelled at Google, a refused code, or a profile the strategy turned down: the guard has
+       logged why and hands over no user. The client has one page for it (U.2). */
+    if (!req.user) return res.redirect(`${frontendUrl}/google-failed`);
     try {
       const { token, isNewUser, needsOrgName } = await this.authService.findOrCreateGoogleUser(req.user);
       // Issue a short-lived (60s) exchange code so the full JWT is never in the URL.
@@ -229,7 +233,9 @@ export class AuthController {
        * it already understands.
        */
       this.logger.error(`Google sign-in failed for ${req?.user?.email ?? 'an unknown address'}: ${err?.message ?? err}`, err?.stack);
-      return res.redirect(`${frontendUrl}/auth?why=google-signin-failed`);
+      /* The client's "Google sign-in didn't finish" page (U.2). The old address,
+         /auth?why=google-signin-failed, still redirects there for any link already out. */
+      return res.redirect(`${frontendUrl}/google-failed`);
     }
   }
 
@@ -301,7 +307,7 @@ export class AuthController {
     if (dto._hp) {
       return { message: 'Check your email for your sign-in link.', email: dto.email.toLowerCase() };
     }
-    return this.authService.entrySave(dto.email, dto.draft);
+    return this.authService.entrySave(dto.email, dto.draft, dto.password);
   }
 
   @Post('request-password-setup')

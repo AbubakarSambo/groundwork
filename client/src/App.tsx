@@ -13,6 +13,7 @@ import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
+import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
@@ -82,6 +83,7 @@ import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { MorePage } from '@/pages/more/MorePage'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
@@ -355,6 +357,8 @@ export default function App() {
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
                 only renders when /auth/methods says google is available. */}
             <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+            {/* One page for every way a Google sign-in can fail. A2. */}
+            <Route path="/google-failed" element={<GoogleFailedPage />} />
             {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
             <Route path="/set-password" element={<ChoosePasswordPage />} />
             <Route path="/reset-password" element={<ChoosePasswordPage />} />
@@ -530,6 +534,8 @@ export default function App() {
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
             <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
+            {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
+            <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because

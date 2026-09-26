@@ -1,0 +1,171 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AppShell } from '@/components/gw/AppShell'
+import { MorePage } from './MorePage'
+import { SignOutPage } from '@/pages/auth/SignOutPage'
+import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
+
+/**
+ * A1, THE PHONE: THE BOTTOM BAR AND "MORE" (layout-phone.txt, more-menu-phone.txt), as each reader
+ * sees them. Every door the old phone bar gave a reader must still be one tap from "More".
+ */
+const BASE = { id: 'u1', email: 'x@coamana.test', firstName: 'Sahar', lastName: 'Ali', organizationName: 'Coamana' }
+const ADMIN = { ...BASE, role: 'ADMIN' }
+const LEAD = { ...BASE, firstName: 'Hafsah', lastName: 'Jumare', role: 'MEMBER', mayOpenCheckIns: false }
+const PARTICIPANT = { ...BASE, firstName: 'Adam', lastName: 'Grunewald', role: 'MEMBER' }
+const STAFF = { ...ADMIN, isPlatformAdmin: true }
+
+function mount(user: any, orgs: any[] = [{ id: 'o1', name: 'Coamana', slug: 'coamana', role: user.role, active: true }]) {
+  useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+  qc.setQueryData(['grounds'], [])
+  qc.setQueryData(['my-organizations'], orgs)
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/more']}><AppShell><MorePage /></AppShell></MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+const main = () => document.querySelector('main') as HTMLElement
+const bar = () => document.querySelector('.gw-sidebar-mobile') as HTMLElement
+const hrefOf = (root: HTMLElement, name: string) =>
+  [...root.querySelectorAll('a')].filter(a => a.textContent?.trim() === name).map(a => a.getAttribute('href'))
+
+beforeEach(() => { vi.restoreAllMocks(); window.localStorage.clear() })
+
+describe('the bottom bar', () => {
+  it('has Check-ins, Start and More for somebody who may start a check-in', () => {
+    mount(PARTICIPANT)
+    expect([...bar().querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['Check-ins', '/grounds'], ['Start', '/start?new=1'], ['More', '/more'],
+    ])
+  })
+
+  it('and no Start for somebody the server would refuse', () => {
+    mount(LEAD)
+    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Check-ins', 'More'])
+  })
+
+  it('leaves out Today and Chat, whose pages do not exist yet, rather than leading nowhere', () => {
+    mount(ADMIN)
+    expect(bar()).not.toHaveTextContent(/Today|Chat/)
+  })
+})
+
+describe('"More", as an admin reads it', () => {
+  it('has every door the old phone bar gave an admin, one tap away', () => {
+    mount(ADMIN)
+    expect(screen.getByRole('heading', { level: 1, name: 'More' })).toBeInTheDocument()
+    expect(hrefOf(bar(), 'Check-ins')).toEqual(['/grounds'])
+    expect(hrefOf(main(), 'Boards')).toEqual(['/boards'])
+    expect(hrefOf(main(), 'People')).toEqual(['/org/members'])
+    expect(hrefOf(main(), 'Connections')).toEqual(['/org/integrations'])
+    expect(hrefOf(main(), 'Plan and billing')).toEqual(['/billing'])
+    expect(hrefOf(main(), 'Your settings')).toEqual(['/settings'])
+  })
+
+  it('puts the organisation\'s pages under its name, and help, feedback and signing out on the page', () => {
+    mount(ADMIN)
+    expect(within(main()).getByRole('heading', { name: 'Coamana' })).toBeInTheDocument()
+    for (const name of ['Help', 'Send feedback', 'Sign out']) expect(within(main()).getByRole('button', { name })).toBeInTheDocument()
+    expect(within(main()).queryByRole('link', { name: 'Platform ops' })).toBeNull()
+  })
+
+  it('and Platform ops only for Groundwork staff', () => {
+    mount(STAFF)
+    expect(hrefOf(main(), 'Platform ops')).toEqual(['/admin'])
+  })
+})
+
+describe('"More", as a lead and a participant read it', () => {
+  it.each([['lead', LEAD], ['participant', PARTICIPANT]])('a %s gets their settings, help, feedback and sign out, and no admin pages', (_, user) => {
+    mount(user)
+    expect(hrefOf(main(), 'Your settings')).toEqual(['/settings'])
+    for (const name of ['People', 'Connections', 'Plan and billing', 'Boards']) expect(hrefOf(main(), name)).toEqual([])
+    expect(within(main()).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+  })
+})
+
+describe('switching organisation and signing out on a phone', () => {
+  it('lists your organisations with the one you are in ticked, and asks before switching', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const sw = vi.spyOn(authApi, 'switchOrganization')
+    mount(PARTICIPANT, [
+      { id: 'o1', name: 'Coamana', slug: 'c', role: 'MEMBER', active: true },
+      { id: 'o2', name: 'Kilimo Traders', slug: 'k', role: 'ADMIN', active: false },
+    ])
+    expect(within(main()).getByRole('heading', { name: 'Organisations' })).toBeInTheDocument()
+    expect(within(main()).getByLabelText('You are in this organisation')).toBeInTheDocument()
+    fireEvent.click(within(main()).getByRole('button', { name: /Kilimo Traders/ }))
+    expect(confirm).toHaveBeenCalledWith("Switch to Kilimo Traders? You will see Kilimo Traders's check-ins instead of this organisation's, as a admin.")
+    expect(sw).not.toHaveBeenCalled()
+  })
+
+  it('signing out signs out, and says so', async () => {
+    /* U.2: Sign out goes to "You're signed out" (/signout), which ends the session as it opens. The
+       old version of this test pressed the button and read the store straight away, because the
+       button used to call logout() itself; it now checks the page a person reads, and the store. */
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [{ id: 'o1', name: 'Coamana', slug: 'coamana', role: 'MEMBER', active: true }])
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/more']}>
+          <AppShell>
+            <Routes>
+              <Route path="/more" element={<MorePage />} />
+              <Route path="/signout" element={<SignOutPage />} />
+            </Routes>
+          </AppShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    fireEvent.click(within(main()).getByRole('button', { name: 'Sign out' }))
+    expect(await screen.findByRole('heading', { name: 'You’re signed out' })).toBeTruthy()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+
+  it('"Start my own workspace" stores the person as the person and the token as the token', async () => {
+    /* It called setAuth(token, user), the wrong way round, so the new workspace's session was saved
+       with the token where the person belongs. Found while moving the switcher into one place. */
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const assign = vi.fn()
+    vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, assign } as any)
+    vi.spyOn(authApi, 'startMyOwnWorkspace').mockResolvedValue({ accessToken: 'new-token', user: { id: 'u1', firstName: 'Adam' }, organization: { id: 'o9', name: 'Adam', slug: 'adam' } } as any)
+    const setAuth = vi.fn()
+    mount(PARTICIPANT)
+    useAuthStore.setState({ setAuth } as any)
+    fireEvent.click(within(main()).getByRole('button', { name: 'Start my own workspace' }))
+    await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1', firstName: 'Adam' }, 'new-token'))
+  })
+})
+
+describe('the floating Feedback button', () => {
+  it('is not drawn on "More", which has "Send feedback" in its own list', () => {
+    mount(PARTICIPANT)
+    expect(screen.queryByRole('button', { name: /^Feedback\. Drag to move/ })).toBeNull()
+    expect(within(main()).getByRole('button', { name: 'Send feedback' })).toBeInTheDocument()
+  })
+
+  it('and "Send feedback" there still opens the feedback panel', async () => {
+    mount(PARTICIPANT)
+    fireEvent.click(within(main()).getByRole('button', { name: 'Send feedback' }))
+    const { useFeedbackStore } = await import('@/stores/feedback')
+    expect(useFeedbackStore.getState().open).toBe(true)
+    useFeedbackStore.getState().hide()
+  })
+
+  it('but it is still on every other page', () => {
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [])
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/grounds']}><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>)
+    expect(screen.getByRole('button', { name: /^Feedback\. Drag to move/ })).toBeInTheDocument()
+  })
+})

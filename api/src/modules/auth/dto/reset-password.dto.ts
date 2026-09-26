@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { AT_LEAST, A_NUMBER_OR_A_SYMBOL, TOO_SHORT, NO_NUMBER_OR_SYMBOL } from '../the-password-rules';
 
 export class ResetPasswordDto {
   @ApiProperty()
@@ -10,10 +11,10 @@ export class ResetPasswordDto {
   @ApiProperty({ example: 'SecurePass123!' })
   @IsNotEmpty()
   @IsString()
-  @MinLength(8)
+  /* The prototype's rules, Hafsah's decision of 26 September. See the-password-rules.ts; "not
+     your email address" is checked in the service, which knows the address. */
+  @MinLength(AT_LEAST, { message: TOO_SHORT })
   @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: 'Password must contain at least 1 uppercase and 1 lowercase letter',
-  })
+  @Matches(A_NUMBER_OR_A_SYMBOL, { message: NO_NUMBER_OR_SYMBOL })
   password: string;
 }

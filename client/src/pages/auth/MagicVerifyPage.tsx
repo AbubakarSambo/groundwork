@@ -5,8 +5,10 @@ import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
-import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
+import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
+import { LinkExpired, LinkAlreadyResent, LinkDidNotWork } from './LinkExpired'
+import { EmailConfirmed } from './EmailConfirmed'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
@@ -27,6 +29,10 @@ type VerifyOutcome =
   | { kind: 'commitError'; message?: string }
   | { kind: 'redirect'; to: string }
   | { kind: 'verifyError'; message: string }
+  /* The link ran out ('expired'), or ran out and the server has already sent a new one ('resent'). */
+  | { kind: 'deadLink'; what: 'expired' | 'resent'; sentence: string }
+  /* The link has just created the account: say so first, then carry on to `then`. */
+  | { kind: 'confirmed'; email: string | null; then: VerifyOutcome }
 // SINGLE-FLIGHT per token: the remount can happen while the first mount's
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
@@ -37,6 +43,8 @@ export function MagicVerifyPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
+  const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent'; sentence: string } | null>(null)
+  const [confirmed, setConfirmed] = useState<{ email: string | null; then: VerifyOutcome } | null>(null)
   const [commitError, setCommitError] = useState(false)
   /* The server's own sentence for a refused commit - the plan limit, the seat limit, "not named as able
      to open check-ins" - which all used to arrive as one generic line. */
@@ -89,6 +97,10 @@ export function MagicVerifyPage() {
       navigate(outcome.to, { replace: true })
     } else if (outcome.kind === 'verifyError') {
       setError(outcome.message)
+    } else if (outcome.kind === 'deadLink') {
+      setDeadLink({ what: outcome.what, sentence: outcome.sentence })
+    } else if (outcome.kind === 'confirmed') {
+      setConfirmed({ email: outcome.email, then: outcome.then })
     }
   }
 
@@ -159,20 +171,11 @@ export function MagicVerifyPage() {
     }
   }
 
-  function verifyErrorMessage(err: any): string {
-    const msg: string = err?.response?.data?.message ?? ''
-    if (msg.toLowerCase().includes('expired')) {
-      return 'This link has expired. Links are valid for 24 hours - please request a fresh one.'
-    }
-    if (msg.toLowerCase().includes('used') || msg.toLowerCase().includes('already')) {
-      return 'This link has already been used. Please request a new one to sign in again.'
-    }
-    return 'This link is not valid. It may have been replaced by a newer one - use the most recent link from your inbox.'
-  }
+
 
   useEffect(() => {
     const token = params.get('token')
-    if (!token) { setError('Invalid link - no token found.'); return }
+    if (!token) { setError('This link has no token.'); return }
 
     // One flow per token, ever. Verifying flips the auth state, which swaps
     // the route into the authed shell and REMOUNTS this page mid-flight; the
@@ -196,7 +199,12 @@ export function MagicVerifyPage() {
         try {
           res = await authApi.verifyEmail(token)
         } catch (err: any) {
-          return { kind: 'verifyError', message: verifyErrorMessage(err) }
+          /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
+             with "This link did not work" (LinkDidNotWork). */
+          const said = err?.response?.data?.message
+          const what = whatTheLinkDid(said)
+          if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
+          return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
         }
         setAuth(res.user, res.accessToken)
 
@@ -231,8 +239,27 @@ export function MagicVerifyPage() {
               }
             : null
 
+        /*
+         * "YOUR EMAIL IS CONFIRMED" (A2, #/verify-email), ONLY FOR AN ACCOUNT THIS LINK HAS JUST MADE.
+         *
+         * Shown when the server says `justCreated`, and only in front of an outcome that goes on
+         * (a redirect, or the first check-in's welcome). A failure is never hidden behind it. Its
+         * "Continue" leads to exactly where the page would have gone without it, through the
+         * password step when the account has no password yet. Without `justCreated`, which the
+         * server does not send yet, nothing changes.
+         */
+        const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
+          if (!res.justCreated) return o
+          if (o.kind === 'redirect') {
+            const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
+            return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
+          }
+          if (o.kind === 'success') return { kind: 'confirmed', email: res.user?.email ?? null, then: o }
+          return o
+        }
+
         if (fromParam && fromParam.startsWith('/')) {
-          return passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam }
+          return confirmFirst(passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam })
         }
         // ALWAYS attempt the commit. The server merges whatever this browser
         // has over the server-side draft written at entry-save, so the commit
@@ -256,9 +283,9 @@ export function MagicVerifyPage() {
          */
         if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
           /** Shown, not skipped. The button out of the confirmation goes via the password step. */
-          return { ...outcome, passwordSetupToken: res.passwordSetupToken }
+          return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
         }
-        return outcome
+        return confirmFirst(outcome)
       })()
       verifyFlows.set(token, flow)
     }
@@ -324,6 +351,10 @@ export function MagicVerifyPage() {
    * So it is shown only when this really is the org's first ground. Anybody else
    * goes where they were going.
    */
+  if (confirmed) {
+    return <EmailConfirmed email={confirmed.email} onContinue={() => { const then = confirmed.then; setConfirmed(null); applyOutcome(then) }} />
+  }
+
   if (nextGroundId && isFirstGround === false) {
     return null   // returning user: the effect above has sent them to their grounds
   }
@@ -517,20 +548,20 @@ export function MagicVerifyPage() {
     )
   }
 
+  if (deadLink?.what === 'resent') return <LinkAlreadyResent sentence={deadLink.sentence} />
+  if (deadLink?.what === 'expired') return <LinkExpired kind="sign-in" />
+
+  /* A link already used, one we do not know, or none at all: the account card, with one plain
+     message and a way to ask for a new one (U.2 review). It used to be LinkProblem under the old
+     header, with the page's or the server's own sentence. */
+  if (error) return <LinkDidNotWork kind="sign-in" />
+
   return (
     <Arrival>
-      {!error ? (
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
-        </div>
-      ) : (
-        <div style={{ padding: '0 20px' }}>
-          {/* This one already had a way out. It uses the shared version so all three
-              arrival routes say the same thing. W8-62. */}
-          <LinkProblem kind="sign-in" detail={error} />
-        </div>
-      )}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
+      </div>
     </Arrival>
   )
 }

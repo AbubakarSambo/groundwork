@@ -12,7 +12,8 @@ describe('forms behave like forms', () => {
   it('choosing a password is a form with a submit button and no per-field Enter handler', () => {
     const p = read('ChoosePasswordPage.tsx')
     expect(p).toMatch(/<form noValidate onSubmit=\{e => \{ e\.preventDefault\(\); submit\(\) \}\}>/)
-    expect(p).toContain('<button className="gw-btn" type="submit" disabled={save.isPending}>')
+    /* U.2: the kit's Button, still a submit button, still disabled while saving. */
+    expect(p).toContain('<Button type="submit" wide disabled={save.isPending}>')
     expect(p).not.toMatch(/onKeyDown=\{e => e\.key === 'Enter' && submit\(\)\}/)
     expect(p.match(/autoComplete="new-password"/g)?.length).toBe(2)
   })
@@ -25,8 +26,11 @@ describe('forms behave like forms', () => {
     const a = read('AuthPage.tsx')
     for (const ac of ['autoComplete="email"', 'autoComplete="current-password"']) expect(a).toContain(ac)
     expect(a).not.toMatch(/<label className="gw-label">Email<\/label>/)
-    expect(a).toContain('htmlFor="link-email"')
-    expect(a).toContain('htmlFor="forgot-email"')
+    /* The fields are AuthField and PasswordField now (auth-kit.tsx), which always tie the label to
+       the box by its id. U.2. */
+    expect(a).toContain('id="link-email"')
+    expect(a).toContain('id="forgot-email"')
+    expect(read('auth-kit.tsx').match(/htmlFor=\{id\}/g)?.length).toBe(2)
     expect(read('../join/JoinPage.tsx')).toContain('autoComplete="email"')
   })
   it('the setup composer is a textarea with the check-in composer\'s rule', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { railAttention, railRank, stillInRail, OVERDUE_AFTER_DAYS, RAIL_KEEPS_CLOSED_FOR_DAYS } from './rail-attention'
+import { openRound, railAttention, railRank, stillInRail, OVERDUE_AFTER_DAYS, RAIL_KEEPS_CLOSED_FOR_DAYS } from './rail-attention'
 
 /**
  * THE RAIL'S ATTENTION STATE.
@@ -118,5 +118,28 @@ describe('closed grounds leaving the rail', () => {
 
   it('an open ground always stays', () => {
     expect(stillInRail(ground(), NOW)).toBe(true)
+  })
+})
+
+describe('the waiting count is about a session that has opened', () => {
+  /*
+   * Found reading the admin's sidebar on the local check-in: session 3's rows existed, opening a week
+   * later, so the count said nobody had checked in for session 3 while two of five had finished
+   * session 2.
+   */
+  it('counts the latest open session, not one scheduled for next week', () => {
+    const NOW = new Date('2026-09-26T12:00:00Z')
+    const g = {
+      status: 'AWAITING_PARTIES',
+      participants: [{ id: 'a', userId: 'u-a' }, { id: 'b', userId: 'u-b' }, { id: 'c', userId: 'u-c' }],
+      checkIns: [
+        { participantId: 'a', sessionNumber: 2, status: 'COMPLETED', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'b', sessionNumber: 2, status: 'COMPLETED', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'c', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: '2026-09-25T12:00:00Z' },
+        { participantId: 'a', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-03T12:00:00Z' },
+      ],
+    }
+    expect(openRound(g.checkIns, NOW)).toBe(2)
+    expect(railAttention(g, 'u-admin', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })
   })
 })
