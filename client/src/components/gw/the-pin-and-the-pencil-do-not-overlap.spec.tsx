@@ -117,4 +117,40 @@ describe('the pin and the rename pencil on a sidebar row', () => {
     // When the name and the badge do not fit side by side, the badge goes under the name.
     expect(CSS).toMatch(/\.gw-ci-row \{[^}]*flex-wrap: wrap/)
   })
+
+  it('while they show, the badge hides completely, and a row without one keeps room so no word is covered', () => {
+    /*
+     * Found in the final review, hovering at 1440px: the buttons covered the end of the row, so
+     * Hafsah's "Your turn" showed only "Y" and Sahar's name read "Coamana growth, Q3 p".
+     */
+    expect(CSS).toMatch(/\.gw-rail-row:hover \.gw-rail-bdg, \.gw-rail-row:focus-within \.gw-rail-bdg \{ visibility: hidden; \}/)
+    // visibility, not display: the badge keeps its space, so the row does not jump on hover.
+    expect(CSS).not.toMatch(/\.gw-rail-row:hover \.gw-rail-bdg[^{]*\{[^}]*display: none/)
+    // A row with no badge keeps its buttons' room all the time, so the name wraps the same on hover.
+    expect(CSS).toMatch(/@media \(hover: hover\) \{\s*\.gw-ci-row\.keeps-room \{ padding-right: calc\(var\(--gw-acts-w, 64px\) \+ 8px\); \}/)
+  })
+
+  it('as drawn: an admin\'s row with no badge keeps 64px for the pin and pencil; a row saying "Your turn" does not need to', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [
+      { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-lead', participants: [], checkIns: [] },
+      { id: 'g2', label: 'Leadership, Q3', status: 'AWAITING_PARTIES', initiatorId: 'u-x', participants: [{ id: 'p', userId: 'u-sahar' }], checkIns: [{ participantId: 'p', sessionNumber: 1, status: 'IN_PROGRESS' }] },
+    ])
+    qc.setQueryData(['my-organizations'], [])
+    useAuthStore.setState({ user: { id: 'u-sahar', firstName: 'Sahar', lastName: 'Ali', role: 'ADMIN', organizationName: 'Coamana' }, token: 't', isAuthenticated: true } as any)
+    const { container } = render(<QueryClientProvider client={qc}><MemoryRouter><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>)
+    const rows = [...container.querySelectorAll('.gw-sidebar-desktop a.gw-ci-row')] as HTMLElement[]
+    const byName = (n: string) => rows.find(r => r.textContent?.startsWith(n))!
+    const plain = byName('Coamana growth')
+    expect(plain).toHaveClass('keeps-room')
+    expect(plain.style.getPropertyValue('--gw-acts-w')).toBe('64px')
+    const withBadge = byName('Leadership, Q3')
+    expect(withBadge).toHaveTextContent('Your turn')
+    expect(withBadge).not.toHaveClass('keeps-room')
+  })
+
+  it('on a touch screen, where the buttons sit in the row, the badge stays', () => {
+    const touch = CSS.slice(CSS.indexOf('@media (hover: none) {\n  .gw-row-acts'))
+    expect(touch).toMatch(/\.gw-rail-bdg \{ visibility: visible; \}/)
+  })
 })

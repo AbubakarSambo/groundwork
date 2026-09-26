@@ -1474,8 +1474,20 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-row-acts { position: absolute; top: 0; right: 0; display: flex; background: var(--gw-card); border-radius: 8px; opacity: 0; pointer-events: none; }
 .gw-rail-row:hover .gw-row-acts, .gw-rail-row:focus-within .gw-row-acts { opacity: 1; pointer-events: auto; }
 .gw-rail-row:focus-within .gw-pin { opacity: 1; }
+/* NOTHING CUT MID-WORD WHILE THE BUTTONS SHOW. The badge hides completely (keeping its space, so the
+   row does not jump) rather than showing a sliver like "Y", and the end of the name fades softly
+   under the buttons instead of stopping at a hard edge. The fade lets clicks through to the row. */
+.gw-rail-row:hover .gw-rail-bdg, .gw-rail-row:focus-within .gw-rail-bdg { visibility: hidden; }
+/* A row with no badge keeps, on its right, the room its buttons will need, all the time rather than
+   only on hover, so the name wraps the same way whether or not the row is pointed at and the buttons
+   never land on a word. A row with a badge already has that room: the badge is wider than the two
+   buttons, and it hides while they show. */
+@media (hover: hover) {
+  .gw-ci-row.keeps-room { padding-right: calc(var(--gw-acts-w, 64px) + 8px); }
+}
 @media (hover: none) {
   .gw-row-acts { position: static; opacity: 1; pointer-events: auto; background: none; }
+  .gw-rail-row:hover .gw-rail-bdg, .gw-rail-row:focus-within .gw-rail-bdg { visibility: visible; }
 }
 .gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 36px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
 .gw-ci-row:hover { background: var(--gw-card); }

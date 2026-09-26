@@ -756,6 +756,11 @@ export function AppSidebar() {
     const attention = railAttention(g as any, user?.id)
     const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
+    /* The room the row's buttons need when they show over its right, and whether the row must keep it
+       (a badge is wider than the buttons and hides while they show, so a row with one already has it). */
+    const actsWidth = 32 * ((isClosed(g) ? 0 : 1) + (mayRename(g) ? 1 : 0))
+    const hasBadge = mine || !SILENT_STATUSES.includes(g.status)
+    const keepsRoom = actsWidth > 0 && !hasBadge
     const dot = attention.kind === 'overdue' ? 'late' : attention.kind === 'yours' ? 'turn' : 'quiet'
     const why = attention.kind === 'overdue'
       ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
@@ -788,7 +793,8 @@ export function AppSidebar() {
           <div className="gw-rail-row">
             <NavLink
               to={`/grounds/${g.id}`}
-              className={({ isActive }) => `gw-ci-row${isActive ? ' on' : ''}${isClosed(g) ? ' closed' : ''}`}
+              className={({ isActive }) => `gw-ci-row${isActive ? ' on' : ''}${isClosed(g) ? ' closed' : ''}${keepsRoom ? ' keeps-room' : ''}`}
+              style={keepsRoom ? { ['--gw-acts-w' as string]: `${actsWidth}px` } : undefined}
               title={says}
               aria-label={says}
             >
