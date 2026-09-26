@@ -519,6 +519,18 @@ reviewed" in this report.
    sample data, part of B5), the template library's running examples (sample data), "What this turns
    on" and "Or start from a ready-made check-in in the template library." (both point at those pages),
    and the supplier review board (B5).
+7. **Wording I used where no screen has any:** "Send" and the placeholder "For example: our sales
+   targets this quarter" on the signed-in first screen (taken from the signed-out one), the same
+   placeholder in the list's box (the prototype's own is cut off in its picture), the link "Rather
+   pick from a list? See every situation." for someone signed in (so the list can be reached), and
+   "Where you are" as the name of the "Check-ins / New check-in" line for screen readers. Under "For
+   example" in the "You picked" panel, the examples are the product's own, not the prototype's.
+   Also, in the setup: "Not set yet. This will run every 2 weeks unless you pick one." (today's
+   sentence, reworded), "On which day?" and "On which day of the month?" with "Any day" (today's
+   labels, kept so the day a check-in lands on can still be chosen), "Tomorrow, Wednesday 1 July."
+   without "from 4pm", "The check-in opens on Wednesday 1 July." for a single check-in, "From 1 July"
+   when only the start is set, "1 you mentioned: Daniel." before anyone is added, "Copied." after
+   "Copy", and "Download the QR code" saves the picture as check-in-qr-code.png.
 8. **The setup screen (#/new/setup): what is left out, and why.** "Opens at" and "Closes at":
    nothing on the server keeps an opening time. Guests from another organisation: not built (item
    15.7). "Do you check in too?": left out of the setup screen; the conversation already asks who
@@ -538,19 +550,6 @@ reviewed" in this report.
 12. **The panel that fills in as you talk** has no "Change" buttons, and does not say "Add their
     emails in the chat", because addresses are added on the save card. **My recommendation:** keep it
     this way until adding people in the chat is built.
-
-7. **Wording I used where no screen has any:** "Send" and the placeholder "For example: our sales
-   targets this quarter" on the signed-in first screen (taken from the signed-out one), the same
-   placeholder in the list's box (the prototype's own is cut off in its picture), the link "Rather
-   pick from a list? See every situation." for someone signed in (so the list can be reached), and
-   "Where you are" as the name of the "Check-ins / New check-in" line for screen readers. Under "For
-   example" in the "You picked" panel, the examples are the product's own, not the prototype's.
-   Also, in the setup: "Not set yet. This will run every 2 weeks unless you pick one." (today's
-   sentence, reworded), "On which day?" and "On which day of the month?" with "Any day" (today's
-   labels, kept so the day a check-in lands on can still be chosen), "Tomorrow, Wednesday 1 July."
-   without "from 4pm", "The check-in opens on Wednesday 1 July." for a single check-in, "From 1 July"
-   when only the start is set, "1 you mentioned: Daniel." before anyone is added, "Copied." after
-   "Copy", and "Download the QR code" saves the picture as check-in-qr-code.png.
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
