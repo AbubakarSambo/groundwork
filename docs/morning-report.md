@@ -6,6 +6,85 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The verified run: 1.5 is done on one condition and unclear on the other, 1.4 is not done
+
+**This run was checked against the database before I read a number from it**, which is the rule I
+set myself after this afternoon. 23 of the 24 captured reports hold exactly as many findings as the
+database does. The one exception is `loans`, 8 in the file against 9 in the database, and the
+runner said so itself while it ran rather than leaving me to find it later.
+
+### What got better
+
+| | Baseline | Now |
+| --- | --- | --- |
+| report with no judgement | 8 | **0** |
+| judgement present | 21 | **29** |
+| per-person findings | 81 | 85 |
+| agreements found | 56 | 66 |
+| differences found | 29 | 35 |
+| patterns found | 100 | 104 |
+| commitments recorded | 44 | 52 → 44 |
+| jargon in reports and boards | 511 | **123** |
+| jargon in Groundwork's turns | 42 | 22 |
+| turns asking more than one question | 37 | 30 |
+| internal labels shown | 1,153 | 116 |
+
+Nothing on the engine-value list dropped by more than a few per cent: "specific detail asked for"
+is 84 against a baseline of 88, and "blocker checked" 34 against 37. Both are inside the run-to-run
+range this report measured for them earlier.
+
+### Task 1.5: the first condition is met, the second is not clearly met
+
+**"Report with no judgement is 0."** Met. It was 8 and the eight are exactly the eight the
+forty-word floor was silencing.
+
+**"Matches the right answer in at least 20 of the 24."** I read all twenty-four against
+`theDecision` myself. **Sixteen are unambiguously right. Five are close. Three are wrong.** Twenty-one
+if the close ones count and sixteen if they do not, against a bar of twenty — so I am not going to
+tell you it passed. It was ten before.
+
+The three wrong:
+
+- **newmanager.** Still says the team disagree about what Daniel's role is for. The right answer is
+  that Daniel is still doing the work himself because he is faster at it, and the team read that as
+  not being trusted.
+- **loans.** Lands on operations — non-delivery and theft not reaching the lead — and **lost the
+  systemic half it had this morning**: the repayment schedule starts 30 days after disbursement
+  and the assets take two to three months to earn. The grace period was in the run-1 judgement and
+  is not in this one.
+- **realign.** Says the team are working on different things. The right answer is that two of them
+  were steered by the CEO directly, in conversations the team lead does not know happened. **The
+  CEO was named in the run-1 judgement and is not in this one.**
+
+Two of the three wrong ones are things the engine got right this morning and no longer does. I
+would rather flag that now than average it away: the new rule telling it to read *across* the
+blocks may be pulling it toward process findings and away from the specific cause sitting in one
+person's account. That is a guess, and the next thing I would test.
+
+**And the workplan report.** The charge is gone — "a planning problem that you created" and "Tell
+you to set a budget" are both absent, and a search of all twenty-four reports for that class of
+phrasing, as every reader, returns one hit, which is factual ("The plan you created did not include
+the hardest part of the work"). The double-count is still not found: the report says the budget is
+180,000 and the plans come to 254,000, and asks for the cost of one named supplier, which is
+circling it. Half the instruction is done and half is not.
+
+### Task 1.4: one bar met, one missed
+
+| | Baseline | A quarter of it | Now | |
+| --- | --- | --- | --- | --- |
+| jargon in reports and boards | 511 | 128 | **123** | met |
+| jargon in Groundwork's turns | 42 | 10.5 | **22** | **not met** |
+
+So 1.4 is not ticked either. The reports are where the work went and the reports are where it
+landed; the conversation's own turns are half what they were and need about half again.
+
+### And the one thing that came out worse
+
+Curt turns, 0 to 3. All three were the single word "Understood.", shipped alone when somebody
+declined a question and there was nothing left to ask. Fixed: a refusal now gets a sentence saying
+what it does to the record. The test that covered it had pinned the exact string, so it had been
+holding the defect in place.
+
 ## Your three decisions, done
 
 ### 1. People's own words stay exactly as they said them
