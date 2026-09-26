@@ -279,3 +279,8 @@ Company, You and Suites as those pages are built.
   your email address was on its list of people." To look at in U.3.
 - **The check-ins card calls the lead by name.** Hafsah reads "Led by Hafsah Jumare · 5
   participants" about her own check-in, where it should say "you". To fix in U.5.
+- **The feedback panel's middle tab says "Build request".** That is work jargon. Something like
+  "Something you would like" reads better. To look at in U.20 (small states).
+- **The sidebar's touch-screen layout was not seen in the running app.** On a touch screen the pin
+  and pencil sit in the row and the badge moves under the name. The browser's phone mode hides the
+  sidebar below 768px wide, so only the tests check this layout.
