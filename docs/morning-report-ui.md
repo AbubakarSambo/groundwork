@@ -155,6 +155,26 @@ go.
 
 ### 10. Signing in (U.2): ten places where the prototype and the product disagree
 
+**Answered by you on 26 September:**
+- **Decision 10, a password at sign-up: follow the prototype.** The sign-up offers an email link, or a
+  password if the person prefers, and never says "no password to choose" before asking for one. I
+  read this as also answering **decision 4**: someone who chose the link is not forced to choose a
+  password afterwards. Tell me if you meant otherwise.
+- **Decision 6, naming the organisation: at sign-up, like a Slack workspace.** The name is suggested
+  from the email domain ("Coamana" from hafsah@coamana.com), and the person can change it. Someone who
+  later signs up with the same domain is offered to join that organisation; that is in U.3. The
+  organisation's own web address comes later.
+- **Decision 1, the free trial: teams under 20 people get Groundwork free for 3 months.** The limit
+  and the length live in the database, never in the screens, and every screen says it the same way.
+  Billing itself is U.19. Until billing really grants the trial, the sentence stays switched off, so
+  no screen promises what billing does not do yet.
+- **The reviewer's security points: yes.** An older reset link stops working as soon as a newer one
+  is sent. Sign-in and sign-up never reveal whether an address has an account, and any test-only
+  setting that would reveal it is off outside tests.
+
+Still open: decisions 2, 3, 5, 7, 8 and 9 below, and item 12.
+
+
 The prototype's sign-in screens say some things the product does not do, or does differently on
 purpose. I will build everything else in U.2 and leave these as they are until you decide.
 
