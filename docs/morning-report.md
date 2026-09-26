@@ -6,6 +6,94 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## WHERE I STOPPED, AND WHAT COMES NEXT
+
+**Stopped at 21:30 on 26 September, at a clean point.** Everything is committed and pushed to
+`mine/wip/plain-reports`. Nothing is half-done, no run is in flight, and no code is waiting on a
+measurement.
+
+### What is finished
+
+- **1.4 is ticked**, for the reports. Jargon in reports and boards 511 → 123, against a bar of
+  128, on a run whose captures were checked against the database first. Ten random report lines
+  read: no clipped phrasing. Its second bar, jargon in Groundwork's own turns, is now 2.3's, at 22
+  against a bar of 10.5.
+- **1.5's first condition is met**: reports with no judgement, 8 → 0.
+- **Three causes found and fixed**, each one proved by measurement rather than argued: the missing
+  `INTENT` field, the workplan double-count, and the temperature question below.
+
+### What is not finished: 1.5's second condition
+
+**Sixteen of twenty-four clearly right. The bar is twenty.** Three of the eight short ones now
+have a fix in the code that has **not yet been measured on a full run**:
+
+| | Fixed since the run | Not yet touched |
+| --- | --- | --- |
+| realign | `whyTheySayTheyAreOnIt`, 3 of 4 on fresh runs | |
+| workplan | `whatMoreThanOnePersonNamed` | |
+| loans | shown to be sampling, left alone deliberately | |
+| | | newmanager, advisor, handover, recognition, shock |
+
+### The next three things, in order
+
+1. **Run all 24 and score it.** Two of the three fixes above have never been measured together on
+   a full run, and the workplan one has never been measured live at all. Use three shards, not six
+   — six starves report regeneration. Check `REPORT INCOMPLETE` lines are zero and check the
+   captured findings against the database before reading any number. If it holds, 1.5 could be at
+   eighteen of twenty-four.
+2. **The five close ones**, which is what is left of 1.5: advisor (he has no relationship at two of
+   the three banks), handover (the supplier payment arrangement, the second of her two), recognition
+   (Victor belongs in the gap, not only in an action), shock (the three warning signs as one
+   timeline), workplan (verify the new count reaches the gap). Each one first needs the same
+   question asked: **is the fact in the material?** Three times in a row today the answer was no,
+   and three times the prompt was the wrong place to look.
+3. **Then 1.6**, the automatic check on rendered text per reader. Its list has grown today: slot
+   names, labels, machine words, lower-case starts, cut words, doubled quote marks, a pronoun that
+   disagrees with the reader, and a coordinated verb that does not agree.
+
+### Open for you, nothing blocking
+
+- **B5's plain name** in `docs/pattern-names.md`. Your example and the detector disagree about what
+  "leverage" means. It may be the detector that is named wrongly.
+- **The 50 scenario packs.** Step one is done - all fifty exported and verified byte for byte.
+  Steps two and three, the improved versions and the before-and-after document, are queued behind
+  the numbered tasks.
+- **`the-real-gate`** is tracked again but cannot run: it imports `../hundred/harness`, which is
+  not on this computer.
+
+### What I would tell the next session in one line
+
+Three separate defects today were the same defect: the fact was never in the material, and the
+prompt was the wrong place to look. Check the supply first.
+
+
+## The temperature question, answered: no
+
+A lead should get the same judgement twice from the same record, so I measured whether a lower
+temperature would make the judgement steadier. Same material, five samples, default against zero,
+five scenarios, scoring both how alike the answers were **and** whether they still reached the
+right answer.
+
+| | default: alike / right | temperature 0: alike / right |
+| --- | --- | --- |
+| loans | 38% / 5 of 5 | 35% / 5 of 5 |
+| pip | 45% / **3 of 5** | 57% / **0 of 5** |
+| contractreview | 49% / 5 of 5 | 47% / 5 of 5 |
+| workplan | 41% / **1 of 5** | 56% / **0 of 5** |
+| renewal | 31% / 5 of 5 | 43% / 5 of 5 |
+
+Consistency rose about seven points. **Correctness fell from 19 of 25 to 15 of 25.**
+
+The performance-plan scenario is the one to read. At zero the five answers became *more* alike and
+*all five wrong*: it converged every time on "they are working to two different targets" and
+stopped saying the target was never written down, which is the finding. A steadier wrong answer is
+worse than a varying right one.
+
+So nothing sets a temperature. Your rule was "keep it only if it improves consistency without
+losing anything", and it loses something. The option stays on the model call because it is what
+made the measurement possible, with both columns recorded beside it, so anybody switching it on
+owes the same two columns and not just the first.
+
 ## The two causes found, and both were the same shape
 
 I said the fix for realign was in the picture prompt. It was not, and finding that out took one
