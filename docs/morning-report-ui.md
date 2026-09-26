@@ -79,6 +79,45 @@ pins are kept in their browser, under their own name, and are cleared when they 
 signing out. **My suggestion:** add a small list of pinned check-ins to each person's account, read
 and saved through the same place as the rest of their account. Say yes and I will add it.
 
+### 7. Where should the Groundwork logo take someone who is signed in?
+
+The reviewer asked that the logo in the sidebar take a signed-in person to their home in the app.
+Today it takes them to myground.work, out of the app. Your rule, written in the code and in a test,
+says "the groundwork logo and icon are meant to always take you back to the marketing page." So I
+have not changed it.
+
+**My suggestion:** keep your rule for people who are signed out, and send people who are signed in to
+their home in the app, since leaving the app by accident is easy and confusing. It is your call.
+
+### 8. Wording no prototype screen shows, which I had to write
+
+No prototype screen shows the short tour or the open "Jump to" box, so the builder wrote these.
+Please read them and change anything you like.
+
+- The tour's offer: "New to Groundwork? A short tour shows you where things are. It takes under a
+  minute." with "Start the tour" and "Not now".
+- Step 1, on the organisation card: "This is your organisation. Open it to see every organisation
+  you belong to and move between them."
+- Step 2, on "Start a check-in": "Start a check-in here. You say what it is about and who is in it,
+  and each person answers on their own."
+- Step 3, on the check-ins list: "Your check-ins are here, with the ones that need you first. "Your
+  turn" means a session is ready for you."
+- Step 4, on "Jump to": "Choose "Jump to", or press Ctrl K, to find a check-in, a person or a page."
+- Step 5, on your name at the bottom: "Your settings, Help, "Talk to us" and signing out are here.
+  You can take this tour again from here too."
+- "Jump to", when nothing matches: "Nothing matches that. Try part of a name."
+- At the foot of the Help window: "Tell us what you need and somebody will come back to you within
+  two working days." This is the sentence our own "Talk to us" page already opens with.
+
+Someone counts as "new" when they have not finished a single session and lead no check-in. Whether
+the tour was taken is kept in the browser, like the pins.
+
+### 9. Should the floating "Feedback" button go?
+
+"Send feedback" is now in each person's menu and on "More". The prototype does not draw a floating
+Feedback button. I kept it, because it is the pilot's one-tap way to send feedback. Say if it should
+go.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
@@ -153,7 +192,23 @@ The builder split U.1 into 13 small changes. Done so far:
 computer's width and a phone's. A lead or admin could not pin, because the rename pencil's tap area
 covered the pin. The hover text on each check-in read in clipped pieces ("2 of 12 sessions done. 1
 open."), and its count did not match the card beside it. Pinning your only check-in left an empty
-heading. These are being fixed now.
+heading. All three are fixed (commits `f56ece5e`, `c7f8f1b6`, `e9dbf0d5`). The hover text now reads,
+for example, "Coamana growth, Q3 paying customers. Session 2 of 12 is ready for you, and one thing is
+still open." While fixing the count, the builder found that the admin's "waiting" count looked at a
+session that had not opened yet, and fixed that too.
+
+9. **The phone's bottom bar and the "More" page** (commit `cf8164e8`). The bar has Check-ins, Start
+   (only for people who may start a check-in) and More. Today and Chat wait until those pages exist.
+   "More" gives everything the old phone bar gave each person, plus two things phones never had:
+   switching organisation and signing out.
+10. **"Jump to", with Ctrl K** (commit `901ed626`). It finds a check-in, a person or a page. It only
+    offers what the reader can already see. People are offered only from the reader's own check-ins,
+    because the backend has no list of people limited by what each reader may see.
+11. **Help and "Talk to us" from anywhere** (commit `a355300f`), in your own menu and on "More". The
+    floating "?" button is gone where the sidebar is, because the menu now does the same job.
+12. **A short guided tour** (commit `41b999b5`). Someone new is offered it once, and anyone can take
+    it again from their menu. It only points at real parts of the page. See item 8 above for its
+    wording.
 
 Still to do: remembering the folded sidebar, pinning, the phone bar and
 "More" page, "Jump to", help and "Talk to us", the short tour, and the sidebar links to Today,
@@ -165,3 +220,7 @@ Company, You and Suites as those pages are built.
   rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital
   letters. The progress number shows 0 first, then the real figure.
 - **The board (U.10)** is still grey-blue with dark cards, not cream.
+- **Any member can list everyone in the organisation.** `/users/colleagues` returns every person
+  in the organisation to any member. "Jump to" does not use it for that reason. This may be
+  intended, for choosing people when starting a check-in, but I will look at it in U.4 (people,
+  roles and access).
