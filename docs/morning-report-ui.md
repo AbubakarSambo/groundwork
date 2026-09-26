@@ -458,7 +458,16 @@ with an email link or a password, and no forced password step after a link (`70a
 organisation's name suggested from the email address (`90431cea`); and the free trial as a setting in
 the database, switched off until billing gives it (`bacdb6cf`).
 
-It is now with the tester and the reviewer again.
+**The second review passed every earlier finding and every decision of yours**, checked with two real
+sign-ups: one choosing a password, one choosing the email link. The link one was offered "Choose a
+password" with "Keep using email links instead", and was never forced. "hafsah@coamana.com" suggested
+"Coamana", and gmail.com suggested nothing. The server refuses a password equal to the address, even in
+capital letters. The free-trial sentence appears nowhere.
+
+**It found one leak, older than U.2, and it is being fixed.** The sign-up form now uses a route whose
+reply carried an extra item, a draft token, only for addresses with no account. The screen looked the
+same either way, but the reply itself told an outsider which addresses have accounts. That breaks your
+rule that the door gives one answer, so the reply is being made the same for every address.
 
 ## Found on the way, for later tasks
 
