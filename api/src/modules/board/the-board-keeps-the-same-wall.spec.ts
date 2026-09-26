@@ -1,6 +1,8 @@
 import {
   onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF,
 } from './the-board-keeps-the-same-wall';
+import { GroundScenario } from '@prisma/client';
+import { peersAreNamedOn } from '../reports/peers-are-named';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -56,9 +58,25 @@ describe('the board applies it, and says so', () => {
   const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  it('works the rule out the same way the ground does', () => {
-    expect(SRC).toMatch(/const evaluative = \[BoardFamily\.EVALUATION, BoardFamily\.COHORT\]\.includes\(family\)/);
-    expect(SRC).toMatch(/peersVisibleToEachOther \?\? !evaluative/);
+  /*
+   * THIS USED TO ASSERT THAT THE BOARD HELD ITS OWN COPY OF THE RULE, word for word, and that is
+   * what it was checking rather than what it wanted. The want is in its own name: the board and
+   * the ground must reach the same answer. Three services held that copy and the conversation -
+   * the one that speaks out loud - held none, so it named a colleague on a PIP in the next
+   * question after the board had withheld the name.
+   *
+   * There is one copy now, in reports/peers-are-named.ts, and this checks that the board calls it
+   * and that the copy still says what it always said. A regexp over the board's own source cannot
+   * do that second half any more, so the rule is exercised rather than read.
+   */
+  it('works the rule out the same way the ground does, from the one copy of it', () => {
+    expect(SRC).toMatch(/const peersVisible = peersAreNamedOn\(ground as any\)/);
+    /* A PIP hides peers from each other; an ordinary check-in does not; the lead's answer wins either way. */
+    expect(peersAreNamedOn({ scenario: GroundScenario.PIP, peersVisibleToEachOther: null })).toBe(false);
+    expect(peersAreNamedOn({ scenario: GroundScenario.COHORT_CHECK, peersVisibleToEachOther: null })).toBe(false);
+    expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: null })).toBe(true);
+    expect(peersAreNamedOn({ scenario: GroundScenario.PIP, peersVisibleToEachOther: true })).toBe(true);
+    expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: false })).toBe(false);
   });
 
   it('and never hides anything from whoever runs the check-in', () => {
