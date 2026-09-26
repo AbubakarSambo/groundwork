@@ -25,8 +25,14 @@ if kind == "bash":
     one = cmd.strip()
     # The ONLY place work may be pushed: Hafsah's own private copy, the remote named "mine", wip/ branches only.
     # "origin" is Abubakar's repository and must never be pushed to.
-    if re.fullmatch(r"git\s+push\s+(?:(?:-u|--set-upstream)\s+)?mine\s+(?:[\w./-]+:)?wip/[\w./-]+", one) and not re.search(r"(--force|\s-f\b|\+)", one):
-        sys.exit(0)
+    m = re.fullmatch(r"git\s+push\s+(?:(?:-u|--set-upstream)\s+)?mine\s+(?:([\w./-]+):)?(wip/[\w./-]+)", one)
+    if m and not re.search(r"(--force|\s-f\b|\+)", one):
+        here = current_branch()
+        src, dest = m.group(1), m.group(2)
+        # Each workspace may only push its own branch: the one it is on, to the same name.
+        if here.startswith("wip/") and dest == here and (src is None or src in (here, "HEAD")):
+            sys.exit(0)
+        block(f"Each workspace may only push its own branch. You are on '{here}', so the only push allowed is: git push mine {here}")
     if re.fullmatch(r"git\s+merge\s+(?:(?:--no-edit|--no-ff)\s+)*mine/wip/[\w./-]+", one):
         if current_branch().startswith("wip/"):
             sys.exit(0)
