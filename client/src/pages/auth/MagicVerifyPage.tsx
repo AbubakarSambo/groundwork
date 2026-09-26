@@ -7,6 +7,8 @@ import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
+import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
+import { LinkExpired, LinkAlreadyResent } from './LinkExpired'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
@@ -27,6 +29,8 @@ type VerifyOutcome =
   | { kind: 'commitError'; message?: string }
   | { kind: 'redirect'; to: string }
   | { kind: 'verifyError'; message: string }
+  /* The link ran out ('expired'), or ran out and the server has already sent a new one ('resent'). */
+  | { kind: 'deadLink'; what: 'expired' | 'resent'; sentence: string }
 // SINGLE-FLIGHT per token: the remount can happen while the first mount's
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
@@ -37,6 +41,7 @@ export function MagicVerifyPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [error, setError] = useState('')
+  const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent'; sentence: string } | null>(null)
   const [commitError, setCommitError] = useState(false)
   /* The server's own sentence for a refused commit - the plan limit, the seat limit, "not named as able
      to open check-ins" - which all used to arrive as one generic line. */
@@ -89,6 +94,8 @@ export function MagicVerifyPage() {
       navigate(outcome.to, { replace: true })
     } else if (outcome.kind === 'verifyError') {
       setError(outcome.message)
+    } else if (outcome.kind === 'deadLink') {
+      setDeadLink({ what: outcome.what, sentence: outcome.sentence })
     }
   }
 
@@ -196,6 +203,11 @@ export function MagicVerifyPage() {
         try {
           res = await authApi.verifyEmail(token)
         } catch (err: any) {
+          /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
+             with LinkProblem and the sentence below. */
+          const said = err?.response?.data?.message
+          const what = whatTheLinkDid(said)
+          if (what) return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
           return { kind: 'verifyError', message: verifyErrorMessage(err) }
         }
         setAuth(res.user, res.accessToken)
@@ -516,6 +528,9 @@ export function MagicVerifyPage() {
       </Arrival>
     )
   }
+
+  if (deadLink?.what === 'resent') return <LinkAlreadyResent sentence={deadLink.sentence} />
+  if (deadLink?.what === 'expired') return <LinkExpired kind="sign-in" />
 
   return (
     <Arrival>

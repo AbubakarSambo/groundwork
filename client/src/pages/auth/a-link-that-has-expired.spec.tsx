@@ -1,0 +1,188 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { MagicVerifyPage } from './MagicVerifyPage'
+import { ChoosePasswordPage } from './ChoosePasswordPage'
+import { whatTheLinkDid } from './a-link-that-has-expired'
+import { authApi } from '@/api/auth'
+
+/**
+ * "THAT LINK HAS EXPIRED" (A2, #/verify-expired), as the person who opened an old link reads it, on
+ * each of the three pages that can learn it from the server.
+ */
+
+vi.mock('@/api/auth', () => ({
+  authApi: {
+    verifyEmail: vi.fn(), setPassword: vi.fn(), resetPassword: vi.fn(), validateToken: vi.fn(),
+    entrySave: vi.fn(), forgotPassword: vi.fn(),
+  },
+}))
+vi.mock('@/api/entry', () => ({ entryApi: { commit: vi.fn() } }))
+vi.mock('@/stores/auth', () => {
+  const state = { setAuth: vi.fn() }
+  const useAuthStore: any = (sel: any) => sel(state)
+  useAuthStore.getState = () => state
+  return { useAuthStore }
+})
+
+function renderAt(path: string) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/verify-email" element={<MagicVerifyPage />} />
+          <Route path="/set-password" element={<ChoosePasswordPage />} />
+          <Route path="/reset-password" element={<ChoosePasswordPage />} />
+          <Route path="/auth" element={<p>Sign in</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+function readable(container: HTMLElement) {
+  const copy = container.cloneNode(true) as HTMLElement
+  copy.querySelectorAll('[aria-hidden="true"], .gw-sr-only').forEach(n => n.remove())
+  return (copy.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/* Each test opens its own token: the page remembers what happened to a token for as long as the
+   module lives, so that a remount cannot verify the same link twice. */
+const refused = (message: string) => ({ response: { status: 400, data: { message } } })
+
+const THE_CARD = [
+  'Groundwork',
+  'That link has expired',
+  'Links from our emails work for a short while. Nothing is lost; ask for a fresh one.',
+  'Email',
+  'Send me a fresh link',
+].join('')
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  localStorage.clear()
+  ;(authApi.validateToken as any).mockResolvedValue({ valid: true })
+  ;(authApi.entrySave as any).mockResolvedValue({ message: 'ok', email: 'x' })
+  ;(authApi.forgotPassword as any).mockResolvedValue({ message: 'ok' })
+})
+
+describe('an old sign-in link (/verify-email)', () => {
+  it('shows the card, and a fresh link goes through the sign-in door', async () => {
+    ;(authApi.verifyEmail as any).mockRejectedValue(refused('This verification link has expired. Please request a new one.'))
+    const { container } = renderAt('/verify-email?token=t1')
+    await screen.findByRole('heading', { name: 'That link has expired' })
+    expect(readable(container)).toBe(THE_CARD)
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'Miriam@Baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(authApi.entrySave).toHaveBeenCalledWith('miriam@baridi.test', undefined, '')
+    expect(screen.getByText(/We sent a sign-in link to/).textContent).toBe('We sent a sign-in link to Miriam@Baridi.test. Open it on any device.')
+  })
+
+  it('a waiting sign-up whose link the server already sent again is told it is on its way, and asked for nothing', async () => {
+    const said = 'That link had expired, so we have sent a new one to the same address. Nothing you wrote has been lost.'
+    ;(authApi.verifyEmail as any).mockRejectedValue(refused(said))
+    const { container } = renderAt('/verify-email?token=t2')
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(readable(container)).toBe('Groundwork' + 'Check your email' + said + 'Go to sign in')
+    expect(screen.queryByLabelText('Email')).toBeNull()
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+
+  it('a link already used stays with LinkProblem, because a fresh link is not the answer to it', async () => {
+    ;(authApi.verifyEmail as any).mockRejectedValue(refused('This link has already been used, so your address is confirmed. Sign in from the sign-in page.'))
+    renderAt('/verify-email?token=t3')
+    expect(await screen.findByText('This sign-in link did not work')).toBeTruthy()
+    expect(screen.queryByText('That link has expired')).toBeNull()
+  })
+
+  it('an address that is not an address is caught before anything is sent', async () => {
+    ;(authApi.verifyEmail as any).mockRejectedValue(refused('This verification link has expired. Please request a new one.'))
+    renderAt('/verify-email?token=t4')
+    fireEvent.click(await screen.findByRole('button', { name: 'Send me a fresh link' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('That address does not look right.')
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+
+  it('a refusal about the address gets the same answer as a sent link; a server failure says so', async () => {
+    ;(authApi.verifyEmail as any).mockRejectedValue(refused('This verification link has expired. Please request a new one.'))
+    ;(authApi.entrySave as any).mockRejectedValueOnce({ response: { status: 500 } })
+    renderAt('/verify-email?token=t5')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'nobody@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('That did not send, because something went wrong on our side. Please try again.')
+
+    ;(authApi.entrySave as any).mockRejectedValueOnce({ response: { status: 400 } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeTruthy()
+  })
+})
+
+describe('an old set-up link (/set-password)', () => {
+  it('becomes the card when the server says so, and a fresh link is a sign-in link', async () => {
+    ;(authApi.setPassword as any).mockRejectedValue(refused('This invitation link has expired. Please ask your admin to resend the invite.'))
+    const { container } = renderAt('/set-password?token=old')
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    await screen.findByRole('heading', { name: 'That link has expired' })
+    expect(readable(container)).toBe(THE_CARD)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'kwame@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('kwame@baridi.test', undefined, ''))
+    expect(authApi.forgotPassword).not.toHaveBeenCalled()
+  })
+})
+
+describe('an old reset link (/reset-password)', () => {
+  it('becomes the card, and a fresh link is a reset link, with the same answer for any address', async () => {
+    ;(authApi.resetPassword as any).mockRejectedValue(refused('This reset link has expired. Please request a new one.'))
+    renderAt('/reset-password?token=old')
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Harbour7lamp' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    await screen.findByRole('heading', { name: 'That link has expired' })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(authApi.forgotPassword).toHaveBeenCalledWith('wairimu@baridi.test')
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+    expect(screen.getByText(/If there is an account for/)).toBeTruthy()
+  })
+})
+
+describe('the sentences the server sends are the ones this page reads', () => {
+  /*
+   * whatTheLinkDid reads the server's sentence, because that is all the server sends. If a sentence
+   * in the API changes, the page would quietly fall back to LinkProblem; this reads the API's own
+   * source (without changing it) so that change is caught here.
+   */
+  const api = (rel: string) => readFileSync(join(__dirname, '../../../../api/src/modules/auth', rel), 'utf8')
+  const service = api('auth.service.ts')
+  const lifetimes = api('how-long-a-link-lasts.ts')
+
+  it('every expired-link sentence reads as expired', () => {
+    const sentences = [...service.matchAll(/allowExpiredMessage: '([^']+)'/g)].map(m => m[1])
+    expect(sentences.length).toBe(3)
+    for (const s of sentences) expect(whatTheLinkDid(s)).toBe('expired')
+    const general = lifetimes.match(/'(This link has expired\.[^']*)'/)?.[1]
+    expect(general).toBeTruthy()
+    expect(whatTheLinkDid(general)).toBe('expired')
+  })
+
+  it('the waiting sign-up\'s sentence reads as already sent again', () => {
+    const s = service.match(/'(That link had expired, so we have sent a new one[^']*)'/)?.[1]
+    expect(s).toBeTruthy()
+    expect(whatTheLinkDid(s)).toBe('resent')
+  })
+
+  it('no "already used" sentence reads as expired', () => {
+    const used = [...lifetimes.matchAll(/'(This link has already been used[^']*)'/g)].map(m => m[1])
+    expect(used.length).toBeGreaterThan(2)
+    for (const s of used) expect(whatTheLinkDid(s)).toBeNull()
+  })
+})

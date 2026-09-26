@@ -5,6 +5,8 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, PasswordField, PasswordRules, PasswordStrength } from './auth-kit'
+import { whatTheLinkDid } from './a-link-that-has-expired'
+import { LinkExpired } from './LinkExpired'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
@@ -52,6 +54,8 @@ export function ChoosePasswordPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+  /* Set when the server says the link has run out: the page becomes "That link has expired". */
+  const [expired, setExpired] = useState(false)
 
   /**
    * WHOSE PASSWORD THIS IS, WHEN THE SERVER SAYS.
@@ -96,6 +100,7 @@ export function ChoosePasswordPage() {
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message
+      if (whatTheLinkDid(msg) === 'expired') { setExpired(true); return }
       setError(Array.isArray(msg) ? msg[0] : (msg ?? 'This link did not work. Open the most recent one from your inbox, or ask for a new one from the sign-in page.'))
     },
   })
@@ -126,6 +131,8 @@ export function ChoosePasswordPage() {
    * password and pressing it. `/reset-password` did the same. `/invite` already
    * handled this properly, so the product held both behaviours for one problem.
    */
+  if (expired) return <LinkExpired kind={kind === 'reset' ? 'reset' : 'sign-in'} />
+
   if (!token) {
     return (
       <AuthCard

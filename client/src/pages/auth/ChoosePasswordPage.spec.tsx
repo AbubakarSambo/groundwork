@@ -133,10 +133,13 @@ describe('resetting a password', () => {
      * email while the real error rendered on a screen they had left. The same shape
      * as the sign-up flow's `onError: () => setLinkSent(true)`.
      */
-    ;(authApi.resetPassword as any).mockRejectedValue({ response: { data: { message: 'This link has expired.' } } })
+    /* U.2: an EXPIRED link now becomes the "That link has expired" page (see
+       a-link-that-has-expired.spec.tsx), so this uses the other failure a reset link can meet. */
+    const used = 'This link has already been used and your password was changed. Sign in with the new one, or ask for another reset.'
+    ;(authApi.resetPassword as any).mockRejectedValue({ response: { data: { message: used } } })
     await renderReset()
     await submitReset()
-    await waitFor(() => expect(screen.getByText('This link has expired.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(used)).toBeTruthy())
     expect(screen.queryByText(/Check your inbox/i)).toBeNull()
     // And they can try again from here, rather than being stranded.
     expect(screen.getByRole('button', { name: 'Save password' })).toBeTruthy()
