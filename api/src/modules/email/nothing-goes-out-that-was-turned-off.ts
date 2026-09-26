@@ -164,6 +164,7 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
      decided to send - and the way-back-in class is for account recovery, which this is not. */
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
+  sendTheyAreInNow: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
   /* A person in the check-in asked the lead for it; the lead gets their request (U.3). */
   sendMoreTimeAsked: 'asked for',

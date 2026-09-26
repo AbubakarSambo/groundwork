@@ -234,6 +234,22 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * AND WHOEVER INVITED THEM IS TOLD TOO (U.4). The People page says "Letting someone in tells them
+   * straight away, and tells whoever invited them." Only the person was told, so the second half was
+   * not true: the lead found out when an answer arrived, or did not.
+   */
+  async sendTheyAreInNow(to: string, firstName: string, who: string, checkIn: string | null): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} can check in now`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>
+         <p>An admin has let <strong>${escapeHtml(who)}</strong> in, so they can start ${checkIn ? `<strong>${escapeHtml(checkIn)}</strong>` : 'the check-in you invited them to'}. They have been told.</p>`,
+      ),
+    }, undefined, 'sendTheyAreInNow');
+  }
+
+  /**
    * A decline goes to whoever did the inviting, NOT to the person declined.
    *
    * "A company you were invited to has refused you" is a message with nothing in it a person can

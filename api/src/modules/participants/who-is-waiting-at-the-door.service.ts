@@ -199,6 +199,21 @@ export class WhoIsWaitingAtTheDoorService {
       .sendYouAreInNow(request.email, request.organization.name)
       .catch((err: any) => this.logger.warn(`Could not tell ${request.email} they were approved: ${err.message}`));
 
+    /* And whoever invited them (U.4): the People page promises both are told. */
+    if (request.requestedByUserId && request.requestedByUserId !== adminUserId) {
+      const [asker, person, ground] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: request.requestedByUserId }, select: { email: true, firstName: true } }),
+        this.prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true } }),
+        request.groundId ? this.prisma.ground.findUnique({ where: { id: request.groundId }, select: { label: true } }) : null,
+      ]);
+      const who = [person?.firstName, person?.lastName].filter(Boolean).join(' ').trim() || request.email;
+      if (asker?.email) {
+        this.email
+          .sendTheyAreInNow(asker.email, asker.firstName ?? 'there', who, ground?.label ?? null)
+          .catch((err: any) => this.logger.warn(`Could not tell ${asker.email} that ${request.email} was let in: ${err.message}`));
+      }
+    }
+
     return { approved: true, email: request.email };
   }
 
@@ -243,7 +258,7 @@ export class WhoIsWaitingAtTheDoorService {
     const request = await this.prisma.membershipRequest.findUnique({
       where: { id: requestId },
       select: {
-        id: true, organizationId: true, userId: true, email: true, status: true, requestedByUserId: true,
+        id: true, organizationId: true, userId: true, email: true, status: true, requestedByUserId: true, groundId: true,
         organization: { select: { name: true } },
       },
     });
