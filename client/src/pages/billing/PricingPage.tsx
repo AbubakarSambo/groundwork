@@ -69,7 +69,7 @@ export function PricingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-bg)', padding: '48px 24px 80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: '48px 24px 80px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         {/* Header */}

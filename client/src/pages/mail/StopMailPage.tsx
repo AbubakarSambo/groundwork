@@ -61,7 +61,7 @@ export function StopMailPage({ which }: { which: Which }) {
   }, [token, which])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--gw-page)' }}>
       <div style={{ maxWidth: 460, textAlign: 'left' }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
           GROUNDWORK

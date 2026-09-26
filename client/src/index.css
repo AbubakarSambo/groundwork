@@ -3,7 +3,7 @@
 @theme {
   --color-gw-navy: #0C447C;
   --color-gw-navy-d: #042C53;
-  --color-gw-bg: #EDECEA;
+  --color-gw-bg: #F7F1E5;
   --color-gw-dark: #0A1628;
   --color-gw-green-bg: #E1F5EE;
   --color-gw-green-t: #085041;
@@ -17,18 +17,18 @@
   --color-gw-blue-bg: #EEF4FB;
   --color-gw-blue-t: #0C447C;
   --color-gw-blue-b: #B5D4F4;
-  --color-gw-border: #E2E0DB;
-  --color-gw-muted: #9B9590;
-  --color-gw-sub: #6B6560;
+  --color-gw-border: #EDE5D6;
+  --color-gw-muted: #7D6A55;
+  --color-gw-sub: #4E4236;
   --color-gw-text: #1A1916;
 
   --color-primary: #0C447C;
   --color-primary-foreground: #ffffff;
-  --color-background: #EDECEA;
+  --color-background: #FDFBF6;
   --color-foreground: #1A1916;
-  --color-muted: #EDECEA;
-  --color-muted-foreground: #6B6560;
-  --color-border: #E2E0DB;
+  --color-muted: #F7F1E5;
+  --color-muted-foreground: #4E4236;
+  --color-border: #EDE5D6;
   --color-secondary: #f1f5f9;
   --color-secondary-foreground: #64748b;
   --color-destructive: #791F1F;
@@ -37,6 +37,32 @@
 }
 
 :root {
+  /*
+   * THE APP OPENS IN LIGHT MODE, and says so. Without this line a phone set to dark mode is free to
+   * paint the form controls, scrollbars and the page behind them dark, under a product whose every
+   * colour below is a light one. A dark theme for anyone who picks it is a separate piece of work.
+   */
+  color-scheme: light;
+
+  /*
+   * THE PAGE. The design system's "Paper": cream and white, no grey.
+   *
+   * This used to be --gw-bg (#EDECEA, a warm grey), and --gw-bg had two jobs: it was the page, and
+   * it was the tinted fill inside white cards (progress tracks, pills, quoted boxes, about ninety of
+   * them). The prototype's page is nearly white, and a nearly white fill inside a white card would
+   * simply vanish. So the page has its own name now, and --gw-bg keeps the fill job. Every full-page
+   * wrapper, and every bar that sits flat on the page, uses this one.
+   */
+  --gw-page: #FDFBF6;
+
+  /*
+   * THE TWO TYPEFACES. Atkinson Hyperlegible for everything a person reads and presses: it was
+   * designed so similar letters cannot be confused, in bright light and on small screens. Literata
+   * only for greetings, page titles, and the names of check-ins and people when they head a page.
+   */
+  --gw-font-ui: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gw-font-name: 'Literata', Georgia, 'Times New Roman', serif;
+
   /*
    * FIVE NAMES THAT WERE USED AND NEVER DEFINED.
    *
@@ -53,13 +79,15 @@
    * one name for one thing rather than two.
    */
   --gw-card: #FFFFFF;
-  --gw-slate: #F5F3EF;
-  --gw-line: #E2E0DB;
+  --gw-slate: #FAF5EA;
+  --gw-line: #EDE5D6;
   --gw-ink: #1A1916;
   --gw-green: #085041;
   --gw-navy: #0C447C;
   --gw-navy-d: #042C53;
-  --gw-bg: #EDECEA;
+  /* THE FILL INSIDE A WHITE CARD: progress tracks, "Waiting on" pills, quoted boxes. The prototype's
+     cream fill, so a card reads cream and white with no grey in it. The page itself is --gw-page. */
+  --gw-bg: #F7F1E5;
   --gw-dark: #0A1628;
   --gw-green-bg: #E1F5EE;
   --gw-green-t: #085041;
@@ -81,7 +109,13 @@
      on purpose: that one is for the heading above it. */
   --gw-blue-body: #4A6A9A;
   --gw-blue-b: #B5D4F4;
-  --gw-border: #E2E0DB;
+  /* The line between things. The design system calls it "Rule": a warm cream line, not a grey one,
+     so it belongs on the cream page below. Every border that was typed as #E2E0DB in this file now
+     reads this token, so they all moved together. */
+  --gw-border: #EDE5D6;
+  /* The stronger warm line, for the edge of an input or a secondary button: the design system's
+     second rule colour. It replaces #D8D5CF, a grey typed once for the input border. */
+  --gw-rule-2: #DFD3BE;
   /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
      Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
      the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
@@ -90,13 +124,17 @@
      #706A65 is the same hue and saturation, darkened until the worst of those four grounds clears
      4.5 (it reaches 4.52). Checked first that the token is never painted on a dark surface: the
      rail uses its own colours, so nothing is made worse by this.
-     --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
-  --gw-muted: #706A65;
+     --gw-sub was measured at the same time and left alone - it already passes at 4.87.
+     NOW #7D6A55, for the cream design system. The prototype's own fainter text colour is #85705A,
+     and it fails here: 4.18 on the cream fill and 4.33 on the lighter one. #7D6A55 is the same warm
+     brown, darkened only until the darkest ground clears 4.5 (4.59 on the fill, 5.17 on white). */
+  --gw-muted: #7D6A55;
   /* For type below 11px, where a ratio written for 14px text stops being enough. Small uppercase
      labels at 9.5px measured 4.68-4.85 against white on --gw-muted: passing the letter of the bar
      and not the point of it. This is the same family, darker, for exactly those labels. */
   --gw-sub-d: #4A4540;
-  --gw-sub: #6B6560;
+  /* Secondary text: the design system's "Muted", a dark warm brown (9.7 on white, 8.7 on the fill). */
+  --gw-sub: #4E4236;
   --gw-text: #1A1916;
   --gw-clay: #9F5447;
   /**
@@ -125,8 +163,8 @@
    * --gw-bg. Same tokens and same names as the marketing site's, so the app and
    * the site can finally be read against each other. W14-8.
    */
-  --gw-paper: #FBFAF8;
-  --gw-paper-2: #F5F3EF;
+  --gw-paper: #FDFBF6; /* the same as --gw-page: the design system calls the page "Paper" */
+  --gw-paper-2: #FAF5EA; /* the prototype's lighter cream, for a band above the page */
 
   /**
    * THE FOUR THAT WERE REAL, out of what I had called one-off accents without looking.
@@ -165,10 +203,12 @@
 * { border-color: var(--gw-border); }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
+  font-family: var(--gw-font-ui);
+  /* 16px: "Regular 16. Everything you read." Pages that set their own size keep it for now; this is
+     what everything that inherits its size reads at. */
+  font-size: 16px;
   color: var(--gw-text);
-  background: var(--gw-bg);
+  background: var(--gw-page);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -218,11 +258,11 @@ body {
 .gw-msg-back { opacity: 0.42; }
 
 .gw-msg-ai {
-  background: #EDECEA;
-  border: 1px solid #E2E0DB;
+  background: var(--gw-bg);
+  border: 1px solid var(--gw-border);
   align-self: flex-start;
   border-bottom-left-radius: 3px;
-  color: #1A1916;
+  color: var(--gw-text);
 }
 
 .gw-msg-user {
@@ -233,10 +273,10 @@ body {
 }
 
 .gw-msg-loading {
-  background: #EDECEA;
-  border: 1px solid #E2E0DB;
+  background: var(--gw-bg);
+  border: 1px solid var(--gw-border);
   align-self: flex-start;
-  color: #9B9590;
+  color: var(--gw-muted);
   font-style: italic;
   font-size: 12px;
   border-bottom-left-radius: 3px;
@@ -250,7 +290,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #9B9590;
+  background: var(--gw-muted);
   animation: gw-dot-bounce 1.2s ease-in-out infinite;
 }
 .gw-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -273,7 +313,7 @@ body {
 /* ── CHAT INPUT BAR ──────────────────────────────────────── */
 .gw-chat-bar {
   padding: 10px 14px;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   display: flex;
   gap: 8px;
   background: white;
@@ -283,7 +323,7 @@ body {
 .gw-chat-actions {
   padding: 8px 14px;
   background: white;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
@@ -297,9 +337,9 @@ body {
   padding: 8px 10px;
   font-size: 13px;
   line-height: 1.4;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
-  background: #EDECEA;
+  background: var(--gw-bg);
   font-family: inherit;
   color: var(--gw-text);
   outline: none;
@@ -334,7 +374,7 @@ body {
   justify-content: space-between;
   padding: 12px 16px;
   background: white;
-  border-bottom: 1px solid #E2E0DB;
+  border-bottom: 1px solid var(--gw-border);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -354,12 +394,12 @@ body {
   cursor: pointer;
   padding: 5px 10px;
   border-radius: var(--gw-radius);
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   background: white;
   font-family: inherit;
   transition: background 0.1s;
 }
-.gw-back:hover { background: #EDECEA; }
+.gw-back:hover { background: var(--gw-bg); }
 
 /* ── BUTTONS ─────────────────────────────────────────────── */
 .gw-btn {
@@ -389,7 +429,7 @@ body {
   color: var(--gw-text);
   font-size: 13px;
   font-weight: 400;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   cursor: pointer;
   margin-top: 8px;
   font-family: inherit;
@@ -397,14 +437,14 @@ body {
   display: block;
   text-align: center;
 }
-.gw-btn-sec:hover { background: #EDECEA; }
+.gw-btn-sec:hover { background: var(--gw-bg); }
 
 .gw-btn-sm {
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12px;
-  border: 1px solid #E2E0DB;
-  background: #EDECEA;
+  border: 1px solid var(--gw-border);
+  background: var(--gw-bg);
   color: var(--gw-sub);
   cursor: pointer;
   font-family: inherit;
@@ -439,7 +479,7 @@ body {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  border: 1px solid #D8D5CF;
+  border: 1px solid var(--gw-rule-2);
   border-radius: var(--gw-radius);
   background: #FFFFFF;
   color: var(--gw-text);
@@ -486,7 +526,7 @@ body {
 .gw-pill-amber { background: #FDF3E3; color: #8A5C1A; }
 .gw-pill-red   { background: #FCEBEB; color: #791F1F; }
 .gw-pill-blue  { background: #EEF4FB; color: #0C447C; }
-.gw-pill-gray  { background: #EDECEA; color: #6B6560; border: 1px solid #E2E0DB; }
+.gw-pill-gray  { background: var(--gw-bg); color: var(--gw-sub); border: 1px solid var(--gw-border); }
 
 /* ── PERSON ROWS ─────────────────────────────────────────── */
 .gw-prow {
@@ -495,15 +535,15 @@ body {
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--gw-radius);
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   background: white;
   cursor: pointer;
   transition: all 0.15s;
   margin-bottom: 7px;
 }
-.gw-prow:hover { border-color: #9B9590; background: #EDECEA; }
+.gw-prow:hover { border-color: var(--gw-muted); background: var(--gw-bg); }
 .gw-prow-static { cursor: default; }
-.gw-prow-static:hover { border-color: #E2E0DB; background: white; }
+.gw-prow-static:hover { border-color: var(--gw-border); background: white; }
 
 .gw-av {
   width: 32px;
@@ -525,14 +565,14 @@ body {
 
 /* ── STEPS PROGRESS ──────────────────────────────────────── */
 .gw-steps { display: flex; gap: 4px; margin-bottom: 18px; }
-.gw-step { height: 3px; flex: 1; border-radius: 2px; background: #E2E0DB; }
+.gw-step { height: 3px; flex: 1; border-radius: 2px; background: var(--gw-border); }
 .gw-step-done { background: #0C447C; }
 .gw-step-active { background: #60A5FA; }
 
 /* ── CARD ────────────────────────────────────────────────── */
 .gw-card {
   background: white;
-  border: 1px solid #E2E0DB;
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   overflow: hidden;
 }
@@ -540,8 +580,8 @@ body {
 /* ── SCROLLBAR ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E2E0DB; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #9B9590; }
+::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gw-muted); }
 
 /* ── TABS (ground admin / participant) ───────────────────── */
 .gw-tab {
@@ -654,7 +694,7 @@ body {
      hidden, and there is no affordance to get right. */
   display: flex; flex-wrap: wrap; gap: 8px;
   padding: 10px 0 10px; margin-bottom: 4px;
-  background: var(--gw-bg); border-bottom: 1px solid var(--gw-border);
+  background: var(--gw-page); border-bottom: 1px solid var(--gw-border);
 }
 .cg-jump a {
   flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
@@ -855,7 +895,7 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: white;
-  border-top: 1px solid #E2E0DB;
+  border-top: 1px solid var(--gw-border);
   z-index: 100;
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -1304,3 +1344,116 @@ details > summary.gw-fold-summary { list-style: none; }
 details > summary.gw-fold-summary::-webkit-details-marker { display: none; }
 details > summary.gw-fold-summary > span:first-child::before { content: '▸ '; color: var(--gw-muted); }
 details[open] > summary.gw-fold-summary > span:first-child::before { content: '▾ '; }
+
+
+/* ── THE TYPE SCALE (A1, the design system) ───────────────────
+   Greeting    Literata 38, page titles only ("Morning, Wairimu")
+   Title       Literata 30, a check-in, person or deal heading a page
+   Heading     Atkinson Bold 22, a section ("What needs you")
+   Act on      Atkinson Bold 18, anything you can act on
+   Body        Regular 16, everything you read
+   Small       14.5, and Tiny 13: never smaller than 13
+   The two Literata sizes step down on a phone so a long name still fits in the width. */
+.gw-t-greet { font-family: var(--gw-font-name); font-size: 38px; line-height: 1.12; font-weight: 500; letter-spacing: -.01em; }
+.gw-t-title { font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500; }
+.gw-t-h2    { font-family: var(--gw-font-ui); font-size: 22px; line-height: 1.25; font-weight: 700; }
+.gw-t-h3    { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; }
+.gw-t-body  { font-size: 16px; line-height: 1.5; }
+.gw-t-small { font-size: 14.5px; line-height: 1.45; }
+.gw-t-tiny  { font-size: 13px; line-height: 1.4; }
+@media (max-width: 640px) {
+  .gw-t-greet { font-size: 30px; }
+  .gw-t-title { font-size: 24px; }
+}
+
+/* ── BUTTONS, TAGS AND THE "WHAT NEEDS YOU" ROW (A1, the design system) ──
+   Built by `Button`, `Tag` and `NeedsYouRow` in components/gw/kit.tsx. One set of shapes, so a
+   primary button is the same button on every page that uses one.
+
+   Buttons are at least 44px tall, which is a thumb, and say exactly what happens. */
+.gw-b {
+  min-height: 44px; padding: 0 18px; border-radius: 8px; border: 0;
+  font: inherit; font-family: var(--gw-font-ui); font-size: 16px; font-weight: 700; line-height: 1.2;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
+  transition: background .1s;
+}
+.gw-b:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+.gw-b:disabled, .gw-b[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.gw-b-primary { background: var(--gw-navy); color: #fff; }
+.gw-b-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
+.gw-b-secondary { background: #fff; color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+.gw-b-secondary:hover:not(:disabled) { background: var(--gw-paper-2); }
+.gw-b-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
+.gw-b-quiet:hover:not(:disabled) { text-decoration: underline; }
+.gw-b-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
+.gw-b-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gw-b-wide { width: 100%; }
+@media (max-width: 640px) {
+  /* A long label wraps rather than pushing the page sideways, and a small button is still a thumb. */
+  .gw-b { white-space: normal; }
+  .gw-b-small { min-height: 40px; }
+}
+
+/* A tag is a short fact about a thing, never a label on a person. Each colour means one thing. */
+.gw-tag {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
+  border-radius: 13px; font-size: 13.5px; font-weight: 700; line-height: 1.2; white-space: nowrap;
+}
+.gw-tag-proven    { background: var(--gw-green-bg); color: var(--gw-green-t); box-shadow: inset 0 0 0 1px var(--gw-green-b); }
+.gw-tag-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); box-shadow: inset 0 0 0 1px var(--gw-amber-b); }
+.gw-tag-action    { background: var(--gw-blue-bg);  color: var(--gw-blue-t);  box-shadow: inset 0 0 0 1px var(--gw-blue-b); }
+.gw-tag-concern   { background: var(--gw-red-bg);   color: var(--gw-red-t);   box-shadow: inset 0 0 0 1px var(--gw-red-b); }
+.gw-tag-plain     { background: var(--gw-bg);       color: var(--gw-text); }
+
+/* "The coloured edge says why it's here: ready to read, a decision, or something to look at. The
+   button says exactly what happens." On a phone the button drops under the words. */
+.gw-need-list { border-top: 1px solid var(--gw-border); }
+.gw-need {
+  display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 16px; align-items: center;
+  padding: 16px 0; border-bottom: 1px solid var(--gw-border);
+}
+.gw-need-edge { align-self: stretch; border-radius: 2px; }
+.gw-need-ready  .gw-need-edge { background: var(--gw-green-t); }
+.gw-need-decide .gw-need-edge { background: var(--gw-navy); }
+.gw-need-look   .gw-need-edge { background: var(--gw-amber-t); }
+.gw-need-h { font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--gw-text); overflow-wrap: anywhere; }
+.gw-need-s { font-size: 15px; line-height: 1.45; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+.gw-need-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .gw-need { grid-template-columns: 4px minmax(0, 1fr); gap: 10px 16px; }
+  .gw-need-acts { grid-column: 2; }
+}
+/* Read aloud by a screen reader, not drawn: for a reason a colour carries on screen. */
+.gw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ── THE MARK (A1, the design system) ─────────────────────────
+   "One idea runs through all of it: a ring is something someone said; a filled mark is proven."
+   It works in one colour and at any size. Built by `Mark` and `StageLadder` in kit.tsx.
+     proven     filled green      Proven
+     confirmed  filled, with a ring around it   Confirmed by the person who received it
+     said       an ink ring       Only someone's word
+     memory     a dashed ring     From memory only
+     none       a faint ring      Not reached */
+.gw-mk { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; vertical-align: -2px; }
+.gw-mk-lg { width: 18px; height: 18px; }
+.gw-mk-proven    { background: var(--gw-green-t); }
+.gw-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
+.gw-mk-said      { box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gw-mk-memory    { border: 2px dashed var(--gw-muted); }
+.gw-mk-none      { box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+.gw-mk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--gw-sub); list-style: none; }
+.gw-mk-key li { display: inline-flex; align-items: center; gap: 6px; }
+
+/* The stage ladder: a mark per stage, joined by a line in the colour of the stage it leads to. */
+.gw-ladder { min-width: 0; }
+.gw-ladder-row { display: flex; align-items: center; }
+.gw-ladder-ln { flex: 1; height: 2px; background: var(--gw-rule-2); min-width: 8px; }
+.gw-ladder-ln-proven, .gw-ladder-ln-confirmed { background: var(--gw-green-t); }
+.gw-ladder-ln-said { background: var(--gw-text); }
+.gw-ladder-ln-memory { background: var(--gw-muted); }
+.gw-ladder-stages { display: flex; justify-content: space-between; gap: 4px; margin-top: 6px; font-size: 13px; color: var(--gw-sub); list-style: none; }
+.gw-ladder-stages li { min-width: 0; overflow-wrap: anywhere; text-align: center; }
+.gw-ladder-stages li:first-child { text-align: left; }
+.gw-ladder-stages li:last-child { text-align: right; }
+.gw-ladder-says { margin-top: 8px; font-size: 15px; color: var(--gw-sub); }

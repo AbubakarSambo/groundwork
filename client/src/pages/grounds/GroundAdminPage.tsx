@@ -1269,7 +1269,7 @@ export function GroundAdminPage() {
   const expectsUnblocking = (ground as any)?.expectThemToUnblock !== false
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         {/*
@@ -3413,7 +3413,7 @@ export function GroundAdminPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}>{children}</div>
+  return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}>{children}</div>
 }
 
 function ShareSection({ joinToken }: { joinToken: string }) {

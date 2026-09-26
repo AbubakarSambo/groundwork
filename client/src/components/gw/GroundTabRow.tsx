@@ -83,7 +83,7 @@ export function GroundTabRow<K extends string>({ tabs, active, onPick }: {
         className="gw-tabs-fade"
         style={{
           position: 'absolute', top: 0, right: 0, bottom: 2, width: 28, pointerEvents: 'none',
-          background: 'linear-gradient(to right, transparent, var(--gw-bg))',
+          background: 'linear-gradient(to right, transparent, var(--gw-page))',
         }}
       />
     </div>

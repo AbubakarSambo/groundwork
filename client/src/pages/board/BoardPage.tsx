@@ -766,7 +766,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 ) : (
                   <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
                     <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
+                    <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
                   </div>
                 )
@@ -798,7 +798,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.decisions.map((d, i) => (
                 <Row key={i} first={i === 0}>
                   <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    <span style={{ fontFamily: 'Georgia, serif', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
+                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>

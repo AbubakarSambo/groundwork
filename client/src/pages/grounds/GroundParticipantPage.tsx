@@ -288,7 +288,7 @@ export function GroundParticipantPage() {
 
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
-  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
+  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}><GroundGone /></div>
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /**

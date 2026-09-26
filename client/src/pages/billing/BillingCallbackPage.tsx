@@ -57,7 +57,7 @@ export function BillingCallbackPage() {
   }, [groundId, navigate, isSubscription, success, confirmed, gaveUp])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', flexDirection: 'column', gap: 14, padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', flexDirection: 'column', gap: 14, padding: 24 }}>
       {success ? (
         <>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--gw-green-bg)', border: '1.5px solid var(--gw-green-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>

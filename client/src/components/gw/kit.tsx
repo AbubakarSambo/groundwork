@@ -11,11 +11,11 @@
  *
  *   Zone label     11px, uppercase, .7px tracking, weight 800, navy, with a rule
  *   Section label  12.5px, uppercase, .4px tracking, weight 700, muted
- *   Stat value     Georgia serif, 24px, lineHeight 1, 5px under its label
- *   Row value      Georgia serif, 17px, navy
+ *   Stat value     the name face (Literata), 24px, lineHeight 1, 5px under its label
+ *   Row value      the name face (Literata), 17px, navy
  *
  * The serif numeral against the sans label is why the board's glance row reads
- * instantly, and no other page in the product uses Georgia at all.
+ * instantly, and it was Georgia until the design system named Literata for it.
  *
  * This is an EXTRACTION, not a redesign: every value here is copied from BoardPage
  * unchanged, so lifting them changes nothing visually and the board keeps rendering
@@ -25,6 +25,8 @@
  */
 
 import React from 'react'
+import { Link } from 'react-router-dom'
+import { MARK_WORDS, readMark, type MarkKind } from './the-mark'
 
 /** A titled band with a rule, grouping sections. */
 export function Zone({ label }: { label: string }) {
@@ -148,7 +150,7 @@ export function Stat({ label, value, caption, tone }: { label: string; value: st
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', flex: 1, minWidth: 150 }}>
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
-      <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
+      <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
       {caption && <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{caption}</div>}
     </div>
   )
@@ -179,5 +181,178 @@ export function TextAction({ onClick, strong, children, size }: { onClick: () =>
     >
       {children}
     </button>
+  )
+}
+
+/**
+ * THE DESIGN SYSTEM'S BUTTON (A1). Four kinds, each with one job:
+ *
+ *   primary     navy, the one thing this screen is for ("Start your check-in")
+ *   secondary   white with a line, anything else you can do here ("Read it")
+ *   quiet       a navy text button, for saying no or leaving it ("Not now")
+ *
+ * and three sizes: the normal 44px, `big` (54px) and `small` (36px, 40px on a phone). The label is
+ * the caller's, and it should say exactly what happens when it is pressed.
+ *
+ * With `to` it is a link to a page in the app, drawn the same way, because what matters to the
+ * person is what it looks like and what it does, not which element it is.
+ */
+export type ButtonKind = 'primary' | 'secondary' | 'quiet'
+export function Button({
+  kind = 'primary', size, wide, to, onClick, type = 'button', disabled, children, ...rest
+}: {
+  kind?: ButtonKind
+  size?: 'big' | 'small'
+  wide?: boolean
+  to?: string
+  onClick?: () => void
+  type?: 'button' | 'submit'
+  disabled?: boolean
+  children: React.ReactNode
+  'aria-label'?: string
+}) {
+  const className = ['gw-b', `gw-b-${kind}`, size && `gw-b-${size}`, wide && 'gw-b-wide'].filter(Boolean).join(' ')
+  if (to && !disabled) {
+    return <Link to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>
+  }
+  return (
+    <button type={type} className={className} onClick={onClick} disabled={disabled} aria-label={rest['aria-label']}>
+      {children}
+    </button>
+  )
+}
+
+/**
+ * THE DESIGN SYSTEM'S TAG (A1). A short fact about a check-in, a deal or a line: "Proven",
+ * "Cooling", "Your turn", "Blocked 4 days", "Only you see this".
+ *
+ * Each tone means one thing everywhere, as the design system says of green, amber and blue:
+ *
+ *   proven     checked against proof
+ *   attention  needs a look
+ *   action     yours to do, or a link to a decision
+ *   concern    only for real problems, so it never becomes background noise
+ *   plain      a fact with no judgement in it
+ *
+ * It is never a label on a person. "At risk" on somebody's name is exactly what this product does
+ * not do; say what happened instead.
+ */
+export type TagTone = 'proven' | 'attention' | 'action' | 'concern' | 'plain'
+export function Tag({ tone = 'plain', children }: { tone?: TagTone; children: React.ReactNode }) {
+  return <span className={`gw-tag gw-tag-${tone}`}>{children}</span>
+}
+
+/**
+ * ONE ROW OF "WHAT NEEDS YOU" (A1). "The coloured edge says why it's here: ready to read, a
+ * decision, or something to look at. The button says exactly what happens."
+ *
+ *   ready    green, something is ready to read ("Today's report is ready", "Read it")
+ *   decide   navy, a decision or a thing for you to do ("Decide", "Start it")
+ *   look     amber, something to look at ("Open")
+ *
+ * The edge is a colour, so the reason is also said in words for anyone who cannot see it. Rows sit
+ * inside a `NeedsYouList`, which draws the line above the first one.
+ */
+export type NeedKind = 'ready' | 'decide' | 'look'
+const NEED_REASON: Record<NeedKind, string> = {
+  ready: 'Ready to read.',
+  decide: 'A decision for you.',
+  look: 'Something to look at.',
+}
+export function NeedsYouRow({ kind, title, detail, actions }: {
+  kind: NeedKind
+  title: string
+  detail?: string
+  /** One or two buttons. The first is the main one. */
+  actions?: React.ReactNode
+}) {
+  return (
+    <li className={`gw-need gw-need-${kind}`}>
+      <span className="gw-need-edge" aria-hidden />
+      <div style={{ minWidth: 0 }}>
+        <span className="gw-sr-only">{NEED_REASON[kind]} </span>
+        <div className="gw-need-h">{title}</div>
+        {detail && <div className="gw-need-s">{detail}</div>}
+      </div>
+      {actions && <div className="gw-need-acts">{actions}</div>}
+    </li>
+  )
+}
+export function NeedsYouList({ label, children }: { label: string; children: React.ReactNode }) {
+  return <ul className="gw-need-list" aria-label={label} style={{ listStyle: 'none' }}>{children}</ul>
+}
+
+/**
+ * THE MARK (A1). "A ring is something someone said; a filled mark is proven." It replaces the
+ * claimed, proven and not-proven chips, and reads the same for a deal, a task, a commitment or a
+ * stakeholder.
+ *
+ * ONLY WHAT THE RECORD SAYS. The mark comes from the data, never from the screen guessing: with no
+ * mark, or one this screen does not know, `Mark` draws nothing at all, so nobody is shown a proof
+ * that was never checked. `readMark` is the one place a value from the server is turned into a mark.
+ *
+ * The words are the prototype's key (docs/prototype/screens/B4-reports-and-sharing/team-report.txt
+ * and A1's design-system.txt), and a screen reader hears them, since a ring says nothing aloud.
+ */
+export function Mark({ mark, large }: { mark: unknown; large?: boolean }) {
+  const kind = readMark(mark)
+  if (!kind) return null
+  return (
+    <span
+      className={`gw-mk gw-mk-${kind}${large ? ' gw-mk-lg' : ''}`}
+      role="img"
+      aria-label={MARK_WORDS[kind]}
+      title={MARK_WORDS[kind]}
+    />
+  )
+}
+
+/** The key under a list of marked lines: "Proven", "Confirmed by the person who received it", ... */
+export function MarkKey({ marks = ['proven', 'confirmed', 'said', 'memory'] }: { marks?: MarkKind[] }) {
+  return (
+    <ul className="gw-mk-key">
+      {marks.map(m => (
+        <li key={m}><span className={`gw-mk gw-mk-${m}`} aria-hidden />{MARK_WORDS[m]}</li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * THE STAGE LADDER (A1): Contacted, Need, Pitched, Qualified, Quoted, each with its mark, so "Aisha
+ * says it's qualified. The proof shows it up to need." can be seen at a glance.
+ *
+ * The stages and their marks come from the data. If not one stage carries a mark there is nothing
+ * true to draw, so the ladder draws nothing rather than a row of empty rings that would read as
+ * "nothing happened". `says` is the one sentence that goes with it, in the engine's words.
+ */
+export function StageLadder({ stages, says, label }: {
+  stages: { name: string; mark?: unknown }[]
+  says?: string
+  /** What the ladder is about, for a screen reader: "Eastside Foods". */
+  label?: string
+}) {
+  const read = stages.map(s => ({ name: s.name, mark: readMark(s.mark) }))
+  if (read.length === 0 || read.every(s => s.mark === null)) return null
+  return (
+    <div className="gw-ladder" role="group" aria-label={label}>
+      <div className="gw-ladder-row" aria-hidden>
+        {read.map((s, i) => (
+          <React.Fragment key={s.name + i}>
+            {i > 0 && <span className={`gw-ladder-ln gw-ladder-ln-${s.mark ?? 'none'}`} />}
+            <span className={`gw-mk gw-mk-lg gw-mk-${s.mark ?? 'none'}`} />
+          </React.Fragment>
+        ))}
+      </div>
+      <ol className="gw-ladder-stages">
+        {read.map((s, i) => (
+          <li key={s.name + i}>
+            {s.name}
+            <span className="gw-sr-only">. {MARK_WORDS[s.mark ?? 'none']}.</span>
+          </li>
+        ))}
+      </ol>
+      {says && <p className="gw-ladder-says">{says}</p>}
+    </div>
   )
 }
