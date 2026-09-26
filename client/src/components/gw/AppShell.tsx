@@ -22,6 +22,8 @@ import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
 import { whatYouCanJumpTo } from './what-you-can-jump-to'
 import { useJumpStore } from '@/stores/jump'
+import { useTourStore } from '@/stores/tour'
+import { ShortTour } from './ShortTour'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import {
@@ -749,6 +751,7 @@ export function AppSidebar() {
   /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
   const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
   const openJump = useJumpStore(s => s.show)
+  const startTour = useTourStore(s => s.start)
 
   const sidebarWidth = collapsed ? 64 : 256
 
@@ -1081,6 +1084,7 @@ export function AppSidebar() {
                   <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showHelp(0) }}>Help</button>
                   <NavLink to="/talk-to-us" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Talk to us</NavLink>
                   <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showFeedback() }}>Send feedback</button>
+                  <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); startTour() }}>Take the short tour</button>
                   {/* Groundwork's own back office. Staff only, as the route itself is. */}
                   {staffItems.map(item => (
                     <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>{item.label}</NavLink>
@@ -1106,6 +1110,7 @@ export function AppSidebar() {
       </aside>
 
       {isAuthenticated && <JumpTo items={jumpItems} />}
+      {isAuthenticated && <ShortTour list={grounds as any} me={user?.id} />}
 
       {/*
         THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
