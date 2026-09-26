@@ -30,7 +30,7 @@ function service(opts: { pending?: any; existing?: any; listedAs?: any[]; tokenR
     person: { findMany: jest.fn(async () => opts.listedAs ?? []) },
     organization: { findUnique: jest.fn(async () => null) },
     organizationMembership: { count: jest.fn(async () => 0) },
-    emailVerificationToken: { findUnique: jest.fn(async () => opts.tokenRow ?? null), create: jest.fn(async () => ({})) },
+    emailVerificationToken: { findUnique: jest.fn(async () => opts.tokenRow ?? null), create: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})) },
     $transaction: jest.fn(async (fn: any) => fn(tx)),
   };
   const svc = new AuthService(

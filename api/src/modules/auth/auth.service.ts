@@ -227,6 +227,7 @@ export class AuthService {
 
     if (!user.passwordHash) {
       if (user.googleId) {
+        await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
           data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -238,6 +239,7 @@ export class AuthService {
       }
       // Participant accounts are created without a password. Auto-send a setup
       // link so they can get back in without needing to contact anyone.
+      await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_SETUP);
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
@@ -749,10 +751,7 @@ export class AuthService {
   }
 
   async requestPasswordSetupForUser(userId: string): Promise<{ token: string }> {
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId, type: TokenType.PASSWORD_SETUP, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
@@ -767,10 +766,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
 
-    await this.prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, type: TokenType.PASSWORD_RESET, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await this.aNewLinkEndsTheOlderOnes(user.id, TokenType.PASSWORD_RESET);
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
@@ -972,8 +968,24 @@ export class AuthService {
    * Only the verification path needs it: that is where the promise "you will be asked to set a
    * password" is made, and where it was being broken.
    */
+  /**
+   * A NEW PASSWORD LINK ENDS THE OLDER ONES. U.2 review, Hafsah's rule of 26 September.
+   *
+   * An older reset or set-up link must stop working as soon as a newer one is sent, so a link left
+   * in an old email, a forwarded message or a shared inbox cannot be used after the person has asked
+   * for another. Every place in this service that makes a reset or set-up link calls this first.
+   * Marked used rather than deleted, so an old link opened later says it did not work.
+   */
+  private async aNewLinkEndsTheOlderOnes(userId: string, type: 'PASSWORD_RESET' | 'PASSWORD_SETUP'): Promise<void> {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId, type: type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.PASSWORD_SETUP, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
   private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
     if (!res.needsPassword) return res;
+    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
       data: {
