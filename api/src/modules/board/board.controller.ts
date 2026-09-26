@@ -26,6 +26,10 @@ class ObjectiveDto {
    */
   @IsOptional() @IsString() @MaxLength(64)
   ownerParticipantId?: string | null;
+
+  /** What the target assumes, one thing per line. The lead's words; an empty list clears it. */
+  @IsOptional() @IsArray() @ArrayMaxSize(12) @IsString({ each: true }) @MaxLength(300, { each: true })
+  assumes?: string[];
 }
 
 class ProposePersonDto {

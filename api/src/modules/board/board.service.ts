@@ -1575,7 +1575,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[] },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
@@ -1584,6 +1584,10 @@ export class BoardService {
       where: { id: objectiveId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        /* What the target rests on, as the lead wrote it: blank lines dropped, nothing reworded. */
+        ...(Array.isArray(dto.assumes)
+          ? { assumes: dto.assumes.map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 12) }
+          : {}),
         ...(dto.target !== undefined ? { target: dto.target } : {}),
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
       },

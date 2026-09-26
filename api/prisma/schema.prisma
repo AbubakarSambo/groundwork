@@ -1786,6 +1786,11 @@ model GroundObjective {
   /// opener set as your objective" (adversarial run, 20 Sep 2026). Null: set on the form at setup.
   setByParticipantId String? @map("set_by_participant_id")
 
+  /// WHAT THE TARGET ASSUMES, ONE THING PER LINE: "6 reps each close about 4 sales." A target that
+  /// does not say what it rests on cannot be given a second look when one of those things stops
+  /// being true. Written by the lead; empty until somebody says. Read by whoever may read the target.
+  assumes String[] @default([])
+
   /// WHAT THE RECORD SAYS THIS NUMBER IS, WHERE SOMEBODY REPORTED IT.
   ///
   /// The board already had the screen for this - "The record shows 40 for this, not 0. Use 40" -
