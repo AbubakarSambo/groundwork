@@ -19,6 +19,7 @@ import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
+import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
 
 @Injectable()
 export class UsersService {
@@ -380,19 +381,34 @@ export class UsersService {
      * So both halves are counted - how many check-ins they are on, and how many of those they
      * have given an account on - and the page says which. Still one query for the page.
      */
+    /*
+     * THIS ORGANISATION'S CHECK-INS ONLY (U.4). This counted every check-in the person was on in any
+     * organisation, so an admin here read how much somebody carried at another company. Each person's
+     * load across check-ins is private (decisions.md, rule 4); what this organisation's admin may know
+     * is which of THIS organisation's check-ins they are on, which the admin can already open.
+     */
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
-        where: { userId: { in: ids } },
-        select: { userId: true, createdAt: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
+        where: { userId: { in: ids }, ground: { organizationId } },
+        select: {
+          userId: true, createdAt: true, partyType: true,
+          ground: { select: { id: true, label: true } },
+          checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 },
+        },
       })
       : [];
     const onCount = new Map<string, number>();
     const answeredCount = new Map<string, number>();
+    const theirCheckIns = new Map<string, { id: string; label: string | null; runsIt: boolean }[]>();
     for (const m of memberships) {
       if (!m.userId) continue;
       onCount.set(m.userId, (onCount.get(m.userId) ?? 0) + 1);
       if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
+      const list = theirCheckIns.get(m.userId) ?? [];
+      if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
+      theirCheckIns.set(m.userId, list);
     }
+    const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
     /*
      * WHO CAME IN THROUGH A CHECK-IN, RATHER THAN BEING PUT ON THE ORGANISATION.
@@ -435,6 +451,10 @@ export class UsersService {
         checkInsOn: onCount.get(u.id) ?? 0,
         checkInsAnswered: answeredCount.get(u.id) ?? 0,
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
+        /* Where they sit here (U.4). Describes the organisation; grants nothing. */
+        ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
+        /* Which of this organisation's check-ins they are on, and whether they run it. */
+        checkIns: theirCheckIns.get(u.id) ?? [],
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
@@ -447,6 +467,74 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  /**
+   * WHERE EACH OF THESE PEOPLE SITS HERE (U.4): level, team, and who they report to, by name. One
+   * query for the memberships and one for the managers' names, however many people are asked about.
+   */
+  async whereTheySit(organizationId: string, userIds: string[]) {
+    const out = new Map<string, { level: string | null; team: string | null; reportsTo: { id: string; name: string } | null }>();
+    if (!userIds.length) return out;
+    const rows = await this.prisma.organizationMembership.findMany({
+      where: { organizationId, userId: { in: userIds } },
+      select: { userId: true, level: true, team: true, reportsToUserId: true },
+    });
+    const managerIds = [...new Set(rows.map((r) => r.reportsToUserId).filter((x): x is string => !!x))];
+    const managers = managerIds.length
+      ? await this.prisma.user.findMany({
+        where: { id: { in: managerIds }, deletedAt: null, memberships: { some: { organizationId } } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      })
+      : [];
+    const nameOf = new Map(managers.map((m) => [m.id, [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || m.email]));
+    for (const r of rows) {
+      const name = r.reportsToUserId ? nameOf.get(r.reportsToUserId) : undefined;
+      out.set(r.userId, {
+        level: r.level,
+        team: r.team,
+        /* A manager who has left reads as nobody, never as a dangling id. */
+        reportsTo: r.reportsToUserId && name ? { id: r.reportsToUserId, name } : null,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * AN ADMIN SETS WHERE SOMEBODY SITS (U.4). Only the fields sent change; a blank box clears one.
+   * Refused, in a sentence the page shows, when the manager is not here, is the person themselves,
+   * or already reports to them somewhere up the line.
+   */
+  async setWhereTheySit(
+    organizationId: string,
+    userId: string,
+    dto: { level?: string | null; team?: string | null; reportsToUserId?: string | null },
+  ) {
+    const membership = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+      select: { id: true },
+    });
+    if (!membership) throw new NotFoundException(NOT_IN_THIS_ORGANISATION);
+
+    const data: { level?: string | null; team?: string | null; reportsToUserId?: string | null } = {};
+    if (dto.level !== undefined) data.level = aLineOrNothing(dto.level);
+    if (dto.team !== undefined) data.team = aLineOrNothing(dto.team);
+    if (dto.reportsToUserId !== undefined) {
+      const managerId = aLineOrNothing(dto.reportsToUserId);
+      if (managerId) {
+        if (managerId === userId) throw new BadRequestException(CANNOT_REPORT_TO_THEMSELVES);
+        const everyone = await this.prisma.organizationMembership.findMany({
+          where: { organizationId },
+          select: { userId: true, reportsToUserId: true },
+        });
+        if (!everyone.some((m) => m.userId === managerId)) throw new BadRequestException(NOT_IN_THIS_ORGANISATION);
+        const line = new Map(everyone.map((m) => [m.userId, m.reportsToUserId]));
+        if (wouldMakeALoop(userId, managerId, line)) throw new BadRequestException(THAT_WOULD_MAKE_A_LOOP);
+      }
+      data.reportsToUserId = managerId;
+    }
+    await this.prisma.organizationMembership.update({ where: { id: membership.id }, data });
+    return (await this.whereTheySit(organizationId, [userId])).get(userId) ?? { level: null, team: null, reportsTo: null };
   }
 
   async create(organizationId: string, dto: CreateUserDto) {

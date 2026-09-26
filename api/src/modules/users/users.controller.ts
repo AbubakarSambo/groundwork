@@ -31,6 +31,13 @@ class RenameOrganizationDto {
   @IsOptional() @IsEnum(CompanyStage) companyStage?: CompanyStage;
 }
 
+/** Where somebody sits here (U.4). Each field optional: only what is sent changes, and a blank clears it. */
+class WhereTheySitDto {
+  @IsOptional() @IsString() @MaxLength(120) level?: string | null;
+  @IsOptional() @IsString() @MaxLength(120) team?: string | null;
+  @IsOptional() @IsString() @MaxLength(64) reportsToUserId?: string | null;
+}
+
 class JoiningByDomainDto {
   @IsBoolean() on!: boolean;
 }
@@ -367,6 +374,18 @@ export class UsersController {
   @ApiOperation({ summary: 'Update a user' })
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: CurrentUserData) {
     return this.usersService.update(id, user.organizationId, dto, user.id);
+  }
+
+  /**
+   * WHERE SOMEBODY SITS: their level, team, and who they report to (U.4). Admin only. It describes
+   * the organisation and grants nothing; what they can do still comes from their role and their
+   * access to each check-in.
+   */
+  @Patch(':id/where-they-sit')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: "Set a person's level, team and who they report to" })
+  async setWhereTheySit(@Param('id') id: string, @Body() dto: WhereTheySitDto, @CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.setWhereTheySit(organizationId, id, dto);
   }
 
   @Post(':id/resend-invite')

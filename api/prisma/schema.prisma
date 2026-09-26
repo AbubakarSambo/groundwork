@@ -5168,6 +5168,17 @@ model OrganizationMembership {
   userId         String   @map("user_id")
   organizationId String   @map("organization_id")
   role           UserRole @default(MEMBER)
+  /// WHERE THEY SIT IN THIS ORGANISATION (U.4, the prototype's "Where they sit" and "Team"). Set by an
+  /// admin on the People page. They describe the organisation and grant nothing: what somebody can do
+  /// still comes only from `role` and their access to each check-in (decisions.md, rule 3). On the
+  /// membership, not the account, because the same person sits differently in each organisation.
+  /// Separate from the imported staff record's `Person.department`, which the read rule for leads
+  /// uses; this field is read by no access rule.
+  level           String?  @db.VarChar(120)
+  team            String?  @db.VarChar(120)
+  /// Who they report to here: another person's user id in this organisation. An id rather than a
+  /// relation, so a person leaving never deletes the line above them; unresolved reads as nobody.
+  reportsToUserId String?  @map("reports_to_user_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
