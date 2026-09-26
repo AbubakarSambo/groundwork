@@ -6,6 +6,50 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## CORRECTION: the reports were never empty, and the run was lying to me
+
+**The section below this one is wrong and I am leaving it there rather than deleting it, because
+the mistake is the useful part.** I concluded from a 24-scenario run that one sentence in the
+wording rulebook had emptied the reports — participants gone, agreements gone. It had not. The
+engine wrote every one of those reports correctly. The *run* read the wrong one.
+
+`run.ts` waited for a report to exist and then read it. A report is written after each person
+checks in, so the first one that exists is the one written after the **lead** checked in: "Only you
+have checked in so far", one finding. Run the twenty-four one after another, as the morning's run
+was, and regeneration has caught up by the time the loop runs, so it happens to read the finished
+report. Run six at once against one server and it does not.
+
+Proved by asking the database what it actually holds for those same grounds:
+
+| | Findings in the file | Findings in the database |
+| --- | --- | --- |
+| crisis | 1 | **3** |
+| board | 1 | **3** |
+| cofounder | 1 | **2** |
+| advisor | 1 | **2** |
+| across the twenty-four | 35 | **73** |
+
+**Two things I wrote earlier are therefore withdrawn.**
+
+*"One sentence in the rulebook emptied the reports"* — no. The rulebook change stays, because the
+same ambiguity did measurably collapse the rewriting pass, and that was read from the server log,
+which no capture race can touch. But on the report side it is now an unproven precaution, not a
+proven fix, and I would rather say that than let a tidy story stand.
+
+*"1.4 hit its bar: jargon in reports 511 → 43"* — worthless, and flattering in the obvious
+direction. That was measured over lead-only reports, which are about a third of the text. **Task
+1.4 is not proven and is not ticked.** A corrected run is going now.
+
+The runner waits for one finding per person who checked in, and settles once three probes running
+show the same number, so a scenario that genuinely produces fewer still finishes.
+
+**What I should have done.** I caught exactly this mistake earlier today, on task 1.5, when a script
+read session one of three and I noticed the judgement was right to say nobody had answered yet. I
+wrote it up as a correction. Then I made the same mistake again four hours later, in a different
+shape, and this time it survived two runs, a fix, a commit and a report section before the database
+contradicted it. The lesson is not "read the last session" — it is that a number off a harness is
+not evidence until something independent agrees with it.
+
 ## The same sentence emptied the reports, and the wording score looked excellent while it did
 
 The 24-scenario run on the fixed composer came back, and the wording numbers are the best they have
