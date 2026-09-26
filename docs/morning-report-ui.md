@@ -320,6 +320,14 @@ Two of the U.2 decisions matter here too: "3 months free" (decision 1), because 
 organisation" asks "How many people will use it?" with "Fewer than 20: 3 months free"; and where
 the organisation's name is asked (decision 6).
 
+### How this workspace runs now, since 26 September (your rule, because the Mac froze)
+
+- One helper at a time: builder, tester or reviewer, never several together.
+- While working, only the tests for the files that changed.
+- The full API and screen suites once at the end of each module, one after the other, with at most
+  2 test workers (`--maxWorkers=2`).
+- The local API and screens servers only while a screen is being checked, then stopped.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
