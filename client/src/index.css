@@ -1569,3 +1569,13 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-jump-item span { font-size: 13px; color: var(--gw-sub); }
 .gw-jump-item.on { background: var(--gw-page); box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-jump-none { padding: 14px 12px; font-size: 15px; color: var(--gw-sub); }
+
+/* "Talk to us" at the foot of the Help window, on every tab. */
+.gw-help-talk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 24px 20px; border-top: 1px solid var(--gw-border); }
+.gw-help-talk p { font-size: 14.5px; color: var(--gw-sub); line-height: 1.5; flex: 1; min-width: 200px; }
+
+/* THE FLOATING "?" STANDS DOWN WHERE THE SIDEBAR IS. Its menu ("Settings, help, sign out") and "More"
+   on a phone both carry Help and "Talk to us" now, as the prototype draws it, and the prototype has no
+   floating help button. It stays on the pages that have no sidebar (setting up an organisation, an
+   invitation), where it is still the only way to Help. */
+body:has(.gw-sidebar-desktop) .gw-help-btn { display: none !important; }

@@ -1079,6 +1079,7 @@ export function AppSidebar() {
                 <div className="gw-rl-menu gw-rl-menu-me" style={{ left: collapsed ? 70 : 10 }}>
                   <NavLink to="/settings" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Your settings</NavLink>
                   <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showHelp(0) }}>Help</button>
+                  <NavLink to="/talk-to-us" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Talk to us</NavLink>
                   <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showFeedback() }}>Send feedback</button>
                   {/* Groundwork's own back office. Staff only, as the route itself is. */}
                   {staffItems.map(item => (

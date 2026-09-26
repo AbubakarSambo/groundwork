@@ -46,6 +46,7 @@ export function MorePage() {
         ))}
         <li><NavLink to="/settings" className="gw-more-item"><MoreIcon d="settings" /><b>Your settings</b></NavLink></li>
         <li><button type="button" className="gw-more-item" onClick={() => showHelp(0)}><MoreIcon d="help" /><b>Help</b></button></li>
+        <li><NavLink to="/talk-to-us" className="gw-more-item"><MoreIcon d="talk" /><b>Talk to us</b></NavLink></li>
         <li><button type="button" className="gw-more-item" onClick={showFeedback}><MoreIcon d="feedback" /><b>Send feedback</b></button></li>
         {staffItems.map(item => (
           <li key={item.to}>
@@ -80,7 +81,7 @@ export function MorePage() {
   )
 }
 
-function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' | 'jump' }) {
+function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' | 'jump' | 'talk' }) {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
       {d === 'settings' && (
@@ -100,6 +101,9 @@ function MoreIcon({ d }: { d: 'settings' | 'help' | 'feedback' | 'jump' }) {
           <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" />
           <path d="M13.2 13.2 17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </>
+      )}
+      {d === 'talk' && (
+        <path d="M5 3.5h3l1.2 3.3-1.8 1.2a9 9 0 0 0 4.6 4.6l1.2-1.8 3.3 1.2v3a1.5 1.5 0 0 1-1.6 1.5A13 13 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
       )}
       {d === 'feedback' && (
         <path d="M3.5 4.5h13v9h-7l-3.5 3v-3h-2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
