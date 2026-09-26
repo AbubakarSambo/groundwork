@@ -668,7 +668,7 @@ replaced reset link says so as it opens, and both kinds of sign-up work from sta
 password, the person goes straight in. With the link, they are offered "Choose a password" and can
 choose "Keep using email links instead".
 
-### U.3 Organisations and joining: built, now being tested and reviewed
+### U.3 Organisations and joining: built and tested, not yet reviewed
 
 All of U.3 is built, in 20 commits, apart from the two held parts (item 11, conflicts A and B), which
 keep today's behaviour. What each person now reads:
@@ -705,7 +705,18 @@ keep today's behaviour. What each person now reads:
 - **The organisation's invite link**, for example `/j/coamana-6rr7`, joining as "Takes part". Turning
   it off closes it, and turning it on makes a new one.
 
-Now with the tester (the full suites, one after the other, 2 workers), then the reviewer.
+**Tested:** the first full run found three failures from U.3, all fixed. The "Got it" button on the
+welcome card now says when saving failed: "That did not go through, and nothing has changed. Try
+again." Three new pages now use the shared date format. The waiting-for-an-admin check was moved to
+the new "Almost in" page. While fixing that, the builder closed an older gap: someone still waiting
+who reopened their invitation was sent into a check-in that then refused them, and now they land on
+"Almost in". The second full run passed everything: 2,589 screen tests, 9,234 API tests, and the build.
+
+**Not reviewed:** the reviewer could not sign in as anyone (item 14), so U.3 is not ticked. When a
+review can run, it should also confirm that the rewritten waiting check really proves a person who is
+still waiting never reaches the check-in. Two older copies of the dashed sentence "That did not go
+through. Nothing has changed - try again." remain, on the People page (fixed in U.4) and in "What you
+are carrying forward".
 
 ## Found on the way, for later tasks
 
