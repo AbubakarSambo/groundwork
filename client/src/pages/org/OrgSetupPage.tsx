@@ -9,7 +9,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 
 export function OrgSetupPage() {
   const navigate = useNavigate()
-  const { user, updateUser, logout } = useAuthStore()
+  const { user, updateUser } = useAuthStore()
   const org = user?.organization
 
   const [orgName, setOrgName] = useState(org?.name ?? user?.organizationName ?? '')
@@ -144,7 +144,7 @@ export function OrgSetupPage() {
             * exits, and until now the page offered neither.
             */}
           <button
-            onClick={() => { logout(); navigate('/auth', { replace: true }) }}
+            onClick={() => navigate('/signout', { replace: true })}
             style={{
               display: 'block', margin: '14px auto 0', background: 'none', border: 'none',
               color: 'var(--gw-sub)', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer',

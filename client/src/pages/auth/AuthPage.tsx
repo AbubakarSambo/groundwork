@@ -98,6 +98,8 @@ export function AuthPage() {
     const raw = searchParams.get('next') ?? searchParams.get('from')
     if (!raw) return null
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
+    /* Never back to "You're signed out": arriving there signs you out again. */
+    if (/^\/signout(?:[/?#]|$)/.test(raw)) return null
     return raw
   })()
   /*

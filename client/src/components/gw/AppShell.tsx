@@ -665,7 +665,6 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const logout = useAuthStore(s => s.logout)
   const showHelp = useHelpStore(s => s.show)
   const showFeedback = useFeedbackStore(s => s.show)
 
@@ -1105,7 +1104,7 @@ export function AppSidebar() {
                   <button
                     type="button"
                     className="gw-rl-menu-item"
-                    onClick={() => { logout(); navigate('/') }}
+                    onClick={() => navigate('/signout', { replace: true })}
                     title="Sign out of Groundwork on this device"
                   >
                     Sign out
@@ -1241,7 +1240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const bare = justTheQuestion(location.search)
 
   const CHROMELESS = [
-    '/auth', '/auth/sent', '/auth/google/callback', '/google-failed',
+    '/auth', '/auth/sent', '/auth/google/callback', '/google-failed', '/signout',
     '/set-password', '/reset-password', '/verify-email',
     '/invite', '/join', '/answer', '/login', '/org/setup',
   ]

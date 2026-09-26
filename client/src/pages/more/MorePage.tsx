@@ -20,7 +20,6 @@ import { useJumpStore } from '@/stores/jump'
  */
 export function MorePage() {
   const user = useAuthStore(s => s.user)
-  const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
   const showHelp = useHelpStore(s => s.show)
   const showFeedback = useFeedbackStore(s => s.show)
@@ -75,7 +74,7 @@ export function MorePage() {
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <Button kind="secondary" onClick={() => { logout(); navigate('/') }}>Sign out</Button>
+        <Button kind="secondary" onClick={() => navigate('/signout', { replace: true })}>Sign out</Button>
       </div>
     </div>
   )

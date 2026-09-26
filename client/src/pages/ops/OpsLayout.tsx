@@ -76,7 +76,6 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   /* Which account this actually is. See the refusal below for why that is the
      one fact this page could not do without. */
   const signedInAs = useAuthStore(state => state.user?.email)
-  const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   /* Once per visit, after the read has said who this is: take the seat. A GET does not write the roster (A15). */
   useEffect(() => { if (me.isSuccess) Promise.resolve().then(() => opsApi.enter()).catch(() => undefined) }, [me.isSuccess])
@@ -134,8 +133,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => {
-              logout()
-              window.location.href = '/auth'
+              window.location.href = '/signout'
             }}
             style={{
               all: 'unset',

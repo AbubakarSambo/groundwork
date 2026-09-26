@@ -189,3 +189,26 @@ describe('"Forgot your password?", as a signed-out visitor reads it', () => {
     expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeTruthy()
   })
 })
+
+describe('signing in again never lands on "You\'re signed out"', () => {
+  it('a ?next=/signout is ignored, because arriving there would sign you straight out again', async () => {
+    ;(authApi.login as any).mockResolvedValue({ user: { id: 'u1' }, accessToken: 't' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/auth?next=%2Fsignout']}>
+          <Routes>
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<p>Your check-ins</p>} />
+            <Route path="/signout" element={<p>Signed out again</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'hafsah@coamana.test' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Whatever1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByText('Your check-ins')).toBeTruthy()
+    expect(screen.queryByText('Signed out again')).toBeNull()
+  })
+})

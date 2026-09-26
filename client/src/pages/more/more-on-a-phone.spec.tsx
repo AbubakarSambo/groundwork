@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/gw/AppShell'
 import { MorePage } from './MorePage'
+import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 
@@ -104,9 +105,28 @@ describe('switching organisation and signing out on a phone', () => {
     expect(sw).not.toHaveBeenCalled()
   })
 
-  it('signing out signs out', () => {
-    mount(PARTICIPANT)
+  it('signing out signs out, and says so', async () => {
+    /* U.2: Sign out goes to "You're signed out" (/signout), which ends the session as it opens. The
+       old version of this test pressed the button and read the store straight away, because the
+       button used to call logout() itself; it now checks the page a person reads, and the store. */
+    useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], [])
+    qc.setQueryData(['my-organizations'], [{ id: 'o1', name: 'Coamana', slug: 'coamana', role: 'MEMBER', active: true }])
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/more']}>
+          <AppShell>
+            <Routes>
+              <Route path="/more" element={<MorePage />} />
+              <Route path="/signout" element={<SignOutPage />} />
+            </Routes>
+          </AppShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
     fireEvent.click(within(main()).getByRole('button', { name: 'Sign out' }))
+    expect(await screen.findByRole('heading', { name: 'You’re signed out' })).toBeTruthy()
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 

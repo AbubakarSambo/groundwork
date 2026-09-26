@@ -57,10 +57,10 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
   '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**
-   * The marketing site's header links here when its shared signed-in flag is set. Nothing inside
-   * the app links to it and nothing should: in here, signing out is a button in the shell that
-   * calls the store directly. This address exists because a static page cannot call a store, only
-   * follow a link. See client/src/lib/signed-in-flag.ts.
+   * The marketing site's header links here when its shared signed-in flag is set: a static page
+   * cannot call a store, only follow a link. See client/src/lib/signed-in-flag.ts. Since U.2 every
+   * Sign out inside the app lands here too, on "You're signed out", so it is also linked; the entry
+   * stays because the marketing door is the one no scan of this codebase can see.
    */
   '/signout': 'the Sign out link in the marketing site header, when it sees the signed-in flag',
   /**
