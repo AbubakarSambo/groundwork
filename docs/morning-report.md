@@ -598,3 +598,67 @@ every engine-value and conversation number unchanged. All 9,006 API tests pass.
    accepts an empty string. That reader still knows who their lead is, so they read "your lead"
    ("the lead" for somebody who is not on the check-in) rather than "the initiator". Not her
    wording, so it is flagged here too.
+
+---
+
+## The interview was reading the report's labels, and stopped asking specific questions
+
+**The regression.** Fix 3 made report labels positional - "the initiator", "Participant A",
+"Participant B" - which is right for a stored report and wrong for a conversation. The interview
+prompt was borrowing the same labeller, so where the engine used to be told
+
+> - "Finance sign-off on the six credit files" on Relationship officer, Ikeja. Target 14 approved
+>   facilities this quarter., 21 days old, nobody has escalated it.
+
+it was now told
+
+> - "Finance sign-off on the six credit files" on Participant B, 21 days old, nobody has escalated it.
+
+A letter is not something a question can be built out of. Measured on NEW_HIRE, asks for a number,
+a date or a name fell from 14 and 12 (25 September) to 9, 5 and 8, over an identical 69 turns.
+
+**What it now says.** Three rules, in `api/src/modules/conversation/a-colleague-in-an-interview-has-a-name.ts`:
+
+1. What the person called them themselves, where the record kept it. They said it out loud, so
+   saying it back reveals nothing to them.
+2. Otherwise a real name, but only where this check-in names people to each other - the rule the
+   report and the board already apply.
+3. Otherwise plain words: "a colleague", "one colleague", "another colleague", taken from the
+   reports' own wording so the two cannot drift.
+
+On an ordinary check-in the engine now reads
+
+> - "Sign-off on the six credit files" on Ngozi Balogun, 21 days old, nobody has escalated it.
+
+and on a PIP, where a colleague stays unnamed to the person being reviewed,
+
+> - "Sign-off on the six credit files" on a colleague, 21 days old, nobody has escalated it.
+
+**Three more holes found while fixing the first.** Four blocks put a colleague into the interview
+prompt and each had its own answer. Three of them handed over a real name in check-ins where the
+report and the board deliberately withhold one: who is waiting on a commitment, who else is in the
+check-in, and the shared-board give-back, which was gated on mode alone - and an evaluation ground
+is SHARED by default. `peersAreNamedOn` is now one function
+(`api/src/modules/reports/peers-are-named.ts`) instead of three copies in the reports, board and
+grounds services, with the conversation - the one reader that speaks out loud - having had no copy
+at all.
+
+**The numbers, honestly.** Four NEW_HIRE runs on the new code: 23, 8, 12 and 9, over 72, 70, 69 and
+71 Groundwork turns. Mean 13.0, which is where the 25 September code was (14 and 12). But the
+spread is 8 to 23, and 8 sits inside the range the broken code produced. The mean recovers; two
+runs could not have told you that, and four still cannot separate it from the run-to-run variance
+this scenario already has. The fix is right on the reading of the prompt regardless of the count.
+
+All 9,011 API tests pass. New test
+`api/src/modules/conversation/a-colleague-stays-unnamed-in-an-evaluation.spec.ts` stands a
+worst-case engine in front of the real conversation - one that repeats back every name-shaped word
+it was handed - and reads the turn that comes out. Two existing tests are changed, both of which
+matched source text with a regexp rather than exercising the rule in their own name; the reason is
+in the commit.
+
+**One thing for Hafsah.** I was asked to describe an unnameable colleague by what they do, for
+example "the colleague who handles the credit files". I did not do that, because your decision of
+26 September says the opposite in the code: "never a job title or detail that would give them
+away". On a small team "handles the credit files" names one person as surely as their name does. So
+an unnameable colleague reads "a colleague", which is your wording. Say if you want the interview
+to have more than the report does here.
