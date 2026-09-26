@@ -31,7 +31,10 @@ export function SignOutPage() {
   }, [logout])
 
   return (
-    <AuthCard title="You’re signed out" sub="On this device.">
+    /* True: signing out clears this browser only. There is no sign-out on the server, and a
+       session on another device lasts until it ends there, or until a password reset raises the
+       account's token epoch. */
+    <AuthCard title="You’re signed out" sub="You are still signed in on your other devices.">
       <div className="gw-auth-actions">
         <Button wide to="/auth">Sign in again</Button>
         <a href={MARKETING_URL} className="gw-b gw-b-quiet gw-b-wide">Go to the home page</a>

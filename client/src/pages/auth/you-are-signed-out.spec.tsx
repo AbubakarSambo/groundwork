@@ -16,10 +16,12 @@ vi.mock('@/lib/marketing', () => ({ MARKETING_URL: 'https://groundwork.example' 
 beforeEach(() => { logout.mockClear() })
 
 describe('what a person reads once signed out', () => {
-  it('the prototype\'s words, without the promise about saved work that is not yet true', () => {
+  /* U.2 review: "On this device." was a lone fragment. It is now a full sentence, and a true one:
+     signing out clears this browser only, so other devices stay signed in. */
+  it('a full, true sentence, without the promise about saved work that is not yet true', () => {
     const { container } = render(<MemoryRouter><SignOutPage /></MemoryRouter>)
     expect((container.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe(
-      'Groundwork' + 'You’re signed out' + 'On this device.' + 'Sign in again' + 'Go to the home page',
+      'Groundwork' + 'You’re signed out' + 'You are still signed in on your other devices.' + 'Sign in again' + 'Go to the home page',
     )
     expect(container.textContent).not.toMatch(/Anything you.d started is saved/)
   })
