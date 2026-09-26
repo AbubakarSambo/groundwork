@@ -53,11 +53,16 @@ Jargon in reports and boards rose from 123 on run-5 to 217 on run-6. Task 1.4's 
 1. **`ce6e7fe8`: each person's finding now keeps what they say about how the work really runs.** The record stores these lines, but nothing that writes a person's finding read them. Run-6 stored 15 of them and lost every one. They include Patience's verbal supplier arrangement, "as requested by Nadia" in drift, and Daniel's "I'm faster at them, so it's quicker for me to just handle them" in newmanager.
 2. **`3c56f5eb`: the record now keeps what a person says somebody else did, with that person's name.** This is for recognition, where Victor was named by two people and stored by nobody.
 
-Neither change is measured yet. Next I rebuild the local API and re-run the scenarios they affect, each one twice.
+3. **`d7a6510e`: the lead's judgement is now told which name belongs to which person.** In drift, Zainab says she moved to sales support "as requested by Nadia", and Nadia is the lead. The judgement only knows people by their labels, so it treated Nadia as somebody outside the room, and the lead would have read "Tell you that Nadia has redirected Zainab". Now each person's block in the judgement's material says what other people's words call them. No text anyone reads is changed.
+
+I first built a stronger version, `8feedc64`, and undid it in `efd1c67e`. It replaced each name inside people's words with that person's label, so the stored report holds no names at all. The catch is that a quote from Zainab would then reach Nadia as "requested by you", which changes Zainab's words on screen. See "Needs Hafsah".
+
+**The first round of re-runs, on the first two changes:** handover and recognition are now clearly right. Handover names both things only in Patience's head, the verbal 60-day supplier terms and the spreadsheet on her own drive. Recognition names Victor, the contractor, from the other two people's accounts. Newmanager is still right. Drift's finding now keeps "at Nadia's request", which is what led to the third change. Loans is better but still close, and its report was incomplete (8 findings for 9 people), so it does not count. The second round, on all three changes, is running now.
 
 ### Needs Hafsah
 
 - **Jargon in reports rose above 1.4's bar on this run,** mostly because the reports repeat the people's own words "pipeline" and "escalation". The rule is to never change people's own words. So the question is whether a report should still use a word the person used when that word is on the jargon list. I have not changed anything for this.
+- **Names inside people's words.** Reports are meant to be stored without names, but a name that somebody says, such as "as requested by Nadia", is stored as they said it. It is then shown to every reader, including a colleague who is not allowed to see names. I can swap each such name for the person's label, and the name is then put back correctly for each reader. The cost is that a quote reaches the person it names as "you": Nadia would read "as requested by you". Your rule is never to change people's own words, so I have not done this. It is ready in `8feedc64` if you want it.
 - The older open questions are unchanged and do not block anything: B5's plain name, the 50 scenario packs, and `the-real-gate`.
 
 ## WHERE THIS SESSION STOPPED, 26 September, evening
