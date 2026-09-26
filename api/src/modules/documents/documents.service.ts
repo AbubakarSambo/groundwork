@@ -112,7 +112,7 @@ const ASSESSMENT_TOOL = {
 
 
 function toDocShape(
-  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any },
+  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null; holds?: any; uploaderNote?: string | null },
   viewerParticipantId?: string,
   contextEnabled?: boolean,
 ) {
@@ -139,6 +139,16 @@ function toDocShape(
      * Same rule as `visibility`: omitted rather than guessed when the column was not selected.
      */
     ...(doc.participantId !== undefined ? { mine: doc.participantId === viewerParticipantId } : {}),
+    /*
+     * WHAT THE UPLOADER SAID IT IS FOR, TO THE UPLOADER ONLY.
+     *
+     * They wrote it as an instruction to the check-in ("what should it be used for?"), not as a
+     * line for everybody else to read, so a shared document does not carry it to anyone else.
+     * Omitted when the column was not selected or the reader is not the uploader.
+     */
+    ...(doc.uploaderNote !== undefined && doc.participantId !== undefined && !!viewerParticipantId && doc.participantId === viewerParticipantId
+      ? { usedFor: doc.uploaderNote?.trim() || null }
+      : {}),
     // Who can read it. Omitted rather than defaulted when the column was not
     // selected, so a screen cannot mistake "not asked" for "private".
     ...(doc.visibility !== undefined ? { visibility: doc.visibility } : {}),
@@ -737,7 +747,7 @@ export class DocumentsService {
        *
        * Found by putting the read on the card and watching it not appear.
        */
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true, uploaderNote: true },
       orderBy: { createdAt: 'asc' },
     });
     /*
@@ -893,6 +903,31 @@ export class DocumentsService {
     });
     this.logger.log(`Document ${docId} on ground ${groundId} moved to ${visibility} by its uploader.`);
     return updated;
+  }
+
+  /**
+   * WHAT IT SHOULD BE USED FOR, SAID AFTER THE FILE IS READ.
+   *
+   * "Add a document" shows what was read from a file and then asks what it is for, so the answer can
+   * arrive after the upload rather than only with it. The uploader's alone, like moving or deleting
+   * it; the same message whether the document does not exist or is somebody else's. Blank clears it.
+   * The same check as a note given at upload then runs: whether the file reads as what they said.
+   */
+  async setNote(groundId: string, docId: string, userId: string, note: string | null | undefined) {
+    const participant = await this.assertParticipant(groundId, userId);
+    const doc = await this.prisma.groundDocument.findFirst({
+      where: { id: docId, groundId, participantId: participant.id },
+      select: { id: true },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+    const said = (note ?? '').toString().trim().slice(0, 500) || null;
+    const updated = await this.prisma.groundDocument.update({
+      where: { id: docId },
+      data: { uploaderNote: said },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true, holds: true, uploaderNote: true },
+    });
+    if (said) this.checkDescription(docId).catch(() => null);
+    return toDocShape(updated, participant.id, this.config.get<boolean>('app.contextEnabled') === true);
   }
 
   /**
