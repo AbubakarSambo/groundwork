@@ -6,6 +6,61 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## Task 1.4 was putting jargon back, and the only place it showed was the log
+
+This is the one I would not have found by reading the code, and the code reads correctly.
+
+The report has a rewriting pass: the engine writes a draft that is already true, the model says it
+better, and a guard throws the rewrite away if the model invents a number, drops a number, or
+changes the shape. Task 1.4 wired the plain-words rulebook into the rules that pass runs under. The
+rulebook ends with
+
+> EVERY FIELD YOU FILL IN IS READ BY A PERSON ... So write **one plain, full sentence** in every
+> field
+
+which is right about a field. This pass is not handed a field. It is handed a block of eight or
+nine separate claims, one per line, and it is required to send back the same number of lines. So
+the model did the only sensible thing with the rule it was given, and sent back one sentence for
+the whole block. The guard then refused the lot and shipped the engine's own words - jargon and all.
+
+**The change made to remove jargon was quietly putting it back.** The two runs say it exactly:
+
+| Refusals | Before the rulebook reached this pass | After |
+| --- | --- | --- |
+| Wrong number of lines back | 420 of 1,208 (35%) | 111 of 192 (58%) |
+| A line failed the guard | 788 | 81 |
+| The commonest shape failures | 9 out 8 back, 10 out 9 back, 11 out 8 back | 8 out **1** back, 13 out **1** back, 14 out **1** back |
+
+Before, the model was missing by one line. After, it was collapsing the whole block into a single
+sentence.
+
+The prompt never told it how many lines to send back - it was handed `<draft>` and nothing else.
+It does now: the count, in both directions, and merging, splitting, adding and dropping each
+forbidden by name, including the line that holds no number and no name, which was the one most
+often lost. The guard is untouched.
+
+Two more 1.4 stragglers went with it, both fields a person reads. The aim on the board was asked
+for as "a short phrase" by one prompt while the schema at the other end of the same feature already
+asked for a full sentence. And the operating-difference entry was built by gluing:
+
+> On contracting, **they described:** I send the contract to the client myself. **What is written
+> here:** Legal signs every contract.
+
+That is the pattern fix 2 removed from the reports; it survived because this entry is written in
+the conversation service rather than in a report. It reads as whole sentences now. Its three
+existing tests all passed on the glued version, because they check that both halves are there and
+that nobody is accused - both of which were true.
+
+### And I lost the first run, by my own hand
+
+The first 24-scenario run for 1.4 got four scenarios in and died at 15:05. The cause was me: the
+six shards were background children of the builder helper, and when I stopped that helper - it had
+finished its work and was waking every minute to say it was still waiting - the shards went with
+it. All six stopped in the same second, which is what gave it away.
+
+No measurement was lost that mattered, because the run would have been measuring the broken
+composer above. The run now going is on the fixed code and is detached from anything I can stop.
+
 ## Task 1.5, found while the 1.4 run was going: one number is why eight reports have no judgement
 
 I did not expect this to have a single cause. It has one, and it is a threshold written for a
