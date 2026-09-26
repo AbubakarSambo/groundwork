@@ -6,6 +6,32 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The 50 scenario packs — step one done, and they can be read now
+
+Your instruction was: copy all 50 into files first, so they can be read and compared; then write
+improved versions as NEW versions that are not switched on; then a before-and-after document; and
+never delete or overwrite the old ones.
+
+**Step one is done.** `docs/scenario-packs/current/` holds all fifty, one file each, with the key,
+the version and the activation date at the top of every one. `docs/scenario-packs/README.md` is an
+index with the character counts. **All 50 match the database byte for byte**, checked by reading
+each file back and comparing — the export is a faithful copy, not a re-rendering.
+
+They add up to about 260KB, and they are stranger to read together than apart: some run to four
+pages, some to four lines. `scenario.pip.initiator` is at version 5 and opens
+
+> MOMENT: Helping somebody get back on track.
+
+while `scenario.workplan_budget.initiator` is still at version 1 from 26 August.
+
+Editing these files changes nothing at runtime, and the header of every one says so, because that
+is exactly the trap: only `system` and `report_synthesis` are re-seeded from files on boot.
+
+**Steps two and three are not started.** Writing fifty improved versions is not a mechanical job -
+each one is a situation's own voice, several revised eight times - and the before-and-after
+document needs a conversation run per situation on both the old and the new pack, which is a run of
+its own. It is queued behind the numbered tasks rather than squeezed in beside them.
+
 ## Task 1.4, and the jargon is mostly not the AI
 
 Measured before touching anything, on run-1, all 24 scenarios:
