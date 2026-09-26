@@ -19,7 +19,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. Never skip ahe
 
 Fixes 1 (the leak), 2 (the gluing) and 3 (names, not labels) are done on this branch. Carry on:
 
-- [ ] **1.1 Finish fix 3 for the person the check-in is about.** In PIP, Nathan must read: "You and Caroline have both answered. You agree that your first target was five renewals this quarter, and you have done six. But Caroline now expects eight renewals. That number has not been written down or given to you yet. You also say nobody has told you what the concern is." That means: sentences written from the reader's side when they are one of the people; full name once, then the first name; the fact that explains the disagreement included; no jargon such as "success metric". The same applies in RECOGNITION and CONTRACT_RENEWAL. *Done when:* the reviewer reads the participant's report in all three and each meets this.
+- [x] **1.1 Finish fix 3 for the person the check-in is about.** *Done when:* the reviewer reads the participant's report in all three and each meets this. — **Read live as the reviewed person in all three, plus the sales scenario as a control.** Labels in prose are 0 in every one, no job title leaks, and the control is unchanged. PIP: "Both people have checked in. They disagree on the renewal target. Caroline Mensah says you are falling short of the target, but the record shows the target of eight renewals was never shared with you." CONTRACT_RENEWAL opens with the right answer: "You say the warehouse's cut-off time moved to 5 PM in March, but the partner's trucks are still scheduled to arrive at 2 PM." RECOGNITION uses "a colleague" consistently, in the prose and in the name beside each row.
 - [x] **1.2 Fix 4. Hide the machine's table** (`theTable`) from everything a person reads. *Done when:* "machine table words shown" is 0. — **0** on run-1 (was 1,461). Verified live on all four reads: null on both boards, key absent from both reports. Still computed and stored; it is the evidence behind a judgement.
 - [x] **1.3 Fix 5. Small fixes:** one person, not "1 people"; no stray full stops after names; no sentence starting in lower case; never cut text in the middle of a word. *Done when:* those four problem counts are 0. — **All four are 0** on run-1 with the updated scorer: "1 people" 61→0, stray full stop 122→0, cut mid-word 48→0, lower-case start 579→0. The seven that remained before the scorer update were all one string, `Total budget vs. proposed plans`; "vs." is now counted as wording to avoid instead, and is folded into 1.4's rulebook.
 - [ ] **1.4 Fix 6. Plain wording in every prompt** a person reads the output of (check-in, report, board, guide, assistant, emails), using the rulebook already in `conversation/plain-words.ts`, split by surface. Change every field a person reads from "a short phrase" or "in a few words" to "one plain, full sentence". Make sure the version that runs is the new one (see the rules on `PromptVersion`). *Done when:* "jargon in reports and boards" and "jargon in Groundwork's turns" are both at most a quarter of the baseline, and the reviewer finds no clipped phrasing in 10 random report lines.
@@ -33,6 +33,13 @@ Fixes 1 (the leak), 2 (the gluing) and 3 (names, not labels) are done on this br
     about customers - but this check can, because by then the reader is known and the line can be
     rewritten once with that knowledge. Add "a pronoun that disagrees with the reader" to what the
     check looks for.
+  - **And a coordinated verb that does not agree**, the other half of the same problem. Live on the
+    sales report: "You have visited 46 businesses, taken 31 applications, and **is** waiting for
+    customers to submit their documents." I built a regex for this on 25 September and removed it
+    again on the 26th, because it fixed three sentences and broke two - "the record shows each
+    person is working on an individual goal and **are** blocked", "the office move is going well
+    and **are** on schedule". No pattern can tell which noun a coordinated verb belongs to. This
+    check can, because the reader is known and the line can be rewritten whole.
 
 ## Phase 2. Bring the conversation up to the standard
 
