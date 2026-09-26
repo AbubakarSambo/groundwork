@@ -29,7 +29,7 @@ import { askWhoCarriesWhichPart, alreadyAskedWhoCarriesWhat } from './who-carrie
 import { askWhereTheNumberStands, saysWhereItStands } from './a-number-with-no-starting-point';
 import { somethingTheyCouldNotHaveSaid } from './something-they-could-not-have-said-themselves';
 import { movedTheirTargetToWhereTheyAre, A_STANDING_IS_NOT_A_TARGET } from './where-you-are-is-not-what-you-aim-at';
-import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks } from './a-period-is-not-a-day';
+import { whatToDoAboutTheirDeadline, theDateItHadToSay, didNotSayTheDate, SAY_THE_DATE, theQuestionTheProductAsks, repeatsTheInstruction } from './a-period-is-not-a-day';
 import { theNumbersDoNotMeet, askWhichItIs, saidBothNumbers, theQuestionAboutTheNumbers, theNumbersIn } from './the-numbers-do-not-meet';
 import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
@@ -1315,10 +1315,6 @@ export class ConversationService {
      * prompt for THIS reply rather than run as a retry afterwards: it is about what the person said,
      * not about what the product wrote. See a-period-is-not-a-day.
      */
-    const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date());
-    if (aboutTheirDeadline) {
-      this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
-    }
 
     /*
      * AND WHETHER WHAT THEY JUST SAID MEETS THE OBJECTIVE ON THIS CHECK-IN.
@@ -1341,10 +1337,21 @@ export class ConversationService {
       .findMany({ where: { participantId: checkIn.participantId }, select: { id: true } })
       .then((rows) => rows.map((r) => r.id))
       .catch(() => [checkIn.id]);
-    const earlierAiTurnsForTheGap = await this.prisma.conversationTurn
-      .findMany({ where: { checkInId: { in: herOwnCheckIns }, role: TurnRole.AI }, select: { content: true } })
-      .then((rows) => rows.map((r) => r.content ?? ''))
-      .catch(() => [] as string[]);
+    const herEarlierAiTurns = await this.prisma.conversationTurn
+      .findMany({ where: { checkInId: { in: herOwnCheckIns }, role: TurnRole.AI }, select: { content: true, checkInId: true } })
+      .then((rows) => rows ?? [])
+      .catch(() => [] as { content: string | null; checkInId?: string }[]);
+    const earlierAiTurnsForTheGap = herEarlierAiTurns.map((r) => r.content ?? '');
+    /*
+     * WHAT THE PRODUCT ALREADY ASKED IN THIS CHECK-IN, so the date question is asked once. Patience
+     * was asked "Year-end - so 31 December 2026?" seven times in a row, answering the same each
+     * time, until the question limit ended her check-in. Only this check-in's own replies are read.
+     */
+    const repliesInThisCheckIn = herEarlierAiTurns.filter((r) => r.checkInId === checkIn.id).map((r) => r.content ?? '');
+    const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
+    if (aboutTheirDeadline) {
+      this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
+    }
     const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
     if (numbersGap) {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
@@ -1831,17 +1838,22 @@ export class ConversationService {
        * The same shape as every other rule that lost today, and there is already a note here saying
        * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
        */
-      const dateItHadToSay = theDateItHadToSay(message, new Date());
+      const dateItHadToSay = theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
       if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
         const period = thePeriodTheyNamed(message)!;
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
+        const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
         const withTheDate = await this.anthropic
-          .respond(`${fullSystem}\n\n${SAY_THE_DATE(period, dateItHadToSay)}`, history)
+          .respond(`${fullSystem}\n\n${theInstruction}`, history)
           .catch(() => '');
         const second = withTheDate.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
           : null;
-        if (second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay) && !isADeadEnd(second.text, closingNow)) {
+        /* And never our own instruction handed to them as a reply: Jide read one (fix6-2). */
+        if (
+          second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay)
+          && !isADeadEnd(second.text, closingNow) && !repeatsTheInstruction(second.text, theInstruction)
+        ) {
           screened = second;
           this.logger.log(`Check-in ${checkIn.id}: the second try said the date.`);
         } else {
