@@ -332,7 +332,32 @@ question marks - but the colon-glued fragment in front of it is invisible to eve
 
 ---
 
-## The baseline test — set up and running
+## The baseline test — first result, and it is not what either of us guessed
+
+The first of the two runs of the 25 September code is in.
+
+| | specific detail | blocker | proof asked | turns |
+| --- | --- | --- | --- | --- |
+| baseline as saved, scored 25 Sep | 89 | 37 | 42 | 747 |
+| **the same old code, re-run today** | **81** | **34** | 35 | 752 |
+| new code, run-0 | 74 | 33 | 46 | 746 |
+| new code, run-1 | 74 | 33 | 54 | 751 |
+
+**The baseline does not reproduce.** Identical code, identical harness, 89 one day and 81 the next.
+So the saved baseline is towards the high end of its own spread, which is the thing I could not
+establish last night and the reason the answer looked like a regression.
+
+**But the new code is lower still,** 74 twice against the old code's 81. That gap is smaller than
+the one the gate was complaining about, and it may yet be nothing: one more run of the old code
+tells me whether the two overlap or sit apart. It is running now.
+
+Note that "proof asked for" moved the other way - 35 on the old code today against 46 and 54 on the
+new - which is a point in favour of the whole thing being spread rather than direction.
+
+The turn counts are within five of each other across all four runs, so none of this is an artefact
+of longer or shorter conversations.
+
+## How the test was set up
 
 Her item 3, and it comes before any further conversation change.
 
