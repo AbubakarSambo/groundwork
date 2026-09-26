@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { useYourOrganisations, initialsOf, roleWord } from './your-organisations'
 
@@ -34,9 +35,11 @@ export function OrganisationChoices() {
           {o.active && <span aria-label="You are in this organisation">✓</span>}
         </button>
       ))}
+      {/* As on the prototype's "More" (more-menu-phone.txt). */}
+      <Link to="/org-new" className="gw-rl-menu-item gw-rl-menu-join">Join or create an organisation</Link>
       {onlyOneNotChosen && (
         <div className="gw-rl-menu-note">
-          <p>You are in {myOrgs[0].name} because your address was on their list.</p>
+          <p>You are in {myOrgs[0].name} because your email address was on its list of people.</p>
           <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace}>
             Start my own workspace
           </button>

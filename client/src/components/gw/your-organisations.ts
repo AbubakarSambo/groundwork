@@ -21,7 +21,7 @@ export function useYourOrganisations() {
   const setAuth = useAuthStore(s => s.setAuth)
   const navigate = useNavigate()
 
-  const { data: myOrgs = [] } = useQuery({
+  const { data: myOrgs = [], isFetched: loaded } = useQuery({
     queryKey: ['my-organizations'],
     queryFn: authApi.myOrganizations,
     enabled: isAuthenticated,
@@ -37,10 +37,10 @@ export function useYourOrganisations() {
     onError: () => toast.error('Could not switch organisation. Try again.'),
   })
 
+  /* No confirm box (U.3): every row already says the role you will have there, as the prototype's
+     "Choose an organisation" does. The one you are in is not switched to again. */
   function chooseOrganisation(o: YourOrganisation) {
     if (o.active || switchOrg.isPending) return
-    const asRole = o.role.toLowerCase()
-    if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
     switchOrg.mutate(o.id)
   }
 
@@ -58,7 +58,7 @@ export function useYourOrganisations() {
     navigate('/org-new')
   }
 
-  return { myOrgs, chooseOrganisation, switching: switchOrg.isPending, onlyOneNotChosen, startMyOwnWorkspace }
+  return { myOrgs, loaded, chooseOrganisation, switching: switchOrg.isPending, onlyOneNotChosen, startMyOwnWorkspace }
 }
 
 /** Two letters for a square: the first letters of the first two words, or the first two letters. */

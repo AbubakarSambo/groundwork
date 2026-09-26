@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -88,6 +89,9 @@ import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgNewPage } from '@/pages/org/OrgNewPage'
+import { OrgsPage } from '@/pages/org/OrgsPage'
+import { useYourOrganisations } from '@/components/gw/your-organisations'
+import { takeJustSignedIn } from '@/lib/choose-an-organisation'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
@@ -311,6 +315,24 @@ function RootRoute() {
    * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
    * and it is easy to read this as unreachable.
    */
+  return <HomeOrChooseAnOrganisation />
+}
+
+/**
+ * RIGHT AFTER SIGNING IN, SOMEBODY IN TWO OR MORE ORGANISATIONS IS ASKED WHICH TO OPEN (A3, #/orgs).
+ * Once: the flag is cleared as it is read. Everybody else, and everybody after that, gets their
+ * check-ins. While the list of organisations is still coming, the check-ins show, since that is
+ * where most people land anyway.
+ */
+function HomeOrChooseAnOrganisation() {
+  const { myOrgs, loaded } = useYourOrganisations()
+  const [ask, setAsk] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!loaded || ask !== null) return
+    const justIn = takeJustSignedIn()
+    setAsk(justIn && myOrgs.length >= 2)
+  }, [loaded, ask, myOrgs.length])
+  if (ask) return <Navigate to="/orgs" replace />
   return <GroundsListPage />
 }
 
@@ -389,6 +411,8 @@ export default function App() {
                 /org/setup address goes to it, with its query, because links to it are out there. */}
             <Route path="/org-new" element={<RequireAuth><OrgNewPage /></RequireAuth>} />
             <Route path="/org/setup" element={<KeepTheQuery to="/org-new" />} />
+            {/* "Choose an organisation" (A3). */}
+            <Route path="/orgs" element={<RequireAuth><OrgsPage /></RequireAuth>} />
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
             <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />

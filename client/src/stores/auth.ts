@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { posthog } from '@/lib/posthog'
 import { markSignedIn, clearSignedIn } from '@/lib/signed-in-flag'
+import { justSignedIn } from '@/lib/choose-an-organisation'
 import { takeItAllWithYou } from '@/lib/what-signing-out-takes-with-it'
 import { queryClient } from '@/lib/queryClient'
 import type { User } from '@/types'
@@ -36,6 +37,9 @@ export const useAuthStore = create<AuthState>()(
          * doors set is worse than no flag.
          */
         markSignedIn()
+        /* Somebody who has just signed in, rather than switched organisation, and belongs to more than
+           one is asked which to open (A3, #/orgs). The home page reads and clears this. */
+        if (!get().isAuthenticated) justSignedIn()
         posthog.identify(user.id, {
           email: user.email,
           firstName: user.firstName,
