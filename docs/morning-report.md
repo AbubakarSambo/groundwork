@@ -6,6 +6,49 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## The fix, and what the numbers do and do not prove
+
+NEW_HIRE, "specific detail asked for", the same scenario throughout:
+
+| | runs | mean | range | turns |
+| --- | --- | --- | --- | --- |
+| old code, 25 September | 14, 12 | **13.0** | 12–14 | 69, 69 |
+| broken, labels in the prompt | 9, 5, 8 | **7.3** | 5–9 | 69, 69, 67 |
+| **fixed, names in the prompt** | 23, 8, 12, 9 | **13.0** | 8–23 | 72, 70, 69, 71 |
+
+**The mean is exactly back where the old code was.** Two of the four fixed runs are above anything
+the broken code produced, and the counter is calibrated - it reproduces the stored run-0 and run-1
+figures exactly.
+
+**And four samples still cannot separate that from this scenario's own variance.** The fixed range
+runs 8 to 23, and the 8 sits inside the broken range. Four runs were done rather than two precisely
+because the first two came out 23 and 8, and reporting those would have been misleading either way.
+If you want this settled rather than indicated, it needs about ten runs an arm.
+
+**The fix does not rest on the number, and that is the more important point.** Telling the engine
+that somebody is waiting on "Participant B" is wrong on its face: no question can be built out of
+a slot in a template. The line now reads:
+
+> "Sign-off on the six credit files" on Ngozi Balogun, 21 days old, nobody has escalated it.
+
+and on a PIP, where colleagues stay unnamed:
+
+> "Sign-off on the six credit files" on a colleague, 21 days old, nobody has escalated it.
+
+**A privacy hole was found on the way, which I had not asked for.** The same two-line peer rule was
+written out three times - reports, board, grounds - and the conversation, the fourth reader and the
+one that builds what the engine actually says, had no copy at all. One of the four blocks fixed was
+gated on the ground being SHARED, and an evaluation ground is SHARED by default: so the report and
+the board withheld a colleague's name from the person being reviewed, and the interview said it
+out loud in the next question. It is now one function, `peersAreNamedOn`, with the three copies
+replaced by it.
+
+Checked at output on a fresh PIP run rather than from the test: Nathan never used Caroline's name,
+and Groundwork never said it to him. No "Participant X" in any turn of any run, old or new - the
+damage was always in the prompt rather than in what was shown.
+
+API 9,011 tests green.
+
 ## The cause, found
 
 `conversation.service.ts:3164` puts the report LABEL into the interview prompt - the block that
