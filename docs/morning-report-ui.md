@@ -594,6 +594,34 @@ the organisation's name is asked (decision 6).
   2 test workers (`--maxWorkers=2`).
 - The local API and screens servers only while a screen is being checked, then stopped.
 
+### 13. U.3: wording the prototype does not have, and one line changed
+
+`docs/prototype/screens` shows no wording for these moments, so the builder wrote the fewest words it
+could. Please read them. **My recommendation:** keep them unless you want different words.
+- After "Turn them back on": "Your reminders for … are back on." After "Stop all email from Groundwork
+  instead": "Done. No more email from Groundwork." with "Only what you ask for yourself still comes,
+  such as a sign-in link."
+- On the People page, under the organisation's invite link: "Anyone with this link can join as
+  "Takes part". Turning it off closes it at once." and "The link is off. Turning it on makes a new
+  link, so any old one stays closed."
+- A closed invite link: "This invite link is not open any more" and "Ask whoever sent it for the new
+  one."
+- After asking for more time: "Hafsah has your request."
+
+**One prototype line was changed.** The invitation's "Wairimu shares a team report each evening." now
+reads "Hafsah shares a team report with everyone in it.", because not every check-in shares a report
+each evening. **My recommendation:** say "each evening" (or the real schedule) only where it is true,
+from the check-in's own settings.
+
+**One line may clash with your answer 4.** The organisation's invite link page says "Sahar Ali invited
+you to Coamana", as the prototype does ("Wairimu Kamau invited you to Baridi Appliances"). It names
+the admin who shared the link before the person has accepted a real invitation. **My recommendation:**
+keep it, because the person who shared the link chose to be named on it. But it is your call, since
+you said an admin is named only after a real invitation.
+
+**Still to confirm:** the invitation's "You see your own report straight away." and "About two
+minutes." come from the prototype, and the builder could not check that they are always true.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
@@ -797,24 +825,44 @@ replaced reset link says so as it opens, and both kinds of sign-up work from sta
 password, the person goes straight in. With the link, they are offered "Choose a password" and can
 choose "Keep using email links instead".
 
-### U.3 Organisations and joining: in progress
+### U.3 Organisations and joining: built, now being tested and reviewed
 
-What you have decided already shapes it: the organisation is named at sign-up, with a name suggested
-from the email address (built in U.2); someone who later signs up with the same email domain is
-offered to join (this waits for the safeguards question, item 11.2); the organisation's own web
-address comes later.
+All of U.3 is built, in 20 commits, apart from the two held parts (item 11, conflicts A and B), which
+keep today's behaviour. What each person now reads:
 
-Being built now, without needing any open answer: creating another organisation ("Create an
-organisation"), "Choose an organisation", the facts on an invitation (the organisation, the end date,
-how often it asks), a fresh link for an expired invitation, "Almost in" while an admin lets someone
-in (with a reminder allowed once a day), turning reminders back on or stopping all email from an
-email's link, asking the lead for more time when a check-in has ended, and the new admin's welcome
-card with "Get … going".
+- **"Create an organisation"**, word for word from the prototype, on the white card. You can now own
+  more than one organisation, each with its own plan. The size question ("How many people will use
+  it?") only appears while the free-trial setting is on, because nothing uses the answer yet.
+- **"Choose an organisation"**: "You're in 2. You can switch at any time from the top of the sidebar."
+  It opens once after signing in for anyone in two or more. Only a row on this page switches, so a
+  stray click in the menu never does. The sidebar now says "You are in Coamana because your email
+  address was on its list of people."
+- **Only admins can change the organisation.** A member or a guest could rename it through their own
+  profile before. Now only the admin route can, and a test proves a member, a lead and a guest are
+  refused.
+- **The round "?" button is gone everywhere**, with nothing in its place. Help is in each person's own
+  menu and on "More".
+- **Invitations last 14 days.** An expired one reads "This link has expired", "Invitation links last
+  14 days. You don't need a new invitation, just a fresh link.", with "Send me a fresh link". The same
+  answer is given for an address that was never invited, and nothing is sent to it.
+- **The invitation page** follows the prototype, except the held sentences, and keeps today's panel.
+- **"Almost in"**: "You're from outside Coamana, so an admin there has to let you in. We've asked Sahar
+  Ali." with "Remind Sahar", once a day, enforced on the server. A name appears only after a real
+  invitation. Left out of the prototype's wording: "and text", because there are no text messages,
+  and "Usually within a day", because nothing knows how fast admins answer.
+- **Stopping reminders from an email**: "Done. No more reminders for …", with "Turn them back on" and
+  "Stop all email from Groundwork instead".
+- **"This check-in reached its end date"**, with "Ask Hafsah for more time", once a day. The lead gets
+  one button to extend it.
+- **The new admin's welcome card and "Get … going"**, with "Connect WhatsApp (optional)" only while
+  WhatsApp is on. Nothing else mentions WhatsApp while it is off.
+- **Joining by email domain**: the admin switch "Anyone with an @coamana.com email" on the People page,
+  and "Where do you work?" after sign-in. It only works for a confirmed address, never for public
+  mail, and never for a domain another organisation already uses. People join as "Takes part".
+- **The organisation's invite link**, for example `/j/coamana-6rr7`, joining as "Takes part". Turning
+  it off closes it, and turning it on makes a new one.
 
-Waiting for you (item 11): what the invitation says about who reads your words; the safeguards for
-joining by email domain; how the organisation's invite link behaves; whether to name the admin who is
-asked; 14 or 90 days for an invitation; more than one organisation of your own; and the welcome
-card's sentence.
+Now with the tester (the full suites, one after the other, 2 workers), then the reviewer.
 
 ## Found on the way, for later tasks
 
