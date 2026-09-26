@@ -4,7 +4,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
 import { whenItAsks } from './when-it-asks';
@@ -229,8 +229,9 @@ export class ParticipantsService {
             select: { id: true },
           })) !== null
         : false;
+      /* Whoever added THIS person - the lead, or the admin who set the check-in up for them (U.4). */
       const inviter = await tx.user.findUnique({
-        where: { id: ground.initiatorId },
+        where: { id: whoToAsk(participant.addedByUserId, ground.initiatorId) },
         select: { role: true, organizationId: true },
       });
       const wait = needsApproval({
@@ -239,8 +240,7 @@ export class ParticipantsService {
         alreadyAMemberHere,
         /* An admin of this organisation adding somebody IS the approval - asking them to approve
            their own action is a queue with one item in it that they put there. */
-        addedByAnAdminOfThisOrg:
-          inviter?.role === 'ADMIN' && inviter?.organizationId === ground.organizationId,
+        addedByAnAdminOfThisOrg: isAnAdminOf(ground.organizationId, inviter),
       });
 
       if (!user) {

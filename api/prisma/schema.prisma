@@ -1270,6 +1270,14 @@ model GroundParticipant {
   /// own words. It used to go into the invite email and nowhere else, so the one statement of what
   /// somebody was taken on to do was not on the record the reports read.
   remitAsGiven               String?           @map("remit_as_given") @db.Text
+  /// WHO PUT THIS PERSON ON THE CHECK-IN: the lead, or the admin who set it up for them (U.4).
+  /// Read by the door rule (participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts):
+  /// somebody an admin of this organisation added does not wait for an admin. The rule used to ask the
+  /// person who RUNS the check-in, so four people an admin added to a check-in she set up for a lead
+  /// were all held for approval. Null on older rows and on doors with no adder (an open link), where
+  /// the rule falls back to the person who runs it, as before. An id, not a relation: the adder may
+  /// leave, and the row must not.
+  addedByUserId              String?           @map("added_by_user_id")
   /// Whether they came in through the open link rather than being put on a roster. Recorded rather
   /// than inferred: `invitedAt` is set on a link respondent immediately, the `@unclaimed.invalid`
   /// address is replaced when they finish, and a null `userId` is also true of somebody invited who

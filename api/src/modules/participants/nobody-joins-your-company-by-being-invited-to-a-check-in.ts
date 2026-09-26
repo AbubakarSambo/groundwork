@@ -80,6 +80,25 @@ export function whyTheyDoNotNeedApproval(who: WhoIsArriving): string | null {
   return null;
 }
 
+/**
+ * WHOSE ACTION ADDED THIS PERSON (U.4).
+ *
+ * The rule above says somebody an admin adds does not wait. The code asked the person who RUNS the
+ * check-in, and an admin who sets a check-in up for a lead is not the person who runs it: she named
+ * the lead, added four people, and all four were held for her own approval. So the question is asked
+ * of whoever added this person, recorded on their row; only where nothing recorded it (older rows)
+ * does it fall back to the person who runs the check-in, which is what it always did.
+ */
+export type WhoAddedThem = { role: string; organizationId: string } | null;
+
+export function whoToAsk(addedByUserId: string | null | undefined, initiatorId: string): string {
+  return addedByUserId || initiatorId;
+}
+
+export function isAnAdminOf(groundOrganizationId: string, adder: WhoAddedThem): boolean {
+  return adder?.role === 'ADMIN' && adder.organizationId === groundOrganizationId;
+}
+
 export function needsApproval(who: WhoIsArriving): boolean {
   return whyTheyDoNotNeedApproval(who) === null;
 }

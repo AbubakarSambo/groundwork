@@ -728,6 +728,8 @@ export class GroundsService {
             email: p.email.toLowerCase(),
             partyType: PartyType.PARTICIPANT,
             roleAsDescribed: p.roleAsDescribed,
+            /* The admin setting this up added them, so they do not wait for an admin (U.4). */
+            addedByUserId: adminUserId,
             invitedAt: new Date(),
             inviteToken,
             inviteTokenExpiresAt: inviteExpiryFrom(),
@@ -4150,6 +4152,8 @@ export class GroundsService {
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
+          /* The lead, or the admin who set it up: the door rule asks which (U.4). */
+          addedByUserId: initiatorId,
           /* Over the cap: on the check-in, not written to, until an admin makes room. */
           awaitingSeat: !waitingForASeat.room,
           /**
