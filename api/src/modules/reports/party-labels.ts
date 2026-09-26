@@ -422,6 +422,64 @@ export function aNameIsNotATitle(text: string, names: Iterable<string>): string 
   return out;
 }
 
+/**
+ * "PARTICIPANTS A, B, AND C" IS THREE LABELS, AND THE SUBSTITUTION SAW NONE OF THEM.
+ *
+ * Read on the lead's own board of the sales check-in, 26 September 2026, about her own team:
+ *
+ *   "You believe the target is collective, while Participants A, B, and C all believe they are
+ *    working towards individual targets."
+ *
+ * Three real people left as placeholders in front of the one reader entitled to all three names.
+ * The labels are "Participant A", "Participant B" and "Participant C"; the model collapsed them
+ * into a plural, and every substitution below matches word-bounded, so "Participants" matches
+ * nothing at all. It is invisible to the scorer for the same reason.
+ *
+ * SO THE PLURAL IS EXPANDED BACK INTO SINGULARS BEFORE ANYTHING ELSE RUNS, and then the ordinary
+ * machinery does the rest: each one is named for the reader who may see it, the reader's own
+ * becomes "you", and one that may not be named stays a label. Nothing here knows about names,
+ * which is why it is a rewrite of the label text rather than a second naming rule.
+ *
+ * ONLY WHERE EVERY LETTER IS A LABEL WE ACTUALLY HANDED OUT, and only for two or more of them.
+ * Same discipline as the bare-label tidy-up further down: where it cannot be certain what it is
+ * looking at, it does nothing. "Participants A and I" is left alone rather than inventing a
+ * "Participant I", and a lone "Participants" with no letters after it is not touched.
+ */
+export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>): string {
+  const labels = new Map<string, string>();
+  for (const l of known) {
+    const m = /^participant\s+([A-Z]+)$/i.exec((l ?? '').trim());
+    if (m) labels.set(m[1].toUpperCase(), (l ?? '').trim());
+  }
+  if (labels.size < 2) return text;
+
+  /*
+   * NO `i` FLAG, AND THAT IS NOT A STYLE CHOICE. With one, `[A-Z]+` matches lower case too, so the
+   * list swallowed the word "and" out of "A, B, and C" and then refused the whole match because
+   * "and" is not a label. The letters are upper case by construction (see aLetterFor), so matching
+   * them strictly is both correct and what keeps "and" out.
+   */
+  return text.replace(
+    /\b[Pp]articipants\s+([A-Z]+(?:\s*,\s*[A-Z]+)*)(?:\s*,)?(?:\s+and\s+([A-Z]+))?/g,
+    (whole: string, list: string, last: string | undefined) => {
+      const letters = [
+        ...list.split(',').map((x) => x.trim()),
+        ...(last ? [last.trim()] : []),
+      ].filter(Boolean);
+      /* Two or more, and every one of them a label this check-in actually handed out. */
+      if (letters.length < 2) return whole;
+      const resolved = letters.map((x) => labels.get(x.toUpperCase()));
+      if (resolved.some((x) => !x)) return whole;
+      const names = resolved as string[];
+      /* "Participant A, Participant B and Participant C" - the last joined with "and", which is
+         how a person writes a list, and how the rest of this file writes one. */
+      return names.length === 2
+        ? `${names[0]} and ${names[1]}`
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    },
+  );
+}
+
 export function withNames(
   text: string,
   visible: Map<string, string>,
@@ -429,6 +487,10 @@ export function withNames(
   opts?: { viewerLabel?: string | null },
 ): string {
   if (!text) return text;
+
+  /* A COLLAPSED PLURAL IS EXPANDED FIRST, so the reader's own label in it can still become "you"
+     and the rest can still be named. See pluralLabelsBecomeSingular. */
+  text = pluralLabelsBecomeSingular(text, [...(allLabels ?? []), ...visible.keys()]);
 
   /**
    * SECOND PERSON FOR THE READER, BEFORE ANY NAME GOES BACK.
