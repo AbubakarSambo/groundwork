@@ -109,10 +109,23 @@ describe('and neither does their board', () => {
     expect(theBoardsJudgementFor(AS_SERVED, { isLead: false })).toEqual({ theJudgement: null, theTable: null });
   });
 
-  it('hands the lead both', () => {
+  /*
+   * CHANGED 26 SEPTEMBER 2026, AND WHAT IT USED TO SAY IS THE REASON. This read "hands the lead
+   * both" and pinned `out.theTable` being the stored table. The lead was the one reader nothing
+   * protected from it, and what they were handed is the engine's counting sheet:
+   *
+   *   standing: THIN - only 1 people answered, which is too few to rank
+   *   asked 4 · answered 3 · said they cannot 0 · never reached 1
+   *
+   * Slot names, dotted counts, "1 people", a lower-case sentence, and a standing on how a person's
+   * answers were rated - which a lead may never read at all. 400 machine-table words on the lead's
+   * board across the twenty-four scenarios. So the table now reaches nobody, and the assertion is
+   * the opposite one. See the-table-is-for-the-engine. (Task 1.2, fix 4.)
+   */
+  it('hands the lead the judgement, and the machine\'s table to nobody', () => {
     const out = theBoardsJudgementFor(AS_SERVED, { isLead: true });
     expect(out.theJudgement).toBe(AS_SERVED.theJudgement);
-    expect(out.theTable).toBe(AS_SERVED.theTable);
+    expect(out.theTable).toBeNull();
   });
 
   it('survives a ground with no report yet', () => {

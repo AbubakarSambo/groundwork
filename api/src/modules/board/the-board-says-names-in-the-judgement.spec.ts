@@ -66,6 +66,8 @@ const REPORT = {
   divergences: [],
   centralQuestion: null,
   engagement: {},
+  theTable:
+    'FIELD: What is holding up approvals?\n  standing: THIN - only 1 people answered, which is too few to rank\n  asked 4 \u00b7 answered 3 \u00b7 said they cannot 0 \u00b7 never reached 1',
   theJudgement: {
     theGap:
       'The initiator believes the team is behind on a collective goal for one reason, but the record shows each person is working on an individual goal and is blocked by a different problem.',
@@ -145,6 +147,16 @@ describe('what the lead reads on her own board', () => {
     expect(board.theJudgement.theGap.toLowerCase()).not.toContain('the initiator');
     expect(board.theJudgement.startWith).toContain('Daniel Osei');
     expect(board.theJudgement.startWith).not.toContain('Participant A');
+  });
+
+  it('and the engine\'s own counting sheet is not on the page at all', async () => {
+    /* The lead is the reader nothing else protects, and what they were being handed was slot
+       names, dotted counts, "1 people" and a standing on how somebody's answers were rated. It
+       reaches nobody now. See the-table-is-for-the-engine. */
+    const board: any = await boardFor('u-amara');
+    expect(board.theTable).toBeNull();
+    expect(JSON.stringify(board)).not.toContain('standing: THIN');
+    expect(JSON.stringify(board)).not.toContain('1 people answered');
   });
 
   it('and so does every line of what has happened over time', async () => {

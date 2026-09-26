@@ -69,6 +69,7 @@ import {
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
+import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
@@ -4438,7 +4439,10 @@ happened, and what is in the way.`;
   ) {
     const sharedAs = (ground.report as any)?.sharedAs ?? null;
     const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any) });
-    const withNames = this.applyNames(ground.report as any, (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* AND THE MACHINE'S TABLE NEVER LEAVES THE MACHINE, for any reader, lead included. Stripped
+       here because this is the door every report read goes through, the board's included. See
+       the-table-is-for-the-engine. */
+    const withNames = this.applyNames(theTableStaysWithTheEngine(ground.report as any), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
     return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,

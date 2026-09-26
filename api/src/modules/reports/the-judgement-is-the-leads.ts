@@ -37,7 +37,10 @@
  * Each one is here because of what it holds, not because of where it came from:
  *
  *   theJudgement      the gap, what to do, and who to start with. A verdict on the room.
- *   theTable          the engine's own working (see the-table-is-for-the-engine).
+ *   theTable          the engine's own working (see the-table-is-for-the-engine, which now takes
+ *                     it away from every reader including the lead - it stays on this list because
+ *                     a denylist that forgets a field the moment it is handled elsewhere is how
+ *                     the field comes back).
  *   divergences       the lead's reading of where accounts disagree, naming the sides.
  *   leadershipGaps    what the lead is not doing. Theirs to read about themselves.
  *   networkPicture    who is load-bearing across the whole check-in.
@@ -113,5 +116,19 @@ export function theBoardsJudgementFor(
   viewer: { isLead: boolean },
 ): { theJudgement: unknown; theTable: unknown } {
   if (!viewer.isLead) return { theJudgement: null, theTable: null };
-  return { theJudgement: report?.theJudgement ?? null, theTable: report?.theTable ?? null };
+  /*
+   * AND THE TABLE IS NULL FOR THE LEAD TOO, WHICH IS THE PART THAT CHANGED.
+   *
+   * This used to hand the lead `report.theTable` - the engine's counting sheet - and the lead is
+   * the reader nothing else protects. It is slot names, dotted counts, "1 people", lower-case
+   * sentences, and a standing on how each person's answers were rated, which a lead may never see
+   * at all. 400 machine-table words on the lead's board across the twenty-four scenarios, and 400
+   * more on their report.
+   *
+   * The key stays, and stays null, rather than being dropped: the board's response has always had
+   * this field and the client reads it by name. What is gone is anything ever being in it. See
+   * the-table-is-for-the-engine, which is also where the report's own read strips it, so a board
+   * built from an already-stripped row and this line agree.
+   */
+  return { theJudgement: report?.theJudgement ?? null, theTable: null };
 }
