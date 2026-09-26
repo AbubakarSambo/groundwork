@@ -6,7 +6,11 @@ same file.
 
 ## Needs Hafsah
 
-### 1. The API will not start when the email key is empty
+### 1. The API will not start when the email key is empty: fixed by the engine workspace
+
+**Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
+`email.service.ts`, with the test `the-api-starts-with-an-empty-email-key.spec.ts`). The key can be
+empty again; `re_test` still works too. Nothing is left for you to do here.
 
 *Found on 26 September 2026, while setting up this computer. Moved here from `docs/morning-report.md`.*
 
@@ -36,7 +40,11 @@ push of `wip/prototype-ui`, earlier on 26 September, came before that check. I h
 nothing was at risk: see 0.2 below. I am writing it down because the rule was not followed in the
 right order.
 
-### 3. The 24 scenarios cannot run on this computer
+### 3. The 24 scenarios cannot run on this computer: the runner has now arrived
+
+**Update, 26 September:** the engine workspace has added the runner to its branch, and I have
+merged it. It was missing because a trailing slash in `.gitignore` meant none of the exceptions for
+`api/journey/` had ever worked. From now on the 24 scenarios and the scorer run here too.
 
 Every task is meant to finish with the 24-scenario run and the scorer. The runner,
 `api/journey/all-24`, is not on this computer. The whole `api/journey/` folder is in `.gitignore`,
@@ -301,3 +309,15 @@ Company, You and Suites come with those pages, in U.5, U.12, U.15 and U.17.
 - **The sidebar's touch-screen layout was not seen in the running app.** On a touch screen the pin
   and pencil sit in the row and the badge moves under the name. The browser's phone mode hides the
   sidebar below 768px wide, so only the tests check this layout.
+- **The judgement card joins pieces with a colon** (found by the engine workspace). In
+  `client/src/components/gw/TheJudgement.tsx`, lines 102 and 121, "What this cannot tell you" reads
+  "**The renewals target**: nobody said who set it.", and "What the check-ins did not get to" joins
+  "…: 2 conversations never reached it" the same way. The engine will make each part a full sentence;
+  the screen must then show them as sentences, not joined by a colon. The "See the counts behind
+  this" part is now dead, because the engine no longer sends the table to anyone. To fix in U.9 and
+  U.10.
+- **What the engine no longer sends to a participant** (from `docs/answers-from-engine.md`): a
+  participant's report and board no longer carry the judgement, the table, the differences between
+  people, or the raw direction, and a participant sees only their own finding. Screens must not
+  print `.label` or `.participantLabel` ("Participant A"); they print `who`, which holds the name or
+  "a colleague". There is a new `theOpening` on each report, which the board's summary should read.
