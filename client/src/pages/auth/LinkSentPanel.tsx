@@ -1,20 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { TextAction } from '@/components/gw/kit'
+import { Button } from '@/components/gw/kit'
+import { AuthCard, AuthError } from './auth-kit'
 
 /**
- * "A LINK IS ON ITS WAY" WAS TWO PAGES. W8-49.
+ * "CHECK YOUR EMAIL" (A2, #/signin/sent), shown after a link has gone.
  *
- * `/auth` had its own version inside the send-me-a-link view: a tick, one line of
- * text and a way back. `/auth/sent` had the good one - the countdown, the resend,
- * what to expect, and the way back for somebody who mistyped their address. Which
- * one you got depended on which button you pressed to get there, and the worse one
- * was the one on the page people actually start from.
+ * ONE PAGE FOR ONE MOMENT. W8-49. `/auth` and `/auth/sent` each had their own version, and which
+ * one you got depended on which button you pressed. Both render this now. `/auth/sent` stays a real
+ * URL, because the marketing home's SaveCard sends people to it.
  *
- * So the good one moved here and both use it. `/auth/sent` is still a real URL,
- * because `SaveCard` sends people to it and old links may exist - it just renders
- * the same page now rather than a second one.
+ * The words are the prototype's (docs/prototype/screens/A2-accounts-and-signing-in/signin-sent.txt).
+ * The old "What to expect" list went with the rewording: its second step promised "You will be asked
+ * to set a password", which is a decision waiting for Hafsah, not a fact this page can promise.
+ *
+ * "Wrong address? Use a different one" is not in the prototype and is kept: somebody who mistyped
+ * their address can otherwise only resend, forever, to the typo.
  */
+
+/** How long before "Send it again" can be pressed. A second link replaces the first, so two presses a
+ *  second apart would leave somebody holding a dead link from the first email. */
+const WAIT_SECONDS = 30
+
 /*
  * THE RESEND GOES BACK THROUGH THE DOOR THAT SENT THE FIRST LINK.
  *
@@ -31,79 +38,52 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent }: {
   resend: () => Promise<unknown>
   onUseDifferent: () => void
 }) {
-  const [countdown, setCountdown] = useState(30)
-  const [canResend, setCanResend] = useState(false)
+  const [countdown, setCountdown] = useState(WAIT_SECONDS)
+  const [sentAgain, setSentAgain] = useState(false)
+  const [failed, setFailed] = useState('')
 
   useEffect(() => {
-    if (countdown <= 0) { setCanResend(true); return }
+    if (countdown <= 0) return
     const t = setTimeout(() => setCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [countdown])
 
-  const [resendFailed, setResendFailed] = useState('')
   const resend = useMutation({
     mutationFn: sendAgain,
-    onSuccess: () => { setCountdown(30); setCanResend(false) },
-    onError: () => setResendFailed('That link did not send. Try again in a moment.')
+    onSuccess: () => { setSentAgain(true); setCountdown(WAIT_SECONDS) },
+    onError: () => setFailed('The link did not send again. Please try again in a moment.'),
   })
 
   return (
-    <div style={{ textAlign: 'center', paddingTop: 8 }}>
-
-      <div style={{ width: 52, height: 52, background: 'var(--gw-blue-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-        <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-          <rect x="1" y="1" width="20" height="16" rx="2" stroke="var(--gw-navy)" strokeWidth="1.5" />
-          <path d="M1 4l10 7 10-7" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+    <AuthCard
+      title="Check your email"
+      sub={<>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
+    >
+      {failed && <AuthError>{failed}</AuthError>}
+      <div className="gw-auth-actions">
+        <Button
+          kind="secondary"
+          wide
+          disabled={countdown > 0 || resend.isPending}
+          onClick={() => { setFailed(''); setSentAgain(false); resend.mutate() }}
+        >
+          {resend.isPending ? 'Sending…' : 'Send it again'}
+        </Button>
       </div>
-
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
-      <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 300, margin: '0 auto 16px' }}>
-        We sent a secure link to <strong>{email}</strong>.
-      </div>
-
-      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 16px', maxWidth: 300, margin: '0 auto 18px', textAlign: 'left' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 8 }}>What to expect</div>
-        {[
-          'Click the link in the email.',
-          'You will be asked to set a password to secure your account.',
-          'Your Groundwork account is live.',
-        ].map((t, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < 2 ? 6 : 0, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-            <span style={{ fontWeight: 700, color: 'var(--gw-navy)', flexShrink: 0 }}>{i + 1}.</span>
-            <span>{t}</span>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>No email? Check your spam folder.</div>
-
-      {!canResend ? (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
-          Resend available in <span>{countdown}</span>s
-        </div>
-      ) : (
-        <div style={{ marginTop: 8 }}>
-          {resendFailed && <div className="gw-er" role="alert" style={{ fontSize: 12, marginBottom: 6 }}>{resendFailed}</div>}
-          <TextAction size={12} onClick={() => { if (!resend.isPending) { setResendFailed(''); resend.mutate() } }}>
-            {resend.isPending ? 'Sending…' : 'Send another link'}
-          </TextAction>
-        </div>
+      {/* Only the news is announced. The countdown is not in a live region, or a screen reader would
+          read it out every second. */}
+      <p className="gw-auth-small" role="status">
+        {sentAgain ? 'We sent it again. Use the newest email, because it replaces the one before.' : ''}
+      </p>
+      {countdown > 0 && (
+        <p className="gw-auth-small" style={{ marginTop: 4 }}>
+          You can send it again in {countdown} {countdown === 1 ? 'second' : 'seconds'}.
+        </p>
       )}
-
-      {/*
-        THE ADDRESS MIGHT BE WRONG, AND THERE WAS NO WAY BACK.
-
-        Every link here pointed at the marketing site or resent to the SAME address.
-        Somebody who mistyped their email had one option: leave. Resending to a typo
-        forever is the failure this page makes easiest, so the way back to the form is
-        the more useful of the two exits and goes first.
-      */}
-      <div style={{ marginTop: 22 }}>
-        {/* The only escape from a mistyped address on a dead-end screen, and it was a span the keyboard could not reach. */}
-        <TextAction size={12.5} strong onClick={onUseDifferent}>Wrong address? Use a different one</TextAction>
+      <div className="gw-auth-links">
+        {/* The only way off this page for a mistyped address: a button, so the keyboard reaches it. */}
+        <button type="button" className="gw-auth-link" onClick={onUseDifferent}>Wrong address? Use a different one</button>
       </div>
-
-    </div>
+    </AuthCard>
   )
 }

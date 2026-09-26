@@ -17,7 +17,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { Button } from '@/components/gw/kit'
-import { AuthBrand, AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField } from './auth-kit'
+import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField } from './auth-kit'
 
 
 
@@ -421,19 +421,14 @@ export function AuthPage() {
     )
   }
 
-  /* "Check your email", after a link has gone. The panel carries its own heading. */
+  /* "Check your email", after a link has gone. */
   if (linkSent) {
     return (
-      <div className="gw-auth-page">
-        <div className="gw-auth-card">
-          <AuthBrand />
-          <LinkSentPanel
-            email={email}
-            resend={sendTheLinkAgain}
-            onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
-          />
-        </div>
-      </div>
+      <LinkSentPanel
+        email={email}
+        resend={sendTheLinkAgain}
+        onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
+      />
     )
   }
 

@@ -113,3 +113,31 @@ describe('the answers at the door are unchanged', () => {
     expect(await screen.findByText('You were signed out because you had been away a while. Sign in and we will take you back to where you were. Nothing you wrote has been lost.')).toBeTruthy()
   })
 })
+
+describe('"Check your email", as the person who asked for a link reads it', () => {
+  it('reads the prototype\'s words, with the way back for a mistyped address', async () => {
+    ;(authApi.entrySave as any).mockResolvedValue({ message: 'ok', email: 'x' })
+    const { container } = renderAt('/auth')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link instead' }))
+    await screen.findByRole('heading', { name: 'Check your email' })
+    expect(readable(container)).toBe([
+      'Groundwork',
+      'Check your email',
+      'We sent a sign-in link to wairimu@baridi.test. Open it on any device.',
+      'Send it again',
+      'You can send it again in 30 seconds.',
+      'Wrong address? Use a different one',
+    ].join(''))
+    expect((screen.getByRole('button', { name: 'Send it again' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('"Wrong address? Use a different one" goes back to a form holding the address', async () => {
+    ;(authApi.entrySave as any).mockResolvedValue({ message: 'ok', email: 'x' })
+    renderAt('/auth')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'wairimu@baridi.tset' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link instead' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Wrong address? Use a different one' }))
+    expect(((await screen.findByLabelText('Email')) as HTMLInputElement).value).toBe('wairimu@baridi.tset')
+  })
+})
