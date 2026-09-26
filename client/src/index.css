@@ -56,6 +56,14 @@
   --gw-page: #FDFBF6;
 
   /*
+   * THE TWO TYPEFACES. Atkinson Hyperlegible for everything a person reads and presses: it was
+   * designed so similar letters cannot be confused, in bright light and on small screens. Literata
+   * only for greetings, page titles, and the names of check-ins and people when they head a page.
+   */
+  --gw-font-ui: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gw-font-name: 'Literata', Georgia, 'Times New Roman', serif;
+
+  /*
    * FIVE NAMES THAT WERE USED AND NEVER DEFINED.
    *
    * `--gw-card`, `--gw-slate`, `--gw-line`, `--gw-ink`, `--gw-green` and `--gw-accent` are read by
@@ -195,8 +203,10 @@
 * { border-color: var(--gw-border); }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
+  font-family: var(--gw-font-ui);
+  /* 16px: "Regular 16. Everything you read." Pages that set their own size keep it for now; this is
+     what everything that inherits its size reads at. */
+  font-size: 16px;
   color: var(--gw-text);
   background: var(--gw-page);
   line-height: 1.5;
@@ -1334,3 +1344,24 @@ details > summary.gw-fold-summary { list-style: none; }
 details > summary.gw-fold-summary::-webkit-details-marker { display: none; }
 details > summary.gw-fold-summary > span:first-child::before { content: '▸ '; color: var(--gw-muted); }
 details[open] > summary.gw-fold-summary > span:first-child::before { content: '▾ '; }
+
+
+/* ── THE TYPE SCALE (A1, the design system) ───────────────────
+   Greeting    Literata 38, page titles only ("Morning, Wairimu")
+   Title       Literata 30, a check-in, person or deal heading a page
+   Heading     Atkinson Bold 22, a section ("What needs you")
+   Act on      Atkinson Bold 18, anything you can act on
+   Body        Regular 16, everything you read
+   Small       14.5, and Tiny 13: never smaller than 13
+   The two Literata sizes step down on a phone so a long name still fits in the width. */
+.gw-t-greet { font-family: var(--gw-font-name); font-size: 38px; line-height: 1.12; font-weight: 500; letter-spacing: -.01em; }
+.gw-t-title { font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500; }
+.gw-t-h2    { font-family: var(--gw-font-ui); font-size: 22px; line-height: 1.25; font-weight: 700; }
+.gw-t-h3    { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; }
+.gw-t-body  { font-size: 16px; line-height: 1.5; }
+.gw-t-small { font-size: 14.5px; line-height: 1.45; }
+.gw-t-tiny  { font-size: 13px; line-height: 1.4; }
+@media (max-width: 640px) {
+  .gw-t-greet { font-size: 30px; }
+  .gw-t-title { font-size: 24px; }
+}

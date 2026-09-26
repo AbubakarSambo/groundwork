@@ -11,11 +11,11 @@
  *
  *   Zone label     11px, uppercase, .7px tracking, weight 800, navy, with a rule
  *   Section label  12.5px, uppercase, .4px tracking, weight 700, muted
- *   Stat value     Georgia serif, 24px, lineHeight 1, 5px under its label
- *   Row value      Georgia serif, 17px, navy
+ *   Stat value     the name face (Literata), 24px, lineHeight 1, 5px under its label
+ *   Row value      the name face (Literata), 17px, navy
  *
  * The serif numeral against the sans label is why the board's glance row reads
- * instantly, and no other page in the product uses Georgia at all.
+ * instantly, and it was Georgia until the design system named Literata for it.
  *
  * This is an EXTRACTION, not a redesign: every value here is copied from BoardPage
  * unchanged, so lifting them changes nothing visually and the board keeps rendering
@@ -148,7 +148,7 @@ export function Stat({ label, value, caption, tone }: { label: string; value: st
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', flex: 1, minWidth: 150 }}>
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
-      <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
+      <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
       {caption && <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{caption}</div>}
     </div>
   )
