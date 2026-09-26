@@ -758,7 +758,7 @@ still waiting never reaches the check-in. Two older copies of the dashed sentenc
 through. Nothing has changed - try again." remain, on the People page (fixed in U.4) and in "What you
 are carrying forward".
 
-### U.4 People, roles and access: partly built, being tested
+### U.4 People, roles and access: built and tested, not yet reviewed
 
 Seven commits so far, with the tests for each change:
 - **People an admin adds no longer wait for an admin.** Before, when Sahar set up a check-in for a
@@ -781,6 +781,14 @@ Seven commits so far, with the tests for each change:
 The wording the builder had to write, where no screen has any, is listed in its commit notes. It is
 mostly small states such as "Nobody here matches that." and "Not set". No screen could be checked
 signed in (item 14). Item 15 lists what needs you.
+
+Two more fixes came after: the People list now reads real memberships, so someone who belongs here
+but is looking at another organisation still appears, with their role here; and the line after
+pasting a list is now full sentences, such as "2 people will be invited. 1 address was listed twice,
+so it is left out." The full run found one missing style for the People pages, now added. **Tested:**
+every screen test and every API test passed (2,612 and 9,264), and the build is clean. After merging
+the engine workspace's latest, its conversation and report tests passed again (3,532). **Not ticked,**
+because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
