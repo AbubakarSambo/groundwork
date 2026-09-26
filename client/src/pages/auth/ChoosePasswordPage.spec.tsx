@@ -18,7 +18,7 @@ import { authApi } from '@/api/auth'
  * email to people who are about to type a password.
  */
 
-vi.mock('@/api/auth', () => ({ authApi: { setPassword: vi.fn(), resetPassword: vi.fn() } }))
+vi.mock('@/api/auth', () => ({ authApi: { setPassword: vi.fn(), resetPassword: vi.fn(), validateToken: vi.fn().mockResolvedValue({ valid: true }) } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
 
 const mockedNavigate = vi.fn()
@@ -38,10 +38,10 @@ async function setPasswordWith(next: string) {
     </MemoryRouter>
     </QueryClientProvider>,
   )
-  const [pw, confirm] = screen.getAllByPlaceholderText(/characters|Same as above/i)
-  fireEvent.change(pw, { target: { value: 'Passw0rdish' } })
-  fireEvent.change(confirm, { target: { value: 'Passw0rdish' } })
-  fireEvent.click(screen.getByRole('button', { name: /Set password/i }))
+  /* U.2: the fields are found by the labels a person reads, and the button reads "Save password". */
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Passw0rdish' } })
+  fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Passw0rdish' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
   await waitFor(() => expect(mockedNavigate).toHaveBeenCalled())
   return mockedNavigate.mock.calls[0][0]
 }
@@ -96,9 +96,10 @@ describe('resetting a password', () => {
   }
 
   async function submitReset() {
-    fireEvent.change(screen.getByLabelText(/New password/i), { target: { value: 'Passw0rdish' } })
-    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'Passw0rdish' } })
-    fireEvent.click(screen.getByRole('button', { name: /Reset password/i }))
+    /* U.2: "Confirm password" reads "Type it again" and "Reset password" reads "Save password", the prototype's words. */
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Passw0rdish' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Passw0rdish' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
   }
 
   it('calls the reset endpoint, not the set-a-first-password one', async () => {
@@ -138,7 +139,7 @@ describe('resetting a password', () => {
     await waitFor(() => expect(screen.getByText('This link has expired.')).toBeTruthy())
     expect(screen.queryByText(/Check your inbox/i)).toBeNull()
     // And they can try again from here, rather than being stranded.
-    expect(screen.getByRole('button', { name: /Reset password/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save password' })).toBeTruthy()
   })
 
   it('with no token it says so instead of offering a form that cannot work', async () => {

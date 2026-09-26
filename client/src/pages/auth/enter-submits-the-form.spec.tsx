@@ -12,7 +12,8 @@ describe('forms behave like forms', () => {
   it('choosing a password is a form with a submit button and no per-field Enter handler', () => {
     const p = read('ChoosePasswordPage.tsx')
     expect(p).toMatch(/<form noValidate onSubmit=\{e => \{ e\.preventDefault\(\); submit\(\) \}\}>/)
-    expect(p).toContain('<button className="gw-btn" type="submit" disabled={save.isPending}>')
+    /* U.2: the kit's Button, still a submit button, still disabled while saving. */
+    expect(p).toContain('<Button type="submit" wide disabled={save.isPending}>')
     expect(p).not.toMatch(/onKeyDown=\{e => e\.key === 'Enter' && submit\(\)\}/)
     expect(p.match(/autoComplete="new-password"/g)?.length).toBe(2)
   })

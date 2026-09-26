@@ -71,6 +71,14 @@ export const authApi = {
   login: (email: string, password: string) =>
     apiClient.post<VerifyEmailResponse>('/auth/login', { email, password }).then(r => r.data),
 
+  /**
+   * Whether a link from an email still works, before anybody types into the page it opened. The
+   * server may say whose address the link is for (the reset page shows it); when it does not, the
+   * page says nothing about the address.
+   */
+  validateToken: (token: string, type: 'PASSWORD_RESET' | 'PASSWORD_SETUP' | 'EMAIL_VERIFICATION') =>
+    apiClient.get<ValidateTokenResponse>('/auth/validate-token', { params: { token, type } }).then(r => r.data),
+
   forgotPassword: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/forgot-password', { email }).then(r => r.data),
 
