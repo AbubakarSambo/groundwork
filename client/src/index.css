@@ -1642,4 +1642,7 @@ body:has(.gw-sidebar-desktop) .gw-help-btn { display: none !important; }
   .gw-auth-card { padding: 24px 20px; }
   .gw-auth-title { font-size: 26px; }
   .gw-auth-split-form { padding: 24px 16px 40px; }
+  .gw-auth-split-body { margin: 0; padding-top: 28px; }
+  /* Stacked on a phone, so the floating help button in the corner never sits on "Sign up". */
+  .gw-auth-links { flex-direction: column; align-items: flex-start; gap: 6px; }
 }

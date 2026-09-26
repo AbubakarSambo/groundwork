@@ -66,7 +66,9 @@ describe('a page with no way out', () => {
        * The stricter rule belongs only to a page a guard HOLDS you on, where an in-app route
        * loops straight back. `/org/setup` is the one of those, and the next test asserts it.
        */
-      const leavesTheApp = src.includes('MARKETING_URL')
+      /* The account screens are built from AuthCard and AuthSplit (pages/auth/auth-kit.tsx), whose
+         Groundwork mark is the link to the marketing site. U.2. */
+      const leavesTheApp = src.includes('MARKETING_URL') || /<Auth(Card|Split|Brand)\b/.test(src)
       const endsTheSession = /\blogout\s*\(/.test(src)
       const goesSomewhere = /navigate\(\s*['`]\//.test(src) || /<Link\b/.test(src)
       if (!leavesTheApp && !endsTheSession && !goesSomewhere) stranded.push(`${path} (${file})`)

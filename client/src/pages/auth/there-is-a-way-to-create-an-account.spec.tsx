@@ -101,7 +101,7 @@ describe('the create-account door', () => {
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam Taylor' } })
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.change(screen.getByLabelText(/Your organisation/i), { target: { value: 'Acme Ltd' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith(
       'sam@acme.test',
       { payload: { firstName: 'Sam Taylor', orgName: 'Acme Ltd' } },
@@ -115,7 +115,7 @@ describe('the create-account door', () => {
     await waitFor(() => screen.getByLabelText(/Your name/i))
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam' } })
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     /* The third argument is the honeypot — empty for a person who never sees the field. See
        components/gw/a-field-nobody-can-see.tsx. */
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, ''))
@@ -133,7 +133,7 @@ describe('a failure is not a success', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
     expect(screen.queryByText(/Check your email/)).toBeNull()
   })
@@ -144,7 +144,7 @@ describe('a failure is not a success', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(screen.getByText(/did not send/i)).toBeTruthy())
   })
 
@@ -155,7 +155,7 @@ describe('a failure is not a success', () => {
     renderAuth('?mode=signup')
     await waitFor(() => screen.getByLabelText(/^Email$/i))
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
     await waitFor(() => expect(screen.getByText(/already has an account/i)).toBeTruthy())
   })
 })

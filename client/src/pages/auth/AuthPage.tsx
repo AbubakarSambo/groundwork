@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { MARKETING_URL } from '@/lib/marketing'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
@@ -17,8 +16,8 @@ import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
-import { TextAction } from '@/components/gw/kit'
-import { GoogleMark } from './auth-kit'
+import { Button } from '@/components/gw/kit'
+import { AuthBrand, AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField } from './auth-kit'
 
 
 
@@ -240,7 +239,7 @@ export function AuthPage() {
       // No response at all, or the server broke. Neither says anything about whether
       // this address has an account.
       if (!status || status >= 500) {
-        setError('That did not send - something went wrong on our side. Try again.')
+        setError('That did not send, because something went wrong on our side. Please try again.')
         return
       }
       if (status === 429) {
@@ -290,7 +289,7 @@ export function AuthPage() {
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
-        setError('That did not send - something went wrong on our side. Try again.')
+        setError('That did not send, because something went wrong on our side. Please try again.')
         return
       }
       if (status === 429) {
@@ -334,6 +333,13 @@ export function AuthPage() {
     signIn.mutate()
   }
 
+  /** "Email me a sign-in link instead", from the sign-in screen: a link to the address typed above. */
+  function askForALink() {
+    setError('')
+    if (!looksLikeAnAddress(email.trim())) { setError(NOT_AN_ADDRESS); return }
+    sendLink.mutate()
+  }
+
   function submitLink(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -342,328 +348,198 @@ export function AuthPage() {
     sendLink.mutate()
   }
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
+  /**
+   * GOOGLE, OFFERED ONLY WHEN THE SERVER CAN FINISH IT. A full page load, not a fetch: signing in with
+   * Google starts by handing the browser to Google.
+   */
+  const googleButton = (label: string) => methods?.google ? (
+    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}>
+      <GoogleMark />
+      {label}
+    </Button>
+  ) : null
 
-      <div style={{ background: 'var(--gw-navy)', padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
-            <rect x="5" y="0" width="12" height="3" rx="1.5" fill="white" opacity="0.45" />
-            <rect x="2" y="6" width="18" height="3" rx="1.5" fill="white" opacity="0.72" />
-            <rect x="0" y="12" width="22" height="3" rx="1.5" fill="white" />
-          </svg>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-.02em' }}>Groundwork</span>
-        </div>
-        <a href={MARKETING_URL} style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', textDecoration: 'none' }}>Back</a>
-      </div>
-
-      <div className="gw-bd" style={{ maxWidth: 480, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-
-        {/* The link-sent panel carries its own heading, so "Sign in" above it read as
-            two screens stacked. W8-62. */}
-        {!linkSent && (
-          <h1 className="gw-ttl">
-            {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
-          </h1>
+  /* THE SIGN-IN SCREEN (A2, #/signin). The prototype's two halves: the form, and the dark panel. */
+  if (view === 'password' && !linkSent) {
+    return (
+      <AuthSplit title="Sign in" sub="Use your password, or we’ll email you a link that signs you in.">
+        {passwordlessNotice && <AuthNotice title="Check your email">{passwordlessNotice}</AuthNotice>}
+        {googleFailed && !error && (
+          <AuthNotice role="alert">
+            Google sent you back, but we could not finish signing you in. Your email and password still work here. We have a note of what went wrong at our end.
+          </AuthNotice>
+        )}
+        {sessionExpired && !error && (
+          <AuthNotice>
+            You were signed out because you had been away a while. Sign in and we will take you back to where you were. Nothing you wrote has been lost.
+          </AuthNotice>
         )}
 
-        {view === 'password' && !linkSent && passwordlessNotice && (
-          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-              Check your email
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-              {passwordlessNotice}
-            </div>
-          </div>
-        )}
-
-        {/* `!linkSent`: on /auth/sent this whole form rendered above the panel. W8-62. */}
-        {view === 'password' && !linkSent && (
-          <>
-            <form noValidate onSubmit={submitPassword}>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signin-email">Email</label>
-                <input
-                  id="signin-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signin-password">Password</label>
-                <input
-                  id="signin-password"
-                  className="gw-input"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); clearNotices() }}
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={signIn.isPending}>
-                {signIn.isPending ? 'Signing in…' : 'Sign in'}
-              </button>
-              {googleFailed && !error && (
-                <div role="alert" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
-                  Google sent you back but we could not finish signing you in. Your email and password still work below. We have a note of what went wrong at our end.
-                </div>
-              )}
-              {sessionExpired && !error && (
-                <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
-                  You were signed out because you had been away a while. Sign in and we will take you back to where you were - nothing you wrote has been lost.
-                </div>
-              )}
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-              {/* Rendered only when the server confirms it can complete the
-                  flow. A full page navigation, not fetch: OAuth begins with a
-                  redirect the browser has to follow. */}
-              {methods?.google && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
-                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
-                    <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
-                    style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}
-                  >
-                    {/*
-                      * ONE MARK. There were two, stacked, on the sign-up side only - the sign-in
-                      * button below has always had one. Added twice when the logo went in and
-                      * never seen, because the change was checked on the sign-in half.
-                      */}
-                    <GoogleMark />
-                    Continue with Google
-                  </button>
-                </>
-              )}
-
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14, lineHeight: 2 }}>
-              <TextAction onClick={() => { clearNotices(); setView('forgot') }}>Forgot your password?</TextAction>
-              <br />
-              <TextAction strong onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'create' && !linkSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              No password to choose. We send you a link, and your account is made when you open it.
-            </div>
-
+        <form noValidate onSubmit={submitPassword}>
+          {trap.field}
+          {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
+          <AuthField
+            id="signin-email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={v => { setEmail(v); clearNotices() }}
+            autoFocus
+          />
+          <PasswordField
+            id="signin-password"
+            label="Password"
+            autoComplete="current-password"
+            value={password}
+            onChange={v => { setPassword(v); clearNotices() }}
+          />
+          {error && <AuthError>{error}</AuthError>}
+          <div className="gw-auth-actions">
+            <Button type="submit" wide disabled={signIn.isPending}>
+              {signIn.isPending ? 'Signing you in…' : 'Sign in'}
+            </Button>
             {/*
-              WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
-              read it here, while they are deciding, rather than find out on their first invoice.
-              See what-is-waiting-for-this-address.ts and the API's on-the-house route.
+              THE WAY IN FOR SOMEBODY WITH NO PASSWORD, ON THE SCREEN THEY START FROM.
+              It used to be reachable only from a link carrying ?mode=member, so a person who had
+              never set a password stood in front of a password box with no visible way past it.
+              It sends a link to the address typed above, through the same door as every sign-in
+              link, and gives the same answer whether or not the address has an account.
             */}
-            {freeRun && (
-              <div style={{ marginBottom: 18, padding: '11px 14px', borderRadius: 8,
-                            background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', fontSize: 13.5 }}>
-                {freeRun}
-              </div>
-            )}
-
-            <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
-              {trap.field}
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="signup-name">Your name</label>
-                <input
-                  id="signup-name"
-                  className="gw-input"
-                  placeholder="Sam Taylor"
-                  value={firstName}
-                  onChange={e => { setFirstName(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-              <div className="gw-fld">
-                {/*
-                  * "WORK EMAIL" WAS TURNING PEOPLE AWAY FOR NOTHING.
-                  *
-                  * Nothing in the code has ever required a company domain - not this form, not the
-                  * API, not the org creation. The label was the only thing saying otherwise, and a
-                  * label is enough: somebody who runs a real company off a Gmail address reads
-                  * "Work email" as "not for you" and closes the tab. The people most likely to be
-                  * turned away are exactly the small teams this is for.
-                  *
-                  * The placeholder said the same thing a second time, so it changes too.
-                */}
-                <label className="gw-label" htmlFor="signup-email">Email</label>
-                <input
-                  id="signup-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                />
-              </div>
-              <div className="gw-fld">
-                {/*
-                  ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from
-                  the name - which is the current behaviour for everybody, because
-                  nothing ever asked. It is optional because a person signing up to
-                  try it should not be stopped by a naming decision.
-                */}
-                <label className="gw-label" htmlFor="signup-org">Your organisation <span style={{ color: 'var(--gw-muted)', fontWeight: 400 }}>(optional)</span></label>
-                <input
-                  id="signup-org"
-                  className="gw-input"
-                  placeholder="Acme Ltd"
-                  value={orgName}
-                  onChange={e => { setOrgName(e.target.value); clearNotices() }}
-                />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5, lineHeight: 1.5 }}>
-                  What your organisation will be called. You can change it later.
-                </div>
-              </div>
-
-              {error && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
-
-              <button className="gw-btn" type="submit" disabled={createAccount.isPending}>
-                {createAccount.isPending ? 'Sending…' : 'Create my account →'}
-              </button>
-            </form>
-
-            {/* Same door as sign-in: an existing Google account signs in, a new one creates
-                a workspace automatically - findOrCreateGoogleUser decides which, not this button. */}
-            {methods?.google && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
-                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
-                  <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
-                  style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}
-                >
-                  <GoogleMark />
-                  Continue with Google
-                </button>
-              </>
-            )}
-
-            <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Already have an account? Sign in</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'link' && !linkSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              {isSignup
-                ? 'Enter your email. We will send you a link that creates your account. No password to choose.'
-                : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
-            </div>
-
-            <form noValidate onSubmit={submitLink}>
-              {trap.field}
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="link-email">Email</label>
-                <input
-                  id="link-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={sendLink.isPending}>
-                {sendLink.isPending ? 'Sending…' : 'Send link'}
-              </button>
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Sign in with password instead</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'forgot' && !linkSent && !resetSent && (
-          <>
-            <div className="gw-sub-t" style={{ marginBottom: 20 }}>
-              Enter your email and we will send you a link to reset your password.
-            </div>
-
-            <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="forgot-email">Email</label>
-                <input
-                  id="forgot-email"
-                  className="gw-input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); clearNotices() }}
-                  autoFocus
-                />
-              </div>
-
-              <button className="gw-btn" type="submit" disabled={sendReset.isPending}>
-                {sendReset.isPending ? 'Sending…' : 'Send reset link'}
-              </button>
-              {error && <div className="gw-er" role="alert" style={{ marginTop: 8 }}>{error}</div>}
-            </form>
-
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 14 }}>
-              <TextAction onClick={() => { clearNotices(); setView('password') }}>Back to sign in</TextAction>
-            </div>
-          </>
-        )}
-
-        {view === 'forgot' && resetSent && (
-          <div style={{ textAlign: 'center', paddingTop: 12 }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <TextAction size={13} onClick={() => { setResetSent(false); setView('password') }}
-              >
-                Back to sign in
-              </TextAction>
-            </div>
+            <Button kind="secondary" wide disabled={sendLink.isPending} onClick={askForALink}>
+              {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link instead'}
+            </Button>
+            {googleButton('Sign in with Google')}
           </div>
-        )}
+        </form>
 
-        {linkSent && (
+        <div className="gw-auth-links">
+          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</button>
+          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</button>
+        </div>
+      </AuthSplit>
+    )
+  }
+
+  /* "Check your email", after a link has gone. The panel carries its own heading. */
+  if (linkSent) {
+    return (
+      <div className="gw-auth-page">
+        <div className="gw-auth-card">
+          <AuthBrand />
           <LinkSentPanel
             email={email}
             resend={sendTheLinkAgain}
             onUseDifferent={() => { setLinkSent(false); setView(defaultView === 'create' ? 'create' : 'link') }}
           />
+        </div>
+      </div>
+    )
+  }
+
+  if (view === 'create') {
+    return (
+      <AuthCard title="Create your account" sub="No password to choose. We send you a link, and your account is made when you open it.">
+        {/*
+          WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
+          read it here, while they are deciding, rather than find out on their first invoice.
+          See what-is-waiting-for-this-address.ts and the API's on-the-house route.
+        */}
+        {freeRun && (
+          <p style={{ margin: '0 0 18px', padding: '11px 14px', borderRadius: 8, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', fontSize: 15, lineHeight: 1.5 }}>
+            {freeRun}
+          </p>
         )}
 
-        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--gw-border)', lineHeight: 1.6 }}>
-          One check-in each. One report showing where the team agrees, where it differs, and what to do next.
-        </div>
+        <form noValidate onSubmit={e => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } createAccount.mutate() }}>
+          {trap.field}
+          <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
+          {/*
+            "EMAIL", NOT "WORK EMAIL". Nothing in the product requires a company address, and
+            somebody who runs a real company from a Gmail address reads "Work email" as "not for
+            you". The prototype says "Work email"; which to use is waiting for Hafsah.
+          */}
+          <AuthField id="signup-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} />
+          {/*
+            ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
+            because a person signing up to try it should not be stopped by a naming decision.
+          */}
+          <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgName(v); clearNotices() }} />
+          <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>What your organisation will be called. You can change it later.</p>
 
-      </div>
-    </div>
+          {error && <AuthError>{error}</AuthError>}
+          <div className="gw-auth-actions">
+            <Button type="submit" wide disabled={createAccount.isPending}>
+              {createAccount.isPending ? 'Sending…' : 'Create account'}
+            </Button>
+            {/* Same door as sign-in: an existing Google account signs in, a new one gets its own
+                organisation. findOrCreateGoogleUser decides which, not this button. */}
+            {googleButton('Sign up with Google')}
+          </div>
+        </form>
+
+        <p className="gw-auth-small">
+          Already have an account?{' '}
+          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Sign in</button>
+        </p>
+      </AuthCard>
+    )
+  }
+
+  if (view === 'link') {
+    return (
+      <AuthCard
+        title="Get a sign-in link"
+        sub={isSignup
+          ? 'Enter your email. We will send you a link that creates your account. No password to choose.'
+          : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
+      >
+        <form noValidate onSubmit={submitLink}>
+          {trap.field}
+          <AuthField id="link-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+          {error && <AuthError>{error}</AuthError>}
+          <div className="gw-auth-actions">
+            <Button type="submit" wide disabled={sendLink.isPending}>
+              {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link'}
+            </Button>
+          </div>
+        </form>
+        <div className="gw-auth-links">
+          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Sign in with a password instead</button>
+        </div>
+      </AuthCard>
+    )
+  }
+
+  /* view === 'forgot' */
+  return (
+    <AuthCard title="Sign in">
+      {!resetSent ? (
+        <>
+          <p className="gw-auth-sub">Enter your email and we will send you a link to reset your password.</p>
+          <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); if (!looksLikeAnAddress(email)) { setError(NOT_AN_ADDRESS); return } sendReset.mutate() }}>
+            <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+            {error && <AuthError>{error}</AuthError>}
+            <div className="gw-auth-actions">
+              <Button type="submit" wide disabled={sendReset.isPending}>
+                {sendReset.isPending ? 'Sending…' : 'Send reset link'}
+              </Button>
+            </div>
+          </form>
+          <div className="gw-auth-links">
+            <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="gw-auth-sub">
+            <strong>Check your email.</strong> If an account exists for <strong>{email}</strong>, a password reset link is on its way. It expires in 1 hour.
+          </p>
+          <div className="gw-auth-links">
+            <button type="button" className="gw-auth-link" onClick={() => { setResetSent(false); setView('password') }}>Back to sign in</button>
+          </div>
+        </>
+      )}
+    </AuthCard>
   )
 }
