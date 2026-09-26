@@ -48,7 +48,15 @@ export interface ADependencyOverTime {
   on: string | null;
   onParticipantId: string | null;
   sessionsWaiting: number | null;
-  escalated: boolean;
+  /**
+   * Whether anybody went back about it after they first said they were waiting.
+   *
+   * Called `chased` and not `escalated` because this object is served whole. `overTime` is dumped
+   * into the report and the board as it stands, so every key in it is on a page somebody reads, and
+   * "escalated" is exactly the management word the wording rules ban. The row it comes from is
+   * still `escalatedAt` in the database; this is the name it is read under.
+   */
+  chased: boolean;
   status: string;
   say: string;
 }
@@ -189,14 +197,35 @@ export function dependenciesOverTime(
       const from = labelOf(d.fromParticipantId);
       const stated = d.statedInSession ?? null;
       const sessionsWaiting = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
-      const parts = [`${from} is waiting on ${on ?? 'something outside this check-in'} for "${d.what}"`];
-      if (sessionsWaiting !== null && sessionsWaiting > 0) parts.push(`${sessionsWaiting} ${sessionsWaiting === 1 ? 'session' : 'sessions'}`);
-      parts.push(d.escalatedAt ? 'escalated' : 'nothing on record about escalating it');
+      /*
+       * FULL SENTENCES, ONE IDEA EACH, AND NOT A ROW OF FRAGMENTS JOINED BY SEMICOLONS.
+       *
+       * This line was the single most-repeated thing the product wrote. It appears on every
+       * dependency of every report and board, and again in `stillOpen`, and it read:
+       *
+       *   Femi Okonkwo is waiting on Ngozi Eze for "their bank statements"; 2 sessions; nothing on
+       *   record about escalating it; this is work Ngozi Eze owes Femi Okonkwo, not the other way
+       *   round.
+       *
+       * Two problems, both of them the wording rules. "Escalating" is management jargon, and it was
+       * on the page 163 times in one twenty-four-scenario run - more than every other banned word
+       * put together. And the semicolons are the clipped shape the rules ban: four fragments where
+       * three sentences say the same thing and read like a person wrote them.
+       */
+      const howLong = sessionsWaiting !== null && sessionsWaiting > 0
+        ? ` for ${sessionsWaiting} ${sessionsWaiting === 1 ? 'session' : 'sessions'} now`
+        : '';
+      const sentences = [
+        `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}.`,
+        d.escalatedAt
+          ? 'Somebody went back about it after that.'
+          : 'Nothing on record says anybody has chased it since.',
+      ];
       /*
        * THE DIRECTION IS THE FINDING, AND IT IS SAID PLAINLY BECAUSE IT KEEPS BEING READ BACKWARDS.
        * A lead waiting on somebody inside the check-in is not a lead with a communication problem.
        */
-      if (d.onParticipantId) parts.push(`this is work ${on} owes ${from}, not the other way round`);
+      if (d.onParticipantId) sentences.push(`This is work ${on} owes ${from}, not the other way round.`);
       return {
         what: d.what,
         from,
@@ -204,9 +233,9 @@ export function dependenciesOverTime(
         on,
         onParticipantId: d.onParticipantId,
         sessionsWaiting,
-        escalated: !!d.escalatedAt,
+        chased: !!d.escalatedAt,
         status: d.status,
-        say: `${parts.join('; ')}.`,
+        say: sentences.join(' '),
       };
     });
 }
@@ -371,14 +400,14 @@ export function toSettleFirst(o: {
     out.push(`"${first.what}" has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
   }
 
-  const unescalated = o.dependencies.filter((d) => !d.escalated && d.onParticipantId);
-  if (unescalated.length) {
-    out.push(`${unescalated.length} ${unescalated.length === 1 ? 'thing is' : 'things are'} waiting on somebody in this check-in with nothing on record about raising it. Ask whether it was raised outside the sessions, because the record cannot tell you.`);
+  const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);
+  if (inside.length) {
+    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about it. Ask whether it was raised outside the sessions, because the record cannot tell you.`);
   }
 
-  const outside = o.dependencies.filter((d) => !d.onParticipantId && !d.escalated);
+  const outside = o.dependencies.filter((d) => !d.onParticipantId && !d.chased);
   if (outside.length) {
-    out.push(`${outside.length} ${outside.length === 1 ? 'thing is' : 'things are'} waiting on somebody outside this check-in, unescalated. Ask what has been tried beyond writing to them.`);
+    out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.`);
   }
 
   if (!o.anybodySaidWhoArrangedThings) {

@@ -55,9 +55,46 @@ describe('what the record shows over time', () => {
         onLabel: null, status: 'WAITING', escalatedAt: null, statedInSession: 2,
       }], labelOf, 6);
       expect(d.say).toContain('Amina Bello is waiting on Marcus Oyelaran');
-      expect(d.say).toContain('this is work Marcus Oyelaran owes Amina Bello, not the other way round');
+      expect(d.say).toContain('This is work Marcus Oyelaran owes Amina Bello, not the other way round');
       expect(d.say).toContain('4 sessions');
-      expect(d.say).toContain('nothing on record about escalating it');
+      expect(d.say).toContain('Nothing on record says anybody has chased it since');
+    });
+
+    /*
+     * AND IT READS LIKE A PERSON WROTE IT, which is the half a substring check keeps missing.
+     *
+     * This one sentence was on every dependency of every report and every board, and in a
+     * twenty-four-scenario run it carried the word "escalating" 163 times - more than every other
+     * banned word put together. It also joined four fragments with semicolons, which is the clipped
+     * shape the wording rules exist to stop. Both are checked here rather than in the string above,
+     * so a rewrite that drops the jargon and brings the fragments back still fails.
+     */
+    it('and says it in whole sentences, with no management words in it', () => {
+      const [d] = dependenciesOverTime([{
+        what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
+        onLabel: null, status: 'WAITING', escalatedAt: null, statedInSession: 2,
+      }], labelOf, 6);
+      expect(d.say).toBe(
+        'Amina Bello is waiting on Marcus Oyelaran for "the signed lease" for 4 sessions now. '
+        + 'Nothing on record says anybody has chased it since. '
+        + 'This is work Marcus Oyelaran owes Amina Bello, not the other way round.',
+      );
+      expect(d.say).not.toMatch(/\b(escalat\w*|bottleneck|alignment|leverage|stakeholder|deliverable|cadence|pipeline)\b/i);
+      expect(d.say).not.toContain(';');
+      for (const sentence of d.say.split(/(?<=\.)\s+/)) {
+        expect(sentence).toMatch(/^[A-Z"]/);
+        expect(sentence).toMatch(/\.$/);
+      }
+    });
+
+    it('says so plainly when somebody did go back about it', () => {
+      const [d] = dependenciesOverTime([{
+        what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
+        onLabel: null, status: 'WAITING', escalatedAt: new Date('2026-09-01'), statedInSession: 2,
+      }], labelOf, 6);
+      expect(d.say).toContain('Somebody went back about it after that.');
+      expect(d.chased).toBe(true);
+      expect(Object.keys(d)).not.toContain('escalated');
     });
 
     it('drops the ones that cleared', () => {
@@ -138,7 +175,7 @@ describe('what the record shows over time', () => {
 
   describe('what to settle first', () => {
     /* Questions, and not one of them a conclusion about a person. */
-    it('asks about the restated promise, the unescalated wait and the undocumented record', () => {
+    it('asks about the restated promise, the wait nobody chased, and the undocumented record', () => {
       const commitments = commitmentsOverTime([{
         participantId: 'marcus', text: 'I will arrange the technical team meetings', whenSaid: null,
         explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [2, 3, 4],
@@ -152,10 +189,12 @@ describe('what the record shows over time', () => {
       });
       const all = questions.join(' | ');
       expect(all).toContain('said again in 3 sessions');
-      expect(all).toContain('nothing on record about raising it');
+      expect(all).toContain('nothing on record says anybody has gone back about it');
       expect(all).toContain('who arranged the meetings');
       expect(all).toContain('one thing in writing');
       for (const q of questions) expect(q).not.toMatch(/\b(failing|unreliable|should be (let go|replaced))\b/i);
+      /* And no management words in any of them, including the "unescalated" this used to say. */
+      for (const q of questions) expect(q).not.toMatch(/\b(escalat\w*|unescalated|bottleneck|cadence|pipeline)\b/i);
     });
   });
 });
