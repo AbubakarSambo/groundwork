@@ -39,8 +39,8 @@ const labels = (u: any) => navItemsFor(u).map(i => i.label)
 
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
-    // Verified rendered: Grounds, then Boards, then the org name, then People, Billing, Settings.
-    expect(labels(admin)).toEqual(['All check-ins', 'Boards', 'People', 'Connect', 'Billing', 'Settings'])
+    // The design system's names for the organisation's pages: People, Connections, Plan and billing.
+    expect(labels(admin)).toEqual(['All check-ins', 'Boards', 'People', 'Connections', 'Plan and billing', 'Settings'])
   })
 
   it('a lead gets the boards door and nothing else that is the org\'s', () => {
@@ -100,8 +100,12 @@ describe('the group reads as a place', () => {
     /**
      * A team member sees Settings and nothing else from that list, and their settings are their own -
      * notifications, their WhatsApp number, what we hold about them. The company's name above it
-     * would be wrong about whose page it is. Verified rendered: the member's rail has no heading.
+     * would be wrong about whose page it is.
+     *
+     * Settings now lives in the person's own menu ("Your settings"), so the group under the
+     * organisation's name is exactly the admin-only pages, and it is drawn only when there are some.
      */
-    expect(SHELL).toMatch(/orgCount > 1/)
+    expect(SHELL).toMatch(/const adminItems = items\.filter\(i => \(i as any\)\.adminOnly\)/)
+    expect(SHELL).toMatch(/\{adminItems\.length > 0 && \(/)
   })
 })

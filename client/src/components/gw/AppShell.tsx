@@ -12,6 +12,9 @@ import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
+import { useHelpStore } from '@/stores/help'
+import { hasEnded } from '@/lib/a-ground-that-has-ended'
+import { Button } from './kit'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
@@ -103,7 +106,9 @@ const NAV_ITEMS = [
   {
     /* A route with no door is a page nobody finds. This one is admin-only because every endpoint
        behind it is, and a nav item that leads to a refusal is worse than no nav item. */
-    label: 'Connect',
+    /* The design system's name for it. The bottom bar keeps the short one until it is rebuilt. */
+    label: 'Connections',
+    short: 'Connect',
     to: '/org/integrations',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -115,7 +120,8 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Billing',
+    label: 'Plan and billing',
+    short: 'Billing',
     to: '/billing',
     adminOnly: true,
     icon: (active: boolean) => (
@@ -577,57 +583,42 @@ function FeedbackWidget() {
   )
 }
 
-function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boolean }) {
+/**
+ * ONE ITEM OF THE BOTTOM BAR ON A PHONE. The desktop sidebar draws its own doors; this is only the
+ * bar, which is replaced by the prototype's five (Today, Check-ins, Start, Chat, More) in a later step.
+ */
+function BottomBarItem({ item }: { item: typeof NAV_ITEMS[0] }) {
   const location = useLocation()
   const active = location.pathname.startsWith(item.to)
   const user = useAuthStore(s => s.user)
   if (item.adminOnly && user?.role !== 'ADMIN') return null
   if ((item as any).platformAdminOnly && !user?.isPlatformAdmin) return null
 
-  if (compact) {
-    return (
-      <NavLink
-        to={item.to}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.55)',
-          textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
-          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1, minWidth: 0,
-          /**
-           * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
-           *
-           * Five items across 375px with 12px of side padding each left too little room, so the two
-           * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
-           * tall, so the second line was clipped as well as wrong.
-           *
-           * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
-           * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
-           * than to a broken word.
-           */
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}
-      >
-        {item.icon(active)}
-        {/* The short name where there is one. See the note on the item itself. */}
-        {(item as { short?: string }).short ?? item.label}
-      </NavLink>
-    )
-  }
-
   return (
     <NavLink
       to={item.to}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '9px 14px', borderRadius: 10, color: active ? 'var(--gw-green-t)' : '#374151',
-        textDecoration: 'none', fontSize: 14, fontWeight: active ? 700 : 500,
-        background: active ? 'rgba(8,80,65,0.09)' : 'transparent', transition: 'background 0.15s, color 0.15s',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+        padding: '6px 4px', borderRadius: 10, color: active ? 'var(--gw-navy)' : 'var(--gw-sub)',
+        textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
+        background: 'transparent', flex: 1, minWidth: 0,
+        /**
+         * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
+         *
+         * Five items across 375px with 12px of side padding each left too little room, so the two
+         * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
+         * tall, so the second line was clipped as well as wrong.
+         *
+         * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
+         * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
+         * than to a broken word.
+         */
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}
-      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(8,80,65,0.05)' }}
-      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
     >
       {item.icon(active)}
-      {item.label}
+      {/* The short name where there is one. See the note on the item itself. */}
+      {(item as { short?: string }).short ?? item.label}
     </NavLink>
   )
 }
@@ -650,29 +641,83 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
  */
 const SILENT_STATUSES = ['ACTIVE', 'AWAITING_PARTIES', 'OPEN']
 
+/**
+ * The check-in's own state, in the rail's small badge, and only when it changes whether you click.
+ * "Report ready" is good news; paused or waiting for someone to accept needs a look; anything else
+ * (closed, resolved, stalled) is said plainly with no colour of judgement on it.
+ */
 function GroundStatusBadge({ status }: { status: string }) {
   if (SILENT_STATUSES.includes(status)) return null
   const isReady = status === 'REPORT_READY'
-  /** Amber for "somebody has to act before this can move", grey for a finished record. */
+  /** Amber for "somebody has to act before this can move", plain for a finished record. */
   const isWaiting = status === 'AWAITING_APPROVAL' || status === 'PAUSED'
-  const color = isReady ? '#065f46' : isWaiting ? 'var(--gw-amber-t)' : '#6B7280'
-  const bg = isReady ? 'rgba(6,95,70,.1)' : isWaiting ? 'var(--gw-amber-bg)' : 'rgba(107,114,128,.08)'
+  const tone = isReady ? 'proven' : isWaiting ? 'attention' : 'plain'
   const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
-  return (
-    <span style={{ fontSize: 10, fontWeight: 600, color, background: bg, borderRadius: 4, padding: '2px 6px' }}>
-      {label}
-    </span>
-  )
+  return <span className={`gw-rail-bdg gw-rail-bdg-${tone}`}>{label}</span>
 }
 
+/** Two letters for a square: the first letters of the first two words, or the first two letters. */
+function initialsOf(name: string | null | undefined): string {
+  const words = (name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return (words[0][0] + words[1][0]).toUpperCase()
+}
+
+/** What the person is in this organisation, in one ordinary word. */
+function roleWord(role: string | null | undefined): string {
+  const r = (role ?? '').toUpperCase()
+  if (r === 'ADMIN') return 'Admin'
+  if (r === 'LEAD') return 'Lead'
+  if (r === 'GUEST') return 'Guest'
+  return 'Member'
+}
+
+/** A small menu that closes on Escape or a click anywhere outside it. */
+function useClosesOnItsOwn(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close() }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown) }
+  }, [open, close])
+  return ref
+}
+
+/**
+ * THE SIDEBAR, AS THE DESIGN SYSTEM DRAWS IT (A1, layout-computer).
+ *
+ * Light, on the page's own paper, top to bottom:
+ *
+ *   the Groundwork mark, and the button that folds the sidebar away
+ *   the organisation card: its initials, its name and what you are in it. It opens the
+ *     organisation menu, where you switch organisation
+ *   "Start a check-in", only for people who may start one
+ *   "Check-ins", each with its dot and badge, the ones that need you first, and the closed ones
+ *     folded under "Closed (n)"
+ *   the pages across check-ins (Boards, for whoever oversees more than one)
+ *   the organisation's own pages under its name, for an admin only
+ *   you, with "Settings, help, sign out", which opens your own menu
+ *
+ * WHERE THE OLD RAIL'S DOORS WENT, so nothing anybody could reach before is lost:
+ *   All check-ins         the "Check-ins" heading is the link to the whole list
+ *   Boards                the pages part, for the same people as before
+ *   People, Connect, Billing   the admin part, as the design system names them: People,
+ *                         Connections, Plan and billing
+ *   Settings              "Your settings", in your own menu
+ *   Platform ops          your own menu, for Groundwork staff only
+ *
+ * The dots and badges come from `railAttention`, which reads only this reader's own check-ins and
+ * whether each round is complete. Nothing on a row is about how a person is doing.
+ */
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false)
 
-  // .gw-main-content and .cg-fixed-bar live outside this component and need
-  // to offset by the sidebar's actual width, not just its expanded default,
-  // or content/fixed bars leave a gap when the sidebar is collapsed to 60px.
   useEffect(() => {
-    document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '60px' : '240px')
+    document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '64px' : '256px')
   }, [collapsed])
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -683,11 +728,15 @@ export function AppSidebar() {
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const logout = useAuthStore(s => s.logout)
+  const showHelp = useHelpStore(s => s.show)
+  const showFeedback = useFeedbackStore(s => s.show)
 
-  /**
-   * The organisations this person belongs to. Only asked when signed in: before that
-   * it is a guaranteed 401 and a toast nobody caused.
-   */
+  const [orgOpen, setOrgOpen] = useState(false)
+  const [meOpen, setMeOpen] = useState(false)
+  const [closedOpen, setClosedOpen] = useState(false)
+  const orgRef = useClosesOnItsOwn(orgOpen, () => setOrgOpen(false))
+  const meRef = useClosesOnItsOwn(meOpen, () => setMeOpen(false))
+
   const { data: myOrgs = [] } = useQuery({
     queryKey: ['my-organizations'],
     queryFn: authApi.myOrganizations,
@@ -695,14 +744,13 @@ export function AppSidebar() {
     retry: false,
   })
   const setAuth = useAuthStore(s => s.setAuth)
-  /* The door out, for somebody whose only membership is one they were listed into. */
   const startOwn = useMutation({
     mutationFn: () => authApi.startMyOwnWorkspace(),
     onSuccess: (res: any) => {
       setAuth(res.accessToken, res.user)
       window.location.assign('/grounds')
     },
-    /* A failure is never a success: the one refusal this has is "you already have one", and the
+    /* The server says why when it refuses (it is already their own, or it could not be made), and the
        person needs to be told which, not left looking at a button that did nothing. */
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
   })
@@ -710,8 +758,6 @@ export function AppSidebar() {
     mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
     onSuccess: (res) => {
       setAuth(res.user, res.accessToken)
-      // A full reload rather than invalidating queries: a half-switched app still
-      // showing the previous organisation's grounds is worse than a second of waiting.
       window.location.assign('/grounds')
     },
     onError: () => toast.error('Could not switch organisation. Try again.'),
@@ -730,8 +776,9 @@ export function AppSidebar() {
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-
-  const initials = user ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase() : 'U'
+  const fullName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''
+  const initials = user ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')) || user.email?.[0] || 'U').toUpperCase() : 'U'
+  const orgName = user?.organizationName ?? 'Your organisation'
 
   function startRename(g: Ground) {
     setRenamingId(g.id)
@@ -739,18 +786,6 @@ export function AppSidebar() {
     setTimeout(() => renameRef.current?.select(), 50)
   }
 
-  /*
-   * A REFUSAL LEFT THE FIELD OPEN AND SAID NOTHING.
-   *
-   * There was no catch here. The server now answers 403 when somebody who is not the lead tries to
-   * rename a check-in, so the await rejected, `setRenamingId(null)` never ran, and the input sat
-   * there in edit mode with no error and no change - the same "pressed it and nothing happened"
-   * the audit found, just arriving by a different route.
-   *
-   * The pencil is hidden from people who cannot rename (see `mayRename` below), so this path is
-   * now only reached by somebody who may rename and whose request failed anyway - a dropped
-   * connection, a check-in closed in another tab. That still has to be said out loud.
-   */
   async function commitRename(id: string) {
     const val = renameValue.trim()
     setRenamingId(null)
@@ -763,108 +798,227 @@ export function AppSidebar() {
     }
   }
 
-  /* Renaming is the lead's call or an admin's, and the server enforces it. Showing the pencil to
-     anybody else offers something that will be refused. The rule is shared with the server's, in
+  /* The rename pencil appears only for whoever the server lets rename: the lead, or an admin. Anybody
+     else offers something that will be refused. The rule is shared with the server's, in
      `who-may-rename-a-check-in`, so the two cannot drift apart again. */
   const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
 
-  /*
-   * THE ONES THAT NEED THIS PERSON, for the collapsed rail. Same read as the expanded list uses,
-   * so the two cannot disagree about whose turn it is, and capped because a column of coloured
-   * squares stops being scannable somewhere around eight.
-   */
   const needsYou = grounds
     .map((g: any) => ({ g, attention: railAttention(g as any, user?.id) }))
     .filter(({ attention }) => attention.kind === 'overdue' || attention.kind === 'yours')
     .sort((a, b) => railRank(a.attention) - railRank(b.attention))
     .slice(0, 8)
 
-  const sidebarWidth = collapsed ? 60 : 240
+  /* A closed check-in stays in the rail for about three months, folded away under "Closed (n)" so the
+     ones that are still running are the list. */
+  const isClosed = (g: any) => hasEnded(g.status) || !!g.closedAt || !!g.resolvedAt
+  const inRail = grounds.filter(g => stillInRail(g as any))
+  const running = inRail
+    .filter(g => !isClosed(g))
+    .slice()
+    .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
+  const closed = inRail.filter(g => isClosed(g))
+
+  /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
+  const items = navItemsFor(user)
+  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
+  const adminItems = items.filter(i => (i as any).adminOnly)
+  const staffItems = items.filter(i => (i as any).platformAdminOnly)
+
+  const sidebarWidth = collapsed ? 64 : 256
+
+  function rowFor(g: Ground) {
+    const attention = railAttention(g as any, user?.id)
+    const sessions = new Set(
+      (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+    ).size
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
+    const maxSessions = planned != null ? Math.max(planned, sessions) : null
+    const mine = attention.kind === 'yours' || attention.kind === 'overdue'
+    const dot = attention.kind === 'overdue' ? 'late' : attention.kind === 'yours' ? 'turn' : 'quiet'
+    const why = attention.kind === 'overdue'
+      ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+      : attention.kind === 'yours'
+        ? `Session ${attention.sessionNumber} is ready for you`
+        : attention.kind === 'waiting'
+          ? `${attention.done} of ${attention.total} have checked in`
+          : null
+    return (
+      <li key={g.id}>
+        {renamingId === g.id ? (
+          <input
+            ref={renameRef}
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            onBlur={() => commitRename(g.id)}
+            onKeyDown={e => { if (e.key === 'Enter') commitRename(g.id); if (e.key === 'Escape') setRenamingId(null) }}
+            aria-label={`New name for ${g.label}`}
+            className="gw-rl-rename-input"
+          />
+        ) : (
+          <div className="gw-rail-row">
+            <NavLink
+              to={`/grounds/${g.id}`}
+              className={({ isActive }) => `gw-ci-row${isActive ? ' on' : ''}${isClosed(g) ? ' closed' : ''}`}
+              title={[
+                g.label,
+                `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
+                alignmentShort((g as any).alignment) || null,
+                why,
+              ].filter(Boolean).join('. ')}
+            >
+              <span className={`gw-ci-dot gw-ci-dot-${dot}`} aria-hidden />
+              <span className="gw-ci-nm">{g.label}</span>
+              {mine && <span className={`gw-rail-bdg gw-rail-bdg-${attention.kind === 'overdue' ? 'late' : 'turn'}`} title={why ?? undefined}>Your turn</span>}
+              {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
+              {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}
+            </NavLink>
+            {mayRename(g) && <button
+              type="button"
+              className="gw-rename"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
+              title={`Rename ${g.label}`}
+              aria-label={`Rename ${g.label}`}
+            >✎</button>}
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
     <>
       <aside
-        className="gw-sidebar-desktop"
+        className="gw-sidebar-desktop gw-rl"
+        aria-label="Groundwork"
         style={{
           position: 'fixed', top: 0, left: 0, width: sidebarWidth, height: '100vh',
-          background: '#0D1A2B', borderRight: '1px solid rgba(255,255,255,.07)',
           display: 'flex', flexDirection: 'column', zIndex: 40,
           transition: 'width .2s ease', overflow: 'hidden',
         }}
       >
-        {/* Logo + collapse */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 14px 12px', flexShrink: 0 }}>
-          {/**
-            * THE WAY BACK TO THE SITE, IN BOTH STATES.
-            *
-            * Expanded, the wordmark links out, as it always did. Collapsed, there was nothing at all -
-            * just the chevron - so the rail somebody works in all day had no way home. A single G,
-            * same destination.
-            */}
+        {/* The mark, which always goes back to the marketing site, and the fold button. */}
+        <div className={`gw-rl-top${collapsed ? ' folded' : ''}`}>
           {!collapsed ? (
-            <a href={MARKETING_URL} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              Groundwork
+            <a href={MARKETING_URL} className="gw-rl-brand">
+              <GroundworkBars />
+              <span>Groundwork</span>
             </a>
           ) : (
-            <a
-              href={MARKETING_URL}
-              title="Groundwork"
-              style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', textDecoration: 'none', lineHeight: 1 }}
-            >
-              G
+            <a href={MARKETING_URL} className="gw-rl-brand" title="Groundwork" aria-label="Groundwork">
+              <GroundworkBars />
             </a>
           )}
           <button
             className="gw-tap44"
             onClick={() => setCollapsed(v => !v)}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
-            title={collapsed ? 'Expand menu' : 'Collapse menu'}
-            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            title={collapsed ? 'Open the sidebar' : 'Fold the sidebar away'}
+            aria-label={collapsed ? 'Open the sidebar' : 'Fold the sidebar away'}
+            aria-expanded={!collapsed}
           >
-            {collapsed ? '»' : '«'}
+            {collapsed ? '›' : '‹'}
           </button>
         </div>
 
-        {/*
-          The Chat / More switch was here for one day. More was the card view of a
-          ground, and Hafsah retired it once the conversation carried the history:
-          "we have now made the more obsolete which is fine." A switch with one side
-          left is a control that teaches people to look for something that is not
-          there.
-        */}
-        {/* New ground button */}
-        <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
-          {/*
-            * NOT SHOWN TO SOMEBODY IT WOULD REFUSE.
-            *
-            * A member used to see this, fill in eight steps, and be told on submit that opening a
-            * check-in is limited to people their admin has named. The refusal was right and the
-            * journey was a waste of their afternoon.
-            *
-            * They lose nothing by not seeing it: taking part in a check-in happens by being added
-            * to one, and everything they are in is on the list below.
-            */}
-          {user?.mayOpenCheckIns !== false && <button
-            onClick={() => navigate('/start?new=1')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 7,
-              padding: collapsed ? '8px' : '8px 12px', borderRadius: 8,
-              background: 'rgba(26,86,219,.18)', border: '1px solid rgba(26,86,219,.3)',
-              color: '#93C5FD', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'inherit', justifyContent: collapsed ? 'center' : 'flex-start',
-            }}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+        {/* The organisation card, and the organisation menu it opens. */}
+        {isAuthenticated && (
+          <div ref={orgRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              className="gw-rl-org"
+              onClick={() => { setOrgOpen(v => !v); setMeOpen(false) }}
+              aria-haspopup="true"
+              aria-expanded={orgOpen}
+              title={orgName}
+            >
+              <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
+              {!collapsed && (
+                <>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="gw-rl-org-name">{orgName}</b>
+                    <span className="gw-rl-org-role">{roleWord(user?.role)}</span>
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ flex: 'none', color: 'var(--gw-sub)' }}>
+                    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </>
+              )}
+              {collapsed && <span className="gw-sr-only">{orgName}, {roleWord(user?.role)}</span>}
+            </button>
+            {orgOpen && (
+              <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
+                <div className="gw-rl-menu-h">Organisations</div>
+                {myOrgs.length === 0 && (
+                  <div className="gw-rl-menu-item static">
+                    <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}><b>{orgName}</b><span className="gw-rl-org-role">{roleWord(user?.role)}</span></span>
+                    <span aria-label="You are in this organisation">✓</span>
+                  </div>
+                )}
+                {myOrgs.map(o => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className="gw-rl-menu-item"
+                    onClick={() => {
+                      if (o.active || switchOrg.isPending) return
+                      const asRole = o.role.toLowerCase()
+                      if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
+                      switchOrg.mutate(o.id)
+                    }}
+                    disabled={switchOrg.isPending}
+                    aria-current={o.active ? 'true' : undefined}
+                    title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
+                  >
+                    <span className="gw-rl-sq" aria-hidden>{initialsOf(o.name)}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}><b>{o.name}</b><span className="gw-rl-org-role">{roleWord(o.role)}</span></span>
+                    {o.active && <span aria-label="You are in this organisation">✓</span>}
+                  </button>
+                ))}
+                {/*
+                  AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
+
+                  Hafsah, 23 September 2026: "someone is my account and created their own account and
+                  keep showing up to my account. And they cannot switch to their." Somebody joined to a
+                  company because their address was on its roster has exactly one organisation, so they
+                  are offered the door to their own.
+                */}
+                {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
+                  <div className="gw-rl-menu-note">
+                    <p>You are in {myOrgs[0].name} because your address was on their list.</p>
+                    <button
+                      type="button"
+                      className="gw-b gw-b-secondary gw-b-small gw-b-wide"
+                      onClick={() => {
+                        if (startOwn.isPending) return
+                        if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
+                        startOwn.mutate()
+                      }}
+                      disabled={startOwn.isPending}
+                    >
+                      {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Start a check-in. Offered only to somebody the server will let start one. */}
+        <div className="gw-rl-start">
+          {/* `!== false`, not `=== true`: an older session that does not carry the answer still sees it. */}
+          {user?.mayOpenCheckIns !== false && <Button wide onClick={() => navigate('/start?new=1')} aria-label={collapsed ? 'Start a check-in' : undefined}>
+            <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>+</span>
             {!collapsed && <span>Start a check-in</span>}
-          </button>}
+          </Button>}
         </div>
 
-        {/* Grounds list */}
+        {/* Expanded: the check-ins, the pages across them, and the admin part. */}
         {!collapsed && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
-            {/* Entry ground shown when unauthenticated on /start */}
+          <nav className="gw-rl-scroll" aria-label="Check-ins and pages">
             {isEntryPage && (
-              <div style={{ padding: '9px 10px', borderRadius: 8, background: 'rgba(255,255,255,.09)', marginBottom: 6 }}>
+              <div className="gw-rl-entry">
                 {renamingEntry ? (
                   <input
                     ref={entryRenameRef}
@@ -876,196 +1030,93 @@ export function AppSidebar() {
                       if (e.key === 'Escape') setRenamingEntry(false)
                     }}
                     autoFocus
-                    style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    aria-label="New name for this check-in"
+                    className="gw-rl-rename-input"
                   />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.92)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundName}</span>
+                    <b style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{groundName}</b>
                     <button
+                      type="button"
                       onClick={() => { setEntryRenameVal(groundName); setRenamingEntry(true); setTimeout(() => entryRenameRef.current?.select(), 40) }}
-                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 11, padding: '0 2px', fontFamily: 'inherit' }}
+                      className="gw-rl-ic"
                       title="Rename"
                       aria-label={`Rename ${groundName}`}
                     >✎</button>
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Not saved yet</span>
-                  
-                </div>
+                <div className="gw-rl-org-role">Not saved yet.</div>
               </div>
             )}
-            {!isEntryPage && grounds.length === 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', padding: '8px 6px' }}>Nothing in progress yet</div>
-            )}
-            {/*
-              THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
-              drops grounds that closed long ago.
 
-              Attention first (overdue, then your turn, then waiting on others), and
-              a closed ground stays about three months before leaving - long enough
-              that the report and the resolution are still where people expect them.
-              Sorting by attention is most of why a flat rail can stay flat: the rows
-              that need you are always at the top, whatever the count.
-            */}
-            {grounds
-              .filter(g => stillInRail(g as any))
-              .slice()
-              .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
-              .map(g => {
-              // DISTINCT session numbers, not the number of check-in rows: with 5
-              // people over 13 sessions this counted 65 "sessions".
-              //
-              // AND ONLY THE COMPLETED ONES, so this agrees with the ground page.
-              // It counted every check-in row including NOT_STARTED, so the rail
-              // said "1/6" for a ground whose header said "Session 2 of 6" - two
-              // readings of the same ground, one counting what exists and the
-              // other what is done. The label below now says which it is.
-              const sessions = new Set(
-                (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
-              ).size
-              // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
-              // for a 90-day WEEKLY ground that actually runs ~13.
-              const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
-              // Never show fewer planned than have already happened.
-              const maxSessions = planned != null ? Math.max(planned, sessions) : null
-              // What this ground needs from you, if anything. See lib/rail-attention.
-              const attention = railAttention(g as any, user?.id)
-              return (
-                <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
-                  <NavLink
-                    to={`/grounds/${g.id}`}
-                    title={[
-                      g.label,
-                      `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
-                      alignmentShort((g as any).alignment) || null,
-                      attention.kind === 'overdue'
-                        ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
-                        : attention.kind === 'yours'
-                          ? `Session ${attention.sessionNumber} is ready for you`
-                          : attention.kind === 'waiting'
-                            ? `${attention.done} of ${attention.total} have checked in`
-                            : null,
-                    ].filter(Boolean).join(' · ')}
-                    style={({ isActive }) => ({
-                      display: 'block', padding: renamingId === g.id ? '6px 10px 4px' : '9px 10px 6px', borderRadius: 8,
-                      textDecoration: 'none',
-                      background: isActive ? 'rgba(255,255,255,.09)' : 'transparent',
-                    })}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
-                    onMouseLeave={e => {
-                      const loc = window.location.pathname
-                      if (!loc.includes(g.id)) e.currentTarget.style.background = 'transparent'
-                    }}
-                  >
-                    {/* Label row with rename */}
-                    {renamingId === g.id ? (
-                      <input
-                        ref={renameRef}
-                        value={renameValue}
-                        onChange={e => setRenameValue(e.target.value)}
-                        onBlur={() => commitRename(g.id)}
-                        onKeyDown={e => { if (e.key === 'Enter') commitRename(g.id); if (e.key === 'Escape') setRenamingId(null) }}
-                        onClick={e => e.preventDefault()}
-                        style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    ) : (
-                      <div className="gw-rail-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {/*
-                          BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
-                          Hafsah asked for the name to turn red when it is time to
-                          check in; this splits that in two deliberately. A ground
-                          going red the moment it is your turn puts a red mark
-                          against somebody for being on time, and the engine's own
-                          rules forbid surveillance signals of exactly that shape.
-                        */}
-                        {(attention.kind === 'yours' || attention.kind === 'overdue') && (
-                          <span
-                            title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
-                            style={{
-                              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                              background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
-                            }}
-                          />
-                        )}
-                        <span style={{
-                          fontSize: 13,
-                          fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
-                          color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                        }}>
-                          {g.label}
-                        </span>
-                        {/**
-                          * OFFERED ONLY TO SOMEBODY WHO CAN ACTUALLY RENAME IT.
-                          *
-                          * This pencil rendered for every user beside every check-in, with no role
-                          * condition at all. For most of its life that was harmless in the worst
-                          * way - renaming did nothing for anybody, so nobody found out.
-                          *
-                          * It works now, and it is the lead's call or an admin's, the same gate as
-                          * changing how long a check-in runs. So a participant clicking this got a
-                          * refusal from the server for a control the rail had offered them.
-                          *
-                          * The same question the server asks, asked before the button is drawn.
-                          *
-                          * MERGE NOTE. Two branches fixed this independently and the conflict was
-                          * real: staging asked the question inline here, this branch had moved it
-                          * into `who-may-rename-a-check-in` so the rail and the server share one
-                          * rule rather than two copies of it. The shared rule is kept - it is what
-                          * stops them drifting apart again, which is how the pencil came to be
-                          * offered to everybody in the first place - and staging's account of the
-                          * history is kept with it, because it is the better explanation.
-                          */}
-                        {mayRename(g) && <button
-                          className="gw-rename"
-                          onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
-                          title={`Rename ${g.label}`}
-                          aria-label={`Rename ${g.label}`}
-                          style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
-                        >✎</button>}
-                      </div>
-                    )}
-
-                    {/*
-                      ONE LINE PER GROUND, WHICH IS WHAT MAKES IT A CHANNEL LIST.
-
-                      This row carried a second line - "no read yet · 1/6 done" and
-                      a status pill - under every name. Three facts about a ground
-                      you are not looking at, on every row, in a rail whose job is
-                      to tell you which one needs you. A channel list is names; the
-                      state belongs on the ground, and the ground page now opens
-                      with it (sessions done, who has checked in, the report).
-
-                      NOTHING IS LOST, IT MOVED. The count and the read are on the
-                      row's tooltip for anyone who wants them without navigating,
-                      and a ground that is not ACTIVE still says so, because "this
-                      one is closed" changes whether you click at all.
-                    */}
-                    {!SILENT_STATUSES.includes(g.status) && (
-                      <div style={{ marginTop: 3 }}>
-                        <GroundStatusBadge status={g.status} />
-                      </div>
-                    )}
-                  </NavLink>
+            {isAuthenticated && (
+              <>
+                {/* "Check-ins": the heading is the way to the whole list. */}
+                <div className="gw-rl-h">
+                  <NavLink to="/grounds" className="gw-rl-h-link" title="See all your check-ins">Check-ins</NavLink>
                 </div>
-              )
-            })}
-          </div>
+                {running.length === 0 && closed.length === 0 && (
+                  <p className="gw-rl-empty">Nothing in progress yet.</p>
+                )}
+                <ul className="gw-rl-list">{running.map(rowFor)}</ul>
+                {closed.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className="gw-rl-fold"
+                      aria-expanded={closedOpen}
+                      onClick={() => setClosedOpen(v => !v)}
+                    >
+                      <span aria-hidden>{closedOpen ? '▾' : '▸'}</span> Closed ({closed.length})
+                    </button>
+                    {closedOpen && <ul className="gw-rl-list">{closed.map(rowFor)}</ul>}
+                  </>
+                )}
+
+                {pages.length > 0 && (
+                  <ul className="gw-rl-list gw-rl-pages">
+                    {pages.map(item => (
+                      <li key={item.to}>
+                        <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive ? ' on' : ''}`}>
+                          {item.icon(location.pathname.startsWith(item.to))}
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* The organisation's own pages, under its name. Admins only, because every page
+                    behind them is admin-only on the server too. */}
+                {adminItems.length > 0 && (
+                  <>
+                    <div className="gw-rl-h"><span>{orgName}</span></div>
+                    <ul className="gw-rl-list">
+                      {adminItems.map(item => (
+                        <li key={item.to}>
+                          <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive ? ' on' : ''}`}>
+                            {item.icon(location.pathname.startsWith(item.to))}
+                            <span>{item.label}</span>
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
+          </nav>
         )}
 
-        {/* Collapsed: nav icons */}
+        {/* Folded: the doors as icons, and the check-ins that need you as their first letter. */}
         {collapsed && (
-          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
-            {/* Same two gates the expanded nav applies. This list rendered
-                NavLinks directly rather than going through NavItem, so it skipped
-                the adminOnly check entirely and showed People / Roster / Billing
-                to every member whose sidebar happened to be collapsed. */}
+          <nav className="gw-rl-scroll folded" aria-label="Check-ins and pages">
+            {/* Same gate as everywhere else: navItemsFor, never a filter of its own. */}
             {navItemsFor(user).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
-                <NavLink key={item.to} to={item.to} title={item.label}
-                  style={{ color: active ? '#93C5FD' : 'rgba(255,255,255,.55)', padding: '8px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                <NavLink key={item.to} to={item.to} title={item.label} aria-label={item.label}
+                  className={`gw-rl-nav icon${active ? ' on' : ''}`}
                 >
                   {item.icon(active)}
                 </NavLink>
@@ -1073,35 +1124,23 @@ export function AppSidebar() {
             })}
 
             {/*
-              AND THE CHECK-INS THAT NEED YOU, WHICH COLLAPSING USED TO THROW AWAY.
-              
-              The rail's whole job is to say which check-in needs you - it is ordered by exactly
-              that, and the note on the expanded list says so. Collapsing it left seven nav icons
-              and nothing about the work, so the one thing the rail is for was the one thing that
-              did not survive being made narrow.
-              
-              Narrow enough to fit: the first letter, coloured by whether it is yours to answer and
-              how late it is, with the name and the reason on the tooltip. Only the ones that need
-              somebody - a collapsed rail has no room for a list, and a list nobody has to act on is
-              what the expanded one is for.
+              AND THE CHECK-INS THAT NEED YOU, WHICH FOLDING USED TO THROW AWAY.
+              The first letter, coloured by whether it is yours to answer and how late it is, with the
+              name and the reason on the tooltip. Only the ones that need somebody.
             */}
             {needsYou.length > 0 && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div className="gw-rl-needs">
                 {needsYou.map(({ g, attention }) => (
                   <NavLink
                     key={g.id}
                     to={`/grounds/${g.id}`}
                     title={attention.kind === 'overdue'
-                      ? `${g.label} - session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                      ? `${g.label}. Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
                       : attention.kind === 'yours'
-                        ? `${g.label} - session ${attention.sessionNumber} is ready for you`
+                        ? `${g.label}. Session ${attention.sessionNumber} is ready for you`
                         : g.label}
-                    style={{
-                      width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 800, textDecoration: 'none', flexShrink: 0,
-                      background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
-                      color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : 'white',
-                    }}
+                    aria-label={g.label}
+                    className={`gw-rl-ini ${attention.kind === 'overdue' ? 'late' : 'turn'}`}
                   >
                     {(g.label ?? '?').trim().charAt(0).toUpperCase()}
                   </NavLink>
@@ -1111,264 +1150,80 @@ export function AppSidebar() {
           </nav>
         )}
 
-        {/* Nav items - always visible in expanded sidebar */}
-        {!collapsed && (
-          <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {/**
-              * ONE GATE. This used to filter on `!item.adminOnly`, which meant an ADMIN - the only
-              * person People and Billing are for - could not see either of them in the expanded rail.
-              * They appeared in the collapsed icon strip, which used the right test.
-              */}
-            {navItemsFor(user).map((item, i, all) => {
-              const active = location.pathname.startsWith(item.to)
-              const canNav = isAuthenticated
-              /**
-               * THE ORGANISATION'S OWN PAGES, GROUPED AND NAMED. Her words: "billing and settings for
-               * the org should have its own accessibility at the very top for the admin or somewhere
-               * else. What if the admin is also a participant or lead."
-               *
-               * That last question is the reason this is a heading rather than a separate bar: what
-               * somebody can do for the ORGANISATION does not change with the part they hold on any
-               * ground. An admin who is also a lead and a party sees this section unchanged, and their
-               * part in a ground decides only what the ground's own tabs contain.
-               *
-               * The name is the organisation's, so it reads as a place rather than a category.
-               */
-              const isOrg = ORG_ROUTES.includes(item.to)
-              /**
-               * The heading appears only when there is a group to head. A team member sees Settings
-               * and nothing else from this list, and their settings are their own - notifications,
-               * their WhatsApp number, what we hold about them - so putting the company's name above
-               * it would be wrong about whose page it is.
-               */
-              const orgCount = all.filter(x => ORG_ROUTES.includes(x.to)).length
-              /**
-               * THE ORG NAME WAS PRINTED TWICE. W15-4.
-               *
-               * "Is the item before me an org route?" is not the same question as "am I the first
-               * org route?", and the difference is `/admin`, which sits between `/billing` and
-               * `/settings` and is not an org route. So `/settings` looked like the start of a
-               * second org group and printed the heading again: People, Billing, ADMIN, then the
-               * company name a second time above Settings.
-               *
-               * Only ever visible to a platform admin, because they are the only ones with
-               * `/admin` in the middle of the group - which is why it survived. Found by looking
-               * at a screenshot of the sidebar.
-               *
-               * Asked properly now: am I the first org route in the list.
-               */
-              const firstOrg = isOrg && orgCount > 1
-                && all.findIndex(x => ORG_ROUTES.includes(x.to)) === i
-              return (
-                <div key={item.to}>
-                  {firstOrg && (
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, padding: '10px 10px 4px' }}>
-                      {user?.organizationName ?? 'Your organisation'}
-                    </div>
-                  )}
-                  <NavLink
-                    to={canNav ? item.to : '/auth'}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
-                      color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
-                      background: active ? 'rgba(147,197,253,.08)' : 'transparent',
-                      fontSize: 13, fontWeight: active ? 600 : 400,
-                      pointerEvents: canNav ? 'auto' : 'none',
-                    }}
-                  >
-                    {item.icon(active)}
-                    <span>{item.label}</span>
-                  </NavLink>
-                </div>
-              )
-            })}
-          </nav>
-        )}
-
-        {/*
-          SWITCHING ORGANISATION, AT THE BOTTOM WITH THE PERSON. W9-4.
-
-          Her call that the bottom is fine, and it belongs next to who you are because
-          that is what it changes: not a filter on one page, but whose organisation
-          every page is about. It appears only when there is somewhere to switch TO - a
-          switcher listing one thing is a control that does nothing.
-
-          The role shown is per organisation. Somebody can run their own company and be
-          an ordinary member of a client's, and the token carries the membership's role,
-          not the person's.
-        */}
-        {/*
-          AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
-          
-          Hafsah, 23 September 2026: "someone is my account and created their own account and keep
-          showing up to my account. And they cannot switch to their."
-          
-          They could not, and this line is why: the whole block renders only at more than one
-          organisation. Somebody joined to a company because their address was on its roster has
-          exactly one, so there was no switcher, no list, and no way out - see
-          a-roster-row-is-not-a-life-sentence on the API for why the joining rule itself stands.
-          
-          The block now also shows for somebody whose single membership is not one they administer,
-          and offers the door.
-        */}
-        {isAuthenticated && !collapsed && (myOrgs.length > 1 || (myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN')) && (
-          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, marginBottom: 6 }}>
-              Organisation
-            </div>
-            {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', lineHeight: 1.5, marginBottom: 6 }}>
-                  You are in {myOrgs[0].name} because your address was on their list.
-                </div>
-                <button
-                  onClick={() => {
-                    if (startOwn.isPending) return
-                    if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
-                    startOwn.mutate()
-                  }}
-                  disabled={startOwn.isPending}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '7px 9px', borderRadius: 7,
-                    background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)',
-                    color: 'white', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
-                </button>
-              </div>
-            )}
-            {myOrgs.map(o => (
-              <button
-                key={o.id}
-                /**
-                 * ONE CLICK USED TO BE ENOUGH. W8-71.
-                 *
-                 * Switching organisation changes which data you can see, changes your role
-                 * (a person can administer their own company and be an ordinary member of
-                 * a client's), and reloads the whole app onto a different grounds list.
-                 * These rows sit in the rail directly above the profile block, so a
-                 * mis-aimed click did all of that silently - and then the grounds you were
-                 * looking at were gone and your role said Member, which reads exactly like
-                 * the product losing your data. That happened to me while testing, and I
-                 * could not tell afterwards whether I had clicked it or something had done
-                 * it for me.
-                 *
-                 * A native confirm rather than a designed modal: this is a rail control on
-                 * every page, the question is one line, and a modal here would be a bigger
-                 * change than the problem warrants. It names the organisation and the role
-                 * they will have in it, since the role change is the part nobody expects.
-                 */
-                onClick={() => {
-                  if (o.active || switchOrg.isPending) return
-                  const asRole = o.role.toLowerCase()
-                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
-                  switchOrg.mutate(o.id)
-                }}
-                disabled={switchOrg.isPending}
-                title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
-                style={{
-                  width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '6px 8px', marginBottom: 2, borderRadius: 6, border: 'none',
-                  background: o.active ? 'rgba(255,255,255,.09)' : 'transparent',
-                  color: o.active ? 'white' : 'rgba(255,255,255,.6)',
-                  cursor: o.active ? 'default' : 'pointer', fontFamily: 'inherit',
-                  fontSize: 12.5, fontWeight: o.active ? 700 : 500,
-                }}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? 'var(--gw-green-live)' : 'transparent' }} />
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', textTransform: 'capitalize', flexShrink: 0 }}>
-                  {o.role.toLowerCase()}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* User profile / sign in */}
-        <div style={{ padding: collapsed ? '10px 8px' : '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* You: "Settings, help, sign out", and the menu it opens. */}
+        <div ref={meRef} className="gw-rl-foot" style={{ position: 'relative' }}>
           {isAuthenticated ? (
             <>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#1A56DB', color: 'white', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {initials}
-              </div>
-              {!collapsed && (
-                <div style={{ overflow: 'hidden', flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    {/**
-                      * WHICH ORGANISATION YOU ARE IN, BESIDE WHAT YOU ARE IN IT.
-                      *
-                      * An ordinary member could not see the company's name anywhere in the chrome.
-                      * People and Billing are admin-only, so the org heading above them - which is
-                      * the only place the name appeared - never rendered for them. They knew they
-                      * were a "Member" of something unnamed.
-                      *
-                      * NOT FIXED BY PUTTING THE NAME ABOVE SETTINGS, which was the obvious move and
-                      * is wrong: a member's Settings is their OWN - notifications, their number,
-                      * what we hold about them - and the company's name over it mislabels whose page
-                      * it is. `the-org-is-not-a-ground` guards that, correctly.
-                      *
-                      * It belongs here because this block is about the person's MEMBERSHIP, which is
-                      * exactly the thing in question, and because switching organisation happens two
-                      * lines above. Role and org are one fact: you are a member OF something.
-                      */}
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{ textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
-                      {user?.organizationName ? ` at ${user.organizationName}` : ''}
-                    </span>
-                    {/**
-                      * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
-                      *
-                      * It was on the grounds list and nowhere else, so from a ground, a check-in,
-                      * billing or settings there was no way to leave - you either navigated back to
-                      * the list to find it or cleared the browser.
-                      *
-                      * It belongs here because this is the block that says who you are, on every
-                      * page. The session itself lasts seven days and is persisted, which is the
-                      * other half of what she asked for: you stay signed in on the device, and
-                      * leaving is something you choose rather than something that happens to you.
-                      */}
-                    <button
-                      onClick={() => { logout(); navigate('/') }}
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                      title="Sign out of Groundwork on this device"
-                    >
-                      Sign out
-                    </button>
-                  </div>
+              <button
+                type="button"
+                className="gw-rl-me"
+                onClick={() => { setMeOpen(v => !v); setOrgOpen(false) }}
+                aria-haspopup="true"
+                aria-expanded={meOpen}
+                title={collapsed ? `${fullName}. Settings, help, sign out` : undefined}
+              >
+                <span className="gw-rl-av" aria-hidden>{initials}</span>
+                {!collapsed && (
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="gw-rl-org-name">{fullName}</b>
+                    <span className="gw-rl-org-role">Settings, help, sign out</span>
+                  </span>
+                )}
+                {collapsed && <span className="gw-sr-only">{fullName}. Settings, help, sign out</span>}
+              </button>
+              {meOpen && (
+                <div className="gw-rl-menu gw-rl-menu-me" style={{ left: collapsed ? 70 : 10 }}>
+                  <NavLink to="/settings" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Your settings</NavLink>
+                  <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showHelp(0) }}>Help</button>
+                  <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showFeedback() }}>Send feedback</button>
+                  {/* Groundwork's own back office. Staff only, as the route itself is. */}
+                  {staffItems.map(item => (
+                    <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>{item.label}</NavLink>
+                  ))}
+                  <hr />
+                  <button
+                    type="button"
+                    className="gw-rl-menu-item"
+                    onClick={() => { logout(); navigate('/') }}
+                    title="Sign out of Groundwork on this device"
+                  >
+                    Sign out
+                  </button>
                 </div>
               )}
             </>
           ) : (
             !collapsed && (
-              <button
-                onClick={() => navigate('/auth')}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-              >
-                Sign in →
-              </button>
+              <Button kind="secondary" wide onClick={() => navigate('/auth')}>Sign in</Button>
             )
           )}
         </div>
       </aside>
 
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
-        background: '#0D1A2B', borderTop: '1px solid rgba(255,255,255,.07)',
-        display: 'flex', alignItems: 'center', zIndex: 40,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      <nav
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
+          background: 'var(--gw-card)', borderTop: '1px solid var(--gw-border)',
+          display: 'flex', alignItems: 'center', zIndex: 40,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
         className="gw-sidebar-mobile"
       >
         {/* Was unfiltered, so a team member on a phone saw People and Billing and got bounced. */}
-        {navItemsFor(user).map(item => <NavItem key={item.to} item={item} compact />)}
+        {navItemsFor(user).map(item => <BottomBarItem key={item.to} item={item} />)}
       </nav>
     </>
+  )
+}
+
+/** The Groundwork mark: three bars widening downward, in navy. */
+function GroundworkBars() {
+  return (
+    <svg width="22" height="17" viewBox="0 0 22 17" aria-hidden>
+      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="currentColor" opacity="0.45" />
+      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="currentColor" opacity="0.72" />
+      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="currentColor" />
+    </svg>
   )
 }
 
@@ -1532,7 +1387,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }
           .gw-sidebar-mobile  { display: none !important; }
-          .gw-main-content    { margin-left: var(--gw-sidebar-w, 240px); min-height: 100vh; }
+          .gw-main-content    { margin-left: var(--gw-sidebar-w, 256px); min-height: 100vh; }
         }
       `}</style>
     </>

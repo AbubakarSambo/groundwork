@@ -36,14 +36,16 @@ describe('the bottom bar on a phone', () => {
   })
 
   it('and the compact item actually uses it, which is the whole wire', () => {
-    const compact = stripped.slice(stripped.indexOf('if (compact)'), stripped.indexOf('</NavLink>', stripped.indexOf('if (compact)')))
+    /* The bottom bar's item has its own function now that the desktop sidebar draws its own doors. */
+    const start = stripped.indexOf('function BottomBarItem')
+    const compact = stripped.slice(start, stripped.indexOf('</NavLink>', start))
+    expect(start).toBeGreaterThan(-1)
     expect(compact).toMatch(/short \?\? item\.label/)
   })
 
   it('while the desktop rail still says the full thing', () => {
     /* Two readers, two widths. The rail has the room and "All" earns its place there. */
-    const afterCompact = stripped.slice(stripped.indexOf('if (compact)'))
-    const rail = afterCompact.slice(afterCompact.indexOf('return (', afterCompact.indexOf('</NavLink>')))
+    const rail = stripped.slice(stripped.indexOf('export function AppSidebar'), stripped.indexOf('<nav', stripped.indexOf('className="gw-rl-foot"')))
     expect(rail).toContain('{item.label}')
     expect(rail).not.toMatch(/short \?\?/)
   })
