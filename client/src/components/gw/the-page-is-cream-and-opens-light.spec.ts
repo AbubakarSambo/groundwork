@@ -85,6 +85,30 @@ describe('the page is cream, not grey', () => {
   })
 })
 
+describe('the fills inside cards and the secondary text are cream and brown, not grey', () => {
+  it.each(['--gw-bg', '--gw-paper-2', '--gw-slate'])('%s, a fill, is warm and still darker than the page', (t) => {
+    expect(isWarm(hex(t))).toBe(true)
+    expect(lightness(hex(t))).toBeLessThan(lightness(hex('--gw-page')))
+  })
+
+  it.each(['--gw-sub', '--gw-muted', '--gw-rule-2'])('%s is warm', (t) => {
+    expect(isWarm(hex(t))).toBe(true)
+  })
+
+  it('secondary text is the design system\'s "Muted", and the fainter text stays the darker of the two it could be', () => {
+    // The prototype's Muted, copied exactly because it reads at 9.7:1.
+    expect(hex('--gw-sub')).toBe('#4E4236')
+    // Fainter text must stay lighter than secondary text, or the two stop meaning different things.
+    expect(lightness(hex('--gw-muted'))).toBeGreaterThan(lightness(hex('--gw-sub')))
+  })
+
+  it('and no rule in the stylesheet still types one of the old greys', () => {
+    const rules = CSS.split('\n').filter(l => !/^\s*--/.test(l))
+    const OLD = ['#EDECEA', '#F5F3EF', '#9B9590', '#6B6560', '#D8D5CF']
+    expect(rules.filter(l => OLD.some(h => l.toUpperCase().includes(h)))).toEqual([])
+  })
+})
+
 describe('every page is painted with the page colour, not the card fill', () => {
   /**
    * `--gw-bg` used to be the page as well as the fill inside cards. A full-page wrapper still

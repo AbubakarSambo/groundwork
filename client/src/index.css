@@ -3,7 +3,7 @@
 @theme {
   --color-gw-navy: #0C447C;
   --color-gw-navy-d: #042C53;
-  --color-gw-bg: #EDECEA;
+  --color-gw-bg: #F7F1E5;
   --color-gw-dark: #0A1628;
   --color-gw-green-bg: #E1F5EE;
   --color-gw-green-t: #085041;
@@ -18,16 +18,16 @@
   --color-gw-blue-t: #0C447C;
   --color-gw-blue-b: #B5D4F4;
   --color-gw-border: #EDE5D6;
-  --color-gw-muted: #9B9590;
-  --color-gw-sub: #6B6560;
+  --color-gw-muted: #7D6A55;
+  --color-gw-sub: #4E4236;
   --color-gw-text: #1A1916;
 
   --color-primary: #0C447C;
   --color-primary-foreground: #ffffff;
   --color-background: #FDFBF6;
   --color-foreground: #1A1916;
-  --color-muted: #EDECEA;
-  --color-muted-foreground: #6B6560;
+  --color-muted: #F7F1E5;
+  --color-muted-foreground: #4E4236;
   --color-border: #EDE5D6;
   --color-secondary: #f1f5f9;
   --color-secondary-foreground: #64748b;
@@ -71,13 +71,15 @@
    * one name for one thing rather than two.
    */
   --gw-card: #FFFFFF;
-  --gw-slate: #F5F3EF;
+  --gw-slate: #FAF5EA;
   --gw-line: #EDE5D6;
   --gw-ink: #1A1916;
   --gw-green: #085041;
   --gw-navy: #0C447C;
   --gw-navy-d: #042C53;
-  --gw-bg: #EDECEA;
+  /* THE FILL INSIDE A WHITE CARD: progress tracks, "Waiting on" pills, quoted boxes. The prototype's
+     cream fill, so a card reads cream and white with no grey in it. The page itself is --gw-page. */
+  --gw-bg: #F7F1E5;
   --gw-dark: #0A1628;
   --gw-green-bg: #E1F5EE;
   --gw-green-t: #085041;
@@ -103,6 +105,9 @@
      so it belongs on the cream page below. Every border that was typed as #E2E0DB in this file now
      reads this token, so they all moved together. */
   --gw-border: #EDE5D6;
+  /* The stronger warm line, for the edge of an input or a secondary button: the design system's
+     second rule colour. It replaces #D8D5CF, a grey typed once for the input border. */
+  --gw-rule-2: #DFD3BE;
   /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
      Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
      the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
@@ -111,13 +116,17 @@
      #706A65 is the same hue and saturation, darkened until the worst of those four grounds clears
      4.5 (it reaches 4.52). Checked first that the token is never painted on a dark surface: the
      rail uses its own colours, so nothing is made worse by this.
-     --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
-  --gw-muted: #706A65;
+     --gw-sub was measured at the same time and left alone - it already passes at 4.87.
+     NOW #7D6A55, for the cream design system. The prototype's own fainter text colour is #85705A,
+     and it fails here: 4.18 on the cream fill and 4.33 on the lighter one. #7D6A55 is the same warm
+     brown, darkened only until the darkest ground clears 4.5 (4.59 on the fill, 5.17 on white). */
+  --gw-muted: #7D6A55;
   /* For type below 11px, where a ratio written for 14px text stops being enough. Small uppercase
      labels at 9.5px measured 4.68-4.85 against white on --gw-muted: passing the letter of the bar
      and not the point of it. This is the same family, darker, for exactly those labels. */
   --gw-sub-d: #4A4540;
-  --gw-sub: #6B6560;
+  /* Secondary text: the design system's "Muted", a dark warm brown (9.7 on white, 8.7 on the fill). */
+  --gw-sub: #4E4236;
   --gw-text: #1A1916;
   --gw-clay: #9F5447;
   /**
@@ -147,7 +156,7 @@
    * the site can finally be read against each other. W14-8.
    */
   --gw-paper: #FDFBF6; /* the same as --gw-page: the design system calls the page "Paper" */
-  --gw-paper-2: #F5F3EF;
+  --gw-paper-2: #FAF5EA; /* the prototype's lighter cream, for a band above the page */
 
   /**
    * THE FOUR THAT WERE REAL, out of what I had called one-off accents without looking.
@@ -239,11 +248,11 @@ body {
 .gw-msg-back { opacity: 0.42; }
 
 .gw-msg-ai {
-  background: #EDECEA;
+  background: var(--gw-bg);
   border: 1px solid var(--gw-border);
   align-self: flex-start;
   border-bottom-left-radius: 3px;
-  color: #1A1916;
+  color: var(--gw-text);
 }
 
 .gw-msg-user {
@@ -254,10 +263,10 @@ body {
 }
 
 .gw-msg-loading {
-  background: #EDECEA;
+  background: var(--gw-bg);
   border: 1px solid var(--gw-border);
   align-self: flex-start;
-  color: #9B9590;
+  color: var(--gw-muted);
   font-style: italic;
   font-size: 12px;
   border-bottom-left-radius: 3px;
@@ -271,7 +280,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #9B9590;
+  background: var(--gw-muted);
   animation: gw-dot-bounce 1.2s ease-in-out infinite;
 }
 .gw-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -320,7 +329,7 @@ body {
   line-height: 1.4;
   border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
-  background: #EDECEA;
+  background: var(--gw-bg);
   font-family: inherit;
   color: var(--gw-text);
   outline: none;
@@ -380,7 +389,7 @@ body {
   font-family: inherit;
   transition: background 0.1s;
 }
-.gw-back:hover { background: #EDECEA; }
+.gw-back:hover { background: var(--gw-bg); }
 
 /* ── BUTTONS ─────────────────────────────────────────────── */
 .gw-btn {
@@ -418,14 +427,14 @@ body {
   display: block;
   text-align: center;
 }
-.gw-btn-sec:hover { background: #EDECEA; }
+.gw-btn-sec:hover { background: var(--gw-bg); }
 
 .gw-btn-sm {
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12px;
   border: 1px solid var(--gw-border);
-  background: #EDECEA;
+  background: var(--gw-bg);
   color: var(--gw-sub);
   cursor: pointer;
   font-family: inherit;
@@ -460,7 +469,7 @@ body {
   width: 100%;
   padding: 10px 12px;
   font-size: 13px;
-  border: 1px solid #D8D5CF;
+  border: 1px solid var(--gw-rule-2);
   border-radius: var(--gw-radius);
   background: #FFFFFF;
   color: var(--gw-text);
@@ -507,7 +516,7 @@ body {
 .gw-pill-amber { background: #FDF3E3; color: #8A5C1A; }
 .gw-pill-red   { background: #FCEBEB; color: #791F1F; }
 .gw-pill-blue  { background: #EEF4FB; color: #0C447C; }
-.gw-pill-gray  { background: #EDECEA; color: #6B6560; border: 1px solid var(--gw-border); }
+.gw-pill-gray  { background: var(--gw-bg); color: var(--gw-sub); border: 1px solid var(--gw-border); }
 
 /* ── PERSON ROWS ─────────────────────────────────────────── */
 .gw-prow {
@@ -522,7 +531,7 @@ body {
   transition: all 0.15s;
   margin-bottom: 7px;
 }
-.gw-prow:hover { border-color: #9B9590; background: #EDECEA; }
+.gw-prow:hover { border-color: var(--gw-muted); background: var(--gw-bg); }
 .gw-prow-static { cursor: default; }
 .gw-prow-static:hover { border-color: var(--gw-border); background: white; }
 
@@ -562,7 +571,7 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #9B9590; }
+::-webkit-scrollbar-thumb:hover { background: var(--gw-muted); }
 
 /* ── TABS (ground admin / participant) ───────────────────── */
 .gw-tab {
