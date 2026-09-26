@@ -94,7 +94,7 @@ import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
-import { aPromiseTheyNeverMade, withoutThePromise } from './a-promise-they-never-made';
+import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
@@ -2018,8 +2018,9 @@ export class ConversationService {
       const promiseNobodyMade = aPromiseTheyNeverMade(screened.text, [...theirWords, ...known]);
       if (promiseNobodyMade) {
         this.logger.warn(`Check-in ${checkIn.id}: cut an attribution nothing supports: ${JSON.stringify(promiseNobodyMade)}`);
-        const cut = withoutThePromise(screened.text, promiseNobodyMade);
-        if (cut.trim()) screened = { ...screened, text: cut };
+        /* And never cut a close down to a stub: "Speak soon." was all Elena read (run-7). */
+        const cut = whatIsLeftToSend(screened.text, promiseNobodyMade, closingNow);
+        if (cut) screened = { ...screened, text: cut };
       }
 
       /* AND NO HOMEWORK IN A ONE-TIME SESSION. See withoutTheHomework. */
