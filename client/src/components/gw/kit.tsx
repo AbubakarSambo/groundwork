@@ -25,6 +25,7 @@
  */
 
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 /** A titled band with a rule, grouping sections. */
 export function Zone({ label }: { label: string }) {
@@ -180,4 +181,102 @@ export function TextAction({ onClick, strong, children, size }: { onClick: () =>
       {children}
     </button>
   )
+}
+
+/**
+ * THE DESIGN SYSTEM'S BUTTON (A1). Four kinds, each with one job:
+ *
+ *   primary     navy, the one thing this screen is for ("Start your check-in")
+ *   secondary   white with a line, anything else you can do here ("Read it")
+ *   quiet       a navy text button, for saying no or leaving it ("Not now")
+ *
+ * and three sizes: the normal 44px, `big` (54px) and `small` (36px, 40px on a phone). The label is
+ * the caller's, and it should say exactly what happens when it is pressed.
+ *
+ * With `to` it is a link to a page in the app, drawn the same way, because what matters to the
+ * person is what it looks like and what it does, not which element it is.
+ */
+export type ButtonKind = 'primary' | 'secondary' | 'quiet'
+export function Button({
+  kind = 'primary', size, wide, to, onClick, type = 'button', disabled, children, ...rest
+}: {
+  kind?: ButtonKind
+  size?: 'big' | 'small'
+  wide?: boolean
+  to?: string
+  onClick?: () => void
+  type?: 'button' | 'submit'
+  disabled?: boolean
+  children: React.ReactNode
+  'aria-label'?: string
+}) {
+  const className = ['gw-b', `gw-b-${kind}`, size && `gw-b-${size}`, wide && 'gw-b-wide'].filter(Boolean).join(' ')
+  if (to && !disabled) {
+    return <Link to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>
+  }
+  return (
+    <button type={type} className={className} onClick={onClick} disabled={disabled} aria-label={rest['aria-label']}>
+      {children}
+    </button>
+  )
+}
+
+/**
+ * THE DESIGN SYSTEM'S TAG (A1). A short fact about a check-in, a deal or a line: "Proven",
+ * "Cooling", "Your turn", "Blocked 4 days", "Only you see this".
+ *
+ * Each tone means one thing everywhere, as the design system says of green, amber and blue:
+ *
+ *   proven     checked against proof
+ *   attention  needs a look
+ *   action     yours to do, or a link to a decision
+ *   concern    only for real problems, so it never becomes background noise
+ *   plain      a fact with no judgement in it
+ *
+ * It is never a label on a person. "At risk" on somebody's name is exactly what this product does
+ * not do; say what happened instead.
+ */
+export type TagTone = 'proven' | 'attention' | 'action' | 'concern' | 'plain'
+export function Tag({ tone = 'plain', children }: { tone?: TagTone; children: React.ReactNode }) {
+  return <span className={`gw-tag gw-tag-${tone}`}>{children}</span>
+}
+
+/**
+ * ONE ROW OF "WHAT NEEDS YOU" (A1). "The coloured edge says why it's here: ready to read, a
+ * decision, or something to look at. The button says exactly what happens."
+ *
+ *   ready    green, something is ready to read ("Today's report is ready", "Read it")
+ *   decide   navy, a decision or a thing for you to do ("Decide", "Start it")
+ *   look     amber, something to look at ("Open")
+ *
+ * The edge is a colour, so the reason is also said in words for anyone who cannot see it. Rows sit
+ * inside a `NeedsYouList`, which draws the line above the first one.
+ */
+export type NeedKind = 'ready' | 'decide' | 'look'
+const NEED_REASON: Record<NeedKind, string> = {
+  ready: 'Ready to read.',
+  decide: 'A decision for you.',
+  look: 'Something to look at.',
+}
+export function NeedsYouRow({ kind, title, detail, actions }: {
+  kind: NeedKind
+  title: string
+  detail?: string
+  /** One or two buttons. The first is the main one. */
+  actions?: React.ReactNode
+}) {
+  return (
+    <li className={`gw-need gw-need-${kind}`}>
+      <span className="gw-need-edge" aria-hidden />
+      <div style={{ minWidth: 0 }}>
+        <span className="gw-sr-only">{NEED_REASON[kind]} </span>
+        <div className="gw-need-h">{title}</div>
+        {detail && <div className="gw-need-s">{detail}</div>}
+      </div>
+      {actions && <div className="gw-need-acts">{actions}</div>}
+    </li>
+  )
+}
+export function NeedsYouList({ label, children }: { label: string; children: React.ReactNode }) {
+  return <ul className="gw-need-list" aria-label={label} style={{ listStyle: 'none' }}>{children}</ul>
 }
