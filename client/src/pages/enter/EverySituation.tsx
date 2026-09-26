@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { scrollTo } from '@/lib/scroll-to'
 import { SCENARIOS, groupOfCard, type ScenarioCard } from '@/pages/grounds/CreateGroundPage'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EVERY_SITUATION, THE_DOOR_SIGNED_OUT, THE_GROUPS_IN_ORDER, THE_ONE_LINE, orderWithinGroup } from './the-way-in'
@@ -44,7 +45,7 @@ export function EverySituation({
   /* On a narrow screen the panel sits under the whole list, so picking brings it into view. */
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (picked && typeof panel.current?.scrollIntoView === 'function') panel.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    if (picked) scrollTo(panel.current, { block: 'nearest' })
   }, [picked])
 
   return (
