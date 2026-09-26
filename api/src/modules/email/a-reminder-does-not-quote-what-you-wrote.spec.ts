@@ -23,10 +23,12 @@ describe('the session-ready sweep', () => {
 });
 
 describe('an invitation', () => {
-  it('lasts ninety days, written once and read by every writer', () => {
-    expect(AN_INVITE_LASTS_DAYS).toBe(90);
+  /* Was ninety. Hafsah's decision of 26 September (U.3): fourteen, as the prototype says, now that an
+     expired link offers a fresh one. Still written once and read by every writer. */
+  it('lasts fourteen days, written once and read by every writer', () => {
+    expect(AN_INVITE_LASTS_DAYS).toBe(14);
     const now = new Date('2026-09-11T00:00:00Z');
-    expect(inviteExpiryFrom(now).toISOString()).toBe('2026-12-10T00:00:00.000Z');
+    expect(inviteExpiryFrom(now).toISOString()).toBe('2026-09-25T00:00:00.000Z');
     for (const rel of ['../grounds/grounds.service.ts', '../participants/participants.service.ts']) {
       const src = strip(readFileSync(join(__dirname, rel), 'utf8'));
       expect(src).not.toMatch(/inviteTokenExpiresAt: new Date\(Date\.now\(\) \+ \d+ \* 24/);

@@ -6,7 +6,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
-import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
+import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
+import { whenItAsks } from './when-it-asks';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -18,6 +19,10 @@ import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@p
  * create or link a User for that email so they can own their private record.
  * The other party's account is never visible to them.
  */
+/** The one reply "Send me a fresh link" ever gives. */
+export const FRESH_LINK_REPLY =
+  'If that is the address the invitation went to, a fresh link is on its way. Open it from your email.';
+
 @Injectable()
 export class ParticipantsService {
   private readonly logger = new Logger(ParticipantsService.name);
@@ -30,14 +35,39 @@ export class ParticipantsService {
 
   /** Preview an invite from its token - shown before the participant accepts. */
   async preview(token: string) {
+    /*
+     * AN EXPIRED INVITATION IS ANSWERED, NOT THROWN (U.3). The page it opens is "This link has
+     * expired", which asks for the address and sends a fresh link. It needs the lead's FIRST name for
+     * "If this isn't the address Wairimu invited, ask her to add the right one." and nothing else:
+     * not the check-in, not the organisation, not the address it went to.
+     */
+    const row = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
+    if (row && hasExpired(row)) {
+      const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true } } } });
+      return { expired: true as const, leadFirstName: (g?.initiator?.firstName ?? '').trim() || null };
+    }
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
       where: { id: participant.groundId },
-      include: { initiator: { select: { firstName: true, lastName: true } } },
+      include: {
+        initiator: { select: { firstName: true, lastName: true } },
+        organization: { select: { name: true } },
+      },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
     return {
+      /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
+      organisationName: (ground as any).organization?.name ?? null,
+      leadFirstName: (ground.initiator.firstName ?? '').trim() || null,
+      endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
+      /* "What it asks": the rhythm, in one sentence (when-it-asks.ts). */
+      schedule: whenItAsks({
+        cadence: ground.cadence,
+        cadenceAnchorDay: ground.cadenceAnchorDay,
+        workingDays: ground.workingDays,
+        leadFirstName: ground.initiator.firstName,
+      }),
       groundLabel: ground.label,
       scenario: ground.scenario,
       initiatorName: `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim(),
@@ -496,6 +526,46 @@ export class ParticipantsService {
   // --- helpers ---
 
   /** The rule lives in an-invite-link-still-opens.ts, because attaching a document before the account exists presents the same token. */
+  /**
+   * "SEND ME A FRESH LINK" (U.3, #/join/expired).
+   *
+   * The same reply whatever happened, so the form cannot be used to learn whether an address was
+   * invited, or to whom: "We don't show who invited an address we don't recognise." A link goes out
+   * only when the token is a real invitation nobody has accepted and the address typed is the one it
+   * was sent to. The token is kept (every email already sent keeps working) and only its expiry is
+   * renewed, exactly as the lead's own "send it again" does.
+   */
+  async sendAFreshLink(token: string, typedEmail: string): Promise<{ says: string }> {
+    const says = FRESH_LINK_REPLY;
+    const email = (typedEmail ?? '').trim().toLowerCase();
+    if (!token || !email) return { says };
+    const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
+    if (!participant || participant.userId || (participant.email ?? '').toLowerCase() !== email) return { says };
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: participant.groundId },
+      include: { initiator: { select: { firstName: true } } },
+    });
+    if (!ground) return { says };
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { inviteTokenExpiresAt: inviteExpiryFrom(), inviteExpiryWarnedAt: null, inviteLapsedToldAt: null },
+    });
+    try {
+      await this.email.sendTheInviteThisGroundSends(
+        ground,
+        participant.email,
+        `${ground.initiator?.firstName ?? 'A founder'}`,
+        token,
+        undefined,
+        { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
+      );
+    } catch (err: any) {
+      /* Still the same reply: a slow mail provider must not turn this into a way of telling addresses apart. */
+      this.logger.warn(`Fresh invitation link to ${participant.email} did not send: ${err?.message}`);
+    }
+    return { says };
+  }
+
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     return assertInviteLinkStillOpens(participant);
