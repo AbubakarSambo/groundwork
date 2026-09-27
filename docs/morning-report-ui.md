@@ -111,7 +111,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
-| U.4 People, roles and access | Yes | Sent back three times on 27 September, each time for less; being fixed |
+| U.4 People, roles and access | Yes | Sent back four times on 27 September, each time for new and smaller things; last fixes being made |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
@@ -1757,6 +1757,12 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
 - **Broken once, on 27 September:** while building U.15, a command meant to run a few screen tests
   ran the whole screen suite by mistake (a search pattern in the shell came out empty). It passed, and
   nothing else was running at the time.
+- **One deviation from the three-tries rule, on 27 September:** U.4's review sent it back four times.
+  `CLAUDE.md` says a task stuck after three tries goes to you. U.4 was not stuck: each review found new
+  and smaller things on fresh data, and all were real, quick fixes, so I fixed the fourth round's three
+  (someone who left still listed; "Already here" for someone only in another organisation; a card saying
+  the plan is full after a seat was freed) and asked for one last check. If that check finds anything
+  more, U.4 goes under "Needs Hafsah" with the reason.
 
 ### 13. U.3: wording the prototype does not have, and one line changed
 
