@@ -85,7 +85,7 @@ const AMINAS_LINE_AS_THE_READER_WROTE_IT = "I haven't explicitly said 'get me ou
 const WORRIES = [
   { checkInId: 'c-amina', participantId: 'p-amina', type: 'TENSION', text: AMINAS_LINE_AS_THE_READER_WROTE_IT, saidWordForWord: false },
   { checkInId: 'c-amina', participantId: 'p-amina', type: 'WORRY', text: "I'm just not sure the brief was clear enough on that one point. Or the onboarding.", saidWordForWord: true },
-  { checkInId: 'c-amina', participantId: 'p-amina', type: 'WORRY', text: "I haven't decided yet.", saidWordForWord: true },
+  { checkInId: 'c-amina', participantId: 'p-amina', type: 'WORRY', text: "I haven't decided yet. [INFERRED: on how to address the lack of clarity in the brief or onboarding]", saidWordForWord: true },
   { checkInId: 'c-tobi', participantId: 'p-tobi', type: 'WORRY', text: 'If client satisfaction declines, or if issues arise that I cannot resolve, that would indicate things are off track.', saidWordForWord: true },
 ];
 const OTHER_LINES = [
@@ -148,8 +148,10 @@ describe('seniorhire: the Blockers tile, as Amina and as Tobi read it', () => {
       const tile = (b.quickRead ?? []).find((t: any) => t.label === 'Blockers');
       expect(tile).toBeDefined();
       expect(tile.value).toBe('4 worries');
-      /* The sentence that quoted words nobody said that way goes; the rest of the line stays. */
-      expect(tile.sub).toBe('I did say he..., and 3 more; nobody is waiting on anybody');
+      /* Amina's first worry quotes words she typed in other marks, so the tile passes over it for the
+         next one, which stands whole, and says the count as a sentence of its own. See
+         what-this-session-holds (a tile shows a whole sentence, or none). */
+      expect(tile.sub).toBe("I'm just not sure the brief was clear enough on that one point. There are 3 more worries on record, and nobody is waiting on anybody.");
       expect(tile.sub).not.toContain('get me out of these meetings');
       expect(notInTheRecord(b.quickRead, quotable)).toEqual([]);
     });
@@ -160,6 +162,7 @@ describe('seniorhire: the Blockers tile, as Amina and as Tobi read it', () => {
     const lines = await theRecordAQuoteMayComeFrom(prisma, 'g-seniorhire');
     expect(lines).not.toContain(AMINAS_LINE_AS_THE_READER_WROTE_IT);
     expect(lines).toContain("I haven't decided yet.");
+    expect(lines).toContain("I'm just not sure the brief was clear enough on that one point. Or the onboarding.");
     expect(lines).toContain(GROUND.brief);
     const asked = (prisma.recordEntry.findMany as jest.Mock).mock.calls.map((c: any[]) => c[0]).filter((a: any) => a?.select?.saidWordForWord);
     expect(asked).toContainEqual({ where: { participant: { groundId: 'g-seniorhire' } }, select: { text: true, saidWordForWord: true } });

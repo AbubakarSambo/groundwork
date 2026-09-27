@@ -11,7 +11,7 @@ describe('worries reach the Blockers tile when nothing is blocked', () => {
   it('says how many were said and names the first, instead of None', () => {
     const b = blockers(atAGlanceTiles({ ...base, worries: 3, theWorry: 'I lost 220 birds and missed a payment.' }));
     expect(b.value).toBe('3 worries');
-    expect(b.sub).toContain('I lost 220 birds and missed a payment, and 2 more');
+    expect(b.sub).toBe('I lost 220 birds and missed a payment. There are 2 more worries on record, and nobody is waiting on anybody.');
     expect(b.tone).toBe('warn');
   });
 
@@ -27,18 +27,84 @@ describe('worries reach the Blockers tile when nothing is blocked', () => {
   });
 });
 
-/** "we have a meeting with the CEO to discuss m..." - a tile that stopped inside a word (22 Sep 2026). */
-describe('a tile cuts at a word', () => {
+/*
+ * "we have a meeting with the CEO to discuss m..." - a tile that stopped inside a word (22 Sep 2026).
+ * It then cut at the last whole word, which was still inside a sentence: "I did say he..." on the
+ * seniorhire Blockers tile (all-24 run 12). A tile now shows a whole sentence, or none.
+ */
+describe('a tile never cuts inside a sentence', () => {
+  const { atAGlanceTiles, theFirstSentenceThatFits } = require('./what-this-session-holds');
+  const blockers = (a: any) => atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: 0, blocked: 1, waiting: 0, backedPct: null, numberWasSaid: false, ...a })
+    .find((t: any) => t.label === 'Blockers')!;
+
+  it('shows a one-sentence line whole', () => {
+    expect(blockers({ theBlocker: 'I have heard about it but we have a meeting with the CEO to discuss monetisation next week' }).sub)
+      .toBe('I have heard about it but we have a meeting with the CEO to discuss monetisation next week');
+  });
+
+  it('shows the first sentence of a longer one, whole, with its closing mark, and never "..."', () => {
+    expect(theFirstSentenceThatFits("I haven't explicitly said 'get me out of these meetings.' I did say he would own the relationships in his interview."))
+      .toBe("I haven't explicitly said 'get me out of these meetings.'");
+    expect(blockers({ theBlocker: 'Legal has the contract. They said Friday, and it is now Tuesday.' }).sub).toBe('Legal has the contract');
+  });
+
+  it('and a first sentence too long for a tile is not shown: the tile says what it counts', () => {
+    const long = `${'The pipeline is running on old names from before the summer '.repeat(3)}and nobody has picked it up.`;
+    expect(theFirstSentenceThatFits(long)).toBeNull();
+    expect(blockers({ theBlocker: long }).sub).toBe('named as holding work up');
+  });
+});
+
+/* Seniorhire, all-24 run 12, as Amina and Tobi read it: "I haven't explicitly said 'get me out of these
+   meetings.' I did say he..., and 3 more; nobody is waiting on anybody". */
+describe('the worry line is whole sentences, never a piece joined to a count', () => {
   const { atAGlanceTiles } = require('./what-this-session-holds');
-  it('ends on the last whole word, not mid-word, and drops a dangling conjunction', () => {
-    const tiles = atAGlanceTiles({
-      agreed: 0, stillOpen: 0, movedOnTargets: 0, blocked: 1, waiting: 0, backedPct: null, numberWasSaid: false,
-      theBlocker: 'I have heard about it but we have a meeting with the CEO to discuss monetisation next week',
-    });
-    const blockers = tiles.find((t: any) => t.label === 'Blockers')!;
-    expect(blockers.sub).toContain('...');
-    expect(blockers.sub).not.toMatch(/\bm\.\.\./);
-    expect(blockers.sub).not.toMatch(/\b(and|or|but|to|with|for|of|the)\.\.\./);
+  const blockers = (a: any) => atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false, ...a })
+    .find((t: any) => t.label === 'Blockers')!;
+
+  it('the exact case: Amina\'s first worry, shown as its first sentence, and the count as a sentence', () => {
+    const sub = blockers({ worries: 4, theWorry: "I haven't explicitly said 'get me out of these meetings.' I did say he would own the relationships in his interview." }).sub;
+    expect(sub).toBe("I haven't explicitly said 'get me out of these meetings.' There are 3 more worries on record, and nobody is waiting on anybody.");
+    expect(sub).not.toContain('...');
+    expect(sub).not.toContain(';');
+  });
+
+  it('one worry, and no worry that fits', () => {
+    expect(blockers({ worries: 1, theWorry: 'Diesel is N90,000 a month more.' }).sub)
+      .toBe('Diesel is N90,000 a month more. It is the only worry on record, and nobody is waiting on anybody.');
+    expect(blockers({ worries: 4, theWorry: null }).sub).toBe('4 worries are on record, and nobody is waiting on anybody.');
+    expect(blockers({ worries: 1, theWorry: null }).sub).toBe('1 worry is on record, and nobody is waiting on anybody.');
+  });
+});
+
+describe('the first worry is one whose line survives the quote rule whole', () => {
+  const { whatThisSessionHolds } = require('./what-this-session-holds');
+  /* Seniorhire, session 1, the worries in the order they were written, from the run-12 database. */
+  const ROWS = [
+    { text: "I haven't explicitly said 'get me out of these meetings.' I did say he would own the relationships in his interview.", saidWordForWord: false },
+    { text: "I'm just not sure the brief was clear enough on that one point. Or the onboarding.", saidWordForWord: true },
+    { text: "I haven't decided yet. [INFERRED: on how to address the lack of clarity in the brief or onboarding]", saidWordForWord: true },
+    { text: 'If client satisfaction declines, or if issues arise that I cannot resolve, that would indicate things are off track.', saidWordForWord: true },
+  ];
+  const prisma = (rows: any[]) => ({
+    checkIn: { findMany: async () => [{ id: 'c1' }] },
+    groundDependency: { findMany: async () => [] },
+    groundObjective: { findMany: async () => [] },
+    groundObjectiveSnapshot: { findMany: async () => [] },
+    groundCommitment: { findMany: async () => [] },
+    ground: { findUnique: async () => ({ brief: null, participants: [] }) },
+    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows.map((r) => ({ text: r.text })) : rows) },
+  });
+
+  it('passes over Amina\'s line, whose quote is not the record\'s words, for the next one', async () => {
+    const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1);
+    expect(held.worries).toBe(4);
+    expect(held.theFirstWorry).toBe("I'm just not sure the brief was clear enough on that one point.");
+  });
+
+  it('and with none that stands whole, there is no first worry, and the tile says the count', async () => {
+    const held = await whatThisSessionHolds(prisma(ROWS.slice(0, 1)), 'g', 1);
+    expect(held.theFirstWorry).toBeNull();
   });
 });
 

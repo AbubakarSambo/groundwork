@@ -1,5 +1,28 @@
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
+import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+
+/*
+ * A TILE SHOWS A WHOLE SENTENCE, OR NONE.
+ *
+ * Seniorhire, all-24 run 12, the Blockers tile, for Amina and for Tobi: "I haven't explicitly said
+ * 'get me out of these meetings.' I did say he..., and 3 more; nobody is waiting on anybody". The
+ * line was cut at 72 characters in the middle of Amina's second sentence, and the count was hung on
+ * the fragment with a semicolon. A person's words cut mid-sentence say something they did not say.
+ *
+ * So a line on a tile is the first sentence of what was said, whole, with its own closing mark,
+ * and nothing is ever cut inside a sentence. A first sentence too long for a tile is not shown at
+ * all, and the tile says what it counts instead.
+ */
+const A_TILE_HOLDS = 160;
+export function theFirstSentenceThatFits(s: string | null | undefined, max = A_TILE_HOLDS): string | null {
+  const t = (s ?? '').trim().replace(/\s+/g, ' ');
+  if (!t) return null;
+  /* The end of a sentence, with a closing quotation mark or bracket that belongs to it. */
+  const m = t.match(/^(.+?[.!?]+["'”’)\]]*)(?:\s|$)/);
+  const first = (m ? m[1] : t).trim();
+  return first.length <= max ? first : null;
+}
 
 /**
  * WHAT THIS SESSION HOLDS: THE FOUR TILES, COUNTED ONCE, OVER THE SESSION THEY ARE PRINTED UNDER.
@@ -95,7 +118,17 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       : Promise.resolve([] as { text: string }[]),
   ]);
   const worries = worried.length;
-  const theFirstWorry = worried[0]?.text ? cleanText(worried[0].text) : null;
+  /*
+   * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
+   * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see
+   * a-quote-built-at-the-read). Amina's first worry quoted words she typed in other marks; the rule
+   * took that sentence out and left a fragment. A worry that would lose a piece is passed over for
+   * one that would not, and with none the tile says how many there are.
+   */
+  const quotable = worried.length ? await theRecordAQuoteMayComeFrom(prisma as any, groundId) : [];
+  const theFirstWorry = worried
+    .map((w) => theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null))
+    .find((line): line is string => !!line && quotesBuiltAtTheRead(line, quotable) === line) ?? null;
   const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
@@ -155,21 +188,27 @@ export function atAGlanceTiles(a: {
   theWorry?: string | null;
 }): AGlanceRead[] {
   /*
-   * CUT AT A WORD, NOT MID-WORD. Read live: "we have a meeting with the CEO to discuss m..." - the
-   * tile stopped inside "monetisation" and the reader is left with a letter. The last whole word is
-   * where it ends, and a trailing comma or conjunction goes with it.
+   * NOT CUT AT ALL. Read live: "we have a meeting with the CEO to discuss m..." - the tile stopped
+   * inside "monetisation". Cutting at the last whole word instead still cut inside a sentence, and
+   * "I did say he..." (seniorhire, run 12) is what that leaves. See theFirstSentenceThatFits. A
+   * clause the count is joined to loses its own full stop, so ", and 2 more" follows it.
    */
-  const shortly = (s: string | null | undefined, max = 72): string | null => {
-    const t = (s ?? '').trim().replace(/\s+/g, ' ').replace(/[.?!]+$/, '');
-    if (!t) return null;
-    if (t.length <= max) return t;
-    const cut = t.slice(0, max - 1);
-    const atAWord = cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '').replace(/\s+(and|or|but|to|with|for|of|the|a|an)$/i, '');
-    return `${(atAWord || cut).trimEnd()}...`;
+  const shortly = (s: string | null | undefined): string | null => {
+    const first = theFirstSentenceThatFits(s);
+    return first ? first.replace(/[.?!]+$/, '') || null : null;
   };
   const theDifference = shortly(a.theDifference);
   const theBlocker = shortly(a.theBlocker);
-  const theWorry = shortly(a.theWorry);
+  /* A worry is shown as the sentence it is, with its own closing mark, and the count follows it as a
+     sentence of its own. */
+  const theWorry = (() => {
+    const first = theFirstSentenceThatFits(a.theWorry);
+    if (!first) return null;
+    return /[.!?]["'”’)\]]*$/.test(first) ? first : `${first}.`;
+  })();
+  const theRestOfTheWorries = (n: number): string => (n <= 0
+    ? 'It is the only worry on record, and nobody is waiting on anybody.'
+    : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record, and nobody is waiting on anybody.`);
   const worries = a.worries ?? 0;
   return [
     {
@@ -238,7 +277,9 @@ export function atAGlanceTiles(a: {
         : (a.waiting ?? 0) > 0
           ? (theBlocker ? `${theBlocker}, nothing hard-blocked` : 'on someone else, nothing hard-blocked')
           : worries
-            ? (theWorry ? `${theWorry}${worries > 1 ? `, and ${worries - 1} more` : ''}; nobody is waiting on anybody` : 'said, though nobody is waiting on anybody')
+            ? (theWorry
+              ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
+              : `${worries} ${worries === 1 ? 'worry is' : 'worries are'} on record, and nobody is waiting on anybody.`)
             : 'nobody named anything holding work up',
       tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 || worries ? 'warn' : 'good',
     },
