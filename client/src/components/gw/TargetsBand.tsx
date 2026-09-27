@@ -129,7 +129,7 @@ export function TargetsBand({
         {isTheLead && editing === t.id && (
           <div style={{ marginTop: 8, maxWidth: 560 }}>
             <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }} htmlFor={`assumes-${t.id}`}>
-              {figure ? `What the target of ${figure} assumes` : `What ${t.name} assumes`}
+              {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
             </label>
             <textarea
               id={`assumes-${t.id}`}
@@ -190,13 +190,17 @@ export function TargetsBand({
 /**
  * "What the target of 25 assumes", the lines, and "If one of these stops being true, the target
  * needs a second look." (board-as-lead.txt). The same block on Context and on the board.
+ *
+ * With no number it read "What Aisha and Baraka are to sell 25 water pumps this quarter. assumes",
+ * the target's whole sentence dropped into a heading (U.7 review). It is "What this target assumes".
+ * `name` is still taken, so the board's call does not change, and is not printed.
  */
 export function WhatTheTargetAssumes({ figure, name, assumes }: { figure: string | null; name: string; assumes: string[] }) {
   if (!assumes.length) return null
   return (
     <div style={{ marginTop: 8, background: 'var(--gw-bg)', borderRadius: 8, padding: '9px 11px', maxWidth: 560 }}>
       <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
-        {figure ? `What the target of ${figure} assumes` : `What ${name} assumes`}
+        {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
       </div>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
         {assumes.map((a, k) => <li key={k}>{a}</li>)}
