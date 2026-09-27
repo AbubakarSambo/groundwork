@@ -195,7 +195,7 @@ export function TargetsBand({
  * the target's whole sentence dropped into a heading (U.7 review). It is "What this target assumes".
  * `name` is still taken, so the board's call does not change, and is not printed.
  */
-export function WhatTheTargetAssumes({ figure, name, assumes }: { figure: string | null; name: string; assumes: string[] }) {
+export function WhatTheTargetAssumes({ figure, assumes }: { figure: string | null; name?: string; assumes: string[] }) {
   if (!assumes.length) return null
   return (
     <div style={{ marginTop: 8, background: 'var(--gw-bg)', borderRadius: 8, padding: '9px 11px', maxWidth: 560 }}>
