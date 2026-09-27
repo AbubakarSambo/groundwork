@@ -100,6 +100,8 @@ describe('what Grace can change', () => {
     open()
     fireEvent.click(await screen.findByRole('radio', { name: /Can open check-ins/ }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'LEAD' }))
+    /* By name, not "Their role has changed." (U.4 review). */
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Miriam’s role has changed.'))
   })
 
   it('not the owner\'s role, and the page says why', async () => {

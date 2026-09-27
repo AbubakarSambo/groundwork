@@ -191,10 +191,19 @@ export class EmailService implements OnModuleInit {
    * To the admins, because they are the only people who can answer it, and adding a person to the
    * organisation is now their decision rather than a side effect of somebody else's invitation.
    */
-  async sendSomebodyIsWaiting(to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null): Promise<void> {
+  async sendSomebodyIsWaiting(
+    to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null,
+    /* U.4 review: the subject names the person and the organisation when both are known, rather than
+       an address and "your organisation". A name is only ever one the person gave, never guessed. */
+    known: { name?: string | null; organisationName?: string | null } = {},
+  ): Promise<void> {
+    const name = (known.name ?? '').trim();
+    const org = (known.organisationName ?? '').trim();
     await this.sendEmail({
       to,
-      subject: `${who} is waiting to be let into your organisation`,
+      subject: name
+        ? `${name} is waiting to be let into ${org || 'your organisation'}.`
+        : `${who} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
          <p><strong>${escapeHtml(who)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(addedBy)}, and they are not in your organisation yet.</p>

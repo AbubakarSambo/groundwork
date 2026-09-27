@@ -85,8 +85,9 @@ export function OnePersonPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
   })
   const role = useMutation({
-    mutationFn: (what: RoleWrite) => apiClient.patch(`/users/${id}`, { role: what }),
-    onSuccess: () => { refresh(); toast.success('Their role has changed.') },
+    mutationFn: ({ what }: { what: RoleWrite; first: string }) => apiClient.patch(`/users/${id}`, { role: what }),
+    /* By name (U.4 review): "Amina’s role has changed." */
+    onSuccess: (_r, v) => { refresh(); toast.success(`${v.first}’s role has changed.`) },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
   })
   const phone = useMutation({
@@ -162,7 +163,7 @@ export function OnePersonPage() {
                 aria-checked={on}
                 className={on ? 'on' : ''}
                 disabled={locked && !on}
-                onClick={() => { if (!on && !locked) role.mutate(c.value as RoleWrite) }}
+                onClick={() => { if (!on && !locked) role.mutate({ what: c.value as RoleWrite, first }) }}
               >
                 <b>{c.title}</b>
                 <span>{c.says}</span>
