@@ -162,3 +162,13 @@ export const leavingApi = {
   step: async (id: string, step: LeavingStepKey, change: { ownerUserId?: string | null; done?: boolean }): Promise<LeavingBoard> =>
     (await apiClient.put(`/suites/leaving/lists/${id}/steps/${step}`, change)).data,
 }
+
+/** The role map (GET /suites/roles/board). Admins only. */
+export interface RoleMap {
+  roles: { name: string; owns: string | null; heldBy: string[] }[]
+  nobody: { name: string; why: string | null }[]
+}
+
+export const roleMapApi = {
+  get: async (): Promise<RoleMap> => (await apiClient.get('/suites/roles/board')).data,
+}

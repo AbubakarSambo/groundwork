@@ -2008,3 +2008,9 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-leaving-step { grid-template-columns: minmax(0, 1fr) 220px auto; }
 .gw-leaving-step select { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
 @media (max-width: 767px) { .gw-leaving-step { grid-template-columns: minmax(0, 1fr); } }
+/* The suites' tables that hold sentences, not numbers: the role map and the rest (U.17). */
+.gw-suite-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.gw-suite-table th, .gw-suite-table td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
+.gw-suite-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
+.gw-suite-table tbody th { font-weight: 600; }
+.gw-suite-table .gw-nobody { color: var(--gw-red-t); }
