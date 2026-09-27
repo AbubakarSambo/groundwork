@@ -16,9 +16,10 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets and performance reviews). Each up to U.16 passed the full screen and API suites; the
-few failures each run found came from that module and were fixed. The U.17 parts have passed their
-own tests, and their full run is still to do. The latest full run, after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
+the onboarding board, leave requests, time sheets and performance reviews). Each up to U.16 passed
+the full screen and API suites; the few failures each run found came from that module and were fixed.
+The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
+screen tests and 9,528 API tests); performance reviews have passed their own tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
