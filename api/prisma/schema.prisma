@@ -466,6 +466,9 @@ model Organization {
   /// When someone leaves: the checklist, and signs a team is under strain (E5, U.17).
   leavingChecklists  LeavingChecklist[]
   teamStrainSigns    TeamStrainSign[]
+  /// The role map: the role interview's answers, and why a job nobody owns matters (E6, U.17).
+  roleInterviews     RoleInterviewAnswer[]
+  roleGapNotes       RoleGapNote[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2326,6 +2329,44 @@ model TeamStrainSign {
 
   @@index([organizationId, createdAt])
   @@map("team_strain_signs")
+}
+
+/// ONE PERSON'S ANSWERS TO THE ROLE INTERVIEW (E6, the role map, U.17), written by the engine
+/// (docs/requests-to-engine.md, request 25) with the prompt version that ran: what they own, what they
+/// decide, who they depend on and who depends on them, for the role they hold. Empty until then. The
+/// role map reads only `owns`, for admins only (suites/the-role-map.service.ts). Never a rating.
+model RoleInterviewAnswer {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  roleName         String   @map("role_name") @db.VarChar(200)
+  owns             String?  @db.Text
+  decides          String?  @db.Text
+  dependsOn        String?  @map("depends_on") @db.Text
+  dependedOnBy     String?  @map("depended_on_by") @db.Text
+  promptVersionId  String?  @map("prompt_version_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, roleName])
+  @@map("role_interview_answers")
+}
+
+/// WHY A JOB NOBODY OWNS MATTERS (E6, the role map, U.17), in one plain sentence the engine writes
+/// from what happened (request 25), with the prompt version that ran. Empty until then. Admins only.
+model RoleGapNote {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  roleName        String   @map("role_name") @db.VarChar(200)
+  says            String   @db.Text
+  promptVersionId String?  @map("prompt_version_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, roleName])
+  @@map("role_gap_notes")
 }
 
 /// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due

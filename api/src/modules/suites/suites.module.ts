@@ -6,10 +6,11 @@ import { LeaveBoardService } from './the-leave-board.service';
 import { TimeSheetsService } from './the-time-sheets.service';
 import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
+import { RoleMapService } from './the-role-map.service';
 
 @Module({
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService],
 })
 export class SuitesModule {}

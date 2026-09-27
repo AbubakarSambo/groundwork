@@ -8,6 +8,7 @@ import { LeaveBoardService } from './the-leave-board.service';
 import { TimeSheetsService } from './the-time-sheets.service';
 import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
+import { RoleMapService } from './the-role-map.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -52,6 +53,7 @@ export class SuitesController {
     private readonly time: TimeSheetsService,
     private readonly reviews: ReviewsService,
     private readonly leaving: LeavingBoardService,
+    private readonly roles: RoleMapService,
   ) {}
 
   @Get()
@@ -166,6 +168,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin names a step’s owner, or marks it done or not done' })
   leavingStep(@Param('id') id: string, @Param('step') step: string, @CurrentUser() user: CurrentUserData, @Body() dto: LeavingStepDto) {
     return this.leaving.step({ userId: user.id, organizationId: user.organizationId }, id, step, dto);
+  }
+
+  @Get('roles/board')
+  @ApiOperation({ summary: 'The role map: every role, what it owns, and who holds it. Admins only.' })
+  roleMap(@CurrentUser() user: CurrentUserData) {
+    return this.roles.board({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put(':key')
