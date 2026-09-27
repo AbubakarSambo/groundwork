@@ -224,6 +224,38 @@ engine's name handling: when a person has no name, their label falls back to tha
 another participant could see it as the person's name. I have asked the engine workspace to stop that
 (request 36).
 
+**Labels, 27 September: the screens' half of request 36 is done** (`43ee5651`, `526a9691`, `0693d1bc`,
+`4db70392`, `8614b047`). The engine fixed the server; the screens had the same fallback in
+`client/src/lib/utils.ts`, which took the part of the lead's note before the dash as the person's name,
+then said "a teammate". Now no screen names anybody from `roleAsDescribed`. A person is their name, or
+the name they typed at the end of an open link, or (on the lead's own pages) what their address says.
+With none, the screens use the engine's own words, from a copy of its function that a test checks
+against the real one. What a person now reads:
+
+- One person with no name: "A colleague has not checked in yet." (the lead's list of sessions).
+- Several, on the board, the Sessions tab, Context and the report: "One colleague", "Another colleague",
+  "A third colleague", in the order they joined. On a participant's own page they are not counted, and
+  are "You"; so a participant with two others reads "One colleague" and "Another colleague".
+- The lead's own line: "You, one colleague and a third colleague have not checked in yet." It used to
+  give the lead their own name.
+- A lead with no name: "The lead's words, from setup." and "your lead" to somebody in the check-in.
+- The lead still reads their own note, beside the name and never as it: "Daniel. Your note: Daniel is
+  expected to generate 20 leads a week." The board's lead-only role lines now read the same way. A
+  participant and a reading admin see no part of it (the server does not send it, and each person's
+  card now also shows it only to the lead).
+- "A teammate" is gone from every screen.
+
+A new test renders the board (as the lead, a participant and an admin), the check-in's page (as the
+lead on Check-in, Sessions, Context and Report, and as a participant on each of their tabs), and the
+report, with three people whose note is "Daniel9k2 - PRIVATE-DESCRIPTION-9k2 is not meeting targets",
+and finds no piece of it in any name, title or label. Today, the You board, the invitation, People and
+Jump to name people only from what the server sends; a scan fails if any new screen starts reading
+the note. Three old specs expected "a teammate" or the name made from the note, which was the defect;
+they now expect "a colleague" and also prove there is no fallback. Two specs that read code were out of
+date: the reveal row now expects the engine's `return aColleague(p.id);`, and request 32's round-card
+spec now pins the privacy gate on `latestFinding` and `latestSummary` that replaced the shorthand it
+looked for.
+
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
