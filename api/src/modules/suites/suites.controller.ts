@@ -10,6 +10,7 @@ import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
+import { TodosService } from './the-todos.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -61,6 +62,7 @@ export class SuitesController {
     private readonly leaving: LeavingBoardService,
     private readonly roles: RoleMapService,
     private readonly spend: SpendingService,
+    private readonly todos: TodosService,
   ) {}
 
   @Get()
@@ -205,6 +207,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets one team’s budget for this month' })
   setBudget(@CurrentUser() user: CurrentUserData, @Body() dto: BudgetDto) {
     return this.spend.setBudget({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('todos/board')
+  @ApiOperation({ summary: 'To-dos: what each person said they will do in their check-ins, for an admin or the lead of the team' })
+  todosBoard(@CurrentUser() user: CurrentUserData) {
+    return this.todos.board({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put(':key')

@@ -8,10 +8,11 @@ import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
+import { TodosService } from './the-todos.service';
 
 @Module({
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, SpendingService],
 })
 export class SuitesModule {}
