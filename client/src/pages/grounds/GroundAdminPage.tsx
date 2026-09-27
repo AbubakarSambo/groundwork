@@ -2018,7 +2018,8 @@ export function GroundAdminPage() {
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                              {p.roleAsDescribed && <span data-leads-note style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
+                              {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
+                              {isInitiator && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
                               {/* What someone is answerable for is the lead's to
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be

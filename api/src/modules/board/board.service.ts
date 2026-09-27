@@ -593,7 +593,7 @@ export class BoardService {
         id: p.id,
         name: nameOf(p.id),
         /* U.6 review: the lead's words about a person are for whoever runs the check-in only. */
-        role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
+        role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
       })),
@@ -939,7 +939,7 @@ export class BoardService {
         rows: ground.participants.map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
+          role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
           // A managing-only lead has no account of their own and is not counted
           // in readiness, so their row is dashes, not "overdue".
           managingOnly: p.managingOnly,
@@ -969,7 +969,7 @@ export class BoardService {
         .map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, runsThisGround),
+          role: theLeadsWordsAbout(p, isInitiator),
           /*
            * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
            * carries the engine's own markers - a live board showed
@@ -1104,12 +1104,13 @@ export class BoardService {
        * `remit` is `roleAsDescribed`, the sentence the lead typed about the person when inviting
        * them. It reached every reader of the board: on a live-shaped board, the person and a peer
        * both read "Daniel - Your sales manager, who you said is not meeting his agreed targets".
-       * The same rule as the roster's `role` above: the lead or an admin reads it, nobody else.
+       * The same rule as the roster's `role` above: the lead reads it, nobody else, not even an admin
+       * (U.7 review).
        * `remitDefined` stays, because it says only that a role was given, not what it says.
        */
       if (has('contribution')) {
         out.contribution = buildContribution(readInput, nameOf)
-          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, runsThisGround) }));
+          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
       /*

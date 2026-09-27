@@ -1080,7 +1080,7 @@ export class GroundsService {
    * client-side (reusing ReportPage's deriveStatus rather than duplicating
    * that logic in two languages). Admin/HR/Founder/Manager oversight view -
    * not scoped to "my grounds," unlike list(). */
-  async getOrgRoster(organizationId: string) {
+  async getOrgRoster(organizationId: string, requestingUserId?: string) {
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
@@ -1135,7 +1135,9 @@ export class GroundsService {
             // Display name only, so the client never has to make one out of the address.
             firstName: (p as any).user?.firstName ?? null,
             partyType: p.partyType,
-            roleAsDescribed: p.roleAsDescribed,
+            /* The lead's note about a person, to that check-in's lead alone. This roster is read by
+               admins, and an admin is not the lead of every check-in (U.7 review). */
+            roleAsDescribed: theLeadsWordsAbout(p, !!requestingUserId && g.initiator.id === requestingUserId),
             accepted: p.userId != null,
           };
         }),
@@ -1411,9 +1413,9 @@ export class GroundsService {
           .map((p) => ({
             ...p,
             email: hideContact && !isInitiator && !isMe(p) ? null : p.email,
-            /* U.6 review: what the lead wrote about a person is for whoever runs the check-in only.
+            /* What the lead wrote about a person is for the lead alone, not an admin (U.7 review).
                See the-leads-words-about-someone.ts. */
-            roleAsDescribed: theLeadsWordsAbout(p, runsIt),
+            roleAsDescribed: theLeadsWordsAbout(p, isInitiator),
           }));
         const shown = new Set(participants.map((p: any) => p.id));
         const checkInsShown = hidePeers
@@ -1855,8 +1857,9 @@ export class GroundsService {
       return {
         ...p,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
-        /* U.6 review: the lead's words about a person never reach a participant. */
-        roleAsDescribed: theLeadsWordsAbout(p, viewerRunsThisGround),
+        /* The lead's words about a person reach the lead alone: not a participant, not an admin
+           (U.7 review). See the-leads-words-about-someone.ts. */
+        roleAsDescribed: theLeadsWordsAbout(p, viewerIsInitiator),
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw

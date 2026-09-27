@@ -63,4 +63,19 @@ describe('each person holds everything about them', () => {
     /* Nobody's row is open for a lead who is not on the check-in, so nothing is drawn yet. */
     expect(screen.queryByText('Change this in the chat')).toBeNull()
   })
+
+  /*
+   * U.7 REVIEW: "Your note" IS SAID ONLY TO THE LEAD WHO WROTE IT. Otieno, an admin not in the
+   * check-in, read "Baraka. Your note: ..." about a note Wanjiru wrote. The server no longer sends it
+   * to him; the card does not say it to him either, even if a row still carried one.
+   */
+  it('the lead reads her own note beside the name, and an admin reading the page does not', () => {
+    const withNote = [{ id: 'pb', userId: null, nameGiven: 'Baraka', roleAsDescribed: 'Baraka - slow to follow up', objective: { all: [] } }]
+    const { unmount } = render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead />)
+    expect(document.body.textContent).toContain('Baraka. Your note: slow to follow up.')
+    unmount()
+    render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead />)
+    expect(document.body.textContent).not.toContain('Your note')
+    expect(document.body.textContent).not.toContain('slow to follow up')
+  })
 })

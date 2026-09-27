@@ -263,8 +263,8 @@ export class GroundsController {
   @Get('org-roster')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Org-wide list of every ground (team): lead, members, roles, and alignment status - for HR/admin/founder oversight' })
-  async getOrgRoster(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.getOrgRoster(organizationId);
+  async getOrgRoster(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.getOrgRoster(user.organizationId, user.id);
   }
 
   /**

@@ -82,6 +82,7 @@ export function EachPerson({
   asks,
   viewerUserId,
   isLead,
+  isTheLead = false,
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -95,6 +96,8 @@ export function EachPerson({
   asks: Record<string, AnAskOnTheCard[]>
   viewerUserId?: string | null
   isLead: boolean
+  /** The check-in's own lead, not an admin reading it. Only the lead reads their own notes. */
+  isTheLead?: boolean
   /** The lead changes what is expected of somebody in the conversation, not in a form. */
   onChangeInChat?: (said: string) => void
   /** A person attaching the thing they said they would show. */
@@ -170,9 +173,10 @@ export function EachPerson({
                 transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
               }}>&#9654;</span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : atTheStart(labelOf(p))}</span>
-              {/* The lead's own note, beside the name and never as it. The server sends it only to whoever
-                  runs the check-in; this card shows it only to the lead as well. */}
-              {isLead && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
+              {/* The lead's own note, beside the name and never as it. The server sends it only to the
+                  check-in's lead, and this card says "Your note" only to the lead as well: an admin
+                  reading the page did not write it (U.7 review). */}
+              {isTheLead && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
               <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{isOpen ? 'Hide' : 'Open'}</span>

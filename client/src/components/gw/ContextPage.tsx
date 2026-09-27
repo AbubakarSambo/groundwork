@@ -565,6 +565,7 @@ export function ContextPage({
               asks={((ground as any).asks ?? {}) as any}
               viewerUserId={viewerUserId}
               isLead={isLead}
+              isTheLead={isTheLead}
               onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
