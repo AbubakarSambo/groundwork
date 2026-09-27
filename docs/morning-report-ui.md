@@ -2124,6 +2124,30 @@ tests for the files changed were run, with the type check; the full run is the t
 7. **The welcome card's door descriptions** are left as the prototype has them, as you decided, and
    listed for you in item 13.
 
+**The re-review (27 September) sent U.3 back for one real crash, now fixed.** The security fix passed
+live, in the same browser and in another one.
+- **Joining on confirm failed every time against the real database** (`4a4f366c`), both from the
+  invite link and from "Where do you work?" then "Join". The database client already adds a
+  membership to every new account, and the join then added a second one for the same organisation,
+  which the database refused. Now the join brings its own single membership, as "Takes part" and
+  with how the person joined, and the automatic one steps aside. Google's sign-up uses the same path,
+  so it is fixed with it. Every test had passed because none of them ran the database client's
+  automatic step. A new test runs every new account through that real step and refuses a second
+  membership the way the database does; it fails on the old code and passes now. It is not a
+  real-database test, because there is no safe way here to run one against the local database
+  without changing its rows.
+- **"Create" on "Where do you work?" now finishes** (`5b71bf49`). Before, it sent the person back to
+  "Where do you work?". Now they land on their new organisation's Today, as its admin. It is named
+  from what they typed at sign-up if they typed a name. A name they only left as we suggested it
+  from their email address is not used here, because that suggestion is the name of the
+  organisation they have just chosen not to join. They get "<first name>'s workspace", for example
+  "Ama's workspace", which they can rename. A plain sign-up still takes the suggested name, as you
+  decided.
+- **For U.20 (small states and errors), not changed here:** when the database refuses a duplicate,
+  every page says "Something with that name or key already exists.", which is jargon. It comes from
+  one shared filter (`api/src/common/filters/a-database-error-is-not-a-message.ts`), so I have left
+  it for U.20. The crash that showed it here is fixed.
+
 **For U.2, not changed here:** the greeting, as asked.
 
 **Two new database columns**, both empty for existing rows: where someone was going when they asked
