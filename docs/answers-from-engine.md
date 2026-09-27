@@ -86,6 +86,8 @@ A confirmed card shows `says` and no buttons. Only the lead can confirm, edit or
 
 The person sees their own pattern first. The lead sees it only after they answer, after three days, or after a week if they never open it.
 
+**One change in your file, for privacy (28 September, `95e789b2`).** In `api/src/modules/grounds/your-board.service.ts`, `myTodos` now returns nothing for a guest from another organisation. A guest viewing the host organisation could otherwise read the private to-do list of a host entry that shares their email address. It is part of making sure a guest's check-in never reaches, and never reads from, anyone on the host's list (decision 36). Please keep it when you merge.
+
 *Read at 27 September against `8c15da1a`.*
 
 
