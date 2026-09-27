@@ -3919,13 +3919,13 @@ removes both kinds of SQL comment. The existing Stripe, care-fee, webhook and pa
 none of them changed. **Not ticked,** until its review.
 
 **U.6 review fixes (27 September).** The review ran one real setup with Gemini, signed out and then in, and sent U.6 back. Fixed, one commit each:
-- **Privacy:** Daniel's invitation read "Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets for pipeline building and coaching." That was the lead's own sentence about him. The server now gives what the lead wrote about a person only to whoever runs the check-in (the lead or an admin): not on the invitation, the check-in, the check-ins list or the board. The invitation has no "Your part in this" (request 6 asks the engine for a line written from the person's side).
+- **Privacy:** Daniel's invitation read "Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets for pipeline building and coaching." That was the lead's own sentence about him. The server now gives what the lead wrote about a person only to whoever runs the check-in (the lead or an admin): not on the invitation, the check-in, the check-ins list or the board. The invitation has no "Your part in this" (request 34 asks the engine for a line written from the person's side).
 - **The date count** was one short with "Now". It counts days, not times.
 - **One day picker** on the setup ("On which days"), as on the check-in's own Setup. "On which day?" is gone.
 - **The start is asked once.** The old "One thing this check-in still needs / When does this start?" block is gone, and "Now" counts as a start in "Still to set".
 - **The chosen end sets how long it runs**, so the header, Setup, the number of check-ins and the invitation agree (weekly until 6 November: 6 check-ins, ending 6 November).
 - **Signed out, the setup survives the link and "Where do you work?"**: the check-in is saved and its invitation sent, as the save card promises.
-- **A name, never a type:** a check-in about Daniel is named "Daniel, the next six weeks" or "Daniel, until 6 November", not "Drift". Request 7 asks the engine about the classifier switching the lead's choice to DRIFT.
+- **A name, never a type:** a check-in about Daniel is named "Daniel, the next six weeks" or "Daniel, until 6 November", not "Drift". Request 35 asks the engine about the classifier switching the lead's choice to DRIFT.
 - **Plain examples** in "You picked", with the prototype's two for "Help someone get back on track", and its line "You put their side and yours written down before you talk."
 - **"You mentioned Daniel."** in the panel.
 - **The setup conversation** reads "Set up a check-in", "This sounds like …" and "It’s something else", without the old name box, "Getting started", the arrow steps or the chickens example; "N sessions planned" follows how often it runs.
