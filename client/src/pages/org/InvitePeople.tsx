@@ -52,6 +52,8 @@ export function InvitePeople() {
       setAnswer(a)
       setPasted('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
+      /* And the head count, "N people, on the … plan", which went stale until a reload (U.4 review). */
+      qc.invalidateQueries({ queryKey: ['billing-status-people'] })
       toast.success(a.summary)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'None of those invitations went out, and nobody has been emailed. Try again.'),

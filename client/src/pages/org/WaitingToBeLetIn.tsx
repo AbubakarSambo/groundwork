@@ -50,6 +50,8 @@ export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
       toast.success(v.letIn ? 'They can check in now.' : 'They were not let in.')
       qc.invalidateQueries({ queryKey: ['who-is-waiting'] })
       qc.invalidateQueries({ queryKey: ['org-members'] })
+      /* Letting someone in takes a seat: the head count and the seats left change (U.4 review). */
+      qc.invalidateQueries({ queryKey: ['billing-status-people'] })
     },
     onError: () => toast.error(A_FAILURE),
   })

@@ -183,3 +183,38 @@ describe('the head count', () => {
     expect(howManyHere(1, 'ENTERPRISE', null)).toBe('1 person.')
   })
 })
+
+describe('the head count keeps up', () => {
+  it('after "Let them in", "N people, on the … plan" is read again, not left as it was', async () => {
+    open()
+    await screen.findByText('27 people, on the Growth plan, which is for up to 100.')
+    const get = apiClient.get as any
+    const before = get.mock.calls.filter((c: any[]) => c[0] === '/billing/status').length
+    get.mockImplementation(async (url: string) => {
+      if (url === '/billing/status') return { data: { people: { count: 28, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'letThemIn').mockResolvedValue({} as any)
+    fireEvent.click(screen.getByRole('button', { name: 'Let them in' }))
+    expect(await screen.findByText('28 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
+    expect(get.mock.calls.filter((c: any[]) => c[0] === '/billing/status').length).toBeGreaterThan(before)
+  })
+
+  it('and after invitations are sent', async () => {
+    open()
+    await screen.findByText('27 people, on the Growth plan, which is for up to 100.')
+    const get = apiClient.get as any
+    get.mockImplementation(async (url: string) => {
+      if (url === '/billing/status') return { data: { people: { count: 29, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      return { data: {} }
+    })
+    vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({ data: { preview: body.preview, seatsLeft: 71, rows: [{ email: 'a@x.co', result: 'invited' }, { email: 'b@x.co', result: 'invited' }], summary: body.preview ? '2 people will be invited.' : '2 people were invited.' } }) as any)
+    fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
+  })
+})

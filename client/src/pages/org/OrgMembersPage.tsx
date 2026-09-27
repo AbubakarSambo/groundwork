@@ -56,6 +56,8 @@ export function OrgMembersPage() {
       else if (r.stillWaiting > 0) toast.success(`${r.sent} sent. ${r.stillWaiting} still waiting on a seat.`)
       else toast.success(r.sent === 1 ? 'Their invitation is on its way' : `${r.sent} invitations are on their way`)
       qc.invalidateQueries({ queryKey: ['waiting-for-a-seat'] })
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      qc.invalidateQueries({ queryKey: ['billing-status-people'] })
     },
     onError: () => toast.error('Those could not be sent just now. Nobody has been emailed and they are all still waiting.'),
   })
