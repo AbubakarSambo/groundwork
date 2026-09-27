@@ -2850,6 +2850,7 @@ Now:
 - An admin who rewrote the brief, where Groundwork then wrote what everyone reads from his words,
   reads "Groundwork wrote this from your words.", as the lead is told.
 - A question for you about what Juma reads is item 31.4.
+- One test changed after the list fix (`e776c3f1`): `what-a-participant-is-told-about-this.spec.ts` looked for the old rule's exact code in `grounds.service.ts`. The rule now lives in one helper that the list and the single check-in both use, so the test checks that the helper is used and checks what it gives back. It checks the same rule as before.
 
 **After the third review (27 September).**
 
