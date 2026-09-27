@@ -51,7 +51,10 @@ export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total
     total = body.meta?.total ?? all.length
     if (all.length >= total || (body.data ?? []).length < PER_PAGE) break
   }
-  return { data: all, meta: { total } }
+  /* Somebody who left is not one of the organisation's people (U.4 fourth review). The server leaves
+     them out already; this keeps every filter's count true even against an older server. */
+  const here = all.filter((m) => m.isActive !== false)
+  return { data: here, meta: { total: total - (all.length - here.length) } }
 }
 
 export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {

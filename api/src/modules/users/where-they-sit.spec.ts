@@ -90,6 +90,8 @@ describe('the People list', () => {
     miriam: { id: 'miriam', email: 'miriam@baridi.co.ke', firstName: 'Miriam', lastName: 'Wanjiku', organizationId: 'ouma', role: 'ADMIN', isActive: true, isEmailVerified: true, createdAt: new Date('2026-07-01'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
     peter: { id: 'peter', email: 'peter@ouma-agencies.co.ke', firstName: 'Peter', lastName: 'Ouma', organizationId: 'baridi', role: 'GUEST', isActive: true, isEmailVerified: true, createdAt: new Date('2026-09-22'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
     sam: { id: 'sam', email: 'sam@ouma.co', firstName: 'Sam', lastName: 'O', organizationId: 'baridi', role: 'ADMIN', isActive: true, isEmailVerified: true, createdAt: new Date('2026-06-01'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
+    /* Pendo left Baridi: her account is inactive, her membership row is still there. */
+    pendo: { id: 'pendo', email: 'pendo@baridi.co.ke', firstName: 'Pendo', lastName: 'Mwita', organizationId: 'baridi', role: 'MEMBER', isActive: false, isEmailVerified: true, createdAt: new Date('2026-08-01'), phoneNumber: null, awaitingOrgApproval: false, deletedAt: null },
   };
   const memberships = [
     { userId: 'miriam', organizationId: 'baridi', role: 'MEMBER', level: 'Sales rep', team: 'Sales', reportsToUserId: 'wairimu' },
@@ -97,17 +99,20 @@ describe('the People list', () => {
     { userId: 'peter', organizationId: 'baridi', role: 'GUEST', level: null, team: null, reportsToUserId: null },
     { userId: 'peter', organizationId: 'ouma', role: 'ADMIN', level: null, team: null, reportsToUserId: null },
     { userId: 'sam', organizationId: 'ouma', role: 'MEMBER', level: null, team: null, reportsToUserId: null },
+    { userId: 'pendo', organizationId: 'baridi', role: 'MEMBER', level: null, team: null, reportsToUserId: null },
   ];
+  /* The user filter the real query sends, applied to the account. */
+  const accountOk = (id: string, w: any) => !w || ((w.isActive === undefined || accounts[id].isActive === w.isActive) && (w.deletedAt === undefined || accounts[id].deletedAt === w.deletedAt));
   function aList() {
     const asked: any[] = [];
     const prisma: any = {
       organizationMembership: {
         findMany: jest.fn(async (args: any) => {
-          const mine = memberships.filter((m) => m.organizationId === args.where.organizationId && (!args.where.userId || args.where.userId.in.includes(m.userId)));
+          const mine = memberships.filter((m) => m.organizationId === args.where.organizationId && (!args.where.userId || args.where.userId.in.includes(m.userId)) && accountOk(m.userId, args.where.user));
           if (args.select?.user) return mine.map((m) => ({ role: m.role, user: accounts[m.userId] }));
           return mine;
         }),
-        count: jest.fn(async (args: any) => memberships.filter((m) => m.organizationId === args.where.organizationId).length),
+        count: jest.fn(async (args: any) => memberships.filter((m) => m.organizationId === args.where.organizationId && accountOk(m.userId, args.where.user)).length),
       },
       user: {
         findMany: jest.fn(async () => [{ id: 'wairimu', firstName: 'Wairimu', lastName: 'Kamau', email: 'w@baridi.co.ke' }]),
@@ -130,6 +135,13 @@ describe('the People list', () => {
     expect(miriam.role).toBe('MEMBER');
     expect(data.map((p: any) => p.id)).not.toContain('sam');
     expect(meta.total).toBe(2);
+  });
+
+  it('somebody who left is not listed, and the total agrees with the rows (U.4 fourth review)', async () => {
+    const { service } = aList();
+    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.map((p: any) => p.id)).not.toContain('pendo');
+    expect(meta.total).toBe(data.length);
   });
 
   it('a guest who switched in to look is listed as a guest, never as one of this organisation\'s people', async () => {

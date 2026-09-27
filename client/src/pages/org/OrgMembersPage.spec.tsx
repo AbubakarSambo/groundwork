@@ -241,3 +241,20 @@ describe('the people with no seat say who added them', () => {
     expect(screen.queryByText(/A lead added them/)).toBeNull()
   })
 })
+
+describe('somebody who left (U.4 fourth review)', () => {
+  it('is not listed, and is in no filter\'s count', async () => {
+    const pendo = { id: 'pendo', email: 'pendo@baridi.co.ke', firstName: 'Pendo', lastName: 'Mwita', role: 'MEMBER', isActive: false, isEmailVerified: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] }
+    open()
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: [...people, pendo], meta: { total: people.length + 1 } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect((await screen.findAllByText('7 people shown.')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Pendo Mwita', { selector: 'b' })).toBeNull()
+  })
+})

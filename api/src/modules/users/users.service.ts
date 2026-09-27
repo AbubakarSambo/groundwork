@@ -348,7 +348,9 @@ export class UsersService {
      * The role is the membership's too, because `User.role` is the role in whichever organisation
      * they are looking at.
      */
-    const inThisOrganisation = { organizationId, user: { deletedAt: null } };
+    /* Somebody who left, or was deactivated, is not one of this organisation's people any more
+       (U.4 fourth review): their row stayed while the heading's count dropped them. */
+    const inThisOrganisation = { organizationId, user: { deletedAt: null, isActive: true } };
     const [rows, total] = await Promise.all([
       this.prisma.organizationMembership.findMany({
         where: inThisOrganisation,
