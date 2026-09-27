@@ -834,17 +834,36 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
     check-ins are named after the topic the lead chose, in plain words. **My recommendation:** keep the
     topic in the email subject, and show the person's name only inside the product, to the lead.
 
-**Answered by you on 27 September:**
+**Answered on 27 September:**
 - **The privacy leak comes first.** An invitation must never use the lead's private description, not
   even softened or reworded. It says only what the prototype's invitation says: what the check-in is and
   when it runs. A test proves no text from the lead's private description appears in any invitation:
   email, WhatsApp or on screen.
 - **The save card's promise** must be true, and if it cannot be true every time, the sentence is not
   shown.
-- **Point 13: the lead's first check-in carries over,** as the prototype says: "What you just answered
-  becomes your first check-in once your account is made." This replaces your rule of 15 September.
-- **Point 18: a check-in gets a real name the way the prototype does** (for example "Daniel, the next six
-  weeks"), never a type name such as "Drift". This replaces the earlier topic-only rule for the name.
+
+**Two points left as they are today, for Hafsah to decide.** Each was answered in a message that did
+not know about the earlier rule, and the sender asked for both rules to be set side by side:
+
+- **Point 13: does the lead's check-in on the start screen count as their first session?**
+  - *The prototype says:* "What you just answered becomes your first check-in once your account is
+    made."
+  - *Hafsah's rule of 15 September, in her words* (commit `2cd80f22`; it is not in `docs/decisions.md`):
+    "The setup does not count as a leads first checkin. lead has to always do a first checkin."
+  - *The reason given with it:* the setup and the check-in are different conversations. "Setup works out
+    what kind of situation this is and who is in it; the check-in asks how it is actually going." Before
+    the rule, "a lead finished setup having already given her account without being asked how anything
+    was going." What the setup produces still travels: the brief, the people, the rhythm and the targets.
+  - *Today:* the rule of 15 September holds. The check-in the lead does on the start screen does not
+    become session 1.
+- **Point 18: is a check-in named after the person or the topic?**
+  - *The prototype says:* names such as "Daniel, the next six weeks".
+  - *An earlier rule, recorded in `api/src/modules/grounds/a-label-is-a-subject-line.spec.ts`:* the name
+    becomes the invitation email's subject ("{founder} invited you to check in on: {label}"), so it "names
+    the TOPIC and never the person". A name-first label was tried and rejected because it "makes the
+    PERSON the subject of the sentence".
+  - *Today:* the check-in is named after the situation the lead picked, in plain words (for example
+    "Help someone get back on track"), and never a type such as "Drift". The review confirmed this live.
 
 ### 18. Context (U.7): what needs you
 
