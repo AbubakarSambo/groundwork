@@ -124,7 +124,7 @@ describe('Miriam reads her own You board', () => {
     for (const h of ['Where you stand', 'Worth knowing now', 'Something Groundwork noticed about your work', 'Coaching, followed over time', 'What you contributed', 'Something that keeps coming up']) {
       expect(screen.queryByRole('heading', { name: h })).toBeNull()
     }
-    /* Her load across check-ins is private unless she shares it, and nothing holds the sharing yet. */
+    /* Nothing is asked of her on this board, so there is no such part; and nothing shares her load (U.16). */
     expect(text).not.toContain('Everything asked of you this week')
     expect(text).not.toContain('Share with your lead')
   })
@@ -205,5 +205,57 @@ describe('when the board does not load', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter><YouPage /></MemoryRouter></QueryClientProvider>)
     expect(await screen.findByText('Your board did not load. Nothing you have written is affected.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+})
+
+describe('Everything asked of you this week (D3, U.16), on your own board only', () => {
+  const ASKED: YourBoard = {
+    ...MIRIAMS,
+    askedOfYou: {
+      items: [
+        { id: 'a1', who: null, checkIn: 'Kwame, first 90 days', what: 'The demo freezer booking for Thursday', asked: new Date(2026, 8, 14, 10).toISOString() },
+        { id: 'a2', who: 'Wairimu Kamau', checkIn: 'Sales team, Q3', what: 'What would get Westgate’s deposit', asked: new Date(2026, 8, 16, 10).toISOString() },
+        { id: 'a3', who: 'Grace Achieng', checkIn: 'Supplier review', what: 'Delivery times you’ve seen from each supplier', asked: new Date(2026, 8, 17, 10).toISOString() },
+      ],
+      says: '3 requests from 3 people across 3 check-ins.',
+    },
+  }
+
+  it('Miriam reads each request with who asked, where, what and when, and the sentence under them', async () => {
+    open(MIRIAM, ASKED)
+    await screen.findByRole('heading', { name: 'Everything asked of you this week' })
+    const s = section('Everything asked of you this week')
+    expect(within(s).getByText('From every check-in you’re in. Only you see this.')).toBeInTheDocument()
+    const rows = within(s).getAllByRole('listitem').map((li) => li.textContent)
+    expect(rows).toEqual([
+      'Kwame, first 90 daysThe demo freezer booking for ThursdayAsked 14 Sept.',
+      'Wairimu KamauSales team, Q3What would get Westgate’s depositAsked 16 Sept.',
+      'Grace AchiengSupplier reviewDelivery times you’ve seen from each supplierAsked 17 Sept.',
+    ])
+    expect(within(s).getByText('3 requests from 3 people across 3 check-ins.')).toBeInTheDocument()
+  })
+
+  it('comes before what she said she’d do, as the prototype draws it', async () => {
+    const { container } = open(MIRIAM, ASKED)
+    await screen.findByRole('heading', { name: 'Everything asked of you this week' })
+    const text = container.textContent ?? ''
+    expect(text.indexOf('Everything asked of you this week')).toBeLessThan(text.indexOf('What you said you’d do'))
+  })
+
+  it('offers no sharing, says nobody else reads it, and shows no rating or label', async () => {
+    const { container } = open(MIRIAM, ASKED)
+    await screen.findByRole('heading', { name: 'Everything asked of you this week' })
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('Share with your lead')
+    expect(text).not.toContain('unless you share it')
+    expect(screen.queryByRole('button', { name: /share/i })).toBeNull()
+    expect(text).not.toMatch(/specific|confidence|rating|score/i)
+    expect(text).not.toMatch(/\bPIP\b|at risk|\bexit\b/i)
+  })
+
+  it('Grace, with nothing asked of her, has no such part', async () => {
+    open(GRACE, EMPTY)
+    await screen.findByText('You are not in any check-in yet.')
+    expect(screen.queryByRole('heading', { name: 'Everything asked of you this week' })).toBeNull()
   })
 })

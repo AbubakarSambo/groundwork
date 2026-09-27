@@ -18,6 +18,8 @@ export interface SomethingYouSaid {
   stateSays: string
 }
 export interface YourReport { checkIn: string; at: string | null; to: string }
+/** One open request on you, from a check-in you are in. `who` is null where the check-in does not let you see who. */
+export interface SomethingAskedOfYou { id: string; who: string | null; checkIn: string; what: string; asked: string }
 
 export interface YourBoard {
   checkIns: YourCheckIn[]
@@ -50,6 +52,13 @@ export interface YourBoard {
    * work, what would change them, and the decision with its reasons. Never the verdict.
    */
   suggestionsAboutYou?: SuggestionForThePerson[]
+
+  /**
+   * EVERYTHING ASKED OF YOU (D3, U.16): your load across check-ins, served to you alone, and only
+   * when something is asked of you. `says` is one sentence, such as "3 requests from 2 people across
+   * 2 check-ins." Nobody else is ever served it; there is no sharing yet.
+   */
+  askedOfYou?: { items: SomethingAskedOfYou[]; says: string }
 }
 
 export const youApi = {

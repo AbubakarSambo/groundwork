@@ -18,9 +18,9 @@ import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
  * NOT SAID HERE, ON PURPOSE:
  *   - "Only you, and the people who run your check-ins, see it." under "Your board". The page is
  *     yours alone, and your to-dos are never seen by anybody else, so the sentence would not be true.
- *   - "Everything asked of you this week" and "Share with your lead": that is your load across
- *     check-ins, which is private unless you share it, and nothing yet holds the requests or the
- *     sharing (D3, U.16).
+ *   - "Share with your lead", after "Everything asked of you this week": your load across check-ins
+ *     is yours alone, and who may read it once shared is Hafsah's to decide (D3, U.16), so nothing
+ *     shares it yet. For the same reason the line under the heading stops at "Only you see this".
  *   - "Say what’s behind it" and "Stop sharing automatically", on something Groundwork noticed:
  *     they wait for the engine to serve what it noticed (request 14).
  * "Where you stand" from Groundwork's suggestions about you, with "Add my side" and "Appeal this
@@ -129,6 +129,27 @@ function TheBoard({ b }: { b: YourBoard }) {
               />
             ))}
           </NeedsYouList>
+        </section>
+      )}
+
+      {!!b.askedOfYou?.items.length && (
+        <section className="gw-you-section" aria-labelledby="you-asked-h">
+          <div className="gw-you-section-head">
+            <h2 id="you-asked-h" className="gw-t-h2">Everything asked of you this week</h2>
+            <span className="gw-t-small">From every check-in you’re in. Only you see this.</span>
+          </div>
+          <ul className="gw-you-rows">
+            {b.askedOfYou.items.map(a => (
+              <li key={a.id} className="gw-you-row gw-you-row-asked">
+                <div>
+                  {a.who ? <><b>{a.who}</b><div className="gw-you-quiet">{a.checkIn}</div></> : <b>{a.checkIn}</b>}
+                </div>
+                <span>{a.what}</span>
+                <span>{`Asked ${whenItWas(a.asked, 'dayAndMonth')}.`}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="gw-t-small gw-you-quiet">{b.askedOfYou.says}</p>
         </section>
       )}
 
