@@ -13,7 +13,7 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens), U.9 (reports and sharing) and U.10 (the board). Each passed the full screen and API suites,
+screens), U.9 (reports and sharing), U.10 (the board) and U.11 (ending a check-in). Each passed the full screen and API suites,
 apart from failures in the engine workspace's own files, which I have asked them to fix. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
 unblock.
@@ -1473,7 +1473,7 @@ anything now, and a lead is never shown the checkability rating. Because the boa
 ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
 **Not ticked,** because no review can sign in (item 14).
 
-### U.11 Ending a check-in, the probation review, handover: built, not yet tested or reviewed
+### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
 could end a check-in on an outcome alone, and nobody could read why); the ending page, "How does this
@@ -1527,6 +1527,15 @@ second press, and the tally only where everyone answers. Only the tests for the 
 guards that read those files, and both type checks were run, as you asked. No screen could be checked
 signed in (item 14), so the screens were checked by rendering tests only. The migration
 (`20260927050000_the_reason_for_a_decision`) adds one empty column and was not applied to any database.
+
+**The full run:** every screen test and the build passed apart from two failures from U.11, both fixed.
+One test looked for the end-of-check-in logic in its old place; the protection was intact, and the test
+now reads its new place with every check kept (the builder proved it can still fail by breaking the
+logic on purpose). The ending's date now uses the shared date format. Nothing that ends a check-in
+does so without a reason, so handover, disputes and the developer API are unaffected. After merging
+the engine workspace's latest, all the engine and guard tests passed (3,562): the engine workspace
+fixed its comment-guard specs and the judgement spec (requests 4 and 10), so those known failures are
+gone. **Not ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
