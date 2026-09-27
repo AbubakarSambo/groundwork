@@ -95,6 +95,7 @@ import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
+import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
@@ -1582,7 +1583,8 @@ export class ConversationService {
            * else the reply said stands. See withoutTheQuestionAskedAgain.
            */
           const withoutIt = withoutTheQuestionAskedAgain(screened.text, earlierAsks);
-          if (withoutIt.trim() && withoutIt !== screened.text) {
+          /* A fragment left behind counts as nothing else in it. See a-cut-never-leaves-a-fragment. */
+          if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
             screened = { ...screened, text: withoutIt };
             this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
           } else {
@@ -1619,7 +1621,7 @@ export class ConversationService {
             screened = second;
           } else {
             const withoutIt = withoutTheQuestionAskedAgain(screened.text, [askedAgain.thing.what]);
-            if (withoutIt.trim() && withoutIt !== screened.text) {
+            if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
               screened = { ...screened, text: withoutIt };
               this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
             }
@@ -1650,7 +1652,7 @@ export class ConversationService {
             screened = second;
           } else {
             const withoutIt = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
-            if (withoutIt.trim() && withoutIt !== screened.text) {
+            if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
               screened = { ...screened, text: withoutIt };
               this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
             }
@@ -1750,7 +1752,7 @@ export class ConversationService {
            */
           const better = second?.text && !second.hits.length ? second : screened;
           const trimmed = withoutTheSentenceThatSaysItBack(message, better.text);
-          if (trimmed) {
+          if (trimmed && !aCutThatLeavesAFragment(better.text, trimmed)) {
             screened = { ...better, text: trimmed };
             this.logger.warn(`Check-in ${checkIn.id}: said it back twice; the opening sentence was dropped.`);
           } else {
@@ -2029,14 +2031,15 @@ export class ConversationService {
         const noHomework = withoutTheHomework(screened.text);
         if (noHomework.cut) {
           this.logger.warn(`Check-in ${checkIn.id}: cut "what will you do about this, and by when" from a one-time session.`);
-          screened = { ...screened, text: noHomework.text };
+          /* "Before we close," was all Ifeoma read once a cut like this ran (fix7-2). See a-cut-never-leaves-a-fragment. */
+          screened = { ...screened, text: afterTheCut(screened.text, noHomework.text, { closing: closingNow, mayRestore: true }) };
         }
       } else {
         /* AND THE HOMEWORK QUESTION HAS A BUDGET, AND THE LEAD'S IS A DECISION. See withinTheHomeworkBudget. */
         const budget = withinTheHomeworkBudget(screened.text, earlierAsks, (checkIn as any).participant?.partyType === PartyType.INITIATOR);
         if (budget.changed !== 'kept') {
           this.logger.warn(`Check-in ${checkIn.id}: the homework question was ${budget.changed === 'decision' ? 'made the lead\'s decision question' : 'cut, over budget'}.`);
-          screened = { ...screened, text: budget.text };
+          screened = { ...screened, text: afterTheCut(screened.text, budget.text, { closing: closingNow, mayRestore: true }) };
         }
       }
 
@@ -2051,7 +2054,8 @@ export class ConversationService {
       this.theirEarlierWordsForThisTurn.delete(checkIn.id);
       if (unsupported.cut.length) {
         for (const c of unsupported.cut) this.logger.warn(`Check-in ${checkIn.id}: cut a number claim: ${c.why}: ${JSON.stringify(c.sentence)}`);
-        screened = { ...screened, text: unsupported.text };
+        /* An untrue number never goes back in; a fragment on the closing turn becomes the plain close. */
+        screened = { ...screened, text: afterTheCut(screened.text, unsupported.text, { closing: closingNow, mayRestore: false }) };
       }
 
       const shipping = howManyWords(screened.text);

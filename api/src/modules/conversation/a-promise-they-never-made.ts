@@ -29,6 +29,8 @@
  * the session added nothing.
  */
 
+import { A_CLOSE_THAT_CLAIMS_NOTHING, isAFragment } from './a-cut-never-leaves-a-fragment';
+
 /** Words that carry no subject of their own, so overlap on one of them means nothing. */
 const CARRIES_NOTHING = new Set([
   'said', 'told', 'mentioned', 'committed', 'promised', 'would', 'will', 'going', 'send', 'sending',
@@ -111,22 +113,19 @@ export function withoutThePromise(reply: string, sentence: string): string {
  * A CLOSE IS NEVER CUT DOWN TO TWO WORDS.
  *
  * The same run-7 close: once the first sentence was cut, "Speak soon." was all that was left, and
- * that is what Elena read at the end of her check-in. A cut is kept only if what remains is at
- * least five words or still asks something. Otherwise the close is this line instead. It is the
- * prototype's own wording from the done screen ("Your check-in is saved."), it claims nothing about
- * a report or another conversation, so the report-promise guard that runs after it leaves it alone,
- * and it is true: every turn is stored as it is written.
+ * that is what Elena read at the end of her check-in. On the closing turn a cut that leaves a
+ * fragment is replaced with the plain close. The fragment test and the close are shared with every
+ * other cut - see a-cut-never-leaves-a-fragment.
  */
-export const A_CLOSE_THAT_CLAIMS_NOTHING = 'Thank you. Your check-in is saved.';
-
-const isAStub = (text: string): boolean => (text ?? '').trim().split(/\s+/).filter(Boolean).length < 5 && !(text ?? '').includes('?');
+export { A_CLOSE_THAT_CLAIMS_NOTHING };
 
 /**
  * What to send once the promise is cut. `closing` is whether this is the last turn; only then is
  * the plain close used. Mid-conversation the cut stands as it always has, where anything is left.
+ * The text before the cut is never restored: it is the invention.
  */
 export function whatIsLeftToSend(reply: string, sentence: string, closing: boolean): string | null {
   const cut = withoutThePromise(reply, sentence);
-  if (closing && isAStub(cut)) return A_CLOSE_THAT_CLAIMS_NOTHING;
+  if (closing && isAFragment(cut)) return A_CLOSE_THAT_CLAIMS_NOTHING;
   return cut.trim() ? cut : null;
 }
