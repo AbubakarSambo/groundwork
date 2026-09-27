@@ -3318,6 +3318,43 @@ still proving a local echo the server has not acknowledged never counts), `ChatP
 and `GroundChat.openIsSlow.spec.tsx` (updated to the new wording). Only the tests for files changed
 run (`--maxWorkers=2`), both type checks clean.
 
+### U.8 The check-in screens: fifth review's findings, all fixed in one round
+
+- **"Two reports come from this" and the team's report card vanished on a hidden check-in.** The
+  Done page decided this from `howManyAnswer(ground) > 1`, counting `ground.participants` - the same
+  array a check-in that hides peers from each other reduces to the reader's own row alone, so a real
+  team of four read "Your own report" and nothing else. `GET /grounds/:id` now sends
+  `aTeamReportComes`, a plain yes/no read off the raw participants before that filter runs - never a
+  count, so a hidden check-in still cannot learn its own size from this field.
+- **Swept the rest of the participant-facing screens for the same mistake and found two more of it,
+  both on GroundParticipantPage.** The Report tab's "the shared report compares two accounts... it
+  will build once somebody is added" notice counted `ground.participants` the same wrong way; it now
+  reads a new `atLeastTwoInThisRound`, computed with the same rule the client already uses for who
+  counts in a round (a managing-only lead counts in round one, except on a "lead only asks"
+  scenario). And "X of Y have answered" on My record's coverage strip fell back to counting
+  `ground.participants` once the report releases (the moment its own primary source,
+  `sessionProgress`, stops being computed) - it now falls back to `aTeamReportComes ? 2 : 1`, a
+  boolean rather than the true count, trading exact numbers on a team of three or more for not
+  learning a hidden check-in's real size. Chat, the end card and the Done page's own "also answers"
+  sentence were already fixed in the fourth review; Today's one name-bearing line is gated on
+  `mayName` (the lead or an admin), which a hidden check-in's participant never reaches. The board's
+  own version of this bug (`onlyOnePersonHere` in `BoardPage.tsx`, fed by `board.service.ts`) is the
+  engine workspace's file to fix - written up as request 50.
+- **`leadFirstName` held a whole name.** Signup stores "Your name" whole as `firstName`, so a lead
+  who typed "Rukia Otieno" had that entire string in a field called `leadFirstName`, printing her
+  surname in a sentence the prototype never puts one in. Trimmed to the first word at the one place
+  the field is built.
+
+**Tests:** `a-team-report-comes-is-a-yes-no.spec.ts` and `at-least-two-in-this-round-is-a-yes-no.spec.ts`
+(new, server: a real team of four handed only its own row still reads both fields true; a genuine
+solo check-in reads false; a managing-only lead is handled correctly both ways; both survive the
+report releasing), extended `the-lead-is-named-even-when-hidden.spec.tsx` (client: the Done page's
+team-report card renders from `aTeamReportComes` alone) and a new
+`GroundParticipantPage.atLeastTwoInThisRound.spec.tsx` (a full render of the Report tab from the
+real hidden-check-in row shape), extended `the-lead-is-named-even-when-hidden.spec.ts` (server: a
+whole name at signup trims to its first word). Only the tests for files changed run
+(`--maxWorkers=2`), both type checks clean.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
