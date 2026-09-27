@@ -977,6 +977,8 @@ engine answers. Until then, "When I end it" stays off the screen.
    document everyone's check-in reads is one everyone can open. Making it true would change who a
    document reaches, which is a privacy rule, so I kept today's rule and used the product's own
    sentence: "Only you can see this. It supports your own account and nobody else can open it."
+   (Since the first review it reads "Only you can open it. It shapes the questions in your own
+   check-in.")
    **My recommendation:** allow it for the lead's documents only (the check-in may use them for
    everyone's questions, and nobody else can open them or be quoted them), with a privacy test, and
    then use the prototype's sentence.
@@ -1991,6 +1993,12 @@ engine answers. Until then, "When I end it" stays off the screen.
    **My recommendation:** let only the lead rewrite it, since it is the lead's own framing, and
    let an admin ask the lead to change it. It is one line in the server and one on the screen.
 
+3. **After a handover, "Your note" is said to the new lead.** The product does not record who
+   typed a note about a person, so it treats the check-in's lead as its writer. When a check-in is
+   handed over, the new lead reads "Baraka. Your note: ..." about words the old lead wrote. Nobody
+   else can read it. **My recommendation:** record who wrote each note (one column), and say
+   "Wanjiru's note" to a lead who did not write it. I have not changed this.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2767,6 +2775,42 @@ and `what-the-upload-box-promises-is-true` (the privacy sentence is now the prot
 by the setting and still shown before any upload). Only the tests for the changed files and the type
 checks were run, as you asked; the full suites wait for the end of the module. No screen could be
 checked signed in (item 14).
+
+**After the first review (27 September).** The reviewer read the page as Wanjiru (the lead),
+Aisha (who takes part) and Otieno (an admin who is not in the check-in). What changed:
+
+- **Privacy.** Otieno read "Baraka. Your note: ..." about a note Wanjiru wrote. The server now
+  sends the lead's note about a person only to the check-in's lead, on every route: the check-in,
+  the check-ins list, the board and the organisation roster. The screens say "Your note" only to
+  the lead as well.
+- **Privacy.** The Context page hid other people's shares of a target from Otieno, and the board
+  showed him every share. Both now follow the stricter rule, in the server: only the lead sees each
+  share. I ask you to confirm this in item 31.1.
+- **Otieno and the documents.** He read "That one is not yours to open" twice. His access is the
+  same (the server still refuses him), but the page no longer asks, and the documents band says
+  "Documents here are shared by the people in this check-in, so you cannot open them from here."
+  The banner that said "You can see everything here" now says what he can and cannot see, starting
+  with the prototype's own sentence, "You can read this check-in’s board and reports."
+- **What this check-in is for.** The lead now reads what her people read, with "This is what
+  everyone in this check-in reads before they answer." under it. "Your words, from setup." is said
+  only while it is her unchanged words; otherwise "Otieno changed this.", "You changed this." or
+  "Groundwork wrote this from your words.", with her own words under "What you wrote". Setup writes
+  the brief in plain sentences, without "Why now:" or "Focus:". The button is "Save", and saving
+  says "Saved. Everyone in this check-in now reads this." Whether an admin may rewrite it is item 31.2.
+- **Targets.** A target with no number reads "What this target assumes". Targets have no unit or
+  currency yet, so "12" cannot become "6 sales" without inventing it; I asked the engine (request 39).
+- **Documents.** Each card is the prototype's: the file, what it is for, and "Everyone" or "Only
+  you". What Groundwork took from a file is folded under the card. "Only me" is "Only you"
+  everywhere. I asked the engine to write what a document holds in full sentences, and to list bank
+  details under what it left out (request 40).
+- **Every band line is a full sentence**, said to whoever reads it: for example "Your card is
+  open. Open anyone else’s card to see what is on it.", "Your numbers", "You have no number of your
+  own. Your check-in asks against the team’s.", and "It comes from Wanjiru’s own check-in".
+- **Tests.** New server tests ask each route as the lead, a participant and an admin
+  (`the-leads-note-reaches-the-lead-alone`, `one-rule-for-whose-share-is-shown`,
+  `whose-words-the-brief-is`). The screen tests render the Context page, the targets and each
+  person's card as each of the three. Tests changed only where they checked old wording, or, in two
+  cases, the old looser rule for admins, which is now stricter.
 
 **The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
 read a source file without removing comments first, and the comment guard caught it; that is fixed.
