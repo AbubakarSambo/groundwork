@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { TheThingsYouCanConnect, WhatsAppMark } from '@/components/gw/TheThingsYouCanConnect'
+import { Link } from 'react-router-dom'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
@@ -103,6 +104,9 @@ export function IntegrationsPage() {
   const { user } = useAuthStore()
   const qc = useQueryClient()
   const isAdmin = user?.role === 'ADMIN'
+  const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
+  /* The WhatsApp picture only while WhatsApp is switched on (U.3): otherwise no screen mentions it. */
+  const whatsappOn = useWhatsAppIsOn()
 
   const [credName, setCredName] = useState('')
   const [credScopes, setCredScopes] = useState<string[]>(['subjects:write', 'findings:read'])
@@ -140,42 +144,12 @@ export function IntegrationsPage() {
   const firstClientId = (creds.data ?? []).find(c => !c.revokedAt)?.clientId ?? null
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
-  const whatsapp = useQuery({ queryKey: ['integrations', 'whatsapp'], queryFn: integrationsApi.whatsapp, enabled: isAdmin })
   /*
-   * SWITCH ON WHAT IS ALREADY BUILT. Slack and Teams notices were wired end to end and read a table
-   * nothing in the console could write; the embedded panel had a served loader, a panel page and a
-   * signing scheme reachable only by a database row written by hand, while this page's copy promised
-   * "you can put the check-in inside your own product". Both get a section here.
+   * WHATSAPP AND SLACK OR TEAMS MOVED OUT (U.18). Connecting WhatsApp is its own page now
+   * (#/settings/whatsapp, WhatsAppSetupPage), and notices in Slack or Teams are on Connections
+   * (#/settings/connections), as the prototype draws them. This page is "Connect your own tools":
+   * keys, figures, being told, and showing Groundwork inside your own tool.
    */
-  const notifiers = useQuery({ queryKey: ['integrations', 'workspace'], queryFn: integrationsApi.workspaceNotifiers, enabled: isAdmin })
-  const [wsKind, setWsKind] = useState<'slack' | 'teams'>('slack')
-  const [wsUrl, setWsUrl] = useState('')
-  const [wsChannel, setWsChannel] = useState('')
-  const saveTemplates = useMutation({
-    mutationFn: (approved: string[]) => integrationsApi.whatsappTemplates(approved),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Saved. Anything we start now goes as an approved message.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save.'),
-  })
-  const connectWs = useMutation({
-    mutationFn: () => integrationsApi.connectWorkspace(wsKind, wsUrl.trim(), wsChannel.trim() || undefined),
-    onSuccess: () => { setWsUrl(''); setWsChannel(''); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }); toast.success('Connected, and switched off until you test it and turn it on.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect that address.'),
-  })
-  const testWs = useMutation({
-    mutationFn: (kind: 'slack' | 'teams') => integrationsApi.testWorkspace(kind),
-    onSuccess: (r) => { r.posted ? toast.success('Posted. Check the channel.') : toast.error(r.because ?? 'It did not post.'); qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }) },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The test did not post.'),
-  })
-  const turnWs = useMutation({
-    mutationFn: ({ kind, on }: { kind: 'slack' | 'teams'; on: boolean }) => integrationsApi.turnWorkspace(kind, on),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
-  })
-  const disconnectWs = useMutation({
-    mutationFn: (kind: 'slack' | 'teams') => integrationsApi.disconnectWorkspace(kind),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not remove it.'),
-  })
   const embed = useQuery({ queryKey: ['integrations', 'embed'], queryFn: integrationsApi.embedConfig, enabled: isAdmin })
   /*
    * WHEN SOMEBODY LEAVES. The roster tells us a person has gone; after this many days their raw
@@ -201,33 +175,6 @@ export function IntegrationsPage() {
     onSuccess: (r) => { setEmbedSecret(r.signingSecret); qc.invalidateQueries({ queryKey: ['integrations', 'embed'] }); toast.success('Saved. Copy the signing secret now - it is shown once.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not save the embed setup.'),
   })
-  const [waNumberId, setWaNumberId] = useState('')
-  const [waBusinessId, setWaBusinessId] = useState('')
-  const [waDisplay, setWaDisplay] = useState('')
-  const [waToken, setWaToken] = useState('')
-  const [waSecret, setWaSecret] = useState('')
-  const [waTestTo, setWaTestTo] = useState('')
-  const connectWa = useMutation({
-    mutationFn: () => integrationsApi.connectWhatsapp({ phoneNumberId: waNumberId, businessAccountId: waBusinessId || undefined, displayNumber: waDisplay || undefined, accessToken: waToken || undefined, appSecret: waSecret || undefined }),
-    onSuccess: () => { setWaToken(''); setWaSecret(''); qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Connected. Now point Meta at the webhook address below.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect.'),
-  })
-  const toggleWa = useMutation({
-    mutationFn: (enabled: boolean) => integrationsApi.setWhatsappEnabled(enabled),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. WhatsApp is as it was - try again.'),
-  })
-  const testWa = useMutation({
-    mutationFn: () => integrationsApi.testWhatsapp(waTestTo),
-    onSuccess: () => toast.success('Sent. Check that phone.'),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta refused it.'),
-  })
-  const disconnectWa = useMutation({
-    mutationFn: () => integrationsApi.disconnectWhatsapp(),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Removed.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The connection was not removed. Try again.'),
-  })
-
   /*
    * ASKING FOR A CALL. Read first so the page can say "we will be in touch" rather than offering
    * to ask again - clicking twice is somebody wondering whether the first click worked.
@@ -319,7 +266,7 @@ export function IntegrationsPage() {
   if (!isAdmin) {
     return (
       <div style={S.page}>
-        <h1 style={S.h1}>Connect your systems</h1>
+        <h1 style={S.h1}>Connect your own tools</h1>
         <p style={S.lede}>Only an admin in your organisation can set this up. Ask whoever manages Groundwork for your organisation.</p>
       </div>
     )
@@ -342,7 +289,11 @@ export function IntegrationsPage() {
 
   return (
     <div style={S.page}>
-      <h1 style={S.h1}>Connect your systems</h1>
+      {/* U.18: the prototype's heading (tools.txt): "Settings", the organisation, the way back to Connections. */}
+      <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 30, color: 'var(--gw-text)' }}>Settings</div>
+      {orgName && <div style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '2px 0 18px' }}>{orgName}</div>}
+      <Link to="/settings/connections" style={{ display: 'inline-block', color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', marginBottom: 8 }}>Connections</Link>
+      <h1 style={S.h1}>Connect your own tools</h1>
       {/*
         * WHAT THE PAGE IS, BEFORE WHAT THE PRODUCT CAN DO.
         *
@@ -371,9 +322,7 @@ export function IntegrationsPage() {
         behind the approval, where an engineer is looking. This half is for whoever is deciding.
       */}
       <p style={S.lede}>
-        Connect Groundwork to the tools you already use. Your people and goals come in, what
-        check-ins produce goes back out, and you can put the check-in inside your own product.
-        One key covers all of it.
+        For whoever runs {orgName ? `${orgName}’s` : 'your'} systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in.
       </p>
 
       {/* A failed read of access used to strand the customer with nothing: the request form is gated on
@@ -471,146 +420,6 @@ export function IntegrationsPage() {
           )}
         </div>
       )}
-
-      {/* THE PLAIN-LANGUAGE HALF, FIRST. An operations lead should be able to read this and decide
-          whether to involve their engineer, without reading a single JSON payload. */}
-      {/* What we talk to, so somebody can see whether their tools are on the list. */}
-      <TheThingsYouCanConnect />
-
-      <div style={S.sec}>What it does</div>
-      <div style={S.rows}>
-        <div style={{ ...S.line }}>
-          <div style={S.h3}>Your people come in</div>
-          <p style={S.body}>Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too, so you are not keeping a second list.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Your goals come in</div>
-          <p style={S.body}>Goals, projects and decisions, from wherever you already keep them. Groundwork points at yours instead of holding a second copy that can go out of step.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Your team checks in against them</div>
-          <p style={S.body}>Each person is asked about the goals you sent, as often as you choose, in their own words. The report shows where their answers agree and where they do not.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Your numbers come in as evidence</div>
-          <p style={S.body}>Send a figure from your CRM, billing or support desk and it sits beside the goal it belongs to. Nothing extra to keep up to date.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Roles and handovers</div>
-          <p style={S.body}>Who holds which role and since when, so a handover leaves a written brief rather than a gap.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Your handbook</div>
-          <p style={S.body}>Send the documents that say how things are done here. People can ask them questions and the answer quotes the page it came from.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>What a lead reads before a hard conversation</div>
-          <p style={S.body}>One page on one person: what they said they would do, what they are waiting on, and what they raised. Never a score.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Invitations go out</div>
-          <p style={S.body}>Groundwork gives you a link. You send it however you already reach people.</p>
-        </div>
-        <div style={{ ...S.line, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={S.h3}>Results come back</div>
-          <p style={S.body}>When everyone has checked in, your systems are told what happened and where to look. Never what anybody said.</p>
-        </div>
-      </div>
-
-      {/* ---------------------------------------------------------------- whatsapp
-        OUT FROM BEHIND THE API REQUEST. Setting up WhatsApp sat inside the block that only shows
-        once API access is approved, so somebody who only wanted their team to check in by message
-        had to ask for API keys and wait for a person to read the request.
-        Nothing here gives away how the API works: an address to paste into Meta and a token you
-        made up. So it stands on its own, above the part that does need approving.
-      */}
-      <div style={{ ...S.sec, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <WhatsAppMark size={20} /> Your WhatsApp number
-      </div>
-      <div style={S.card}>
-        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
-        <p style={S.body}>
-          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
-        </p>
-        {/*
-          WHAT IT SOUNDS LIKE, AND IN WHICH LANGUAGES. Somebody deciding whether to put this in
-          front of a field team needs to know it will not read like a form. Short words, one
-          question at a time, and the person can answer in their own language.
-          The list comes from the server so this page cannot promise a language nobody added.
-        */}
-        {/*
-          WHO SENDS THE FIRST MESSAGE, SAID AS A THING TO DO RATHER THAN AS A LIMIT.
-          This read "Start by email for now" and then explained Meta's approval queue - our problem,
-          in our words, on a page where somebody is trying to set something up. The fact underneath
-          is real and unchanged: the person has to write first. What an admin needs is the action,
-          which is one line: share the number, get them to say anything, it runs from there.
-        */}
-        {(whatsapp.data as any)?.canStartAConversation === false && (
-          <p style={S.body}>
-            Your team messages the number first. Share it with them, or send them the link to it, and
-            ask them to say anything at all - hello will do. From that moment everything happens on
-            WhatsApp: their check-in, their reminders and their report.
-            {' '}<WhatIfWeWantToWriteFirst
-              names={(whatsapp.data as any)?.theNamesToSubmit ?? []}
-              approved={(whatsapp.data as any)?.approvedHere ?? []}
-              onSave={(next) => saveTemplates.mutate(next)}
-              saving={saveTemplates.isPending}
-            />
-          </p>
-        )}
-        {(whatsapp.data as any)?.languages?.length > 0 && (
-          <p style={S.body}>
-            On WhatsApp the questions are short and in plain everyday words, one at a time, the way
-            you would ask somebody in person. People can answer in {(whatsapp.data as any).languages.length} languages
-            and the check-in carries on in whichever they use: {(whatsapp.data as any).languages.join(', ')}.
-            {' '}The first message we send is in English; it changes to their language as soon as they reply.
-            What goes on the record is kept in English so everyone reads the same thing.
-          </p>
-        )}
-        {whatsapp.data?.connection ? (
-          <>
-            <div style={{ ...S.row, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
-                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
-                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
-                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
-              </div>
-              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
-            </div>
-            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
-              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
-              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
-              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
-              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
-            </div>
-            <details style={{ marginTop: 12 }}>
-              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
-              </div>
-            </details>
-          </>
-        ) : (
-          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
-            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
-            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
-            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
-            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
-            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
-            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
-            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
-          </div>
-        )}
-      </div>
 
 
       {approved && (<>
@@ -828,7 +637,7 @@ export function IntegrationsPage() {
       )}
 
       {/* ---------------------------------------------------------------- webhooks */}
-      <div style={S.sec}>Where we tell you</div>
+      <div style={S.sec}>Be told when something happens</div>
       <div style={S.card}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input style={{ ...S.input, flex: '1 1 260px' }} placeholder="https://your-system.example.com/groundwork" value={hookUrl} onChange={e => setHookUrl(e.target.value)} />
@@ -901,37 +710,6 @@ export function IntegrationsPage() {
         </div>
       ))}
 
-      {/* ---------------------------------------------------------------- where we tell you */}
-      <div style={S.sec}>Where we tell you</div>
-      <div style={S.card}>
-        <div style={S.h3}>A report is ready, a handoff is stuck, an integration cannot be reached: said in the channel your team lives in</div>
-        <p style={S.body}>Paste an incoming-webhook address from Slack or Teams. It arrives switched off; post one test notice, see it land, then turn it on. A notice says that something is ready and links to it - never what is in it, because a channel is read by more people than a check-in.</p>
-        {(notifiers.data ?? []).map(n => (
-          <div key={n.kind} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{n.kind === 'SLACK' ? 'Slack' : 'Teams'}{n.channelSaid ? ` · ${n.channelSaid}` : ''} <Pill tone={n.enabled ? 'ok' : 'flat'}>{n.enabled ? 'on' : 'off'}</Pill></div>
-              <div style={{ fontSize: 11.5, color: n.lastError ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3 }}>
-                {n.lastError ? `Last post failed: ${n.lastError}` : n.lastPostedAt ? `Last posted ${whenItWas(n.lastPostedAt, 'day')}` : 'Nothing posted yet'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button style={S.ghost} onClick={() => testWs.mutate(n.kind === 'SLACK' ? 'slack' : 'teams')} disabled={testWs.isPending}>Post a test</button>
-              <button style={S.ghost} onClick={() => turnWs.mutate({ kind: n.kind === 'SLACK' ? 'slack' : 'teams', on: !n.enabled })}>{n.enabled ? 'Switch off' : 'Switch on'}</button>
-              <button style={S.ghost} onClick={() => { if (window.confirm('Forget this address? Nothing already posted is deleted.')) disconnectWs.mutate(n.kind === 'SLACK' ? 'slack' : 'teams') }}>Remove</button>
-            </div>
-          </div>
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
-          <select style={S.input} value={wsKind} onChange={e => setWsKind(e.target.value as 'slack' | 'teams')} aria-label="Slack or Teams">
-            <option value="slack">Slack</option>
-            <option value="teams">Teams</option>
-          </select>
-          <input style={S.input} placeholder="https://hooks.slack.com/services/…" value={wsUrl} onChange={e => setWsUrl(e.target.value)} aria-label="Incoming webhook address" />
-          <input style={S.input} placeholder="Channel, as you call it (optional)" value={wsChannel} onChange={e => setWsChannel(e.target.value)} aria-label="Channel name" />
-          <button style={S.btn} onClick={() => connectWs.mutate()} disabled={!wsUrl.trim().startsWith('https://') || connectWs.isPending}>Connect</button>
-        </div>
-      </div>
-
       {/* ---------------------------------------------------------------- when somebody leaves */}
       <div style={S.sec}>When somebody leaves</div>
       <div style={S.card}>
@@ -961,7 +739,7 @@ export function IntegrationsPage() {
       </div>
 
       {/* ---------------------------------------------------------------- embed the panel */}
-      <div style={S.sec}>Embed the panel</div>
+      <div style={S.sec}>Show Groundwork inside your own tool</div>
       <div style={S.card}>
         <div style={S.h3}>{embed.data ? `Set up for ${embed.data.allowedDomains.length} domain${embed.data.allowedDomains.length === 1 ? '' : 's'}` : 'Put the check-in inside your own product'}</div>
         <p style={S.body}>Your people check in from a panel on your own pages, signed in as themselves by your login. Say which domains may load it, where it sits, and which departments should see nothing at all - not a disabled launcher, nothing. Saving issues a signing secret your server uses to mint identity tokens; it is shown once.</p>
@@ -992,7 +770,7 @@ export function IntegrationsPage() {
       </div>
 
       {/* ---------------------------------------------------------------- delivery log */}
-      <div style={S.sec}>Every message we tried to send</div>
+      <div style={S.sec}>Recent deliveries</div>
       {!(deliveries.data ?? []).length && (
         <div style={S.card}><p style={S.body}>Nothing yet. This fills in as sessions complete.</p></div>
       )}
@@ -1022,13 +800,13 @@ export function IntegrationsPage() {
 
       {/* ---------------------------------------------------------------- the security page */}
       {/* ---------------------------------------------------------------- what it looks like */}
-      <div style={S.sec}>What it looks like</div>
+      <div style={S.sec}>How it looks inside your tool</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
         {[
           { src: '/connect/panel.png', title: 'The panel on your own page', body: 'One script tag. Your people see what is due and do their check-in without leaving your system.' },
           { src: '/connect/ops-panel.png', title: 'An organisation\'s own panel in its back office', body: 'The same assistant, embedded where the work is managed: what is due, who is waiting, what came of it.' },
           { src: '/connect/whatsapp.png', title: 'A check-in over WhatsApp', body: 'On your number. A reply is an answer; a photo is a document; the report comes back as a message.' },
-        ].map((c) => (
+        ].filter(c => whatsappOn || c.src !== '/connect/whatsapp.png').map((c) => (
           <div key={c.src} style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
             <img src={c.src} alt={c.title} style={{ display: 'block', width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', objectPosition: 'top', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }} />
             <div style={{ padding: '12px 14px' }}>
@@ -1250,78 +1028,5 @@ function Step({ n, title, body, done, last }: { n: number; title: string; body: 
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 2 }}>{body}</div>
       </div>
     </div>
-  )
-}
-
-/**
- * WRITING FIRST IS THEIRS TO UNLOCK, AND IT IS ONE LINE UNTIL SOMEBODY ASKS.
- *
- * WhatsApp only lets a business write first using wording Meta has approved. On an organisation's
- * OWN number that approval is theirs to get - their Meta app, their submission - so this is a thing
- * they can do rather than a thing they wait on us for, and nobody was telling them.
- *
- * Behind an (i) because it is the second question, not the first. The first is "how do I start",
- * which the sentence beside this answers in full and needs nothing from anybody. Printed in the
- * open it would double a short paragraph into a page about Meta's approval queue.
- *
- * THE NAMES COME FROM THE SERVER, from the one place that defines them. Meta matches a template
- * name byte for byte, so a page that typed them out would be a copy that eventually differs from
- * the one the sender uses - and the failure would appear in Meta's console, a long way from here.
- */
-function WhatIfWeWantToWriteFirst({ names, approved, onSave, saving }: {
-  names: string[]
-  approved: string[]
-  onSave: (next: string[]) => void
-  saving: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const [picked, setPicked] = useState<string[]>(approved)
-  if (names.length === 0) return null
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-        aria-label="What if we want Groundwork to message first"
-        style={{
-          background: 'none', border: '1px solid var(--gw-border)', borderRadius: '50%',
-          width: 18, height: 18, lineHeight: '16px', padding: 0, fontSize: 11, fontWeight: 700,
-          fontFamily: 'inherit', color: 'var(--gw-navy)', cursor: 'pointer', verticalAlign: 'middle',
-        }}
-      >
-        i
-      </button>
-      {open && (
-        <span style={{ display: 'block', marginTop: 10, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)' }}>
-          <strong style={{ color: 'var(--gw-text)' }}>If you want Groundwork to message first.</strong>{' '}
-          You can. WhatsApp allows it with wording Meta has approved, and on your own number that
-          approval is yours to ask for - it is your Meta app. Submit these names in Meta Business
-          under Message Templates, say the message is for people your organisation has signed up to
-          this, and tick them here when they come back approved. Then a check-in can reach somebody
-          who has not written to you in a day.
-          <span style={{ display: 'block', marginTop: 8 }}>
-            {names.map((n) => (
-              <label key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 0', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={picked.includes(n)}
-                  onChange={(e) => setPicked(p => e.target.checked ? [...p, n] : p.filter(x => x !== n))}
-                />
-                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--gw-text)' }}>{n}</span>
-              </label>
-            ))}
-          </span>
-          <button
-            type="button"
-            onClick={() => onSave(picked)}
-            disabled={saving}
-            style={{ marginTop: 8, fontSize: 12.5, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            {saving ? 'Saving...' : 'Save what Meta approved'}
-          </button>
-        </span>
-      )}
-    </>
   )
 }

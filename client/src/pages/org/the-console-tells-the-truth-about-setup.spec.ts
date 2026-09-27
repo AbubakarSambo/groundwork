@@ -57,7 +57,9 @@ describe('the plain-language half comes first', () => {
      */
     /* The heading is "What it does" now: the section was 1,083 words of prose and the old title
        was part of that, promising plain terms above nine paragraphs. */
-    const plain = SRC.indexOf('What it does')
+    /* U.18: "What it does" moved to Connections as "More you can connect"; this page opens with the
+       prototype's plain sentence for whoever runs the systems, before any key. */
+    const plain = SRC.indexOf('For whoever runs')
     const credentials = SRC.indexOf('>Credentials<')
     const setup = SRC.indexOf('Setting it up')
     expect(plain).toBeGreaterThan(-1)
@@ -69,7 +71,7 @@ describe('the plain-language half comes first', () => {
     /* 10 Sep 2026: the "What this API never returns" section was removed on Hafsah's decision and
        replaced with three screenshots (the panel, an organisation's own panel, a WhatsApp check-in).
        The exclusions live in the API's own terms and in the engine; the page shows the product. */
-    expect(SRC).toContain('What it looks like')
+    expect(SRC).toContain('How it looks inside your tool')
     expect(SRC).toContain('/connect/panel.png')
     expect(SRC).not.toContain('What this API never returns')
   })

@@ -82,8 +82,9 @@ describe('the five this batch fixed stay fixed', () => {
   it.each([
     ['grounds/GroundAdminPage.tsx', 'dismissRequest'],
     ['grounds/GroundAdminPage.tsx', 'remind'],
-    ['org/IntegrationsPage.tsx', 'toggleWa'],
-    ['org/IntegrationsPage.tsx', 'disconnectWa'],
+    /* U.18: switching WhatsApp on or off, and disconnecting it, moved to their own pages. */
+    ['connections/WhatsAppSetupPage.tsx', 'turn'],
+    ['connections/ConnectionsPage.tsx', 'disconnect'],
     ['billing/PricingPage.tsx', 'subscribeMut'],
   ])('%s#%s has an onError', (file, name) => {
     const src = readFileSync(join(__dirname, file), 'utf8')
