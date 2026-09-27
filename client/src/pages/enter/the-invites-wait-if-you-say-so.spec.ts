@@ -20,7 +20,6 @@ import { describe, it, expect } from 'vitest'
 describe('the invites wait if you say so', () => {
   const strip = (t: string) => t.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, '')
   const page = strip(readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8'))
-  const block = strip(readFileSync(join(__dirname, '../../components/gw/WhatThisCheckInStillNeeds.tsx'), 'utf8'))
 
   /*
    * U.6: the question is now the prototype's "When it starts" (setup.txt), with "Now", "Tomorrow" and
@@ -49,14 +48,21 @@ describe('the invites wait if you say so', () => {
     expect(page).toContain('Save this. Your invites go out straight away.')
   })
 
-  it('offers a date where there is no Setup page to send anybody to', () => {
-    expect(block).toMatch(/renderStartDate/)
-    const still = page.slice(page.indexOf('<WhatThisCheckInStillNeeds'))
-    expect(still).toMatch(/startDateUnset=\{!checkInBy\}/)
-    expect(still).toMatch(/renderStartDate=/)
+  /*
+   * U.6 review: the date used to be offered twice, once in "One thing this check-in still needs" on
+   * the report ("When does this start?") and once in the setup. After choosing "Now" the first still
+   * said no start date was set. It is offered once now, in TheSetup, where there is no Setup page to
+   * send anybody to, so this checks that instead.
+   */
+  it('offers a date where there is no Setup page to send anybody to, and only once', () => {
+    expect(page).not.toContain('<WhatThisCheckInStillNeeds')
+    const setup = strip(readFileSync(join(__dirname, 'TheSetup.tsx'), 'utf8'))
+    expect(setup).toMatch(/type="date"/)
   })
 
+  /* U.6 review: the only start date is TheSetup's now, so the rule is read there. */
   it('never offers a start date in the past', () => {
-    expect(page).toMatch(/min=\{new Date\(\)\.toISOString\(\)\.slice\(0, 10\)\}/)
+    const setup = strip(readFileSync(join(__dirname, 'TheSetup.tsx'), 'utf8'))
+    expect(setup).toMatch(/aria-label=\{THE_SETUP\.onADate\} value=\{p\.startsOn\} min=\{iso\(today\)\}/)
   })
 })

@@ -30,7 +30,6 @@ import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
-import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
@@ -3522,38 +3521,9 @@ export function EntryChatPage() {
               <TheReportYouSawAtTheEnd
                 report={sessionReport}
                 correctedNote={reportWasCorrected && !generatingReport}
-                /*
-                  HOW OFTEN THIS RUNS, ASKED WHERE SOMEBODY IS STILL THINKING ABOUT THE WORK.
-
-                  `cadenceChosen` already exists on this page for exactly this distinction - it was
-                  added because "a value nobody had chosen was indistinguishable" from one somebody
-                  picked. Until now nothing acted on it: the unchosen FORTNIGHTLY went into the
-                  commit payload as though it had been decided.
-
-                  The standard half is not offered here. There is no Setup tab yet - the check-in is
-                  not saved - so a link to it would be a link to nothing.
-                */
-                stillNeeded={
-                  <WhatThisCheckInStillNeeds
-                    cadenceUnset={!cadenceChosen}
-                    cadence={cadence}
-                    onPickCadence={(c) => { setCadence(c as typeof cadence); setCadenceChosen(true) }}
-                    standardUnset={false}
-                    /* There is no ground and no Setup page yet on this path, so the date is set
-                       here or it is not set at all. See renderStartDate. */
-                    startDateUnset={!checkInBy}
-                    renderStartDate={
-                      <input
-                        type="date"
-                        value={checkInBy}
-                        min={new Date().toISOString().slice(0, 10)}
-                        onChange={(e) => setCheckInBy(e.target.value)}
-                        style={{ padding: '8px 11px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)', outline: 'none' }}
-                      />
-                    }
-                    onGoToSetup={() => { /* no ground yet on this path */ }}
-                  />
-                }
+                /* U.6 review: no "One thing this check-in still needs" here. It asked "When does this
+                   start?" and said no start date was set after the lead had chosen "Now". The setup
+                   right below (TheSetup) asks when it starts and how often, once. */
                 onRecordLine={
                   uploadedDoc
                     ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
@@ -3936,7 +3906,9 @@ export function EntryChatPage() {
                 {whatIsSetAndWhatIsNot({
                   name: groundName,
                   cadenceChosen,
-                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                  /* "Now" is a start: today. Only a start nobody could have chosen is missing, and
+                     the setup always has one. */
+                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date(),
                   workingDays,
                   peopleAdded: inviteAdded.length,
                 })}

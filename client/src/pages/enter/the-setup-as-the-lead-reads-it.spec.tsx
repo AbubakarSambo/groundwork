@@ -120,3 +120,12 @@ describe('one day picker (U.6 review)', () => {
   })
 })
 
+
+describe('what is still to set, after saving (U.6 review)', () => {
+  /* Read live: "Still to set: a name and a start date." after the lead had chosen "Now". */
+  it('does not list a start the lead chose with "Now"', async () => {
+    const { whatIsSetAndWhatIsNot } = await import('@/components/gw/when-the-check-ins-land')
+    const said = whatIsSetAndWhatIsNot({ name: 'Daniel, the next six weeks', cadenceChosen: true, startsAt: new Date(), workingDays: [], peopleAdded: 1 })
+    expect(said).toBe('Set: a name, a rhythm, a start date and 1 person.')
+  })
+})
