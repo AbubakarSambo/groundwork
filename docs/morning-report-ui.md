@@ -16,10 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets and performance reviews). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews and when someone leaves). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
-screen tests and 9,528 API tests); performance reviews have passed their own tests since. **None could
+screen tests and 9,528 API tests); performance reviews and when someone leaves have passed their own
+tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -70,17 +71,16 @@ that one is yours to decide (item 27.4).
     in their review? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** performance reviews, the fourth suite (U.17), on the review dates the
-daily reminder already reads. The manager starts each review, writes their own words and decides with
-reasons; the person reads the facts, their own view and the decision with its reasons, and writes their
-own view; an admin reads all; a lead only their team's; a colleague and a guest are refused. No reader
-is served a label, a verdict, a score or a rating, and a test scans for it. "What Groundwork noticed"
-and a suggestion for a review wait for the engine (request 23). Whether the person reads their
-manager's words is a privacy question (item 28.33). Before that: time sheets, leave requests, the
-onboarding board and the Suites page. The midway full run passed everything (2,892 screen tests and
-9,528 API tests).
+**Just finished, not ticked:** when someone leaves, the fifth suite (U.17), for admins only. Each
+list has the four steps, handover, equipment, access and final pay, each with an owner and done or
+not, starting from the owners the organisation named. It sits beside the product's handover and
+departures, which are unchanged, and says only who took over and when, never what was handed over. A
+lead, the person leaving, a colleague and a guest are refused by the server. "Signs a team is under
+strain" waits for the engine (request 24), and is never shown if it names a person. Before that:
+performance reviews, time sheets, leave requests, the onboarding board and the Suites page. The midway
+full run passed everything (2,892 screen tests and 9,528 API tests).
 
-**Next:** U.17 goes on with suite 5, when someone leaves. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 6, the role map. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1346,6 +1346,25 @@ reviewed" in this report.
     write their own view.", "This review has already been started.", "Write something first." and
     "Say what you decided, and why, in a sentence or two."). The decision's own words are the U.13
     suggestions part's.
+38. **Two prototype lines are left out, because they would not be true.** "Tom keeps his own history of
+    his check-ins." (a person's words go after the organisation's window once they leave) and "The
+    handover page gives Aisha what she needs about his customers." (there is no handover page yet; item
+    22.1). **My recommendation:** bring the second back with the handover page, when you decide 22.1.
+39. **Only admins mark steps done.** The owner of a step, such as Kamau for equipment, may not be an
+    admin and cannot open the board. **My recommendation:** let each owner see and tick their own steps
+    only, in their own Today list.
+40. **How a list starts.** From a departure the product already recorded (a role ended through the
+    developer API), or by an admin choosing the person and their last day. Nothing starts one by itself,
+    because opening a board never changes it. **My recommendation:** keep it.
+41. **Wording no screen shows, on this board:** "… left on …", "Hand over …’s work" (the prototype's
+    "Hand over his customers to Aisha" names customers, which the product does not know), "Who does this"
+    (read aloud), "Nobody yet", "Undo", "… has the handover of …’s role, since …", "Already left, with no
+    list yet", "Start a list", "Who is leaving", "Choose somebody", "Their last day", "Start the list",
+    "Nobody is leaving.", "The board did not load.", and the server's refusals ("Only an admin can open
+    this board.", "The suite for when someone leaves is not switched on.", "Choose somebody in your
+    organisation.", "Give their last day.", "There is already a list for that person and that day.",
+    "There is no step with that name." and "The owner has to be somebody in your organisation.").
+
 
 
 
@@ -2624,6 +2643,56 @@ starting, writing, deciding; the scans) and `client/src/pages/suites/the-reviews
 test was changed.** Only the tests for the changed files, the tests that read whole folders, and both
 type checks were run. No screen could be checked signed in (item 14).
 
+#### When someone leaves: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product already records a departure (`departure_records`,
+when a role ends through the developer API) and a handover (the successor's role gets a brief of what
+is outstanding, which never carries what the leaver said). Both must keep working exactly as now, and
+they do: nothing about them changed. There was no checklist of what has to happen when somebody leaves,
+no owner for each step, and no board at `#/suite/leaving`. "Signs a team is under strain" is the
+engine's (request 24).
+
+**New storage, on your computer only,** in the migration `20260927120000_when_someone_leaves`:
+`leaving_checklists` (one list for one person's last day), `leaving_steps` (handover, equipment, access
+and final pay, each with an owner, and when it was done and by whom), and `team_strain_signs` (empty
+until the engine writes one). It has not been run against any database.
+
+**What Grace, an admin, now reads:** "Suites / When someone leaves", "When someone leaves", "Everything
+that has to happen when someone leaves, each with an owner, so nothing is forgotten." Then, for each
+list, "Tom Odhiambo leaves on 9 October" (or "left on", once the day has passed) and "0 of 4 done", with
+four steps: "Hand over Tom’s work" (or "… to Aisha" once the product's handover names who took over),
+"Collect Tom’s laptop and phone", "Remove Tom’s access on their last day" and "Work out Tom’s final
+pay", each with its owner to choose ("Nobody yet" when there is none) and "Mark done", or "Done" and
+"Undo". Each step starts with the owner the organisation named: the person's manager for the handover,
+whoever looks after equipment, and the admin's two answers for access and pay. Where the product's own
+handover happened: "Aisha Otieno has the handover of Samuel’s role, since 15 September.", and nothing of
+what was in it. Then "Already left, with no list yet" for departures the product already recorded, such
+as "Samuel Njoroge left on 15 September." with "Start the list", and "Start a list", with "Who is
+leaving", "Their last day" and "Start the list". With none: "Nobody is leaving." Once the engine writes
+one, "Signs a team is under strain", the sign, and "This is shown for the team, never for one named
+person, and nobody is scored."
+
+**Everybody else,** a lead, the person leaving, a colleague and a guest, is refused by the server:
+"Only an admin can open this board." The Suites page shows the suite, and its door, only to admins,
+because it is for admins only.
+
+**Privacy and access, on the server:** admins only, for reading and for every change, with a test for
+the lead, the leaver, a colleague, a guest and somebody outside. The owner of a step is somebody in the
+organisation, never the person leaving and never a guest. The board reads who took over and when from
+the product's own role records, and never reads the handover brief; a test checks that. A sign of strain
+that names anybody in the directory is never served. A scan fails if anything outside the suites reads
+a leaving list, so nothing on this board reaches a check-in or a report about anybody. No labels on
+people.
+
+**Commits:** `f5e683bc` (the server), `588f05e4` (the board), `d9a166ec` (request 24).
+
+**Tested:** `api/src/modules/suites/the-leaving-board-as-each-reader-reads-it.spec.ts` (13 tests: every
+refusal, starting a list with its owners, marking and undoing, owners never the leaver or a guest, the
+handover linked without its brief, a sign that names a person dropped, and the scans) and
+`client/src/pages/suites/when-someone-leaves-as-an-admin-sees-it.spec.tsx` (9 tests, word for word).
+The handover and departure tests pass unchanged. **No existing test was changed.** No screen could be
+checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2641,9 +2710,9 @@ type checks were run. No screen could be checked signed in (item 14).
    daily reminder already reads. Still missing: "What Groundwork noticed", a suggestion for a review,
    and "What Aisha’s review will show", which are the engine's (request 23); and a way in for the
    person (item 28.34).
-5. **When someone leaves** (`#/suite/leaving`, admins only). Handover and departures exist. Missing:
-   the checklist with an owner for each step. The engine's part: "Signs a team is under strain", for
-   a team, never a named person.
+5. **When someone leaves** (`#/suite/leaving`, admins only). **Built** (above), beside the handover and
+   departures, which are unchanged. The engine's part: "Signs a team is under strain", for a team,
+   never a named person (request 24).
 6. **Role map** (`#/suite/roles`, admins only). Missing entirely. The engine's part: the role
    interview, and filling in the map from the answers.
 7. **Spending and budgets** (`#/suite/spend`, admins and leads). Groundwork's own back office has
