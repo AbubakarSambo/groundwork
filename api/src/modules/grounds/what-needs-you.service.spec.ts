@@ -35,7 +35,16 @@ describe('the read behind Today', () => {
     const r = await svc.forReader('me', 'me@x.test', 'org-a', 'MEMBER');
     expect(grounds.listAwaitingApproval).not.toHaveBeenCalled();
     expect(grounds.list).toHaveBeenCalledWith('org-a', 'me', 'me@x.test', 'MEMBER');
-    expect(r.needs.map((n) => n.title)).toEqual(['Your own check-in for Check-in in org-a', 'Your own check-in for Elsewhere']);
+    expect(r.needs.map((n) => n.title)).toEqual(['Your own check-in for Check-in in org-a']);
+  });
+
+  it('Today and its count hold only this organisation\'s needs; another organisation\'s are its "N new"', async () => {
+    const { svc } = setup([{ organizationId: 'org-a', role: 'MEMBER' }, { organizationId: 'org-other', role: 'GUEST' }]);
+    const r = await svc.forReader('me', 'me@x.test', 'org-a', 'MEMBER');
+    expect(r.count).toBe(1);
+    expect(JSON.stringify(r)).not.toContain('Elsewhere');
+    const counts = await svc.everywhere('me', 'me@x.test');
+    expect(counts.find((c) => c.organizationId === 'org-a')?.count).toBe(r.count);
   });
 
   it('an admin is asked to approve what is waiting in their organisation', async () => {

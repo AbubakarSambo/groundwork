@@ -19,7 +19,13 @@ export class WhatNeedsYouService {
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId) : Promise.resolve([]),
     ]);
-    return whatNeedsYou(list as any, { userId, role, organizationId }, waiting.map((w) => ({ ...w, organizationId })));
+    /*
+     * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
+     * the reader takes part in, and Today used to lead with one of those, so "Today 3" disagreed with
+     * "N new" on Choose an organisation. Another organisation's needs are counted there, not here.
+     */
+    const here = (list as any[]).filter((g) => g.organizationId === organizationId);
+    return whatNeedsYou(here as any, { userId, role, organizationId }, waiting.map((w) => ({ ...w, organizationId })));
   }
 
   /**
