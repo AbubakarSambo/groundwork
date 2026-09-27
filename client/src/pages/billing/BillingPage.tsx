@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { theFreeTrialSentence } from '@/lib/the-free-trial'
+import { whatCoversThem, thePlanLine, theNextPaymentLine, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
 import { groundsApi } from '@/api/grounds'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { scrollToId } from '@/lib/scroll-to'
-import { Stat, Pill } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -81,7 +82,6 @@ function ThingsWeDoByHand() {
 
 export function BillingPage() {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
 
@@ -102,8 +102,6 @@ export function BillingPage() {
    * being reviewed has a motive to do.
    */
   const isAdmin = user?.role === 'ADMIN'
-
-  const groundId = params.get('groundId') ?? undefined
 
   const [genSessions, setGenSessions] = useState(1)
   const [genNote, setGenNote] = useState('')
@@ -316,253 +314,235 @@ export function BillingPage() {
     )
   }
 
+  const orgName = (user as any)?.organization?.name?.trim() || (user as any)?.organizationName || ''
+  const covers = whatCoversThem(billingStatus)
+  const notices = theTrialNotices(billingStatus, livePricing)
+  const trialSentence = theFreeTrialSentence(livePricing?.trial)
+  const invoices = billingStatus?.invoices ?? []
+  const usage = billingStatus?.usage
+  const busy = createSubscriptionMut.isPending || changePlanMut.isPending
+  const choosePlan = (plan: SubscriptionPlan) => (isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan))
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)' }}>
-      <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
+    <div className="gw-you gw-conn gw-bill">
+      <div>
+        {orgName && <p className="gw-suites-org">{orgName}</p>}
+        <h1 className="gw-t-title gw-suites-h1">Plan and billing</h1>
+        <p className="gw-you-sub">Your plan, and how many people it covers.</p>
 
-        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>Back</button>
-
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Your plan, and how many people it covers.
-        </div>
-
-        {/**
-          * AT A GLANCE, IN THE BOARD'S VOCABULARY. Stage 5.
-          *
-          * The three numbers that decide whether somebody upgrades - which plan, how many people
-          * against the cap, when it renews - were prose lines stacked inside a card, in a page whose
-          * whole job is a decision about money. The board answers "what is the state of this" with a
-          * row of serif numerals under small labels, and it is the best-reading page in the product
-          * for exactly that reason.
-          *
-          * `Stat` is the board's own component, not a copy of it, so this row cannot drift from the
-          * one on the board.
-          */}
         {/*
-          * THE ROW SHOWS FOR A FREE ACCOUNT TOO, which is the whole point of it.
-          *
-          * It was behind `isSubscribed || isPaused`, so the one number that decides whether
-          * somebody upgrades - how many people they have against what their plan covers - was
-          * hidden from every organisation that had not upgraded yet. An admin working out what 160
-          * people costs could not see their own headcount on the page selling them the plan.
-          */}
-        {/*
-          THREE MONTHS ON THE HOUSE, SAID ON THE PAGE ABOUT MONEY.
-          Somebody inside a free run has no subscription and no card, so every other line on this
-          page reads as though they are on the free tier. This says what they actually have and the
-          day it stops, which is the number they need before it does.
+          WHEN THE FREE MONTHS END (upgrade.txt). Only inside the free trial's months, and only while
+          the trial setting is on: see what-plan-and-billing-says.ts.
         */}
-        {billingStatus?.onTheHouse && (
-          <div style={{ marginBottom: 18, padding: '13px 16px', borderRadius: 10,
-                        background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--gw-green-t)', marginBottom: 3 }}>
-              You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}
+        {notices.map((n) => (
+          <section key={n.key} className="gw-you-card gw-bill-notice" aria-labelledby={`bill-notice-${n.key}`}>
+            <h2 id={`bill-notice-${n.key}`} className="gw-t-h3">{n.heading}</h2>
+            <p className="gw-t-body">{n.body}</p>
+            <div className="gw-conn-actions">
+              {n.choose && (
+                <button type="button" className="gw-btn" disabled={busy} onClick={() => choosePlan(n.choose!)}>
+                  {`Choose ${PLAN_LABELS[n.choose]}`}
+                </button>
+              )}
+              <button type="button" className="gw-btn-sec" onClick={() => scrollToId('upgrade-section', 'start')}>
+                {n.key === 'ending' ? 'See every plan' : 'See the plans'}
+              </button>
             </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+          </section>
+        ))}
+
+        {/*
+          THREE MONTHS ON THE HOUSE, SAID ON THE PAGE ABOUT MONEY, for a free run we gave by hand.
+          Somebody inside one has no subscription and no card, so this says what they have and the day
+          it stops. The free trial's months are said in the plan line and the notices above instead.
+        */}
+        {billingStatus?.onTheHouse && !billingStatus.onTheHouse.freeTrial && (
+          <div className="gw-you-card gw-bill-notice">
+            <h2 className="gw-t-h3">You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}</h2>
+            <p className="gw-t-body">
               Everything the {PLAN_LABELS[billingStatus.onTheHouse.plan as SubscriptionPlan] ?? String(billingStatus.onTheHouse.plan)} plan
-              covers, at no cost. Nothing is charged and there is no card on file. After that date the free tier applies unless you subscribe.
-            </div>
+              covers, at no cost. Nothing is charged and there is no card on file. After that date the free plan applies unless you subscribe.
+            </p>
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          {(isSubscribed || isPaused) && (
-            <Stat
-              label="Plan"
-              value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
-              caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
-              tone={isPaused ? 'warn' : undefined}
-            />
-          )}
-            {billingStatus?.people && (
-              <Stat
-                label="People"
-                value={billingStatus.people.cap != null
-                  ? `${billingStatus.people.count} of ${billingStatus.people.cap}`
-                  : String(billingStatus.people.count)}
-                caption={peopleOverCap ? 'Over what this plan covers' : billingStatus.people.cap != null ? 'Everyone with an account here' : 'No cap on this plan'}
-                tone={peopleOverCap ? 'bad' : undefined}
-              />
+        <section className="gw-conn-sec" aria-labelledby="bill-yours">
+          <h2 id="bill-yours" className="gw-t-h2">Your plan</h2>
+          <ul className="gw-conn-rows gw-bill-rows">
+            <li>
+              <b>Plan</b>
+              <span>
+                {thePlanLine(billingStatus, livePricing, freeGrounds)}
+                {peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}
+              </span>
+              <button type="button" className="gw-bill-link" onClick={() => scrollToId('upgrade-section', 'start')}>Change</button>
+            </li>
+            <li>
+              <b>Next payment</b>
+              <span>{theNextPaymentLine(billingStatus, livePricing)}</span>
+              {(isSubscribed || isPaused) ? (
+                <button type="button" className="gw-bill-link" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>
+                  {portalMut.isPending ? 'Opening…' : 'Change card'}
+                </button>
+              ) : <span />}
+            </li>
+            <li>
+              <b>Everyone counts</b>
+              <span>{whoCounts(orgName)}</span>
+              <span />
+            </li>
+            {trialSentence && (
+              <li>
+                <b>Free trial</b>
+                <span>{trialSentence}</span>
+                <span />
+              </li>
             )}
             {/*
-              * WHAT THIS ACCOUNT HAS ACTUALLY DONE. An admin asked to pay for a year needs to be
-              * able to say what was got for it, and this page could only say what it costs.
-              */}
-            {(billingStatus as any)?.usage && (
-              <Stat
-                label="Check-ins"
-                value={String((billingStatus as any).usage.checkIns)}
-                caption={`${(billingStatus as any).usage.reportsReleased} report${(billingStatus as any).usage.reportsReleased === 1 ? '' : 's'} released, ${(billingStatus as any).usage.peopleTakingPart} taking part`}
-              />
+              WHAT THIS ACCOUNT HAS ACTUALLY DONE. An admin asked to pay for a year needs to be able to
+              say what was got for it, and a page that only says what it costs cannot.
+            */}
+            {usage && (
+              <li>
+                <b>So far</b>
+                <span>
+                  {`${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'}, ${usage.reportsReleased} ${usage.reportsReleased === 1 ? 'report' : 'reports'} shared, and ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
+                </span>
+                <span />
+              </li>
             )}
-            {(isSubscribed || isPaused) && <Stat
-              label={isPaused ? 'Paused since' : 'Renews'}
-              value={orgSub?.periodEnd
-                ? whenItWas(orgSub.periodEnd, 'dayAndMonth')
-                : 'Not set'}
-              /**
-               * IT POINTED AT SOMETHING THAT IS NOT ON THE PAGE. W-UX-5.
-               *
-               * "On the card ending below" - and there is no card below, or anywhere else: this page
-               * has never shown a payment method, because Stripe is not wired yet. So the one line
-               * about how a person is charged referred to a thing they could scroll for and never
-               * find. Say the true thing instead, which is when it renews.
-               */
-              caption={isPaused ? 'Nothing is being charged' : 'Renews automatically'}
-              tone={isPaused ? 'warn' : undefined}
-            />}
-        </div>
+          </ul>
+        </section>
 
-        {/* Current plan */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Current plan</div>
-        {isSubscribed || isPaused ? (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-            {/**
-              * SAID ONCE. Stage 5.
-              *
-              * The plan, the price and the seat count are in the tiles above now, and this card
-              * repeated all three - so a page about a decision on money stated the same three facts
-              * twice within one screen. What belongs here is the state and the two things you can do
-              * about it.
-              */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {isPaused
-                  ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
-                  : endsAt
-                    ? `Ending on ${sayTheDate(endsAt)}. Everything works until then, and then it stops.`
-                    : peopleOverCap
-                      ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
-                      : 'Running normally.'}
-              </div>
-              <Pill tone={isPaused || endsAt ? 'warn' : 'good'}>{isPaused ? 'Paused' : endsAt ? 'Ending' : 'Active'}</Pill>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {endsAt ? (
-                <button
-                  onClick={() => keepSubscriptionMut.mutate()}
-                  disabled={keepSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: keepSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {keepSubscriptionMut.isPending ? 'Keeping...' : 'Keep subscription'}
-                </button>
-              ) : isPaused ? (
-                <button
-                  onClick={() => resumeSubscriptionMut.mutate()}
-                  disabled={resumeSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: resumeSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {resumeSubscriptionMut.isPending ? 'Resuming...' : 'Resume subscription'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setConfirming('pause')}
-                  disabled={pauseSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: pauseSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause subscription'}
-                </button>
-              )}
-              {/*
-                * INVOICES EXISTED AND WERE UNREACHABLE.
-                *
-                * Stripe issues an invoice for every payment and the API has had a Customer Portal
-                * endpoint all along - `billing.controller.ts`, "manage card, invoices,
-                * cancellation" - with a client function to call it. Nothing ever called it. Asked
-                * by somebody signing up: "do I get an invoice when I pay?" The answer was yes, and
-                * there was no way to see one.
-                *
-                * The portal is Stripe's own screen, so it opens in the same tab by assignment
-                * rather than through the router - it is not a route in this app.
-                */}
-              <button
-                onClick={() => portalMut.mutate()}
-                disabled={portalMut.isPending}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: portalMut.isPending ? 0.7 : 1 }}
-              >
-                {portalMut.isPending ? 'Opening...' : 'Invoices and payment method'}
-              </button>
-              {!endsAt && !isPaused && (
-                <button
-                  onClick={() => setConfirming('cancel')}
-                  disabled={cancelSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit', opacity: cancelSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  Cancel subscription
-                </button>
-              )}
-            </div>
-
-            {confirming === 'cancel' && (
-              <div role="dialog" aria-label="Cancel at the end of the period" style={{ marginTop: 14, border: '1px solid #F0D6D3', background: '#FBF3F2', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-clay)', marginBottom: 6 }}>Cancel at the end of the period?</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
-                  Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause instead'}
-                  </button>
-                  <button onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {cancelSubscriptionMut.isPending ? 'Scheduling...' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}
-                  </button>
-                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Keep it
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {confirming === 'pause' && (
-              <div role="dialog" aria-label="Pause the subscription" style={{ marginTop: 14, border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Pause the subscription?</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
-                  Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause'}
-                  </button>
-                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Not now
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Free</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to {freeGrounds} check-ins for teams of {freeTeam} or fewer, with unlimited sessions and reports.</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-paper-2)', color: 'var(--gw-muted)' }}>
-                No subscription
-              </span>
-            </div>
+        {/* Empty state for the free plan: what it gives, before anybody pays. */}
+        {!hasBillingHistory && covers === 'free' && (
+          <div className="gw-you-card gw-bill-notice">
+            <h2 className="gw-t-h3">Your first {freeGrounds} check-ins are free.</h2>
+            <p className="gw-t-body">
+              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
+            </p>
           </div>
         )}
 
-        {/* Empty state: no billing history yet */}
-        {!hasBillingHistory && !isSubscribed && !isPaused && (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 6 }}>
-              Your first {freeGrounds} check-ins are free.
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 14 }}>
-              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => scrollToId('upgrade-section', 'start')}
-                style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                View org plans
+        {/*
+          THE PLANS, FROM THE TABLE. The same list is a first choice for a free organisation and a
+          plan switcher for a paying one: "Move to this" starts Stripe's checkout for the first, and
+          changes the plan, prorated by Stripe, for the second. The plan they are on says "Your plan".
+        */}
+        <section className="gw-conn-sec" aria-labelledby="upgrade-section">
+          <div className="gw-you-section-head">
+            <h2 id="upgrade-section" className="gw-t-h2">Plans</h2>
+            <span className="gw-t-tiny">One flat monthly rate, unlimited check-ins, sessions and reports</span>
+          </div>
+          <div className="gw-bill-plans">
+            {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
+              const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
+              const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+              return (
+                <section key={plan} className={`gw-you-card gw-bill-plan${mine ? ' gw-bill-mine' : ''}`} aria-labelledby={`bill-plan-${plan}`}>
+                  <h3 id={`bill-plan-${plan}`} className="gw-t-h3">{PLAN_LABELS[plan]}</h3>
+                  <p className="gw-bill-price">{priceLabel(plan)}</p>
+                  <p className="gw-t-small">{capLabel(plan)}</p>
+                  {mine ? (
+                    <span className="gw-bill-yours">Your plan</span>
+                  ) : (
+                    <button type="button" className="gw-btn-sec" disabled={busy || isPaused} onClick={() => choosePlan(plan)}>
+                      {pending ? 'Opening…' : 'Move to this'}
+                    </button>
+                  )}
+                </section>
+              )
+            })}
+            <section className="gw-you-card gw-bill-plan gw-bill-enterprise" aria-labelledby="bill-plan-ENTERPRISE">
+              <h3 id="bill-plan-ENTERPRISE" className="gw-t-h3">Enterprise</h3>
+              <p className="gw-t-small">Custom needs, volume pricing or dedicated support.</p>
+              <a className="gw-btn-sec" href="mailto:hello@myground.work?subject=Enterprise plan enquiry">Contact us</a>
+            </section>
+          </div>
+        </section>
+
+        {invoices.length > 0 && (
+          <section className="gw-conn-sec" aria-labelledby="bill-invoices">
+            <h2 id="bill-invoices" className="gw-t-h2">Invoices</h2>
+            <ul className="gw-conn-rows gw-bill-rows">
+              {invoices.map((i) => (
+                <li key={`${i.paidOn}-${i.amountCents}`}>
+                  <b>{whenItWas(i.paidOn, 'dayAndMonthLong')}</b>
+                  <span>{`${formatDollars(i.amountCents)}, paid.`}</span>
+                  <span />
+                </li>
+              ))}
+            </ul>
+            <div className="gw-conn-actions">
+              <button type="button" className="gw-btn-sec" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>
+                {portalMut.isPending ? 'Opening…' : 'Invoices and payment method'}
               </button>
             </div>
-          </div>
+          </section>
+        )}
+
+        {(isSubscribed || isPaused) && (
+          <section className="gw-conn-sec" aria-labelledby="bill-stopping">
+            <h2 id="bill-stopping" className="gw-t-h2">Stopping</h2>
+            <div className="gw-you-card">
+              <div className="gw-conn-actions gw-conn-spread">
+                <p className="gw-t-body gw-conn-grow">
+                  {isPaused
+                    ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
+                    : endsAt
+                      ? `Ending on ${sayTheDate(endsAt)}. Everything works until then, and then it stops.`
+                      : 'Pause, or cancel at the end of this period. Either way, everything stays readable.'}
+                </p>
+                {endsAt ? (
+                  <button type="button" className="gw-btn" disabled={keepSubscriptionMut.isPending} onClick={() => keepSubscriptionMut.mutate()}>
+                    {keepSubscriptionMut.isPending ? 'Keeping…' : 'Keep subscription'}
+                  </button>
+                ) : isPaused ? (
+                  <button type="button" className="gw-btn" disabled={resumeSubscriptionMut.isPending} onClick={() => resumeSubscriptionMut.mutate()}>
+                    {resumeSubscriptionMut.isPending ? 'Resuming…' : 'Resume subscription'}
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" className="gw-btn-sec" disabled={pauseSubscriptionMut.isPending} onClick={() => setConfirming('pause')}>Pause</button>
+                    <button type="button" className="gw-bill-link" disabled={cancelSubscriptionMut.isPending} onClick={() => setConfirming('cancel')}>Cancel</button>
+                  </>
+                )}
+              </div>
+
+              {confirming === 'cancel' && (
+                <div role="dialog" aria-label="Cancel at the end of the period" className="gw-bill-confirm">
+                  <h3 className="gw-t-h3">Cancel at the end of the period?</h3>
+                  <p className="gw-t-body">
+                    Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
+                  </p>
+                  <div className="gw-conn-actions">
+                    <button type="button" className="gw-btn" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>
+                      {pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause instead'}
+                    </button>
+                    <button type="button" className="gw-btn-sec" onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending}>
+                      {cancelSubscriptionMut.isPending ? 'Scheduling…' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}
+                    </button>
+                    <button type="button" className="gw-btn-sec" onClick={() => setConfirming(null)}>Keep it</button>
+                  </div>
+                </div>
+              )}
+
+              {confirming === 'pause' && (
+                <div role="dialog" aria-label="Pause the subscription" className="gw-bill-confirm">
+                  <h3 className="gw-t-h3">Pause the subscription?</h3>
+                  <p className="gw-t-body">
+                    Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.
+                  </p>
+                  <div className="gw-conn-actions">
+                    <button type="button" className="gw-btn" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>
+                      {pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause'}
+                    </button>
+                    <button type="button" className="gw-btn-sec" onClick={() => setConfirming(null)}>Not now</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
         {/*
@@ -664,88 +644,6 @@ export function BillingPage() {
             })}
           </div>
         )}
-
-        {/*
-          IT SAID "UPGRADE" TO A CUSTOMER WHO WAS ALREADY PAYING. W-UX-5.
-          
-          Seen on the running page: an org on Growth, with "Current" correctly marked against Growth,
-          under a heading reading "Upgrade your organisation" and a sentence offering to "unlock"
-          what it had already bought. The same table is a sales pitch to a free org and a plan
-          switcher to a paying one, and it only ever said the first thing.
-        */}
-        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
-          {isSubscribed ? 'Change your plan' : 'Upgrade your organisation'}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.6 }}>
-          {isSubscribed
-            ? 'Every plan includes unlimited check-ins, sessions and reports. What changes is how many people your organisation covers.'
-            : 'Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.'}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-          {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => (
-            <div key={plan} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>{PLAN_LABELS[plan]}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, minHeight: 16 }}>{capLabel(plan)}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceLabel(plan)}</span>
-                {isSubscribed && orgSub?.plan === plan ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Current</span>
-                ) : (
-                  /* One primary colour in the product. The subscribe buttons were
-                     the only purple thing in it - a hardcoded hex in three files
-                     with no token behind it, on the pages where somebody is
-                     deciding whether to trust us with money. W8-24. */
-                  <button
-                    onClick={() => isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan)}
-                    disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
-                  >
-                    {/* Mid-flight the page says WHICH plan is being bought; the other five keep their word. */}
-                    {(createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
-                      ? (isSubscribed ? 'Switching…' : 'Subscribing…')
-                      : isSubscribed ? 'Switch' : 'Subscribe'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Enterprise */}
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Enterprise</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Unlimited members</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>Contact us</span>
-              <a
-                href="mailto:hello@myground.work?subject=Enterprise plan enquiry"
-                style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Contact
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Billing principles */}
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Billing</div>
-          <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {[
-              'No upfront payment.',
-              'No credit card required to get started.',
-              'Pay when Groundwork is creating value for your team.',
-              'Choose between buying sessions or subscribing your organisation.',
-              'Pause your organisation subscription whenever you are no longer using Groundwork.',
-            ].map((line, i) => (
-              <li key={i} style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>{line}</li>
-            ))}
-          </ul>
-        </div>
 
         {/* Access codes */}
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Access codes</div>
