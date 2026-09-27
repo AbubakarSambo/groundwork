@@ -89,7 +89,43 @@ describe('the two lines built from the record', () => {
 
   it('says the organisation and the end date, or whichever there is', () => {
     expect(whereAndUntil(PREVIEW)).toBe('Baridi Appliances, until 30 September.')
-    expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('Baridi Appliances.')
-    expect(whereAndUntil({ organisationName: null, endsAt: '2026-09-30T00:00:00.000Z' })).toBe('Until 30 September.')
+    /* U.3 review: each alone is a full sentence. These read "Baridi Appliances." and "Until 30
+       September." before, which are not sentences. */
+    expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('A check-in at Baridi Appliances.')
+    expect(whereAndUntil({ organisationName: null, endsAt: '2026-09-30T00:00:00.000Z' })).toBe('It runs until 30 September.')
+  })
+})
+
+describe('the rest of the page, as the participant reads it (U.3 review)', () => {
+  const read = () => (document.body.textContent ?? '').replace(/\s+/g, ' ')
+
+  it('says the organisation in a full sentence when there is no end date', async () => {
+    open({ ...PREVIEW, organisationName: 'Coamana', endsAt: null })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText('A check-in at Coamana.')).toBeTruthy()
+  })
+
+  it('says the name line and the way out in plain sentences, with no dashes', async () => {
+    open()
+    await screen.findByText('Who sees your answers')
+    expect(read()).toContain('Your name is optional. If you add it, the others will see it on the shared report.')
+    expect(read()).toContain('You never have to take part. If you would rather not, you can close this page. Nothing is shared, and saying no is never held against you.')
+    expect(read()).not.toMatch(/ - /)
+    expect(read()).not.toMatch(/obligated|declining is never shown as a negative/)
+  })
+
+  it('no longer asks anyone to agree that their "contribution record belongs to" them', async () => {
+    open()
+    await screen.findByText('Who sees your answers')
+    expect(read()).not.toMatch(/contribution record|By joining, you agree/)
+  })
+
+  it('has the prototype\'s look: the small mark, no header band, the note in beige', async () => {
+    open()
+    await screen.findByText('Who sees your answers')
+    expect(document.querySelector('.gw-arrival-plain .gw-auth-brand')).not.toBeNull()
+    expect(document.querySelector('.gw-hdr')).toBeNull()
+    expect(document.querySelector('.gw-box-blue')).toBeNull()
+    expect(document.querySelector('.gw-invite-note')?.textContent).toMatch(/^\s*The people in this check-in, including your manager, can see what you say in it\./)
   })
 })

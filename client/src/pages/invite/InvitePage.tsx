@@ -279,7 +279,7 @@ export function InvitePage() {
   }
 
   return (
-    <Arrival wide>
+    <Arrival plain>
       <div>
         {/*
           THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3).
@@ -295,7 +295,7 @@ export function InvitePage() {
           <div className="gw-sub-t">{whereAndUntil(preview)}</div>
         )}
 
-        <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
+        <div className="gw-invite-note">
           The people in this check-in, including your manager, can see what you say in it. Your questions to Ask
           Groundwork stay private.
         </div>
@@ -365,7 +365,7 @@ export function InvitePage() {
         <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
           {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-            Your name is optional - the others will see it on the shared report if you add it.
+            Your name is optional. If you add it, the others will see it on the shared report.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
             <div className="gw-fld" style={{ margin: 0 }}>
@@ -386,14 +386,13 @@ export function InvitePage() {
           About two minutes. You make your account afterwards.
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center' }}>
-          By joining, you agree that your contribution record belongs to you.
-        </div>
+        {/* "By joining, you agree that your contribution record belongs to you." is gone (U.3 review): it
+            is not on the prototype, it is jargon, and nothing records it as a consent. */}
 
         <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--gw-border)', textAlign: 'center' }}>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>
-            You are never obligated to take part. If you would rather not, you can simply close this -
-            nothing is shared, and declining is never shown as a negative.
+            You never have to take part. If you would rather not, you can close this page. Nothing is
+            shared, and saying no is never held against you.
           </div>
           {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
               moment they decline, right after a paragraph promising declining is never held against them. A
@@ -449,11 +448,14 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
   return `${who} invited you to “${p.groundLabel}”`
 }
 
-/** "Baridi Appliances, until 30 September." */
+/**
+ * "Baridi Appliances, until 30 September.", the prototype's line. With only one of the two it is a
+ * full sentence of its own (U.3 review): "A check-in at Coamana." or "It runs until 30 September."
+ */
 export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null }): string {
   const until = p.endsAt ? whenItWas(p.endsAt, 'dayAndMonthLong', 'UTC') : null
   const org = (p.organisationName ?? '').trim()
   if (org && until) return `${org}, until ${until}.`
-  if (org) return `${org}.`
-  return `Until ${until}.`
+  if (org) return `A check-in at ${org}.`
+  return `It runs until ${until}.`
 }
