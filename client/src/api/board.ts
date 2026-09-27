@@ -59,7 +59,10 @@ export type BoardPresent = {
   myParticipantId: string | null
   /** Whether the caller may set targets and the poll question (initiator only). */
   canEditFrame: boolean
-  readOnlyNote: string
+  /** "You can read this check-in’s board and reports. Wairimu Kamau runs it.", for an admin who only reads. Null for everybody else. */
+  readOnlyNote: string | null
+  /** The newest thing in the record the board is built from. Opening the board does not move it. */
+  lastChangedAt?: string | null
   /**
    * Somebody named in an account as doing work here who has no account of their own. Guarded on
    * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
@@ -84,6 +87,8 @@ export type BoardPresent = {
   startingState?: string | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
   objectives?: {
+    /** What the target assumes, the lead's lines (U.7). */
+    assumes?: string[]
     /**
      * Where it started, where it is, and what was said. The direction is derived from those three
      * rather than set anywhere: a ceiling like "under four hours" reads as distance covered coming
@@ -165,7 +170,7 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing to do'
     ask: string | null
   }[]
   contribution?: {

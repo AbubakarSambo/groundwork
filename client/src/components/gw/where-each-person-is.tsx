@@ -18,7 +18,7 @@ import { Pill } from './kit'
  * could read off the board. What a manager can act on is how long something has sat against what
  * has actually been tried, and one move to put to them.
  */
-export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing to do'
 
 export interface Row {
   participantId: string
@@ -39,7 +39,6 @@ const MEANS: Record<Reason, string> = {
   'has not answered': 'has not checked in for the round that is open',
   'stuck and not chasing': 'something has sat a fortnight or more and has only been asked about',
   'behind the pace': 'further behind their number than the rounds gone would suggest',
-  'nothing checkable': 'nothing said this round can be checked against a date, a number or a document',
   'nothing to do': 'nothing here needs you this week',
 }
 
@@ -47,7 +46,6 @@ const TONE: Record<Reason, 'bad' | 'warn' | 'info' | 'flat'> = {
   'has not answered': 'bad',
   'stuck and not chasing': 'bad',
   'behind the pace': 'warn',
-  'nothing checkable': 'warn',
   'nothing to do': 'flat',
 }
 

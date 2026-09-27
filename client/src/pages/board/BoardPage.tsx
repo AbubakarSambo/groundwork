@@ -28,6 +28,8 @@ import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
+import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
+import { whenTheBoardLastChanged } from './when-the-board-last-changed'
 
 /**
  * The delivery board.
@@ -399,9 +401,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 ) : null}
               </div>
             </div>
-            <div style={{ fontSize: 10.5, color: BOARD_MUTED_INK, textAlign: 'right', lineHeight: 1.5 }}>
-              {b.readOnlyNote.split('. ').map((l, i) => <div key={i}>{l}</div>)}
-            </div>
           </div>
 
           {/*
@@ -466,6 +465,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </div>
           )}
         </header>
+
+        {/*
+          WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
+          reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
+        */}
+        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '12px 0 0' }}>
+          {whenTheBoardLastChanged(b.lastChangedAt)}
+        </p>
+        {b.readOnlyNote && (
+          <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+        )}
 
         {/*
           THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
@@ -939,6 +949,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {o.notSettled && (
                       <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 5, lineHeight: 1.55, maxWidth: '68ch' }}>{o.notSettled}</div>
                     )}
+                    {/* What the target assumes, the lead's lines from Context (U.7), under the number they qualify. */}
+                    <WhatTheTargetAssumes
+                      figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
+                      name={o.name}
+                      assumes={o.assumes ?? []}
+                    />
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button
@@ -1756,11 +1772,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </div>
         </details>
 
-        <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
-          Groundwork board · confidential · generated from the check-in.<br />
-          Everyone on this check-in sees the same board. It regenerates as people check in each session.<br />
-          The mode is fixed at creation, so a private alignment check-in can never be read this way.
-        </div>
+        {/*
+          THE FOOTER IS GONE. It said "Everyone on this check-in sees the same board. It regenerates as
+          people check in each session." Neither is true: each reader is served what they may read, and
+          opening the board rebuilds nothing. The line at the top says what is true.
+        */}
       </div>
     </div>
   )
