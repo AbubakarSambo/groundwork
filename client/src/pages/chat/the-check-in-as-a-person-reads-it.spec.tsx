@@ -178,6 +178,23 @@ describe('the + button', () => {
     expect(screen.getByText('It starts private to you. You choose who can read it.')).toBeTruthy()
   })
 
+  it('the paste panel says plainly what it is for, in full sentences, not work jargon (U.8 review)', async () => {
+    /*
+     * "Paste an email, Slack thread, meeting notes, or any text that supports what you are
+     * describing. The tool will use it to ask sharper questions." named a specific chat tool and
+     * a specific kind of workplace document ("Slack thread"), and never said the one thing the
+     * upload option right above it already says: that this starts private. Now matched to it.
+     */
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Add a photo, a document or some text' }, { timeout: 5000 }))
+    fireEvent.click(screen.getByText('Paste text'))
+    expect(screen.getByText('Paste an email, a message or your notes. It starts private to you.')).toBeTruthy()
+    expect(screen.getByText('What is it? You can skip this.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeTruthy()
+    expect(screen.queryByText(/Slack thread/i)).toBeNull()
+    expect(screen.queryByText(/the tool will use it/i)).toBeNull()
+  })
+
   it('uploads for real, with what the person said it shows, and says only they can open it', async () => {
     ;(documentsApi.upload as any).mockResolvedValue({ id: 'd1', name: 'green-mart-quote.heic', mimeType: 'image/heic', uploadedAt: '', assessment: null, visibility: 'OWN' })
     renderChat()

@@ -25,7 +25,10 @@ describe('guarded submits', () => {
     const chat = read('chat/ChatPage.tsx')
     expect(chat).toMatch(/onSuccess: async \(doc, \{ ctx \}\) => \{\s*setDocContextMode\(false\)/)
     expect(chat).not.toMatch(/uploadDoc\.mutate\(\{ file: pendingDoc, ctx: docContext \}\)\s*setDocContextMode\(false\)/)
-    expect(chat.match(/uploadDoc\.isPending \? 'Adding…' : 'Add to session'/g)?.length).toBe(2)
+    /* One "Add to session" now (the document-context sheet); the paste sheet's own button became
+       "Add it" in the U.8 review (plainer, and it never claimed to add a whole "session"). */
+    expect(chat.match(/uploadDoc\.isPending \? 'Adding…' : 'Add to session'/g)?.length).toBe(1)
+    expect(chat).toMatch(/uploadDoc\.isPending \? 'Adding…' : 'Add it'/)
   })
   it('the five setup writes go through useMutation and are disabled while pending', () => {
     const admin = read('grounds/GroundAdminPage.tsx')
