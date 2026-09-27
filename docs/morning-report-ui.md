@@ -83,7 +83,8 @@ that one is yours to decide (item 27.4).
 2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
 3. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
 4. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
-5. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
+5. Items 17.5 and 17.13: in a new check-in, do invitations go before or after the lead's own first
+   check-in, and should the check-in a lead does on the start screen count as their first session?
 6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
 7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
