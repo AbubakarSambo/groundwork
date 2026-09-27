@@ -2004,3 +2004,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-review-noticed li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
 .gw-review-said { font-family: var(--gw-font-name); font-size: 16px; line-height: 1.5; }
 @media (max-width: 1023px) { .gw-review-grid { grid-template-columns: minmax(0, 1fr); } }
+/* When someone leaves (U.17, E suite-leaving.txt). */
+.gw-leaving-step { grid-template-columns: minmax(0, 1fr) 220px auto; }
+.gw-leaving-step select { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
+@media (max-width: 767px) { .gw-leaving-step { grid-template-columns: minmax(0, 1fr); } }

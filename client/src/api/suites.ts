@@ -134,3 +134,31 @@ export const reviewsApi = {
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
 }
+
+/** When someone leaves (GET /suites/leaving/board). Admins only. */
+export type LeavingStepKey = 'handover' | 'equipment' | 'access' | 'pay'
+export interface LeavingList {
+  id: string
+  name: string
+  firstName: string
+  lastDay: string
+  done: number
+  of: number
+  steps: { step: LeavingStepKey; ownerId: string | null; ownerName: string | null; done: boolean }[]
+  handover: { to: string; on: string } | null
+}
+export interface LeavingBoard {
+  lists: LeavingList[]
+  departures: { personId: string; name: string; departedOn: string }[]
+  people: { id: string; name: string }[]
+  owners: { id: string; name: string }[]
+  strain: { team: string; says: string }[]
+}
+
+export const leavingApi = {
+  get: async (): Promise<LeavingBoard> => (await apiClient.get('/suites/leaving/board')).data,
+  start: async (personId: string, lastDay: string): Promise<LeavingBoard> =>
+    (await apiClient.post('/suites/leaving/lists', { personId, lastDay })).data,
+  step: async (id: string, step: LeavingStepKey, change: { ownerUserId?: string | null; done?: boolean }): Promise<LeavingBoard> =>
+    (await apiClient.put(`/suites/leaving/lists/${id}/steps/${step}`, change)).data,
+}
