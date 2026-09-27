@@ -4,6 +4,36 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## In short, for the morning
+
+*Kept up to date as the night goes on. The details are further down.*
+
+**Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help) and U.2 (signing
+in, with every decision you made).
+
+**Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
+U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
+screens) and U.9 (reports and sharing). Each passed the full screen and API suites, apart from failures
+in the engine workspace's own files, which I have asked them to fix. **None could be ticked, because
+the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
+unblock.
+
+**Three privacy leaks found and closed on the way:** members and guests could get everyone's email
+addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
+others' email addresses and a report's findings before release (U.5); and every person's rating of
+how checkable their answers were went to the lead and admins (U.8). The engine's board still uses that
+rating to tell a lead someone said "nothing checkable"; that is engine code, so it is request 8.
+
+**What needs you most, in order:**
+1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
+2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
+3. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
+4. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
+5. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
+6. The rest of items 13, 15 to 20 are smaller, each with a recommendation.
+
+**In progress:** U.10 (the board) is next.
+
 ## Needs Hafsah
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
