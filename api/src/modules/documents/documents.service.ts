@@ -18,6 +18,7 @@ import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
+import { withoutBankDetails } from './bank-details-are-never-kept';
 import { familyFor, BoardFamily } from '../board/board-families';
 import { AgreementsService } from '../alignment/agreements.service';
 import {
@@ -220,7 +221,22 @@ export class DocumentsService {
     return deckToText(slides);
   }
 
+  /**
+   * THE TEXT OF A FILE, WITH ITS BANK DETAILS ALREADY GONE.
+   *
+   * Every path that stores a document or hands its text to a model starts here: an upload, an
+   * invite-link upload, the developer API's upload and a WhatsApp attachment all go through
+   * `upload` or `uploadByInviteToken`, and both read the file only through this. So an account or
+   * card number is replaced before the row is written, and before the origin, the assessment, what
+   * it holds, the terms in it and the anchoring are ever asked for. A photo or a scan is the vision
+   * model's transcription, hidden the same way before anything else reads it. See
+   * bank-details-are-never-kept.
+   */
   private async extractContent(file: Express.Multer.File): Promise<string> {
+    return withoutBankDetails(await this.readTheText(file));
+  }
+
+  private async readTheText(file: Express.Multer.File): Promise<string> {
     /* A file the browser could not name, whose extension says it is text, is read as text. */
     if (UNHELPFUL_MIMES.includes(file.mimetype ?? '') && looksLikeTextFromItsName(file.originalname)) {
       return file.buffer.toString('utf8');

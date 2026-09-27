@@ -4,6 +4,7 @@ import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-g
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { patternsAsServed } from '../patterns/patterns-are-served';
+import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -2352,6 +2353,9 @@ export class GroundsService {
     requestingUserId: string,
     history: { role: 'user' | 'assistant'; content: string }[],
   ) {
+    /* A pasted invoice or price list keeps no bank details, before the model reads it or any of it
+       is kept. See documents/bank-details-are-never-kept. */
+    history = withoutBankDetailsInEachTurn(history);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3101,6 +3105,8 @@ export class GroundsService {
      */
     dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
   ) {
+    /* The same words the chat was given, so no bank details are kept on a yes either. */
+    dto = { ...dto, said: withoutBankDetails(dto?.said) as string, ...(dto?.history ? { history: withoutBankDetailsInEachTurn(dto.history) } : {}) };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3697,6 +3703,7 @@ export class GroundsService {
     requestingUserId: string,
     line: { kind: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' },
   ) {
+    line = { ...line, text: withoutBankDetails(line?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, status: true, endState: true },
@@ -3744,6 +3751,7 @@ export class GroundsService {
     itemId: string,
     change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean },
   ) {
+    if (typeof change?.text === 'string') change = { ...change, text: withoutBankDetails(change.text) };
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const viewer = await this.prisma.user.findUnique({
