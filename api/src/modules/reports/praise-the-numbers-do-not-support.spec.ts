@@ -198,6 +198,67 @@ describe('a judgement never praises a claim the record\'s own numbers contradict
     expect(r.text).toBe('Three people have answered.\n\nParticipant B has 11 files at credit committee.');
   });
 
+  /*
+   * WHAT THE FIRST LIVE RUNS HELD BACK AND MUST NOT HAVE. Two sales runs on the first version (praise-1
+   * and praise-2), with the records those people really gave. A goal is not a claim: the figure in
+   * it is the target. And a figure the record gives, in the same unit, is true.
+   */
+  describe('keeps a goal and a true figure, with the records from the live runs', () => {
+    const who = (label: string, role: string | null, said: string[]): APersonThePraiseCouldBeAbout => ({
+      who: label, role,
+      facts: factsAbout({ participantId: label, label, isLead: label === 'the initiator', targets: [],
+        said: said.map((text, i) => ({ type: 'PROGRESS', text, session: i + 1 })) }, said.length),
+    });
+    const initiator = who('the initiator', null, [
+      'Seven weeks into the quarter and the team has 11 approved facilities and N31 million disbursed',
+      'The team has disbursed N31 million so far',
+    ]);
+    const a = who('Participant A', 'Relationship officer, Lagos mainland. Target 12 approved facilities this quarter.', [
+      'I have had two facilities approved this quarter', 'The two approvals are still holding, no changes',
+    ]);
+    const b = who('Participant B', 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.', [
+      'I have eleven complete files at the credit committee', 'My total disbursed is N19 million',
+    ]);
+    const cPraise1 = who('Participant C', KWAMES_ROLE, [
+      'Three of those applications approved and disbursed, so that is N8 million', 'I have three approved facilities so far this quarter',
+    ]);
+    const cPraise2 = who('Participant C', KWAMES_ROLE, [
+      'I have disbursed N8 million so far this quarter', "The credit committee approved it. That's one of the three approvals I mentioned",
+    ]);
+    const room1 = [initiator, a, b, cPraise1];
+    const room2 = [initiator, a, b, cPraise2];
+    /* Run 8's own room: the initiator's record says N35 million disbursed. */
+    const room8 = [who('the initiator', null, ["For the deals that were ready last week, an additional N4 million was disbursed. So, we're now at N35 million"]), ngozi, kwame];
+    const LOGGED = [
+      'Participant B is working to get 14 approved facilities.',
+      'Participant B is working to achieve 14 approved facilities this quarter.',
+      'Participant A is to bring in 12 approved facilities this quarter.',
+      "The initiator's goal is 40 approved facilities and N120 million disbursed this quarter.",
+      "The initiator is tracking the team's target of 40 approved facilities and N120 million disbursed.",
+      'Both the initiator and the participants agree on the overall team goal of 40 approved facilities.',
+      'Participant C has three approvals and is waiting on the underwriting team for the others.',
+      "The initiator says the team's target is 40 approved facilities and N120 million disbursed, and that N35 million has been disbursed so far.",
+    ];
+    for (const sentence of LOGGED) {
+      it(`keeps "${sentence}"`, () => {
+        for (const room of [room1, room2, room8]) {
+          expect(sentencesTheNumbersDoNotSupport(sentence, room)).toEqual({ text: sentence, heldBack: [] });
+          const j = { whatToDo: [{ move: sentence, because: 'The record says so.', startWith: 'Participant B' }], whatTheNumbersSay: [{ says: sentence, soWhat: 'It matters.', fieldId: 'the initiator' }] };
+          expect(praiseTheNumbersDoNotSupport(j, room).judgement).toEqual(j);
+        }
+      });
+    }
+
+    it('still holds back the Kwame lines against the praise-2 record, where "three approvals" is his own figure', () => {
+      const r = praiseTheNumbersDoNotSupport({
+        whatToDo: [RUN_8_MOVE, A_GOOD_MOVE],
+        whatThisCannotTellYou: [{ why: 'The record is thin.', about: "The details of Participant C's 22 successful applications.", toKnow: 'Ask.' }],
+      }, [...room2.slice(0, 3), { ...cPraise2, facts: factsFor(kwamesRecord) }]);
+      expect(r.judgement.whatToDo).toEqual([A_GOOD_MOVE]);
+      expect(r.judgement.whatThisCannotTellYou).toEqual([]);
+    });
+  });
+
   it('the findings, the opening and the picture are held to the numbers before the board can read them', () => {
     const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const src = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));

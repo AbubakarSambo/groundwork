@@ -21,9 +21,8 @@
  * labels.
  *
  * WHAT IT DOES. It finds a sentence that praises what a person has reached - "Recognise / Praise /
- * Thank / Congratulate X for ...", "X has exceeded / is ahead of / has met / is on track for / beat
- * the target", or a figure at or past the target, in the target's own unit - and looks at that
- * person's facts: their target, with its unit words, the figures they gave, and any count the record
+ * Thank / Congratulate X for ..." with a figure, or "X has exceeded / is ahead of / has met / is on
+ * track for / beat the target" - and looks at that person's facts: their target, with its unit words, the figures they gave, and any count the record
  * holds against the target. Where no figure in the record, in the target's own unit, reaches the
  * target, the praise is held back. A figure in a different unit never meets a target in another:
  * twenty-two applications are not fourteen approvals.
@@ -97,12 +96,21 @@ function figuresIn(text: string): AFigure[] {
       if (NOT_A_UNIT.has(w) || unit.length >= 3) break;
       unit.push(w);
     }
-    out.push({ value, unit, before: wordsOf(text.slice(0, at)).slice(-3) });
+    out.push({ value, unit, before: wordsOf(text.slice(0, at)).slice(-6) });
   }
   return out;
 }
 
-const isATargetFigure = (f: AFigure): boolean => f.before.some((w) => A_TARGET_WORD.test(w));
+/*
+ * A GOAL IS NOT A CLAIM. "Participant B is working to get 14 approved facilities", "Participant A is
+ * to bring in 12 approved facilities this quarter", "The initiator's goal is 40 approved facilities":
+ * all three were held back on the first live runs, because the figure was read as something reached.
+ * The figure in a sentence about what somebody is aiming for, working to, is to bring in, is tracking
+ * or agrees is the goal IS the target, and is never a claim that it has been reached.
+ */
+const A_GOAL = /\b(?:goal|goals|target|targets|targeting|targeted|aim|aims|aiming|aimed|objective|objectives|quota|tracking|working (?:to|towards?|on getting)|(?:is|are|was|were) to|(?:has|have|had|needs?) to|plans? to|planning to|hop(?:e|es|ing) (?:to|for)|wants? (?:to|for)|expect(?:s|ed|ing)? to|trying to|push(?:es|ing)? (?:for|to)|responsible for)\b/;
+const isATargetFigure = (f: AFigure): boolean =>
+  f.before.slice(-3).some((w) => A_TARGET_WORD.test(w)) || A_GOAL.test(f.before.join(' '));
 /** Does a figure count the thing the target counts? Every unit word of the target, among its own. */
 const sameUnit = (target: string[], figure: string[]): boolean =>
   target.length > 0 && target.every((w) => figure.some((u) => stem(u) === stem(w)));
@@ -166,17 +174,22 @@ const isASuccessWord = (w: string): boolean => A_STAGE.test(w) || A_SUCCESS.test
 const sameFigure = (a: number, b: number): boolean => Math.abs(a - b) < Math.max(1e-9, b * 0.005);
 
 function aSuccessTheRecordDoesNotGive(f: AFigure, reached: AFigure[]): boolean {
+  /*
+   * ONLY WHERE THE RECORD SAYS OTHERWISE. "Participant C has three approvals" is true - his record
+   * says three approved - and was held back on a live run. A figure equal to one the record gives in
+   * the same unit is supported. It is held back only where the record's own figure in that unit is
+   * lower, or where the record gives the same number in a different unit ("22 facilities").
+   */
+  const theSame = (r: AFigure) => sameFigure(r.value, f.value);
+  const inAnotherUnit = reached.some((r) => theSame(r) && r.unit.length > 0 && !r.unit.some(isASuccessWord));
   const stage = f.unit.find((w) => A_STAGE.test(w));
-  if (stage) {
-    const sameStage = (r: AFigure) => r.unit.some((u) => stem(u) === stem(stage));
-    if (reached.some((r) => sameFigure(r.value, f.value) && sameStage(r))) return false;
-    return reached.some((r) => sameStage(r) && !sameFigure(r.value, f.value))
-      || reached.some((r) => sameFigure(r.value, f.value) && !r.unit.some(isASuccessWord));
-  }
-  if (!f.unit.some((w) => A_SUCCESS.test(w))) return false;
-  if (reached.some((r) => sameFigure(r.value, f.value) && r.unit.some(isASuccessWord))) return false;
-  return reached.some((r) => sameFigure(r.value, f.value) && !r.unit.some(isASuccessWord))
-    || reached.some((r) => r.unit.some(isASuccessWord));
+  const counted = stage
+    ? reached.filter((r) => r.unit.some((u) => stem(u) === stem(stage)))
+    : f.unit.some((w) => A_SUCCESS.test(w)) ? reached.filter((r) => r.unit.some(isASuccessWord)) : null;
+  if (!counted) return false;
+  if (counted.some(theSame)) return false;
+  if (counted.length && f.value > Math.max(...counted.map((r) => r.value))) return true;
+  return inAnotherUnit;
 }
 
 /** Is this sentence a claim about what this person reached, and do their numbers fail to support it? */
@@ -188,8 +201,7 @@ function praiseTheirNumbersDoNotSupport(sentence: string, p: APersonThePraiseCou
   if (inTheSentence.some((f) => aSuccessTheRecordDoesNotGive(f, reached))) return true;
   const targets = theirTargets(p);
   if (!targets.length) return false;
-  const saysTheyReachedIt = targets.some((t) => inTheSentence.some((f) => sameUnit(t.unit, f.unit) && f.value >= t.value));
-  const praises = ATTAINMENT.test(theProducts) || (PRAISE_VERB.test(theProducts) && inTheSentence.length > 0) || saysTheyReachedIt;
+  const praises = ATTAINMENT.test(theProducts) || (PRAISE_VERB.test(theProducts) && inTheSentence.length > 0);
   if (!praises) return false;
   /* The target the sentence is about, where it names one's unit; otherwise any of theirs. */
   const words = wordsOf(theProducts);
