@@ -6,7 +6,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { AuthCard } from '@/pages/auth/auth-kit'
 import { Tag } from '@/components/gw/kit'
-import { initialsOf, roleWord, useYourOrganisations, type YourOrganisation } from '@/components/gw/your-organisations'
+import { aRowSays, initialsOf, roleWord, useYourOrganisations, type YourOrganisation } from '@/components/gw/your-organisations'
 
 /**
  * "CHOOSE AN ORGANISATION" (A3, #/orgs). The wording is copied from
@@ -52,7 +52,7 @@ export function OrgsPage() {
       <ul className="gw-org-rows">
         {myOrgs.map(o => (
           <li key={o.id}>
-            <button type="button" className="gw-org-row" onClick={() => choose(o)} disabled={open.isPending}>
+            <button type="button" className="gw-org-row" onClick={() => choose(o)} disabled={open.isPending} aria-label={aRowSays(o, newIn(o.id))}>
               <span className="gw-rl-sq" aria-hidden>{initialsOf(o.name)}</span>
               <span className="gw-org-row-text">
                 <b>{o.name}</b>

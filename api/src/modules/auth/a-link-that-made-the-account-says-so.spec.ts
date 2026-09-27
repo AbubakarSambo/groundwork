@@ -1,5 +1,6 @@
 import { TokenType } from '@prisma/client';
 import { AuthService } from './auth.service';
+import { hashed } from './a-token-is-stored-as-its-hash';
 
 /**
  * A LINK THAT HAS JUST MADE THE ACCOUNT SAYS SO. U.2.
@@ -28,7 +29,8 @@ function service(opts: { pending?: any; existing?: any; listedAs?: any[]; tokenR
     pendingSignup: { findUnique: jest.fn(async () => opts.pending ?? null), delete: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => opts.existing ?? null) },
     person: { findMany: jest.fn(async () => opts.listedAs ?? []) },
-    organization: { findUnique: jest.fn(async () => null) },
+    /* No organisation lets this domain join, and no invite link: the lookup added in the U.3 review. */
+    organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0) },
     emailVerificationToken: { findUnique: jest.fn(async () => opts.tokenRow ?? null), create: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})) },
     $transaction: jest.fn(async (fn: any) => fn(tx)),
@@ -66,7 +68,8 @@ describe('verify-email says justCreated only when this link made the account', (
   });
 
   it('a sign-up that chose a password gets it on the account, so no password step follows', async () => {
-    const res = await service({ pending: { ...waiting, passwordHash: 'a-bcrypt-hash' } }).verifyEmail({ token: 'link' } as any);
+    /* U.3 review, a security fix: in the browser that chose it, which presents its key. */
+    const res = await service({ pending: { ...waiting, passwordHash: 'a-bcrypt-hash', passwordKeyHash: hashed('the-key') } }).verifyEmail({ token: 'link', passwordKey: 'the-key' } as any);
     expect(res.justCreated).toBe(true);
     expect(res.needsPassword).toBe(false);
     expect(res).not.toHaveProperty('passwordSetupToken');

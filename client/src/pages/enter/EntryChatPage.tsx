@@ -2819,7 +2819,7 @@ export function EntryChatPage() {
               <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-bd)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                    You have used all of your free check-ins
+                    {whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                     {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.

@@ -14,7 +14,24 @@ import { useAuthStore } from '@/stores/auth'
  * (#/orgs), whose rows say the role you will have there, because the role change is the part nobody
  * expects. The one you are in is not offered.
  */
-export type YourOrganisation = { id: string; name: string; slug: string; role: string; active: boolean }
+/** `joinedHow`: why they are in it, where the server knows (U.3 review). Null or absent: no reason is given. */
+export type YourOrganisation = { id: string; name: string; slug: string; role: string; active: boolean; joinedHow?: 'list' | 'domain' | 'link' | null }
+
+/**
+ * "You are in Coamana because …", only with a reason the server gave (U.3 review). It used to say "your
+ * email address was on its list of people" to everybody, including people who joined by domain or link.
+ */
+export function whyYouAreIn(o: Pick<YourOrganisation, 'name' | 'joinedHow'>, email?: string | null): string | null {
+  if (o.joinedHow === 'list') return `You are in ${o.name} because your email address was on its list of people.`
+  if (o.joinedHow === 'link') return `You are in ${o.name} because you joined through its invite link.`
+  if (o.joinedHow === 'domain') {
+    const at = (email ?? '').lastIndexOf('@')
+    return at > 0
+      ? `You are in ${o.name} because anyone with an @${email!.slice(at + 1).toLowerCase()} email can join it.`
+      : `You are in ${o.name} because anyone with your email domain can join it.`
+  }
+  return null
+}
 
 export function useYourOrganisations() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -64,11 +81,30 @@ export function initialsOf(name: string | null | undefined): string {
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
-/** What the person is in this organisation, in one ordinary word. */
+/**
+ * What the person is in this organisation, in the People page's words (A4, U.3 review): "Admin",
+ * "Can open check-ins", "Takes part" or "Guest". The sidebar and "More" said "Lead" and "Member",
+ * words the People page never uses. One definition: people-here's roleWord adds "Owner" on top.
+ */
 export function roleWord(role: string | null | undefined): string {
   const r = (role ?? '').toUpperCase()
   if (r === 'ADMIN') return 'Admin'
-  if (r === 'LEAD') return 'Lead'
+  if (r === 'LEAD') return 'Can open check-ins'
   if (r === 'GUEST') return 'Guest'
-  return 'Member'
+  return 'Takes part'
+}
+
+/**
+ * What a row on "Choose an organisation" says to a screen reader, in full sentences (U.3 review):
+ * "Open Baridi Appliances. You are an admin there. 3 new things need you." The one you are in says so.
+ */
+export function aRowSays(o: Pick<YourOrganisation, 'name' | 'role' | 'active'>, newCount = 0): string {
+  const r = (o.role ?? '').toUpperCase()
+  const there = r === 'ADMIN' ? 'You are an admin there.'
+    : r === 'LEAD' ? 'You can open check-ins there.'
+      : r === 'GUEST' ? 'You are a guest there.'
+        : 'You take part there.'
+  const first = o.active ? `${o.name}. You are in it now.` : `Open ${o.name}.`
+  const news = newCount === 1 ? ' 1 new thing needs you.' : newCount > 1 ? ` ${newCount} new things need you.` : ''
+  return `${first} ${there}${news}`
 }

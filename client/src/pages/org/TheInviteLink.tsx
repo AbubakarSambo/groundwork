@@ -32,7 +32,7 @@ export function TheInviteLink({ orgName }: { orgName: string }) {
   return (
     <div className="gw-who-can-join-row" style={{ marginTop: 16 }}>
       <div style={{ minWidth: 0 }}>
-        <b id="invite-link-label">{`${orgName}’s invite link`}</b>
+        <b id="invite-link-label">{`The invite link for ${orgName}`}</b>
         {address ? (
           <p style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--gw-text)', overflowWrap: 'anywhere' }}>{address}</span>

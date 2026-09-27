@@ -4,8 +4,9 @@
  *
  * The numbers come from the server (`trial` on GET /billing/pricing), never from a screen, and every
  * screen that mentions the trial uses this, so they all say it the same way. It gives nothing while
- * the trial is off, and the trial stays off until billing really grants it (U.19): no screen may
- * promise what billing does not do.
+ * the trial is off. The same setting decides whether billing grants the trial (U.19,
+ * api/src/modules/billing/the-free-trial.service.ts), so the sentence is true exactly while it shows:
+ * no screen may promise what billing does not do.
  */
 export interface FreeTrial { on: boolean; teamsUnder: number; months: number }
 

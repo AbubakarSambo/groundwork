@@ -5,6 +5,9 @@ import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisati
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+
+/** What somebody held for a seat reads if they open the link anyway (U.4 re-review). */
+export const HELD_FOR_A_SEAT = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
 import { whenItAsks } from './when-it-asks';
@@ -46,6 +49,13 @@ export class ParticipantsService {
       const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true } } } });
       return { expired: true as const, leadFirstName: (g?.initiator?.firstName ?? '').trim() || null };
     }
+    /*
+     * HELD FOR A SEAT (U.4 third review): the page opens straight on the refusal, carrying nothing
+     * else - not who invited them, not their part, not the check-in - because the admin's card says
+     * "They have not been told any of this", and a button that is refused after it is pressed is not
+     * an answer.
+     */
+    if (row?.awaitingSeat) return { heldForASeat: true as const, saying: HELD_FOR_A_SEAT };
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
       where: { id: participant.groundId },
@@ -91,6 +101,11 @@ export class ParticipantsService {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /*
+     * HELD FOR A SEAT (U.4 re-review): not offered the check-in until a seat is freed and the
+     * invitation is sent, even with the link in hand (the lead can copy it). Nothing is created.
+     */
+    if (participant.awaitingSeat) throw new BadRequestException(HELD_FOR_A_SEAT);
 
     // AN INVITE LINK IS SINGLE USE FOR SIGNING IN.
     //

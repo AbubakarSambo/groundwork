@@ -61,6 +61,23 @@ describe('when the link has just created the account', () => {
     expect(navigated).toHaveBeenCalledWith('/grounds/g-7', { replace: true })
   })
 
+  it('"Continue" goes back to the invite link they came from, which the server kept (U.3 review)', async () => {
+    /* The emailed link is /verify-email?token=… with no next. The place comes back with the answer. */
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, next: '/j/coamana-6rr7' } as any)
+    open()
+    await screen.findByRole('heading', { name: 'Your email is confirmed' })
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(navigated).toHaveBeenCalledWith('/j/coamana-6rr7', { replace: true })
+    expect(entryApi.commit).not.toHaveBeenCalled()
+  })
+
+  it('an outside address handed back is never followed (U.3 review)', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, next: '//evil.test/x' } as any)
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
+    expect(navigated).not.toHaveBeenCalledWith('//evil.test/x', expect.anything())
+  })
+
   it('and through the password step first when the account has no password', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, needsPassword: true, passwordSetupToken: 'pst' })
     open()

@@ -29,9 +29,18 @@ export interface BillingStatus {
    * Set while a free run we gave them is running: what it covers and the day it ends. A free run
    * nobody can see ends as a surprise, which is the one thing it must not do.
    */
-  onTheHouse?: { plan: SubscriptionPlan; until: string } | null
+  onTheHouse?: { plan: SubscriptionPlan; until: string; freeTrial?: boolean } | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
+  /**
+   * U.19: false when nothing covers the organisation and the free plan has stopped for it (the free
+   * trial's switch is on and it is new). True, or absent from an older server, means the free plan.
+   */
+  onTheFreePlan?: boolean
+  /** Admin only (U.19): the paid subscription invoices, newest first. */
+  invoices?: { paidOn: string; amountCents: number; currency: string }[]
+  /** Admin only: counts of what the organisation has done. */
+  usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number }
 }
 
 export interface ContributorCode {
@@ -48,6 +57,8 @@ export interface CanCreateGroundResult {
   freeReason?: string
   codeId?: string
   groundsUsed?: number
+  /** U.19: refused because the organisation has no plan and the free plan has stopped for it. */
+  noPlan?: boolean
 }
 
 /**
@@ -164,7 +175,7 @@ export interface LivePricingRow {
 export interface LivePricing {
   plans: LivePricingRow[]
   free: { groundLimit: number; memberLimit: number }
-  /** The free trial (Hafsah, 26 September). Off until billing really grants it (U.19); say nothing while off. */
+  /** The free trial (Hafsah, 26 September). Billing grants it while it is on (U.19); say nothing while off. */
   trial?: { on: boolean; teamsUnder: number; months: number }
 }
 
@@ -180,6 +191,14 @@ export function formatMonthlyPrice(cents: number): string {
     ? dollars.toLocaleString('en-US')
     : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return `$${body}/mo`
+}
+
+/** "$400" and "$1,650", for a sentence: "Growth, $400 a month." The prototype's words. */
+export function formatDollars(cents: number): string {
+  const dollars = cents / 100
+  return `$${Number.isInteger(dollars)
+    ? dollars.toLocaleString('en-US')
+    : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export interface CodeShareCard {

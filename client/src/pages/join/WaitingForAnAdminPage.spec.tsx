@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WaitingForAnAdminPage, whenItWasAsked } from './WaitingForAnAdminPage'
 import { authApi } from '@/api/auth'
@@ -86,5 +86,39 @@ describe('when it was asked, in words', () => {
     expect(whenItWasAsked(new Date(2026, 8, 26, 9, 5).toISOString(), now)).toBe('today at 09:05')
     expect(whenItWasAsked(new Date(2026, 8, 25, 16, 12).toISOString(), now)).toBe('yesterday at 16:12')
     expect(whenItWasAsked(new Date(2026, 8, 20, 16, 12).toISOString(), now)).toBe('on 20 September at 16:12')
+  })
+})
+
+describe('somebody who is not waiting (U.3 review)', () => {
+  function openWithToday(qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+    const view = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/join/waiting']}>
+          <Routes>
+            <Route path="/join/waiting" element={<WaitingForAnAdminPage />} />
+            <Route path="/today" element={<p>Today page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    return { ...view, qc }
+  }
+
+  it('who never waited goes to Today, and never reads "Nobody needs to let you in any more."', async () => {
+    ;(authApi.myWaiting as any).mockResolvedValue({ waiting: false })
+    openWithToday()
+    expect(await screen.findByText('Today page')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/You’re in|Nobody needs to let you in/)
+  })
+
+  it('who was waiting here and has since been let in is told so plainly', async () => {
+    ;(authApi.myWaiting as any).mockResolvedValueOnce(AFTER_AN_INVITATION)
+    const { qc } = openWithToday()
+    await screen.findByRole('button', { name: 'Remind Grace' })
+    ;(authApi.myWaiting as any).mockResolvedValue({ waiting: false })
+    await qc.invalidateQueries({ queryKey: ['my-waiting'] })
+    expect(await screen.findByRole('heading', { name: 'You’re in' })).toBeTruthy()
+    expect(screen.getByText('An admin has let you in. You can open your check-ins now.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open my check-ins' })).toBeTruthy()
   })
 })

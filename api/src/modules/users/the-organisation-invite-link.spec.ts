@@ -65,7 +65,8 @@ describe('somebody holding the link', () => {
   it('joins as "Takes part", through the seat check, and is switched in', async () => {
     const { s, created, auth } = make();
     const r: any = await s.join('baridi-7k2p', 'u9');
-    expect(created).toEqual([{ userId: 'u9', organizationId: 'baridi', role: 'MEMBER' }]);
+    /* U.3 review: the membership also records that they came by the link. */
+    expect(created).toEqual([{ userId: 'u9', organizationId: 'baridi', role: 'MEMBER', joinedHow: 'link' }]);
     expect(auth.switchOrganization).toHaveBeenCalledWith('u9', 'baridi', 'password');
     expect(r.accessToken).toBe('tok');
   });

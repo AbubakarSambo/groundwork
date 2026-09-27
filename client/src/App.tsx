@@ -209,7 +209,7 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
 }
 
-function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' }) {
+function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'open People' }) {
   const { user } = useAuthStore()
   return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
@@ -348,8 +348,9 @@ function RootRoute() {
 /**
  * THE FIRST STOP RIGHT AFTER SIGNING IN (A3, U.3). Once: the flag is cleared as it is read.
  *
- *   - Somebody whose confirmed email domain an organisation lets join is offered it first, on
- *     "Where do you work?" (#/welcome).
+ *   - Somebody who belongs nowhere yet, whose confirmed email domain an organisation lets join, is
+ *     offered it first, on "Where do you work?" (#/welcome). Never somebody who was invited: they
+ *     already belong to the organisation that invited them (U.4 review).
  *   - Otherwise somebody in two or more organisations is asked which to open (#/orgs).
  *   - Everybody else lands on Today (C1, U.5), as in the prototype. After that, the check-ins list is
  *     at its own address, and the root is Today.
@@ -365,7 +366,9 @@ export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' |
     if (justIn && !offers.isFetched) return
     takeJustSignedIn()
     if (!justIn) { setGo('stay'); return }
-    if ((offers.data?.byDomain.length ?? 0) > 0) setGo('welcome')
+    /* Only for somebody who belongs nowhere yet (U.4 review): an invited person already belongs to the
+       organisation that invited them, and goes where the invitation leads. */
+    if ((offers.data?.byDomain.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
     else if (myOrgs.length >= 2) setGo('orgs')
     else setGo('stay')
   }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])
@@ -631,8 +634,8 @@ export default function App() {
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
             <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
-            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
-            <Route path="/org/members/:id" element={<RequireOrgSetup><AdminsOnly><OnePersonPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly what="open People"><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/members/:id" element={<RequireOrgSetup><AdminsOnly what="open People"><OnePersonPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
               * everybody being briefed was just invited and has an account. Not admin-only: it is

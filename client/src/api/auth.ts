@@ -18,6 +18,18 @@ export interface VerifyEmailResponse {
    * page goes straight on, as it always has.
    */
   justCreated?: boolean
+  /** Where they were going when they asked for this link, such as "/j/coamana-6rr7". Only a path in this app. */
+  next?: string
+}
+/**
+ * THE LINK HAS PROVED THE ADDRESS, BUT NOTHING IS MADE YET (U.3 review). An organisation lets this
+ * address's domain join, or the invite link they came from could not take them, so "Where do you
+ * work?" comes first. Answering calls verify-email again with the choice.
+ */
+export interface WhereDoYouWorkFirst {
+  /** Their own address, which the link has just proved. */
+  email?: string
+  whereDoYouWork: { byDomain: { id: string; name: string; domain: string }[]; problem?: string }
 }
 /** `expired` is true only for a real, unused link of the asked kind that has run out. The server never
  *  sends `email` or `firstName` today: which address a link is for is a privacy decision for Hafsah. */
@@ -39,6 +51,8 @@ export type TeamSizeSaid = { said: 'fewer' | 'more'; line: number }
 
 /** What "Where do you work?" offers (U.3). No head counts. */
 export interface WhereCanIJoin {
+  /** True only while the person belongs nowhere yet but an organisation just made for them (U.4 review). */
+  nowhereYet?: boolean
   byDomain: { id: string; name: string; domain: string }[]
   asAGuest: { organisationName: string; checkInName: string; invitePath: string }[]
 }
@@ -64,8 +78,10 @@ export const authApi = {
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
 
-  verifyEmail: (token: string) =>
-    apiClient.post<VerifyEmailResponse>('/auth/verify-email', { token }).then(r => r.data),
+  /* With a choice only on "Where do you work?" before the account exists (U.3 review). */
+  /* `passwordKey`: the key this browser was given with a password chosen at sign-up (the-password-key.ts). */
+  verifyEmail: (token: string, choice?: { joinOrganizationId: string } | { createMyOwn: true }, passwordKey?: string) =>
+    apiClient.post<VerifyEmailResponse | WhereDoYouWorkFirst>('/auth/verify-email', { token, ...(choice ?? {}), ...(passwordKey ? { passwordKey } : {}) }).then(r => r.data),
 
   setPassword: (token: string, password: string) =>
     apiClient.post<VerifyEmailResponse>('/auth/set-password', { token, password }).then(r => r.data),
@@ -98,8 +114,10 @@ export const authApi = {
      the name the two older endpoints already use. */
   /* `password` only when the person chose one at sign-up (U.2). The server uses it only for an
      address with no account, and answers the same either way. */
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}) }).then(r => r.data),
+  /* `next`: where in the app they were going, such as an organisation's invite link. The server keeps
+     it with the link and hands it back when the link is opened (U.3 review). */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string, next?: string | null) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string; passwordKey?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
@@ -223,7 +241,7 @@ export const authApi = {
   /** The organisations this person belongs to, with the active one marked. */
   myOrganizations: () =>
     apiClient
-      .get<{ id: string; name: string; slug: string; role: string; active: boolean }[]>(
+      .get<{ id: string; name: string; slug: string; role: string; active: boolean; joinedHow?: 'list' | 'domain' | 'link' | null }[]>(
         '/auth/my-organizations',
         { skipForbiddenToast: true, skipNotFoundToast: true },
       )

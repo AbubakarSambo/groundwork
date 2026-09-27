@@ -21,6 +21,7 @@ import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
+import { keepThePasswordKey } from './the-password-key'
 
 
 
@@ -160,7 +161,13 @@ export function AuthPage() {
   const [orgTouched, setOrgTouched] = useState(false)
   /* Asked of the server, which holds the one list of public mail domains (U.3). Only once the box
      holds an address, and a failed read suggests nothing, which is the safe direction. */
-  const typedAddress = view === 'create' && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
+  /*
+   * FROM AN ORGANISATION'S INVITE LINK, NO ORGANISATION IS ASKED FOR OR SUGGESTED (U.3 review). They
+   * are joining the one whose link they pressed; the server joins them to it on confirming, and makes
+   * none of their own.
+   */
+  const fromAnInviteLink = /^\/j\/[^/]+$/.test(nextPath ?? '')
+  const typedAddress = view === 'create' && !fromAnInviteLink && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
   const { data: suggestion } = useQuery({
     queryKey: ['name-from-address', typedAddress],
     queryFn: () => authApi.nameFromAddress(typedAddress),
@@ -258,12 +265,19 @@ export function AuthPage() {
    * the second link carries exactly what the first did.
    */
   const [sentBy, setSentBy] = useState<'link' | 'create'>('link')
+  /* `nextPath` rides with the link, so opening it from the mailbox comes back here (U.3 review). It is
+     only sent when there is one, so every other request is exactly what it was. */
+  const save = (draft: Parameters<typeof authApi.entrySave>[1], password?: string) => nextPath
+    ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password, nextPath)
+    : password !== undefined
+      ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password)
+      : authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled)
   const sendTheLinkAgain = () => sentBy === 'create'
-    ? authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled)
-    : authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled)
+    ? save({ payload: whatTheyTyped() })
+    : save(undefined)
 
   const sendLink = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled),
+    mutationFn: () => save(undefined),
     onSuccess: () => { setSentBy('link'); setLinkSent(true) },
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
@@ -326,12 +340,19 @@ export function AuthPage() {
   function whatTheyTyped() {
     return {
       ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
-      ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
+      ...(orgName.trim() && !fromAnInviteLink ? { orgName: orgName.trim() } : {}),
+      /* Left as we suggested it from the address, not typed (U.3 re-review): "Create a new
+         organisation" after "Where do you work?" does not reuse a suggestion that names the
+         organisation they chose not to join. */
+      ...(orgName.trim() && !fromAnInviteLink && !orgTouched && suggestedOrg && orgName === suggestedOrg ? { orgNameSuggested: true } : {}),
     }
   }
   const createAccount = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
-    onSuccess: () => { setSentBy('create'); setLinkSent(true) },
+    mutationFn: () => nextPath
+      ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
+      : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
+    /* The key for a password chosen here stays in this browser (the-password-key.ts, U.3 review). */
+    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
@@ -407,7 +428,8 @@ export function AuthPage() {
    * Google starts by handing the browser to Google.
    */
   const googleButton = (label: string) => methods?.google ? (
-    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}>
+    /* The place they were going rides to Google and back (U.3 review), such as the invite link. */
+    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}` }}>
       <GoogleMark />
       {label}
     </Button>
@@ -531,12 +553,16 @@ export function AuthPage() {
             ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
             because a person signing up to try it should not be stopped by a naming decision.
           */}
-          <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
-          <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
-            {!orgTouched && suggestedOrg && orgName === suggestedOrg
-              ? 'We suggested this from your email address. You can change it now or later.'
-              : 'What your organisation will be called. You can change it later.'}
-          </p>
+          {!fromAnInviteLink && (
+            <>
+              <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
+              <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
+                {!orgTouched && suggestedOrg && orgName === suggestedOrg
+                  ? 'We suggested this from your email address. You can change it now or later.'
+                  : 'What your organisation will be called. You can change it later.'}
+              </p>
+            </>
+          )}
 
           <fieldset className="gw-auth-choice">
             <legend className="gw-auth-label">How would you like to sign in?</legend>

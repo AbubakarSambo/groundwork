@@ -27,11 +27,11 @@ const people = [
   { id: 'peter', email: 'peter@ouma-agencies.co.ke', firstName: 'Peter', lastName: 'Ouma', role: 'GUEST', isEmailVerified: true, state: 'signed in', checkInsOn: 1, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }] },
 ]
 
-function open() {
+function open(billing: any = { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } }) {
   vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
     if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } } as any
     if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
-    if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+    if (url === '/billing/status') return { data: billing } as any
     if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
     if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
     if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
@@ -87,6 +87,9 @@ describe('everyone at Baridi', () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Everyone at Baridi Appliances' })).toBeTruthy()
     expect(await screen.findByText('27 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
+    /* U.19: Peter is a guest from outside, listed here, and billing does not count him. */
+    /* The prototype's rule (U.4 re-review): a guest with an account takes a seat. */
+    expect(screen.getByText('Guests with no account don’t take a seat.')).toBeTruthy()
     const miriam = screen.getByText('Miriam Wanjiku', { selector: 'b' }).closest('[role="row"]') as HTMLElement
     const row = within(miriam)
     expect(row.getByText('Sales rep, reports to Wairimu Kamau')).toBeTruthy()
@@ -169,9 +172,72 @@ describe('anybody who is not an admin', () => {
 })
 
 describe('the head count', () => {
+  it('names the plan a free run covers, not the free plan (U.19)', async () => {
+    open({ people: { count: 12, cap: 20 }, subscription: { plan: null }, onTheHouse: { plan: 'SMALL_TEAM', until: '2026-12-27T00:00:00.000Z' } })
+    expect(await screen.findByText('12 people, on the Small Team plan, which is for up to 20.')).toBeTruthy()
+  })
+
+
   it('reads as a sentence on every plan', () => {
     expect(howManyHere(27, 'GROWTH', 100)).toBe('27 people, on the Growth plan, which is for up to 100.')
     expect(howManyHere(3, null, 5)).toBe('3 people, on the free plan, which is for up to 5.')
     expect(howManyHere(1, 'ENTERPRISE', null)).toBe('1 person.')
+  })
+})
+
+describe('the head count keeps up', () => {
+  it('after "Let them in", "N people, on the … plan" is read again, not left as it was', async () => {
+    open()
+    await screen.findByText('27 people, on the Growth plan, which is for up to 100.')
+    const get = apiClient.get as any
+    const before = get.mock.calls.filter((c: any[]) => c[0] === '/billing/status').length
+    get.mockImplementation(async (url: string) => {
+      if (url === '/billing/status') return { data: { people: { count: 28, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'letThemIn').mockResolvedValue({} as any)
+    fireEvent.click(screen.getByRole('button', { name: 'Let them in' }))
+    expect(await screen.findByText('28 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
+    expect(get.mock.calls.filter((c: any[]) => c[0] === '/billing/status').length).toBeGreaterThan(before)
+  })
+
+  it('and after invitations are sent', async () => {
+    open()
+    await screen.findByText('27 people, on the Growth plan, which is for up to 100.')
+    const get = apiClient.get as any
+    get.mockImplementation(async (url: string) => {
+      if (url === '/billing/status') return { data: { people: { count: 29, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      return { data: {} }
+    })
+    vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({ data: { preview: body.preview, seatsLeft: 71, rows: [{ email: 'a@x.co', result: 'invited' }, { email: 'b@x.co', result: 'invited' }], summary: body.preview ? '2 people will be invited.' : '2 people were invited.' } }) as any)
+    fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
+  })
+})
+
+describe('the people with no seat say who added them', () => {
+  it('one person added them all: their name', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Nadia Owino' }]))
+      .toBe('Nadia Owino added them and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+  })
+  it('several people, or nobody recorded: a sentence true of all of them, never "A lead"', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Wairimu Kamau' }])).toMatch(/^Someone on your team added them/)
+    expect(whoAddedThem([{ addedBy: null }])).toMatch(/^Someone on your team added them/)
+  })
+  it('on the page, with each person\'s line', async () => {
+    open()
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText(/^Nadia Owino added them and your plan is full/)).toBeTruthy()
+    expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
+    expect(screen.queryByText(/A lead added them/)).toBeNull()
   })
 })

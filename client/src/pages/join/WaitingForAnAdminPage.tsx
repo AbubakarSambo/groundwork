@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { authApi, type MyWaiting } from '@/api/auth'
 import { Button } from '@/components/gw/kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -22,6 +22,8 @@ export function WaitingForAnAdminPage() {
   const [problem, setProblem] = useState('')
   const [reminded, setReminded] = useState(false)
   const { data, isLoading, isError } = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, retry: false })
+  /* Whether this page has seen them waiting, so being let in later is told, and never waiting is not. */
+  const sawWaiting = useRef(false)
 
   const remind = useMutation({
     mutationFn: authApi.remindAboutMyWaiting,
@@ -33,13 +35,20 @@ export function WaitingForAnAdminPage() {
   if (isError || !data) {
     return <AuthCard title="Almost in" sub="We could not read where your request has got to. Reload the page to try again." />
   }
+  /*
+   * NOT WAITING (U.3 review). "You’re in. Nobody needs to let you in any more." read oddly to somebody
+   * who never waited. So: somebody this page saw waiting, and who has since been let in, is told so
+   * plainly; anybody else who reaches this address was never waiting, and goes to Today.
+   */
   if (!data.waiting) {
+    if (!sawWaiting.current) return <Navigate to="/today" replace />
     return (
-      <AuthCard title="You’re in" sub="Nobody needs to let you in any more.">
+      <AuthCard title="You’re in" sub="An admin has let you in. You can open your check-ins now.">
         <div className="gw-auth-actions"><Button to="/grounds" wide size="big">Open my check-ins</Button></div>
       </AuthCard>
     )
   }
+  sawWaiting.current = true
 
   const w = data
   const admin = w.admin

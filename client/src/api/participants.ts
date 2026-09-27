@@ -22,6 +22,8 @@ export interface InvitePreview {
 
 /** What an expired invitation's preview is: nothing but the lead's first name. */
 export interface ExpiredInvitePreview { expired: true; leadFirstName: string | null }
+/** A guest held for a seat (U.4 third review): the refusal, and nothing else. */
+export interface HeldInvitePreview { heldForASeat: true; saying: string; expired?: undefined }
 
 export interface AcceptInviteResponse {
   accessToken: string
@@ -35,7 +37,7 @@ export interface AcceptInviteResponse {
 
 export const participantsApi = {
   preview: (token: string) =>
-    apiClient.get<InvitePreview | ExpiredInvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
+    apiClient.get<InvitePreview | ExpiredInvitePreview | HeldInvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
   /** "Send me a fresh link" (U.3). Always the same reply, whoever asks. */
   freshLink: (token: string, email: string) =>
     apiClient.post<{ says: string }>('/participants/fresh-link', { token, email }).then((r) => r.data),

@@ -82,7 +82,7 @@ export class TheOrganisationInviteLinkService {
       if (!room.allowed) {
         throw new BadRequestException(`${org.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`);
       }
-      await this.prisma.organizationMembership.create({ data: { userId, organizationId: org.id, role: 'MEMBER' as any } });
+      await this.prisma.organizationMembership.create({ data: { userId, organizationId: org.id, role: 'MEMBER' as any, joinedHow: 'link' } });
     }
     return this.auth.switchOrganization(userId, org.id, via);
   }

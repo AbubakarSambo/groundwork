@@ -519,6 +519,11 @@ model Organization {
   /// of the three - paid, on the house, or the free tier - applies today. It expires by arithmetic.
   freeUntil DateTime?         @map("free_until")
   freePlan  SubscriptionPlan? @map("free_plan")
+  /// THE FREE TRIAL (U.19, Hafsah's decision of 26 September): when this organisation was given its
+  /// free months for being a team under the trial's size. Set once, so an organisation gets the
+  /// trial once. The months themselves are `freeUntil` and `freePlan`, like any free run. Empty
+  /// while the trial setting (`pricing.freeTrial`) is off, which it is by default.
+  freeTrialStartedAt DateTime? @map("free_trial_started_at")
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -753,6 +758,12 @@ model PendingSignup {
   /// Set when somebody signed up with a password. Held here rather than on a
   /// User, because a User is what must not exist before the address is proved.
   passwordHash String?  @map("password_hash")
+  /// THE BROWSER THAT CHOSE THE PASSWORD (U.3 review, a security fix). The hash of a random key handed
+  /// only to the browser that signed up. The password above is put on the account only when the
+  /// confirmation is opened with that key; opened anywhere else, the password is thrown away and the
+  /// person chooses one afterwards, as after a link-only sign-up. So somebody who signs up with another
+  /// person's address cannot choose that person's password.
+  passwordKeyHash String? @map("password_key_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
   payload      Json?
@@ -760,6 +771,13 @@ model PendingSignup {
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
   draftToken   String?  @unique @map("draft_token")
+  /// Where in the app the person was going when they signed up, such as an organisation's invite
+  /// link ("/j/baridi-7k2p"). Only a path inside this app is ever stored (common/a-path-in-this-app),
+  /// and the confirmation carries them back to it (U.3).
+  next         String?  @map("next_path")
+  /// Set when Google proved the address and the person still has to choose where they work (U.3
+  /// review): the account made from this waiting sign-up signs in with Google, and needs no password.
+  googleId     String?  @map("google_id")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -884,6 +902,9 @@ model EmailVerificationToken {
   type      TokenType
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
+  /// For a sign-in link: where in the app the person was going when they asked for it. Only a path
+  /// inside this app (common/a-path-in-this-app). Null for every other kind of link (U.3).
+  next      String?   @map("next_path")
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -5619,6 +5640,15 @@ model OrganizationMembership {
   /// Who they report to here: another person's user id in this organisation. An id rather than a
   /// relation, so a person leaving never deletes the line above them; unresolved reads as nobody.
   reportsToUserId String?  @map("reports_to_user_id")
+  /// HELD FOR A SEAT (U.4 re-review). A guest from another organisation, added to a check-in here
+  /// when the plan had no seat for them. They are on the People page ("No seat on your plan") and
+  /// on the no-seat card, hold no seat (common/seats.ts), and are not offered the check-in until a
+  /// seat is freed and their invitation is sent, which clears this.
+  heldForASeat    Boolean  @default(false) @map("held_for_a_seat")
+  /// HOW THEY CAME TO BE HERE (U.3 review), so the sidebar can say why they are in it: "domain" (their
+  /// email domain may join), "link" (the organisation's invite link). Null where nothing recorded it,
+  /// and then no reason is given. "On its list of people" is read from the staff record instead.
+  joinedHow       String?  @map("joined_how") @db.VarChar(20)
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -51,7 +51,10 @@ describe('what /billing/status returns', () => {
      * invite gate were free to mean different things: each had its own predicate and its own guard
      * agreeing with it.
      */
-    expect(GET_STATUS).toMatch(/user\.count\(\{ where: \{ organizationId, \.\.\.SEAT_WHERE \} \}\)/);
+    /* U.19: the one definition is now `seatsIn`, read from the memberships, through `seatsTaken`,
+       which the invite gate uses too. */
+    expect(GET_STATUS).toMatch(/const peopleCount = await this\.seatsTaken\(organizationId\)/);
+    expect(CODE).toMatch(/user\.count\(\{ where: seatsIn\(organizationId\) \}\)/);
   });
 
   it('and reads the cap from the table rather than a map in the code', () => {
@@ -72,7 +75,10 @@ describe('what /billing/status returns', () => {
      * The gap that let person number six in. A free account has a cap now, and reporting null for
      * it showed no ceiling to the only people who have one.
      */
-    expect(GET_STATUS).toContain('this.pricing.getFreeMemberLimit()');
+    /* U.19: through the one reader of the uncovered limit, which is the free plan's while the free
+       trial's switch is off (as today), and only the creator for a new organisation once it is on. */
+    expect(GET_STATUS).toContain('this.theUncoveredSeatLimit(org)');
+    expect(CODE).toMatch(/theUncoveredSeatLimit[\s\S]{0,300}this\.pricing\.getFreeMemberLimit\(\) : 1/);
   });
 
   it('and the cap it reports is the one the gate will apply', () => {
@@ -81,7 +87,7 @@ describe('what /billing/status returns', () => {
      * one level up: two readers of one number, each correct alone.
      */
     const gate = CODE.slice(CODE.indexOf('async canInviteMember('), CODE.indexOf('private async warnAboutTheMemberCap('));
-    for (const call of ['this.pricing.getFreeMemberLimit()', 'this.pricing.memberCapFor(']) {
+    for (const call of ['this.theUncoveredSeatLimit(org)', 'this.pricing.memberCapFor(']) {
       expect(gate).toContain(call);
       expect(GET_STATUS).toContain(call);
     }

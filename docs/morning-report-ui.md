@@ -8,19 +8,20 @@ same file.
 
 *Kept up to date as the night goes on. The details are further down.*
 
-**Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help) and U.2 (signing
-in, with every decision you made).
+**Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
+in, with every decision you made) and U.3 (organisations and joining, passed on its third review).
 
-**Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
+**Built and tested, but not ticked:** U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
-spending and budgets, to-dos, customers and deals, and equipment) and U.18 (connections and
-channels). Each passed the full screen and API suites; the few failures each run found came from
+spending and budgets, to-dos, customers and deals, and equipment), U.18 (connections and
+channels) and U.19 (billing). Each passed the full screen and API suites; the few failures each run found came from
 that module and were fixed. The latest full run, after U.18, passed 3,006 screen tests and 9,647 API
-tests apart from three failures from U.18 itself, all since fixed. **None
+tests apart from three failures from U.18 itself, all since fixed. U.19 has passed the tests for
+every file it changed; its full run is next. **None
 could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -28,12 +29,26 @@ important thing for you to unblock.
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
 others' email addresses and a report's findings before release (U.5); and every person's rating of
 how checkable their answers were went to the lead and admins (U.8). The board still turned that
-rating into "nothing checkable" for the lead; since U.10 the server no longer serves it (request 8
-asks the engine to change the rule itself).
+rating into "nothing checkable" for the lead; the engine workspace has now fixed it at the source (request 8,
+done on 27 September): the board never reads the rating.
 
 **One privacy question found in the engine's code, not closed:** the engine's pattern detectors read
 everybody's questions to Ask Groundwork, which are meant to be private always. That is engine code, so
 I have asked the engine workspace (request 16(g)) and put it to you as item 25.2.
+
+**A security hole found during the U.3 review, being fixed:** since U.2 let people choose a password
+at sign-up, someone could sign up with another person's email address and a password of their own; if
+the real owner then opened the confirmation email, the account was made with the stranger's password.
+The fix keeps your decision: a password chosen at sign-up is used only when the confirmation is opened
+in the same browser that signed up. Anywhere else, the account is made without it and the person
+chooses their own.
+
+**Who takes a seat, decided the prototype's way, for you to confirm:** U.19 had counted guests as taking
+no seat, and said "Guests from outside don't count toward the plan." The U.4 review found this made the
+People page contradict itself. The prototype says a guest from outside "takes a seat", and that only
+"Guests with no account don't" count. Since the prototype is the standard and U.19's choice was not
+yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
+seat, guests included, and people answering by link with no account take none (item 30).
 
 **A possible leak found in U.15, left alone on purpose:** the organisation's handbook and memory
 (`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
@@ -72,18 +87,81 @@ that one is yours to decide (item 27.4).
     load? (a privacy question)
 14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
     and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
-15. The rest of items 13, 15 to 29 are smaller, each with a recommendation.
+15. Item 30.1: what happens to organisations already on the free plan when you turn on the one
+    switch for the trial and the free plan (it is off, so nothing has changed yet); 30.2: one trial
+    for each organisation, or for each person?
+16. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** U.18, connections and channels, at the prototype's three addresses.
-Connections shows WhatsApp (only while it is switched on) with three counts from the server, your
-numbers, your own address as not set up, notices in Slack or Teams, figures from your other systems,
-and what else you can connect. Connect WhatsApp is six steps, each done only when the server says so;
-Meta's check of the address is now recorded, so "Not proven yet" is true. The old Connect page is
-"Connect your own tools", with everything it did. Only admins get in, on the server and on the page.
-Payments, the spreadsheet, the setup link and "Add your own" are left out, because nothing real
-stands behind them (item 29).
+**Just finished, not ticked:** U.19, billing. Stripe works exactly as before, in test mode only: the
+same checkout, webhooks, invoices, care fee and portal. Plan and billing is the prototype's page, with
+every plan, price and limit read from the database; only an admin is served the money, and a guest is
+served nothing about billing. The five published plans are already the ones in the database. A seat
+is now counted the same way on the People page, on Plan and billing and at the invite gate: everybody
+who belongs to the organisation except guests from outside. The pricing page no longer tells a
+visitor the free plan is theirs. And, as you decided, **one switch** (the free trial's setting, off)
+now does two things when you turn it on: teams under 20 get 3 months free, really given by billing,
+and new organisations stop getting the free plan and the free first session. While it is off,
+nothing about today's billing has changed. Nobody already on the free plan is cut off (item 30.1).
 
-**Next:** U.19 (billing, keeping Stripe exactly as it is). U.18's review cannot sign in (item 14).
+**Next:** the waiting reviews, one at a time, oldest first: the 16 you named (U.3 to U.18), then U.19's.
+U.20 (small states and errors) starts only when all have passed, as you asked.
+
+## Every module since U.2, and its review
+
+| Module | Built and tested | Reviewer |
+| --- | --- | --- |
+| U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
+| U.4 People, roles and access | Yes | Sent back three times on 27 September, each time for less; being fixed |
+| U.5 Today and the check-ins list | Yes | Waiting |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
+| U.7 Context | Yes | Waiting |
+| U.8 The check-in screens | Yes | Waiting |
+| U.9 Reports and sharing | Yes | Waiting |
+| U.10 The board | Yes | Waiting |
+| U.11 Ending a check-in, probation review, handover | Yes | Waiting |
+| U.12 The You board | Yes | Waiting |
+| U.13 Suggestions from verdicts, and appeals | Yes | Waiting |
+| U.14 Ask Groundwork | Yes | Waiting |
+| U.15 The Company page | Yes | Waiting |
+| U.16 Links between check-ins, and each person's load | Yes | Waiting |
+| U.17 The Suites page and all ten suites | Yes | Waiting |
+| U.18 Connections and channels | Yes | Waiting |
+| U.19 Billing | Yes | Waiting |
+
+**No module after U.2 has passed a review yet, because the reviewer could not sign in** (item 14). You have now chosen how it signs in, and the reviews are starting, oldest first. Since
+26 September the auto-mode safety check refuses to let the reviewer read the local test password or
+the invitation tokens it needs to sign in as each person, and you asked me never to work around a
+block. So the reviews cannot be finished from here. **As you asked, I will not start U.20 while these
+reviews are waiting.** When U.19 is built and tested, I will stop and wait for you to unblock item 14.
+Then the reviews run one module at a time, oldest first, and U.20 starts after them.
+
+## Last night's items
+
+1. **Members and guests can no longer change the organisation through `/auth/me`.** Done in commit
+   `9742b552` (U.3, step 3b). `orgName`, `orgEmail`, `orgSlug` and `companyStage` were removed from
+   what `PATCH /auth/me` accepts, so it only changes the person's own profile. `PATCH
+   /users/organization`, for admins only, stays the one way to change the organisation. Before
+   removing them, every caller in `api/journey` and `client/` was checked: `orgName` and `orgEmail` were
+   used only by the old setup page, `orgSlug` by nothing, and `companyStage` only by the seed, so it
+   moved to the admin route. The test is `api/src/modules/auth/only-an-admin-changes-the-organisation.spec.ts`.
+   It proves a member, a lead and a guest are refused, and that an admin can still change the name,
+   email and stage through `/users/organization`. It passes, 11 of 11, today.
+2. **The two conflicts with your U.3 answers** are in item 11, "Conflict A" and "Conflict B", each with
+   the prototype's exact wording, the product's exact wording today, the admin rule quoted word for word
+   from `docs/decisions.md`, and my suggestion. In short:
+   - **Conflict A, the invitation.** The prototype says "The people in this check-in, including your
+     manager, can see what you say in it." and also "Nobody else reads your answers." and "Wairimu reads
+     the report, not your words." The product today says "Nobody you work with reads it. Not your
+     manager, not whoever set this up, not an admin." Rule 5 says admins see what people said. Today's
+     wording is kept until you decide.
+   - **Conflict B, the new admin's card.** The prototype says "You can see every board and report. They
+     never see anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes."
+     Rule 5 adds "and never a performance plan unless given access to that check-in". The sentence is
+     left out until you decide.
+3. **The round "?" button is not in the prototype.** It is not on the "Create an organisation" screen
+   (`org-new.jpg` and `org-new.txt`), and no prototype screen draws a floating "?". As you decided, it
+   was removed everywhere the prototype lacks it, with nothing in its place (commit `57426e7c`). Help is
+   in each person's own menu and on "More".
 
 ## Needs Hafsah
 
@@ -509,6 +587,39 @@ sign in.
 
 Until then I keep building the next modules, with their tests, and leave each one "built, not
 reviewed" in this report.
+
+**What changed since U.2, found on 27 September (you asked).**
+
+- **Nothing in the product and nothing in the kit's safety rules changed.** The last change under
+  `.claude/` was your kit update 7, which came before the U.2 reviews, and those reviews signed in fine.
+- **What refuses is Claude Code's own auto-mode safety check,** which judges each action a helper
+  takes, separately from the kit's rules. During U.2, the reviewer read the journey's test password and
+  typed it into the sign-in page in the browser. During the U.3 review, which ran in a new session
+  after the Mac froze, the reviewer tried to copy that password into a scratch file so it could sign in
+  from the command line. The check called that "Credential Materialization" and refused it. It then
+  also refused the reviewer's follow-up commands, and opening the invitation page with a test token,
+  as the same kind of action. So the difference is how the reviewer tried to use the password, judged
+  afresh in a new session. The check applies only to my helpers' actions on this computer.
+- **A real person is not blocked from signing in.** The check never runs for someone using the product.
+  To be sure the product's sign-in still works after all the changes since U.2, I ran every sign-in
+  test (241 of 241 pass, including the one proving existing passwords still sign in under the new
+  rules). I also started the API briefly and sent a sign-in for a made-up address. It answered normally
+  with the product's one answer at the door: "If that address has an account here, we have emailed you
+  a way in, so check your inbox. If you have a password and it did not work, check it and try again."
+  No real password was read or used for this.
+- **I changed no safety setting,** and the helpers did not try to get round the refusal.
+
+**What would let the reviews run:** the same three choices as above. Option 1, allowing a helper to
+read the local test password for local reviews, can only be given by you. A simpler version of option
+2 may also work: you ask in chat for the reviewer to make throwaway local accounts with an
+`@example.test` address and sign in through the browser, as the U.2 reviews did.
+
+**Answered by you on 27 September: the simpler way.** The reviewer creates its own throwaway
+`@example.test` accounts on the local database (`groundwork_dev` only), by signing up with a password
+through the browser, and signs in through the browser, as the U.2 reviews did. It never writes a
+password into a file or passes one on the command line, and no safety setting changes. When U.19 is
+built and tested, the 16 waiting reviews run one module at a time, oldest first, each followed by its
+fixes, a commit, this report and a push. U.20 starts only when all 16 have passed.
 
 ### 15. People, roles and access (U.4): what needs you
 
@@ -1528,6 +1639,114 @@ reviewed" in this report.
 
 
 
+### 30. Billing (U.19): what needs you
+
+0. **Please confirm: seats now follow the prototype** (U.4 re-review, commit `f7e2bb71`). A guest
+   with a Groundwork account takes a seat, as A4 says ("They take a seat; you have 73 free.") and F2
+   says ("Every person with a Groundwork account at Baridi Appliances. Guests with no account
+   don't."). Only someone answering by link without an account takes none. U.19 had counted guests
+   out without a decision from you. A guest added when there is no seat is held: they read "No seat
+   on your plan", they are on the no-seat card, and they are offered no check-in until a seat is
+   freed and their invitation goes. Plan and billing and People now say "Guests with no account
+   don't." **My recommendation:** keep the prototype's rule.
+   **Beside it, a separate cap:** a check-in opened on the free plan has its own limit on people, and at
+   that limit adding one more reads "The free plan covers 5 people, including you, so you can invite 4
+   others. Subscribe to add more people." This limit is per check-in and sits beside the organisation's
+   seat rule. It counts everyone on that check-in, guests included. Please say whether the two should
+   stay separate.
+
+1. **What happens when you turn on the one switch.** You decided that the free trial's setting
+   (`pricing.freeTrial`) is one switch for the trial and the free plan. It is **off**, and while it is
+   off billing is exactly as today. Nothing has been switched on. When you turn it on, the server
+   writes down the moment, and this is what happens:
+   - **Organisations that already exist keep everything they have on the free plan.** That is: up to
+     10 free check-ins (the ones they have already opened count), unlimited sessions and reports in
+     each free check-in, up to 5 people including the person who created the account, the one free
+     extension, and the one session in hand that every check-in starts with. Nobody is removed and no
+     check-in stops.
+   - **At their limits they read exactly what they read today.** The eleventh check-in is refused with
+     "Your free plan includes 10 check-ins. Subscribe to open more.", and the sixth person with "The
+     free plan covers 5 people, including you, so you can invite 4 others. Subscribe to add more
+     people."
+   - **A new organisation that says it has fewer than 20 people** gets 3 months on Small Team (up to
+     20 people, unlimited check-ins), with no card and no charge. Past 19 people, the trial carries on
+     to its end date, as the prototype says; the twenty-first person is refused, because Small Team
+     holds 20.
+   - **A new organisation of 20 or more** gets no trial and no free plan. It cannot open a check-in
+     or add anybody until an admin chooses a plan. It reads "Your organisation has no plan yet.
+     Choose one on Plan and billing to open a check-in." (or "... to add people.").
+   - **When a new organisation's trial ends,** it has no plan. Nothing is charged until an admin
+     chooses one. Its check-ins pause, and the people in them read "This check-in is paused until your
+     team subscribes. Only an admin can do that, and your answers so far are kept." Reports and boards
+     stay readable. Check-ins opened during the trial start with no free session, so there is nothing
+     free left to run.
+   - **Anything the server cannot be sure of keeps the free plan:** a switch turned on with no record
+     of when, or an organisation with no creation date.
+   **My recommendation:** keep existing free organisations as they are when you switch on, then decide
+   separately whether to give them a date by which they choose a plan, and tell them first.
+2. **One trial for each organisation, or for each person?** The trial is given once to each
+   organisation. You decided a person can create more than one organisation, so one person could
+   start several trials. **My recommendation:** one trial for each person who creates an organisation.
+3. **There is no screen to turn the switch on.** Groundwork's staff can turn it on with
+   `PATCH /admin/pricing/free-trial` (`{ "on": true }`), which is staff only. **My recommendation:**
+   put the switch in Groundwork's own console (U.21), with a sentence saying what it changes.
+4. **The five published plans are already the ones in the database.** Starter $25 a month for up to
+   5 people, Small Team $90 for up to 20, Growth $400 for up to 100, Business $900 for up to 250,
+   Scale $1,650 for up to 500. The existing migrations already leave exactly these, so I added no
+   migration (which would also have thrown away the Stripe prices already made), only a test that
+   replays the migrations and checks. Enterprise stays as "Contact us", with no price. No screen types
+   a price: every one reads `GET /billing/pricing`, with the shipped numbers only while it loads.
+5. **What counts as a seat.** Seats were counted by the organisation a person last switched to. They
+   are now counted from the memberships: everybody who belongs to the organisation as an admin, a lead
+   or somebody who takes part, and not guests from outside. Deactivated people and people still
+   waiting to be let in do not count, as before. So a member who was looking at another company is
+   counted again, and a guest who had switched in is not. The People page says "Guests from outside
+   don't count toward the plan." when the list has guests. Groundwork's own console still counts the
+   old way (for U.21), and so does one engine list (request 30(c)).
+6. **"Guests from outside don't."** The prototype says "Guests with no account don't", but in the
+   product a guest has an account and still does not count. So Plan and billing says "Every person
+   with a Groundwork account at Baridi Appliances. Guests from outside don’t."
+7. **Invoices.** Each paid invoice reads, for example, "1 September" and "$400, paid." The prototype
+   adds "by card ending 4417", but the card used for an old invoice is not stored, so I left it out.
+   There is no "Download" beside each one; "Invoices and payment method" opens Stripe's own page,
+   where each invoice can be downloaded.
+8. **After Stripe's checkout.** The paid page says "Done. Baridi Appliances is on Growth." and "All 27
+   people can check in.", without "A receipt is on its way to ...", because whether Stripe sends one
+   is Stripe's setting. When somebody comes back without paying, it says "The payment didn’t go
+   through" and "You haven’t been charged, and your plan hasn’t changed.", without "Your bank
+   declined it": Stripe refuses a declined card on its own page, so coming back means only that
+   nothing was paid.
+9. **Left out, because nothing real stands behind them yet:** the prototype's in-page card form (the
+   product uses Stripe's checkout page, which is safer and already works); "Share Groundwork with
+   another organisation" with "Make a new code" (only Groundwork's staff can make codes; the page
+   keeps "Access codes"); the pricing page's "Run it yourself, or with support" with $700, $500 and
+   $3,500, which are not in the database; the common questions, because the prototype's text has no
+   answers; "Baridi started with 27, so it began on a plan." and the link to the free months ending;
+   and, from the page about the free months ending, the card for everybody else with "Remind them",
+   the access code card, and an email to the admin 7 days before. The admin sees the 7-day notice on
+   Plan and billing only. **My recommendation:** the email 7 days before, when you switch the trial on.
+10. **Wording no screen shows, which I wrote with the fewest words:** "The free plan, for up to 10
+    check-ins. 3 of 5 people, including you."; "Small Team, free until 27 December 2026. 12 of 20
+    people."; "No plan yet. Choose one below to open check-ins and add people."; "Nothing is charged
+    until you choose a plan."; "None while it is paused. Nothing is charged until you resume."; "No
+    more payments. Your plan ends on 30 September 2026."; "It renews on its own each month."; "So
+    far" with "38 check-ins, 12 reports shared, and 25 people taking part."; "No plan yet" as a
+    heading when starting a check-in; "Choose Small Team"; "You can check in." (for one person); and
+    "Guests from outside don’t count toward the plan."
+11. **Removed, because they were not true:** on the pricing page, "Why we price this way" ("no trial
+    that expires" becomes false once the trial is on, and "No proration surprises" is false, because
+    changing plan is prorated) and its closing quote; on Plan and billing, the "Billing" list that
+    said you can "choose between buying sessions or subscribing" (sessions are not sold).
+12. **Two engine sentences.** The engine passes billing's refusal through, so a paused check-in reads
+    billing's words. But in one rare race it still says "beyond your ten free check-ins", and the
+    emails about the free plan still say "ten free check-ins". Neither is reached while the switch is
+    off. I asked the engine about its sentence (request 30(a)). The emails are for later.
+13. **The scenario runner and the switch.** The 24-scenario runner creates new organisations and
+    relies on the free plan. While the switch is off nothing changes. If it were turned on in the
+    database the runner uses, every scenario would be refused, so I asked the engine workspace to
+    cover its organisations (request 30(b)). **Please keep the switch off wherever the scorer runs.**
+
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1566,6 +1785,27 @@ you said an admin is named only after a real invitation.
 
 **Still to confirm:** the invitation's "You see your own report straight away." and "About two
 minutes." come from the prototype, and the builder could not check that they are always true.
+
+**Found in the U.3 review, left as you decided, for you to look at.** The new admin's welcome card
+uses the prototype's wording, as you decided, so its door descriptions stay as the prototype's code
+has them: "Invite people, set roles and teams, let guests in", "Your numbers, your own address" and
+"Seats, the card and invoices". They are clipped phrases, not sentences, and "your own address"
+promises something that is not built (item 16, point 1). **My recommendation:** full sentences, for
+example "Invite people, choose what each can do, and let guests in." Tell me if you want them changed.
+
+**Wording written in the U.3 review fixes, where no screen has any:**
+- The invitation, with no end date: "A check-in at Coamana."; with no organisation: "It runs until 30
+  September."
+- "Your name is optional. If you add it, the others will see it on the shared report." and "You never
+  have to take part. If you would rather not, you can close this page. Nothing is shared, and saying
+  no is never held against you."
+- The sidebar's reason: "You are in Coamana because anyone with an @coamana.com email can join it."
+  and "You are in Coamana because you joined through its invite link."
+- "An admin has let you in. You can open your check-ins now."
+- "You are in. You have no check-ins yet. When someone adds you to one, you will see it here." and
+  "Open one to take part." (was "Open one to start contributing.").
+- "That invite link is not open any more. Ask whoever sent it for the new one." on "Where do you
+  work?" when the link someone signed up from was turned off before they confirmed their email.
 
 ### Decisions I made on my own
 
@@ -1820,6 +2060,134 @@ still waiting never reaches the check-in. Two older copies of the dashed sentenc
 through. Nothing has changed - try again." remain, on the People page (fixed in U.4) and in "What you
 are carrying forward".
 
+**The first real review, on 27 September, sent U.3 back.** The reviewer signed up its own
+`@example.test` accounts through the browser, as you decided, and nothing was refused. It found:
+joining by email domain or by the organisation's invite link also made the person admin of a new,
+empty organisation, named from their email address; the invite link lost its place once the person
+confirmed their email; the sidebar called people "Member" where the People page says "Takes part";
+the sentence "because your email address was on its list of people" was false for people who joined
+by domain or link; and the invitation page had a fragment ("Coamana.") and two sentences joined by
+dashes. The server's privacy rules all held: a member was refused every change to the organisation,
+the fresh-link reply was the same for every address, and outsiders saw no head count. These are being
+fixed now, then the review runs again.
+
+**The second review sent it back again, for one real crash,** which is exactly why the live review
+matters: every test had passed, but joining an organisation when you confirm your email crashed each
+time against the real database. The database already adds a person's membership whenever their
+account is made, and the new code added a second one. Everything else passed live, including the
+security fix: a password chosen at sign-up worked in the same browser, and was refused when the
+confirmation was opened elsewhere, with the person offered "Choose a password" and nothing saying a
+password had been chosen. The crash is being fixed now, with a test that includes the database's own
+behaviour.
+
+**The third review passed U.3**, checked live against the real database with fresh accounts: from an
+invite link, the person lands in the organisation as "Takes part", with "You are in Kisima Test Works
+because you joined through its invite link."; by email domain, "Join" puts them in with "…because
+anyone with an @example.test email can join it."; "Create" lands them on Today as admin of their own
+new workspace; and a plain sign-up still makes their own organisation. **U.3 is ticked.** Not seen live,
+because they need a running check-in: "Almost in", "Out of time", and the expired invitation card. They
+are covered by tests. Two small notes go to U.20 (small states and errors): a workspace name made from
+a first name uses a straight apostrophe ("Faith Domainfour's workspace") where the rest of the page uses
+a curly one, and when the invite link page cannot load it says "This invite link is not open any more",
+which looks like a closed link to someone on a bad connection.
+
+#### U.3 review fixes (27 September)
+
+One commit for each finding, with tests of what a person reads and what the server does. Only the
+tests for the files changed were run, with the type check; the full run is the tester's.
+
+1. **Joining by invite link or by email domain makes no organisation** (`214ec5ff`). On the server,
+   when the email is confirmed:
+   - From an organisation's invite link that is still open and has a seat: they join it as "Takes
+     part" and go to Today. No organisation of their own is made, even if a name was typed.
+   - With an address whose domain an organisation lets join, or from a link that has since been
+     turned off or is full: nothing is made yet. The confirmation shows "Where do you work?", the
+     same card as `/welcome`, with "Join" for the organisation that was offered and "Create a new
+     organisation". The server only lets them join an organisation it offered.
+   - **Left empty, with no link and no domain match (today's behaviour, kept):** the person gets
+     their own organisation named "<first name>'s workspace", for example "Ama's workspace", and is
+     its admin. With a name typed, it is called that. "Create a new organisation" on "Where do you
+     work?" does the same, with the name they typed at sign-up if they typed one.
+   - The sign-up reached from `/j/…` no longer shows "Your organisation (optional)" or suggests a
+     name, and sends none.
+   - **Google now does the same** (`d150c898`). The invite link rides to Google and back, and only a
+     path inside the app is kept. From an invite link, or with a matching domain, nothing is made:
+     the person lands on the same confirmation page, which joins an open link or asks "Where do you
+     work?". Their account signs in with Google and never asks for a password. A plain Google sign-up
+     is as before. Anything an earlier, unconfirmed sign-up for the same address left behind (a
+     password, a draft, a name) is not kept.
+   - **The cards are in the natural order** (`ea021ecd`): "Your email is confirmed" first, then "Where
+     do you work?", and it is never said twice. Someone who came from Google skips the first card,
+     because they confirmed no email.
+   - **A security fix that keeps your decision** (`0bb3fe7d`). Before, someone could sign up with
+     another person's email address and a password of their own. When the owner opened the
+     confirmation email, the account was made with the stranger's password. This was so before U.3
+     too. You decided that a password may be chosen at sign-up, and that still holds: the password
+     now works only when the confirmation is opened in the same browser that signed up. That browser
+     keeps a secret key, and only a hash of it is kept on the server. Opened anywhere else, the
+     password is thrown away, the account is made without it, and the person chooses a password
+     afterwards, exactly as after a sign-up by link. Nothing on screen or in any answer says a
+     password had been chosen. The sign-up still gives the same answer for every address. Someone
+     who signed up with a password before this change and has not yet confirmed will be asked to
+     choose one after confirming.
+2. **The invite link keeps its place after the email is confirmed** (`f72c41f0`, `5920f2a3`). The
+   place they were going is kept on the server with the waiting sign-up or the sign-in link, and comes
+   back when the link opens. Only a path inside the app is ever kept or followed. The second commit
+   only renames what an old code test looks for.
+3. **The sidebar and "More" use the People page's words** (`37fb91f3`): "Admin", "Can open
+   check-ins", "Takes part", "Guest". "Member" and "Lead" are gone.
+4. **"You are in … because …" only when the server knows** (`b9b1e582`): "…because your email
+   address was on its list of people." (their staff record there is linked to them), "…because anyone
+   with an @coamana.com email can join it.", "…because you joined through its invite link." With no
+   known reason there is no sentence. Invitations are not recorded yet, so someone an admin invited
+   gets no sentence.
+5. **The invitation page** (`a2440dbb`): the full sentences above; "By joining, you agree that your
+   contribution record belongs to you." is removed, because it is not on the prototype and nothing
+   records it as a consent; and the prototype's look (the cream page, the small mark, one narrow
+   column, the serif heading, the beige note, no "GROUNDWORK" band). The held parts of conflict A are
+   untouched.
+6. **Smaller** (`259707bb`, `983bbfd6`, `df79cb51`): "The invite link for Pwani Test Foods";
+   `/join/waiting` sends someone who never waited to Today, and tells someone who was let in "An
+   admin has let you in. You can open your check-ins now."; "You are in." says only what is true;
+   each row on "Choose an organisation" has a full-sentence name, such as "Open Kilimo Traders’
+   Association. You are a guest there. 1 new thing needs you." On "Create an organisation" the boxes
+   were already tied to their labels in the code; a new test proves a screen reader says
+   "Organisation name", not the placeholder.
+7. **The welcome card's door descriptions** are left as the prototype has them, as you decided, and
+   listed for you in item 13.
+
+**The re-review (27 September) sent U.3 back for one real crash, now fixed.** The security fix passed
+live, in the same browser and in another one.
+- **Joining on confirm failed every time against the real database** (`4a4f366c`), both from the
+  invite link and from "Where do you work?" then "Join". The database client already adds a
+  membership to every new account, and the join then added a second one for the same organisation,
+  which the database refused. Now the join brings its own single membership, as "Takes part" and
+  with how the person joined, and the automatic one steps aside. Google's sign-up uses the same path,
+  so it is fixed with it. Every test had passed because none of them ran the database client's
+  automatic step. A new test runs every new account through that real step and refuses a second
+  membership the way the database does; it fails on the old code and passes now. It is not a
+  real-database test, because there is no safe way here to run one against the local database
+  without changing its rows.
+- **"Create" on "Where do you work?" now finishes** (`5b71bf49`). Before, it sent the person back to
+  "Where do you work?". Now they land on their new organisation's Today, as its admin. It is named
+  from what they typed at sign-up if they typed a name. A name they only left as we suggested it
+  from their email address is not used here, because that suggestion is the name of the
+  organisation they have just chosen not to join. They get "<first name>'s workspace", for example
+  "Ama's workspace", which they can rename. A plain sign-up still takes the suggested name, as you
+  decided.
+- **For U.20 (small states and errors), not changed here:** when the database refuses a duplicate,
+  every page says "Something with that name or key already exists.", which is jargon. It comes from
+  one shared filter (`api/src/common/filters/a-database-error-is-not-a-message.ts`), so I have left
+  it for U.20. The crash that showed it here is fixed.
+
+**For U.2, not changed here:** the greeting, as asked.
+
+**Two new database columns**, both empty for existing rows: where someone was going when they asked
+for a link (`next_path`, on waiting sign-ups and sign-in links), and how someone joined an
+organisation (`joined_how`). A third came with the Google fix: the Google id on a waiting sign-up
+(`google_id`), and a fourth with the security fix: the hash of the browser's key for a password
+chosen at sign-up (`password_key_hash`). All four are applied to the local database only.
+
 ### U.4 People, roles and access: built and tested, not yet reviewed
 
 Seven commits so far, with the tests for each change:
@@ -1851,6 +2219,92 @@ so it is left out." The full run found one missing style for the People pages, n
 every screen test and every API test passed (2,612 and 9,264), and the build is clean. After merging
 the engine workspace's latest, its conversation and report tests passed again (3,532). **Not ticked,**
 because no review can sign in (item 14).
+
+#### U.4 review fixes (27 September)
+
+The reviewer checked U.4 live, with its own `@example.test` accounts. The privacy rules held:
+colleagues gave only id, name, role and team; a person waiting to be let in got only the people on
+their own check-in; and People was refused to a lead and to a member. It sent U.4 back for five
+things. There is one commit for each, with tests of what a person reads. Only the tests for the
+files changed were run, with the type checks; the full run is the tester's.
+
+1. **Someone added by name now reads as invited to that check-in** (`6a09be4f`). Before, they read
+   "Signed in, not on a check-in", and the check-in was missing. People now also finds check-ins by
+   the address the invitation went to, until it is accepted, so the row reads "Invited, not opened"
+   and "Sales team, Q3". **Done differently from the suggestion, on purpose:** the row is not linked
+   to the account when someone is added. Accepting treats a linked row as already accepted, so the
+   first click on the invitation would stop signing the person in and send a second email instead.
+2. **Someone from another organisation is a guest from the moment they are added** (`e4cd7a3a`).
+   Before, the guest membership was written only when they clicked the invitation. So they were on
+   no row, "Guests" showed nobody, and switching to the host organisation was refused. Now adding
+   them writes the same "Guest" membership, after every refusal, both when a lead adds them and when
+   an admin sets a check-in up for a lead. The rule that nobody joins your company by being invited
+   to a check-in is kept, because a guest is not a member:
+   - they are "Guest", never "Takes part";
+   - they hold no keys and no seat;
+   - no account is created;
+   - they see only the people on their own check-in.
+
+   A guest calling from inside the host before accepting sees only those people (tested).
+3. **The people count keeps up** (`68457e1e`). "27 people, on the Growth plan, which is for up to
+   100." is read again after "Send their invitations", "Let them in" or sending held invitations.
+4. **Plain words** (`c5084105`):
+   - A lead or member opening People reads "Only an admin can open People." and "Your role here is
+     not an admin’s. An admin can change it."
+   - Changing a role says "Amina’s role has changed."
+   - The admin's email subject reads "Peter Ouma is waiting to be let into Baridi Appliances.", or
+     the address when the person gave no name.
+   - **Kept, and why:** someone waiting to be let in shows "Takes part", not the prototype's
+     "Guest". Here they are a new account being made one of the organisation's people. Once let in,
+     they hold a seat and see their colleagues, which a guest does not. Their status says "Waiting
+     to be let in".
+5. **An invited person goes where the invitation leads** (`61dbd3da`). Before, after setting their
+   password, they landed on "Where do you work?", offered another organisation by their email
+   domain. That page now opens by itself only for someone who belongs nowhere yet: every
+   organisation they are in was just made for them, has nobody else in it and has no check-in.
+   Anyone invited lands on Today in the organisation that invited them. Joining by link or domain
+   still makes no organisation.
+
+**For U.5's review (noted, not fixed):** on Today, "Look at it" for a check-in waiting for approval
+opens a page with no Approve button, and shows the lead's own words to the admin.
+
+**Still open from U.4, for later:**
+- Changing the role or number of someone currently looking at another organisation says "User not
+  found".
+- ~~The seat count counts a guest who has switched in~~: seats now follow the prototype, see below.
+
+**U.4 re-review (27 September).** The five fixes above passed live. Two defects came back, and each is
+fixed in its own commit, with tests:
+- **Guests and seats** (`f7e2bb71`). Decided the prototype's way: a guest with an account takes a
+  seat. A guest added when the plan is full is held: "No seat on your plan", on the no-seat card, not
+  counted, and not offered the check-in. Opening the link anyway reads "This check-in cannot start for
+  you yet, because there is no seat for you on the plan. You will get your invitation as soon as there
+  is one." Plan and billing and People say "Guests with no account don't." For you to confirm, in
+  item 30.
+- **"Added by" names who added them** (`4db3719a`). It named the lead even when an admin had added the
+  person. The card now reads, for example, "Nadia Owino added them and your plan is full, …", or
+  "Someone on your team added them …" when several people did.
+- **Known, not fixed:** Baraka was added before the guest-membership fix, so he still has no guest
+  membership. The fix applies to people added from now on. Adding him again, or his accepting the
+  invitation, writes it.
+- **For U.5's review:** a lead with no check-ins, who can open them, reads "…When someone adds you to
+  one, you will see it here." That speaks only to someone who cannot open one.
+
+**U.4 third review (27 September).** The seat rule and "Added by" passed live. Two small things and
+two related untruths came back, each fixed in its own commit, with tests:
+- **People's seat line is a whole sentence** (`efd7ec9c`): "Guests with no account don’t take a seat."
+  Plan and billing keeps "Every person with a Groundwork account at … Guests with no account don’t."
+- **A held guest's invitation opens on the refusal** (`a06b75a6`). The whole invitation used to show,
+  and the refusal came only after pressing the button. Now the page opens on "This check-in cannot
+  start for you yet, because there is no seat for you on the plan. You will get your invitation as soon
+  as there is one.", with no button. The server gives nothing else for a held row.
+- **A held guest is not shown the organisation** (`4e1ea6ef`). It is left out of "Choose an
+  organisation" and the switcher, and switching into it is refused, until the hold is cleared.
+- **Where a guest is from** (`a10e5067`). The add's reply named the organisation the person last looked
+  at. It now uses their memberships: the organisation they own, or the first they joined as anything
+  but a guest.
+- **Local test data only:** rows written by the in-between build (between the seat rule and the held
+  flag) make Mto Test Supplies' counts inconsistent on this computer. Nothing outside it is affected.
 
 ### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
@@ -3190,6 +3644,130 @@ test keeps its privacy check in the new words, and the builder confirmed in the 
 channel notice carries only one sentence and a link. Apart from those three, every screen test (3,006)
 and API test (9,647) passed. **Not ticked,** because no review can sign in (item 14).
 
+### U.19 Billing: built and tested, not yet reviewed
+
+**The gap list, before I started:**
+- Billing had no way to give the free trial, so its sentence had to stay switched off.
+- The People page and Plan and billing counted seats by the organisation a person last switched to,
+  while the People list counts memberships, guests included, so the two numbers could differ.
+- `GET /billing/status` served every signed-in person the card's last four digits, the renewal date
+  and each check-in's balance. Every billing action was already admin only on the server.
+- The billing page was not the prototype's page, and said a few things that were not true (you can
+  "choose between buying sessions or subscribing").
+- The pricing page told a visitor who was not signed in that the free plan was "Your current plan".
+- There were no invoices on the page, and the pages after Stripe's checkout were not the prototype's.
+- Stripe itself (checkout, webhooks, invoices, the care fee, the portal, pausing, resuming,
+  cancelling, retrying failed events) worked and had to keep working exactly as it does.
+
+**Then you decided two more things (27 September):** the plans are the five published ones, and "no
+free check-ins" is tied to the same switch as the trial, so there is one switch, off by default,
+and nobody already on the free plan is cut off.
+
+**What I built, in ten commits:**
+1. `11d4c428` A seat is counted from the memberships (`seatsIn` in `common/seats.ts`), the same way
+   for the invite gate, the seats left, Plan and billing and a check-in's seat check.
+2. `5a4d389e` Billing gives the free trial for real, behind the setting: when "Create an
+   organisation" is answered "Fewer than 20", 3 months on Small Team, with nothing sent to Stripe.
+   One new empty column, `free_trial_started_at`, so an organisation gets it once.
+3. `f6fad80e` Only an admin is served the money on `GET /billing/status`; a lead or a member only
+   the plan and the seat count; a guest nothing. Every billing route is now listed by who may use it.
+4. `b7781041` An admin's billing status carries the paid invoices.
+5. `46c7ab62` Plan and billing is the prototype's page.
+6. `97c9dfd1` The pricing page never tells a visitor the free plan is theirs.
+7. `fa14a972` The People page's head count is billing's seat count, and says guests do not count.
+8. `981d86ce` The prototype's pages after Stripe's checkout.
+9. `463637ac` and `fc576323` One switch for the trial and the free plan, on the server and on the
+   screens (item 30.1).
+10. `e5f10b6c` A test that a fresh database holds exactly the five published plans.
+
+**What each person now reads:**
+- **Grace, an admin, on Growth, on Plan and billing:** "Baridi Appliances", "Plan and billing", then
+  "Your plan": "Plan" with "Growth, $400 a month. 27 of 100 people." and "Change"; "Next payment"
+  with "1 October, $400, by card ending 4417." and "Change card"; "Everyone counts" with "Every
+  person with a Groundwork account at Baridi Appliances. Guests from outside don’t."; and "So far"
+  with "38 check-ins, 12 reports shared, and 25 people taking part." Then "Plans", "One flat monthly
+  rate, unlimited check-ins, sessions and reports", the five plans from the table ("$400/mo", "Up to
+  100 people", "Your plan" on hers and "Move to this" on the others) and "Enterprise" with "Custom
+  needs, volume pricing or dedicated support." and "Contact us". Then "Invoices" ("1 September",
+  "$400, paid.", and "Invoices and payment method"), and "Stopping" with "Pause, or cancel at the end
+  of this period. Either way, everything stays readable.", "Pause" and "Cancel", each asking first
+  exactly as before. Then her check-ins, the access codes and "Things our team does by hand", as
+  before.
+- **Grace, on the free plan:** "The free plan, for up to 10 check-ins. 3 of 5 people, including
+  you.", "Nothing is charged until you choose a plan.", "Your first 10 check-ins are free." and "Move
+  to this" on every plan.
+- **Grace, inside the free trial (only once the switch is on):** "Small Team, free until 27 December
+  2026. 12 of 20 people." and "Free trial" with "Teams of fewer than 20 people get 3 months free. No
+  card needed." Seven days before the end: "Your free 3 months end on 27 December", "Your team has 12
+  people, so Small Team, $90 a month, keeps everything running. Nothing is charged until you
+  choose.", "Choose Small Team" and "See every plan". At 20 people: "You now have 20 people" and "The
+  free 3 months are for teams of fewer than 20. Your trial carries on until its end date; after that
+  you’ll need Small Team, $90 a month."
+- **A new organisation once the switch is on, with no plan:** "No plan yet. Choose one below to open
+  check-ins and add people." On starting a check-in: "No plan yet" and "Your organisation has no plan
+  yet. Choose one on Plan and billing to open a check-in."
+- **After Stripe's checkout:** "Done. Baridi Appliances is on Growth.", "All 27 people can check in."
+  and "Back to Plan and billing". Coming back without paying: "The payment didn’t go through", "You
+  haven’t been charged, and your plan hasn’t changed.", "Try another card" and "Talk to us".
+- **A visitor on /pricing:** "Pricing", then, while the switch is off, "Start free with 10 check-ins,
+  for teams of 5 or fewer, including you. Subscribe as your team grows. Unlimited sessions and reports
+  on every plan." and the free plan's card with no "Your current plan"; the five plans from the table
+  with the prototype's descriptions ("For small teams getting each person’s own account written
+  down." and so on) and "Subscribe"; and Enterprise. Once the switch is on, the free plan's card is
+  gone, the first sentence is the trial's, and the trial's card reads "3 months free", "Teams of
+  fewer than 20 people", the trial's sentence with "After 3 months, subscribe to keep going.", "$0 for
+  3 months" and "Start your free 3 months".
+- **Anybody signed in on /pricing:** "Your current plan" only when the server says the free plan is
+  what covers their organisation.
+- **The People page:** "27 people, on the Growth plan, which is for up to 100." and, when the list
+  has guests, "Guests from outside don’t count toward the plan." Inside a free run it names that plan.
+- **Wairimu, a lead; Miriam, who takes part; Tomas, a guest:** no "Plan and billing" door. At its
+  address, only "You need admin access to manage billing for your organisation.", and nothing is
+  fetched. The server refuses every billing action to them, and serves a guest nothing about billing.
+
+**Tests changed, and why:**
+- `a-seat-is-a-seat-on-both-screens.spec.ts` (API): its fake table had no memberships, so it could
+  not count a seat the new way. It now models memberships, and has three new cases: a guest holds no
+  seat, somebody looking at another organisation keeps theirs, and an account with no membership row
+  is still counted. Its source check also accepts the new shared reader, `seatsIn`.
+- `the-subscription-belongs-to-the-org.spec.ts` (API): it pinned the old where clause, and then the
+  direct call for the free people limit. It now pins the one shared reader that both the invite gate
+  and Plan and billing use, so the two still cannot say different numbers.
+- `stopping-early-is-a-pause-not-a-refund.spec.tsx` (screens): it looked for the buttons "Cancel
+  subscription" and "Pause subscription". They now read "Pause" and "Cancel", as the prototype has
+  them. What they do, and every check on what they say, is unchanged.
+- `the-numbers-that-decide-it.spec.ts` (screens): it pinned the old stat tiles. It now pins the
+  prototype's rows, still checking that the plan line is not hidden behind having a subscription and
+  that what the account has done is shown. That the free plan's people against its cap are shown to
+  an organisation with no subscription ("3 of 5 people, including you.") is now checked on the
+  rendered page, in `plan-and-billing-as-each-reader-sees-it.spec.tsx`, and inside the trial ("12
+  of 20 people.").
+- `one-vocabulary.spec.ts` (screens): it pinned the stat tiles too. It now checks the prototype's
+  rows, and that the plan line is said once.
+- `the-thank-you-page-does-not-promise-what-it-has-not-read.spec.tsx` (screens): it looked for "You
+  are on the … plan." It now reads the prototype's "Done. Baridi Appliances is on Growth.", still only
+  after the server reports the plan active, and has a new case for coming back without paying.
+- `OrgMembersPage.spec.tsx` (screens): its helper now takes the billing answer as an argument, for
+  one new case (a free run's plan is named).
+
+New: the trial granted only while on (10 tests), billing as each reader is served it (13), the
+switch for the free plan (14), the published plans (1, reading the migrations with their comments
+stripped), Plan and billing as each reader sees it (15), and the pricing page as each reader sees it
+(8).
+
+**Checked:** the tests for every file I changed, both type checks, and the existing Stripe tests
+(checkout, webhooks, invoices, the care fee, pausing, cancelling, the paywall), which all pass. **Not
+checked in the browser,** because no review can sign in (item 14). No live key was used and no
+charge was made: every test uses mocks, and nothing reached Stripe.
+
+**Requests to the engine:** request 30 (one sentence in the conversation, the scenario runner and
+the switch, and one seat count).
+
+**The full run** passed every screen test (3,030), the build, and every API test but one: U.19's own new
+test read the migration files without removing comments first, and the comment guard caught it. It now
+removes both kinds of SQL comment. The existing Stripe, care-fee, webhook and paywall tests all passed,
+none of them changed. **Not ticked,** until its review.
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
@@ -3225,7 +3803,7 @@ and API test (9,647) passed. **Not ticked,** because no review can sign in (item
 - **For U.19 (billing): the free trial.** You decided teams under 20 people get Groundwork free for 3
   months. The limit and length live in the database, never in the screens. Billing must really grant
   it before the sign-up's sentence is switched on. Every screen that mentions the free offer uses the
-  one shared sentence.
-- **For U.19 (billing): the head count on the People page.** "27 people, on the Growth plan…" comes
+  one shared sentence. **Done in U.19**, behind the same switch (item 30.1).
+- **For U.19 (billing): the head count on the People page.** **Done in U.19** (item 30.5). "27 people, on the Growth plan…" comes
   from billing's seat count, which still counts accounts by the organisation they last looked at. The
   People list now counts real memberships, including guests, so the two numbers can differ.

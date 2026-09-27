@@ -58,14 +58,40 @@ export const MAX_FREE_MEMBER_LIMIT = 1000;
  * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR 3 MONTHS. Hafsah's decision of 26 September.
  *
  * The numbers live here, in the database, and every screen builds its sentence from them, so no
- * screen can say a different number. Nothing here GRANTS the trial: billing does not do that yet
- * (U.19). So it is off by default, and the screens say nothing about a trial until it is switched
- * on, which must wait until billing really gives it. A promise on a screen that billing does not
- * keep is the thing this exists to prevent.
+ * screen can say a different number. The same setting decides whether billing GRANTS the trial
+ * (the-free-trial.service.ts, U.19), so the sentence and the grant are switched on and off together.
+ * It is off by default. A promise on a screen that billing does not keep is the thing this exists to
+ * prevent.
  */
 export const FREE_TRIAL_KEY = 'pricing.freeTrial';
-export interface FreeTrial { on: boolean; teamsUnder: number; months: number }
+/**
+ * `onSince` is when the setting was last switched on. Kept on the server only (never on the public
+ * read): it is what tells an organisation that was already on the free plan from a new one.
+ */
+export interface FreeTrial { on: boolean; teamsUnder: number; months: number; onSince?: string }
 export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 3 };
+
+/**
+ * ONE SWITCH (Hafsah, 27 September). While the free trial is OFF, which is how it ships, the free plan
+ * is exactly as today: the free check-ins, the free people, the free extension and the first session
+ * on the house. When it is switched ON, the trial for teams under its size starts, and the free plan
+ * stops for every organisation created from that moment. Teams at or over the trial's size always pay.
+ *
+ * NOBODY IS CUT OFF. An organisation that existed before the switch keeps the free plan it has, even
+ * after the switch. And anything unknown reads as "keeps it": a trial switched on with no record of
+ * when, or an organisation with no creation date, is treated as already on the free plan, because the
+ * wrong answer in that direction costs a month's fee and the wrong answer in the other stops somebody's
+ * team mid check-in.
+ */
+export function freePlanApplies(trial: FreeTrial | null | undefined, orgCreatedAt: Date | string | null | undefined): boolean {
+  if (!trial?.on) return true;
+  if (!trial.onSince) return true;
+  if (!orgCreatedAt) return true;
+  const since = new Date(trial.onSince).getTime();
+  const created = new Date(orgCreatedAt).getTime();
+  if (Number.isNaN(since) || Number.isNaN(created)) return true;
+  return created < since;
+}
 
 @Injectable()
 export class PricingService {
@@ -103,7 +129,8 @@ export class PricingService {
       this.getFreeMemberLimit(),
       this.getFreeTrial(),
     ]);
-    return { plans, free: { groundLimit, memberLimit }, trial };
+    /* The public read says whether the trial is on and its numbers, never when it was switched on. */
+    return { plans, free: { groundLimit, memberLimit }, trial: { on: trial.on, teamsUnder: trial.teamsUnder, months: trial.months } };
   }
 
   /** The trial's numbers and whether it is on. Never throws: a bad or missing row means the default, which is off. */
@@ -116,7 +143,9 @@ export class PricingService {
         Number.isInteger(v.teamsUnder) && (v.teamsUnder as number) >= 2 && (v.teamsUnder as number) <= 10_000 &&
         Number.isInteger(v.months) && (v.months as number) >= 1 && (v.months as number) <= 24
       ) {
-        return { on: v.on, teamsUnder: v.teamsUnder as number, months: v.months as number };
+        const out: FreeTrial = { on: v.on, teamsUnder: v.teamsUnder as number, months: v.months as number };
+        if (v.on && typeof v.onSince === 'string' && !Number.isNaN(new Date(v.onSince).getTime())) out.onSince = v.onSince;
+        return out;
       }
     } catch (err) {
       this.logger.warn(`Could not read the free trial, so it is off: ${(err as Error)?.message}`);
@@ -131,6 +160,8 @@ export class PricingService {
       teamsUnder: input.teamsUnder !== undefined ? Number(input.teamsUnder) : now.teamsUnder,
       months: input.months !== undefined ? Number(input.months) : now.months,
     };
+    /* When it is switched on, remember the moment: organisations created before it keep the free plan. */
+    if (next.on) next.onSince = now.on && now.onSince ? now.onSince : new Date().toISOString();
     if (!Number.isInteger(next.teamsUnder) || next.teamsUnder < 2 || next.teamsUnder > 10_000) {
       throw new BadRequestException('The team size for the free trial must be a whole number between 2 and 10,000.');
     }

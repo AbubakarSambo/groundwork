@@ -53,14 +53,19 @@ export async function colleaguesOf(db: Db, organizationId: string, callerId: str
       where: { userId_organizationId: { userId: callerId, organizationId } },
       select: { role: true },
     }),
-    db.user.findUnique({ where: { id: callerId }, select: { awaitingOrgApproval: true } }),
+    db.user.findUnique({ where: { id: callerId }, select: { awaitingOrgApproval: true, email: true } }),
   ]);
   const outsider = isAnOutsiderHere(mine?.role, !!me?.awaitingOrgApproval);
 
   let onlyThese: string[] | null = null;
   if (outsider) {
+    /* Their own check-ins here, including one they were added to and have not opened yet, found by
+       the address the invitation went to (U.4 review): a guest is a guest from the moment they are added. */
     const myRows = await db.groundParticipant.findMany({
-      where: { userId: callerId, ground: { organizationId } },
+      where: {
+        ground: { organizationId },
+        OR: [{ userId: callerId }, ...(me?.email ? [{ userId: null, email: String(me.email).toLowerCase() }] : [])],
+      },
       select: { groundId: true },
     });
     const groundIds = [...new Set(myRows.map((r: any) => r.groundId as string))];

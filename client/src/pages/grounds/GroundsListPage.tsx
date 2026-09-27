@@ -8,6 +8,7 @@ import { useHelpStore } from '@/stores/help'
 import { Button, Tag } from '@/components/gw/kit'
 import { cadenceLabel } from '@/lib/cadence'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
+import { YouAreIn } from '@/pages/today/YouAreIn'
 
 /**
  * THE CHECK-INS LIST (C1, #/checkins in the prototype, /grounds here). The wording is copied from
@@ -161,9 +162,7 @@ export function GroundsListPage() {
       </div>
 
       {justSetUp && (
-        <div className="gw-today-in" role="status">
-          <b>You are in.</b> You will see your check-ins and reports here. Open one to start contributing.
-        </div>
+        <YouAreIn checkIns={isLoading || isError ? null : grounds.length} />
       )}
 
       {isAdmin && awaiting.length > 0 && (

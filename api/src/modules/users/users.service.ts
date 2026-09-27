@@ -3,7 +3,7 @@ import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictExce
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, CallAskedEvent } from '../../common/events';
+import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -360,12 +360,14 @@ export class UsersService {
            say "Waiting to be let in" beside them. */
         select: {
           role: true,
+          /* A guest added with no seat for them reads "No seat on your plan" (U.4 re-review). */
+          heldForASeat: true,
           user: { select: { id: true, email: true, firstName: true, lastName: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true, awaitingOrgApproval: true } },
         },
       }),
       this.prisma.organizationMembership.count({ where: inThisOrganisation }),
     ]);
-    const users = rows.map((r) => ({ ...r.user, role: r.role as string }));
+    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat }));
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale
@@ -396,11 +398,26 @@ export class UsersService {
      * load across check-ins is private (decisions.md, rule 4); what this organisation's admin may know
      * is which of THIS organisation's check-ins they are on, which the admin can already open.
      */
+    /*
+     * AND THE CHECK-INS THEY HAVE BEEN ADDED TO BUT NOT YET OPENED (U.4 review). A participant row
+     * carries the account only once the invitation is accepted, so somebody picked by name read as
+     * "Signed in, not on a check-in" with the check-in missing. Rows not yet accepted are matched by
+     * the address they were sent to - the same heal the check-ins list does when that person opens
+     * it - without writing anything: accepting stays the step that links the row, so clicking the
+     * invitation still signs them straight in.
+     */
+    const idByEmail = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
-        where: { userId: { in: ids }, ground: { organizationId } },
+        where: {
+          ground: { organizationId },
+          OR: [
+            { userId: { in: ids } },
+            { userId: null, email: { in: [...idByEmail.keys()] } },
+          ],
+        },
         select: {
-          userId: true, createdAt: true, partyType: true,
+          userId: true, email: true, createdAt: true, partyType: true,
           ground: { select: { id: true, label: true } },
           checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 },
         },
@@ -408,14 +425,17 @@ export class UsersService {
       : [];
     const onCount = new Map<string, number>();
     const answeredCount = new Map<string, number>();
+    const notOpenedCount = new Map<string, number>();
     const theirCheckIns = new Map<string, { id: string; label: string | null; runsIt: boolean }[]>();
     for (const m of memberships) {
-      if (!m.userId) continue;
-      onCount.set(m.userId, (onCount.get(m.userId) ?? 0) + 1);
-      if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
-      const list = theirCheckIns.get(m.userId) ?? [];
+      const who = m.userId ?? idByEmail.get((m.email ?? '').toLowerCase());
+      if (!who) continue;
+      onCount.set(who, (onCount.get(who) ?? 0) + 1);
+      if (!m.userId) notOpenedCount.set(who, (notOpenedCount.get(who) ?? 0) + 1);
+      if (m.checkIns.length) answeredCount.set(who, (answeredCount.get(who) ?? 0) + 1);
+      const list = theirCheckIns.get(who) ?? [];
       if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
-      theirCheckIns.set(m.userId, list);
+      theirCheckIns.set(who, list);
     }
     const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
@@ -459,6 +479,8 @@ export class UsersService {
         /** How many check-ins they are on, and how many of those they have answered on. */
         checkInsOn: onCount.get(u.id) ?? 0,
         checkInsAnswered: answeredCount.get(u.id) ?? 0,
+        /** How many of those they were added to and have not opened the invitation for yet. */
+        checkInsNotOpened: notOpenedCount.get(u.id) ?? 0,
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
@@ -884,6 +906,12 @@ export class UsersService {
       },
       select: { id: true, name: true },
     });
+    /* Billing hears the answer, for the free trial (U.19). Best-effort: a rename never fails on it. */
+    if (more.teamSize) {
+      try {
+        this.events.emit(GroundworkEvents.ORG_SIZE_SAID, { organizationId: org.id, said: more.teamSize.said, line: more.teamSize.line } satisfies OrgSizeSaidEvent);
+      } catch { /* the trial is granted by a listener that logs its own failures */ }
+    }
     return org;
   }
 

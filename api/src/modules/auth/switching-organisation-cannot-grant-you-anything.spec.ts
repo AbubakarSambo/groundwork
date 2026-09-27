@@ -107,6 +107,8 @@ describe('myOrganizations', () => {
       user: { findUnique: jest.fn(async () => ({ organizationId: 'org-own', role: 'ADMIN' })) },
       organizationMembership: { findMany: jest.fn(async () => []) },
       organization: { findUnique: jest.fn(async () => ({ id: 'org-own', name: 'Mine', slug: 'mine' })) },
+      /* U.3 review: myOrganizations also reads whether their staff record is linked, for the reason. */
+      person: { findMany: jest.fn(async () => []) },
     };
     const service = new AuthService(
       prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,
@@ -126,6 +128,7 @@ describe('myOrganizations', () => {
         ]),
       },
       organization: { findUnique: jest.fn(async () => null) },
+      person: { findMany: jest.fn(async () => []) },
     };
     const service = new AuthService(
       prisma, { sign: () => 't' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any,

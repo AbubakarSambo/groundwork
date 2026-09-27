@@ -57,4 +57,28 @@ describe('the callback', () => {
     await controller.googleCallback({ user: { email: 'a@b.test' } }, res);
     expect(redirects).toEqual(['http://localhost:5173/auth/google/callback?code=code-1&new=false&nameOrg=false']);
   });
+
+  it('carries the place back from `state`, and never an outside address (U.3 review)', async () => {
+    const auth = {
+      findOrCreateGoogleUser: jest.fn(async () => ({ token: 'jwt', isNewUser: false, needsOrgName: false })),
+      createOAuthExchangeCode: jest.fn(async () => 'code-1'),
+    };
+    const controller = new AuthController(auth as any, config as any);
+    await controller.googleCallback({ user: { email: 'a@b.test' }, query: { state: '/j/coamana-6rr7' } }, res);
+    expect(auth.findOrCreateGoogleUser).toHaveBeenLastCalledWith({ email: 'a@b.test' }, '/j/coamana-6rr7');
+    await controller.googleCallback({ user: { email: 'a@b.test' }, query: { state: '//evil.test' } }, res);
+    expect(auth.findOrCreateGoogleUser).toHaveBeenLastCalledWith({ email: 'a@b.test' }, null);
+    expect(redirects).toEqual([
+      'http://localhost:5173/auth/google/callback?code=code-1&new=false&nameOrg=false&next=%2Fj%2Fcoamana-6rr7',
+      'http://localhost:5173/auth/google/callback?code=code-1&new=false&nameOrg=false',
+    ]);
+  });
+
+  it('from a link or with a domain match, sends them to the confirmation page with the waiting token (U.3 review)', async () => {
+    const auth = { findOrCreateGoogleUser: jest.fn(async () => ({ pendingToken: 'wait-1' })), createOAuthExchangeCode: jest.fn() };
+    const controller = new AuthController(auth as any, config as any);
+    await controller.googleCallback({ user: { email: 'a@coamana.test' }, query: { state: '/j/coamana-6rr7' } }, res);
+    expect(redirects).toEqual(['http://localhost:5173/verify-email?token=wait-1&via=google']);
+    expect(auth.createOAuthExchangeCode).not.toHaveBeenCalled();
+  });
 });

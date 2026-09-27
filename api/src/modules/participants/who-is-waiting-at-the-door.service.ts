@@ -76,13 +76,16 @@ export class WhoIsWaitingAtTheDoorService {
     const admin = await this.theAdminAsked(request.organizationId);
     if (!admin) throw new BadRequestException('There is nobody to remind yet. The organisation has no admin who can let you in.');
     await this.prisma.membershipRequest.update({ where: { id: request.id }, data: { lastRemindedAt: now } });
-    const [inviter, ground] = await Promise.all([
+    const [inviter, ground, person, org] = await Promise.all([
       request.requestedByUserId ? this.prisma.user.findUnique({ where: { id: request.requestedByUserId }, select: { firstName: true, lastName: true, email: true } }) : null,
       request.groundId ? this.prisma.ground.findUnique({ where: { id: request.groundId }, select: { label: true } }) : null,
+      this.prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } }),
+      this.prisma.organization.findUnique({ where: { id: request.organizationId }, select: { name: true } }),
     ]);
+    const name = person ? [person.firstName, person.lastName].filter(Boolean).join(' ').trim() : '';
     const addedBy = inviter ? ([inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email) : 'somebody on your team';
     await this.email
-      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', request.email, addedBy, ground?.label ?? null)
+      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', request.email, addedBy, ground?.label ?? null, { name, organisationName: org?.name ?? null })
       .catch((err: any) => this.logger.warn(`Reminder to ${admin.email} failed: ${err?.message}`));
     return { reminded: true, canRemindFrom: this.nextRemindAt({ createdAt: request.createdAt, lastRemindedAt: now }).toISOString() };
   }
@@ -161,18 +164,27 @@ export class WhoIsWaitingAtTheDoorService {
       where: { awaitingSeat: true, ground: { organizationId } },
       orderBy: { createdAt: 'asc' },
       select: {
-        id: true, email: true, createdAt: true,
+        id: true, email: true, createdAt: true, addedByUserId: true,
         ground: { select: { label: true, initiator: { select: { firstName: true, lastName: true, email: true } } } },
       },
     });
+    /*
+     * WHO ADDED THEM (U.4 re-review): the person recorded on their row, who may be the admin who set
+     * the check-in up, not the lead who runs it. Older rows record nobody and fall back to the lead.
+     */
+    const adderIds = [...new Set(rows.map((r) => r.addedByUserId).filter((x): x is string => !!x))];
+    const adders = adderIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: adderIds } }, select: { id: true, firstName: true, lastName: true, email: true } })
+      : [];
+    const nameOf = (u: { firstName: string | null; lastName: string | null; email: string } | null | undefined) =>
+      u ? ([u.firstName, u.lastName].filter(Boolean).join(' ') || u.email) : null;
+    const adderById = new Map(adders.map((a) => [a.id, a]));
     return rows.map((r) => ({
       id: r.id,
       email: r.email,
       name: null,
       waitingSince: r.createdAt,
-      addedBy: r.ground?.initiator
-        ? ([r.ground.initiator.firstName, r.ground.initiator.lastName].filter(Boolean).join(' ') || r.ground.initiator.email)
-        : null,
+      addedBy: (r.addedByUserId ? nameOf(adderById.get(r.addedByUserId)) : null) ?? nameOf(r.ground?.initiator),
       forCheckIn: r.ground?.label ?? null,
       kind: 'SEAT' as const,
       /* The one line an admin needs to know what pressing the button does. */

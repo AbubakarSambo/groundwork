@@ -19,20 +19,24 @@ export async function tellTheAdminsSomebodyIsWaiting(
   inviterId: string,
   who: string,
 ): Promise<void> {
-  const [admins, inviter, ground] = await Promise.all([
+  const [admins, inviter, ground, person, org] = await Promise.all([
     deps.prisma.user.findMany({
       where: { organizationId, role: 'ADMIN', isActive: true, deletedAt: null },
       select: { email: true, firstName: true },
     }),
     deps.prisma.user.findUnique({ where: { id: inviterId }, select: { firstName: true, lastName: true, email: true } }),
     deps.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true } }),
+    /* Their name, if they gave one, and the organisation's, for the subject (U.4 review). */
+    deps.prisma.user.findUnique({ where: { email: who.trim().toLowerCase() }, select: { firstName: true, lastName: true } }),
+    deps.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
   ]);
+  const name = person ? [person.firstName, person.lastName].filter(Boolean).join(' ').trim() : '';
   const addedBy = inviter
     ? [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email
     : 'somebody on your team';
   for (const admin of admins) {
     await deps.email
-      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null)
+      .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null, { name, organisationName: org?.name ?? null })
       .catch((err: any) => deps.logger.warn(`Waiting-notice to ${admin.email} failed: ${err.message}`));
   }
 }

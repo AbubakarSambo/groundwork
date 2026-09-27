@@ -45,7 +45,7 @@ describe('who can join', () => {
 describe('the organisation\'s invite link, under it', () => {
   it('when on: the link and "Copy"', async () => {
     open({ on: false, domain: 'baridi.co.ke', whyNot: null }, { on: true, code: 'baridi-appliances-7k2p' })
-    expect(await screen.findByText('Baridi Appliances’s invite link')).toBeTruthy()
+    expect(await screen.findByText('The invite link for Baridi Appliances')).toBeTruthy()
     expect(screen.getByText(`${window.location.host}/j/baridi-appliances-7k2p`)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy()
     expect(screen.getByText('Anyone with this link can join as “Takes part”. Turning it off closes it at once.')).toBeTruthy()
@@ -55,7 +55,7 @@ describe('the organisation\'s invite link, under it', () => {
     open({ on: false, domain: 'baridi.co.ke', whyNot: null }, { on: false, code: null })
     expect(await screen.findByText('The link is off. Turning it on makes a new link, so any old one stays closed.')).toBeTruthy()
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, code: 'baridi-appliances-9x3m' } } } as any)
-    fireEvent.click(screen.getByRole('switch', { name: 'Baridi Appliances’s invite link' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'The invite link for Baridi Appliances' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/organization/invite-link', { on: true }))
     expect(await screen.findByText(`${window.location.host}/j/baridi-appliances-9x3m`)).toBeTruthy()
   })

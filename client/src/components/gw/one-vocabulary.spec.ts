@@ -189,22 +189,22 @@ describe('the pages are built from the kit, not from inline styles', () => {
     expect(KIT).toMatch(/pad === 'block' \? '14px 16px'/)
   })
 
-  it('Billing answers "what is the state of this" with the board\'s Stat row', () => {
+  /*
+   * U.19: Plan and billing now answers "what is the state of this" the way the prototype's page does
+   * (settings-billing.txt): a "Your plan" list of rows, each a full sentence, rather than the board's
+   * Stat tiles. What these two checks were for is kept: the state is said in one place, and once.
+   */
+  it('Billing answers "what is the state of this" in the prototype\'s rows', () => {
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
-    expect(B).toMatch(/import \{ Stat, Pill \} from '@\/components\/gw\/kit'/)
-    for (const label of ['label="Plan"', 'label="People"']) expect(B).toContain(label)
+    for (const label of ['<b>Plan</b>', '<b>Next payment</b>', '<b>Everyone counts</b>']) expect(B).toContain(label)
   })
 
   it('and says each of those facts once', () => {
-    /**
-     * The tiles at first sat above a card repeating all three - plan, price, seat count - so a page
-     * about a decision on money stated the same facts twice within one screen. The card is the
-     * state and the two things you can do about it.
-     */
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
-    const card = B.slice(B.indexOf('Current plan'), B.indexOf('Pause subscription'))
-    expect(card).not.toMatch(/PLAN_PRICES\[/)
-    expect(card).not.toMatch(/people\.count/)
+    expect(B.match(/thePlanLine\(/g) ?? []).toHaveLength(1)
+    const stopping = B.slice(B.indexOf('id="bill-stopping"'), B.indexOf('role="dialog"'))
+    expect(stopping).not.toMatch(/PLAN_PRICES\[/)
+    expect(stopping).not.toMatch(/people\.count/)
   })
 })
 

@@ -3,10 +3,10 @@ import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGua
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
-import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { GoogleCallbackGuard } from './google-callback.guard';
+import { GoogleCallbackGuard, GoogleStartGuard } from './google-callback.guard';
+import { aPathInThisApp } from '../../common/a-path-in-this-app';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto, CreateOrganisationDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 import { aNameFromAnEmailAddress } from '../../common/an-email-domain';
@@ -190,7 +190,7 @@ export class AuthController {
 
   @Public()
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleStartGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   async googleAuth() {
     // Passport redirects to Google - no body needed
@@ -206,14 +206,22 @@ export class AuthController {
        logged why and hands over no user. The client has one page for it (U.2). */
     if (!req.user) return res.redirect(`${frontendUrl}/google-failed`);
     try {
-      const { token, isNewUser, needsOrgName } = await this.authService.findOrCreateGoogleUser(req.user);
+      /* Where they were going, carried through Google as `state`, and checked again here (U.3 review). */
+      const next = aPathInThisApp(req.query?.state);
+      const outcome = await this.authService.findOrCreateGoogleUser(req.user, next);
+      /* From an invite link, or with a domain an organisation lets join: nothing is made yet, and the
+         confirmation page takes it from here, exactly as for an email sign-up. */
+      if (outcome.pendingToken) {
+        return res.redirect(`${frontendUrl}/verify-email?token=${outcome.pendingToken}&via=google`);
+      }
+      const { token, isNewUser, needsOrgName } = outcome;
       // Issue a short-lived (60s) exchange code so the full JWT is never in the URL.
-      const code = await this.authService.createOAuthExchangeCode(token);
+      const code = await this.authService.createOAuthExchangeCode(token!);
       // needsOrgName is false for anyone joining an org that already exists -
       // an invited participant must never be asked to name someone else's
       // organisation.
       return res.redirect(
-        `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}`,
+        `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}${next ? `&next=${encodeURIComponent(next)}` : ''}`,
       );
     } catch (err: any) {
       /*
@@ -366,7 +374,7 @@ export class AuthController {
     if (dto._hp) {
       return { message: 'Check your email for your sign-in link.', email: dto.email.toLowerCase() };
     }
-    return this.authService.entrySave(dto.email, dto.draft, dto.password);
+    return this.authService.entrySave(dto.email, dto.draft, dto.password, dto.next);
   }
 
   @Post('request-password-setup')

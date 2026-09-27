@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client'
+import { roleWord as theRoleWord } from '@/components/gw/your-organisations'
 
 /**
  * THE PEOPLE IN THIS ORGANISATION, AS AN ADMIN READS THEM (U.4, A4 people.txt and one-person.txt).
@@ -19,8 +20,12 @@ export interface OrgMember {
   state?: 'invited' | 'signed in' | 'checked in'
   checkInsOn?: number
   checkInsAnswered?: number
+  /** Check-ins they were added to and have not opened the invitation for yet. */
+  checkInsNotOpened?: number
   arrivedThroughACheckIn?: boolean
   awaitingOrgApproval?: boolean
+  /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
+  heldForASeat?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
   level?: string | null
   team?: string | null
@@ -65,10 +70,7 @@ export function initialsOf(name: string): string {
 /** Role, in the prototype's words. The owner is one field, not a role, and reads as "Owner". */
 export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | null): string {
   if (ownerId && m.id === ownerId) return 'Owner'
-  if (m.role === 'ADMIN') return 'Admin'
-  if (m.role === 'LEAD') return 'Can open check-ins'
-  if (m.role === 'GUEST') return 'Guest'
-  return 'Takes part'
+  return theRoleWord(m.role)
 }
 
 /**
@@ -78,14 +80,17 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
  */
 export function statusWord(m: OrgMember): string {
   if (m.awaitingOrgApproval) return 'Waiting to be let in'
+  if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
   if ((m.checkInsOn ?? 0) === 0) return 'Signed in, not on a check-in'
+  /* Added to a check-in, and has not opened the invitation yet (U.4 review). */
+  if ((m.checkInsAnswered ?? 0) === 0 && (m.checkInsNotOpened ?? 0) >= (m.checkInsOn ?? 0)) return 'Invited, not opened'
   if ((m.checkInsAnswered ?? 0) === 0) return 'Not answered yet'
   return 'Checking in'
 }
 
 export function needsSomething(m: OrgMember): boolean {
-  return ['Waiting to be let in', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
+  return ['Waiting to be let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
 }
 
 /** "Sales rep, reports to Wairimu Kamau", or either half on its own, or nothing. */

@@ -28,6 +28,17 @@ import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
  * had no seat for them. Nothing has been sent to them, and only an admin can make room, so this is
  * where that lands, at the top, only when there is somebody.
  */
+/**
+ * WHO ADDED THE PEOPLE WITH NO SEAT, SAID TRULY (U.4 re-review). It said "A lead added them" even when
+ * an admin had. One name when one person added them all; otherwise "Someone on your team".
+ */
+export function whoAddedThem(rows: { addedBy?: string | null }[]): string {
+  const names = [...new Set(rows.map((r) => r.addedBy).filter((n): n is string => !!n))]
+  const who = names.length === 1 && rows.every((r) => r.addedBy === names[0]) ? names[0] : 'Someone on your team'
+  return `${who} added them and your plan is full, so nothing has been sent to them. `
+    + 'Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.'
+}
+
 export function OrgMembersPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
@@ -56,6 +67,8 @@ export function OrgMembersPage() {
       else if (r.stillWaiting > 0) toast.success(`${r.sent} sent. ${r.stillWaiting} still waiting on a seat.`)
       else toast.success(r.sent === 1 ? 'Their invitation is on its way' : `${r.sent} invitations are on their way`)
       qc.invalidateQueries({ queryKey: ['waiting-for-a-seat'] })
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      qc.invalidateQueries({ queryKey: ['billing-status-people'] })
     },
     onError: () => toast.error('Those could not be sent just now. Nobody has been emailed and they are all still waiting.'),
   })
@@ -80,10 +93,7 @@ export function OrgMembersPage() {
               ? 'Somebody is on a check-in with no seat for them'
               : `${seatQueue.data!.length} people are on check-ins with no seat for them`}
           </h2>
-          <p className="gw-people-note">
-            A lead added them and your plan is full, so nothing has been sent to them. Free a seat or
-            move to a larger plan, then send the invitations. They have not been told any of this.
-          </p>
+          <p className="gw-people-note">{whoAddedThem(seatQueue.data!)}</p>
           <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
             {(person: any) => (
               <div key={person.id} className="gw-waiting-row">

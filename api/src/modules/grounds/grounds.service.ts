@@ -1,11 +1,13 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { theirHome } from '../participants/where-somebody-is-from';
+import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { SEAT_WHERE } from '../../common/seats';
+import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
@@ -515,7 +517,8 @@ export class GroundsService {
            a-cohort-is-not-a-payroll. */
         freeParticipantCap: dto.freeParticipantCap ?? howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
         isFreeGround,
-        sessionsBalance: 1,
+        /* One session in hand, unless the free plan has stopped for this organisation (U.19). */
+        sessionsBalance: canCreate.sessionsToStart ?? 1,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
           ? { accessCodeId: canCreate.codeId, freeReason: 'ACCESS_CODE' }
           : canCreate.freeReason === 'FREE_TIER'
@@ -708,7 +711,7 @@ export class GroundsService {
           joinToken: crypto.randomBytes(24).toString('hex'),
           freeParticipantCap: howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
           isFreeGround,
-          sessionsBalance: 1,
+          sessionsBalance: canCreate.sessionsToStart ?? 1,
           ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
         } as any,
       });
@@ -744,6 +747,8 @@ export class GroundsService {
           },
         });
         pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
+        /* A guest here from the moment they are added, when their account lives elsewhere (U.4 review). */
+        await aGuestHereIfTheyAreFromElsewhere(tx as any, organizationId, p.email);
         // SEQUENTIAL: lock session 1 until the lead completes their own -
         // the lead has no completed session yet at ground-creation time, so
         // this is unconditional here (unlike addParticipant(), which checks).
@@ -1158,7 +1163,8 @@ export class GroundsService {
       // participant-link fix was deployed (groundParticipant.userId was null).
       if (userEmail) {
         await this.prisma.groundParticipant.updateMany({
-          where: { email: userEmail.toLowerCase(), userId: null },
+          /* Never a row held for a seat: it is not offered until its invitation goes (U.4 re-review). */
+          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },
           data: { userId },
         });
       }
@@ -4045,6 +4051,8 @@ export class GroundsService {
     });
     if (existing) {
       if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this check-in');
+      /* Somebody from another organisation is a guest here from now, not only once they click (U.4 review). */
+      await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
       /**
        * KEEP THE TOKEN. Re-adding somebody who hasn't accepted yet used to mint a
        * new token and overwrite the old one, which silently killed the first
@@ -4148,12 +4156,12 @@ export class GroundsService {
      * already holds one, and adding them to a second check-in costs nothing.
      */
     const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), organizationId, ...SEAT_WHERE },
+      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {
       const [seatsTaken, seatsIncluded] = await Promise.all([
-        this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } }),
+        this.prisma.user.count({ where: seatsIn(organizationId) }),
         this.billing.seatsIncludedFor(organizationId),
       ]);
       waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
@@ -4191,6 +4199,9 @@ export class GroundsService {
        the check-in - so there is nothing to put back and the ground is right to be waiting. */
     let movedTheGroundOn = false;
 
+    /* After every refusal above, so a refused add leaves nothing behind (U.4 review). Held when there
+       is no seat for them: a guest with an account takes a seat (U.4 re-review). */
+    await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email, !waitingForASeat.room);
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
@@ -4352,11 +4363,18 @@ export class GroundsService {
      * check-in is a real fact about this person, and the lead is the one who has to know it - they
      * are the one who will wonder why this person cannot see the rest of the workspace.
      */
-    const theirHome = await this.prisma.user.findUnique({
+    /* Their home from their memberships, not the organisation they last switched to (U.4 third review). */
+    const account = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      select: { organizationId: true, organization: { select: { name: true } } },
+      select: {
+        id: true,
+        memberships: { select: { organizationId: true, role: true, createdAt: true, organization: { select: { name: true, ownerUserId: true } } } },
+      },
     });
-    const fromAnotherOrg = !!theirHome && theirHome.organizationId !== organizationId;
+    const theirMemberships = account?.memberships ?? [];
+    const home = account ? theirHome(account.id, theirMemberships as any) : null;
+    const belongsHere = theirMemberships.some((m) => m.organizationId === organizationId && m.role !== 'GUEST');
+    const fromAnotherOrg = !!account && !belongsHere && !!home && home.id !== organizationId;
     /*
      * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The start date is ahead, there is no seat, or the
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
@@ -4381,7 +4399,7 @@ export class GroundsService {
       /* Named, because "somebody from another organisation" is not something a lead can act on and
          a company name is. Never the person's other colleagues, only where they belong. */
       ...(fromAnotherOrg
-        ? { guestFrom: theirHome!.organization?.name ?? 'another organisation' }
+        ? { guestFrom: home?.name ?? 'another organisation' }
         : {}),
     };
   }
@@ -4814,6 +4832,11 @@ export class GroundsService {
         await this.prisma.groundParticipant.update({
           where: { id: w.id },
           data: { awaitingSeat: false, invitedAt: new Date() },
+        });
+        /* A guest held for a seat takes it now (U.4 re-review). */
+        await this.prisma.organizationMembership.updateMany({
+          where: { organizationId, heldForASeat: true, user: { email: w.email.toLowerCase() } },
+          data: { heldForASeat: false },
         });
         sent += 1;
       } catch (e: any) {

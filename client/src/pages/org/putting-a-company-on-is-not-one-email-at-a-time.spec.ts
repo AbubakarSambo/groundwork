@@ -62,6 +62,12 @@ describe('where each person got to', () => {
     expect(statusWord(m({ state: 'signed in', checkInsOn: 5, checkInsAnswered: 0 }))).toBe('Not answered yet')
     expect(statusWord(m({ state: 'checked in', checkInsOn: 2, checkInsAnswered: 1 }))).toBe('Checking in')
     expect(statusWord(m({ awaitingOrgApproval: true }))).toBe('Waiting to be let in')
+    /* U.4 re-review: a guest added with no seat for them, as the prototype's row reads. */
+    expect(statusWord(m({ role: 'GUEST', heldForASeat: true, state: 'signed in', checkInsOn: 1, checkInsNotOpened: 1 }))).toBe('No seat on your plan')
+    expect(statusWord(m({ role: 'GUEST', heldForASeat: false, state: 'signed in', checkInsOn: 1, checkInsNotOpened: 1 }))).toBe('Invited, not opened')
+    /* U.4 review: added by name, invitation not opened yet. It read "Signed in, not on a check-in". */
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 1, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Invited, not opened')
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 2, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Not answered yet')
   })
 })
 

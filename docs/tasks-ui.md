@@ -27,7 +27,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 
 - [x] **U.1** A1 Look and layout: the colours, type, buttons, tags, the four marks, the sidebar, the phone layout, "Jump to" search, pinning, the short tour, help *(Done. No tour, as Hafsah decided: a new organisation's Today page has the welcome card and checklist instead, built in U.3 and U.5. The links to Today, Company, You and Suites come with those pages.)*
 - [x] **U.2** A2 Accounts and signing in *(Done, with every sign-in decision Hafsah made on 26 September.)*
-- [ ] **U.3** A3 Organisations and joining *(Built and tested on 27 September. Not ticked: the review could not sign in; see Needs Hafsah, item 14, in docs/morning-report-ui.md.)* (including joining by email domain, and your own web address and logo)
+- [x] **U.3** A3 Organisations and joining (including joining by email domain, and your own web address and logo) *(Passed its review on 27 September, on the third round. Your own web address comes later, as Hafsah decided.)*
 - [ ] **U.4** A4 People, roles and access *(Built and tested on 27 September, apart from the parts waiting for Hafsah (item 15). Not ticked: the review could not sign in; see item 14.)* (levels, reporting lines, access to each check-in, "Check-ins wait for an admin", requests to an admin)
 - [ ] **U.5** C1 Today and the check-ins list *(Built and tested on 27 September. Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.6** B1 Starting a check-in *(Built and tested on 27 September, except the lead's first check-in card, which waits for Hafsah (item 17). Not ticked: the review could not sign in; see item 14.)* (the screens; the 8 new situations' conversation instructions belong to the engine workspace, so request them)
@@ -43,7 +43,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [ ] **U.16** D3 Links between check-ins, and each person's load *(Built and tested on 27 September, apart from the engine's parts (request 18) and what waits for Hafsah (item 27). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.17** E The Suites page, then each suite, one at a time: onboarding, leave (with a stand-in), time sheets, reviews, when someone leaves, role map, spending and budgets, to-dos, customers and deals, equipment *(The Suites page and all ten suites built and tested on 27 September, apart from the engine's parts (requests 20 to 29) and what waits for Hafsah (item 28). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.18** F1 Connections and channels *(Built and tested on 27 September, apart from what waits for Hafsah (item 29). Not ticked: the review could not sign in; see item 14.)*
-- [ ] **U.19** F2 Billing (keep Stripe exactly as it is; take plans and prices from the database)
+- [ ] **U.19** F2 Billing (keep Stripe exactly as it is; take plans and prices from the database) *(Built and tested on 27 September, apart from what waits for Hafsah (item 30). Not ticked until its review.)*
 - [ ] **U.20** F4 Small states and errors
 - [ ] **U.21** F5 Groundwork staff
 

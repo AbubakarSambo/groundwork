@@ -1,5 +1,6 @@
 import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { aPathInThisApp } from '../../common/a-path-in-this-app';
 
 /**
  * THE WAY BACK FROM GOOGLE, WHICH MUST ALWAYS LAND ON A PAGE. U.2.
@@ -26,5 +27,20 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
       return null as TUser;
     }
     return user as TUser;
+  }
+}
+
+/**
+ * THE TRIP TO GOOGLE CARRIES WHERE THEY WERE GOING (U.3 review). "Sign up with Google" on the sign-up
+ * reached from an invite link sends `?next=/j/<code>`. It rides to Google and back as OAuth's `state`,
+ * which Google returns untouched, and the callback checks it again. Only a path inside this app is
+ * ever sent; anything else is dropped.
+ */
+@Injectable()
+export class GoogleStartGuard extends AuthGuard('google') {
+  getAuthenticateOptions(context: ExecutionContext) {
+    const req = context.switchToHttp().getRequest();
+    const next = aPathInThisApp(req?.query?.next);
+    return next ? { state: next } : {};
   }
 }

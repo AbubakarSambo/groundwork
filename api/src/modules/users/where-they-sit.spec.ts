@@ -141,11 +141,26 @@ describe('the People list', () => {
     expect(ouma.data.find((p: any) => p.id === 'peter')!.role).toBe('ADMIN');
   });
 
+  it('somebody added by name who has not opened the invitation is on that check-in, not on none', async () => {
+    const { service } = aList();
+    (service as any).prisma.groundParticipant.findMany = jest.fn(async () => [
+      /* Added by name: the row has no account yet, only the address the invitation went to. */
+      { userId: null, email: 'Peter@Ouma-Agencies.co.ke', createdAt: new Date('2026-09-22'), partyType: 'PARTICIPANT', ground: { id: 'g1', label: 'Sales team, Q3' }, checkIns: [] },
+    ]);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.find((p: any) => p.id === 'peter')).toMatchObject({
+      checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }], checkInsOn: 1, checkInsAnswered: 0, checkInsNotOpened: 1,
+    });
+  });
+
   it('counts and names only this organisation\'s check-ins, and says where each person sits', async () => {
     const { service, asked } = aList();
     const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
     /* Another company's check-ins are never counted here: each person's load is private. */
-    expect(asked[0]).toEqual({ userId: { in: ['miriam', 'peter'] }, ground: { organizationId: 'baridi' } });
+    expect(asked[0]).toEqual({
+      ground: { organizationId: 'baridi' },
+      OR: [{ userId: { in: ['miriam', 'peter'] } }, { userId: null, email: { in: ['miriam@baridi.co.ke', 'peter@ouma-agencies.co.ke'] } }],
+    });
     expect(data.find((p: any) => p.id === 'miriam')).toMatchObject({
       level: 'Sales rep', team: 'Sales', reportsTo: { id: 'wairimu', name: 'Wairimu Kamau' },
       checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }],
