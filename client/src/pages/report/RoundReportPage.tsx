@@ -19,18 +19,15 @@ export default function RoundReportPage() {
         onClick={() => navigate(`/grounds/${id}?tab=report`)}
         style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
       >
-        &larr; All sessions
+        &larr; Every session
       </button>
       {/*
-        NO GREY TEXT ON A GREY GROUND. This sat on the page background - 12px of #6B6560 on
-        #EDECEA - which is the thing the marketing page is praised for not doing. The report's own
-        title is inside the card below and says what this is for; this line is the one sentence
-        about the page, so it takes the body colour rather than the muted one.
+        U.9: "What everyone said, for this session. It never quotes anyone." is gone. Its second
+        half is not true: what people say about their own work can be shown word for word to the
+        people in the check-in (docs/decisions.md, rule 4). The report below says how many people
+        checked in, as the prototype's session page does.
       */}
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>Session {n}</div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginBottom: 18 }}>
-        What everyone said, for this session. It never quotes anyone.
-      </div>
+      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Session {n}</div>
       {!!id && Number.isFinite(n) && <TheSessionsReport groundId={id} sessionNumber={n} />}
     </div>
   )

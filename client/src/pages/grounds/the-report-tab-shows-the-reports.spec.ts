@@ -70,7 +70,8 @@ describe('the report tab is a list of sessions', () => {
   })
 
   it('the forming picture is still shown, on the session it is forming for', () => {
-    expect(SESSION_VIEW).toContain('still forming')
+    /* U.9: the masthead says "Session 3. 2 of 4 people checked in." in place of "still forming · 2 of 4 answered". */
+    expect(SESSION_VIEW).toContain('checked in.`')
     expect(SESSION_VIEW).toContain('Where things stand')
   })
 

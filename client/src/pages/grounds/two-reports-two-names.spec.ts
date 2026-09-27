@@ -35,7 +35,8 @@ describe('two reports do not share one name', () => {
     const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
     /* This distinguished somebody who had answered from somebody who had also pressed the reveal.
        The reveal is gone, so there is one state left and it is whether they answered. */
-    expect(VIEW).toContain("c.answered ? 'Answered' : 'Not answered yet'")
+    /* U.9: the same single state, as a sentence ("Omar has not checked in yet."). */
+    expect(VIEW).toContain("c.answered ? `${c.who} has checked in.` : `${c.who} has not checked in yet.`")
     expect(VIEW).not.toContain('shown theirs')
     /* The wording that named neither. */
     expect(CODE).not.toMatch(/Report reveal status \{/)

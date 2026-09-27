@@ -185,6 +185,27 @@ function Row({ n, label, note, children, style }: {
  * on. Each is long, each is the part nobody needs twice, and each is still every word it was - a
  * fold is not a deletion, and the summary line says how much is behind it.
  */
+/**
+ * THE MASTHEAD AND WHO IS COUNTED, AS SENTENCES (U.9, one-session.txt).
+ *
+ * The masthead read "4 PEOPLE · CHECK-IN 3 OF 12 · STILL FORMING · 2 OF 4 ANSWERED", in capitals
+ * and joined by dots, and each person read "Miriam (you) · Answered". The prototype says "Session
+ * 37. 6 of 6 people checked in." and, once it is out, "Shared with the team". Each person is now a
+ * sentence: "You have checked in.", "Aisha has checked in.", "Omar has not checked in yet."
+ */
+export const SHARED_WITH_THE_TEAM = 'Shared with the team.'
+
+export function sessionAndWhoCheckedIn(n: number, planned: number | null, answered: number, of: number): string {
+  const session = planned ? `Session ${n} of ${planned}.` : `Session ${n}.`
+  if (!of) return session
+  return `${session} ${answered} of ${of} ${of === 1 ? 'person' : 'people'} checked in.`
+}
+
+export function hasCheckedIn(c: { who: string; isYou: boolean; answered: boolean }): string {
+  if (c.isYou) return c.answered ? 'You have checked in.' : 'You have not checked in yet.'
+  return c.answered ? `${c.who} has checked in.` : `${c.who} has not checked in yet.`
+}
+
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
   const [byPerson, setByPerson] = useState(false)
   const { data, isLoading, isError } = useQuery({
@@ -257,13 +278,12 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.3 }}>
           {d.againstSuccess?.stated?.trim() || `Session ${d.sessionNumber}`}
         </div>
-        <div style={{ marginTop: 4, fontFamily: MONO, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
-          {[
-            ofPeople ? `${ofPeople} ${ofPeople === 1 ? 'person' : 'people'}` : '',
-            `check-in ${d.sessionNumber}${d.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
-            final ? 'closed' : answered >= ofPeople && ofPeople > 0 ? 'everyone answered' : `still forming · ${answered} of ${ofPeople} answered`,
-          ].filter(Boolean).join(' · ')}
+        <div style={{ marginTop: 4, fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+          {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
         </div>
+        {final && (
+          <div style={{ marginTop: 2, fontSize: 13.5, color: 'var(--gw-sub)' }}>{SHARED_WITH_THE_TEAM}</div>
+        )}
       </div>
 
       {/*
@@ -277,9 +297,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {(d.counting ?? []).length > 0 && (
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--gw-border)', display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
           {d.counting.map((c: any, i: number) => (
-            <span key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
-              <b style={{ fontWeight: 700 }}>{c.isYou ? `${c.who} (you)` : c.who}</b>
-              <span style={{ color: 'var(--gw-sub)' }}> · {c.answered ? 'Answered' : 'Not answered yet'}</span>
+            <span key={i} style={{ fontSize: 13, color: c.answered ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
+              {hasCheckedIn(c)}
             </span>
           ))}
         </div>

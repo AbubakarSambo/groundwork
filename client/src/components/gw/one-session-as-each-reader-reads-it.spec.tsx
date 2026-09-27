@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+
+vi.mock('@/api/reports', () => ({ reportsApi: { sessionReport: vi.fn() } }))
+import { reportsApi } from '@/api/reports'
+import { TheSessionsReport, sessionAndWhoCheckedIn, hasCheckedIn } from './TheSessionsReport'
+
+/**
+ * U.9: ONE SESSION'S REPORT, AS THE LEAD AND AS A PARTICIPANT READ ITS TOP.
+ *
+ * The prototype (docs/prototype/screens/B4-reports-and-sharing/one-session.txt) opens with
+ * "Session 37. 6 of 6 people checked in." and, once the report is out, "Shared with the team".
+ * The server sends each reader their own `counting`, with `isYou` on their own row and names
+ * resolved through the wrapper, so the same component is rendered with what each reader receives.
+ */
+function aSession(over: Record<string, unknown>) {
+  return {
+    sessionNumber: 37, plannedSessions: 65, state: 'final', sections: [], whereThingsStand: { settled: [], open: [] },
+    counting: [], showsEverybody: true, takenAt: '2026-09-22T18:00:00.000Z', amendedAt: null, ...over,
+  }
+}
+
+function renderIt() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter><TheSessionsReport groundId="g1" sessionNumber={37} /></MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('one session, as each reader reads its top', () => {
+  beforeEach(() => vi.mocked(reportsApi.sessionReport).mockReset())
+
+  it('the lead, who did not check in, reads the count and each person as a sentence', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({
+      counting: [
+        { who: 'Aisha', isYou: false, answered: true },
+        { who: 'Miriam', isYou: false, answered: true },
+        { who: 'Omar', isYou: false, answered: false },
+      ],
+    }) as any)
+    renderIt()
+    expect(await screen.findByText('Session 37 of 65. 2 of 3 people checked in.')).toBeTruthy()
+    expect(screen.getByText('Shared with the team.')).toBeTruthy()
+    expect(screen.getByText('Aisha has checked in.')).toBeTruthy()
+    expect(screen.getByText('Omar has not checked in yet.')).toBeTruthy()
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/ · |STILL FORMING|Not answered yet|Participant [A-Z]|the initiator/)
+  })
+
+  it('a participant reads their own row as "you", and nothing says it is shared while it is not', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({
+      state: 'forming',
+      counting: [
+        { who: 'Miriam', isYou: true, answered: true },
+        { who: 'a colleague', isYou: false, answered: false },
+      ],
+    }) as any)
+    renderIt()
+    expect(await screen.findByText('Session 37 of 65. 1 of 2 people checked in.')).toBeTruthy()
+    expect(screen.getByText('You have checked in.')).toBeTruthy()
+    expect(screen.getByText('a colleague has not checked in yet.')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('Shared with the team.')
+    expect(document.body.textContent).not.toContain('(you)')
+  })
+
+  it('says one person, and leaves out the count when nobody is counted', () => {
+    expect(sessionAndWhoCheckedIn(2, null, 1, 1)).toBe('Session 2. 1 of 1 person checked in.')
+    expect(sessionAndWhoCheckedIn(2, null, 0, 0)).toBe('Session 2.')
+    expect(hasCheckedIn({ who: 'Brian', isYou: true, answered: false })).toBe('You have not checked in yet.')
+  })
+})
