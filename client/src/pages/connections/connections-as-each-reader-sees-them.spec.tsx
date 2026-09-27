@@ -63,7 +63,6 @@ function open(user: any, page: 'connections' | 'whatsapp' = 'connections') {
     </QueryClientProvider>,
   )
 }
-const region = (name: string) => screen.getByRole('region', { name })
 const hrefOf = (el: HTMLElement, name: string) => within(el).getByRole('link', { name }).getAttribute('href')
 
 beforeEach(() => { vi.clearAllMocks(); whatsappOn = true })
