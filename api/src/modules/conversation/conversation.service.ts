@@ -8645,8 +8645,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       { summary: result.summary, whatToCarry: result.whatToCarry ?? '' },
       theLinesAQuoteMayComeFrom(entries),
     );
-    if (theirs.unquoted.length) {
-      this.logger.warn(`Private record summary for participant ${participantId}: ${theirs.unquoted.length} quote(s) were not in their record word for word, so they are no longer quotes.`);
+    if (theirs.unquoted.length || theirs.dropped.length) {
+      this.logger.warn(`Private record summary for participant ${participantId}: ${theirs.unquoted.length} quote(s) were not in their record word for word, so they are no longer quotes, and ${theirs.dropped.length} sentence(s) that could not stand without them were taken out.`);
     }
 
     await this.prisma.groundParticipant.update({

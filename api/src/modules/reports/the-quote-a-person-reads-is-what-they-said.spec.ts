@@ -206,12 +206,14 @@ describe('the quote a person reads is what they said', () => {
     expect(corpora.join('\n')).not.toMatch(/requested by Nadia/);
   });
 
-  it('what is stored quotes her as she said it, and a misquote is stored as no quote', () => {
+  it('what is stored quotes her as she said it, and a misquote in her mouth is not stored at all', () => {
     expect(stored.findings.find((f: any) => f.participantId === 'pid-2').text).toContain(
       `"Since March 11th, I've been almost entirely focused on inbound sales support as requested by Nadia"`,
     );
     const zainabsSide = stored.divergences[0].positions.find((p: any) => p.participantLabel === ZAINABS_LABEL).view;
-    expect(zainabsSide).toBe(`${ZAINABS_LABEL} says I have mostly been doing sales support at the initiator's request.`);
+    /* "Participant A says I have mostly been doing sales support at the initiator's request" would be
+       served to Nadia as Zainab saying "your". The sentence goes instead. */
+    expect(zainabsSide).toBe('');
   });
 
   for (const who of ['lead', 'zainab', 'anonymous'] as const) {
@@ -257,7 +259,8 @@ describe('the quote a person reads is what they said', () => {
     const all = everyString(served.anonymous).join('\n');
     expect(all).not.toMatch(/Nadia|Haddad/);
     const finding = served.anonymous.findings.find((f: any) => f.participantId === 'pid-2').text;
-    expect(finding).toContain('as requested by somebody in this check-in');
-    expect(finding).not.toMatch(/"[^"]*somebody in this check-in[^"]*"/);
+    /* "In your words, Since March 11th, ... as requested by somebody in this check-in." announced her
+       words and then gave words that are no longer hers, so that sentence is not in the copy. */
+    expect(finding).toBe("You have been on inbound sales support since March, at somebody in this check-in's request.");
   });
 });

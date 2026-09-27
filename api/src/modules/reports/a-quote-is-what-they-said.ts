@@ -208,37 +208,144 @@ export interface WhatTheQuotesBecame {
   text: string;
   /** Quotes whose words are now the record's, whether or not they differed. */
   restored: number;
-  /** Quotes that were not in the record and so are no longer quotes. */
+  /** Quotes that were not in the record and read correctly without their marks, so they stay unquoted. */
   unquoted: string[];
+  /** Sentences taken out, because they carried a quote that was not theirs and could not stand without it. */
+  dropped: string[];
+}
+
+/*
+ * WORDS THAT ONLY MAKE SENSE IN THE SPEAKER'S MOUTH. Without its marks, "I have mostly been doing
+ * sales support" becomes the report saying "I", and "at your request" becomes the report talking to
+ * whoever reads it. "I" and "us" are matched with their capitals, so "US" the country is not one.
+ */
+const I_OR_US = /\bI\b|\bus\b/;
+const THE_REST = /\b(?:me|my|mine|myself|we|our|ours|ourselves|you|your|yours|yourself|yourselves)\b/i;
+
+/*
+ * A SENTENCE THAT ANNOUNCES SOMEBODY'S WORDS. "In Zainab's words, ..." or "she put it this way: ..."
+ * is a promise about what follows, and the words that follow without their marks break it.
+ */
+const ANNOUNCES_THEIR_WORDS = /(?:\bin\s+(?:[\p{L}'’.-]+\s+){0,3}words\b|\bput it\b|\bin (?:his|her|their|your|my) own words\b)[^.!?]*$|:\s*$/iu;
+
+/** Where the sentence holding position `at` begins. */
+function sentenceStart(text: string, at: number): number {
+  const before = text.slice(0, at);
+  let from = 0;
+  for (const m of before.matchAll(/[.!?]["”’)\]]*\s+|\n+/g)) from = m.index! + m[0].length;
+  return from;
 }
 
 /**
- * Every quotation in one piece of text, made the record's words or made not a quotation.
- *
- * `record` is every line the report may read, plus the lead's own set-up words; `people` is each
- * person's label beside their name, so a label inside a quote can be found as the name.
+ * Whether the words of a quote that was not theirs still read correctly with the marks off: as a
+ * plain statement the report can make about the person. Not when they are in the speaker's mouth
+ * (I, my, we, you), and not when the sentence has just announced that these are somebody's words.
  */
-export function whatTheySaidInQuotes(text: string, record: string[], people: ALabelAndAName[] = []): WhatTheQuotesBecame {
+export function readsAsAPlainStatement(text: string, q: AQuotation, words: string = q.inner): boolean {
+  if (I_OR_US.test(words) || THE_REST.test(words)) return false;
+  const lead = text.slice(sentenceStart(text, q.start), q.start);
+  return !ANNOUNCES_THEIR_WORDS.test(lead);
+}
+
+const DROP = '\uE010';
+
+/** Every sentence holding the marker, taken out; what is left joined up as it was. */
+function withoutTheSentencesMarked(text: string, dropped: string[]): string {
+  const pieces: string[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/[.!?]["”’)\]]*(?:\s+|$)|\n+/g)) {
+    pieces.push(text.slice(at, m.index! + m[0].length));
+    at = m.index! + m[0].length;
+  }
+  if (at < text.length) pieces.push(text.slice(at));
+  const kept = pieces.filter((p) => {
+    if (!p.includes(DROP)) return true;
+    dropped.push(p.trim());
+    return false;
+  });
+  /* A paragraph break that belonged to a dropped sentence is not left doubled, and the text does not
+     gain a space at either end that it did not have. */
+  let out = kept.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  if (!/^\s/.test(text)) out = out.replace(/^\s+/, '');
+  if (!/\s$/.test(text)) out = out.replace(/\s+$/, '');
+  return out;
+}
+
+/**
+ * EACH QUOTE DECIDED: KEPT (IN WHATEVER WORDS ARE GIVEN), UNQUOTED, OR ITS SENTENCE DROPPED.
+ *
+ * One place for the three outcomes so the report pass and the anonymous copy cannot come to
+ * different answers about the same sentence. A dropped sentence goes whole; everything else in the
+ * text is exactly as it was.
+ */
+export function eachQuoteDecided(
+  text: string,
+  decide: (q: AQuotation) => { keep: string } | 'unquote' | 'drop',
+): { text: string; kept: number; unquoted: string[]; dropped: string[] } {
   const found = quotationsIn(text);
-  if (!found.length) return { text, restored: 0, unquoted: [] };
+  if (!found.length) return { text, kept: 0, unquoted: [], dropped: [] };
   let out = '';
   let at = 0;
-  let restored = 0;
+  let kept = 0;
+  const droppedQuotes: AQuotation[] = [];
   const unquoted: string[] = [];
   for (const q of found) {
     out += text.slice(at, q.start);
-    const theirs = theRecordsWordsFor(q.inner, record, people);
-    if (theirs !== null) {
-      out += `${q.open}${theirs}${q.close}`;
-      restored += 1;
-    } else {
+    const d = decide(q);
+    if (d === 'drop') {
+      /* The marker stays inside the marks, so the sentence around it is still found whole. */
+      out += `${q.open}${DROP}${q.close}`;
+      droppedQuotes.push(q);
+    } else if (d === 'unquote') {
       out += q.inner;
       unquoted.push(q.inner);
+    } else {
+      out += `${q.open}${d.keep}${q.close}`;
+      kept += 1;
     }
     at = q.end;
   }
   out += text.slice(at);
-  return { text: out, restored, unquoted };
+  let dropped: string[] = [];
+  if (droppedQuotes.length) {
+    /* Periods inside the quotes that stay must not end a sentence, so they are held aside first. */
+    const raw: string[] = [];
+    const held: string[] = [];
+    out = theQuotesKeptExcept(out, (outside) => withoutTheSentencesMarked(outside, raw), held);
+    /* For the log: each dropped sentence as it was written, with its quotes back in it. */
+    let n = 0;
+    dropped = raw.map((sentence) => sentence
+      .replace(HELD, (_m, i) => held[Number(i)] ?? '')
+      .replace(new RegExp(DROP, 'g'), () => { const q = droppedQuotes[n++]; return q ? `${q.open}${q.inner}${q.close}` : ''; }));
+  }
+  return { text: out, kept, unquoted, dropped };
+}
+
+/* Like theQuotesKept, but a quote holding the drop marker is left in place so its sentence can be found. */
+function theQuotesKeptExcept(text: string, rewrite: (s: string) => string, held: string[] = []): string {
+  const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string) => {
+    const inner = a ?? b ?? '';
+    if (!inner.trim() || inner === DROP) return inner === DROP ? DROP : m;
+    held.push(inner);
+    return `${m[0]}\uE000${held.length - 1}\uE001${m[m.length - 1]}`;
+  });
+  return rewrite(masked).replace(HELD, (_m, i) => held[Number(i)] ?? '');
+}
+
+/**
+ * Every quotation in one piece of text, made the record's words, made not a quotation, or - where
+ * the words could not stand as the report's own - taken out with the sentence that carried it.
+ *
+ * `record` is every line the report may quote, plus the lead's own set-up words; `people` is each
+ * person's label beside their name, so a label inside a quote can be found as the name.
+ */
+export function whatTheySaidInQuotes(text: string, record: string[], people: ALabelAndAName[] = []): WhatTheQuotesBecame {
+  const r = eachQuoteDecided(text, (q) => {
+    const theirs = theRecordsWordsFor(q.inner, record, people);
+    if (theirs !== null) return { keep: theirs };
+    return readsAsAPlainStatement(text, q) ? 'unquote' : 'drop';
+  });
+  return { text: r.text, restored: r.kept, unquoted: r.unquoted, dropped: r.dropped };
 }
 
 /*
@@ -255,9 +362,10 @@ export function everyQuoteFromTheRecord<T>(
   value: T,
   record: string[],
   people: ALabelAndAName[] = [],
-): { value: T; restored: number; unquoted: string[] } {
+): { value: T; restored: number; unquoted: string[]; dropped: string[] } {
   let restored = 0;
   const unquoted: string[] = [];
+  const dropped: string[] = [];
   /* A label with a quotation mark in it is held aside in the prose too, so no quote is found inside it. */
   const quotedLabels = people.map((p) => (p.label ?? '').trim()).filter((l) => /["“”]/.test(l)).sort((a, b) => b.length - a.length);
   const one = (s: string): string => {
@@ -269,11 +377,13 @@ export function everyQuoteFromTheRecord<T>(
     const r = whatTheySaidInQuotes(masked, record, people);
     restored += r.restored;
     unquoted.push(...r.unquoted);
+    dropped.push(...r.dropped);
     return r.text.replace(/(\d+)/g, (_m, i) => held[Number(i)]);
   };
   const walk = (v: any): any => {
     if (typeof v === 'string') return one(v);
-    if (Array.isArray(v)) return v.map(walk);
+    /* A line of a list whose only sentence was dropped is not left as an empty line. */
+    if (Array.isArray(v)) return v.map((x) => [x, walk(x)]).filter(([x, y]) => !(typeof x === 'string' && x.trim() && y === '')).map(([, y]) => y);
     if (v && typeof v === 'object' && !(v instanceof Date)) {
       const out: Record<string, any> = {};
       for (const [k, val] of Object.entries(v)) out[k] = NOT_PROSE.test(k) ? val : walk(val);
@@ -281,7 +391,7 @@ export function everyQuoteFromTheRecord<T>(
     }
     return v;
   };
-  return { value: walk(value) as T, restored, unquoted };
+  return { value: walk(value) as T, restored, unquoted, dropped };
 }
 
 /* The record reader's note of what a word referred to. It is the reader's, never the person's. */

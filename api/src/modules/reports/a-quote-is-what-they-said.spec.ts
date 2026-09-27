@@ -48,10 +48,37 @@ describe('a quote is what they said, restored before the report is stored', () =
     expect(r.text).toBe('Participant A says she has been "focused on inbound sales support as requested by Nadia".');
   });
 
-  it('a quote with a word changed is not a quote any more, and the sentence around it stays', () => {
-    const r = whatTheySaidInQuotes('She said "I have been mostly focused on inbound sales" and the lead agreed.', RECORD);
-    expect(r.text).toBe('She said I have been mostly focused on inbound sales and the lead agreed.');
-    expect(r.unquoted).toEqual(['I have been mostly focused on inbound sales']);
+  it('a quote that is not theirs, and reads correctly as a plain statement, loses its marks and the sentence stays', () => {
+    const r = whatTheySaidInQuotes('The lead called it "a short delay in the rollout" last week.', RECORD);
+    expect(r.text).toBe('The lead called it a short delay in the rollout last week.');
+    expect(r.unquoted).toEqual(['a short delay in the rollout']);
+    expect(r.dropped).toEqual([]);
+  });
+
+  it('a quote that is not theirs and is in the speaker\'s mouth takes its whole sentence with it', () => {
+    /* Unquoted, this read "Zainab says I have mostly been doing sales support at your request": the
+       report saying "I", and Zainab saying "your". */
+    const r = whatTheySaidInQuotes('Zainab has moved to sales. She says "I have mostly been doing sales support at the initiator\'s request". The partnerships have not moved.', RECORD);
+    expect(r.text).toBe('Zainab has moved to sales. The partnerships have not moved.');
+    expect(r.dropped).toEqual(['She says "I have mostly been doing sales support at the initiator\'s request".']);
+    expect(r.unquoted).toEqual([]);
+    for (const mouth of ['we will ship it', 'my manager asked', 'you asked for it', 'nobody told us']) {
+      expect(whatTheySaidInQuotes(`First. He said "${mouth} on Friday". Last.`, RECORD).text).toBe('First. Last.');
+    }
+  });
+
+  it('a sentence that announces their words is taken out when the words are not theirs', () => {
+    expect(whatTheySaidInQuotes('It stalled. In Zainab\'s words, "the partnerships are fully paused". Nothing else.', RECORD).text).toBe('It stalled. Nothing else.');
+    expect(whatTheySaidInQuotes('It stalled. She put it plainly: "the partnerships are fully paused".', RECORD).text).toBe('It stalled.');
+  });
+
+  it('a list line whose only sentence goes is taken out of the list, not left empty', () => {
+    const r = everyQuoteFromTheRecord({ evidence: ['"I never said this"', 'The handover was late.'] }, RECORD);
+    expect(r.value).toEqual({ evidence: ['The handover was late.'] });
+  });
+
+  it('a "US" in capitals is the country, not the speaker', () => {
+    expect(whatTheySaidInQuotes('They sell to "the US market" now.', RECORD).text).toBe('They sell to the US market now.');
   });
 
   it('a quote joined with an ellipsis is two passages, not one, and is not a quote', () => {
@@ -105,13 +132,13 @@ describe('a quote is what they said, restored before the report is stored', () =
 
   it('after the pass, every quote in it is word for word in the record', () => {
     const r = everyQuoteFromTheRecord(
-      { a: 'She said "as requested by the initiator" and "we are nearly there".', b: ['“The handover — it was late”'] },
+      { a: 'She said "as requested by the initiator". She added "we are nearly there".', b: ['“The handover — it was late”'] },
       RECORD,
       PEOPLE,
     );
     const all = [r.value.a, ...r.value.b];
     expect(all.flatMap((t) => quotesNotWordForWord(t, RECORD))).toEqual([]);
-    expect(r.value.a).toBe('She said "as requested by Nadia" and we are nearly there.');
+    expect(r.value.a).toBe('She said "as requested by Nadia".');
   });
 });
 
@@ -143,12 +170,18 @@ describe('and nothing touches the inside of a quote on the way out', () => {
   });
 
   it('an anonymous copy takes the name out of a quote and takes the quotation marks off with it', () => {
-    const out = withoutWhoSaidIt('Zainab Suleiman said "as requested by Nadia" and "we are nearly there".', [
+    const out = withoutWhoSaidIt('Zainab Suleiman was moved "at the request of Nadia" and said "we are nearly there".', [
       { name: 'Nadia Haddad' },
       { name: 'Zainab Suleiman' },
     ]);
-    expect(out).toBe('somebody in this check-in said as requested by somebody in this check-in and "we are nearly there".');
+    expect(out).toBe('somebody in this check-in was moved at the request of somebody in this check-in and said "we are nearly there".');
     expect(out).not.toContain('Nadia');
+  });
+
+  it('and where the words it had to change are in the speaker\'s mouth, or were announced as theirs, the sentence goes', () => {
+    const who = [{ name: 'Nadia Haddad' }, { name: 'Zainab Suleiman' }];
+    expect(withoutWhoSaidIt('You moved to sales. In your words, "I did it because Nadia asked". It stalled.', who)).toBe('You moved to sales. It stalled.');
+    expect(withoutWhoSaidIt('You moved to sales. In your words, "as requested by Nadia". It stalled.', who)).toBe('You moved to sales. It stalled.');
   });
 
   it('theQuotesKept puts back exactly what it held', () => {

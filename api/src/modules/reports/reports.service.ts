@@ -2275,11 +2275,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
     {
       let restoredHere = 0;
       const unquotedHere: string[] = [];
+      const droppedHere: string[] = [];
       const fromTheRecord = <V,>(v: V): V => {
         if (v === null || v === undefined) return v;
         const r = everyQuoteFromTheRecord(v, whatAQuoteMayBe, namesInThisCheckIn);
         restoredHere += r.restored;
         unquotedHere.push(...r.unquoted);
+        droppedHere.push(...r.dropped);
         return r.value;
       };
       (result as any).sharedPicture = fromTheRecord((result as any).sharedPicture);
@@ -2297,6 +2299,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
       if (unquotedHere.length) {
         this.logger.warn(
           `Report for ground ${groundId}: ${unquotedHere.length} quote(s) were not in the record word for word, so they are no longer quotes (${restoredHere} kept, in the record's own words). First: "${unquotedHere[0].slice(0, 120)}"`,
+        );
+      }
+      if (droppedHere.length) {
+        this.logger.warn(
+          `Report for ground ${groundId}: ${droppedHere.length} sentence(s) taken out, because each quoted words that were not in the record and could not stand without the marks. First: "${droppedHere[0].slice(0, 160)}"`,
         );
       }
     }
@@ -5330,7 +5337,7 @@ happened, and what is in the way.`;
       theLinesAQuoteMayComeFrom(said, [(ground as any).brief, ...ground.participants.flatMap((p: any) => [p.remitAsGiven, p.roleAsDescribed])]),
       ground.participants.map((p: any) => ({ label: labels.get(p.id) ?? '', name: displayName({ ...p, organisationGiven: null }, false) })),
     );
-    if (kept.unquoted.length) this.logger.warn(`The direction for ${groundId}: ${kept.unquoted.length} quote(s) were not in the record word for word, so they are no longer quotes.`);
+    if (kept.unquoted.length || kept.dropped.length) this.logger.warn(`The direction for ${groundId}: ${kept.unquoted.length} quote(s) were not in the record word for word, so they are no longer quotes, and ${kept.dropped.length} sentence(s) that could not stand without them were taken out.`);
     const direction = kept.value;
     await this.prisma.report.update({ where: { groundId }, data: { direction: direction as any } }).catch((err: any) =>
       this.logger.warn(`The direction for ${groundId} was read but could not be kept: ${err?.message}`));

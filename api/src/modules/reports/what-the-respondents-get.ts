@@ -29,7 +29,7 @@
  * sold a guarantee the product cannot keep.
  */
 
-import { QUOTATION } from './a-quote-is-what-they-said';
+import { eachQuoteDecided, readsAsAPlainStatement, theQuotesKept } from './a-quote-is-what-they-said';
 
 export type HowItWasShared = 'NAMED' | 'ANONYMOUS';
 
@@ -97,18 +97,17 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
    * A QUOTE THAT HAS TO LOSE A NAME IS NO LONGER A QUOTE. What is between quotation marks is a
    * person's own words, word for word (see a-quote-is-what-they-said). "as requested by somebody in
    * this check-in" is not what anybody said, so it must not sit between the marks as though it were.
-   * The name still comes out - that is the whole promise of an anonymous copy - and the marks come
-   * off with it. A quote with nobody in it keeps its marks and its words.
+   * The name still comes out - that is the whole promise of an anonymous copy. Where the words read
+   * correctly as a plain statement, the marks come off; where they do not ("I", "we", "you", or a
+   * sentence that has just said "in your words"), the sentence goes, the same rule as the report's.
+   * A quote with nobody in it keeps its marks and its words.
    */
-  const quotesFirst: string[] = [];
-  const held = text.replace(new RegExp(QUOTATION.source, 'gu'), (m: string, a?: string, b?: string) => {
-    const inner = a ?? b ?? '';
-    const without = scrub(inner);
-    if (without !== inner) return without;
-    quotesFirst.push(m);
-    return `\uE004${quotesFirst.length - 1}\uE005`;
+  const decided = eachQuoteDecided(text, (q) => {
+    const without = scrub(q.inner);
+    if (without === q.inner) return { keep: q.inner };
+    return readsAsAPlainStatement(text, q, without) ? 'unquote' : 'drop';
   });
-  return scrub(held).replace(/\uE004(\d+)\uE005/g, (_m, i) => quotesFirst[Number(i)]);
+  return theQuotesKept(decided.text, scrub);
 }
 
 /** The same, over every string in a report-shaped object, however deep. */
