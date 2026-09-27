@@ -108,3 +108,20 @@ describe('what Grace can change', () => {
     expect(screen.getByRole('radio', { name: /^Takes part/ })).toBeDisabled()
   })
 })
+
+describe('Across check-ins (D3, U.16): an admin reads only how many', () => {
+  it('Grace reads how many check-ins Miriam is in, and that what is asked of her is on her own page', async () => {
+    const { container } = open()
+    expect(await screen.findByRole('heading', { name: 'Across check-ins' })).toBeTruthy()
+    expect(screen.getByText('1 check-in. What’s asked of them is on their own You page.')).toBeTruthy()
+    const text = container.textContent ?? ''
+    /* Nothing lets anybody share their load yet, so the page does not promise it. */
+    expect(text).not.toContain('they choose who else sees it')
+    expect(text).not.toContain('Everything asked of')
+  })
+
+  it('says it with the right number for somebody in none', async () => {
+    open('wairimu')
+    expect(await screen.findByText('0 check-ins. What’s asked of them is on their own You page.')).toBeTruthy()
+  })
+})

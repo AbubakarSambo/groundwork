@@ -13,8 +13,11 @@ import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWo
  * Where they sit, their role here, their team, their status and seat, their WhatsApp number when
  * WhatsApp is on, their check-ins here, and what an admin can see.
  *
- * Left out, each for a reason in the morning report: "Across check-ins" (it says "they choose who
- * else sees it" of their You page, and nothing lets anybody share it yet: U.12, D3), "Region" (no such field), "Free this seat" and "Remove from Baridi" (today's removal
+ * "Across check-ins" (D3, U.16) says only how many check-ins they are in, which is all an admin
+ * reads of someone's load: what is asked of them is on their own You page, served to them alone. It
+ * stops before "they choose who else sees it", because nothing lets anybody share it yet.
+ *
+ * Left out, each for a reason in the morning report: "Region" (no such field), "Free this seat" and "Remove from Baridi" (today's removal
  * erases the whole account in every organisation, and cannot be undone), and the clause "and what
  * someone writes in their own check-in stays theirs", which decisions.md rule 5 contradicts.
  */
@@ -134,6 +137,11 @@ export function OnePersonPage() {
         <AChange label="Level" value={m.level ?? ''} empty="Not set" onSave={(v) => sit.mutate({ level: v })} />
         <AChange label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
         <p className="gw-people-note">{`This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}</p>
+      </section>
+
+      <section className="gw-people-sec" aria-labelledby="across-h">
+        <h2 id="across-h">Across check-ins</h2>
+        <p className="gw-people-note">{`${checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}. What’s asked of them is on their own You page.`}</p>
       </section>
 
       <section className="gw-people-sec" aria-labelledby="role-h">
