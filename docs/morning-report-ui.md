@@ -16,7 +16,7 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page
-and the onboarding board). Each up to U.16 passed the full screen and API suites; the few failures each
+the onboarding board and leave requests). Each up to U.16 passed the full screen and API suites; the few failures each
 run found came from that module and were fixed. The U.17 parts have passed their own tests, and their
 full run is still to do. The latest full run,
 after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
@@ -64,17 +64,18 @@ that one is yours to decide (item 27.4).
     read what another team asked of it? (both privacy questions)
 13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
-    nobody has shown them yet" is built from private questions (a privacy question).
+    nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
+    nobody can ask for leave yet, and no screen shows a person their own.
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** the onboarding board, the first suite (U.17). An admin reads each new
-person still being set up, with their to-do list and how far they are; a lead only the new people in
-their own team; the new person, a colleague and a guest are refused; and nobody while the suite is off.
-It is built only from what the product already keeps, and it is read-only. "Something nobody has shown
-them yet" and "Who helps set ... up" are left out (items 28.9 and 28.12). Before that: the Suites page
-itself, where an admin switches each suite on or off after its first questions (item 28.1).
+**Just finished, not ticked:** leave requests, the second suite (U.17). The lead who approves reads
+their team's requests waiting, each with the days left, who else in the team is off those days and
+who stands in, and approves or declines; an admin reads the whole organisation; each person is served
+only their own; a colleague and a guest are refused. Leave is kept in a new table and never reaches a
+check-in or its report. Nobody can ask for leave until the engine takes requests by talking
+(request 21; item 28.18). Before that: the onboarding board, and the Suites page itself.
 
-**Next:** U.17 goes on with suite 2, leave requests. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 3, time sheets. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1258,6 +1259,34 @@ reviewed" in this report.
 17. **Who is a lead's team, for this board:** a new person whose directory entry names the lead as
     their manager, or shares the lead's department. That is the product's own rule for what a lead may
     read (their department), with the manager added. **My recommendation:** keep it.
+18. **Nobody can ask for leave yet.** No prototype screen has a way to ask on a screen, because
+    "nobody fills in a form". Until the engine takes requests (request 21), the board fills only from
+    there. "How people ask", with its example chat, is left out: the chat is sample data, and it
+    would promise something that does not work yet. **My recommendation:** keep it out until the
+    engine can take a request.
+19. **Where does a person read their own leave?** The server gives each person their own requests
+    and days left, but no prototype screen shows them. **My recommendation:** a short part on their
+    own You page, or answered in chat when they ask.
+20. **Who approves.** When the organisation said "Their manager", it is the manager in the staff
+    directory, if that manager is a lead or an admin here. Otherwise an admin approves. A lead who is
+    in the same department but is not the manager reads the request and does not decide it.
+    **My recommendation:** keep it.
+21. **Days left are simple.** Monday to Friday counts; public holidays and part days are not known;
+    everybody has the same number of days a year; unused days do not carry over. "Who else is off"
+    counts only approved leave in the same department. **My recommendation:** keep it simple until an
+    organisation needs more.
+22. **Approve and Decline are one press each, with no undo,** as the prototype has them (audit E4).
+    Declining asks for no reason. **My recommendation:** keep one press, and add an undo for a few
+    seconds later.
+23. **Wording no screen shows, on the leave board:** "Nothing is waiting for approval.", "Nobody is
+    off in the next two weeks.", "… stands in.", the days left on every request (the prototype shows
+    them on Aisha's only), "The board did not load.", and the server's "The leave suite is not
+    switched on.", "Only the person who approves this request can decide it." and "This request has
+    already been decided." "Aisha Otieno: Thursday 1 and Friday 2 October" keeps the prototype's
+    colon, because it is the prototype's own line.
+24. **Only annual leave.** It is the only kind the prototype shows. Sick leave would need its own
+    privacy rules. **My recommendation:** decide those before adding any other kind.
+
 
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
@@ -2369,15 +2398,67 @@ while the suite is off) and `client/src/pages/suites/the-onboarding-board-as-eac
 changed.** Only the tests for the changed files, the tests that read whole folders, and both type
 checks were run. No screen could be checked signed in (item 14).
 
+#### Leave requests: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product kept no leave at all (`docs/backend-map.md`). There
+was nowhere to keep a request, its days, a stand-in or the decision, no rule for who reads or decides
+it, and no board at `#/suite/leave`. No screen shows a way to ask for leave: people ask by talking to
+Groundwork, which is the engine's part (request 21). So the board shows and decides, and nothing more.
+
+**New storage, on your computer only:** the table `leave_requests`, in the migration
+`20260927090000_leave_requests`: who is off, the first and last day, who stands in, and whether it was
+approved or declined, by whom and when. No reason is kept, because the prototype never asks for one.
+The days each person has come from the admin's answer when the suite was switched on ("How many days
+of leave does each person have in a year?"). Days left are that number, less the working days already
+approved that year. It has not been run against any database.
+
+**What each person now reads:**
+- **Wairimu, the Sales lead who approves for her team,** on the Suites page, "Open its board" on Leave
+  requests. On the board: "Suites / Leave requests", "Leave requests", "People ask for time off in
+  their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the
+  right approver." Then "Waiting for approval", with a row for each request from her team, such as
+  "Aisha Otieno: Thursday 1 and Friday 2 October" and "16 days left. Nobody else in Sales is off those
+  days.", or "Samuel Njoroge: Monday 5 October" and "Brian is also off that day, so Sales would be two
+  short.", each with "Approve" and "Decline". A stand-in is named as "Miriam Wanjiku stands in." Then
+  "Who’s off", "The next two weeks", with rows such as "Brian Mwangi", "Mon 5 Oct", "Annual leave".
+  With nothing to show: "Nothing is waiting for approval." and "Nobody is off in the next two weeks."
+- **Grace, an admin,** the same for the whole organisation. She approves only where the person has no
+  manager who can, or where the organisation said "An admin" approves.
+- **Kamau, a lead in the same department but not the person's manager,** reads the request with no
+  Approve or Decline.
+- **Aisha herself** is served her own requests and days left (`GET /suites/leave/mine`), and nobody
+  else's. No screen shows them yet (item 28.19).
+- **A colleague and a guest** are refused the board by the server: "Only an admin or a lead can open
+  this board." Nobody reads a reason, because none is kept.
+- **Everybody, while the suite is off:** "The leave suite is not switched on."
+
+**Privacy and access, on the server:** a lead is given only their own team's requests (the same team
+rule as the onboarding board, now shared in `a-leads-team.ts`) and, for each, only what is needed to
+decide: the days left and the first names of others in that team already off those days. Only the
+approver may decide, and nobody decides their own. A decision is kept with who made it and when, and
+cannot be made twice. A test scans the server's code and fails if anything outside the suites reads
+leave, so leave never reaches a check-in or its report. No labels on people.
+
+**Commits:** `45102e25` (the server), `b87c9cbd` (the board), `4877736d` (the server's date formatter
+gains the same three parts as the screens', because the two must match), `5960ea91` (request 21).
+
+**Tested:** `api/src/modules/suites/the-leave-board-as-each-reader-reads-it.spec.ts` (Grace, Wairimu,
+Kamau, Aisha, Miriam, a guest and another organisation, each read from what the server hands them;
+deciding; asking; the scan) and `client/src/pages/suites/the-leave-board-as-each-reader-sees-it.spec.tsx`
+(what Wairimu, Kamau and Aisha each read, word for word, and the days as the prototype writes them),
+with a new test in `the-suites-page-as-each-reader-sees-it.spec.tsx`. **No existing test was changed.**
+Only the tests for the changed files, the tests that read whole folders, and both type checks were
+run. No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
    missing: each helper's list, the link to the new person's work check-in, and "Something nobody has
    shown them yet" (item 28.9, 28.12 and 28.13). The engine's part: a new person saying a step is done
    (request 20).
-2. **Leave requests** (`#/suite/leave`, admins and leads). Missing: leave days, requests, a stand-in,
-   and approve or decline. The engine's part: taking a request in a check-in or chat, and saying it
-   back to be confirmed before it is sent.
+2. **Leave requests** (`#/suite/leave`, admins and leads). **Built** (above). Still missing: a screen
+   where a person reads their own requests, and "How people ask". The engine's part: taking a request
+   by talking to Groundwork, said back and confirmed first (request 21).
 3. **Time sheets** (`#/suite/time`, admins and leads). Missing: hours by client or project, weekly
    approval, and what each client agreed. The engine's part: taking hours from check-ins and chat.
    Hours are for billing only and must never reach a report (decisions rule 10).
