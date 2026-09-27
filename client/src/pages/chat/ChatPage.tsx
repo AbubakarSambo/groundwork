@@ -414,8 +414,23 @@ export function ChatPage() {
        * rewording the sentence would otherwise quietly bring the trap back.
        */
       if (err?.response?.data?.canContinue) {
+        /**
+         * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
+         *
+         * A toast carrying the server's own gate wording ("the record is still thin") is jargon,
+         * and it disappears in a few seconds while the end card came down with it - so the person
+         * was left looking at a plain, silent composer with no idea why "finish" did not work.
+         * The explanation belongs in the conversation itself, in plain words, as a permanent line
+         * they can still see after the toast would have gone. The composer comes back with focus so
+         * there is somewhere to act on it straight away.
+         */
         setDone(false)
-        toast.error(message || 'A little more is needed before this can close.')
+        setMsgs(v => [...v, {
+          id: `ai-cannot-finish-yet-${Date.now()}`,
+          role: 'AI',
+          content: 'Groundwork needs one or two more answers before this can finish. Say a little more and then finish again.',
+        }])
+        requestAnimationFrame(() => taRef.current?.focus())
         return
       }
       toast.error(message || 'Could not complete this session.')
