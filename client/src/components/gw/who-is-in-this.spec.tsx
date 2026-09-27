@@ -52,17 +52,21 @@ function renderTopic(parties: { name: string; done: boolean; isSelf: boolean }[]
 }
 
 describe('the roster on the check-in', () => {
-  it('names the other parties and says who has checked in', async () => {
+  it('names the other parties and says who has checked in, as full sentences', async () => {
+    /*
+     * U.8 REVIEW: the roster read "Hafsah · checked in" / "You · waiting" - a name with a status
+     * word stuck on with a dot, which CLAUDE.md's wording rule (no pieces joined with dots) rules
+     * out same as any other screen. It is "Hafsah has checked in." and "You have not checked in
+     * yet." now, so this no longer looks for the bare word "waiting" - the honest sentence for
+     * somebody who has not checked in does not use it.
+     */
     renderTopic([
       { name: 'Hafsah', done: true, isSelf: false },
       { name: 'Abubakar', done: false, isSelf: true },
     ])
     expect(await screen.findByText(/Who is in this/)).toBeTruthy()
-    expect(screen.getByText(/Hafsah/)).toBeTruthy()
-    // `getAllByText`: "checked in" also appears in the card's closing line about the
-    // report, which is correct copy and not what this asserts.
-    expect(screen.getAllByText(/checked in/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/waiting/)).toBeTruthy()
+    expect(screen.getByText('Hafsah has checked in.')).toBeTruthy()
+    expect(screen.getByText('You have not checked in yet.')).toBeTruthy()
   })
 
   it('calls the reader "You" rather than repeating their own name at them', async () => {

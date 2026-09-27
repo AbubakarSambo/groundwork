@@ -495,18 +495,22 @@ export function GroundParticipantPage() {
                 <>
                   {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
                       apart, and this line numbered the not-yet-due session as current anyway. When it
-                      opens later, the date is the news; the total is printed only when it is known. */}
+                      opens later, the date is the news; the total is printed only when it is known.
+                      FULL SENTENCES, NOT A DOT-JOINED FRAGMENT (U.8 review): "· Session 1 of 12" and
+                      "· Next session opens 4 October" are pieces of a sentence stuck onto the front of
+                      a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
+                      else a person reads. */}
                   {opensLater ? (
-                    <span>· Next session opens {whenItWas(openAvailableFrom, 'dayAndMonthLong')}</span>
+                    <span>The next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
                   ) : totalSessions != null ? (
-                    <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+                    <span>This is session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
                   ) : (
-                    <span>· Session {completedCheckIns.length + 1}</span>
+                    <span>This is session {completedCheckIns.length + 1}.</span>
                   )}
                   {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
                       had done (21 Sep 2026); the count is for a run that is still going. */}
                   {(ground as any).daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && (ground as any).daysLeft > 0 && (
-                    <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+                    <span>{(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? ' is' : 's are'} left.</span>
                   )}
                   {totalSessions != null && completedCheckIns.length >= totalSessions && (
                     <span>· every session done</span>

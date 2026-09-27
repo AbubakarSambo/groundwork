@@ -161,31 +161,46 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
             Who is in this
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {(parties ?? []).map((p, i) => (
-              <span
-                key={i}
-                /**
-                 * The full label belongs in the tooltip now that these can be long. W-UX-4.
-                 *
-                 * The chips used to hold email local-parts - "hafsah", "abubakar" - and now hold a
-                 * name, or the ROLE when somebody has no account yet. Roles here are written as
-                 * sentences ("Delivery manager, his line manager"), which is right in a roster and
-                 * far too long for a pill, so a chip that overflows is capped visibly rather than
-                 * wrapping the row into three lines.
-                 */
-                title={`${p.isSelf ? 'You' : p.name} - ${p.done ? 'has checked in for the current session' : notOpenYet ? 'the next session has not opened yet' : 'has not checked in yet'}`}
-                style={{
-                  fontSize: 12, padding: '3px 9px', borderRadius: 20,
-                  background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
-                  border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
-                  color: 'var(--gw-text)',
-                  maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}
-              >
-                {p.isSelf ? 'You' : p.name}
-                <span style={{ color: 'var(--gw-sub)' }}>{p.done ? ' · checked in' : notOpenYet ? '' : ' · waiting'}</span>
-              </span>
-            ))}
+            {(parties ?? []).map((p, i) => {
+              /*
+                A FULL SENTENCE, NOT A NAME WITH A STATUS WORD STUCK ON WITH A DOT. " · checked in"
+                and " · waiting" read as a label from a table, not something a person wrote - and
+                CLAUDE.md's rule is the same one names already follow: plain, full sentences, no
+                pieces joined with dots. "You have checked in.", "Baraka has checked in.", "Baraka
+                has not checked in yet." Nothing is said about a session that has not opened yet:
+                nobody is late for one that has not started.
+              */
+              const have = p.isSelf ? 'have' : 'has'
+              const sentence = p.done
+                ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
+                : notOpenYet
+                  ? (p.isSelf ? 'You' : p.name)
+                  : `${p.isSelf ? 'You' : p.name} ${have} not checked in yet.`
+              return (
+                <span
+                  key={i}
+                  /**
+                   * The full label belongs in the tooltip now that these can be long. W-UX-4.
+                   *
+                   * The chips used to hold email local-parts - "hafsah", "abubakar" - and now hold a
+                   * name, or the ROLE when somebody has no account yet. Roles here are written as
+                   * sentences ("Delivery manager, his line manager"), which is right in a roster and
+                   * far too long for a pill, so a chip that overflows is capped visibly rather than
+                   * wrapping the row into three lines.
+                   */
+                  title={notOpenYet ? `${p.isSelf ? 'You' : p.name}. The next session has not opened yet.` : sentence}
+                  style={{
+                    fontSize: 12, padding: '3px 9px', borderRadius: 20,
+                    background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
+                    border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+                    color: 'var(--gw-text)',
+                    maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sentence}
+                </span>
+              )
+            })}
           </div>
         </div>
       )}
