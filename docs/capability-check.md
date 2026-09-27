@@ -66,6 +66,89 @@ The SQL to undo the leave rows is in the fourth write-up.
 
 ---
 
+## Evidence: the three capabilities I rated "missing": the evidence, for Hafsah to decide
+
+**Nothing is hidden.** For each one, this is what the prototype shows it doing, exactly what was tried live on the local test database on 27 September, what happened, where the code is, and which parts already work. The full detail is in `docs/capability-check.md`, sections 4, 10 and 11.
+
+**In short, "missing" is not the right word for all of it.** In all three, most of the parts are built. What is missing is the step that connects them to what a person actually does. In verdicts, nothing ever creates a suggestion. In requests, nothing takes a request from chat. In being away, nothing tells the engine who is away.
+
+### Verdicts, suggestions and appeals
+
+**What the prototype shows.** On Daniel's board, the lead reads "Groundwork suggests a performance plan for Daniel". Then: "Why: In the last 4 weeks, Daniel kept 11 of his 20 commitments", "What would change this: Keeping 8 in 10…", Daniel's own answer, and "This is only a suggestion. You decide, and Daniel sees your reasons", with Agree and Choose something else (`C3-suggestions-and-appeals/suggestion-daniel.txt`). Daniel's own page says "Where you stand… Wairimu has not decided anything yet… Add my side" (`what-daniel-sees.txt`). The ending page suggests "keeping Kwame on" (`suggestion-kwame.txt`). A review suggests recognising Aisha's work (`suggestion-aisha-in-review.txt`).
+
+**What was tried, and what happened:**
+- As the lead, Tunde, opening the suggestions for his check-in (`GET /grounds/…/suggestions`) returned an empty list.
+- As Ngozi, a participant, the same route returned the same empty list.
+- As Tunde, opening the appeals was refused: "Only an admin of this organisation decides an appeal." That is right.
+- As an admin, the appeals list was empty.
+- As Ngozi, her You page (`GET /you`) had no "Where you stand".
+- The `suggestions` table has 0 rows.
+- All 1,040 recorded commitments have the status "unknown". So "kept 11 of 20" cannot be counted for anybody.
+- The performance reviews suite is off, and when on, its list of reviews due can only be filled by an outside system.
+
+**Where the code is.** `api/src/modules/suggestions/` holds the service, the controller and `a-suggestion-told-like-a-signal.ts`. These were built by the screens workspace. The reviews are in `api/src/modules/suites/the-reviews.service.ts`. The ending page is in `api/src/modules/resolution/`.
+
+**What works:**
+- A suggestion, once one exists, is shown to each reader in the right shape. The lead gets the headline, why, what would change it, the person's answer and the choices. The person gets the facts and the decision, and can add their side and appeal. An admin decides appeals.
+- The verdict word itself, such as "plan", is never shown to anyone. Labels such as "PIP" and "at risk" are refused when the text is stored.
+- The ending page works: the lead chooses how it ends and gives a reason, and the person reads it.
+- The lead's judgement, which is not the same thing as a verdict, works and is often right. For the performance-plan scenario it says the target was never written down, which is the right answer.
+
+**What does not work yet:**
+- Nothing in the engine ever creates a suggestion.
+- Nothing marks a commitment as kept or missed, so the number a verdict would rest on does not exist.
+- There are no thresholds yet. Hafsah has decided those come later, when this work starts.
+
+### Requests through chat: leave, spending and hours
+
+**What the prototype shows.** "I need next Thursday and Friday off." Groundwork answers: "You have 16 days left and nobody else in Sales is off then. Shall I send it to Wairimu?" (`E-suites/suite-leave.txt`). "Can I spend KES 18,000 on fuel…" is checked against the budget and the rules and sent to the right approver (`suite-spend.txt`). "I spent 3 hours at Naivas Ngong Road today…" becomes "Written down: 3 hours on Naivas Ngong Road, 1 hour on Lakeside. Is that right?" (`suite-time.txt`). "Nobody fills in a form."
+
+**What was tried, and what happened**, in Ask Groundwork as Ngozi:
+- "I need leave from 12 to 16 October", "Can I spend 45,000 on a laptop?", "Log 6 hours on Atlas today" and "Book me off Monday" all got "I cannot answer that one yet". Nothing was written.
+- "I will be on holiday next week so I cannot check in" was offered as "Shall I note that down". After a yes, it became an open commitment, a promise to be followed up in her next check-in as if it were work.
+- In the check-in, Tunde wrote "Also, I need leave from 12 to 16 October, and can I spend 45,000 on a laptop? I did 6 hours on Atlas today." The reply ignored all three and asked about something else.
+
+**Where the code is.** `api/src/modules/suites/`: the leave board, spending and time sheets services, and `who-approves.ts`. The functions that would record a request are there: `LeaveBoardService.ask`, `SpendingService.check` and `.ask`, and `TimeSheetsService.record`. The screens workspace built them, and asked the engine to connect them in its requests 21, 22 and 26, which are still open.
+
+**What works, tried live through the suite's own service:**
+- A leave request for Yemi was recorded, waited on the admin's board, and showed under "who is off" once approved.
+- Her days left were worked out correctly from the approved days: 10 of 20.
+- The approval rules, who else is off, the budgets, the privacy walls for each reader, and hours kept for billing only all work.
+
+**What does not work yet:**
+- Nothing in chat, the check-in or WhatsApp creates a request.
+- Nobody is told a request is waiting.
+- Only the organisation role LEAD can approve, which most organisations do not use.
+
+### Being away
+
+**What the prototype shows.** People on leave appear under "who is off" on the leave board, and a person's days left are shown to them (`E-suites/suite-leave.txt`). Hafsah's decision 31 says the engine may know the dates of approved leave, dates only. The engine's own rule says time on leave is paused and never counted against anyone.
+
+**What was tried, and what happened:**
+- I approved leave for Yemi covering today, and read the lead's board and Today before and after.
+- The board still listed her first as "Yemi Adeyinka has not checked in for this round yet".
+- Today still counted her among "6 people haven't yet".
+- Her leave dates on the check-in were still empty.
+- From the code, not run: the "your next check-in is open" email, the reminders on day 3, 7 and 14, the "you have missed 3 check-ins" email, and the lead's email naming who has not started all go to someone on leave.
+
+**Where the code is:**
+- `api/src/modules/conversation/participation-timeline.ts` holds the rule for leave: paused, never counted. It is tested in `absence-is-not-a-signal.spec.ts`.
+- The dates have a place, `ground_participants.leave_periods`.
+- Approved leave lives in the leave suite (`api/src/modules/suites/the-leave-board.service.ts`).
+
+**What works:**
+- The rule is written and tested.
+- Coaching already uses it, and does not coach someone who is on leave.
+- The leave suite records and approves leave correctly.
+- Patterns and the judgement are not affected by a missed round, because they read what people said, not missed rounds.
+
+**What does not work yet:**
+- Nothing writes the leave dates where the engine reads them. A test today stops anything outside the suites from reading leave requests, and decision 31 now allows the dates to be copied across.
+- So the board, the round count, the reminders and the emails still treat someone on leave as missing.
+
+
+---
+
 # The full write-ups
 
 ## Three capabilities, checked live: converse, brainstorm, seed
