@@ -11,10 +11,11 @@ same file.
 **Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
 in, with every decision you made), U.3 (organisations and joining, passed on its third review), U.4
 (people, roles and access, passed on its fifth), U.5 (Today and the check-ins list, passed on its
-third) and U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
-for you, in item 17).
+third), U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
+for you, in item 17) and U.7 (context, passed on its fifth; it found that the check-ins list sent
+participants the lead's setup brief, also in the live product, item 0b).
 
-**Built and tested, but not ticked:** U.7 (context), U.8 (the check-in
+**Built and tested, but not ticked:** U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
@@ -157,7 +158,7 @@ to find.
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
-| U.7 Context | Yes | Waiting |
+| U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
 | U.10 The board | Yes | Waiting |
@@ -2769,7 +2770,7 @@ only", "Any day is fine"). Apart from those, every screen test (2,659) and API t
 build is clean; the only other failure is the engine workspace's own (request 4). **Not ticked:** the
 lead's first check-in card waits on you, and no review can sign in (item 14).
 
-### U.7 Context: built and tested, not yet reviewed
+### U.7 Context: passed its fifth review
 
 - **Targets, in the prototype's table.** Context now has a "Targets" band: each target's name, its
   number, whose it is ("The whole team", or the person), and who sees it. The lead reads "Seen by
@@ -2858,6 +2859,7 @@ Now:
 - An admin who rewrote the brief, where Groundwork then wrote what everyone reads from his words,
   reads "Groundwork wrote this from your words.", as the lead is told.
 - A question for you about what Juma reads is item 31.4.
+- **U.7 passed its fifth review on 27 September, and is ticked.** The reviewer checked it as the lead, two participants (one of them the person on probation) and an admin. One case, for you to know: after the lead rewrites the brief herself, an admin sees her rewrite in a fold, "What Wanjiru wrote", and "Rewrite" starts from it. These are the words she typed as the brief, which an admin who runs a check-in already receives, not her private setup answers, which stay hers alone.
 - One test changed after the list fix (`e776c3f1`): `what-a-participant-is-told-about-this.spec.ts` looked for the old rule's exact code in `grounds.service.ts`. The rule now lives in one helper that the list and the single check-in both use, so the test checks that the helper is used and checks what it gives back. It checks the same rule as before.
 
 **After the third review (27 September).**
