@@ -978,6 +978,8 @@ reviewed" in this report.
     changed.", "Say why. Both of them read your reasons.", "You are not part of this check-in." and
     "That suggestion was not found." Where somebody has no first name, the page says "This person",
     "Your lead" or "An admin".
+11. Suggestions and appeals are not offered through Ask Groundwork. Recommendation: keep it that way,
+    because they are private to the people involved.
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
