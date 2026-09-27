@@ -4293,7 +4293,7 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Keep it to carry on where you left off.
+              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

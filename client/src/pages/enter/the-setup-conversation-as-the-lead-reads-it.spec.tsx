@@ -94,6 +94,8 @@ describe('coming back to /start with a setup unfinished (U.6 review)', () => {
     expect(await screen.findByRole('button', { name: 'Carry on with this one' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start a new one' })).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/scenario|Keep current session/i)
+    expect(document.body.textContent).toContain('Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off.')
+    expect(document.body.textContent).not.toContain('Keep it to carry on')
   })
 
   /* Read live: pressing it showed the empty first screen, and the setup came back only on reload. */
