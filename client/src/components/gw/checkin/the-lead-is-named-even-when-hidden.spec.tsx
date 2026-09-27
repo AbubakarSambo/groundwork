@@ -15,6 +15,13 @@ import { whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-ca
  * `leadFirstName` and `leadAnswersToo` at the top level, unaffected by that filter. Amani's ground
  * never carries a lead row inside `participants` to search for; the end card and the Done page must
  * still say "Rukia also answers a check-in" from the two top-level fields alone.
+ *
+ * `aTeamReportComes` (U.8 fifth review) is the same idea for a different sentence: whether "Two
+ * reports come from this" and the team's report card show on the Done page at all. It is also a
+ * plain yes/no read off the raw participants, sent regardless of how many rows `participants` itself
+ * carries here - Amani's is a real team of (at least) two, and this ground fixture's own
+ * `participants` array still has only her one row, on purpose, to prove the Done page is not
+ * counting it.
  */
 const AMANIS_HIDDEN_GROUND = {
   participants: [
@@ -22,6 +29,7 @@ const AMANIS_HIDDEN_GROUND = {
   ],
   leadFirstName: 'Rukia',
   leadAnswersToo: true,
+  aTeamReportComes: true,
   viewerIsInitiator: false,
 }
 
@@ -113,5 +121,20 @@ describe('the Done page names the lead on a check-in that hides everyone else', 
   it('says "Rukia also answers a check-in" once the ground has loaded', async () => {
     renderDonePage()
     expect(await screen.findByText(/Rukia also answers a check-in/)).toBeTruthy()
+  })
+
+  /*
+   * U.8 FIFTH REVIEW: "TWO REPORTS COME FROM THIS" MUST NOT DEPEND ON `ground.participants`.
+   *
+   * The fixture's own `participants` array has one row - Amani's - same as the real payload a
+   * hidden check-in sends her. If the Done page still counted that array (the old
+   * `howManyAnswer(g) > 1`), it would read this as a check-in of one and never show the team's
+   * report card, however many people are really on it. `aTeamReportComes: true` on the fixture is
+   * the only fact that should be deciding this.
+   */
+  it('shows "Two reports come from this" and the team\'s report card, from aTeamReportComes alone', async () => {
+    renderDonePage()
+    expect(await screen.findByText('Two reports come from this')).toBeTruthy()
+    expect(screen.getByText('The team’s report')).toBeTruthy()
   })
 })

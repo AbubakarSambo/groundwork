@@ -4,7 +4,7 @@ import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
-import { howManyAnswer, whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * THE DONE PAGE (B3, docs/prototype/screens/B3-the-check-in/done.txt).
@@ -72,7 +72,14 @@ export function TheDonePage({
   const g: any = ground.data
   const leadName = whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
-  const aTeamReport = howManyAnswer(g) > 1
+  /*
+   * A PLAIN YES/NO FROM THE SERVER, NOT A COUNT OF `g.participants` (U.8 fifth review). That array
+   * is reduced to this reader's own row alone on a check-in that hides peers from each other, so
+   * counting it always read as a check-in of one there - "Two reports come from this" and the
+   * team's report card silently vanished for exactly the readers a hidden check-in has more than
+   * one of. `aTeamReportComes` is read off the raw participants before that filter runs.
+   */
+  const aTeamReport = !!g?.aTeamReportComes
   const roundIsIn = ((g?.roundCompletions ?? []) as { sessionNumber: number }[]).some(r => r.sessionNumber === sessionNumber)
   const carry: string | null = artifact.data?.artifact?.whatToCarry ?? null
   const thisOne = ((g?.checkIns ?? []) as any[]).find(c => c.id === checkInId)

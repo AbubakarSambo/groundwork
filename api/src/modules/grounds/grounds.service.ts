@@ -1899,6 +1899,20 @@ export class GroundsService {
     const leadParticipantRaw = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any;
     const leadFirstName = (leadParticipantRaw?.user?.firstName ?? '').trim().split(/\s+/)[0] || null;
     const leadAnswersToo = !!leadParticipantRaw?.userId && !leadParticipantRaw?.managingOnly;
+    /**
+     * WHETHER A TEAM REPORT COMES FROM THIS AT ALL - A BOOLEAN, NOT A COUNT (U.8 fifth review).
+     *
+     * The Done page decides "Two reports come from this" / "The team's report" card from
+     * `howManyAnswer(ground) > 1`, which counts `ground.participants` - the exact array the peer
+     * rule reduces to the reader's own row alone on a hidden check-in. A participant there read
+     * "Your own report" with no team card at all, whatever the true size of the team, because the
+     * filtered list she was handed always looked like a check-in of one.
+     *
+     * Read here off the RAW participants, same as `leadFirstName` above, and sent as a plain yes/no:
+     * whether more than one party answers, never how many. A hidden check-in must not learn its own
+     * size from a field meant to answer a different question.
+     */
+    const aTeamReportComes = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length > 1;
 
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
@@ -2221,6 +2235,8 @@ export class GroundsService {
       leadFirstName,
       /** Whether the lead is also a party who answers a check-in, not only someone who manages it. */
       leadAnswersToo,
+      /** Whether more than one party answers this check-in - a yes/no, not a count. See the note above. */
+      aTeamReportComes,
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *

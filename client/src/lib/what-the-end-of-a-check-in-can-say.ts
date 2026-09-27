@@ -82,9 +82,12 @@ export function whoRunsThis(
   return firstWordOfAName(ground?.leadFirstName)
 }
 
-/** How many people answer this check-in, the reader included, as far as the reader may see. */
-export function howManyAnswer(
-  ground: { participants?: { managingOnly?: boolean | null }[] } | null | undefined,
-): number {
-  return (ground?.participants ?? []).filter(p => !p.managingOnly).length
-}
+/*
+ * `howManyAnswer` used to live here: `(ground.participants ?? []).filter(p => !p.managingOnly).length`,
+ * used only to decide `aTeamReport = howManyAnswer(ground) > 1` on the Done page. Removed (U.8 fifth
+ * review): `ground.participants` is reduced to the reader's own row alone on a check-in that hides
+ * peers, so this always read as a check-in of one there, whatever the true size of the team, and the
+ * Done page dropped "Two reports come from this" and the team's report card. The server now sends
+ * `ground.aTeamReportComes`, a plain yes/no read off the raw participants before that filter runs -
+ * use that instead of counting `participants` for this question.
+ */
