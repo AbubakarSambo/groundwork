@@ -60,7 +60,12 @@ describe('what the product wrote is what the About block reads', () => {
     expect(src).toMatch(/const WHAT_THE_BRIEF_IS_READ_FROM = \{[\s\S]{0,400}toldToParticipants: true/);
     expect(src).toMatch(/told: \(ground as any\)\.toldToParticipants/);
     const grounds = strip(require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toMatch(/toldToParticipants\?\.trim\(\) \|\| theSituationIn\(brief\)/);
+    /* U.7 third review: the rule moved into one helper that the list and the single read both use. */
+    expect(grounds).toMatch(/whatSomeoneWhoDoesNotRunItReads\(\{ brief, toldToParticipants: \(ground as any\)\.toldToParticipants \}\)/);
+    const { whatSomeoneWhoDoesNotRunItReads } = require('./what-someone-who-does-not-run-it-reads');
+    const brief = 'Tunde has just joined us as Engagement Director. Help the person develop clarity.';
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: '  This check-in is about your first year.  ' })).toBe('This check-in is about your first year.');
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: null })).toBe(theSituationIn(brief));
   });
 });
 
