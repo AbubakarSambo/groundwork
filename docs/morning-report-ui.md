@@ -16,11 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, to-dos, and customers and deals). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, to-dos, customers and deals, and equipment: all ten suites). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
-screen tests and 9,528 API tests); performance reviews, when someone leaves, the role map,
-spending and budgets, to-dos, and customers and deals have passed their own tests since. **None could
+screen tests and 9,528 API tests); performance reviews and the five suites after it have passed their own
+tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -72,15 +72,17 @@ that one is yours to decide (item 27.4).
     load? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** customers and deals, the ninth suite (U.17), for admins and leads. One
-list of customers, where each stands, who owns it and the last contact, built from what the product
-already keeps from the organisation's own system and the contacts people tell their check-ins about. It
-changes nothing, and never reads what anybody said about a contact. A lead reads only their team's
-customers. Keeping where each stands up to date waits for the engine (request 28). Before that: to-dos,
-spending and budgets, the role map, when someone leaves, performance reviews, time sheets, leave
-requests, the onboarding board and the Suites page.
+**Just finished, not ticked:** the last five suites of U.17, so all ten now have a board: the role map
+(admins only; every role, what it owns, who holds it, and "Nobody owns …"), spending and budgets
+(admins and leads; requests waiting for a yes or no with the budget check, and each team's budget),
+to-dos (admins and leads; what each person said they will do in their check-ins), customers and deals
+(admins and leads; one list, from the organisation's own customers and contacts) and equipment (admins
+only; who has what, and how it is). Each refuses everybody else on the server, and nothing from any of
+them reaches a check-in or its report. What only the engine can do is in requests 25 to 29. One new
+privacy question: is one to-do list for each person their private "load"? (item 28.49).
 
-**Next:** U.17 goes on with suite 10, equipment. The ten are listed in order under U.17 below.
+**Next:** U.17 needs its full run (screen and API suites, one after the other, 2 workers) and a review,
+which cannot sign in (item 14).
 
 ## Needs Hafsah
 
@@ -1432,6 +1434,19 @@ reviewed" in this report.
     and the server's refusals ("The customers and deals suite is not switched on." and "Only an admin or
     a lead can open this board."). A blank cell where nothing says where a customer stands, who owns it
     or when they were last contacted.
+58. **"Book a repair" is left out.** Nothing yet tells anybody about a repair (no email, no to-do for the
+    person who looks after equipment), and a button that seems to book one and does not would be worse
+    than none. **My recommendation:** let it add a line to the equipment keeper's Today list ("Laptop 03
+    needs a repair."), which the Today page can show without any new message being sent.
+59. **Equipment and "when someone leaves" are not linked yet.** "Collect Tom’s laptop and phone" does not
+    list the items Tom has. **My recommendation:** list them under that step, from this board, for
+    admins only.
+60. **Wording no screen shows, on equipment:** "Change", "Save", "Cancel", "Nobody", "Add an item",
+    "Item", "Add it", "No equipment is listed yet.", "The board did not load.", and the server's refusals
+    ("The equipment suite is not switched on.", "Only an admin can open this board.", "That item was not
+    found.", "Give the item a name.", "There is already an item with that name.", "Choose somebody in
+    your staff directory, or nobody.", and, for the engine, "Only people in this organisation can update
+    equipment here.").
 
 
 
@@ -2433,7 +2448,7 @@ still to do.
 **The full run passed with no failures:** 2,831 screen tests, 9,465 API tests, and the build. **Not
 ticked,** because no review can sign in (item 14).
 
-### U.17 The Suites page: built and tested, not yet reviewed. Each suite is still to do
+### U.17 The Suites page and all ten suites: built and tested, not yet reviewed
 
 This run built only the Suites page itself, as you asked: the list, switching a suite on or off, the
 questions an admin answers first, "Already part of Groundwork", and the sidebar's "Suites". No suite's
@@ -2933,7 +2948,44 @@ test changed, and why:** `the-suites-page-as-each-reader-sees-it.spec.tsx` used 
 the suite with no board yet; it now has one, so that check moved to Equipment. No screen could be
 checked signed in (item 14).
 
-**Each suite, still to do, in the order of the task.** Each one adds its own board at
+#### Equipment: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product kept no equipment at all. There was nowhere to keep an
+item, who has it or how it is, no rule for who reads or changes it, and no board at `#/suite/equipment`.
+Updates people give by telling Groundwork are the engine's (request 29).
+
+**New storage, on your computer only,** in the migration `20260927160000_equipment`: `equipment_items`
+(an item's name, who has it, a person in the staff directory or nobody, and how it is, in their own
+words). It has not been run against any database.
+
+**What Grace, an admin, now reads:** "Open its board" on the Equipment card, then "Suites / Equipment",
+"Equipment", "Laptops, phones and demo freezers: who has what, and what needs fixing. People update it
+by telling Groundwork." Then a table: "Item", "Who has it", "How it is", with rows such as "Laptop 03",
+"Kamau Njenga", "Broken screen.", or "Spare phone", "Nobody", and "Change" on each row, which opens "Who
+has it" and "How it is" with "Save" and "Cancel". Then "Add an item", with "Item", "Who has it"
+("Nobody" to start), "How it is" and "Add it". With nothing listed: "No equipment is listed yet."
+
+**Everybody else,** a lead, a member and a guest, is refused by the server: "Only an admin can open this
+board." While the suite is off: "The equipment suite is not switched on."
+
+**Privacy and access, on the server:** admins only, for reading and every change, with a test for a
+lead, a member, a guest and somebody outside, and that nothing changes. Who has an item is somebody in
+the directory, or nobody. An item's name is used once. A scan fails if anything outside the suites reads
+equipment, so it never reaches a check-in or its report. No labels on people, no addresses.
+
+**Commits:** `d3ab0f8a` (the server), `915a570b` (the board, and the last door on the Suites page),
+`a3b5fc2f` (request 29).
+
+**Tested:** `api/src/modules/suites/the-equipment-as-each-reader-reads-it.spec.ts` (13 tests: off, every
+refusal with nothing changed, adding and changing, a name used twice, somebody outside the directory,
+the engine's record, a guest refused, no label, the scan) and
+`client/src/pages/suites/equipment-as-an-admin-sees-it.spec.tsx` (8 tests, word for word). **One test
+changed, and why:** `the-suites-page-as-each-reader-sees-it.spec.tsx` checked that a suite with no board
+yet has no door, using Equipment. Every suite has a board now, so it checks instead that each of the
+ten, once on, has the door to its own board; "and not while it is off" still checks the other side. No
+screen could be checked signed in (item 14).
+
+**Each suite, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
    missing: each helper's list, the link to the new person's work check-in, and "Something nobody has
@@ -2968,8 +3020,9 @@ checked signed in (item 14).
    customers and contacts the product already keeps; the back office's pipeline is not reused. Still
    missing: changing a customer here (item 28.55). The engine's part: the sales check-ins keeping where
    each customer stands up to date (request 28).
-10. **Equipment** (`#/suite/equipment`, admins only). Missing entirely. The engine's part: updates
-    people give by telling Groundwork.
+10. **Equipment** (`#/suite/equipment`, admins only). **Built** (above). Still missing: "Book a
+    repair" (item 28.58). The engine's part: updates people give by telling Groundwork, said back and
+    confirmed first (request 29).
 
 ## Found on the way, for later tasks
 
