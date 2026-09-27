@@ -80,7 +80,18 @@ export function TheDonePage({
    * one of. `aTeamReportComes` is read off the raw participants before that filter runs.
    */
   const aTeamReport = !!g?.aTeamReportComes
-  const roundIsIn = ((g?.roundCompletions ?? []) as { sessionNumber: number }[]).some(r => r.sessionNumber === sessionNumber)
+  /*
+   * WHETHER THE TEAM'S REPORT IS ACTUALLY OUT, NOT WHETHER THE ROUND HAS CLOSED (U.8, edge case
+   * caught before ticking). `roundCompletions` records that everyone who was on this round AT THE
+   * TIME IT CLOSED had answered - the round can close and be recorded before the lead adds more
+   * people, so a lead who finished session 1 alone and then grew the team had session 1 sitting in
+   * `roundCompletions` for ever, and this offered "Read it" on a team report that
+   * `GET /grounds/:id/report` still answers `{ forming: true, releasedAt: null }` for. The one fact
+   * that decides whether there is something to read is whether it has released, which the ground
+   * already carries on `report.releasedAt` - the same field the report endpoint itself is built
+   * from, so this cannot disagree with it.
+   */
+  const teamReportReleased = !!(g?.report as { releasedAt?: string | null } | null | undefined)?.releasedAt
   const carry: string | null = artifact.data?.artifact?.whatToCarry ?? null
   const thisOne = ((g?.checkIns ?? []) as any[]).find(c => c.id === checkInId)
   const dims: Record<string, string> | null = thisOne?.specificityDimensions ?? null
@@ -115,9 +126,9 @@ export function TheDonePage({
             <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
               <div style={rowHead}>
                 <h3 style={h3}>The team’s report</h3>
-                {!roundIsIn && <Tag tone="attention">Not shared yet</Tag>}
+                {!teamReportReleased && <Tag tone="attention">Not shared yet</Tag>}
               </div>
-              {roundIsIn ? (
+              {teamReportReleased ? (
                 <>
                   <p style={p}>Everyone’s check-ins together.</p>
                   <div style={{ marginTop: 10 }}>
