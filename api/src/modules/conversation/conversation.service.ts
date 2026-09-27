@@ -1,4 +1,5 @@
 import { theLeadByName } from './the-lead-has-a-name';
+import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -1017,7 +1018,7 @@ export class ConversationService {
     ].filter(Boolean).join(' ').trim() || null;
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
-    const opening = await this.withTheLeadByName(checkIn as any, quoted.text);
+    const opening = await this.theTurnAsItIsSaved(checkIn as any, quoted.text);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1043,7 +1044,11 @@ export class ConversationService {
    * own conversation: the phrase there would be about the reader, and the setup block already tells
    * the model to say "you".
    */
-  private async withTheLeadByName(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, text: string): Promise<string> {
+  private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
+    /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
+    const capitalised = aSentenceStartsWithACapital(raw);
+    if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
+    const text = capitalised.text;
     if (!text || !/\bperson who set this up\b/i.test(text)) return text;
     if (checkIn?.participant?.partyType === PartyType.INITIATOR || !checkIn?.groundId) return text;
     const lead = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true } } } }) ?? Promise.resolve(null))
@@ -2154,7 +2159,7 @@ export class ConversationService {
         );
       }
       hadCloseMarker = stripped.hadMarker;
-      reply = await this.withTheLeadByName(checkIn as any, reply);
+      reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
       aiTurn = await this.prisma.conversationTurn.create({
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
@@ -2689,7 +2694,7 @@ export class ConversationService {
       const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\n\n');
       if (ourOwnWords) reply = `${ourOwnWords}\n\n${reply}`;
 
-      reply = await this.withTheLeadByName(checkIn as any, reply);
+      reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
