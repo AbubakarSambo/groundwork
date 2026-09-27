@@ -2014,3 +2014,4 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-suite-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
 .gw-suite-table tbody th { font-weight: 600; }
 .gw-suite-table .gw-nobody { color: var(--gw-red-t); }
+.gw-suite-table select, .gw-suite-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }

@@ -220,3 +220,17 @@ export interface CustomerList {
 export const customersApi = {
   get: async (): Promise<CustomerList> => (await apiClient.get('/suites/customers/board')).data,
 }
+
+/** Equipment (GET /suites/equipment/board). Admins only. */
+export interface EquipmentBoard {
+  items: { id: string; name: string; holderId: string | null; holder: string | null; condition: string | null }[]
+  people: { id: string; name: string }[]
+}
+
+export const equipmentApi = {
+  get: async (): Promise<EquipmentBoard> => (await apiClient.get('/suites/equipment/board')).data,
+  add: async (item: { name: string; holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
+    (await apiClient.post('/suites/equipment/items', item)).data,
+  change: async (id: string, change: { holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
+    (await apiClient.put(`/suites/equipment/items/${id}`, change)).data,
+}

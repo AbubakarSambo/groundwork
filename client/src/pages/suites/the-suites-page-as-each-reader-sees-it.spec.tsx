@@ -106,13 +106,15 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(screen.getAllByRole('switch')).toHaveLength(10)
   })
 
-  it('never offers a door to a board that is not built yet', async () => {
-    /* U.17, to-dos and customers: their boards now exist, so this checks equipment, still to build. */
-    open(GRACE, withOn('equipment', { keeper: 'u-k' }))
+  it('offers each suite that is on a door to its own board, now that all ten are built', async () => {
+    /* U.17: this checked a suite with no board yet. Since equipment, the last, every suite has one. */
+    const allOn: SuitesForAnAdmin = { ...GRACES, groups: GRACES.groups.map(g => ({ ...g, suites: g.suites.map(s => ({ ...s, on: true })) })) }
+    open(GRACE, allOn)
     await screen.findByRole('heading', { level: 2, name: 'People' })
-    expect(card('Equipment').textContent).toContain('On')
-    expect(screen.queryByText('Open its board')).toBeNull()
-    expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/equipment')
+    expect(screen.getAllByRole('link', { name: 'Open its board' }).map(a => a.getAttribute('href'))).toEqual([
+      '/suite/onboard', '/suite/leave', '/suite/time', '/suite/reviews', '/suite/leaving', '/suite/roles',
+      '/suite/spend', '/suite/todos', '/suite/customers', '/suite/equipment',
+    ])
   })
 
   it('"Open its board" is on the onboarding suite once it is on, and goes to its board', async () => {

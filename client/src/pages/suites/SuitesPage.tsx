@@ -15,7 +15,7 @@ import { Button, Tag } from '@/components/gw/kit'
  *
  * "OPEN ITS BOARD" ONLY FOR A BOARD THAT EXISTS (docs/morning-report-ui.md, item 28): a door that
  * leads nowhere is worse than none, so each suite's board brings its own door, one at a time, in
- * BOARDS below. Onboarding came first, then leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, to-dos, and customers and deals.
+ * BOARDS below. Onboarding came first, then leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, to-dos, customers and deals, and equipment, so now all ten have one.
  *
  * WORDING NO SCREEN SHOWS, in the fewest plain words (item 28): "Off"; "Answer these first, and it
  * switches on."; "Choose somebody"; "Switch it on"; "Cancel"; "None are switched on yet."; and
@@ -33,7 +33,7 @@ export const ALREADY_PART = [
   { name: 'Slack or Teams', line: 'Notices in the channels your team already uses.', where: 'Connections', to: '/org/integrations' },
 ]
 
-/** The suites whose board is built, and where it lives. The rest have no door yet. */
+/** The suites whose board is built, and where it lives: all ten, since U.17. */
 export const BOARDS: Record<string, { to: string }> = {
   onboard: { to: '/suite/onboard' },
   leave: { to: '/suite/leave' },
@@ -44,6 +44,7 @@ export const BOARDS: Record<string, { to: string }> = {
   spend: { to: '/suite/spend' },
   todos: { to: '/suite/todos' },
   customers: { to: '/suite/customers' },
+  equipment: { to: '/suite/equipment' },
 }
 
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
