@@ -4112,6 +4112,10 @@ none of them changed. **Not ticked,** until its review.
 - **A second check-in with the same name** reads "Help a new hire get started, from 27 September", where it was "· 27 Sept".
 - **The open link's last step says what "Done" waits for:** "Add your name, your organisation and your email to finish." What is required is unchanged.
 - **Coming back to an unfinished setup** offers "Carry on with this one" or "Start a new one".
+- **"Carry on with this one" now puts the kept setup back straight away.** Pressing it used to show the empty first screen, and the setup only came back after reloading /start. This was already broken before the button's words changed. The card's sentence now reads "Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off."
+- **"Get updates from your team" is named with the whole question.** "What moved this week, and what is stuck?" was named "What moved this week, and what". A question longer than 80 characters is named "Get updates from your team", never cut off, and a second one with the same name still gets ", from 27 September". One test that expected the clipped name was changed, because the clipped name was the fault.
+- **The open link says who asked, in a sentence.** Over the question it read "U6G ASKED" in capitals. It now reads "Amara asked you this.", with the lead's name as given, or "You have been asked this." with no name.
+- **Signed in, "Get updates from your team" says where the report goes.** The email box showed the lead's address while "Send" stayed greyed with "Add your own email, so the report has somewhere to go." Signed in there is no box now. The page reads "The report goes to you at amara@acme.com.", and "Send" is ready once the other fields are. Signed out, the hint now reads "Where the report goes. You do not have to sign in first. We will email you your way in."
 - **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
 
 ## Found on the way, for later tasks
