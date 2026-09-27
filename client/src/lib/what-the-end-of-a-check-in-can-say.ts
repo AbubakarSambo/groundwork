@@ -1,4 +1,5 @@
 import { whenItWas } from './a-date-reads-the-same-everywhere'
+import { firstWordOfAName } from './the-first-word-of-a-name'
 
 /**
  * WHAT THE END OF A CHECK-IN CAN SAY, FROM WHAT THE RECORD HOLDS (B3).
@@ -52,8 +53,10 @@ export function whoElseAnswers(
   const lead = (ground?.participants ?? []).find(p => p.partyType === 'INITIATOR')
   if (!lead || !lead.userId || lead.userId === myUserId) return null
   if (lead.managingOnly) return null
-  const name = lead.user?.firstName?.trim()
-  return name || null
+  /* Signup asks for "Your name" in one field and stores it whole (AuthPage.tsx, auth.service.ts),
+     so a lead who typed "Wairimu Kamau" has that whole string in `firstName`. The prototype's own
+     line says only the first name ("Wairimu also answers a check-in"), never the surname too. */
+  return firstWordOfAName(lead.user?.firstName)
 }
 
 /** How many people answer this check-in, the reader included, as far as the reader may see. */

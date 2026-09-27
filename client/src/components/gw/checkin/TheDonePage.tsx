@@ -179,7 +179,7 @@ export function TheDonePage({
       )}
 
       {/* For whoever runs it: who the round is still waiting on. Kept from the old finished screen. */}
-      {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
+      {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} myUserId={myUserId} />}
     </div>
   )
 }

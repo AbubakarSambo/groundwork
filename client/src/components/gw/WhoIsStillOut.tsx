@@ -16,7 +16,7 @@ import { peopleLabels, atTheStart } from '@/lib/utils'
  * A list of lines, not a card of cards: "you have a tendency of putting small things in large
  * cards". One row per person, their state on the right, and Remind where it applies.
  */
-export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
+export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId: string; sessionNumber: number; myUserId?: string | null }) {
   const { data: ground } = useQuery({
     queryKey: ['ground', groundId],
     queryFn: () => groundsApi.get(groundId),
@@ -41,26 +41,45 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
     const done = theirs.some((c) => c.status === 'COMPLETED')
     const going = theirs.some((c) => c.status === 'IN_PROGRESS')
     const open = theirs.find((c) => c.status !== 'COMPLETED')
+    const isSelf = !!myUserId && p.userId === myUserId
+    const name = isSelf ? 'You' : atTheStart(labels.get(p.id) ?? 'a colleague')
+    /* A full sentence, keyed to "you" for the reader's own row and to a plain verb agreement
+       otherwise ("You have answered." / "Baraka has answered."), not a status word beside a name
+       (no dots, no clipped labels: CLAUDE.md's rule for anything a person reads). */
+    const have = isSelf ? 'have' : 'has'
+    const state = done
+      ? `${name} ${have} answered.`
+      : going
+        ? `${name} ${isSelf ? 'are' : 'is'} part way through.`
+        : !p.userId
+          ? `${name} ${have} not joined yet.`
+          : `${name} ${have} not started yet.`
     return {
       id: p.id,
-      name: atTheStart(labels.get(p.id) ?? 'a colleague'),
+      name,
+      isSelf,
       joined: !!p.userId,
       done,
-      state: done ? 'Answered' : going ? 'Part way through' : !p.userId ? 'Not joined yet' : 'Not started',
+      state,
       remindable: !done && !!p.userId && !!open?.id ? (open.id as string) : null,
     }
   })
 
-  const waiting = rows.filter((r) => !r.done).length
+  const stillToAnswer = rows.filter((r) => !r.done && !r.isSelf).map((r) => r.name)
+
+  /* "Baraka and Neema still have to answer.", "Baraka still has to answer.", or nothing left to
+     say when everyone (the reader included) has answered - said as one sentence, not a count next
+     to the word "session", which nobody reads as a name of people still waited on. */
+  const header = stillToAnswer.length === 0
+    ? 'Everyone has answered.'
+    : stillToAnswer.length === 1
+      ? `${stillToAnswer[0]} still has to answer.`
+      : `${stillToAnswer.slice(0, -1).join(', ')} and ${stillToAnswer[stillToAnswer.length - 1]} still have to answer.`
 
   return (
     <div style={{ maxWidth: 460, margin: '14px auto 0' }}>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7, lineHeight: 1.55 }}>
-        {waiting === 0
-          ? `Everyone has answered session ${sessionNumber}.`
-          : waiting === 1
-            ? `One person still to answer session ${sessionNumber}.`
-            : `${waiting} people still to answer session ${sessionNumber}.`}
+        {header}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {rows.map((r) => (
@@ -71,19 +90,16 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
               fontSize: 12.5, padding: '5px 0', borderBottom: '1px solid var(--gw-border)',
             }}
           >
-            <span style={{ color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexShrink: 0 }}>
-              <span style={{ color: r.done ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>{r.state}</span>
-              {r.remindable && (
-                <button
-                  onClick={() => remind.mutate(r.remindable as string)}
-                  disabled={remind.isPending}
-                  style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  Remind
-                </button>
-              )}
-            </span>
+            <span style={{ color: r.done ? 'var(--gw-green-t)' : 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.state}</span>
+            {r.remindable && (
+              <button
+                onClick={() => remind.mutate(r.remindable as string)}
+                disabled={remind.isPending}
+                style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+              >
+                Remind
+              </button>
+            )}
           </div>
         ))}
       </div>

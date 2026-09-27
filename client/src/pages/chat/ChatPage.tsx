@@ -18,6 +18,7 @@ import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -802,7 +803,7 @@ export function ChatPage() {
     return (
       <div style={{ minHeight: 'calc(100dvh - var(--gw-bottom-nav, 0px))', background: 'var(--gw-page)', overflowY: 'auto' }}>
         <TheDonePage
-          firstName={user?.firstName}
+          firstName={firstWordOfAName(user?.firstName)}
           checkInId={checkInId}
           groundId={groundId}
           sessionNumber={sessionNumber}
@@ -1229,7 +1230,7 @@ export function ChatPage() {
               {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
               <YourNextCheckIn groundId={groundId} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}
-              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
+              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} myUserId={user?.id} />}
               {/*
                 * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
                 *
