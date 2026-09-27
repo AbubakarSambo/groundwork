@@ -104,7 +104,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
-| U.4 People, roles and access | Yes | Waiting |
+| U.4 People, roles and access | Yes | Sent back on 27 September; being fixed |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
