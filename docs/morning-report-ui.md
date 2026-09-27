@@ -16,11 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, and spending and budgets). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, and to-dos). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
-screen tests and 9,528 API tests); performance reviews, when someone leaves, the role map, and
-spending and budgets have passed their own tests since. **None could
+screen tests and 9,528 API tests); performance reviews, when someone leaves, the role map,
+spending and budgets, and to-dos have passed their own tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -68,19 +68,19 @@ that one is yours to decide (item 27.4).
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
     nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
     hours, and who says what each client agreed; 28.33: does a person read their manager's own words
-    in their review? (a privacy question)
+    in their review? (a privacy question); 28.49: is one to-do list for each person their private
+    load? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** spending and budgets, the seventh suite (U.17), for admins and leads.
-It shows each request waiting for a yes or no, with what the team has left this month and who approves
-it, and each team's budget against what was spent, in the prototype's words. Up to the admin's limit the
-person's lead approves, above it the person the admin named, never their own. Only an admin sets a
-budget. A lead reads only their own team's; a member and a guest are refused by the server. Asking in
-chat waits for the engine (request 26). One first question was added, the currency (item 28.45). Before
-that: the role map, when someone leaves, performance reviews, time sheets, leave requests, the
-onboarding board and the Suites page.
+**Just finished, not ticked:** to-dos, the eighth suite (U.17), for admins and leads. It shows what
+each person said they will do in their check-ins, in one list for each person, from what each check-in
+already keeps. It stores and changes nothing. Each line goes only to somebody who may already read it in
+its check-in, and a lead reads only their own team. To-dos from chat stay private, and "Done" is left
+out (items 28.50 and 28.51). Whether one list for each person is their private "load" is a privacy
+question for you (item 28.49). Before that: spending and budgets, the role map, when someone leaves,
+performance reviews, time sheets, leave requests, the onboarding board and the Suites page.
 
-**Next:** U.17 goes on with suite 8, to-dos. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 9, customers and deals. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1396,6 +1396,27 @@ reviewed" in this report.
     "Choose a team from your staff directory.", "Give a budget of nothing or more.", and, for the
     engine, "Only people in this organisation can ask to spend here.", "Give an amount of more than
     nothing." and "Say what the money is for.").
+49. **Is one list for each person, across check-ins, that person's "load"? This is a privacy
+    question.** Decisions rule 4 keeps each person's load across check-ins private unless they share it.
+    The to-dos board serves each line only to somebody who may already read it in its check-in, so it
+    shows nothing new line by line; but it puts them together for each person, as the prototype draws
+    it. **My recommendation:** decide that what somebody said they will do is not their load (their load
+    is what others ask of them, as the You page has it), and keep the board. If you decide otherwise, the
+    server can serve it one check-in at a time instead.
+50. **To-dos from chat are not on the board.** The prototype says "from every check-in and chat" and
+    shows "Remind me to call Lakeside’s buyer on Tuesday." adding to the list. The product keeps those
+    as a note to yourself that nobody else reads, and says so in its own rules. I kept that, and the
+    board's sentence says "in their check-ins" instead. **My recommendation:** keep chat to-dos private,
+    or let the person choose to share one when they add it.
+51. **"Done" is left out on the to-dos board.** Whether somebody did what they said is asked in their
+    next check-in and counts in that check-in's record, so an admin or a lead ticking it on a board would
+    change the record from outside the check-in. "How people use it" is left out too (request 27).
+    **My recommendation:** keep it read-only; the person marks it done in their check-in.
+52. **"From her check-in" reads "From a check-in",** because the product does not know anybody's
+    pronouns. Lines the lead added from pasted notes read the same. **My recommendation:** keep it.
+53. **Wording no screen shows, on to-dos:** "Nobody has anything on their list yet.", "The board did not
+    load.", and the server's refusals ("The to-dos suite is not switched on." and "Only an admin or a
+    lead can open this board.").
 
 
 
@@ -2811,6 +2832,50 @@ setting a budget, the engine's check and ask, no label, the scan) and
 `client/src/pages/suites/spending-as-each-reader-sees-it.spec.tsx` (11 tests, word for word, for Grace,
 Fatuma and a member). **No existing test was changed.** No screen could be checked signed in (item 14).
 
+#### To-dos: built and tested, not yet reviewed
+
+**What was missing (the gap list):** each check-in already keeps what each person said they will do
+(`ground_commitments`), and each person reads their own on their You board, but nothing put them in one
+list for each person for an admin or a lead, and there was no board at `#/suite/todos`. Groundwork's own
+back office has to-dos (`ops_todos`), but they are Groundwork's own, with no organisation on a row, so
+they are not reused. A person's own to-dos from chat (`todos`, from "remind me to …" in Ask Groundwork)
+already exist and are a note to themselves that nobody else reads, by the product's own rule; they stay
+so, and are not on the board (item 28.50).
+
+**Nothing new is stored,** and the board writes nothing.
+
+**What each person now reads:**
+- **Grace, an admin,** "Open its board" on the To-dos card, then "Suites / To-dos", "To-dos",
+  "Everything people said they will do in their check-ins, in one list for each person. Nobody has to
+  write it down twice." Then each person's name, such as "Miriam Wanjiku", with each line not yet done
+  or dropped, newest first: "Visit Westgate Deli on Friday" and "From a check-in, 24 September". With
+  none: "Nobody has anything on their list yet."
+- **Wairimu, a lead,** the same, but only for the people in her own team and herself, and only lines
+  from check-ins she runs, set up or takes part in; where she only takes part, only if people there are
+  named to each other. Not the check-ins she reads only because they are run from her department.
+- **A member and a guest** are refused by the server: "Only an admin or a lead can open this board."
+- **Everybody, while the suite is off:** "The to-dos suite is not switched on."
+- **Nobody** reads "Done" on a line, or "How people use it" (item 28.51).
+
+**Privacy and access, on the server:** a line is served only to somebody who may already read it in its
+check-in, by the product's one rule (`who-may-read-this-check-in.ts`), and never wider: an admin every
+check-in (decisions rule 5); a lead only at the "lead" level or as somebody taking part where people are
+named to each other, never at the "shared" level, which never includes another person's exact words. A
+lead reads only their own team and themselves. A to-do from chat is never read. No labels on people, no
+addresses. **Whether one list for each person across check-ins is that person's load, which is private
+unless they share it, is a privacy question for you (item 28.49).**
+
+**Commits:** `c5677216` (the server), `f1f88dd4` (the board), `e869645c` (request 27).
+
+**Tested:** `api/src/modules/suites/the-todos-as-each-reader-reads-them.spec.ts` (9 tests: off, every
+refusal, what Grace, Wairimu, Kamau and Brian are each served, a hidden-peers check-in, a department
+check-in, done lines and chat to-dos left out, nothing written) and
+`client/src/pages/suites/the-todos-as-each-reader-see-them.spec.tsx` (8 tests, word for word). **One
+test changed, and why:** `the-suites-page-as-each-reader-sees-it.spec.tsx` used To-dos as the suite with
+no board yet, and counted two doors for a lead. To-dos now has its board, so the "no door yet" check
+moved to Customers and deals, the lead's To-dos card expects its door, and the lead counts three doors.
+No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2838,8 +2903,10 @@ Fatuma and a member). **No existing test was changed.** No screen could be check
    tables; the back office's spending is Groundwork's own books, so it is not reused. Still missing:
    "How people use it", and real figures from an accounting tool (item 28.46). The engine's part: taking
    a request in chat and checking the budget, said back and confirmed first (request 26).
-8. **To-dos** (`#/suite/todos`, admins and leads). Commitments exist in each check-in, and the back
-   office has to-dos, to check for reuse. The engine's part: "Remind me" in chat.
+8. **To-dos** (`#/suite/todos`, admins and leads). **Built** (above), from the commitments each
+   check-in keeps; nothing new is stored, and the back office's to-dos are not reused. Still missing:
+   "Done", and to-dos from chat (items 28.50 and 28.51). The engine's part: "Remind me" in chat, in the
+   prototype's words (request 27).
 9. **Customers and deals** (`#/suite/customers`, admins and leads). The back office has a sales
    pipeline, to check for reuse. The engine's part: the sales check-ins keeping the list up to date.
 10. **Equipment** (`#/suite/equipment`, admins only). Missing entirely. The engine's part: updates
