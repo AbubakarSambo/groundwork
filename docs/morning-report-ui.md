@@ -9,10 +9,10 @@ same file.
 *Kept up to date as the night goes on. The details are further down.*
 
 **Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
-in, with every decision you made) and U.3 (organisations and joining, passed on its third review).
+in, with every decision you made), U.3 (organisations and joining, passed on its third review) and U.4
+(people, roles and access, passed on its fifth).
 
-**Built and tested, but not ticked:** U.4 (people, roles and access),
-U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
+**Built and tested, but not ticked:** U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
@@ -49,6 +49,14 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 "Guests with no account don't" count. Since the prototype is the standard and U.19's choice was not
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
+
+**A serious bug, older than this work, found during the U.4 review:** "Leave <organisation>" in Settings
+promises "You will lose access to Kilima Test Estates immediately.", but the server switches off the
+person's whole account (`leaveOrg` in `api/src/modules/users/users.service.ts`, around line 708). So
+someone in two organisations who leaves one is locked out of both, and disappears from People in every
+organisation. **My recommendation:** leaving ends only that organisation's membership and keeps the
+account, as the sentence promises, with a test. I have not changed it, because it touches when an
+account and its data are switched off (item 15).
 
 **A possible leak found in U.15, left alone on purpose:** the organisation's handbook and memory
 (`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
@@ -111,7 +119,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
-| U.4 People, roles and access | Yes | Sent back four times on 27 September, each time for new and smaller things; last fixes being made |
+| U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
@@ -660,6 +668,18 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
    the People list now does. That changes where roles are kept, so I have not done it without you.
 8. **"Changes apply straight away."** The prototype adds "and are noted with your name", but nothing
    records who changed a role. **Left out.** **My recommendation:** record it, then add the words back.
+10. **Leaving one organisation locks the person out of all of them** (see the summary at the top).
+    **My recommendation:** end only that membership and keep the account.
+11. **Bringing back someone who left:** an invitation cannot switch an account back on. **My
+    recommendation:** a "Bring them back" action on the person's page, for admins.
+12. **The People heading counts seats, and the list shows more:** a guest held for a seat, or someone
+    waiting to be let in, is listed but holds no seat, so "N people shown." can be higher than the
+    heading. Both are true. **My recommendation:** keep it, and consider saying "5 people take a seat" in
+    the heading.
+13. **Two wording notes from the last review:** the no-seat card's heading "Somebody is on a check-in
+    with no seat for them" sits above "There is a seat for them now.", which reads oddly (suggestion:
+    "Somebody is waiting for their invitation"); and "Your plan has room for 0 more people." could read
+    "Your plan has no room for anyone else."
 
 ### 16. Today and the check-ins list (U.5): what needs you
 
