@@ -5121,6 +5121,13 @@ model GroundContextItem {
   authorUserId  String?         @map("author_user_id")
   /// When it stopped being live - a decision made, a rule dropped. Kept rather than deleted.
   closedAt      DateTime?       @map("closed_at")
+  /// QUESTION_FOR_PERSON only. The question exactly as Groundwork will ask it, word for word: a
+  /// draft until the lead confirms it, and the lead's own wording where they changed it. Decision
+  /// 34, 28 September 2026: the lead sees the exact question before it goes, and confirms it.
+  exactQuestion String?         @map("exact_question") @db.Text
+  /// When the lead confirmed `exactQuestion`. Null means it is not asked - never, by anybody - and
+  /// the lead is shown it as waiting for them. Every line written before 28 September starts here.
+  questionConfirmedAt DateTime? @map("question_confirmed_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
