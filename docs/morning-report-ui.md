@@ -1649,6 +1649,11 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
    on your plan", they are on the no-seat card, and they are offered no check-in until a seat is
    freed and their invitation goes. Plan and billing and People now say "Guests with no account
    don't." **My recommendation:** keep the prototype's rule.
+   **Beside it, a separate cap:** a check-in opened on the free plan has its own limit on people, and at
+   that limit adding one more reads "The free plan covers 5 people, including you, so you can invite 4
+   others. Subscribe to add more people." This limit is per check-in and sits beside the organisation's
+   seat rule. It counts everyone on that check-in, guests included. Please say whether the two should
+   stay separate.
 
 1. **What happens when you turn on the one switch.** You decided that the free trial's setting
    (`pricing.freeTrial`) is one switch for the trial and the free plan. It is **off**, and while it is
@@ -2284,6 +2289,22 @@ fixed in its own commit, with tests:
   invitation, writes it.
 - **For U.5's review:** a lead with no check-ins, who can open them, reads "…When someone adds you to
   one, you will see it here." That speaks only to someone who cannot open one.
+
+**U.4 third review (27 September).** The seat rule and "Added by" passed live. Two small things and
+two related untruths came back, each fixed in its own commit, with tests:
+- **People's seat line is a whole sentence** (`efd7ec9c`): "Guests with no account don’t take a seat."
+  Plan and billing keeps "Every person with a Groundwork account at … Guests with no account don’t."
+- **A held guest's invitation opens on the refusal** (`a06b75a6`). The whole invitation used to show,
+  and the refusal came only after pressing the button. Now the page opens on "This check-in cannot
+  start for you yet, because there is no seat for you on the plan. You will get your invitation as soon
+  as there is one.", with no button. The server gives nothing else for a held row.
+- **A held guest is not shown the organisation** (`4e1ea6ef`). It is left out of "Choose an
+  organisation" and the switcher, and switching into it is refused, until the hold is cleared.
+- **Where a guest is from** (`a10e5067`). The add's reply named the organisation the person last looked
+  at. It now uses their memberships: the organisation they own, or the first they joined as anything
+  but a guest.
+- **Local test data only:** rows written by the in-between build (between the seat rule and the held
+  flag) make Mto Test Supplies' counts inconsistent on this computer. Nothing outside it is affected.
 
 ### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
