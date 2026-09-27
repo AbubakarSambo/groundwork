@@ -27,6 +27,19 @@ describe('when the next check-in opens, in one sentence', () => {
     expect(whenTheNextOneOpens([{ id: 'this', sessionNumber: 38, status: 'IN_PROGRESS' }], 'this', now)).toBeNull()
     expect(whenTheNextOneOpens(undefined, 'this', now)).toBeNull()
   })
+  /*
+   * U.8 REVIEW: A ROW WITH NO availableFrom READ AS "OPEN NOW", WHICH IS NOT TRUE. The next
+   * session's row can exist before it has been scheduled (lead-path-dates.spec.ts locks
+   * `availableFrom` as `null` in exactly that case), and this said "Your next check-in is open
+   * now." on a check-in nobody could open yet - the end card's own "What happens next" then had no
+   * true next-opening line, and something false in its place.
+   */
+  it('says nothing, not "open now", when the next row has no date yet', () => {
+    expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: null }], 'this', now))
+      .toBeNull()
+    expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED' }], 'this', now))
+      .toBeNull()
+  })
 })
 
 describe('who else answers', () => {
