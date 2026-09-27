@@ -43,6 +43,13 @@ The fix keeps your decision: a password chosen at sign-up is used only when the 
 in the same browser that signed up. Anywhere else, the account is made without it and the person
 chooses their own.
 
+**Who takes a seat, decided the prototype's way, for you to confirm:** U.19 had counted guests as taking
+no seat, and said "Guests from outside don't count toward the plan." The U.4 review found this made the
+People page contradict itself. The prototype says a guest from outside "takes a seat", and that only
+"Guests with no account don't" count. Since the prototype is the standard and U.19's choice was not
+yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
+seat, guests included, and people answering by link with no account take none (item 30).
+
 **A possible leak found in U.15, left alone on purpose:** the organisation's handbook and memory
 (`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
 memory must keep working exactly as now, so I have not changed it without you (item 26.7).
@@ -104,7 +111,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
-| U.4 People, roles and access | Yes | Sent back on 27 September; being fixed |
+| U.4 People, roles and access | Yes | Sent back twice on 27 September; being fixed |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
