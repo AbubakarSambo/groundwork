@@ -13,6 +13,8 @@ import { todayApi } from '@/api/today'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
+import { useAskStore } from '@/stores/ask'
+import { AskGroundwork } from './AskGroundwork'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
@@ -693,6 +695,8 @@ export function AppSidebar() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const showHelp = useHelpStore(s => s.show)
   const showFeedback = useFeedbackStore(s => s.show)
+  const askOpen = useAskStore(s => s.open)
+  const toggleAsk = useAskStore(s => s.toggle)
 
   const [orgOpen, setOrgOpen] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
@@ -884,6 +888,22 @@ export function AppSidebar() {
             <a href={MARKETING_URL} className="gw-rl-brand" title="Groundwork" aria-label="Groundwork">
               <GroundworkBars />
             </a>
+          )}
+          {/* Ask Groundwork (D1): the speech bubble beside the mark opens the panel beside the page. */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              className="gw-rl-ic gw-ask-open"
+              onClick={toggleAsk}
+              title="Ask Groundwork"
+              aria-label="Ask Groundwork"
+              aria-expanded={askOpen}
+              style={collapsed ? undefined : { marginLeft: 'auto' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <path d="M10 3.2c-3.9 0-7 2.6-7 5.9 0 1.7.8 3.2 2.2 4.3L4.6 16.8l3.6-1.9c.6.1 1.2.2 1.8.2 3.9 0 7-2.6 7-5.9S13.9 3.2 10 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            </button>
           )}
           <button
             className="gw-tap44"
@@ -1161,7 +1181,7 @@ export function AppSidebar() {
 
       {/*
         THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
-        prototype. Chat is left out until that page exists, so nothing here leads nowhere.
+        prototype. Chat is Ask Groundwork's own page (D1, #/chat).
         Everything else a phone used to show in this bar is on "More", through the same gate.
       */}
       <nav
@@ -1187,6 +1207,9 @@ export function AppSidebar() {
                 <PhoneIcon d="start" />Start
               </NavLink>
             )}
+            <NavLink to="/chat" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="chat" />Chat
+            </NavLink>
             <NavLink to="/more" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
               <PhoneIcon d="more" />More
             </NavLink>
@@ -1200,12 +1223,15 @@ export function AppSidebar() {
 }
 
 /** The bottom bar's icons, drawn in the text colour. */
-function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'more' }) {
+function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'chat' | 'more' }) {
   if (d === 'today') {
     return <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden><rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M3 8.5h16M7.5 2.5v3M14.5 2.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
   }
   if (d === 'start') {
     return <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden><path d="M13 5v16M5 13h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  }
+  if (d === 'chat') {
+    return <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden><path d="M10 3.2c-3.9 0-7 2.6-7 5.9 0 1.7.8 3.2 2.2 4.3L4.6 16.8l3.6-1.9c.6.1 1.2.2 1.8.2 3.9 0 7-2.6 7-5.9S13.9 3.2 10 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
   }
   if (d === 'more') {
     return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden><circle cx="5" cy="11" r="1.8" fill="currentColor" /><circle cx="11" cy="11" r="1.8" fill="currentColor" /><circle cx="17" cy="11" r="1.8" fill="currentColor" /></svg>
@@ -1248,6 +1274,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    */
   const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const askOpen = useAskStore(s => s.open)
+  const hideAsk = useAskStore(s => s.hide)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1351,6 +1379,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main id="main" className="gw-main-content">
         {children}
       </main>
+      {isAuthenticated && askOpen && (
+        <div className="gw-ask-drawer" style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
+          boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
+        }}>
+          <AskGroundwork onClose={hideAsk} />
+        </div>
+      )}
       <FeedbackWidget />
 
       <style>{`
@@ -1388,6 +1424,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
              speak of. It was being drawn that way on every screen, which is the bug. */
           .gw-fb-overlay      { align-items: flex-end !important; padding: 0 !important; }
           .gw-fb-panel        { border-radius: 12px 12px 0 0 !important; max-height: 90vh !important; }
+          /* On a phone Ask Groundwork is its own page, "Chat" in the bottom bar. */
+          .gw-ask-drawer      { display: none !important; }
         }
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }

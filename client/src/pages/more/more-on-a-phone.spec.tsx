@@ -40,21 +40,24 @@ beforeEach(() => { vi.restoreAllMocks(); window.localStorage.clear() })
 describe('the bottom bar', () => {
   /* U.5: Today exists now, so it comes first, as layout-phone.txt has it (Today, Check-ins, Start,
      Chat, More). These tests used to check that Today was left out while its page did not exist. */
-  it('has Today, Check-ins, Start and More for somebody who may start a check-in', () => {
+  /* U.14: Chat exists now (Ask Groundwork's page, #/chat), so it sits before More, as
+     layout-phone.txt has it. These tests used to check that Chat was left out while its page did
+     not exist. */
+  it('has Today, Check-ins, Start, Chat and More for somebody who may start a check-in', () => {
     mount(PARTICIPANT)
     expect([...bar().querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Today', '/today'], ['Check-ins', '/grounds'], ['Start', '/start?new=1'], ['More', '/more'],
+      ['Today', '/today'], ['Check-ins', '/grounds'], ['Start', '/start?new=1'], ['Chat', '/chat'], ['More', '/more'],
     ])
   })
 
   it('and no Start for somebody the server would refuse', () => {
     mount(LEAD)
-    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Today', 'Check-ins', 'More'])
+    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Today', 'Check-ins', 'Chat', 'More'])
   })
 
-  it('leaves out Chat, whose page does not exist yet, rather than leading nowhere', () => {
+  it('offers Chat to everybody, an admin included, because everybody may ask', () => {
     mount(ADMIN)
-    expect(bar()).not.toHaveTextContent(/Chat/)
+    expect(hrefOf(bar(), 'Chat')).toEqual(['/chat'])
   })
 
   it('and "More" does not offer Today a second time, since the bar has it', () => {

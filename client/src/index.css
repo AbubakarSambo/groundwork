@@ -1556,6 +1556,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-phone-bar-item.on { color: var(--gw-text); font-weight: 700; }
 .gw-phone-bar-item.start { color: var(--gw-navy); }
 .gw-phone-bar-item:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
+/* Five words in the bar since Chat came (U.14): on the narrowest phones each gets a fifth of the width, so a little smaller. */
+@media (max-width: 360px) { .gw-phone-bar-item { font-size: 12px; padding: 6px 0; } }
 
 /* ── "JUMP TO" (A1) ─────────────────────────────────────────── */
 .gw-rl-jump { display: flex; align-items: center; gap: 10px; width: calc(100% - 20px); margin: 0 10px 6px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 15px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; }

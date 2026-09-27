@@ -36,13 +36,16 @@ describe('the bottom bar on a phone', () => {
    * point of this file still holds, and is checked the new way: no label on the bar is long enough to
    * lose its start in a cell at 320px, and the nowrap-and-ellipsis backstop is still there.
    */
-  it('says a few short words, each fitting a third of a 320px screen', () => {
+  it('says a few short words, each fitting a fifth of a 320px screen', () => {
     const bar = stripped.slice(stripped.indexOf('className="gw-sidebar-mobile"'), stripped.indexOf('</nav>', stripped.indexOf('className="gw-sidebar-mobile"')))
     const words = [...bar.matchAll(/<PhoneIcon d="[a-z]+" \/>([A-Za-z -]+)\n/g)].map(m => m[1].trim())
-    /* U.5: Today came first when its page came, as layout-phone.txt has it. */
-    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'More'])
-    /* 13px bold is about 7.5px a character; a third of 320 is 106. */
-    for (const w of words) expect(w.length * 7.5).toBeLessThan(320 / 3)
+    /* U.5: Today came first when its page came, as layout-phone.txt has it. U.14: Chat came with
+       its page, so the bar has the prototype's five words and each cell is a fifth, not a third. */
+    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'Chat', 'More'])
+    /* On a screen of 360px or less the words are 12px, about 6.9px a character bold, with no
+       padding at the sides; a fifth of 320 is 64. */
+    expect(readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')).toMatch(/@media \(max-width: 360px\) \{ \.gw-phone-bar-item \{ font-size: 12px; padding: 6px 0; \} \}/)
+    for (const w of words) expect(w.length * 6.9).toBeLessThan(320 / 5)
   })
 
   it('and no nav item keeps a second, short name any more', () => {
