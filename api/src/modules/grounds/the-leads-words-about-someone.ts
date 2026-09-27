@@ -11,3 +11,18 @@
 export function theLeadsWordsAbout(p: { roleAsDescribed?: string | null }, readerRunsThisCheckIn: boolean): string | null {
   return readerRunsThisCheckIn ? (p.roleAsDescribed ?? null) : null;
 }
+
+/**
+ * AND IN THAT PERSON'S OWN SESSION, THE MODEL IS NOT HANDED THEM EITHER (request 36, route 3).
+ *
+ * The session prompt carried `roleAsDescribed` three times: "The person who set this up described
+ * this person's part in it as: …", `PRIOR_CONTEXT`, and "who described their role as" in the plan
+ * for the session. For somebody the lead invited, that is the lead's sentence about them, and a model
+ * that has it can say it back to the very person it is about. The row does not record who wrote it,
+ * so only the lead's own row counts as their own words: it is written from their own setup. Anybody
+ * else is asked, and what they say goes on the record in their own words.
+ */
+export function aRoleInTheirOwnWords(p: { roleAsDescribed?: string | null; partyType?: string | null } | null | undefined): string | null {
+  if (!p || p.partyType !== 'INITIATOR') return null;
+  return p.roleAsDescribed ?? null;
+}

@@ -180,6 +180,7 @@ import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
+import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -3420,7 +3421,8 @@ export class ConversationService {
        * the two cannot say different numbers.
        */
       totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
-      roleAsDescribed: checkIn.participant.roleAsDescribed,
+      /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
+      roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
       /*
        * WHO OPENED THIS, so the safety rule in ENGINE_RULES can finally fire. It fell back to the
        * party type of whoever was ANSWERING, which made "the opener is senior and this person is
@@ -3492,7 +3494,8 @@ export class ConversationService {
       cadence: (ground as any).cadence ?? null,
       adminBrief: (ground as any).brief ?? null,
       objectives: (ground as any).objectives ?? [],
-      priorContext: checkIn.participant.roleAsDescribed ?? null,
+      /* The same: never the lead's words about this person, in this person's own session (request 36). */
+      priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
       lowSpecificityMultiDim,
       groundState,
@@ -6059,7 +6062,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         oneTime: ground.cadence === Cadence.ONE_TIME,
         person: {
           firstName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
-          roleAsDescribed: checkIn.participant?.roleAsDescribed ?? null,
+          /* "Who described their role as" is only true of the lead's own row (request 36). */
+          roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
           isLead: checkIn.participant?.partyType === PartyType.INITIATOR,
         },
         roleMap: roleMapFor(checkIn.participant?.detectedFunction ?? null),
