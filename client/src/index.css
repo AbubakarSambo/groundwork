@@ -1940,3 +1940,27 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 /* U.6: the setup panel that fills in as you talk sits beside the conversation on a wide screen only. */
 .gw-fills-in { display: none; }
 @media (min-width: 1000px) { .gw-fills-in { display: block; } }
+
+/* The Suites page (U.17, E suites-admin.txt and suites-lead.txt). */
+.gw-suites-org { margin: 0 0 4px; font-size: 14px; color: var(--gw-sub); }
+.gw-suites-h1 { margin: 0 0 8px; color: var(--gw-text); }
+.gw-suites .gw-you-sub { max-width: 800px; }
+.gw-suites-group { margin-top: 28px; }
+.gw-suites-group > h2 { margin: 0 0 14px; }
+.gw-suites-one { margin-bottom: 16px; }
+.gw-suite-card h3 { margin: 0 0 4px; }
+.gw-suite-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.gw-suite-switch { display: flex; gap: 10px; align-items: center; }
+.gw-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
+.gw-suite-ask > p { margin: 0; }
+.gw-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gw-suite-q label { font-size: 14px; font-weight: 600; color: var(--gw-text); }
+.gw-suite-q select, .gw-suite-q input, .gw-suite-q textarea { box-sizing: border-box; width: 100%; max-width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
+.gw-suite-ask-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.gw-suites-already { list-style: none; padding: 4px 20px; margin: 0; }
+.gw-suites-already li { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
+.gw-suites-already li:first-child { border-top: 0; }
+.gw-suites-already a { color: var(--gw-navy); text-decoration: underline; }
+@media (max-width: 767px) {
+  .gw-suites-already li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
