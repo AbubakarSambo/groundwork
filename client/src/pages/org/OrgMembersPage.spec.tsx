@@ -233,6 +233,13 @@ describe('the people with no seat say who added them', () => {
   })
   it('on the page, with each person\'s line', async () => {
     open()
+    /* A full plan: 100 of 100 (U.4 fourth review: with room, the card says so instead). */
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 100, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
     vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
@@ -256,5 +263,33 @@ describe('somebody who left (U.4 fourth review)', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
     expect((await screen.findAllByText('7 people shown.')).length).toBeGreaterThan(0)
     expect(screen.queryByText('Pendo Mwita', { selector: 'b' })).toBeNull()
+  })
+})
+
+describe('the no-seat card once a seat is freed (U.4 fourth review)', () => {
+  it('room for all of them, for some, or none', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    const one = [{ addedBy: 'Nadia Owino' }]
+    const three = [{ addedBy: 'Nadia Owino' }, { addedBy: 'Nadia Owino' }, { addedBy: 'Nadia Owino' }]
+    expect(whoAddedThem(one, 1)).toBe('There is a seat for them now. Send their invitation when you are ready.')
+    expect(whoAddedThem(three, null)).toBe('There are seats for all 3 of them now. Send their invitations when you are ready.')
+    expect(whoAddedThem(three, 1)).toBe('There is a seat for 1 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
+    expect(whoAddedThem(three, 2)).toBe('There are seats for 2 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
+    expect(whoAddedThem(one, 0)).toMatch(/^Nadia Owino added them and your plan is full/)
+  })
+
+  it('on the page, after a seat was freed, the card no longer says the plan is full', async () => {
+    open()
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 99, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('There is a seat for them now. Send their invitation when you are ready.')).toBeTruthy()
+    expect(screen.queryByText(/your plan is full/)).toBeNull()
   })
 })

@@ -32,7 +32,21 @@ import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
  * WHO ADDED THE PEOPLE WITH NO SEAT, SAID TRULY (U.4 re-review). It said "A lead added them" even when
  * an admin had. One name when one person added them all; otherwise "Someone on your team".
  */
-export function whoAddedThem(rows: { addedBy?: string | null }[]): string {
+export function whoAddedThem(rows: { addedBy?: string | null }[], seatsFree: number | null = 0): string {
+  /*
+   * AND WHETHER THERE IS ROOM NOW (U.4 fourth review). After a seat was freed the card still said the
+   * plan was full. With room for all of them, or some, it says so; null is a plan with no cap.
+   */
+  const n = rows.length
+  if (seatsFree === null || seatsFree >= n) {
+    return n === 1
+      ? 'There is a seat for them now. Send their invitation when you are ready.'
+      : `There are seats for all ${n} of them now. Send their invitations when you are ready.`
+  }
+  if (seatsFree > 0) {
+    return `${seatsFree === 1 ? 'There is a seat for 1' : `There are seats for ${seatsFree}`} of them now. `
+      + 'Send their invitations when you are ready, and the rest wait until there is room.'
+  }
   const names = [...new Set(rows.map((r) => r.addedBy).filter((n): n is string => !!n))]
   const who = names.length === 1 && rows.every((r) => r.addedBy === names[0]) ? names[0] : 'Someone on your team'
   return `${who} added them and your plan is full, so nothing has been sent to them. `
@@ -54,6 +68,16 @@ export function OrgMembersPage() {
   })
   const ownerId: string | null = ownerQuery.data?.ownerUserId ?? null
 
+  /* The same count query the head count reads, so the no-seat card knows when there is room (U.4 fourth review). */
+  const seatCount = useQuery({
+    queryKey: ['billing-status-people'],
+    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null } }),
+    enabled: isAdmin,
+    retry: false,
+  })
+  const people = seatCount.data?.people
+  /* Unknown until it answers: then the card says what it always said, never "there is room". */
+  const seatsFree: number | null = !people ? 0 : people.cap == null ? null : Math.max(0, people.cap - people.count)
   const seatQueue = useQuery({
     queryKey: ['waiting-for-a-seat'],
     queryFn: authApi.waitingForASeat,
@@ -93,7 +117,7 @@ export function OrgMembersPage() {
               ? 'Somebody is on a check-in with no seat for them'
               : `${seatQueue.data!.length} people are on check-ins with no seat for them`}
           </h2>
-          <p className="gw-people-note">{whoAddedThem(seatQueue.data!)}</p>
+          <p className="gw-people-note">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
           <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
             {(person: any) => (
               <div key={person.id} className="gw-waiting-row">
