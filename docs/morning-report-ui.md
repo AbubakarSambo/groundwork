@@ -36,6 +36,13 @@ done on 27 September): the board never reads the rating.
 everybody's questions to Ask Groundwork, which are meant to be private always. That is engine code, so
 I have asked the engine workspace (request 16(g)) and put it to you as item 25.2.
 
+**A security hole found during the U.3 review, being fixed:** since U.2 let people choose a password
+at sign-up, someone could sign up with another person's email address and a password of their own; if
+the real owner then opened the confirmation email, the account was made with the stranger's password.
+The fix keeps your decision: a password chosen at sign-up is used only when the confirmation is opened
+in the same browser that signed up. Anywhere else, the account is made without it and the person
+chooses their own.
+
 **A possible leak found in U.15, left alone on purpose:** the organisation's handbook and memory
 (`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
 memory must keep working exactly as now, so I have not changed it without you (item 26.7).
