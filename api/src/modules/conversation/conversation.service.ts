@@ -93,6 +93,7 @@ import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causal
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
 import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
+import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut } from './asking-for-what-they-left-out';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
@@ -4100,6 +4101,51 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     /* Shared by design: a person answering should know what this team says it is doing. */
     const howWeWork = howThisTeamWorks(howWeWorkLines);
 
+    /*
+     * WHAT THEY HAVE NOT SAID YET. See asking-for-what-they-left-out: Grace named three banks and
+     * Peter talked about Equity only, in four runs of five; Tobi and Hana told the Meridian story
+     * without the when. Read off this session's turns against what the check-in is about, and fed
+     * in as context for the next question. Not on the opener: nobody has said anything yet.
+     *
+     * Where a set can come from: the brief, the goals this person can already see, their own
+     * objectives, what the team has written down for everybody, the lead's confirmed questions, and
+     * - for a participant on a shared check-in where the lead's expectation is said out loud - the
+     * lead's own words in their check-in on this ground, which people in the check-in may read.
+     * Only the names in a list are taken, never the lead's sentence, and never a person's name.
+     */
+    const heldBack = how?.forTheOpener ? '' : await (async () => {
+      const lead = (ground.participants ?? []).find((p: any) => p.partyType === PartyType.INITIATOR) as any;
+      const leadName = theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName);
+      const namedIn: { text: string; namedBy: string }[] = [];
+      /* Not on an evaluation or a cohort, where what the lead says in her own check-in is mostly about the people in it. */
+      const mayUseTheLeadsWords = !isTheLead && lead?.id && (ground as any).mode === 'SHARED' && (ground as any).participantsHearTheLeadsExpectation !== false && peersMayBeNamed;
+      if (mayUseTheLeadsWords) {
+        const theLeadSaid = await (this.prisma.conversationTurn?.findMany?.({
+          where: { role: TurnRole.PERSON, checkIn: { groundId: checkIn.groundId, participantId: lead.id, sessionNumber: { lte: checkIn.sessionNumber ?? 1 } } },
+          orderBy: { createdAt: 'asc' },
+          select: { content: true },
+          take: 60,
+        }) ?? Promise.resolve([] as { content: string | null }[])).catch(() => [] as { content: string | null }[]);
+        for (const t of theLeadSaid as { content: string | null }[]) if (t.content?.trim()) namedIn.push({ text: t.content, namedBy: `${leadName ?? 'The person who set this up'} named` });
+      }
+      if ((ground as any).brief?.trim()) namedIn.push({ text: (ground as any).brief, namedBy: 'The brief for this check-in names' });
+      for (const o of objectivesOnRecord as any[]) {
+        if (o.ownerParticipantId && o.ownerParticipantId !== checkIn.participantId) continue;
+        if (o.name?.trim()) namedIn.push({ text: o.name, namedBy: 'A goal on this check-in names' });
+      }
+      for (const o of personObjectives as any[]) if (o.text?.trim()) namedIn.push({ text: o.text, namedBy: 'Your objective names' });
+      for (const l of [...howWeWorkLines, ...notSettledLines, ...askThemLines]) namedIn.push({ text: l, namedBy: 'What this team has written down names' });
+      const peopleHere = (ground.participants ?? []).flatMap((p: any) => [p.user?.firstName, p.user?.lastName, p.nameGiven]).map((n: any) => String(n ?? '').trim()).filter(Boolean);
+      const set = theSetTheySpokeToPartOf(namedIn, turnsThisSession, peopleHere);
+      const withoutWhen = whatTheyToldWithoutWhen(turnsThisSession);
+      if (set) this.logger.log(`Check-in ${checkIn.id}: spoke about ${set.spokeAbout.join(', ')} of ${set.all.join(', ')}; asking about the rest.`);
+      if (withoutWhen.length) this.logger.log(`Check-in ${checkIn.id}: ${withoutWhen.length} thing(s) told without when; asking when.`);
+      return askForWhatTheyLeftOut(set, withoutWhen, theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName));
+    })().catch((err: any) => {
+      this.logger.warn(`What was left out could not be read for ${checkIn.id}: ${err?.message}`);
+      return '';
+    });
+
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
     // the pre-agreed resolutionState when set, else the party's own session-1
@@ -4634,7 +4680,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack],
       ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
       ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['howWeWork', howWeWork],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
@@ -4679,7 +4725,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
