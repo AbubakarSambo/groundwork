@@ -1509,7 +1509,7 @@ who is not):
 resolution read, and only to the people in the check-in and an admin; anyone else is refused. The
 check-in's own read no longer carries the whole resolution row, so the reason cannot leave that way.
 The board's "Last updated" time now counts the decision as something new coming in. No label is shown
-on a person anywhere; each reader's test checks the page for "PIP", "at risk" and "exit".
+on a person anywhere; the screen tests for Wairimu and Kwame check the page for "PIP", "at risk" and "exit".
 
 **Commits:** `dc6dbe93` (the server: the reason, who reads it, the narrower check-in read, the board's
 time), `942ad34e` (the ending page, the panel's words, the board's top and foot), `68d958f5` (the
