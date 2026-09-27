@@ -103,7 +103,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
-| U.3 Organisations and joining | Yes | Sent back on 27 September; being fixed |
+| U.3 Organisations and joining | Yes | Sent back twice on 27 September; being fixed |
 | U.4 People, roles and access | Yes | Waiting |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
@@ -2049,6 +2049,15 @@ by domain or link; and the invitation page had a fragment ("Coamana.") and two s
 dashes. The server's privacy rules all held: a member was refused every change to the organisation,
 the fresh-link reply was the same for every address, and outsiders saw no head count. These are being
 fixed now, then the review runs again.
+
+**The second review sent it back again, for one real crash,** which is exactly why the live review
+matters: every test had passed, but joining an organisation when you confirm your email crashed each
+time against the real database. The database already adds a person's membership whenever their
+account is made, and the new code added a second one. Everything else passed live, including the
+security fix: a password chosen at sign-up worked in the same browser, and was refused when the
+confirmation was opened elsewhere, with the person offered "Choose a password" and nothing saying a
+password had been chosen. The crash is being fixed now, with a test that includes the database's own
+behaviour.
 
 #### U.3 review fixes (27 September)
 
