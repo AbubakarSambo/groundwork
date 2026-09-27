@@ -150,7 +150,7 @@ to find.
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
-| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back three times on 27 September; the last fix, invitations waiting for a future start, is being made |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back four times on 27 September; fixing a second setup that was silently dropped |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
