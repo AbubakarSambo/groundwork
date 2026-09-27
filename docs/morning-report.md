@@ -6,6 +6,32 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
+
+*This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
+
+**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. That run, run-11, is going now on `319bf855`. This line is updated when it has finished.
+
+**What still blocks it:**
+1. Run-11 must show that task 1.6 and the blocker fixes hold across all 24 scenarios: nothing worse than the baseline, every quote from the record, and none of a lead's private words reaching anyone.
+2. The steps before release in `docs/ready-to-deploy.md`, which need Abubakar and Hafsah: the migrations with a backup, the one-off script that marks which record lines are people's own words, merging with the screens branch, and full tests on the combined code.
+
+**What I finished tonight** (the list grows as I go):
+- Item 2, the evidence for verdicts, requests through chat and being away, was done last night. It is in the section "The three capabilities I rated missing" below, and in `docs/capability-check.md`.
+- Item 3, `docs/weekly-plan.md`, was done last night.
+- Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
+
+**What needs Hafsah:**
+- **Approve the 49 plain pattern names** in `docs/pattern-names.md`, and settle B5's name. Patterns stay switched off until then. Also approve the three-day and one-week windows before a lead sees a person's pattern.
+- **Replace `docs/decisions.md` with `docs/decisions-merged.md`.** The file is protected; the step is below.
+- **The thresholds for verdicts, and who counts as a person's lead for approvals.** Decision 33 says these are decided when that work starts: weeks 10, 11 and 21 of the weekly plan.
+- **The questions for Abubakar**, in `docs/ready-to-deploy.md`:
+  - How is the API hosted and released?
+  - How do migrations reach staging and live, and is a backup taken first?
+  - Four of the 45 migrations change or remove existing data. The document lists each one.
+  - Hafsah's earlier pull request should be merged first.
+  - Who runs the one-off script that marks people's own words, and when?
+
 ## The three capabilities I rated "missing": the evidence, for Hafsah to decide
 
 **Nothing is hidden.** For each one, this is what the prototype shows it doing, exactly what was tried live on the local test database on 27 September, what happened, where the code is, and which parts already work. The full detail is in `docs/capability-check.md`, sections 4, 10 and 11.
