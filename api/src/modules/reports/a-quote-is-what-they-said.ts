@@ -76,14 +76,30 @@ export interface AQuotation {
  * mark only where it does not sit inside a word, so "5'11" and "don't" are never mistaken for one,
  * and it closes on the same line.
  */
-export const QUOTATION = /“([^“”]*)”|(?<![\p{L}\p{N}])"([^"\n]*)"(?![\p{L}\p{N}])/gu;
+/*
+ * AND SINGLE MARKS, WHEN THEY ARE BEING USED AS QUOTATION MARKS. Openread, check-2: the model wrote
+ * "The initiator says they are 'dealing with a lot of pressure' from 'incredibly tight timelines'",
+ * this pass did not see single marks as quotation marks, and "incredibly tight timelines" was said by
+ * nobody. A single mark is an apostrophe far more often than a quotation mark - don't, it's, Kwame's,
+ * the officers' - so a pair counts only when the opening mark does not follow a letter, the closing
+ * one is not followed by one, an apostrophe inside a word is passed over, and there are two words or
+ * more between them (see HAS_TWO_WORDS).
+ */
+export const QUOTATION = /“([^“”]*)”|(?<![\p{L}\p{N}])"([^"\n]*)"(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])‘(?=\S)((?:[^‘’\n]|’(?=\p{L}))+?)’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}'])'(?=\S)((?:[^'\n]|(?<=\p{L})'(?=\p{L}))+?)'(?![\p{L}\p{N}])/gu;
+
+/** The inside of a match of QUOTATION, whichever pair of marks it was. */
+const innerOf = (groups: (string | undefined)[]): string => groups.find((g) => g !== undefined) ?? '';
+/** A pair of single marks round one word is an apostrophe or a scare quote, never somebody's words. */
+const HAS_TWO_WORDS = /\S\s+\S/;
+const isAQuotation = (whole: string, inner: string): boolean =>
+  !!inner.trim() && (whole[0] === '“' || whole[0] === '"' || HAS_TWO_WORDS.test(inner));
 
 export function quotationsIn(text: string): AQuotation[] {
   if (!text) return [];
   const out: AQuotation[] = [];
   for (const m of text.matchAll(QUOTATION)) {
-    const inner = m[1] ?? m[2] ?? '';
-    if (!inner.trim()) continue;
+    const inner = innerOf([m[1], m[2], m[3], m[4]]);
+    if (!isAQuotation(m[0], inner)) continue;
     out.push({ start: m.index!, end: m.index! + m[0].length, open: m[0][0], close: m[0][m[0].length - 1], inner });
   }
   return out;
@@ -103,9 +119,9 @@ const HELD = /(\d+)/g;
 export function theQuotesKept(text: string, rewrite: (s: string) => string): string {
   if (!text) return rewrite(text);
   const held: string[] = [];
-  const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string) => {
-    const inner = a ?? b ?? '';
-    if (!inner.trim()) return m;
+  const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string, c?: string, d?: string) => {
+    const inner = innerOf([a, b, c, d]);
+    if (!isAQuotation(m, inner)) return m;
     held.push(inner);
     return `${m[0]}${held.length - 1}${m[m.length - 1]}`;
   });
@@ -352,10 +368,10 @@ export function eachQuoteDecided(
 
 /* Like theQuotesKept, but a quote holding the drop marker is left in place so its sentence can be found. */
 function theQuotesKeptExcept(text: string, rewrite: (s: string) => string, held: string[] = []): string {
-  const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string) => {
-    const inner = a ?? b ?? '';
+  const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string, c?: string, d?: string) => {
+    const inner = innerOf([a, b, c, d]);
     if (inner.startsWith(DROP)) return inner;
-    if (!inner.trim()) return m;
+    if (!isAQuotation(m, inner)) return m;
     held.push(inner);
     return `${m[0]}\uE000${held.length - 1}\uE001${m[m.length - 1]}`;
   });

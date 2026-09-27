@@ -36,15 +36,19 @@ describe('the setup block', () => {
     expect(block).not.toContain("this person's part");
   });
 
-  it('and about them in the third person to everybody else', () => {
-    const block = alreadyEstablished({ ...facts, readerSetItUp: false });
-    expect(block).toContain('The person who set this up wrote this about the situation');
-    expect(block).toContain("The person who set this up described this person's part");
+  /* The third person is the lead's name now, or "their lead", and never the label "the person who
+     set this up": the model said the label back to a participant as the first line of her check-in
+     (openread, run 10). See the-lead-has-a-name. */
+  it('and about them in the third person to everybody else, by name', () => {
+    const block = alreadyEstablished({ ...facts, readerSetItUp: false, setUpBy: 'Daniel' });
+    expect(block).toContain('Daniel wrote this about the situation');
+    expect(block).toContain("Daniel described this person's part");
+    expect(block).not.toContain('The person who set this up wrote');
   });
 
   it('defaults to the third person when nobody said', () => {
     /* An unset flag must not silently address a stranger as the author of the brief. */
-    expect(alreadyEstablished(facts as any)).toContain('The person who set this up wrote');
+    expect(alreadyEstablished(facts as any)).toContain('Their lead wrote');
   });
 
   it('and the intake passes the fact it already holds', () => {

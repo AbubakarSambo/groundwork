@@ -16,6 +16,54 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Everything else, phase 2 included, waits until after deployment.
 
+### Sales: a judgement never praises a claim the record's own numbers contradict
+
+- **`6628e6b6` and `7d5c36dc`: a check in code, not in the prompt,** because a prompt line had already lost on this scenario. Before the judgement is stored, every section of it is checked, along with each person's finding, the opening and the picture. The check holds back three kinds of sentence:
+  - a move that praises someone for reaching a figure;
+  - a claim that someone exceeded, beat, met or is ahead of a target, where no figure in the record, in the target's own unit, reaches it;
+  - a figure called approved, completed or successful where the record says otherwise.
+
+  A figure in a different unit never counts. 22 in the pipeline, or 22 applications, does not meet a target of 14 approved facilities. Nothing is written in place of what is held back, and no field is left blank.
+- **On run-8's stored judgement it holds back exactly three lines**, all about Kwame and all contradicted by his record of three approved and 22 applications. For example: "Ask Participant C how they achieved 22 approved facilities when their target was 14."
+- **Tested live on two sales runs.** Neither judgement praises Kwame. The first run's finding is exactly right: "Kwame has 22 applications, of which three have been approved and disbursed for N8 million."
+- **The live test caught the check being too eager, fixed in `2d1610ec`.** It had held back statements of goals, such as "Participant B is working to achieve 14 approved facilities" and "The initiator's goal is 40 approved facilities". It had also held back one true sentence, "Participant C has three approvals". A goal is not a claim, and a figure the record supports is never held back. On the two new runs it now holds back nothing, and on run-8 it holds back only the three Kwame lines.
+- **Not yet run live on `2d1610ec` itself.** That happens with task 1.6's test runs, so that one build carries both.
+
+### Task 1.6: the automatic check on the text each reader sees
+
+**Built, and not yet proven on a full run.** Today's two full runs were used before it was finished. The first full run tomorrow is its test.
+
+**The fixes at the source, one commit each:**
+- **`eb997d7a`: labels.** Each finding carried a raw field, `"label": "the initiator"` or `"label": "Participant A"`. That was 113 of the 114 "internal labels shown". No screen displays it, so it is no longer served, but it stays in storage.
+- **`2ebe9127`: "the person who set this up".** Groundwork had said to Mei, "Mei, the person who set this up wants to understand…". The conversation now uses the lead's first name, or "your lead" when there is none.
+- **`1edbc3e9`: the clipped line built from the lead's description of a person.** "Ngozi Eze was taken on for: Relationship officer, Ikeja. … What the record holds about it: …" was all 36 of "role description used as a name". It is now in full sentences, and it is still the lead's alone.
+- **`aae42a6e`: sentences starting in lower case.** Both were in Groundwork's conversation turns, and they are now caught before a turn is saved.
+- **`12555e10`: titles.** A person's short name is now their first name, not their title. Dr, Prof, Eng., Engr., Hon., Mr, Mrs, Ms, Miss, Sir, Dame, Chief, Alhaji, Alhaja, Rev, Pastor, Barr., Arc. and Justice are all handled, with or without a full stop. "Dr Amina Bello" becomes Amina. "Dr Bello" and "Mrs Okafor" stay whole. A person actually named "Hon" stays "Hon".
+- **`d89628ae`: "You agrees".** "The initiator agrees" had reached the lead as "You agrees". It now reads "You agree".
+- **`9c662ad7`: "All two people have answered".** It now reads "Both people have answered."
+
+**The check itself (`3d346e4e`).** Before a report is stored, every line is rendered as the lead and as each participant would read it. The scorer's own problem patterns run over each version. A spec reads `tools/score_run.py`, so the two cannot drift apart. The check also looks for doubled quote marks, and for a verb that does not agree with "you".
+- A line that fails is rewritten once by the model. The rewrite is kept only if it reads clean for every reader and every quotation is unchanged.
+- Otherwise the sentence is dropped, without leaving any field blank.
+- Every rewrite and every drop is logged.
+
+**On run-10's stored reports, served again through the new code:** every problem count is 0, except six old sales lines already in storage. Those change when the report is next written.
+
+**Tested live on sales, seniorhire and openread, twice each:**
+- **Every problem count in the scorer is 0 in both rounds.**
+- **Openread is right in both.** Both judgements join Kofi's Thursday scramble and Mei's delayed fixes to the Friday freeze, which is exactly the right answer.
+- **Two defects found, both being fixed now:**
+  - **A quote nobody said.** The model wrote 'incredibly tight timelines' in single quotation marks, which the quote check does not treat as a quote. The check's pronoun rewrite then turned them into double quotation marks. Sofia never said those words. The quote checker caught it: 162 of 164 quotes were right, and 2 were not. The fix: single quotation marks count as quotation marks, and the quote check runs again after any rewrite.
+  - **It made reports slower.** For openread, the time from the last check-in to the finished report went from 112 seconds to 223 and 253 seconds. The check was calling the model once per sentence, and there were 53 rewrites in these runs, mostly pronoun fixes. For a team of nine, whose report already took five to six minutes, that would be worse. The fix: one model call per report for all its rewrites.
+- **Two grammar slips still reach the lead:** "You also believes…", and "…but has not communicated this", with no subject. Both are added to the check.
+
+**What it does not cover yet:**
+- The board's own sentences, which are built when the board is opened, not stored. The check sees the report text the board uses, but not those.
+- The pronoun check in conversation turns.
+- Two counts that mix a word and a figure, such as "Two of the 5 people have answered so far".
+
+**The praise check reads the lead's description of each person, to find their target (`e4c2b18b`).** For Kwame, the target of 14 approved facilities is written only there. The check only takes sentences out, never adds any, and calls no model. A test proves none of the description's words reach its output. It is the one internal read of the lead's words that decision 30 allows in practice, and I have written it down so it is not a surprise.
+
 ### Hafsah's decision on the bar for task 1.5
 
 **Task 1.5 is met when, in two full runs in a row, at least 20 of the 24 scenarios can be tested, and at least 90% of those are clearly right.**

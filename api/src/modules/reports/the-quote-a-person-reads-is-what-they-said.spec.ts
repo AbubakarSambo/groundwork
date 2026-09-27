@@ -1,3 +1,4 @@
+import { THE_LINES_REWRITTEN } from './every-line-is-read-before-it-is-kept';
 import { ReportsService } from './reports.service';
 import { THE_PICTURE_SCHEMA } from './the-picture-in-plain-sentences';
 import { THE_JUDGEMENT_SCHEMA, THE_ROOM_JUDGEMENT_SCHEMA } from './the-judgement-over-the-answers';
@@ -114,6 +115,17 @@ function harness() {
   const anthropic: any = {
     respond: jest.fn(async (_s: string, h: any[]) => String(h?.[0]?.content ?? '')),
     extract: jest.fn(async (_system: string, history: any[], schema: any) => {
+      /* The check before the report is kept sends every failing line in one call: the unquoted
+         judgement line below reads "Whether The three partnerships ... began. is still true.", a
+         lower-case start the check finds and has rewritten. See every-line-is-read-before-it-is-kept. */
+      if (schema === THE_LINES_REWRITTEN) {
+        const blocks = [...String(history?.[0]?.content ?? '').matchAll(/^id: (\S+)\n  as stored: (.*)$/gm)];
+        return {
+          lines: blocks
+            .filter((m) => m[2].includes('is still true'))
+            .map((m) => ({ id: m[1], sentence: 'Whether the three partnerships have had no progress since the sales work began is still true.' })),
+        };
+      }
       const corpus = String(history?.[0]?.content ?? '');
       corpora.push(corpus);
       if (schema === THE_PICTURE_SCHEMA) {
@@ -241,8 +253,11 @@ describe('the quote a person reads is what they said', () => {
       expect(all).not.toContain(`"${TIDIED}"`);
       expect(all).not.toContain(`“${TIDIED}”`);
     }
-    /* The line is in the stored judgement, as a plain statement about the record. */
-    expect(stored.theJudgement.whatWeFailedToAsk[0].about).toBe(`Whether ${TIDIED} is still true.`);
+    /* The line is in the stored judgement, as a plain statement about the record: unquoted by the
+       quote pass, and then made one sentence by the check before the report is kept, because
+       unquoted it read "Whether The three partnerships ... began. is still true." */
+    expect(stored.theJudgement.whatWeFailedToAsk[0].about).toBe('Whether the three partnerships have had no progress since the sales work began is still true.');
+    expect(stored.theJudgement.whatWeFailedToAsk[0].about).not.toContain('"');
   });
 
   it('Nadia reads Zainab\'s quote with "Nadia" in it, and the sentence around it says "your request"', () => {

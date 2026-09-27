@@ -50,7 +50,7 @@ import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
 import {
-  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten,
+  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten, theCountSaidRight,
   type ThePicture,
 } from './the-picture-in-plain-sentences';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
@@ -69,7 +69,11 @@ import {
 } from '../conversation/the-window-for-correcting-a-record';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, plainWordsByPerson, atTheStart, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
+import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
 import { withoutOtherPeoplesReads } from './own-reads-only';
+import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
+import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
+import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
@@ -2163,12 +2167,29 @@ Close the report by framing - neutrally, without recommending one - the choice n
       aboutOnePerson: familyFor((ground as any).scenario) === BoardFamily.EVALUATION,
     });
 
+    /*
+     * AND THE PRODUCT'S OWN SENTENCES ARE HELD TO THE RECORD'S NUMBERS, the same as the judgement's.
+     * The board reads these findings and the opening, so a "22 successful applications" written here
+     * would reach it whatever the judgement did. What a person said in their own words is theirs and
+     * is never judged. See praise-the-numbers-do-not-support.
+     */
+    const whoThePraiseCouldBeAbout = theFacts.map((f) => {
+      const party = (parties as any[]).find((p) => p.id === f.participantId);
+      return { who: f.label, role: ((party?.remitAsGiven ?? party?.roleAsDescribed ?? null) as string | null), facts: f };
+    });
+    const praiseHeldBack: string[] = [];
+    const heldToTheNumbers = (text: string, about: string | null): string => {
+      const r = sentencesTheNumbersDoNotSupport(text, whoThePraiseCouldBeAbout, about);
+      praiseHeldBack.push(...r.heldBack);
+      return r.text;
+    };
+    picture.opening = heldToTheNumbers(picture.opening, null);
     const findings = theFacts.map((f) => {
       const written = picture.perPerson.find((x) => x.participantId === f.participantId);
       return {
         participantId: f.participantId,
         label: f.label,
-        text: written?.text ?? '',
+        text: heldToTheNumbers(written?.text ?? '', f.label),
         hasGap: f.hasGap,
         headline: written?.headline ?? null,
       };
@@ -2176,8 +2197,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const productHalf = [picture.opening, ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
     if (productHalf) {
-      const modelHalf = String((result as any).sharedPicture ?? '').trim();
+      const modelHalf = heldToTheNumbers(String((result as any).sharedPicture ?? '').trim(), null);
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
+    }
+    if (praiseHeldBack.length) {
+      this.logger.warn(`Report for ground ${groundId}: held back ${praiseHeldBack.length} sentence(s) of the picture that call a figure a success the record does not support: ${praiseHeldBack.map((x) => `"${x}"`).join(', ')}`);
     }
     /* THE BOARD READS THIS, NOT THE FIRST PARAGRAPH OF THE REPORT. See how-a-check-in-is-going. */
     (result as any).theOpening = picture.opening || null;
@@ -2246,6 +2270,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
         finding: findings.find((f) => f.participantId === p.id)?.text ?? null,
         participantId: p.id,
+        facts: theFacts.find((f) => f.participantId === p.id) ?? null,
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
       namesInThisCheckIn,
@@ -2317,6 +2342,53 @@ Close the report by framing - neutrally, without recommending one - the choice n
           `Report for ground ${groundId}: ${droppedHere.length} sentence(s) taken out, because each quoted words that were not in the record and could not stand without the marks. First: "${droppedHere[0].slice(0, 160)}"`,
         );
       }
+    }
+
+    /*
+     * AND EVERY LINE, READ AS EACH PERSON WILL READ IT, BEFORE ANYTHING IS STORED.
+     *
+     * Task 1.6. The quote pass above makes every quotation the record's words; this renders every
+     * line through the same door the reads use - names in, the reader's own "you", each reader's
+     * filters - and runs the run scorer's own tests on it. A line that fails is rewritten once by the
+     * model, in its stored form; a rewrite that still fails, or that touches a quotation, is not
+     * kept, and the sentence goes under the no-blank rules. See every-line-is-read-before-it-is-kept.
+     * Best effort, like the reads above: a report is never lost to its own check.
+     */
+    try {
+      const checked = await this.everyLineReadAsItWillBe(groundId, ground as any, {
+        sharedPicture: (result as any).sharedPicture,
+        theOpening: (result as any).theOpening,
+        agreements: (result as any).agreements,
+        divergences: (result as any).divergences,
+        centralQuestion: (result as any).centralQuestion,
+        findings,
+        theJudgement: theJudgement ? theJudgement.judgement : undefined,
+        overTime,
+        inferences,
+      });
+      if (checked) {
+        /*
+         * AND THE QUOTE PASS AGAIN, OVER WHAT THE CHECK CHANGED. A rewrite may not add a quotation
+         * (see mayStand), and this is the second lock on the same door: nothing the check hands back
+         * is stored with a quote the record does not hold word for word. Openread, check-2.
+         */
+        const again = everyQuoteFromTheRecord(checked, whatAQuoteMayBe, namesInThisCheckIn);
+        if (again.unquoted.length || again.dropped.length) {
+          this.logger.warn(`Report for ground ${groundId}: after the check, ${again.unquoted.length} quote(s) lost their marks and ${again.dropped.length} sentence(s) went, because they were not in the record word for word.`);
+        }
+        Object.assign(checked, again.value);
+        (result as any).sharedPicture = checked.sharedPicture;
+        (result as any).theOpening = checked.theOpening;
+        (result as any).agreements = checked.agreements;
+        (result as any).divergences = checked.divergences;
+        (result as any).centralQuestion = checked.centralQuestion;
+        findings.splice(0, findings.length, ...((checked.findings as any[]) ?? []));
+        if (theJudgement && checked.theJudgement) theJudgement.judgement = checked.theJudgement;
+        overTime = checked.overTime as any;
+        inferences = checked.inferences as any;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Report for ground ${groundId}: the check of every line as it will be read did not run (${err?.message}). The report is kept as written.`);
     }
 
     const report = await this.prisma.report.upsert({
@@ -3951,7 +4023,8 @@ happened, and what is in the way.`;
   private async judgeTheAnswers(
     groundId: string,
     room?: {
-      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
+      /* `facts` is what the record holds about them, so praise can be checked against their numbers. */
+      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string; facts?: PersonFacts | null }[];
       leadName: string | null;
       /* Each person's label and name, so their own words reach the judgement with labels in them too. */
       namesInThisCheckIn?: ALabelAndAName[];
@@ -4184,7 +4257,7 @@ happened, and what is in the way.`;
       return false;
     };
     const grounded = asARoom ? namesSomebody : everySentenceCarriesANumber;
-    const kept = {
+    let kept = {
       ...judgement,
       whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => grounded(x?.says)),
       whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move))
@@ -4196,6 +4269,20 @@ happened, and what is in the way.`;
       + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
     const parables = talksLikeAPerson([kept.theGap, ...kept.whatTheNumbersSay.map((x: any) => x.says)].join(' '));
     if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) ${asARoom ? 'named nobody' : 'carried no number'} and were dropped.`);
+    /*
+     * AND IT NEVER PRAISES A CLAIM THE RECORD'S OWN NUMBERS CONTRADICT.
+     *
+     * Run 8: "Recognise Kwame Mensah for exceeding their target of 14 approved facilities", because
+     * "22 facilities were processed smoothly". His record says three approved and twenty-two
+     * applications. Praise of what somebody reached is held back wherever no figure in their record,
+     * in the target's own unit, reaches the target. Nothing is written in its place. See
+     * praise-the-numbers-do-not-support.
+     */
+    const praise = praiseTheNumbersDoNotSupport(kept, (room?.people ?? []).map((p) => ({ who: p.who, role: p.role, facts: p.facts ?? null })));
+    kept = praise.judgement;
+    if (praise.heldBack.length) {
+      this.logger.warn(`The judgement on ${groundId}: held back ${praise.heldBack.length} line(s) of praise the record's numbers do not support: ${praise.heldBack.map((x) => `"${x}"`).join(', ')}`);
+    }
     if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     return { judgement: kept, table };
@@ -4418,6 +4505,63 @@ happened, and what is in the way.`;
    * This is access control, not wording, so it lives here in code rather than in
    * an instruction to a model.
    */
+  /**
+   * THE CHECK BEFORE THE REPORT IS KEPT, WITH THE PRODUCT'S OWN DOOR AS THE RENDER.
+   *
+   * The lead reads the report named (`asItWasShared`); a participant reads it through the same door
+   * and then their own filters, with the longitudinal read narrowed to them - exactly the three
+   * steps `get()` takes. Returns the checked fields, or null when nothing needed changing.
+   */
+  private async everyLineReadAsItWillBe<R extends Record<string, any>>(groundId: string, ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }, candidate: R): Promise<R | null> {
+    const [participants, stored] = await Promise.all([
+      this.prisma.groundParticipant.findMany({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, userId: true, email: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
+      }),
+      this.prisma.report.findUnique({ where: { groundId }, select: { sharedAs: true } }).catch(() => null),
+    ]);
+    const lead = (participants as any[]).find((p) => p.partyType === PartyType.INITIATOR);
+    const readers: AReader[] = [
+      { participantId: lead?.id ?? null, isLead: true },
+      ...(participants as any[]).filter((p) => p.partyType !== PartyType.INITIATOR).map((p) => ({ participantId: p.id as string, isLead: false })),
+    ];
+    const labels = labelsForParties(participants as any);
+    const asGround = (report: any) => ({ scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, participants, report: { ...report, sharedAs: (stored as any)?.sharedAs ?? null } });
+    const named = (report: R, r: AReader) => this.asItWasShared(asGround(report) as any, r.participantId, r.isLead) as any;
+    const served = (report: R, r: AReader) => {
+      if (r.isLead) return named(report, r);
+      const viewer = { isLead: false, participantId: r.participantId };
+      return {
+        ...whatAParticipantMayRead(withoutOtherPeoplesReads(named(report, r), {
+          viewerLabel: r.participantId ? (labels.get(r.participantId) ?? null) : null,
+          viewerParticipantId: r.participantId,
+          viewerIsLead: false,
+        }), viewer),
+        overTime: (this.asItWasShared(asGround({ overTime: overTimeForThisReader((report as any).overTime, viewer) }) as any, r.participantId, false) as any).overTime,
+      };
+    };
+    const { report, done } = await everyLineIsReadBeforeItIsKept({
+      report: candidate,
+      readers,
+      named,
+      served,
+      fields: Object.keys(candidate),
+      /* One structured call for every failing line of the report. See every-line-is-read-before-it-is-kept. */
+      rewriteAll: async (asks) => {
+        const started = Date.now();
+        const answer = await this.anthropic.extract<any>(REWRITE_THE_LINES, [{ role: 'user', content: theLinesToRewrite(asks) }] as any, THE_LINES_REWRITTEN as any);
+        this.logger.log(`Report for ground ${groundId}: ${asks.length} line(s) sent for a rewrite in one call, ${Date.now() - started} ms.`);
+        return theRewritesById(answer);
+      },
+    });
+    /* One line each, so the rate of each fault can be read off the log before anything is tuned. */
+    for (const d of done) {
+      this.logger.warn(`Report for ground ${groundId}: ${d.outcome} at ${d.path} (${d.problems.join('; ')}). Was: "${d.was.slice(0, 200)}"${d.now ? ` Now: "${d.now.slice(0, 200)}"` : ''}`);
+    }
+    return done.length ? (report as R) : null;
+  }
+
   private applyNames<T extends Record<string, any>>(
     reportIn: T,
     parties: any[],
@@ -4650,7 +4794,10 @@ happened, and what is in the way.`;
     /* AND THE MACHINE'S TABLE NEVER LEAVES THE MACHINE, for any reader, lead included. Stripped
        here because this is the door every report read goes through, the board's included. See
        the-table-is-for-the-engine. */
-    const withNames = this.applyNames(theTableStaysWithTheEngine(ground.report as any), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* And a finding's positional label stays on the stored row: nothing renders it, and it was 113
+       of the 114 labels anybody was handed. See a-finding-is-served-without-its-label. The same for
+       the lead's own description of a person under a gap over time: see a-gap-is-served-as-its-sentence. */
+    const withNames = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(ground.report as any))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
     return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
@@ -4731,7 +4878,8 @@ happened, and what is in the way.`;
         this.logger.warn('The picture came back without an opening or without people; writing it plainly instead.');
         return fallback();
       }
-      return { opening: written.opening.trim(), perPerson };
+      /* The count is the product's own arithmetic, never the model's wording of it. See theCountSaidRight. */
+      return { opening: theCountSaidRight(written.opening.trim(), about.peopleAnswered, about.peopleExpected), perPerson };
     } catch (err: any) {
       this.logger.warn(`Writing the picture failed, so it is written plainly: ${err?.message}`);
       return fallback();

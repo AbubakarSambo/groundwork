@@ -1,3 +1,6 @@
+import { theLeadByName } from './the-lead-has-a-name';
+import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -1016,7 +1019,7 @@ export class ConversationService {
     ].filter(Boolean).join(' ').trim() || null;
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
-    const opening = quoted.text;
+    const opening = await this.theTurnAsItIsSaved(checkIn as any, quoted.text);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1034,6 +1037,28 @@ export class ConversationService {
     return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
+
+  /**
+   * "THE PERSON WHO SET THIS UP" BECOMES THEIR NAME BEFORE A TURN IS SAVED. See the-lead-has-a-name.
+   *
+   * Looked up only when the phrase is there, so an ordinary turn costs nothing. Not for the lead's
+   * own conversation: the phrase there would be about the reader, and the setup block already tells
+   * the model to say "you".
+   */
+  private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
+    /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
+    const capitalised = aSentenceStartsWithACapital(raw);
+    if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
+    const text = capitalised.text;
+    if (!text || !/\bperson who set this up\b/i.test(text)) return text;
+    if (checkIn?.participant?.partyType === PartyType.INITIATOR || !checkIn?.groundId) return text;
+    const lead = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } }) ?? Promise.resolve(null))
+      .then((g: any) => theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName))
+      .catch(() => null);
+    const named = theLeadByName(text, lead);
+    if (named.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: "the person who set this up" was put back as the lead's name.`);
+    return named.text;
+  }
 
   /**
    * A DOCUMENT'S NUMBERS WAIT FOR A YES, AND THIS IS THE YES.
@@ -1451,7 +1476,8 @@ export class ConversationService {
        */
       /* Who is reading, so their own name cannot come back at them in the third person. Their
          first name is on the row this method already loaded. */
-      const readerName = (checkIn as any).participant?.user?.firstName ?? null;
+      /* The first name that is not a title: "Dr" is nobody's first name. See a-title-is-not-a-first-name. */
+      const readerName = theFirstNameFrom((checkIn as any).participant?.user?.firstName, (checkIn as any).participant?.user?.lastName);
       const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
       const conversationSoFar = turns.map((t) => t.content ?? '');
@@ -2135,6 +2161,7 @@ export class ConversationService {
         );
       }
       hadCloseMarker = stripped.hadMarker;
+      reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
       aiTurn = await this.prisma.conversationTurn.create({
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
@@ -2519,7 +2546,7 @@ export class ConversationService {
         .concat(message);
       const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
-      const streamReaderName = (checkIn as any).participant?.user?.firstName ?? null;
+      const streamReaderName = theFirstNameFrom((checkIn as any).participant?.user?.firstName, (checkIn as any).participant?.user?.lastName);
       const gate = new SentenceGate(
         streamKnown,
         streamReaderName,
@@ -2669,6 +2696,7 @@ export class ConversationService {
       const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\n\n');
       if (ourOwnWords) reply = `${ourOwnWords}\n\n${reply}`;
 
+      reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
@@ -3404,7 +3432,10 @@ export class ConversationService {
         : null,
       partyType: checkIn.participant.partyType,
       /* Who is answering, by first name where they have one. See TALKING_TO in the block. */
-      readerName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
+      readerName: theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName),
+      /* Whoever set it up, by first name, so the setup block never says "the person who set this up".
+         A lead is named to everybody in their own check-in, so this is no wider than the report. */
+      setUpBy: ((lead: any) => theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName))((ground.participants ?? []).find((p) => p.partyType === PartyType.INITIATOR)),
       sessionNumber: checkIn.sessionNumber,
       /**
        * HOW LONG THIS RUN IS, WHICH THE PROMPT WAS GUESSING AT.
@@ -5446,7 +5477,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     return this.finishTheSession(checkIn, 'the clock');
@@ -6066,7 +6097,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         stage: stageOf(checkIn.sessionNumber ?? 1, planned, !!(row as any)?.isFinal),
         oneTime: ground.cadence === Cadence.ONE_TIME,
         person: {
-          firstName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
+          firstName: theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName),
           /* "Who described their role as" is only true of the lead's own row (request 36). */
           roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
           isLead: checkIn.participant?.partyType === PartyType.INITIATOR,
@@ -9309,7 +9340,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * rather than two: the flag is a boolean on a row this query is already joining to, and the
        * alternative was a second findUnique on every message anybody sends.
        */
-      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     /*

@@ -659,6 +659,9 @@ const withACapital = (s: string) => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : 
  * the preposition, and conjugating it to agree with "you" makes correct English wrong. Every
  * agreement rule in `withNames` is held off by this.
  */
+/* The adverbs that may sit between "you" and its verb, one or two of them, captured so they stay. */
+const ADVERBS = '((?:(?:also|still|only|now|already|never|just|really|even|often|always|usually|actually|then|both|all) ){1,2})?';
+
 const NOT_THE_OBJECT_OF =
   '(?<!\\b(?:for|to|with|on|at|from|of|about|between|against|by|in|than|like|towards|toward|upon|onto|into)\\s)';
 
@@ -782,13 +785,18 @@ function withNamesOutsideTheQuotes(
        * rules are for - a preposition immediately before "you" - and it is checkable rather than
        * guessed, so it guards all of them rather than only the new verbs.
        */
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you is\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You are' : 'you are'))
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you was\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You were' : 'you were'))
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you has\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You have' : 'you have'))
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}you does\\b`, 'gi'), (m) => (m[0] === 'Y' ? 'You do' : 'you do'))
+      /*
+       * AND ONE OR TWO ADVERBS MAY SIT BETWEEN THEM. "You also believes the credit committee is the only
+       * delay" reached a lead (check-1, check-2): the rules below looked for the verb straight after
+       * "you". An adverb between them changes nothing about whose verb it is, so these few are allowed.
+       */
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}is\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}are`)
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}was\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}were`)
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}has\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}have`)
+      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}does\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}do`)
       .replace(
         new RegExp(
-          `${NOT_THE_OBJECT_OF}you (` +
+          `${NOT_THE_OBJECT_OF}(you )${ADVERBS}(` +
             [
               'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
               'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
@@ -796,11 +804,15 @@ function withNamesOutsideTheQuotes(
               'appears', 'remains', 'intends', 'accepts', 'refers',
               /* The four the twenty-four-scenario search actually produced. */
               'blames', 'observes', 'owes', 'points',
+              /* And "The initiator agrees" read by the initiator as "You agrees" (27 September 2026,
+                 found while fixing the title in a name). Verbs of accounting again, all regular. */
+              'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
+              'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
             ].join('|') +
             ')\\b',
           'gi',
         ),
-        (_m, verb) => `you ${String(verb).replace(/s$/, '')}`,
+        (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${String(verb).replace(/s$/, '')}`,
       );
 
     /**

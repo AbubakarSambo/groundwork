@@ -3780,6 +3780,8 @@ export interface PromptContext {
   partyType: PartyType;
   /** The first name of the person answering, where they have given one. Null: do not call them anything. */
   readerName?: string | null;
+  /** The first name of whoever set the check-in up, so nobody is told about "the person who set this up". */
+  setUpBy?: string | null;
   /**
    * Where in the arc this ground sits. COHORT_CHECK covers both an ongoing
    * pulse and a fixed onboarding period that ends in a decision about each
@@ -4376,6 +4378,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
         adminBrief: ctx.adminBrief ?? null,
         /* The initiator IS the person every line of this block refers to. */
         readerSetItUp: ctx.partyType === PartyType.INITIATOR,
+        setUpBy: ctx.setUpBy ?? null,
       });
       return block ? ['', block] : [];
     })(),
