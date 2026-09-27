@@ -16,11 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, and to-dos). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, spending and budgets, to-dos, and customers and deals). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
 screen tests and 9,528 API tests); performance reviews, when someone leaves, the role map,
-spending and budgets, and to-dos have passed their own tests since. **None could
+spending and budgets, to-dos, and customers and deals have passed their own tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -72,15 +72,15 @@ that one is yours to decide (item 27.4).
     load? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** to-dos, the eighth suite (U.17), for admins and leads. It shows what
-each person said they will do in their check-ins, in one list for each person, from what each check-in
-already keeps. It stores and changes nothing. Each line goes only to somebody who may already read it in
-its check-in, and a lead reads only their own team. To-dos from chat stay private, and "Done" is left
-out (items 28.50 and 28.51). Whether one list for each person is their private "load" is a privacy
-question for you (item 28.49). Before that: spending and budgets, the role map, when someone leaves,
-performance reviews, time sheets, leave requests, the onboarding board and the Suites page.
+**Just finished, not ticked:** customers and deals, the ninth suite (U.17), for admins and leads. One
+list of customers, where each stands, who owns it and the last contact, built from what the product
+already keeps from the organisation's own system and the contacts people tell their check-ins about. It
+changes nothing, and never reads what anybody said about a contact. A lead reads only their team's
+customers. Keeping where each stands up to date waits for the engine (request 28). Before that: to-dos,
+spending and budgets, the role map, when someone leaves, performance reviews, time sheets, leave
+requests, the onboarding board and the Suites page.
 
-**Next:** U.17 goes on with suite 9, customers and deals. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 10, equipment. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1417,6 +1417,21 @@ reviewed" in this report.
 53. **Wording no screen shows, on to-dos:** "Nobody has anything on their list yet.", "The board did not
     load.", and the server's refusals ("The to-dos suite is not switched on." and "Only an admin or a
     lead can open this board.").
+54. **Where "customers and deals" come from.** Only from the organisation's own system, as today (the
+    developer API's subjects). An organisation with no system connected has an empty list, whatever its
+    sales check-ins say, because the product's rule is that Groundwork does not make up a customer
+    record. **My recommendation:** decide whether the engine may add a customer it hears about in a
+    sales check-in, once the person confirms it.
+55. **Nothing can be changed on the customers board,** so "Changing something here tells the person who
+    owns the customer, in their next check-in." is left out. A customer is the organisation's own record,
+    never edited here. **My recommendation:** keep it read-only until you decide 28.54.
+56. **A lead reads only the customers their team owns.** The prototype says "for the whole company".
+    I followed the rule that a lead reads only their own team. **My recommendation:** keep it, or let
+    every lead read the whole list, because a customer is not a person's work.
+57. **Wording no screen shows, on customers:** "No customers are known yet.", "The board did not load.",
+    and the server's refusals ("The customers and deals suite is not switched on." and "Only an admin or
+    a lead can open this board."). A blank cell where nothing says where a customer stands, who owns it
+    or when they were last contacted.
 
 
 
@@ -2876,6 +2891,48 @@ no board yet, and counted two doors for a lead. To-dos now has its board, so the
 moved to Customers and deals, the lead's To-dos card expects its door, and the lead counts three doors.
 No screen could be checked signed in (item 14).
 
+#### Customers and deals: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product already keeps each customer the organisation's own
+system gives (a `subjects` row of type COUNTERPARTY: a name, an id, an owner and that system's own word
+for where it stands) and each visit or call with them (`interactions`, from their systems or told to a
+check-in). Its own rule is that a customer is not a CRM record: no stage, no pipeline, nothing edited
+here. Nothing put them in one list, and there was no board at `#/suite/customers`. Groundwork's own back
+office has a sales pipeline (`ops_commercial_opportunities`), but it is Groundwork's own sales, with no
+organisation on a row, so it is not reused. Keeping where each customer stands up to date from the sales
+check-ins is the engine's (request 28).
+
+**New storage, on your computer only,** in the migration `20260927150000_customers_and_deals`, empty until
+the engine writes it: `customer_standings` (where one customer stands, in a few words, with the prompt
+version that ran). It has not been run against any database.
+
+**What each person now reads:**
+- **Grace, an admin,** "Open its board" on the Customers and deals card, then "Suites / Customers and
+  deals", "Customers and deals", "One list of customers and deals for the whole company. The sales
+  check-ins keep it up to date, so nobody has to update it by hand." Then a table: "Customer", "Where it
+  stands", "Who owns it", "Last contact", with rows such as "Green Mart", "Quote sent. Buys in January",
+  "Miriam Wanjiku", "23 September". "Where it stands" is the engine's words once written, else the word
+  their own system gives, such as "Paid"; a blank where neither says. With none: "No customers are known
+  yet."
+- **Wairimu, a lead,** the same, only for the customers her own team owns, and her own.
+- **A member and a guest** are refused by the server: "Only an admin or a lead can open this board."
+- **Everybody, while the suite is off:** "The customers and deals suite is not switched on."
+
+**Privacy and access, on the server:** a lead reads only the customers owned by their team and
+themselves. "Last contact" is only the day of the latest contact nobody disputed; what anybody said
+about it is never read, and a test checks that. The board writes nothing. No labels on people, no
+addresses.
+
+**Commits:** `42408c4a` (the server), `765347a6` (the board), `efa64b40` (request 28).
+
+**Tested:** `api/src/modules/suites/the-customers-as-each-reader-reads-them.spec.ts` (9 tests: off, every
+refusal, what Grace, Wairimu and Kamau are each served, the engine's words over their system's, a
+deleted customer and a disputed contact left out, never a note, nothing written) and
+`client/src/pages/suites/customers-as-each-reader-sees-them.spec.tsx` (8 tests, word for word). **One
+test changed, and why:** `the-suites-page-as-each-reader-sees-it.spec.tsx` used Customers and deals as
+the suite with no board yet; it now has one, so that check moved to Equipment. No screen could be
+checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2907,8 +2964,10 @@ No screen could be checked signed in (item 14).
    check-in keeps; nothing new is stored, and the back office's to-dos are not reused. Still missing:
    "Done", and to-dos from chat (items 28.50 and 28.51). The engine's part: "Remind me" in chat, in the
    prototype's words (request 27).
-9. **Customers and deals** (`#/suite/customers`, admins and leads). The back office has a sales
-   pipeline, to check for reuse. The engine's part: the sales check-ins keeping the list up to date.
+9. **Customers and deals** (`#/suite/customers`, admins and leads). **Built** (above), from the
+   customers and contacts the product already keeps; the back office's pipeline is not reused. Still
+   missing: changing a customer here (item 28.55). The engine's part: the sales check-ins keeping where
+   each customer stands up to date (request 28).
 10. **Equipment** (`#/suite/equipment`, admins only). Missing entirely. The engine's part: updates
     people give by telling Groundwork.
 
