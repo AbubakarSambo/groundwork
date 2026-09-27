@@ -7,6 +7,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
 import { AppealsToDecide } from '@/components/gw/Suggestions'
+import { groundsApi } from '@/api/grounds'
+import { YouAreIn } from './YouAreIn'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -37,6 +39,9 @@ export function TodayPage() {
     staleTime: 30_000,
   })
 
+  /* Only read after joining, for "You are in." (the same list the sidebar reads, so no extra request). */
+  const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
+
   const now = new Date()
   const name = user?.firstName?.trim()
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
@@ -46,9 +51,7 @@ export function TodayPage() {
     <div className="gw-today">
       <div className="gw-today-main">
         {params.get('welcome') === '1' && (
-          <div className="gw-today-in" role="status">
-            <b>You are in.</b> You will see your check-ins and reports here. Open one to start contributing.
-          </div>
+          <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} />
         )}
         <AdminFirstRun />
 
