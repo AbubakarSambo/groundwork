@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ContextPage } from './ContextPage'
 import { documentsApi } from '@/api/documents'
+import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
 import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 
@@ -49,14 +50,15 @@ const aishasDocs = [
   { id: 'd1', name: 'Freezer range brochure.pdf', uploadedAt: '2026-09-01T10:00:00Z', visibility: 'OPEN', mine: false },
 ]
 
-const draw = (role: 'lead' | 'admin' | 'party', viewerUserId: string) => {
+const draw = (role: 'lead' | 'admin' | 'party', viewerUserId: string, over: Record<string, any> = {}) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <ContextPage ground={ground} role={role} viewerUserId={viewerUserId} />
+      <ContextPage ground={{ ...ground, ...over }} role={role} viewerUserId={viewerUserId} />
     </QueryClientProvider>,
   )
 }
+const whose = () => [...document.querySelectorAll('[data-gw-brief-whose]')].map((n) => (n.textContent ?? '').replace(/\s+/g, ' ').trim())
 const card = (id: string) => document.querySelector(`[data-gw-document="${id}"]`)?.textContent ?? ''
 
 beforeEach(() => vi.clearAllMocks())
@@ -64,10 +66,40 @@ beforeEach(() => vi.clearAllMocks())
 describe('Wairimu, who leads it', () => {
   it('reads the brief in quotes, whose words they are, and can rewrite it', async () => {
     ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
-    draw('lead', 'u-lead')
+    /* U.7 review: under it, the truthful sentence about who reads it. */
+    draw('lead', 'u-lead', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null })
     expect(screen.getByText('“Twenty-five freezer sales this quarter, mostly butcheries and supermarkets.”')).toBeTruthy()
-    expect(screen.getByText(/Your words, from setup\. Everyone reads this before they answer\./)).toBeTruthy()
+    expect(whose()).toEqual(['Your words, from setup. This is what everyone in this check-in reads before they answer.'])
     expect(screen.getByText('Rewrite')).toBeTruthy()
+  })
+
+  /* U.7 review: the lead was told "Everyone reads this" over her words while her people read another text. */
+  it('reads what her people read, where Groundwork wrote it from her words, and her own words below it', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
+    draw('lead', 'u-lead', { briefAsEveryoneReadsIt: 'This check-in follows the sales team this quarter.', briefIsTheLeadsOwnWords: false, briefChangedBy: null })
+    expect(screen.getByText('“This check-in follows the sales team this quarter.”')).toBeTruthy()
+    expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
+    expect(screen.getByText('What you wrote')).toBeTruthy()
+    expect(document.body.textContent).toContain('Twenty-five freezer sales this quarter, mostly butcheries and supermarkets.')
+    expect(document.body.textContent).not.toContain('Your words, from setup')
+  })
+
+  it('reads who changed it, where an admin did', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
+    draw('lead', 'u-lead', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: false, briefChangedBy: { firstName: 'Otieno', isYou: false, isTheLead: false } })
+    expect(whose()).toEqual(['Otieno changed this. This is what everyone in this check-in reads before they answer.'])
+    expect(document.body.textContent).not.toContain('Your words')
+  })
+
+  it('saves with "Save", and is told who reads it now', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(leadsDocs)
+    ;(groundsApi as any).update = vi.fn().mockResolvedValue({})
+    draw('lead', 'u-lead', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true })
+    fireEvent.click(screen.getByText('Rewrite'))
+    fireEvent.change(document.querySelector('textarea') as HTMLTextAreaElement, { target: { value: 'Twenty-five sales this quarter.' } })
+    fireEvent.click(screen.getByText('Save'))
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith('Saved. Everyone in this check-in now reads this.'))
+    expect(document.body.textContent).not.toContain('Everyone here reads this')
   })
 
   it('reads each document with what it is for, shared ones first, and Add a document last', async () => {
@@ -99,10 +131,17 @@ describe('adding a document from the page', () => {
 describe('Aisha, who takes part', () => {
   it('reads the brief as Wairimu’s words, and cannot rewrite it', async () => {
     ;(documentsApi.list as any).mockResolvedValue(aishasDocs)
-    draw('party', 'u-aisha')
-    expect(screen.getByText(/Wairimu’s words, from setup\. Everyone reads this before they answer\./)).toBeTruthy()
+    draw('party', 'u-aisha', { briefIsTheLeadsOwnWords: true })
+    expect(whose()).toEqual(['Wairimu’s words, from setup. This is what everyone in this check-in reads before they answer.'])
     expect(screen.queryByText(/Your words, from setup/)).toBeNull()
     expect(screen.queryByText('Rewrite')).toBeNull()
+  })
+
+  it('reads no claim about whose words it is, where they are not Wairimu’s own', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(aishasDocs)
+    draw('party', 'u-aisha', { brief: 'This check-in follows the sales team this quarter.', briefIsTheLeadsOwnWords: false })
+    expect(screen.getByText('“This check-in follows the sales team this quarter.”')).toBeTruthy()
+    expect(whose()).toEqual(['This is what everyone in this check-in reads before they answer.'])
   })
 
   it('reads the shared brochure and nothing about what Wairimu said it is for', async () => {
@@ -119,9 +158,15 @@ describe('Aisha, who takes part', () => {
 describe('an admin reading a check-in somebody else leads', () => {
   it('reads the brief as the lead’s words, and may rewrite it', async () => {
     ;(documentsApi.list as any).mockResolvedValue([])
-    draw('admin', 'u-admin')
-    expect(screen.getByText(/Wairimu’s words, from setup\./)).toBeTruthy()
+    draw('admin', 'u-admin', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null })
+    expect(whose()).toEqual(['Wairimu’s words, from setup. This is what everyone in this check-in reads before they answer.'])
     expect(screen.getByText('Rewrite')).toBeTruthy()
+  })
+
+  it('and reads "You changed this." once he has', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('admin', 'u-admin', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: false, briefChangedBy: { firstName: 'Otieno', isYou: true, isTheLead: false } })
+    expect(whose()).toEqual(['You changed this. This is what everyone in this check-in reads before they answer.'])
   })
 })
 

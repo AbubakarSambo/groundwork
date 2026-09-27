@@ -66,7 +66,10 @@ describe('the brief answers this band own question', () => {
     /* It read "from the lead's own check-in" unconditionally, which was untrue of a brief. Since U.7
        the targets are their own band, so the line is only about the brief, in the prototype's
        sentence: "Your words, from setup. Everyone reads this before they answer." */
-    expect(BAND).toContain("'Your words, from setup.'")
-    expect(BAND).toContain('Everyone reads this before they answer.')
+    /* U.7 review: "Your words, from setup." only while the text everyone reads is her unchanged
+       words, and then the truthful sentence about who reads it. The rendered lines, for each reader,
+       are in the-context-page-as-each-reader-sees-it.spec.tsx. */
+    expect(BAND).toContain('{whoseWords ? `${whoseWords} ` : \'\'}')
+    expect(BAND).toContain('This is what everyone in this check-in reads before they answer.')
   })
 })

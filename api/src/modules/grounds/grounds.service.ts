@@ -1685,6 +1685,23 @@ export class GroundsService {
         }
       : null;
 
+    /* What the people in it read about what this is for, and whose words those are (U.7 review). */
+    const briefAsEveryoneReadsIt: string | null = (ground as any).toldToParticipants?.trim() || theSituationIn(brief) || null;
+    const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
+    const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
+    const briefIsTheLeadsOwnWords = !!briefAsEveryoneReadsIt && !changedBySomebodyElse
+      && briefAsEveryoneReadsIt === (typeof brief === 'string' ? brief.trim() : '');
+    const briefChangedBy: { firstName: string | null; isYou: boolean; isTheLead: boolean } | null = briefChange?.userId
+      ? {
+          isYou: briefChange.userId === requestingUserId,
+          isTheLead: briefChange.userId === ground.initiatorId,
+          firstName: await this.prisma.user
+            .findUnique({ where: { id: briefChange.userId }, select: { firstName: true } })
+            .then((u: any) => (u?.firstName ?? '').trim() || null)
+            .catch(() => null),
+        }
+      : null;
+
     const rawTimeline: any[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
     const settingsChanges = rawTimeline
@@ -2061,7 +2078,9 @@ export class GroundsService {
       if (theirs.length) asks[p.id] = theirs;
     }
 
-    const { patternDetections: _pd, ...rest } = ground as any;
+    /* The raw audit log stays in the server: what anybody needs from it is read out above, as
+       `contextNotes`, `settingsChanges` and who changed the brief. It holds user ids (U.7 review). */
+    const { patternDetections: _pd, groundAuditLog: _audit, ...rest } = ground as any;
     // THE BROADCAST JOIN TOKEN IS THE INITIATOR'S TO GIVE OUT, NOBODY ELSE'S.
     //
     // It was returned to every party on the ground, and the ground page renders
@@ -2205,7 +2224,19 @@ export class GroundsService {
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
-      brief: viewerRunsThisGround ? brief : ((ground as any).toldToParticipants?.trim() || theSituationIn(brief)),
+      brief: viewerRunsThisGround ? brief : briefAsEveryoneReadsIt,
+      /*
+       * AND WHAT THE PEOPLE IN IT READ, TO WHOEVER RUNS IT (U.7 review). The Context page told the
+       * lead "Your words, from setup. Everyone reads this before they answer." over her own words,
+       * while her people were shown a different text: the short read Groundwork writes from the
+       * brief, or its first sentences. The lead now reads what they read, and her own words stay
+       * hers to rewrite. A participant already gets exactly this, as `brief`.
+       */
+      briefAsEveryoneReadsIt: viewerRunsThisGround ? briefAsEveryoneReadsIt : undefined,
+      /* Whether what everyone reads is the lead's own words, unchanged by anybody else. */
+      briefIsTheLeadsOwnWords,
+      /* Who last rewrote it, to whoever runs the check-in: their first name, or "you". */
+      briefChangedBy: viewerRunsThisGround ? briefChangedBy : undefined,
       signals,
       contextNotes,
       settingsChanges,
@@ -5197,10 +5228,24 @@ export class GroundsService {
 
     // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
-    const auditData: { timeline: object[]; contextNotes: string[] } =
+    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string } } =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
-        ? { timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [] }
+        ? {
+            timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [],
+            ...((rawLog as any).briefChangedBy ? { briefChangedBy: (rawLog as any).briefChangedBy } : {}),
+          }
         : { timeline: Array.isArray(rawLog) ? (rawLog as object[]) : [], contextNotes: [] };
+
+    /*
+     * WHO LAST CHANGED WHAT THIS CHECK-IN IS FOR (U.7 review). The comment on the brief's permission
+     * above has always promised "the same audit entry" as renaming, and nothing was written. The
+     * Context page now says "Otieno changed this." when an admin rewrote the lead's words, and says
+     * "Your words" only while they are. Kept apart from `timeline`, which the setup page reads as
+     * changes to the length and the cadence.
+     */
+    if (dto.brief !== undefined && (dto.brief.trim() || null) !== ((ground as any).brief ?? null)) {
+      auditData.briefChangedBy = { userId: requestingUserId, at: new Date().toISOString() };
+    }
 
     if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
       auditData.timeline.push({

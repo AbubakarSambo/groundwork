@@ -167,7 +167,7 @@ export function ContextPage({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ground", id] })
       setBriefDraft(null)
-      toast.success('Everyone here reads this now')
+      toast.success('Saved. Everyone in this check-in now reads this.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
   })
@@ -338,9 +338,37 @@ export function ContextPage({
    * readiness check below already treats it.
    */
   const theBrief: string = ((ground as any).brief ?? '').trim()
+  /*
+   * WHAT EVERYONE IN THE CHECK-IN READS, WHICH IS NOT ALWAYS THE BRIEF (U.7 review). The lead was
+   * shown her own words with "Everyone reads this before they answer.", and her people were shown a
+   * different text: the short read Groundwork writes from the brief. The server now sends whoever
+   * runs the check-in what the people in it read, and a participant's `brief` already is that text.
+   */
+  const sentToWhoeverRunsIt: string | null = isLead ? (ground as any).briefAsEveryoneReadsIt ?? null : null
+  const whatEveryoneReads: string = (sentToWhoeverRunsIt ?? theBrief ?? '').trim()
   /** Whose words the brief is, for everybody but the lead. */
   const theLeadsFirstName: string =
     atTheStart(firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' }))
+  /*
+   * WHOSE WORDS THEY ARE, SAID ONLY WHEN IT IS TRUE (U.7 review). "Your words, from setup." while the
+   * text is the lead's own and nobody else has changed it; the name of whoever changed it, where the
+   * server knows who; Groundwork, where it wrote the text people read from the lead's words.
+   */
+  const whoseWords: string | null = (() => {
+    const changedBy = (ground as any).briefChangedBy as { firstName: string | null; isYou: boolean; isTheLead: boolean } | null | undefined
+    const ownWords = (ground as any).briefIsTheLeadsOwnWords === true
+    if (changedBy && !changedBy.isTheLead) {
+      if (changedBy.isYou) return 'You changed this.'
+      return changedBy.firstName ? `${changedBy.firstName} changed this.` : 'Someone else changed this.'
+    }
+    if (ownWords) {
+      if (isTheLead) return changedBy ? 'Your words.' : 'Your words, from setup.'
+      return changedBy ? `${theLeadsFirstName}\u2019s words.` : `${theLeadsFirstName}\u2019s words, from setup.`
+    }
+    if (isTheLead) return 'Groundwork wrote this from your words.'
+    if (isLead && !changedBy) return `Groundwork wrote this from ${theLeadsFirstName}\u2019s words.`
+    return null
+  })()
   const objectives: any[] = (ground as any).objectives ?? []
 
 
@@ -402,27 +430,34 @@ export function ContextPage({
               targets, which it also had to account for, are their own band since U.7.
             */}
             <Sec n={band()} title="What this check-in is for" />
-            {theBrief && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{theBrief}{'\u201D'}</div>
+            {whatEveryoneReads && (
+              <div data-gw-brief style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
+                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{whatEveryoneReads}{'\u201D'}</div>
                 {/*
                   WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
                   lead's name for everybody else, never "the lead" to the lead's own face (item D on
                   the Context fix list, 23 September 2026).
                 */}
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                    {isTheLead ? 'Your words, from setup.' : `${theLeadsFirstName}\u2019s words, from setup.`} Everyone reads this before they answer.
+                  <span data-gw-brief-whose style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
                   {isLead && briefDraft === null && (
                     <button
-                      onClick={() => setBriefDraft(theBrief)}
+                      onClick={() => setBriefDraft(theBrief || whatEveryoneReads)}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Rewrite
                     </button>
                   )}
                 </div>
+                {/* The words it was written from, where they differ from what everyone reads. */}
+                {isLead && theBrief && theBrief !== whatEveryoneReads && (
+                  <details style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{isTheLead && !((ground as any).briefChangedBy && !(ground as any).briefChangedBy.isTheLead) ? 'What you wrote' : 'The words this was written from'}</summary>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
+                  </details>
+                )}
               </div>
             )}
             {/*
@@ -434,12 +469,12 @@ export function ContextPage({
               has not written one shows the space and what belongs in it, which somebody can act
               on. See the comment in entry.service.ts on `const brief`.
             */}
-            {!theBrief && briefDraft === null && (
+            {!whatEveryoneReads && briefDraft === null && (
               <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  Nobody has written a brief yet. It is a few lines from whoever runs this saying
-                  what the check-in is for and what they want out of it, in their own words -
-                  everybody here reads it before they answer.
+                  Nobody has said what this check-in is for yet. Whoever runs it can write a few
+                  lines about what it is for and what they want from it. Everyone in this check-in
+                  reads it before they answer.
                 </div>
                 {isLead && (
                   <button
@@ -460,7 +495,7 @@ export function ContextPage({
                   onChange={(e) => setBriefDraft(e.target.value)}
                   rows={4}
                   maxLength={4000}
-                  placeholder="What this check-in is for, and what you want out of it. Everybody here reads this before they answer."
+                  placeholder="What this check-in is for, and what you want from it, in your own words."
                 />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                   <button
@@ -468,7 +503,7 @@ export function ContextPage({
                     disabled={saveBrief.isPending || briefDraft === theBrief}
                     style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
                   >
-                    {saveBrief.isPending ? 'Saving…' : 'Everyone here reads this'}
+                    {saveBrief.isPending ? 'Saving…' : 'Save'}
                   </button>
                   <button
                     onClick={() => setBriefDraft(null)}

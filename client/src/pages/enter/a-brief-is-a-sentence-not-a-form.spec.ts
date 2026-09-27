@@ -44,10 +44,14 @@ describe('composing the brief', () => {
       goals: ['Contracts filed', 'An onboarding pack'],
       brief: 'The hiring handover',
     })
-    expect(brief).toContain('Who is part of this: Nadia and me.')
-    expect(brief).toContain('Why now: Probation in March.')
-    expect(brief).toContain('What it is aiming at: Contracts filed, An onboarding pack.')
-    expect(brief).toContain('Focus: The hiring handover.')
+    /* U.7 review: plain sentences, no "Label:" pieces, the person's words inside each. */
+    expect(brief).toBe('She starts on the 15th. The people in it are Nadia and me. It matters now because probation in March. It is aiming at contracts filed and an onboarding pack. The questions should focus on the hiring handover.')
+    expect(brief).not.toMatch(/Who is part of this:|Why now:|What it is aiming at:|Focus:/)
+  })
+
+  it('and keeps a name its capital', () => {
+    expect(composeLeadBrief({ initial: 'Kwame joins the sales team.', whoInvolved: 'Kwame and Wairimu', decision: 'Kwame starts on Monday' }))
+      .toBe('Kwame joins the sales team. The people in it are Kwame and Wairimu. It matters now because Kwame starts on Monday.')
   })
 
   it('and says nothing when there is nothing', () => {

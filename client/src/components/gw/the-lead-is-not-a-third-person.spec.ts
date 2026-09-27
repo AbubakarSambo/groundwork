@@ -19,7 +19,9 @@ describe('what the page calls whoever is reading it', () => {
   it('the brief says "yours" to the person who wrote it', () => {
     /* Since U.7 in the prototype's sentence, under the brief: "Your words, from setup." To anyone
        else it names the lead, never "the lead". */
-    expect(CONTEXT).toContain("isTheLead ? 'Your words, from setup.' : `${theLeadsFirstName}\\u2019s words, from setup.`")
+    /* U.7 review: said only while the text is her unchanged words (whoseWords in ContextPage). */
+    expect(CONTEXT).toContain("if (isTheLead) return changedBy ? 'Your words.' : 'Your words, from setup.'")
+    expect(CONTEXT).toContain("`${theLeadsFirstName}\\u2019s words, from setup.`")
   })
 
   it('and the rules are the ones you wrote', () => {

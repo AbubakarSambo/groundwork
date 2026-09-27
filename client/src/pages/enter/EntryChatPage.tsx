@@ -331,13 +331,31 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
     if (!trimmed) return ''
     return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
   }
+  /*
+   * AND NO "LABEL:" PIECES EITHER (U.7 review). The rest read "Who is part of this: ... Why now: ...
+   * What it is aiming at: ... Focus: ...", a form printed as a paragraph, on the Context page under
+   * "What this check-in is for". Each is a plain sentence now, with the person's words inside it.
+   * Nothing on the server reads these labels back out: the brief is stored and read as text.
+   */
+  const bare = (t?: string) => (t ?? '').trim().replace(/[.!?]+$/, '')
+  /* "Probation in March" inside a sentence reads "probation in March"; a name or "I" keeps its capital. */
+  const inside = (t?: string) => {
+    const b = bare(t)
+    const first = b.split(/\s/)[0] ?? ''
+    const aName = first === 'I' || (sels.whoInvolved ?? '').includes(first) || !/^[A-Z][a-z]+$/.test(first.replace(/[^A-Za-z]/g, ''))
+    return aName ? b : b[0].toLowerCase() + b.slice(1)
+  }
+  const aList = (xs: string[]) => {
+    const items = xs.map(inside).filter(Boolean)
+    return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+  }
   return [
     /* Unlabelled and first: the band above it already says what this is. */
     sentence(sels.initial),
-    sels.whoInvolved ? sentence(`Who is part of this: ${sels.whoInvolved}`) : '',
-    sels.decision ? sentence(`Why now: ${sels.decision}`) : '',
-    sels.goals?.length ? sentence(`What it is aiming at: ${sels.goals.join(', ')}`) : '',
-    sels.brief ? sentence(`Focus: ${sels.brief}`) : '',
+    bare(sels.whoInvolved) ? sentence(`The people in it are ${bare(sels.whoInvolved)}`) : '',
+    bare(sels.decision) ? sentence(`It matters now because ${inside(sels.decision)}`) : '',
+    sels.goals?.length && aList(sels.goals) ? sentence(`It is aiming at ${aList(sels.goals)}`) : '',
+    bare(sels.brief) ? sentence(`The questions should focus on ${inside(sels.brief)}`) : '',
   ].filter(Boolean).join(' ')
 }
 

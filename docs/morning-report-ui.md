@@ -1984,6 +1984,13 @@ engine answers. Until then, "When I end it" stays off the screen.
    that everyone sees every number, nothing changes. **My recommendation:** keep the stricter rule.
    If you want admins to see each share, say so and it is one change in one place for both routes.
 
+2. **May an admin who does not run a check-in rewrite what it is for?** Today the server lets any
+   admin of the organisation rewrite the brief, and the Context page offers Otieno "Rewrite" on
+   Wanjiru's check-in. I kept that rule and made the screen honest about it: the change is recorded,
+   and Wanjiru then reads "Otieno changed this." under it instead of "Your words, from setup."
+   **My recommendation:** let only the lead rewrite it, since it is the lead's own framing, and
+   let an admin ask the lead to change it. It is one line in the server and one on the screen.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
