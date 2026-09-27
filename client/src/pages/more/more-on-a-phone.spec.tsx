@@ -50,9 +50,11 @@ describe('the bottom bar', () => {
     ])
   })
 
-  it('and no Start for somebody the server would refuse', () => {
+  it('and no Start for somebody the server would refuse: Company is in its place', () => {
+    /* U.15: ask-on-a-phone.txt shows Company where Start would be, now that the page exists. */
     mount(LEAD)
-    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Today', 'Check-ins', 'Chat', 'More'])
+    expect([...bar().querySelectorAll('a')].map(a => a.textContent)).toEqual(['Today', 'Check-ins', 'Company', 'Chat', 'More'])
+    expect(hrefOf(bar(), 'Company')).toEqual(['/company'])
   })
 
   it('offers Chat to everybody, an admin included, because everybody may ask', () => {

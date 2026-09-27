@@ -1862,6 +1862,31 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   .gw-you-row-said > span:nth-child(2), .gw-you-row-said > span:nth-child(3) { grid-column: 1; }
 }
 
+/* ── THE COMPANY PAGE (D2, U.15), as company.jpg draws it: the name, the ask buttons and the counts
+   at the top, then a card per priority. It borrows the You board's cards, rows and grid. */
+.gw-company-h1 { margin: 0 0 12px; color: var(--gw-text); }
+.gw-company-h2 { margin: 24px 0 12px; color: var(--gw-text); }
+.gw-company-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.gw-company-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.gw-company-line { margin: 8px 0 0; }
+.gw-company-priority-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.gw-company-priority h3 { margin: 4px 0 8px; }
+.gw-company-small { font-size: 13.5px; }
+.gw-company-row-q { grid-template-columns: minmax(0, 1fr) auto; }
+.gw-company-row-card { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; }
+.gw-company-body { white-space: pre-line; }
+.gw-company-team { border-top: 3px solid var(--gw-text); padding-top: 8px; }
+.gw-company-team p { margin: 4px 0 0; }
+.gw-company-crumbs { margin-bottom: 8px; font-size: 14px; color: var(--gw-sub); }
+.gw-company-crumbs a { color: var(--gw-navy); }
+.gw-company-table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); margin-bottom: 12px; }
+.gw-company-table th, .gw-company-table td { text-align: left; padding: 12px 8px 12px 0; border-top: 1px solid var(--gw-border); vertical-align: top; }
+@media (max-width: 900px) {
+  .gw-company-row-card { grid-template-columns: minmax(0, 1fr); }
+  .gw-company-table, .gw-company-table tbody, .gw-company-table tr, .gw-company-table th, .gw-company-table td { display: block; }
+  .gw-company-table thead { display: none; }
+}
+
 /* ── THE CHECK-INS LIST (C1, U.5), as check-ins.jpg draws it: a white table per section, four
    columns on a computer; on a phone each row becomes a short stack, and nothing is wider than the
    screen. */

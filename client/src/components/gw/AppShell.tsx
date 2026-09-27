@@ -46,9 +46,22 @@ const NAV_ITEMS = [
     ),
   },
   {
+    /* COMPANY (D2, U.15): the organisation's priorities and what feeds them, between Today and You,
+       as layout-computer.txt draws it. Everybody in the organisation has it; a guest from another
+       company does not, and the server refuses them too. What each reader is given is the server's. */
+    label: 'Company',
+    to: '/company',
+    membersOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M3 17.5V8l7-4.5L17 8v9.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M2 17.5h16M8 17.5v-5h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     /* YOU (C2, U.12): what is yours, across your check-ins, as layout-computer.txt draws it under
-       Today ("Today", "Company", "You"). Everybody has one, and only they may read it. Company
-       joins between the two when that page exists (U.15). */
+       Today ("Today", "Company", "You"). Everybody has one, and only they may read it. */
     label: 'You',
     to: '/you',
     icon: (active: boolean) => (
@@ -237,6 +250,8 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
     if ((item as any).adminOnly) return user?.role === 'ADMIN'
     /* Whoever oversees more than one check-in: the org's, or a department's. */
     if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
+    /* Everybody in the organisation, and not a guest from another company. */
+    if ((item as any).membersOnly) return !!user && user.role !== 'GUEST'
     return true
   })
 }
@@ -1202,11 +1217,16 @@ export function AppSidebar() {
             <NavLink to="/grounds" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
               <PhoneIcon d="checkins" />Check-ins
             </NavLink>
-            {user?.mayOpenCheckIns !== false && (
+            {/* Somebody who may not start a check-in has Company in its place, as ask-on-a-phone.txt shows. */}
+            {user?.mayOpenCheckIns !== false ? (
               <NavLink to="/start?new=1" className="gw-phone-bar-item start">
                 <PhoneIcon d="start" />Start
               </NavLink>
-            )}
+            ) : user?.role !== 'GUEST' ? (
+              <NavLink to="/company" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+                <PhoneIcon d="company" />Company
+              </NavLink>
+            ) : null}
             <NavLink to="/chat" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
               <PhoneIcon d="chat" />Chat
             </NavLink>
@@ -1223,12 +1243,15 @@ export function AppSidebar() {
 }
 
 /** The bottom bar's icons, drawn in the text colour. */
-function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'chat' | 'more' }) {
+function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'company' | 'chat' | 'more' }) {
   if (d === 'today') {
     return <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden><rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M3 8.5h16M7.5 2.5v3M14.5 2.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
   }
   if (d === 'start') {
     return <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden><path d="M13 5v16M5 13h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  }
+  if (d === 'company') {
+    return <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden><path d="M3 17.5V8l7-4.5L17 8v9.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M2 17.5h16M8 17.5v-5h4v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
   }
   if (d === 'chat') {
     return <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden><path d="M10 3.2c-3.9 0-7 2.6-7 5.9 0 1.7.8 3.2 2.2 4.3L4.6 16.8l3.6-1.9c.6.1 1.2.2 1.8.2 3.9 0 7-2.6 7-5.9S13.9 3.2 10 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>

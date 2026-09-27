@@ -40,8 +40,10 @@ describe('the bottom bar on a phone', () => {
     const bar = stripped.slice(stripped.indexOf('className="gw-sidebar-mobile"'), stripped.indexOf('</nav>', stripped.indexOf('className="gw-sidebar-mobile"')))
     const words = [...bar.matchAll(/<PhoneIcon d="[a-z]+" \/>([A-Za-z -]+)\n/g)].map(m => m[1].trim())
     /* U.5: Today came first when its page came, as layout-phone.txt has it. U.14: Chat came with
-       its page, so the bar has the prototype's five words and each cell is a fifth, not a third. */
-    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'Chat', 'More'])
+       its page, so the bar has the prototype's five words and each cell is a fifth, not a third.
+       U.15: Company is in the source beside Start, because somebody who may not start a check-in
+       has Company in its place (ask-on-a-phone.txt). Only one of the two is ever drawn. */
+    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'Company', 'Chat', 'More'])
     /* On a screen of 360px or less the words are 12px, about 6.9px a character bold, with no
        padding at the sides; a fifth of 320 is 64. */
     expect(readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')).toMatch(/@media \(max-width: 360px\) \{ \.gw-phone-bar-item \{ font-size: 12px; padding: 6px 0; \} \}/)

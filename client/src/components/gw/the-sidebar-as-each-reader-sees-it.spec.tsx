@@ -200,11 +200,19 @@ describe('Today in the sidebar (C1, U.5), as layout-computer.txt draws it', () =
   })
 })
 
-describe('You in the sidebar (C2, U.12), as layout-computer.txt draws it', () => {
-  it('sits straight after Today and goes to the You board', () => {
+describe('Company and You in the sidebar (D2, U.15; C2, U.12), as layout-computer.txt draws them', () => {
+  /* U.15: Company sits between Today and You, so You moved from the second place to the third. */
+  it('Company sits straight after Today and goes to the Company page', () => {
     const { rail } = shell(LEAD)
     const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
-    expect(pages[1].getAttribute('href')).toBe('/you')
-    expect(pages[1].textContent).toBe('You')
+    expect(pages[1].getAttribute('href')).toBe('/company')
+    expect(pages[1].textContent).toBe('Company')
+  })
+
+  it('You sits after Company and goes to the You board', () => {
+    const { rail } = shell(LEAD)
+    const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
+    expect(pages[2].getAttribute('href')).toBe('/you')
+    expect(pages[2].textContent).toBe('You')
   })
 })

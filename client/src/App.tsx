@@ -35,6 +35,8 @@ function ChatRedirect() {
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
 import { YouPage } from '@/pages/you/YouPage'
+import { CompanyPage } from '@/pages/company/CompanyPage'
+import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
@@ -450,6 +452,9 @@ export default function App() {
             <Route path="/today" element={<RequireOrgSetup><TodayPage /></RequireOrgSetup>} />
             {/* The You board (C2, U.12): yours alone, and the server refuses anybody else. */}
             <Route path="/you" element={<RequireOrgSetup><YouPage /></RequireOrgSetup>} />
+            {/* The Company page (D2, U.15) and its context: what each reader is given is the server's. */}
+            <Route path="/company" element={<RequireOrgSetup><CompanyPage /></RequireOrgSetup>} />
+            <Route path="/company/context" element={<RequireOrgSetup><CompanyContextPage /></RequireOrgSetup>} />
             {/* Ask Groundwork as its own page (D1, #/chat), which is how a phone opens it. */}
             <Route path="/chat" element={<RequireOrgSetup><AskPage /></RequireOrgSetup>} />
             {/*
