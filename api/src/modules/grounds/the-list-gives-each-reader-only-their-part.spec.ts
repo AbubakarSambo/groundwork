@@ -1,4 +1,5 @@
 import { GroundsService } from './grounds.service';
+import { ReportsService } from '../reports/reports.service';
 
 /**
  * THE CHECK-INS LIST GIVES EACH READER ONLY WHAT THE CHECK-IN'S OWN PAGE WOULD (C1, U.5).
@@ -19,9 +20,9 @@ function ground(): any {
     scenario: 'OKR_ALIGNMENT', cadence: 'WEEKLY', timelineDays: 84, updatedAt: new Date('2026-09-20'),
     joinToken: 'secret-join-token', groundAuditLog: [{ what: 'renamed' }], restrictExternalVisibility: true,
     participants: [
-      { id: 'p-lead', userId: LEAD, email: 'wairimu@baridi.test', partyType: 'INITIATOR', user: { firstName: 'Wairimu', lastName: 'Kamau' } },
-      { id: 'p-part', userId: PART, email: 'miriam@baridi.test', partyType: 'PARTICIPANT', user: { firstName: 'Miriam', lastName: 'Wanjiku' } },
-      { id: 'p-omar', userId: 'user-omar', email: 'omar@baridi.test', partyType: 'PARTICIPANT', user: { firstName: 'Omar', lastName: 'Ali' } },
+      { id: 'p-lead', userId: LEAD, email: 'wairimu@baridi.test', partyType: 'INITIATOR', createdAt: new Date('2026-09-01'), user: { firstName: 'Wairimu', lastName: 'Kamau' } },
+      { id: 'p-part', userId: PART, email: 'miriam@baridi.test', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-02'), user: { firstName: 'Miriam', lastName: 'Wanjiku' } },
+      { id: 'p-omar', userId: 'user-omar', email: 'omar@baridi.test', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-03'), user: { firstName: 'Omar', lastName: 'Ali' } },
     ],
     checkIns: [],
     report: { releasedAt: null, agreements: [{ text: 'Both agree the deck is late' }], divergences: [{ text: 'Unreleased difference' }] },
@@ -36,7 +37,9 @@ function serviceFor(over: any = {}) {
     ground: { findMany: jest.fn().mockResolvedValue([{ ...ground(), ...over }]) },
     groundParticipant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }), findMany: jest.fn().mockResolvedValue([]) },
   };
-  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  /* The real report service, for its one naming door (theReportAsItWasShared). */
+  const reports = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => reports } as any);
 }
 
 async function listAs(userId: string, role: string, over: any = {}) {
@@ -113,5 +116,32 @@ describe('the list, where people are not named to each other', () => {
     expect((await listAs(PART, 'MEMBER', shown)).latestSummary).toBeNull();
     const released = await listAs(PART, 'MEMBER', { ...shown, report: { releasedAt: new Date(), agreements: [], divergences: [] } });
     expect(released.latestSummary).toBe('Three deals moved.');
+  });
+});
+
+/*
+ * U.5 RE-REVIEW: THE SUMMARY IS STORED IN LABELS, AND IS SERVED WITH NAMES IN, THROUGH THE REPORT'S OWN
+ * DOOR. Nobody reads "Participant A" or "the initiator" on the list, or on Today, which reads it.
+ */
+describe('the latest summary on the list, as each reader gets it', () => {
+  const stored = {
+    report: { releasedAt: new Date(), agreements: [], divergences: [], sharedAs: null },
+    reportRounds: [{ sessionNumber: 1, finding: 'Participant B is behind.', sharedPicture: 'The initiator counts on Participant B for 4 sales. Participant A has closed 2.' }],
+  };
+  it('a participant reads names, never a label', async () => {
+    const row = await listAs(PART, 'MEMBER', stored);
+    for (const t of [row.latestSummary, row.latestFinding]) {
+      expect(t).toBeTruthy();
+      expect(t).not.toMatch(/Participant [A-Z]\b|the initiator/i);
+    }
+  });
+  it('the lead reads names too', async () => {
+    const row = await listAs(LEAD, 'MEMBER', stored);
+    expect(row.latestSummary).not.toMatch(/Participant [A-Z]\b|the initiator/i);
+    expect(row.latestSummary).toMatch(/Omar|Miriam/);
+  });
+  it('where people are not named to each other, a participant reads "a colleague", never a name or a label', async () => {
+    const row = await listAs(PART, 'MEMBER', { ...stored, peersVisibleToEachOther: false });
+    expect(row.latestSummary).not.toMatch(/Omar|Participant [A-Z]\b/);
   });
 });

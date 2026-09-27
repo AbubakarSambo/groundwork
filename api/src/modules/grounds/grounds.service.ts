@@ -6,7 +6,8 @@ import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CO
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
@@ -377,7 +378,51 @@ export class GroundsService {
      * account - and this conversation is deliberately not one.
      */
     private anthropic: AnthropicService,
+    /* For one job: finding the report's own door for names, `ReportsService.theReportAsItWasShared`,
+       at the moment report text is served. See `reportTextAsItWasShared`. */
+    @Optional() private readonly moduleRef?: ModuleRef,
   ) {}
+
+  /**
+   * REPORT TEXT, SERVED THROUGH THE REPORT'S OWN DOOR AND NO OTHER (U.5 re-review).
+   *
+   * Reports are stored with labels ("the initiator", "Participant A"). Names go in only when the text
+   * is served, and only through `ReportsService.theReportAsItWasShared`, which also applies the
+   * check-in's peer rule ("a colleague") and the organiser's choice to share without names. The
+   * check-in read and the list served the stored text, so a participant read "the initiator's plan
+   * counts on 4 sales from Participant A". This asks that door, never a copy of it.
+   *
+   * Found at call time, not injected: ReportsService depends on this service, so a constructor
+   * dependency would be a cycle. FAILS CLOSED: where the door cannot be reached, no report text is
+   * served at all, rather than the stored labels.
+   */
+  private reportTextAsItWasShared<T extends Record<string, string | null | undefined>>(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[] },
+    text: T,
+    sharedAs: string | null | undefined,
+    viewerParticipantId: string | null,
+    viewerRunsIt: boolean,
+  ): { [K in keyof T]: string | null } {
+    const nothing = Object.fromEntries(Object.keys(text).map((k) => [k, null])) as { [K in keyof T]: string | null };
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { ReportsService } = require('../reports/reports.service');
+      const reports = this.moduleRef?.get(ReportsService, { strict: false });
+      if (!reports?.theReportAsItWasShared) return nothing;
+      const shared = reports.theReportAsItWasShared(
+        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, participants: ground.participants ?? [], report: { ...text, sharedAs: sharedAs ?? null } },
+        viewerParticipantId,
+        viewerRunsIt,
+      );
+      if (!shared) return nothing;
+      return Object.fromEntries(
+        Object.keys(text).map((k) => [k, typeof shared[k] === 'string' ? notTheWordParty(shared[k]) : null]),
+      ) as { [K in keyof T]: string | null };
+    } catch (e) {
+      this.logger.warn(`Report text withheld: the naming door could not be reached (${(e as Error)?.message})`);
+      return nothing;
+    }
+  }
 
   /**
    * @param creatorRole the caller's role in the organisation. A ground created by
@@ -1125,7 +1170,7 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1143,7 +1188,7 @@ export class GroundsService {
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
-        report: { select: { releasedAt: true, agreements: true, divergences: true } },
+        report: { select: { releasedAt: true, agreements: true, divergences: true, sharedAs: true } },
         /*
          * THE LATEST ROUND'S FINDING, for the card. One row per ground, newest first: the list is
          * read often and a whole history here would be paid for on every load for a single line.
@@ -1202,12 +1247,12 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
             },
-            report: { select: { releasedAt: true, agreements: true, divergences: true } },
+            report: { select: { releasedAt: true, agreements: true, divergences: true, sharedAs: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
                one would fall back to the brief for ever while its twin showed the finding. */
             reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
@@ -1384,8 +1429,13 @@ export class GroundsService {
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
-          latestFinding: mayReadTheReport ? latestFinding : null,
-          latestSummary: mayReadTheReport ? latestSummary : null,
+          /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
+          ...(() => {
+            if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
+            const me = ((allParticipants ?? []) as any[]).find(isMe);
+            const named = this.reportTextAsItWasShared(rest as any, { latestFinding, latestSummary }, fullReport?.sharedAs, me?.id ?? null, runsIt);
+            return { latestFinding: named.latestFinding, latestSummary: named.latestSummary };
+          })(),
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
@@ -1436,7 +1486,7 @@ export class GroundsService {
          * first attempt at the fix went into the fallback lookup below instead of this one: the
          * endpoint kept returning null, which is the only reason the mistake surfaced.
          */
-        report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true } },
+        report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
         /*
          * WHICH ROUNDS HAVE CLOSED, as recorded, so the page stops working it out.
          *
@@ -1492,7 +1542,7 @@ export class GroundsService {
              *
              * Found by reading both payloads for one ground rather than either page on its own.
              */
-            report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true } },
+            report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
             /* Same include as the primary query above. TypeScript refused the two shapes when this
                was added to only one of them, which is the check the comment above wishes it had. */
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
@@ -2069,28 +2119,25 @@ export class GroundsService {
        * report page serves them through the reports service in the form they may read.
        */
       report: (rest as any).report
-        ? viewerRunsThisGround
-          ? {
-              ...(rest as any).report,
-              sharedPicture:
-                typeof (rest as any).report.sharedPicture === 'string'
-                  ? notTheWordParty((rest as any).report.sharedPicture)
-                  : (rest as any).report.sharedPicture,
+        ? (() => {
+            const r = (rest as any).report;
+            const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId) as any;
+            /* The text only to whoever may read it yet, and always through the report's own door. */
+            const mayRead = viewerRunsThisGround || !!r.releasedAt;
+            const text = mayRead
+              ? this.reportTextAsItWasShared(ground as any, { sharedPicture: r.sharedPicture, theOpening: r.theOpening }, r.sharedAs, me?.id ?? null, viewerRunsThisGround)
+              : null;
+            if (viewerRunsThisGround) {
+              const { sharedAs: _as, ...whole } = r;
+              return { ...whole, sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null };
             }
-          : {
-              id: (rest as any).report.id,
-              releasedAt: (rest as any).report.releasedAt ?? null,
-              createdAt: (rest as any).report.createdAt,
-              ...((rest as any).report.releasedAt
-                ? {
-                    sharedPicture:
-                      typeof (rest as any).report.sharedPicture === 'string'
-                        ? notTheWordParty((rest as any).report.sharedPicture)
-                        : (rest as any).report.sharedPicture,
-                    theOpening: (rest as any).report.theOpening ?? null,
-                  }
-                : {}),
-            }
+            return {
+              id: r.id,
+              releasedAt: r.releasedAt ?? null,
+              createdAt: r.createdAt,
+              ...(r.releasedAt ? { sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null } : {}),
+            };
+          })()
         : (rest as any).report,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       /* The session rows follow the peer rule too, so a hidden colleague's statuses do not come by the back door. */

@@ -1,4 +1,5 @@
 import { GroundsService } from './grounds.service';
+import { ReportsService } from '../reports/reports.service';
 
 /**
  * THE CHECK-IN'S OWN READ, AS A PARTICIPANT, BEFORE AND AFTER THE REPORT IS RELEASED (U.5 review).
@@ -8,12 +9,15 @@ import { GroundsService } from './grounds.service';
  * closing 4 sales ..."). A participant never reads the team's report before it is shared with them.
  * And where people are not named to each other, the session rows of hidden colleagues stay out too.
  */
-const PICTURE = 'The lead reports 18 sales. Blair is responsible for closing 4 sales.';
+/* As stored: in labels. What a reader gets must have names in, through the report's own door. */
+const PICTURE = 'The initiator reports 18 sales. Participant B is responsible for closing 4 sales.';
+const OPENING = 'The initiator’s plan counts on 4 sales from Participant A, but Participant A forecasts 2.';
 
-function serviceFor(opts: { released: boolean; peersVisible: boolean | null; viewerRole?: string }) {
+function serviceFor(opts: { released: boolean; peersVisible: boolean | null; viewerRole?: string; sharedAs?: string; noDoor?: boolean }) {
   const participants = [
-    { id: 'pA', userId: 'userA', email: 'ada@example.test', partyType: 'PARTICIPANT', user: { firstName: 'Ada', lastName: 'L' }, createdAt: new Date() },
-    { id: 'pB', userId: 'userB', email: 'blair@example.test', partyType: 'PARTICIPANT', user: { firstName: 'Blair', lastName: 'K' }, createdAt: new Date() },
+    { id: 'pA', userId: 'userA', email: 'ada@example.test', partyType: 'PARTICIPANT', roleAsDescribed: null, user: { firstName: 'Ada', lastName: 'Lovelace' }, createdAt: new Date('2026-09-01') },
+    { id: 'pB', userId: 'userB', email: 'blair@example.test', partyType: 'PARTICIPANT', roleAsDescribed: null, user: { firstName: 'Blair', lastName: 'Kane' }, createdAt: new Date('2026-09-02') },
+    { id: 'pL', userId: 'userLead', email: 'lead@example.test', partyType: 'INITIATOR', roleAsDescribed: null, user: { firstName: 'Wairimu', lastName: 'Kamau' }, createdAt: new Date('2026-08-31') },
   ];
   const ground: any = {
     id: 'g1', organizationId: 'org1', initiatorId: 'userLead', createdAt: new Date(), scenario: 'OKR_ALIGNMENT',
@@ -25,7 +29,7 @@ function serviceFor(opts: { released: boolean; peersVisible: boolean | null; vie
     ],
     resolution: null, patternDetections: [],
     report: {
-      id: 'r1', releasedAt: opts.released ? new Date() : null, sharedPicture: PICTURE, theOpening: 'Sales are ahead.',
+      id: 'r1', releasedAt: opts.released ? new Date() : null, sharedPicture: PICTURE, theOpening: OPENING, sharedAs: opts.sharedAs ?? null,
       createdAt: new Date(), agreements: [{ text: 'agreed thing' }], divergences: [{ text: 'a difference between Ada and Blair' }],
     },
   };
@@ -40,7 +44,10 @@ function serviceFor(opts: { released: boolean; peersVisible: boolean | null; vie
     /* For the session progress the read works out while the report is not yet released. */
     checkIn: { aggregate: async () => ({ _max: { sessionNumber: 1 } }), findMany: async () => [], count: async () => 0 },
   };
-  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any);
+  /* The real report service, for its one naming door; nothing else of it is used. */
+  const reports = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const moduleRef: any = opts.noDoor ? undefined : { get: () => reports };
+  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any, moduleRef);
 }
 
 describe('the report on the check-in read, as a participant', () => {
@@ -48,25 +55,47 @@ describe('the report on the check-in read, as a participant', () => {
     const res: any = await serviceFor({ released: false, peersVisible: true }).get('g1', 'org1', 'userA');
     expect(res.report).toEqual({ id: 'r1', releasedAt: null, createdAt: expect.any(Date) });
     expect(JSON.stringify(res)).not.toContain('responsible for closing');
+    expect(JSON.stringify(res)).not.toContain('forecasts');
     expect(JSON.stringify(res)).not.toContain('a difference between');
   });
 
-  it('once it is released: the shared picture and the opening, still never the raw differences', async () => {
+  it('once it is released: the shared picture and the opening, with names in, never a label or the raw differences', async () => {
     const res: any = await serviceFor({ released: true, peersVisible: true }).get('g1', 'org1', 'userA');
-    expect(res.report.sharedPicture).toBe(PICTURE);
-    expect(res.report.theOpening).toBe('Sales are ahead.');
+    for (const t of [res.report.sharedPicture, res.report.theOpening]) {
+      expect(t).toBeTruthy();
+      expect(t).not.toMatch(/Participant [A-Z]\b|the initiator/i);
+    }
+    expect(res.report.theOpening).toMatch(/Wairimu/);
     expect(res.report.divergences).toBeUndefined();
     expect(res.report.agreements).toBeUndefined();
   });
 
+  it('where people are not named to each other, a colleague is never named, and never a label', async () => {
+    const res: any = await serviceFor({ released: true, peersVisible: false }).get('g1', 'org1', 'userA');
+    expect(res.report.sharedPicture).not.toMatch(/Blair|Participant [A-Z]\b/);
+    expect(res.report.sharedPicture).toMatch(/a colleague/i);
+  });
+
+  it('shared without names, nobody is named and no label shows', async () => {
+    const res: any = await serviceFor({ released: true, peersVisible: true, sharedAs: 'ANONYMOUS' }).get('g1', 'org1', 'userA');
+    expect(res.report.theOpening).not.toMatch(/Wairimu|Blair|Participant [A-Z]\b|the initiator/i);
+  });
+
+  it('fails closed: with no way to put names in, no report text is served at all', async () => {
+    const res: any = await serviceFor({ released: true, peersVisible: true, noDoor: true }).get('g1', 'org1', 'userA');
+    expect(res.report.sharedPicture).toBeNull();
+    expect(res.report.theOpening).toBeNull();
+  });
+
   it('the lead who runs it still reads the report before it is released', async () => {
     const res: any = await serviceFor({ released: false, peersVisible: true }).get('g1', 'org1', 'userLead');
-    expect(res.report.sharedPicture).toBe(PICTURE);
+    expect(res.report.sharedPicture).toMatch(/Blair/);
+    expect(res.report.sharedPicture).not.toMatch(/Participant [A-Z]\b/);
   });
 
   it('and so does an admin of the organisation', async () => {
     const res: any = await serviceFor({ released: false, peersVisible: true, viewerRole: 'ADMIN' }).get('g1', 'org1', 'userAdmin');
-    expect(res.report.sharedPicture).toBe(PICTURE);
+    expect(res.report.sharedPicture).toMatch(/Blair/);
   });
 });
 
