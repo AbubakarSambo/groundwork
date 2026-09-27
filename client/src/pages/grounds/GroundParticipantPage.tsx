@@ -16,7 +16,7 @@ import { groundTabs } from './ground-tabs'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
-import { whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
@@ -628,11 +628,12 @@ export function GroundParticipantPage() {
             peersHidden={(ground as any).peersVisibleEffective === false}
             /*
               NAMES, NOT ROLES, AND NEVER SAID TO THE LEAD ABOUT HERSELF (U.8 third review).
-              `whoElseAnswers` already returns null when the viewer IS the lead, which is exactly
-              `isInitiatorHere` computed above - so the two agree by construction rather than by
-              two separate reads of the same fact.
+              This is "Rukia knows who is here" - true whenever there is a lead, whether or not she
+              also answers a check-in - so it reads `whoRunsThis`, not `whoElseAnswers` (U.8 fourth
+              review). `GroundTopic` shows the lead her own true sentence instead when
+              `viewerIsTheLead` is set, which is exactly `isInitiatorHere` computed above.
             */
-            leadName={whoElseAnswers(ground as any, user?.id)}
+            leadName={whoRunsThis(ground as any)}
             viewerIsTheLead={isInitiatorHere}
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)

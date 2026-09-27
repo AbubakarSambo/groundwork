@@ -1881,6 +1881,27 @@ export class GroundsService {
     const peersKeepTheirNumbers =
       !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
 
+    /**
+     * THE LEAD'S FIRST NAME, TO ANYONE IN THE CHECK-IN, EVEN WHEN THE PEER RULE HIDES EVERYONE ELSE.
+     *
+     * `participantsWithCheckIns` below filters the lead's own row out of `participants` for a
+     * participant on a hidden check-in - that is the peer rule doing its job, and it must keep doing
+     * it. But three sentences on the screens ("Rukia knows who is here", "Rukia also answers a
+     * check-in") looked the lead up IN that same filtered list, so the name silently fell back to
+     * "Your lead" on exactly the check-ins the peer rule protects (U.8 fourth review).
+     *
+     * The invitation a participant read to get here already named the lead in full ("Rukia Otieno
+     * invited you"), so her first name is not new information to anyone reading this - only her
+     * first name goes out, and nothing else about her (no email, no role, no status).
+     *
+     * `leadAnswersToo` carries the one other fact those sentences need and the filtered list can no
+     * longer supply: whether the lead is a party who answers a check-in herself, or manages without
+     * one (`managingOnly`). Read here, off the RAW participants, before the peer filter runs.
+     */
+    const leadParticipantRaw = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any;
+    const leadFirstName = leadParticipantRaw?.user?.firstName ?? null;
+    const leadAnswersToo = !!leadParticipantRaw?.userId && !leadParticipantRaw?.managingOnly;
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -2194,6 +2215,10 @@ export class GroundsService {
         ? ((rest as any).checkIns ?? []).filter((c: any) => participantsWithCheckIns.some((p: any) => p.id === c.participantId))
         : (rest as any).checkIns,
       participants: participantsWithCheckIns,
+      /** The lead's first name alone, to anyone in the check-in - see the note on `leadFirstName` above. */
+      leadFirstName,
+      /** Whether the lead is also a party who answers a check-in, not only someone who manages it. */
+      leadAnswersToo,
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *

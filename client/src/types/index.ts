@@ -200,6 +200,15 @@ export interface Ground {
   overdue?: number
   contextNotes?: string[]
   participants: GroundParticipant[]
+  /**
+   * The lead's first name alone, sent to anyone in the check-in - even a participant on a check-in
+   * that hides everyone else. Her own row is filtered out of `participants` then, which used to
+   * mean the only three sentences naming her ("Rukia knows who is here", "Rukia also answers a
+   * check-in") fell back to "Your lead" (U.8 fourth review). Null when there is no lead account yet.
+   */
+  leadFirstName?: string | null
+  /** Whether the lead is a party who answers a check-in herself, not only someone who manages it. */
+  leadAnswersToo?: boolean
   leadContextNotes?: LeadContextNote[]
   /**
    * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what

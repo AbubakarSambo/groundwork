@@ -1173,7 +1173,7 @@ export function ChatPage() {
           {done && !completed && !declined && (
             <TheEndCard
               engine={endCard}
-              leadName={whoElseAnswers(ground.data as any, user?.id)}
+              leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
               finishing={complete.isPending}
               /*

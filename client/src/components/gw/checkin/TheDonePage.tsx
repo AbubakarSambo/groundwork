@@ -70,7 +70,7 @@ export function TheDonePage({
   })
 
   const g: any = ground.data
-  const leadName = whoElseAnswers(g, myUserId)
+  const leadName = whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
   const aTeamReport = howManyAnswer(g) > 1
   const roundIsIn = ((g?.roundCompletions ?? []) as { sessionNumber: number }[]).some(r => r.sessionNumber === sessionNumber)
