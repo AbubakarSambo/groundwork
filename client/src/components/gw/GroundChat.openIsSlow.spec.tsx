@@ -54,7 +54,7 @@ describe('the "Check in" button explains a long wait, the same way /checkin does
     try {
       renderChat(true)
       await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
-      expect(screen.getByText('Getting your first question ready. This can take up to a minute.')).toBeTruthy()
+      expect(screen.getByText('Getting your first question ready. This can take a minute or two.')).toBeTruthy()
     } finally {
       vi.useRealTimers()
     }

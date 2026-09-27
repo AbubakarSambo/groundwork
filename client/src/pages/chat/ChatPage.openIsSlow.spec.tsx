@@ -10,8 +10,10 @@ import { conversationApi } from '@/api/conversation'
  *
  * ConversationService.open runs several model calls before it answers - 14 to 60 seconds, measured
  * against the booted API - and the screen said one unchanging line the whole time. After four
- * seconds (the same threshold the reply wait already uses), it now also says the wait can take up
- * to a minute, so a genuinely slow but healthy opening does not read as a hang.
+ * seconds (the same threshold the reply wait already uses), it now also says the wait can take a
+ * minute or two, so a genuinely slow but healthy opening does not read as a hang. (U.8 fourth
+ * review: a real first open was timed at 90 to 130 seconds, past the "up to a minute" this used
+ * to say, so the sentence now says "a minute or two", which is true of that range.)
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u1', firstName: 'Jordan', email: 'jordan@x.test' } }),
@@ -51,10 +53,10 @@ describe('opening a session that is taking a while', () => {
 
     renderChat()
     expect(await screen.findByText('Opening your session…')).toBeTruthy()
-    expect(screen.queryByText(/can take up to a minute/i)).toBeNull()
+    expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
   })
 
-  it('says the wait can take up to a minute once it has gone on a few seconds', async () => {
+  it('says the wait can take a minute or two once it has gone on a few seconds', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
       turns: [],
@@ -65,7 +67,7 @@ describe('opening a session that is taking a while', () => {
     await screen.findByText('Opening your session…')
     await vi.advanceTimersByTimeAsync(5_000)
 
-    expect(await screen.findByText('Getting your first question ready. This can take up to a minute.')).toBeTruthy()
+    expect(await screen.findByText('Getting your first question ready. This can take a minute or two.')).toBeTruthy()
   })
 
   it('never says it once the session has actually opened', async () => {
@@ -79,6 +81,6 @@ describe('opening a session that is taking a while', () => {
     await vi.advanceTimersByTimeAsync(10_000)
 
     expect(await screen.findByText(/How has the week gone\?/i)).toBeTruthy()
-    expect(screen.queryByText(/can take up to a minute/i)).toBeNull()
+    expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
   })
 })
