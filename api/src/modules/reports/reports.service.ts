@@ -67,7 +67,7 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, THE_LEADS_LABEL, displayName } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, plainWordsByPerson, atTheStart, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
@@ -139,6 +139,7 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2727,10 +2728,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * never carry a name across the wall, and `namesVisibleTo` decides which of them this reader
      * may resolve: their own, the lead's, and everybody's if they ARE the lead. Driven live as a
      * lead, this row read "participant A (you)" and "participant B", which is the same defect as
-     * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
+     * a roster calling three colleagues "a teammate" (the word before request 36) - and the rule that fixes it is the one the
      * report body already uses, not a second guess at it.
      */
     const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    /*
+     * AND SOMEBODY THIS READER CANNOT NAME IS A COLLEAGUE, NEVER "PARTICIPANT B" OR "A TEAMMATE".
+     * Request 36: the same plain words, for the same person, as every other surface. A line of the
+     * list starts with it, so it takes a capital.
+     */
+    const plainWords = plainWordsByPerson(ground.participants as any, nameByLabel, viewerLabelOf(me?.id ?? null, ground.participants as any));
+    const aColleague = (pid: string) => atTheStart(plainWords.get(pid) ?? 'a colleague');
     /*
      * THE SAME NAMING RULE ON THE LINES AS ON THE ROWS.
      *
@@ -2881,7 +2889,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             const label = labels.get(p.id);
             const named = label ? nameByLabel.get(label) : undefined;
             if (named) return named;
-                  return label || 'A teammate';
+            return aColleague(p.id);
           })(),
           isYou: !!me && p.id === me.id,
         })),
@@ -2956,7 +2964,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
            * they cannot tell which invitation is outstanding. That distinction is already
            * written down above `displayName`; this is the read that needed it.
            */
-              return label || 'A teammate';
+          return aColleague(p.id);
         })(),
         isYou: !!me && p.id === me.id,
         answered: answeredIds.has(p.id),
@@ -4853,6 +4861,8 @@ happened, and what is in the way.`;
         .filter((d) => d.participantId === participant.id)
         .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
       role: participant.roleAsDescribed ?? null,
+      /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
+      roleToSay: aRoleInTheirOwnWords(participant as any),
       /*
        * THE COLUMN THAT SELECTS THE ROLE MAP, read here for the first time on this page. See
        * whichRoleMap: below MIN_COACHING_CONFIDENCE there is no map and the note says why, rather

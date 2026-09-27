@@ -21,6 +21,12 @@
  * the lead usually writes "Chidinma Obi - she is handing over..." and the half before the dash is
  * exactly the name. Where there is nothing short to use, nothing is printed and the caller falls
  * through to its own wording for somebody it cannot name.
+ *
+ * NO LONGER USED FOR A LABEL, 27 September 2026 (request 36). Whatever it takes, it takes from the
+ * lead's own words about somebody, and a short description such as "our underperforming rep" is as
+ * private as a long one. Hafsah's rule: the label never uses the lead's description. A person's label
+ * is now their name or "a colleague", and `a-label-is-never-the-leads-description.spec.ts` checks that no label builder
+ * calls this. It stays for anything that needs a short handle for the lead's own reading.
  */
 
 /** Longer than this is a sentence about a person, not a way of referring to them. */

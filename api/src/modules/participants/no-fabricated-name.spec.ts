@@ -7,7 +7,7 @@ import { ParticipantsService } from './participants.service';
  * given, permanently persisted, and later rendered everywhere as if real.
  * The correct "no name given" value is an empty string: participantLabel()
  * (client/src/lib/utils.ts) and every display surface already fall back to
- * roleAsDescribed / "a teammate" for an empty name - they were just never
+ * "a colleague" (before request 36, roleAsDescribed / "a teammate") for an empty name - they were just never
  * getting the chance to, because firstName was never actually empty.
  */
 describe('participants.resolveName never fabricates a name from the email', () => {

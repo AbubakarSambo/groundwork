@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
-import { aNameOrNothing } from './a-name-is-short';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent } from '../../common/events';
 import {
@@ -135,16 +134,18 @@ export class BoardListener {
         },
         select: {
           text: true,
-          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
       });
       const lines = said
         .map((s: any) => ({
           text: cleanText(s.text),
           /* THE SAME NAME THE BOARD PRINTS. A model answer keyed on anything else cannot be matched
-             back to a person, and `onlyWhatHolds` drops every row it cannot match. */
+             back to a person, and `onlyWhatHolds` drops every row it cannot match. A name only, never
+             the lead's description of them (request 36): somebody with no name is left out here, as
+             the board has no name to match them by either. */
           who: [s.participant?.user?.firstName, s.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || aNameOrNothing(s.participant?.roleAsDescribed ?? null) || '',
+            || (s.participant?.nameGiven ?? '').trim() || '',
         }))
         .filter((s: { text: string; who: string }) => s.text && s.who);
       if (lines.length < 2) return;

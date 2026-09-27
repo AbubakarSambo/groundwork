@@ -18,7 +18,7 @@ import {
   sectionsForARunOf,
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import {
   CoverageKind,
   CoverageRead,
@@ -34,7 +34,6 @@ import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
-import { aNameOrNothing } from './a-name-is-short';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
@@ -394,16 +393,18 @@ export class BoardService {
      * "hafeezah@meridianhealth.test" and four more, in one grid, so it read as two different kinds
      * of person. Her audit note said exactly that about two screens; this was the third.
      *
-     * The board falls back to the ROLE, not the address, and there are two reasons rather than one:
+     * The board never falls back to the address: it is read by every party, and a party's address
+     * can be hidden from the others. The client's `participantLabel` refuses the email for this
+     * reason and this did not.
      *
-     *  1. The board is read by every party, and a party's address can be hidden from the others. The
-     *     client's `participantLabel` refuses the email for this reason and this did not.
-     *  2. It is what this board is for. Its own framing panel says each person is shown "against
-     *     their own role in its own terms" - so when there is no name, the role IS the identity.
-     *
-     * `role` is already sent alongside `name` in the response, so the client suppresses the subtitle
-     * when the two would say the same word twice.
+     * It used to fall back to the ROLE instead, on the grounds that the board shows each person
+     * "against their own role in its own terms". It no longer does, because the role on the row is
+     * the lead's own description of the person (request 36, below). With no name, a person is
+     * "A colleague" (see plainWordsByPerson).
      */
+    /* Somebody with no name, in the same plain words every surface uses: "A colleague", "Another colleague". */
+    const noName = plainWordsByPerson(ground.participants as any);
+    const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
@@ -416,8 +417,16 @@ export class BoardService {
        * see displayName in party-labels, which this now matches.
        */
       const forWhom = ((p as any).organisationGiven ?? '').trim();
-      /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
-      const label = n || aNameOrNothing(p.roleAsDescribed) || null;
+      /*
+       * A NAME, OR NOTHING, AND NEVER THE LEAD'S WORDS ABOUT THEM. Request 36, 27 September 2026.
+       *
+       * With no name this fell back to `roleAsDescribed`, cut short by `aNameOrNothing`. That field
+       * is the sentence the lead typed about the person when inviting them, and it can hold the
+       * lead's private words: "Daniel - Your sales manager, who you said is not meeting his agreed
+       * targets" came out as "Daniel - Your sales manager", printed as a name to every reader of the
+       * board, the person included. With no name the callers say "A colleague" instead.
+       */
+      const label = n || null;
       return label && n && forWhom ? `${label} (${forWhom})` : label;
     };
 
@@ -824,7 +833,7 @@ export class BoardService {
       })?.catch(() => [] as any[]) ?? [];
       out.stillUnanswered = (gapRows as any[])
         .filter((g) => g.asked >= 2)
-        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
+        .map((g) => ({ who: nameOf(g.participantId) ?? aColleague(g.participantId), what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
     }
 
     if (has('checkInGrid') && runsThisGround) {
@@ -869,8 +878,8 @@ export class BoardService {
           return {
             participantId: p.id,
             /* A person whose name this reader may not resolve still has a row: the read is about
-               what to do, and "a teammate" with a three-week blocker is still worth acting on. */
-            who: nameOf(p.id) ?? 'A teammate',
+               what to do, and "a colleague" with a three-week blocker is still worth acting on. */
+            who: nameOf(p.id) ?? aColleague(p.id),
             /*
              * "Hafsah · no name given" - read on a live board, 23 September 2026, beside a report
              * that called the same person "Hafsah (Coamana)".
@@ -1089,7 +1098,19 @@ export class BoardService {
     // queries a second time to produce the same answer.
     if (has('contribution') || has('coverage')) {
       const readInput = await this.loadReadInput(ground);
-      if (has('contribution')) out.contribution = buildContribution(readInput, nameOf);
+      /*
+       * THE REMIT IS THE LEAD'S WORDS, SO IT GOES ONLY TO WHOEVER RUNS THE CHECK-IN. Request 36.
+       *
+       * `remit` is `roleAsDescribed`, the sentence the lead typed about the person when inviting
+       * them. It reached every reader of the board: on a live-shaped board, the person and a peer
+       * both read "Daniel - Your sales manager, who you said is not meeting his agreed targets".
+       * The same rule as the roster's `role` above: the lead or an admin reads it, nobody else.
+       * `remitDefined` stays, because it says only that a role was given, not what it says.
+       */
+      if (has('contribution')) {
+        out.contribution = buildContribution(readInput, nameOf)
+          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, runsThisGround) }));
+      }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
       /*
        * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
@@ -1917,7 +1938,7 @@ export class BoardService {
       this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
     ]);
     const labels = labelsForParties(ground.participants as any);
-    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
+    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A colleague') : null);
     const report = ground.report ?? {};
     /* Who answered THIS round, against the one definition of who is expected (how-many-have-answered.ts). */
     const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
@@ -1946,7 +1967,7 @@ export class BoardService {
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
-      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
+      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A colleague', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });
     const question = draftTheQuestion({

@@ -44,8 +44,11 @@ describe('where each person is against their number', () => {
   it('asks a role, or somebody nobody can name, in a sentence that still reads', () => {
     expect(whatToAskFor(rep({ who: 'Head of Sales', nameIsTheirRole: true, answeredThisRound: false })))
       .toBe('Ask the person listed as Head of Sales to check in.');
-    expect(whatToAskFor(rep({ who: 'A teammate', nameIsTheirRole: true, answeredThisRound: false })))
-      .toBe('Ask this teammate to check in.');
+    /* Request 36: the plain word is "a colleague", as the prototype says, never "teammate". */
+    expect(whatToAskFor(rep({ who: 'A colleague', nameIsTheirRole: true, answeredThisRound: false })))
+      .toBe('Ask this colleague to check in.');
+    expect(whatToAskFor(rep({ who: 'Another colleague', nameIsTheirRole: true, answeredThisRound: false })))
+      .toBe('Ask this colleague to check in.');
   });
 
   it('and says nothing about somebody who actually pushed', () => {
@@ -134,8 +137,10 @@ describe('where each person is against their number', () => {
       .toBe('The person listed as Head of Sales has not checked in for this round yet.');
     expect(one({ who: 'Head of Sales', nameIsTheirRole: true, thisRoundHasANumberADateOrADocument: false }))
       .toMatch(/^What the person listed as Head of Sales said this round/);
-    expect(one({ who: 'A teammate', nameIsTheirRole: true, answeredThisRound: false }))
-      .toBe('A teammate has not checked in for this round yet.');
+    expect(one({ who: 'A colleague', nameIsTheirRole: true, answeredThisRound: false }))
+      .toBe('A colleague has not checked in for this round yet.');
+    expect(one({ who: 'Another colleague', nameIsTheirRole: true, answeredThisRound: false }))
+      .toBe('Another colleague has not checked in for this round yet.');
   });
 
   it('never says what somebody is, only what has happened and what to ask for', () => {

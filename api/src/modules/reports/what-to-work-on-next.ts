@@ -88,6 +88,15 @@ export interface CoachingInputs {
   /** How this person's part is described, when anybody has said. Not the detected function. */
   role: string | null;
   /**
+   * THE ROLE AS IT MAY BE SAID TO THIS PERSON, in "your work as …". Request 36, 27 September 2026.
+   *
+   * `role` above may be the lead's sentence about them ("Daniel - Your sales manager, who you said is
+   * not meeting his agreed targets" gave "your work as daniel"), which is fine for deciding what kind
+   * of work this is and never fine to say to them. When the caller passes this, it is the only thing
+   * said; null means say "this work". Left out, `role` is said, as before.
+   */
+  roleToSay?: string | null;
+  /**
    * WHAT KIND OF WORK THIS PERSON'S RECORD IS ACTUALLY MADE OF, and how sure the engine is.
    *
    * `detectFunction` has been writing these two columns for a long time and nothing on the report
@@ -276,7 +285,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
    */
   /* The role as a handle, not the whole sentence: "your work as poultry farmer in kaduna, battery cages on a
      tijara loan." was a sentence nobody would write. The first clause, up to five words. */
-  const roleHandle = (i.role ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+  const roleHandle = ((i.roleToSay !== undefined ? i.roleToSay : i.role) ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
   const about = map
     ? `${map.label.toLowerCase()} work`
     : roleHandle ? `your work as ${roleHandle.replace(/^(a|an|the)\s+/, '')}` : 'this work';

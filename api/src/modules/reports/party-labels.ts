@@ -515,7 +515,7 @@ export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>
  * THE SAME PERSON IS THE SAME PHRASE EVERYWHERE THIS READER LOOKS. The order comes from the
  * parties themselves - `labelsForParties` hands its labels out in a stable order, and this walks
  * them in that order - and not from the order sentences happen to mention people in. So whoever is
- * "one colleague" in the shared picture is "one colleague" in the judgement, in the divergences,
+ * "a colleague" in the shared picture is "a colleague" in the judgement, in the divergences,
  * and on the board.
  *
  * AND NEVER A JOB TITLE. The branch this replaces printed `handleOf(label)` for a long label,
@@ -535,6 +535,35 @@ const AFTER_THE_SECOND = [
   'an eleventh colleague', 'a twelfth colleague',
 ];
 
+/**
+ * THE SECOND AND LATER MENTION OF THE SAME PERSON IN ONE TEXT. Hafsah, 27 September 2026: a later
+ * mention must make clear it is the same person, never a phrase that could read as somebody new.
+ * "Another colleague says the tests were the slow part, and one colleague agrees" read, the second
+ * time round, as if two more people had turned up.
+ *
+ * THE PLAINEST FORM THAT CANNOT BE MISREAD:
+ *  - while only one person without a name has come up in this text so far, "the same colleague";
+ *  - once two or more have, the one the first mention numbered: "one colleague" is "the first
+ *    colleague", "another colleague" is "the second colleague", "a third colleague" is "the third
+ *    colleague", and so on. The numbering is the check-in's own order, the one the first mentions
+ *    already use, so it is the same person on every surface.
+ *  - the lead stays "your lead" or "the lead", which already says who it is.
+ * Past the twelfth, where the first mention is "another colleague" for everybody left, there is no
+ * number to give; they stay "another colleague", which says less and so gives nobody away.
+ */
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
+
+export function theSameOneAgain(
+  { firstMention, index, introducedSoFar }:
+  { firstMention: string; /** Their place among the colleagues with no name, from 0. */ index: number; introducedSoFar: number },
+): string {
+  const p = (firstMention ?? '').trim().toLowerCase();
+  if (p === 'your lead' || p === 'the lead') return p;
+  if (introducedSoFar <= 1) return 'the same colleague';
+  if (index >= 0 && index < ORDINALS.length) return `the ${ORDINALS[index]} colleague`;
+  return p;
+}
+
 export function plainWordsForTheUnnameable(
   /** Every label on this check-in, in the order `labelsForParties` handed them out. */
   known: Iterable<string>,
@@ -552,6 +581,12 @@ export function plainWordsForTheUnnameable(
   const lead = unnameable.find((l) => l.toLowerCase() === THE_LEADS_LABEL);
   if (lead) out.set(lead, viewerLabel ? 'your lead' : 'the lead');
 
+  /*
+   * ONE IS "A COLLEAGUE"; SEVERAL ARE "ONE COLLEAGUE", "ANOTHER COLLEAGUE", "A THIRD COLLEAGUE".
+   * Hafsah's decision, 27 September 2026 (after a day on "a colleague" for the first of several).
+   * These are the words for the FIRST time somebody is mentioned in a text. A later mention in the
+   * same text says it is the same person: see `theSameOneAgain`.
+   */
   const colleagues = unnameable.filter((l) => l.toLowerCase() !== THE_LEADS_LABEL);
   if (colleagues.length === 1) {
     out.set(colleagues[0], 'a colleague');
@@ -562,6 +597,49 @@ export function plainWordsForTheUnnameable(
     });
   }
   return out;
+}
+
+/**
+ * THE SAME PLAIN WORDS FOR SOMEBODY WITH NO NAME, BY PERSON, FOR EVERY SURFACE. Request 36.
+ *
+ * Where a person has no name, the board, the report's list of who answered, the conversation and the
+ * end-state email each used to say "a teammate", which the prototype never says. They now say what
+ * `plainWordsForTheUnnameable` says, from this one place: "a colleague", then "another colleague",
+ * "a third colleague" when there are several, "the lead" (or "your
+ * lead", with a reader) for a lead with no name. The order comes from `labelsForParties`, so the same
+ * person is the same phrase on every surface.
+ *
+ * `visible` is the names this reader may see, from `namesVisibleTo`. Left out, anybody with a name
+ * is named and only somebody with no name at all gets plain words. Keyed by participant id.
+ * Lower case, for inside a sentence: see `atTheStart`.
+ */
+export function plainWordsByPerson(
+  parties: LabelParty[],
+  visible?: Map<string, string> | null,
+  viewerLabel?: string | null,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  let labels: Map<string, string>;
+  try {
+    labels = labelsForParties(parties);
+  } catch {
+    for (const p of parties ?? []) if (p?.id) out.set(p.id, 'a colleague');
+    return out;
+  }
+  const named = visible ?? new Map(
+    parties.map((p) => [labels.get(p.id) ?? '', displayName(p)] as const).filter(([l, n]) => !!l && !!n) as [string, string][],
+  );
+  const phrases = plainWordsForTheUnnameable([...labels.values()], named, viewerLabel ?? null);
+  for (const [id, label] of labels) {
+    const phrase = phrases.get(label);
+    if (phrase) out.set(id, phrase);
+  }
+  return out;
+}
+
+/** The phrase with a capital, for the start of a sentence or a line of its own. */
+export function atTheStart(phrase: string): string {
+  return withACapital(phrase);
 }
 
 /** Whether the text before this point has just ended a sentence, so the phrase needs a capital. */
@@ -867,25 +945,55 @@ function withNamesOutsideTheQuotes(
    * phrase in every line of this reader's report and board. See plainWordsForTheUnnameable.
    */
   const plainly = plainWordsForTheUnnameable(known, visible, opts?.viewerLabel);
+  /*
+   * ONE PASS, IN THE ORDER THE TEXT MENTIONS PEOPLE, so the second mention of somebody can say it is
+   * the same person (theSameOneAgain). It used to be one replace per label, which cannot know
+   * whether a label has come up already in this text.
+   */
+  const colleagueOrder = known.filter((l) => {
+    const ph = plainly.get(l.trim());
+    return !!ph && ph !== 'your lead' && ph !== 'the lead';
+  });
+  const phrased = known.filter((l) => !visible.has(l) && !!plainly.get(l.trim()));
+  if (phrased.length) {
+    const byKey = new Map(phrased.map((l) => [withoutTrailingStop(l).toLowerCase(), l] as const));
+    const alternatives = [...byKey.keys()].sort((a, b) => b.length - a.length).map(escapeRe).join('|');
+    const seen: string[] = [];
+    let colleaguesSeen = 0;
+    /*
+     * THE ARTICLE COMES WITH IT, AND THE CAPITAL STAYS. The model writes "The Participant B
+     * built the front end", so the phrase has to swallow that "The" or the sentence reads "The a
+     * colleague built the front end"; and a phrase that opens a sentence has to open it with a
+     * capital, or every one of these becomes a lower-case sentence start.
+     */
+    /*
+     * THE LABEL'S OWN FULL STOP GOES ONLY WHEN THE SENTENCE CARRIES ON IN LOWER CASE. The lookahead
+     * was `[a-z]` under the `i` flag, which matches a capital too, so "…sided with Participant C.
+     * Wairimu asked" lost the full stop that ended the sentence. It is decided here, case and all.
+     */
+    const withArticle = new RegExp(`(?<![\\w])(?:[Tt]he\\s+)?(${alternatives})(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
+    out = out.replace(withArticle, (m: string, which: string, stop: string | undefined, offset: number, whole: string) => {
+      const keepTheStop = !!stop && /^\s+[A-Z]/.test(whole.slice(offset + m.length));
+      const label = byKey.get(String(which).toLowerCase())!;
+      const first = plainly.get(label.trim())!;
+      const isColleague = first !== 'your lead' && first !== 'the lead';
+      let phrase = first;
+      if (seen.includes(label)) {
+        phrase = theSameOneAgain({ firstMention: first, index: colleagueOrder.indexOf(label), introducedSoFar: colleaguesSeen });
+      } else {
+        seen.push(label);
+        if (isColleague) colleaguesSeen += 1;
+      }
+      return (aSentenceIsStarting(whole, offset) ? withACapital(phrase) : phrase) + (keepTheStop ? '.' : '');
+    });
+  }
   for (const label of known) {
     if (visible.has(label)) continue;
+    if (plainly.get(label.trim())) continue;
     /* Without its trailing stop, the way the finding prints it: "...networks next said this was for" left the
        lead's whole role sentence on a participant's card (run 8, 21 Sep 2026) because the label ended in
        a full stop and the sentence did not. */
     const escaped = escapeRe(withoutTrailingStop(label));
-    const phrase = plainly.get(label.trim());
-    if (phrase) {
-      /*
-       * THE ARTICLE COMES WITH IT, AND THE CAPITAL STAYS. The model writes "The Participant B
-       * built the front end", so the phrase has to swallow that "The" or the sentence reads "The a
-       * colleague built the front end"; and a phrase that opens a sentence has to open it with a
-       * capital, or every one of these becomes a lower-case sentence start.
-       */
-      const withArticle = new RegExp(`(?<![\\w])(?:[Tt]he\\s+)?${escaped}(?:\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
-      out = out.replace(withArticle, (_m: string, offset: number, whole: string) =>
-        (aSentenceIsStarting(whole, offset) ? withACapital(phrase) : phrase));
-      continue;
-    }
     /* A label this reader may not resolve stays a label - but a paragraph of one is printed as its
        handle, "Managing Partner", not as the person's whole self-description in the middle of a
        sentence. Only when the handle is unambiguous among the parties. */
@@ -896,7 +1004,9 @@ function withNamesOutsideTheQuotes(
     /* The label's own full stop comes with it when the sentence carries on ("Director. expects"); a stop
        that ends the sentence stays. */
     const re = new RegExp(`(?<![\\w])${escaped}(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
-    out = out.replace(re, printed);
+    /* The same full stop rule as above: kept before a capital. */
+    out = out.replace(re, (m: string, stop: string | undefined, offset: number, whole: string) =>
+      printed + (stop && /^\s+[A-Z]/.test(whole.slice(offset + m.length)) ? '.' : ''));
   }
   /* AND A NAME IS NOT A TITLE. "The Daniel Osei. has completed" was 55 lines across 19 scenarios,
      and neither the article nor the stop came from the name. See aNameIsNotATitle. */

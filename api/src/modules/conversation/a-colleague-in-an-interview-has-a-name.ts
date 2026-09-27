@@ -35,7 +35,7 @@
  *  2. OTHERWISE A REAL NAME, BUT ONLY WHERE THIS CHECK-IN NAMES PEOPLE TO EACH OTHER. That is the
  *     same rule the report and the board already apply - see `peersAreNamedOn`. Ordinary work:
  *     fine. An evaluation or a cohort: not fine.
- *  3. OTHERWISE PLAIN WORDS. "A colleague", or "one colleague" and "another colleague" where there
+ *  3. OTHERWISE PLAIN WORDS. "A colleague", then "another colleague" and "a third colleague" where there
  *     are several, used the same way for the same person everywhere - the wording the reports
  *     already use, taken from the same function so the two cannot drift. Never a job title, never
  *     a detail that would give somebody away, and never a letter.
@@ -51,7 +51,6 @@ import {
   plainWordsForTheUnnameable,
   type LabelParty,
 } from '../reports/party-labels';
-import { aNameOrNothing } from '../board/a-name-is-short';
 
 /**
  * A POSITIONAL LABEL THAT SOMEHOW REACHED THE RECORD IS NOT WHAT ANYBODY CALLED ANYBODY.
@@ -79,8 +78,8 @@ export function theirName(p: LabelParty | null | undefined): string | null {
 /**
  * Plain, non-identifying words for everybody on this check-in except the person being interviewed.
  *
- * Delegates to the reports' own wording so a colleague who is "one colleague" in the report is
- * "one colleague" in the conversation as well. The lead comes back as "your lead", which is not a
+ * Delegates to the reports' own wording so a colleague who is "a colleague" in the report is
+ * "a colleague" in the conversation as well. The lead comes back as "your lead", which is not a
  * disclosure: the person being interviewed already knows who set their check-in up.
  */
 export function plainWordsForEveryoneElse(
@@ -133,9 +132,11 @@ export function whatToCallThem(
   const theirs = theyReallyCalledThem(speakerCalledThem);
   if (theirs) return theirs;
 
-  /* 2. A real name, where this check-in names people to each other. */
+  /* 2. A real name, where this check-in names people to each other. A name only: the role on the
+        row is the lead's own description of the person, which can hold the lead's private words,
+        so it never stands in for one (request 36, 27 September 2026). */
   if (peersMayBeNamed) {
-    const named = theirName(person) ?? aNameOrNothing((person as any)?.roleAsDescribed);
+    const named = theirName(person);
     if (named) return named;
   }
 

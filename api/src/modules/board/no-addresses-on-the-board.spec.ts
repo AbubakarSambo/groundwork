@@ -9,29 +9,28 @@ import { join } from 'path';
  * so the column read as two different kinds of person. The same fault had been fixed on two client
  * pages in the same pass; this was the third instance and it was on the server.
  *
- * TWO REASONS THE FALLBACK IS THE ROLE:
- *  1. PRIVACY. The board is read by every party, and a party's address can be hidden from the
- *     others. The client's `participantLabel` refuses the email for exactly this reason.
- *  2. IT IS WHAT THE BOARD IS FOR. Its own framing panel says each person is shown "against their
- *     own role in its own terms", so with no name, the role IS the identity.
+ * PRIVACY. The board is read by every party, and a party's address can be hidden from the others.
+ * The client's `participantLabel` refuses the email for exactly this reason.
+ *
+ * The fallback used to be the role. Since request 36 (27 September 2026) it is nothing, and the
+ * callers say "A colleague": the role on the row is the lead's own description of the person, which
+ * can hold the lead's private words. See a-label-is-never-the-leads-description.spec.ts.
  */
 const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '');
 
 describe('GW-BOARD-NAMES: no address is ever a label', () => {
-  it('the one place labels are built falls back to the role', () => {
+  it('the one place labels are built falls back to nothing, never the role or the address', () => {
     /*
-     * Still the role, and still never the address - which is what this test is for. It goes through
-     * `aNameOrNothing` now, because the raw field was printing a whole sentence where a name goes:
-     * "Chidinma Obi - She is handing over key financial processes after running them for five
-     * years.: 0 check-ins on record". A short description is kept as-is; a long one gives up its
-     * leading name; anything else returns null and the caller says it cannot name them.
+     * Never the address - which is what this test is for. It used to fall back to the role, cut
+     * short by `aNameOrNothing`; since request 36 it does not, because the role is the lead's own
+     * description of the person and a short piece of it is still the lead's words. With no name the
+     * label is null and the caller says "A colleague". The organisation is appended to a name the
+     * way the report does it.
      */
-    /* The fallback chain is unchanged; it is assigned before being returned now, because the
-       organisation somebody gave is appended to a name the way the report does it. What this test
-       is for - the role stands in, and the address never does - is asserted below and here. */
-    expect(SRC).toContain('const label = n || aNameOrNothing(p.roleAsDescribed) || null;');
+    expect(SRC).toContain('const label = n || null;');
+    expect(SRC).not.toContain('aNameOrNothing(p.roleAsDescribed)');
     expect(SRC).toContain('return label && n && forWhom ? `${label} (${forWhom})` : label;');
     /* And the organisation only ever joins a real name - never the role standing in for one, which
        would read as an organisation vouching for somebody we cannot even name. */

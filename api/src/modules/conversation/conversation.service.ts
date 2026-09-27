@@ -35,7 +35,6 @@ import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
-import { aNameOrNothing } from '../board/a-name-is-short';
 import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
@@ -66,7 +65,7 @@ import {
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { displayName } from '../reports/party-labels';
+import { displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, saidWordForWord } from '../reports/a-quote-is-what-they-said';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
@@ -181,6 +180,7 @@ import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
+import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -976,8 +976,11 @@ export class ConversationService {
     const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
     const firstSession = checkIn.sessionNumber === 1;
-    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre. */
-    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed);
+    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre.
+       IN THEIR OWN WORDS ONLY (request 36). The model is no longer handed the lead's sentence about
+       an invited person, so a row that holds only that sentence says nothing the conversation can
+       use: they are asked, the same as somebody with no role at all. */
+    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
     const reply = alreadyWritten
       ? alreadyWritten
       : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
@@ -2889,7 +2892,7 @@ export class ConversationService {
             managingOnly: true,
             roleAsDescribed: true,
             /* The name somebody typed at the end of an open-link check-in; they have no sign-in to
-               carry one, and without this they were "a teammate" to everybody. */
+               carry one, and without this they were "a teammate" (now "a colleague") to everybody. */
             nameGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -3421,7 +3424,8 @@ export class ConversationService {
        * the two cannot say different numbers.
        */
       totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
-      roleAsDescribed: checkIn.participant.roleAsDescribed,
+      /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
+      roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
       /*
        * WHO OPENED THIS, so the safety rule in ENGINE_RULES can finally fire. It fell back to the
        * party type of whoever was ANSWERING, which made "the opener is senior and this person is
@@ -3445,8 +3449,8 @@ export class ConversationService {
         .map((p) => ({
           /* A name where this check-in names people to each other, plain words where it does not.
              Never a positional label, and never a role in an evaluation - see whatToCallThem. */
-          label: whatToCallThem({ person: p as any, peersMayBeNamed, plainWords, fallback: 'a teammate' })
-            ?? 'a teammate',
+          label: whatToCallThem({ person: p as any, peersMayBeNamed, plainWords, fallback: 'a colleague' })
+            ?? 'a colleague',
         })),
       /**
        * THE LEAD'S FRAMING OF THE SITUATION, READ BY EVERY SESSION.
@@ -3477,8 +3481,8 @@ export class ConversationService {
                 return {
                   /* The lead's own conversation, and a lead always reads their own team by name -
                      which is why this one passes `peersMayBeNamed: true` rather than the ground's rule. */
-                  label: whatToCallThem({ person: p as any, peersMayBeNamed: true, plainWords, fallback: 'a teammate' })
-                    ?? 'a teammate',
+                  label: whatToCallThem({ person: p as any, peersMayBeNamed: true, plainWords, fallback: 'a colleague' })
+                    ?? 'a colleague',
                   text: row.text.trim(),
                 };
               })
@@ -3493,7 +3497,8 @@ export class ConversationService {
       cadence: (ground as any).cadence ?? null,
       adminBrief: (ground as any).brief ?? null,
       objectives: (ground as any).objectives ?? [],
-      priorContext: checkIn.participant.roleAsDescribed ?? null,
+      /* The same: never the lead's words about this person, in this person's own session (request 36). */
+      priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
       lowSpecificityMultiDim,
       groundState,
@@ -4221,7 +4226,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const aiSoFar = (said as any[]).map((t: any) => t.content ?? '');
       const others = (ground?.participants ?? [])
         .filter((p: any) => p.id !== checkIn.participantId && !p.managingOnly)
-        .map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.roleAsDescribed || '')
+        /* A name only, never the lead's description of them (request 36): somebody with no name is left out of the list. */
+        .map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || '')
         .filter(Boolean);
       const whoCarries = askWhoCarriesWhichPart({
         sharedNumbers: (board as any[]).filter((o: any) => !o.ownerParticipantId).map((o: any) => ({ name: o.name, target: o.target })),
@@ -4438,7 +4444,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ];
       const nameOfParticipant = (pid: string) => {
         const p = (ground.participants ?? []).find((x: any) => x.id === pid) as any;
-        return (p?.user?.firstName ?? '').trim() || (p?.roleAsDescribed ?? '').split(/[.,]/)[0].trim() || 'they';
+        /* A name only, never the lead's description of them (request 36). "they" made "they's own account reads".
+           With no name, the plain words every surface uses for them. */
+        return (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim()
+          || atTheStart(plainWordsByPerson((ground.participants ?? []) as any).get(pid) ?? 'a colleague');
       };
       if (isLead) {
         const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
@@ -4608,15 +4617,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         select: {
           what: true,
           onParticipantId: true,
-          fromParticipant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          fromParticipant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
         take: 40,
       });
       const others = rows.map((r: any) => ({
         what: r.what ?? '',
+        /* A name only, never the lead's description of them (request 36). No name reads "Somebody else". */
         raisedBy: mayName
           ? ([r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null))
+            || (r.fromParticipant?.nameGiven ?? '').trim() || null)
           : null,
         owned: !!r.onParticipantId,
       }));
@@ -4673,14 +4683,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         select: {
           text: true,
           awareness: true,
-          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
       const onThem = rows.map((r: any) => ({
+        /* A name only, never the lead's description of them (request 36); nobody is matched without one. */
         name: [r.participant?.user?.firstName, r.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-          || aNameOrNothing(r.participant?.roleAsDescribed ?? null) || '',
+          || (r.participant?.nameGiven ?? '').trim() || '',
         text: r.text ?? '',
         awareness: r.awareness ?? null,
       })).filter((r: { name: string }) => r.name);
@@ -6056,7 +6067,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         oneTime: ground.cadence === Cadence.ONE_TIME,
         person: {
           firstName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
-          roleAsDescribed: checkIn.participant?.roleAsDescribed ?? null,
+          /* "Who described their role as" is only true of the lead's own row (request 36). */
+          roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
           isLead: checkIn.participant?.partyType === PartyType.INITIATOR,
         },
         roleMap: roleMapFor(checkIn.participant?.detectedFunction ?? null),
