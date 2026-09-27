@@ -3229,7 +3229,7 @@ CLOSING: The record is what each side says happened, the figures with their sour
  * The standard block stays where it belongs, on DRIFT and PIP, where something genuinely is off.
  * Here the question is what each person sees, and nothing is assumed to be wrong.
  */
-const REALIGN_TEAM_PACK = `MOMENT: Understand Where People See Things Differently.
+const REALIGN_TEAM_PACK = `MOMENT: See where people see things differently.
 
 PURPOSE: People are describing the same situation in different ways. Each person gives their own account, on their own, before anybody tries to reconcile them. Nothing here assumes somebody is wrong: two people can both be doing what they agreed and still see it differently, and finding out where and why is the point.
 
@@ -3604,7 +3604,7 @@ function theScenariosOwnPack(
         return [
           /* The card says "understand why a project is off track and what needs to change", and
              "something has drifted" named neither the project nor the change. */
-          `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
+          `MOMENT: Get a project back on track. Understand why a project is off track and what needs to change.`,
           DRIFT_VALIDATION,
           /* First, and the ordering is the whole correction - see the note on this block. */
           THE_STANDARD_BEFORE_THE_GAP,
@@ -3615,7 +3615,7 @@ function theScenariosOwnPack(
         ].join('\n\n');
       }
       return [
-        `MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.`,
+        `MOMENT: Get a project back on track. Understand why a project is off track and what needs to change.`,
         PARTICIPANT_PREAMBLE,
         DRIFT_PARTICIPANT_VARIANTS,
         DRIFT_WORRY_TENSION,
@@ -3639,7 +3639,7 @@ function theScenariosOwnPack(
        */
       if (isInitiator) {
         return [
-          `MOMENT: Support a Raise, Promotion, or Recognition. Understand someone's contribution and experience before making a recognition decision.`,
+          `MOMENT: Support a raise, promotion or recognition. Understand someone's contribution and experience before making a recognition decision.`,
           `PURPOSE: Build an honest picture of what this person has actually done and how they experience the work, so a decision rests on the record rather than on who asked loudest or most recently.`,
           `OPENING: Ask what this person has been responsible for over the period, in the lead's own words. Not a verdict, not a rating: what the work was.`,
           `WHAT IS ON RECORD: ask what they can point to. Something delivered, something moved, a number, a thing that exists now that did not. Ask once more if the first answer is a judgement rather than a thing.`,
@@ -3664,7 +3664,7 @@ function theScenariosOwnPack(
         return [
           /* The card is about a DECISION - "bring different views together around an important
            decision" - and this named only the seeing-the-same-thing half of it. */
-        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
+        `MOMENT: Work through a big decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
           CRISIS_SCOPE_BOUNDARY,
           CRISIS_VALIDATION,
           CRISIS_OPENING,
@@ -3675,7 +3675,7 @@ function theScenariosOwnPack(
       return [
         /* The card is about a DECISION - "bring different views together around an important
            decision" - and this named only the seeing-the-same-thing half of it. */
-        `MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
+        `MOMENT: Work through a big decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.`,
         CRISIS_SCOPE_BOUNDARY,
         PARTICIPANT_PREAMBLE,
         CRISIS_PARTICIPANT_VARIANTS,

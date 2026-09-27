@@ -68,7 +68,7 @@ describe('the card and the pack are one product', () => {
 
   it('puts the right cell in front of the model', () => {
     const lead = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.INITIATOR, 'first');
-    expect(lead).toContain('Set Goals and Keep the Team on Track');
+    expect(lead).toContain('Set goals and keep the team on track');
     expect(lead).toContain('Set goals and understand what each person is working towards.');
 
     const later = whatThisCheckInIsFor(GroundScenario.OKR_ALIGNMENT, PartyType.PARTICIPANT, 'second');
