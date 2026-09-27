@@ -51,6 +51,8 @@ export type TeamSizeSaid = { said: 'fewer' | 'more'; line: number }
 
 /** What "Where do you work?" offers (U.3). No head counts. */
 export interface WhereCanIJoin {
+  /** True only while the person belongs nowhere yet but an organisation just made for them (U.4 review). */
+  nowhereYet?: boolean
   byDomain: { id: string; name: string; domain: string }[]
   asAGuest: { organisationName: string; checkInName: string; invitePath: string }[]
 }

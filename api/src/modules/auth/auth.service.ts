@@ -1625,7 +1625,23 @@ export class AuthService {
       select: { inviteToken: true, ground: { select: { label: true, organizationId: true, organization: { select: { name: true } } } } },
       take: 20,
     });
+    /*
+     * WHETHER THEY BELONG ANYWHERE YET (U.4 review). "Where do you work?" is for somebody with no
+     * organisation of their own yet: the only ones they are in are ones just made for them, which they
+     * own, with nobody else in them and no check-in. Somebody invited to an organisation already
+     * belongs to it, and was being sent here after setting their password, offered a different
+     * organisation by domain, instead of going where the invitation led. The page says whether to go.
+     */
+    const theirs = inIt.size
+      ? await this.prisma.organization.findMany({
+        where: { id: { in: [...inIt] } },
+        select: { id: true, ownerUserId: true, _count: { select: { memberships: true, grounds: true } } },
+      })
+      : [];
+    const nowhereYet = theirs.length === inIt.size
+      && theirs.every((o: any) => o.ownerUserId === userId && (o._count?.memberships ?? 0) <= 1 && (o._count?.grounds ?? 0) === 0);
     return {
+      nowhereYet,
       byDomain: byDomain.filter((o) => !inIt.has(o.id)).map((o) => ({ id: o.id, name: o.name, domain: domain! })),
       asAGuest: invitations
         .filter((i) => i.ground && !inIt.has(i.ground.organizationId))

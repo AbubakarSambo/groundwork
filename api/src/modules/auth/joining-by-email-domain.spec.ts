@@ -122,3 +122,36 @@ describe('the person who signs up with that domain', () => {
     }
   });
 });
+
+/*
+ * U.4 review: "Where do you work?" is only for somebody who belongs nowhere yet. An invited person
+ * already belongs to the organisation that invited them.
+ */
+describe('whether somebody belongs anywhere yet', () => {
+  function make(orgs: any[]) {
+    const prisma: any = {
+      user: { findUnique: jest.fn(async () => ({ email: 'amina@example.test', isEmailVerified: true })) },
+      organizationMembership: { findMany: jest.fn(async () => orgs.map((o) => ({ organizationId: o.id }))) },
+      organization: {
+        findMany: jest.fn(async ({ where }: any) => (where.joinDomain ? [{ id: 'domain-org', name: 'By domain' }] : orgs.filter((o) => where.id.in.includes(o.id)))),
+      },
+      groundParticipant: { findMany: jest.fn(async () => []) },
+    };
+    return new AuthService(prisma, { sign: () => 'tok' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
+  }
+
+  it('somebody invited to an organisation belongs somewhere, so is not sent to "Where do you work?"', async () => {
+    const auth = make([{ id: 'coamana', ownerUserId: 'sahar', _count: { memberships: 6, grounds: 3 } }]);
+    expect((await auth.whereCanIJoin('amina')).nowhereYet).toBe(false);
+  });
+
+  it('somebody whose only organisation was just made for them, empty, belongs nowhere yet', async () => {
+    const auth = make([{ id: 'own', ownerUserId: 'amina', _count: { memberships: 1, grounds: 0 } }]);
+    expect((await auth.whereCanIJoin('amina')).nowhereYet).toBe(true);
+  });
+
+  it('and not once they have started a check-in there', async () => {
+    const auth = make([{ id: 'own', ownerUserId: 'amina', _count: { memberships: 1, grounds: 1 } }]);
+    expect((await auth.whereCanIJoin('amina')).nowhereYet).toBe(false);
+  });
+});
