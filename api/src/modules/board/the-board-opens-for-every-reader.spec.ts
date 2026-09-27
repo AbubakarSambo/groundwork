@@ -173,3 +173,70 @@ describe('and where people see only themselves, the coverage section keeps its s
     expect((b.checkInGrid?.rows ?? []).length).toBeGreaterThan(1);
   });
 });
+
+/*
+ * AND WHERE PEOPLE SEE ONLY THEMSELVES, NO COLLEAGUE IS NAMED TO A PARTICIPANT, ANYWHERE ON THE BOARD.
+ *
+ * Found on 27 September 2026: the board's own list of people carried every colleague's name to a
+ * participant on a check-in whose whole rule is that people give their accounts without seeing each
+ * other, and a handoff named whoever was waiting on the reader (screens request 19). So the whole
+ * served board is searched, as each participant, for every other participant's first name, last
+ * name, address and role, on every situation where the one rule (peersAreNamedOn) hides them.
+ * The reader's own name and the lead's are theirs to read; the lead and an admin still read everyone.
+ */
+describe('where people see only themselves, a participant reads no colleague’s name, address or role', () => {
+  const { peersAreNamedOn } = require('../reports/peers-are-named');
+  const ROLES: Record<string, string> = { 'p-miriam': 'Key account manager for Nairobi', 'p-aisha': 'Head of modern trade', 'p-guest': 'Harbor Foods supplier liaison' };
+  const withEverything = (g: any) => ({
+    ...g,
+    participants: g.participants.map((p: any) => (ROLES[p.id] ? { ...p, roleAsDescribed: ROLES[p.id] } : p)),
+    dependencies: [
+      { id: 'd1', what: 'the pricing sheet', fromParticipantId: 'p-miriam', onParticipantId: 'p-aisha', onLabel: null, status: 'WAITING', createdAt: new Date('2026-09-03'), updatedAt: new Date('2026-09-03'), escalatedAt: null, blockerKind: null, then: null },
+      { id: 'd2', what: 'the stock count', fromParticipantId: 'p-aisha', onParticipantId: 'p-miriam', onLabel: null, status: 'WAITING', createdAt: new Date('2026-09-03'), updatedAt: new Date('2026-09-03'), escalatedAt: null, blockerKind: null, then: null },
+      { id: 'd3', what: 'the delivery slots', fromParticipantId: 'p-guest', onParticipantId: 'p-aisha', onLabel: null, status: 'BLOCKING', createdAt: new Date('2026-09-03'), updatedAt: new Date('2026-09-03'), escalatedAt: null, blockerKind: null, then: null },
+    ],
+    poll: { id: 'poll1', question: 'When can everybody meet?', options: [{ id: 'o1', label: 'Tuesday', whoIds: ['p-miriam', 'p-aisha', 'p-guest'] }] },
+  });
+  const person = (id: string) => [LEAD, MIRIAM, AISHA, GUEST].find((p) => p.id === id)!;
+  const giveaways = (id: string) => {
+    const p: any = person(id);
+    return [p.user.firstName, p.user.lastName, p.email, ROLES[id], p.organisationGiven].filter(Boolean) as string[];
+  };
+  const READING: [string, string, string[]][] = [
+    ['Miriam', 'u-miriam', ['p-aisha', 'p-guest']],
+    ['Aisha', 'u-aisha', ['p-miriam', 'p-guest']],
+    ['Kofi, from another organisation', 'u-guest', ['p-miriam', 'p-aisha']],
+  ];
+
+  for (const scenario of SCENARIOS) {
+    for (const peers of [false, null]) {
+      if (peersAreNamedOn({ scenario, peersVisibleToEachOther: peers })) continue;
+      it(`${scenario}, peers ${peers}: nothing on the board names a colleague`, async () => {
+        const found: string[] = [];
+        for (const sharedAs of [null, 'ANONYMOUS']) {
+          for (const [reader, userId, colleagues] of READING) {
+            const viewer = userId === 'u-guest' ? { role: 'ADMIN', organizationId: 'org-2' } : { role: 'MEMBER', organizationId: 'org-1' };
+            const served = JSON.stringify(await openTheBoard(withEverything(aGround({ scenario, peers, sharedAs })), userId, viewer));
+            for (const c of colleagues) for (const word of giveaways(c)) {
+              /* Case matters: the ids are "p-miriam", and an id is not a name anybody reads. */
+              if (new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(served)) found.push(`${reader} reads "${word}"`);
+            }
+          }
+        }
+        expect(found).toEqual([]);
+      });
+    }
+  }
+
+  it('the reader still reads their own name and the lead’s, and the lead reads everybody', async () => {
+    const g = withEverything(aGround({ scenario: GroundScenario.PIP, peers: null, sharedAs: null }));
+    const mine = JSON.stringify(await openTheBoard(g, 'u-miriam', { role: 'MEMBER', organizationId: 'org-1' }));
+    expect(mine).toContain('Miriam');
+    expect(mine).toContain('Wairimu');
+    const leads = JSON.stringify(await openTheBoard(g, 'u-lead', { role: 'MEMBER', organizationId: 'org-1' }));
+    for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(leads).toContain(name);
+    const admins = JSON.stringify(await openTheBoard(g, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' }));
+    for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(admins).toContain(name);
+  });
+});
+

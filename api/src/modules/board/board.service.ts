@@ -411,11 +411,28 @@ export class BoardService {
      * "A colleague" (see plainWordsByPerson).
      */
     /* Somebody with no name, in the same plain words every surface uses: "A colleague", "Another colleague". */
-    const noName = plainWordsByPerson(ground.participants as any);
+    /*
+     * AND WHERE PEOPLE SEE ONLY THEMSELVES, NOBODY BUT THE READER AND THE LEAD IS NAMED TO THEM.
+     *
+     * Found 27 September 2026: the wall below took other people's rows off a participant's board,
+     * and every name still came through the one place names come from - the list of people, both
+     * ends of a handoff (screens request 19), who picked a time in the poll. So the wall is here,
+     * in the name itself: on such a check-in a participant reads their own name, the lead's, and
+     * "one colleague", "another colleague" for everybody else, in the same words the reports use,
+     * because the names they may see are worked out by the same rule (namesVisibleTo). The lead
+     * and admins are never walled, and read everybody.
+     */
+    const noName = plainWordsByPerson(
+      ground.participants as any,
+      whoMaySee.peersHidden ? namesVisibleTo(me?.id ?? null, ground.participants as any, false) : undefined,
+    );
     const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
+    const theLeadsRow = ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id ?? null;
+    const hiddenFromThisReader = (pid: string) => whoMaySee.peersHidden && pid !== me?.id && pid !== theLeadsRow;
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
+      if (hiddenFromThisReader(pid)) return aColleague(pid);
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
