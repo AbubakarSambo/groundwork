@@ -10,6 +10,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
 
+### Hafsah's decisions, merged into one file for her to put in place
+
+`docs/decisions.md` held only 16 of Hafsah's decisions. It is a protected file that I cannot change, so the full version is in **`docs/decisions-merged.md`** (`ef147ceb`).
+- Decisions 1 to 16 are exactly as they were, byte for byte. Checked by comparing the two files.
+- Decisions 17 to 30 are added in plain sentences. They cover: colleagues in evaluation check-ins, people's own words never changed for a score, pattern names, the 50 packs, the free trial and prices, naming the organisation at sign-up, signing up, sign-in wording, no guided tour, security, who sees colleagues, the setup not being the lead's first check-in, naming check-ins by topic, and a lead's private description never reaching anyone.
+
+**The step for Hafsah, in an interactive terminal of her own:** replace `docs/decisions.md` with the merged file without its first six lines (the note at the top), then delete `docs/decisions-merged.md`, and commit.
+
 ### Request 36, privacy: a person's label could be the lead's private description of them
 
 **What was wrong.** When a person had no name, several places used the sentence the lead typed about them as their name. That sentence can hold the lead's private words, for example "Daniel - Your sales manager, who you said is not meeting his agreed targets". So the person, or a colleague, could read it on the board, in an email, or in the check-in itself.
