@@ -1970,3 +1970,15 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-onboard-steps li small { display: block; color: var(--gw-sub); font-size: 13px; margin-top: 2px; }
 .gw-onboard-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .gw-suite-open { color: var(--gw-navy); font-weight: 700; font-size: 14px; }
+/* The leave board (U.17, E suite-leave.txt). */
+.gw-leave-list, .gw-leave-off { list-style: none; margin: 0; padding: 0; }
+.gw-leave-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 0 14px 16px; border-top: 1px solid var(--gw-border); border-left: 3px solid var(--gw-navy); }
+.gw-leave-row:last-child { border-bottom: 1px solid var(--gw-border); }
+.gw-leave-row b { font-size: 16px; }
+.gw-leave-row p { margin: 4px 0 0; font-size: 14.5px; color: var(--gw-sub); }
+.gw-leave-acts { display: flex; gap: 8px; }
+.gw-leave-off li { display: grid; grid-template-columns: minmax(0, 1fr) 200px 160px; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
+@media (max-width: 767px) {
+  .gw-leave-row { grid-template-columns: minmax(0, 1fr); }
+  .gw-leave-off li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}

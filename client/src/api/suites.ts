@@ -49,3 +49,25 @@ export interface NewPerson {
 export const onboardingBoardApi = {
   get: async (): Promise<{ people: NewPerson[] }> => (await apiClient.get('/suites/onboard/board')).data,
 }
+
+/** The leave board (GET /suites/leave/board): what is waiting, and who is off in the next two weeks. */
+export interface LeaveWaiting {
+  id: string
+  name: string
+  startsOn: string
+  endsOn: string
+  days: number
+  daysLeft: number | null
+  team: string | null
+  alsoOff: string[]
+  standIn: string | null
+  mayDecide: boolean
+}
+export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: 'annual' }
+export interface LeaveBoard { waiting: LeaveWaiting[]; off: LeaveOff[] }
+
+export const leaveBoardApi = {
+  get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
+  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
+}

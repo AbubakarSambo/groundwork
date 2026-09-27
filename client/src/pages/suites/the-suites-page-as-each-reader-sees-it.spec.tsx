@@ -121,6 +121,12 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(screen.getAllByRole('link', { name: 'Open its board' })).toHaveLength(1)
   })
 
+  it('"Open its board" is on leave requests too, once it is on', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('Leave requests')).getByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/leave')
+  })
+
   it('and not while it is off', async () => {
     open(GRACE, GRACES)
     await screen.findByRole('heading', { level: 2, name: 'People' })
