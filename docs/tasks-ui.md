@@ -41,7 +41,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [ ] **U.14** D1 Ask Groundwork *(Built and tested on 27 September, apart from the engine's parts (request 16) and what waits for Hafsah (item 25). Not ticked: the review could not sign in; see item 14.)* (the panel and its requests confirmed first; request engine changes for claims and thinking it through)
 - [ ] **U.15** D2 The Company page *(Built and tested on 27 September, apart from the engine's parts (request 17) and what waits for Hafsah (item 26). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.16** D3 Links between check-ins, and each person's load *(Built and tested on 27 September, apart from the engine's parts (request 18) and what waits for Hafsah (item 27). Not ticked: the review could not sign in; see item 14.)*
-- [ ] **U.17** E The Suites page, then each suite, one at a time: onboarding, leave (with a stand-in), time sheets, reviews, when someone leaves, role map, spending and budgets, to-dos, customers and deals, equipment
+- [ ] **U.17** E The Suites page, then each suite, one at a time: onboarding, leave (with a stand-in), time sheets, reviews, when someone leaves, role map, spending and budgets, to-dos, customers and deals, equipment *(The Suites page and all ten suites built and tested on 27 September, apart from the engine's parts (requests 20 to 29) and what waits for Hafsah (item 28). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.18** F1 Connections and channels
 - [ ] **U.19** F2 Billing (keep Stripe exactly as it is; take plans and prices from the database)
 - [ ] **U.20** F4 Small states and errors

@@ -17,12 +17,10 @@ screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in),
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
-spending and budgets, to-dos, customers and deals, and equipment). Each up to U.16 passed the full
-screen and API suites; the few failures each run found came from that module and were fixed. The latest
-full run, midway through U.17 after time sheets, passed everything with no failures (2,892 screen tests
-and 9,528 API tests); performance reviews and the six suites after it have passed their own tests
-since. **None could
-be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
+spending and budgets, to-dos, customers and deals, and equipment). Each passed the full screen and API
+suites; the few failures each run found came from that module and were fixed. The latest full run, at
+the end of U.17, passed everything with no failures (2,973 screen tests and 9,608 API tests). **None
+could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
@@ -82,8 +80,8 @@ only; who has what, and how it is). Each refuses everybody else on the server, a
 them reaches a check-in or its report. What only the engine can do is in requests 25 to 29. One new
 privacy question: is one to-do list for each person their private "load"? (item 28.49).
 
-**Next:** U.17 needs its full run (screen and API suites, one after the other, 2 workers) and a review,
-which cannot sign in (item 14).
+**Next:** U.18 (connections and channels). U.17 has passed its full run; its review cannot sign in (item
+14).
 
 ## Needs Hafsah
 
@@ -3025,6 +3023,9 @@ screen could be checked signed in (item 14).
 10. **Equipment** (`#/suite/equipment`, admins only). **Built** (above). Still missing: "Book a
     repair" (item 28.58). The engine's part: updates people give by telling Groundwork, said back and
     confirmed first (request 29).
+
+**The full run at the end of U.17 passed with no failures:** 2,973 screen tests, 9,608 API tests, and
+the build. **Not ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
