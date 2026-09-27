@@ -2078,11 +2078,17 @@ tests for the files changed were run, with the type check; the full run is the t
    - **The cards are in the natural order** (`ea021ecd`): "Your email is confirmed" first, then "Where
      do you work?", and it is never said twice. Someone who came from Google skips the first card,
      because they confirmed no email.
-   - **For you, found while doing this, and not changed:** someone can sign up with another person's
-     email address and a password of their own choosing. If that person then opens the confirmation
-     email, the account is made with the first person's password. This was already so before U.3.
-     **My recommendation:** never carry a password chosen at sign-up past the confirmation. The
-     person would set one after confirming instead, or confirm it again.
+   - **A security fix that keeps your decision** (`0bb3fe7d`). Before, someone could sign up with
+     another person's email address and a password of their own. When the owner opened the
+     confirmation email, the account was made with the stranger's password. This was so before U.3
+     too. You decided that a password may be chosen at sign-up, and that still holds: the password
+     now works only when the confirmation is opened in the same browser that signed up. That browser
+     keeps a secret key, and only a hash of it is kept on the server. Opened anywhere else, the
+     password is thrown away, the account is made without it, and the person chooses a password
+     afterwards, exactly as after a sign-up by link. Nothing on screen or in any answer says a
+     password had been chosen. The sign-up still gives the same answer for every address. Someone
+     who signed up with a password before this change and has not yet confirmed will be asked to
+     choose one after confirming.
 2. **The invite link keeps its place after the email is confirmed** (`f72c41f0`, `5920f2a3`). The
    place they were going is kept on the server with the waiting sign-up or the sign-in link, and comes
    back when the link opens. Only a path inside the app is ever kept or followed. The second commit
@@ -2114,7 +2120,8 @@ tests for the files changed were run, with the type check; the full run is the t
 **Two new database columns**, both empty for existing rows: where someone was going when they asked
 for a link (`next_path`, on waiting sign-ups and sign-in links), and how someone joined an
 organisation (`joined_how`). A third came with the Google fix: the Google id on a waiting sign-up
-(`google_id`). All three are applied to the local database only.
+(`google_id`), and a fourth with the security fix: the hash of the browser's key for a password
+chosen at sign-up (`password_key_hash`). All four are applied to the local database only.
 
 ### U.4 People, roles and access: built and tested, not yet reviewed
 
