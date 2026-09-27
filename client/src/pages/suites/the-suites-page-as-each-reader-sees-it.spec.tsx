@@ -114,6 +114,19 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/todos')
   })
 
+  it('"Open its board" is on the onboarding suite once it is on, and goes to its board', async () => {
+    open(GRACE, withOn('onboard'))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('Onboarding')).getByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/onboard')
+    expect(screen.getAllByRole('link', { name: 'Open its board' })).toHaveLength(1)
+  })
+
+  it('and not while it is off', async () => {
+    open(GRACE, GRACES)
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(screen.queryByRole('link', { name: 'Open its board' })).toBeNull()
+  })
+
   it('reads "Already part of Groundwork", each with a link to where it lives', async () => {
     open(GRACE, GRACES)
     const region = await screen.findByRole('region', { name: 'Already part of Groundwork' })
@@ -194,6 +207,12 @@ describe('Wairimu, a lead, reads the Suites page', () => {
     expect(card('Time sheets').textContent).toBe('Time sheetsPeople say how many hours they spent, and on which client or project. Used for billing only.')
     expect(screen.queryAllByRole('switch')).toHaveLength(0)
     expect(text()).not.toMatch(/Only admins see this page|Already part of Groundwork|Open its board|\bOff\b/)
+  })
+
+  it('reads "Open its board" on onboarding, the one suite whose board is built', async () => {
+    open(WAIRIMU, { reader: 'lead', suites: [...WAIRIMUS.suites, { key: 'onboard', name: 'Onboarding', line: 'A new person’s to-dos, and what each helper must do to set them up.' }] })
+    expect(await within(await screen.findByRole('region', { name: 'Onboarding' })).findByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/onboard')
+    expect(screen.getAllByRole('link', { name: 'Open its board' })).toHaveLength(1)
   })
 
   it('says so plainly when none is on', async () => {

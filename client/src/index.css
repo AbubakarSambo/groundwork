@@ -1964,3 +1964,9 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 @media (max-width: 767px) {
   .gw-suites-already li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+/* The onboarding board (U.17, E suite-onboard.txt). */
+.gw-onboard-steps { list-style: none; margin: 10px 0 0; padding: 0; }
+.gw-onboard-steps li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
+.gw-onboard-steps li small { display: block; color: var(--gw-sub); font-size: 13px; margin-top: 2px; }
+.gw-onboard-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.gw-suite-open { color: var(--gw-navy); font-weight: 700; font-size: 14px; }

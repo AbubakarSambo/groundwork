@@ -34,3 +34,18 @@ export const suitesApi = {
   switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesForAnAdmin> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
 }
+
+/** One new person on the onboarding board (GET /suites/onboard/board). */
+export interface NewPerson {
+  id: string
+  name: string
+  firstName: string
+  startedAt: string | null
+  done: number
+  of: number
+  steps: { name: string; description: string | null; optional: boolean; state: 'to do' | 'done' | 'not needed'; doneAt: string | null }[]
+}
+
+export const onboardingBoardApi = {
+  get: async (): Promise<{ people: NewPerson[] }> => (await apiClient.get('/suites/onboard/board')).data,
+}

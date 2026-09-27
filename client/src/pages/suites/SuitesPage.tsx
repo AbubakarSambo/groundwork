@@ -13,9 +13,9 @@ import { Button, Tag } from '@/components/gw/kit'
  * groups, with its switch; a lead reads only the suites that are on, with no switches; the server
  * refuses everybody else. The page adds nothing to what it is given.
  *
- * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28):
- *   - "Open its board": no suite's board is built yet, and a door that leads nowhere is worse than
- *     none. Each suite's board brings its own door, one at a time.
+ * "OPEN ITS BOARD" ONLY FOR A BOARD THAT EXISTS (docs/morning-report-ui.md, item 28): a door that
+ * leads nowhere is worse than none, so each suite's board brings its own door, one at a time, in
+ * BOARDS below. Onboarding came first.
  *
  * WORDING NO SCREEN SHOWS, in the fewest plain words (item 28): "Off"; "Answer these first, and it
  * switches on."; "Choose somebody"; "Switch it on"; "Cancel"; "None are switched on yet."; and
@@ -32,6 +32,11 @@ export const ALREADY_PART = [
   { name: 'Numbers from other systems', line: 'Sales, payments and usage, shown beside what people say.', where: 'Connections', to: '/org/integrations' },
   { name: 'Slack or Teams', line: 'Notices in the channels your team already uses.', where: 'Connections', to: '/org/integrations' },
 ]
+
+/** The suites whose board is built, and where it lives. The rest have no door yet. */
+export const BOARDS: Record<string, { to: string }> = {
+  onboard: { to: '/suite/onboard' },
+}
 
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
 
@@ -82,6 +87,7 @@ function ForALead({ page }: { page: SuitesForALead }) {
         <section key={s.key} className="gw-you-card gw-suite-card" aria-labelledby={`suite-${s.key}`}>
           <h3 id={`suite-${s.key}`} className="gw-t-h3">{s.name}</h3>
           <p>{s.line}</p>
+          {BOARDS[s.key] && <Link to={BOARDS[s.key].to} className="gw-suite-open">Open its board</Link>}
         </section>
       ))}
     </div>
@@ -143,6 +149,7 @@ function ASuite({ s, people }: { s: AdminSuite; people: SuitesForAnAdmin['people
         <div>
           <h3 id={`suite-${s.key}`} className="gw-t-h3">{s.name}</h3>
           <p>{s.line}</p>
+          {s.on && BOARDS[s.key] && <Button kind="secondary" size="small" to={BOARDS[s.key].to}>Open its board</Button>}
         </div>
         <div className="gw-suite-switch">
           <Tag tone="plain">{s.on ? 'On' : 'Off'}</Tag>
