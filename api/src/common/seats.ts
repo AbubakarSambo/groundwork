@@ -33,3 +33,29 @@ export const SEAT_WHERE = { isActive: true, deletedAt: null, awaitingOrgApproval
 
 /** The same predicate as a filtered relation count, for queries that read many organisations. */
 export const SEAT_RELATION_COUNT = { users: { where: SEAT_WHERE } } as const;
+
+/**
+ * WHO HOLDS A SEAT IN ONE ORGANISATION (U.19). The People page and Plan and billing must say the same
+ * number, and it must be the number the invite gate refuses by.
+ *
+ * Seats were counted by `User.organizationId`, which is only the organisation a person last switched
+ * to. So somebody who belongs here but was looking at another company fell off this count, and a
+ * guest who had switched in to look was counted as one of this organisation's people. The People list
+ * already reads the memberships (U.4), and it lists guests, so the two numbers parted.
+ *
+ * A seat here is a person who can use the product (SEAT_WHERE) and belongs here as anything but a
+ * guest: an admin, a lead or somebody who takes part. A guest is somebody from outside, asked into
+ * one check-in, and does not hold a seat, as the prototype's billing page says ("Guests with no
+ * account don't"). One older shape is counted too: an account whose organisation is this one but
+ * which has no membership row here at all, which some roster imports left behind. Without it those
+ * people would drop out of the count and the gate would let an organisation past its plan.
+ */
+export function seatsIn(organizationId: string) {
+  return {
+    ...SEAT_WHERE,
+    OR: [
+      { memberships: { some: { organizationId, role: { not: 'GUEST' as const } } } },
+      { organizationId, memberships: { none: { organizationId } } },
+    ],
+  };
+}

@@ -5,7 +5,7 @@ import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, 
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { SEAT_WHERE } from '../../common/seats';
+import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
@@ -4148,12 +4148,12 @@ export class GroundsService {
      * already holds one, and adding them to a second check-in costs nothing.
      */
     const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), organizationId, ...SEAT_WHERE },
+      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {
       const [seatsTaken, seatsIncluded] = await Promise.all([
-        this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } }),
+        this.prisma.user.count({ where: seatsIn(organizationId) }),
         this.billing.seatsIncludedFor(organizationId),
       ]);
       waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });

@@ -27,7 +27,7 @@ import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
-import { SEAT_WHERE, SEAT_RELATION_COUNT } from '../../common/seats';
+import { seatsIn } from '../../common/seats';
 import { isSubscribed, isCovered, whatCoversThem, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
@@ -255,12 +255,19 @@ export class BillingService {
    * sources, same order, so the number shown on the paste screen and the number that refuses an
    * invitation cannot disagree - which is the failure this whole path exists to avoid.
    */
+  /**
+   * HOW MANY SEATS ARE TAKEN, counted one way for the gate, the billing page and the People page:
+   * see `seatsIn` in common/seats.ts. Guests do not hold a seat.
+   */
+  async seatsTaken(organizationId: string): Promise<number> {
+    return this.prisma.user.count({ where: seatsIn(organizationId) });
+  }
+
   async seatsLeft(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
         subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
-        _count: { select: SEAT_RELATION_COUNT },
       },
     });
     if (!org) return null;
@@ -271,7 +278,7 @@ export class BillingService {
       : await this.pricing.getFreeMemberLimit();
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
-    return Math.max(0, cap - (org._count.users ?? 0));
+    return Math.max(0, cap - (await this.seatsTaken(organizationId)));
   }
 
   /**
@@ -299,11 +306,10 @@ export class BillingService {
       where: { id: organizationId },
       select: {
         subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
-        _count: { select: SEAT_RELATION_COUNT },
       },
     });
     if (!org) return { allowed: true };
-    const count = org._count.users ?? 0;
+    const count = await this.seatsTaken(organizationId);
     /* Covered is covered: a free run we gave them buys the seats its plan buys. */
     const covered = whatCoversThem(org);
     const subscribed = covered.covers !== 'free tier';
@@ -853,7 +859,7 @@ export class BillingService {
     });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const peopleCount = await this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } });
+    const peopleCount = await this.seatsTaken(organizationId);
     /**
      * THE SAME CAP THE GATE WILL APPLY. Read from the same two sources in the same order, so the
      * number on this page and the number that refuses an invitation cannot be different numbers.

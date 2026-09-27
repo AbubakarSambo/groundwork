@@ -51,7 +51,10 @@ describe('what /billing/status returns', () => {
      * invite gate were free to mean different things: each had its own predicate and its own guard
      * agreeing with it.
      */
-    expect(GET_STATUS).toMatch(/user\.count\(\{ where: \{ organizationId, \.\.\.SEAT_WHERE \} \}\)/);
+    /* U.19: the one definition is now `seatsIn`, read from the memberships, through `seatsTaken`,
+       which the invite gate uses too. */
+    expect(GET_STATUS).toMatch(/const peopleCount = await this\.seatsTaken\(organizationId\)/);
+    expect(CODE).toMatch(/user\.count\(\{ where: seatsIn\(organizationId\) \}\)/);
   });
 
   it('and reads the cap from the table rather than a map in the code', () => {

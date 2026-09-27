@@ -20,11 +20,29 @@ import { SEAT_WHERE } from '../../common/seats';
  * rather than on the wording of a where clause.
  */
 
-/** One user table, two readers. `count` applies the filters the real Prisma would. */
-function fakePrisma(users: { isActive: boolean; deletedAt: Date | null }[], plan: string | null) {
-  const matches = (u: (typeof users)[number], where: any) =>
+/**
+ * One user table, two readers. `count` applies the filters the real Prisma would, including the
+ * memberships (U.19): `here` is the role this person holds in org1, if they belong to it at all, and
+ * `lookingAt` is the organisation they last switched to. Left out, a row is an ordinary member of
+ * org1 looking at org1.
+ */
+type Row = { isActive: boolean; deletedAt: Date | null; here?: string | null; lookingAt?: string };
+function fakePrisma(users: Row[], plan: string | null) {
+  const roleIn = (u: Row, org: string) => (org === 'org1' ? (u.here === undefined ? 'MEMBER' : u.here) : null);
+  const clause = (u: Row, c: any): boolean => {
+    if (c.memberships?.some) {
+      const role = roleIn(u, c.memberships.some.organizationId);
+      return !!role && (c.memberships.some.role?.not === undefined || role !== c.memberships.some.role.not);
+    }
+    if (c.memberships?.none) {
+      return (u.lookingAt ?? 'org1') === c.organizationId && !roleIn(u, c.memberships.none.organizationId);
+    }
+    return true;
+  };
+  const matches = (u: Row, where: any) =>
     (where.isActive === undefined || u.isActive === where.isActive) &&
-    (where.deletedAt === undefined || (where.deletedAt === null ? u.deletedAt === null : u.deletedAt !== null));
+    (where.deletedAt === undefined || (where.deletedAt === null ? u.deletedAt === null : u.deletedAt !== null)) &&
+    (!where.OR || where.OR.some((c: any) => clause(u, c)));
 
   return {
     user: { count: async ({ where }: any) => users.filter((u) => matches(u, where)).length },
@@ -61,7 +79,7 @@ function fakePrisma(users: { isActive: boolean; deletedAt: Date | null }[], plan
  */
 const STARTER_CAP = 5;
 
-function svcFor(users: { isActive: boolean; deletedAt: Date | null }[], plan: string | null) {
+function svcFor(users: Row[], plan: string | null) {
   const prisma = fakePrisma(users, plan);
   const pricing = {
     memberCapFor: async () => STARTER_CAP,
@@ -132,6 +150,43 @@ describe('the gate and the billing page count the same people', () => {
   });
 });
 
+/**
+ * THE PEOPLE PAGE AND PLAN AND BILLING SAY THE SAME NUMBER (U.19), and it is the number the gate
+ * refuses by. A seat is somebody who belongs to this organisation as anything but a guest.
+ */
+describe('who holds a seat, read from the memberships', () => {
+  it('a guest from outside does not hold a seat, on either screen', async () => {
+    const svc = svcFor([
+      { isActive: true, deletedAt: null, here: 'ADMIN' },
+      { isActive: true, deletedAt: null, here: 'LEAD' },
+      { isActive: true, deletedAt: null, here: 'MEMBER' },
+      { isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org1' },
+    ], 'STARTER');
+    expect((await svc.getStatus('org1')).people.count).toBe(3);
+    expect(await svc.seatsLeft('org1')).toBe(2);
+  });
+
+  it('somebody who belongs here but is looking at another organisation still holds their seat', async () => {
+    /* The old count read the organisation they last switched to, so this person fell off it. */
+    const full = [
+      ...Array.from({ length: 4 }, () => ({ isActive: true, deletedAt: null } as Row)),
+      { isActive: true, deletedAt: null, here: 'MEMBER', lookingAt: 'org2' },
+    ];
+    const svc = svcFor(full, 'STARTER');
+    expect((await svc.getStatus('org1')).people.count).toBe(5);
+    expect((await svc.canInviteMember('org1')).allowed).toBe(false);
+  });
+
+  it('an account left here with no membership row at all is still counted, so the gate cannot be walked past', async () => {
+    const svc = svcFor([
+      { isActive: true, deletedAt: null },
+      { isActive: true, deletedAt: null, here: null, lookingAt: 'org1' },
+      { isActive: true, deletedAt: null, here: null, lookingAt: 'org2' },
+    ], 'STARTER');
+    expect((await svc.getStatus('org1')).people.count).toBe(2);
+  });
+});
+
 describe('there is one definition of a seat, not a copy per call site', () => {
   const SEAT_SITES = [
     'src/modules/billing/billing.service.ts',
@@ -164,7 +219,7 @@ describe('there is one definition of a seat, not a copy per call site', () => {
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');
       expect(code).not.toMatch(/_count: \{ select: \{ (grounds: true, )?users: true/);
-      expect(code).toMatch(/SEAT_WHERE|SEAT_RELATION_COUNT/);
+      expect(code).toMatch(/SEAT_WHERE|SEAT_RELATION_COUNT|seatsIn\(/);
     }
   });
 
