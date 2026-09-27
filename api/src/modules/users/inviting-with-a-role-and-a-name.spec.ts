@@ -35,7 +35,13 @@ describe('the role an invitation gives', () => {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('reaches the account an invitation makes, and the membership of somebody who has one elsewhere', () => {
     const auth = strip(readFileSync(join(__dirname, '..', 'auth', 'auth.service.ts'), 'utf8'));
-    expect(auth).toMatch(/data: \{ organizationId, email: lower, firstName, lastName, role: inviterOrganizationId \? role : 'MEMBER', isEmailVerified: false \}/);
+    /* `grantedRole` replaced the inline ternary once the same value was also needed for the new
+       user's own membership row (U.8 review: a freshly invited person's organisation switcher read
+       "Your organisation" and "Takes part" because nothing wrote that row). Both writes now read
+       the one computed role rather than repeating the ternary. */
+    expect(auth).toMatch(/const grantedRole = inviterOrganizationId \? role : 'MEMBER';/);
+    expect(auth).toMatch(/data: \{ organizationId, email: lower, firstName, lastName, role: grantedRole, isEmailVerified: false \}/);
+    expect(auth).toMatch(/data: \{ userId: u\.id, organizationId, role: grantedRole \} \}\);/);
     expect(auth).toMatch(/data: \{ userId: user\.id, organizationId: inviterOrganizationId, role \},/);
     const users = strip(readFileSync(join(__dirname, 'users.service.ts'), 'utf8'));
     expect(users).toMatch(/this\.auth\.teamInvite\(orgName, row\.email, organizationId, \{ role, name: names\.get\(row\.email\) \?\? null \}\)/);

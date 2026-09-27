@@ -27,6 +27,10 @@ function makeService(canInviteResult: { allowed: boolean; reason?: string }, exi
     $transaction: jest.fn(async (fn: any) => fn({
       organization: { create: jest.fn(async () => ({ id: 'new-org' })) },
       user: { create: jest.fn(async () => ({ id: 'new-user' })) },
+      /* teamInvite now writes the new user's own membership row inside this transaction (see
+         auth.service.ts, "AND THE MEMBERSHIP ROW OF THE HOME ORGANISATION THIS JUST GAVE THEM") -
+         the `tx` handed to the callback needs this table too, or the new-user path throws. */
+      organizationMembership: { create: jest.fn(async () => ({})) },
       emailVerificationToken: { create: jest.fn(async () => ({})) },
     })),
     emailVerificationToken: { updateMany: jest.fn(async () => ({})), create: jest.fn(async () => ({})) },
@@ -48,6 +52,30 @@ describe('#5b teamInvite respects the per-plan member cap', () => {
   it('allows a new-member invite when the org is under its plan cap', async () => {
     const { service } = makeService({ allowed: true });
     await expect(service.teamInvite('Acme', 'newperson@test.com', 'org-1')).resolves.toBeDefined();
+  });
+
+  /*
+   * U.8 REVIEW: A FRESHLY INVITED PERSON'S OWN ORGANISATION SWITCHER READ "YOUR ORGANISATION" AND
+   * "TAKES PART" INSTEAD OF THE ORGANISATION'S NAME. `user.organizationId` was set at invite time,
+   * but no `OrganizationMembership` row was ever written for it - `myOrganizations`'s self-healing
+   * branch was papering over the gap on read, and a screen that reads the row directly (or reads it
+   * before the self-heal query resolves) had nothing. This locks that the row is now written in the
+   * same transaction as the user, with the role the admin chose.
+   */
+  it('gives a newly invited person their own membership row, not only the organizationId column', async () => {
+    const { service, prisma } = makeService({ allowed: true });
+    await service.teamInvite('Acme', 'newperson@test.com', 'org-1', { role: 'LEAD', name: 'New Person' });
+    const call = prisma.$transaction.mock.calls[0][0];
+    const tx = {
+      organization: { create: jest.fn(async () => ({ id: 'new-org' })) },
+      user: { create: jest.fn(async () => ({ id: 'new-user' })) },
+      organizationMembership: { create: jest.fn(async () => ({})) },
+      emailVerificationToken: { create: jest.fn(async () => ({})) },
+    };
+    await call(tx);
+    expect(tx.organizationMembership.create).toHaveBeenCalledWith({
+      data: { userId: 'new-user', organizationId: 'org-1', role: 'LEAD' },
+    });
   });
 
   it('costs nothing for somebody already in the inviting org', async () => {
