@@ -167,6 +167,11 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     why: 'the chat is the wrong shape',
     because: 'A suggestion about a person, their side and an appeal are private to the people involved, and are read and decided on their own pages. Whether Ask Groundwork should ever offer them is Hafsah\'s decision (U.14).',
   },
+  {
+    area: 'ask',
+    why: 'not a person’s question',
+    because: 'It is Ask Groundwork itself: the door into this chat for somebody signed in to the product. There is nothing in it to ask the chat for.',
+  },
 ];
 
 export const NOT_OFFERED_AREAS = new Set(NOT_OFFERED_IN_CHAT.map((n) => n.area));
