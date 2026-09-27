@@ -3286,7 +3286,10 @@ export function EntryChatPage() {
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
-                      <input type="text" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                      {/* U.8 review, found on the way: this field had a placeholder and nothing a screen
+                          reader announces as its name - a placeholder disappears the moment somebody
+                          types, and is not read as a label to begin with. */}
+                      <input type="text" aria-label="What is it?" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
                         onChange={e => setDocLabel(e.target.value)}
                         style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
                       <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
