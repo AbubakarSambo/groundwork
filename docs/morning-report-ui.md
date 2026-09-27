@@ -658,6 +658,59 @@ reviewed" in this report.
    name, "One thing for next time:" in place of "One thing for tomorrow:", "Read it" once the team's
    report is out, and "What changed" when the engine sends no title.
 
+### 20. Reports and sharing (U.9): what needs you
+
+1. **Does the lead hold the team's report until they share it? This decides who reads what, and
+   when.** The prototype's team report says "Only you can see this until you share it", with "Share
+   without names" and "Share with the team", and a participant reads "The team’s report isn’t shared
+   yet" and "Wairimu usually shares it by 7pm. You’ll get an email when she does." Today the product
+   does the opposite: a forming report can be read by everyone in the check-in while people answer,
+   and the report goes out to everyone by itself when the last person answers
+   (`reports.listener.ts`). Holding it would change when participants can read the team's report,
+   which is a privacy rule, so I kept today's behaviour and left the prototype's sharing lines out.
+   The existing "Send the report to everyone who asked for it" (named or anonymised, for open links)
+   is unchanged. **My recommendation:** build the prototype's way, enforced on the server: the team's
+   report is the lead's alone until they share it, named or without names, with a setting to share
+   it automatically at a set time, and a privacy test for the participant and the admin. This also
+   answers item 19.3.
+2. **"Why the numbers don’t match" and "One question to answer", with "Yes, it counts" and "No, it
+   doesn’t".** The prototype says "Your answer updates the board, and everyone counts the same way
+   from now on." The text is the engine's (request 9), but the answer needs somewhere to be kept and
+   a rule for who may answer. On the participant's screen the prototype shows the same two buttons.
+   **My recommendation:** only the lead answers, and the answer is kept as a decision with its
+   reason on the check-in's record, which the board then reads. A participant reads the question but
+   gets no buttons.
+3. **The weekly report does not exist.** `docs/backend-map.md` calls it "Ready", but no weekly
+   report is built or served anywhere. I asked the engine workspace for it (request 9, part d).
+   **My recommendation:** build it after the engine's text arrives, only from what the record
+   already holds.
+4. **"Session 38 of 65" and the date on each session.** A session's report now opens with "Session
+   37 of 65. 6 of 6 people checked in." when the check-in has a planned number of sessions. Each row
+   on "Every session" shows the day the session opened ("Wed, 23 Sept"), or its first answer when no
+   opening time was kept. **My recommendation:** keep it.
+5. **The list of sessions is no longer folded under the board.** On 21 September you asked to
+   "keep the team board on this page and minimize the other things". The prototype shows every
+   session open under the board, so I followed the prototype. **My recommendation:** keep the
+   prototype's way; fold it again if the list feels long.
+6. **Still held, from items 11 and 19:** the session page still says "What each person said about
+   their own work can appear here. What anyone said about somebody else never does." That is
+   today's rule on who reads a person's own words, and it stays until you decide conflict A.
+7. **Not built, and why.** The report's "In short", "What moved" with its stages, "What each person
+   did" with "Will do", "Where people see it differently" with "The rule you set", "What this report
+   can’t tell you", "How much this report can rely on", and the own report's "What you did well",
+   "What you told us" and "One thing to think about": all are the engine's text (requests 2 and 9).
+   The daily digest for a large team and the head of sales' quarter view are not built. "Yesterday"
+   and "This week" beside the report wait for the weekly report.
+8. **Wording no screen shows, which I wrote with the fewest words.** On "Every session", who a
+   session is still waiting for: "Omar has not checked in yet.", "Omar and Brian have not checked in
+   yet.", "Omar, Brian and David have not checked in yet." and "Omar, Brian and 2 others have not
+   checked in yet." On a session's report, each person: "You have checked in.", "You have not checked
+   in yet.", "Aisha has checked in." and "Omar has not checked in yet." In the lead's judgement on
+   the board: "2 conversations never reached this.", "One conversation never reached this." and
+   "Start with Brian and Miriam." The way back from a session: "← Every session". Under a session's
+   heading: "Everything about this session, on 23 September. Your report first, then the team’s
+   report."
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1168,6 +1221,51 @@ passed again (2,292). The privacy leak U.8 closed has a second half in the engin
 still tells a lead a person said "nothing checkable" from the same rating. That is engine code, so it
 is request 8 to the engine workspace. **Not ticked,** because no review can sign in (item 14).
 
+### U.9 Reports and sharing: built and tested, not yet reviewed
+
+- **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
+  the check-ins did not get to" no longer join two pieces with a colon. Each piece is its own line,
+  and the count is a sentence: "2 conversations never reached this." "Start with: Aisha" now reads
+  "Start with Aisha." The dead "See the counts behind this" is gone, because the server no longer
+  sends the table to anybody. A participant's board has no judgement, and the card draws nothing.
+- **Every session, in the prototype's words.** The lead's Report tab reads "Every session", then
+  "Below is the board, then one line for each session, newest first. Open a session to see its
+  report.", then "The board" with "Everything so far", then one row for each session: "Session 37",
+  "Tue, 22 Sept", "6 of 6 checked in", and "Shared" or "Not shared". Who a session is still waiting
+  for is kept, as a sentence: "Omar has not checked in yet." It replaces "Session reports · 12, 11
+  released", "3 of 5 answered · waiting on Omar, Brian", and "Released", "Ready to release" or
+  "Forming".
+- **One session's report opens with the prototype's sentence.** "Session 37 of 65. 6 of 6 people
+  checked in.", then "Shared with the team." once the round is out. Each person is a sentence: "You
+  have checked in.", "Aisha has checked in.", "Omar has not checked in yet." It replaces "4 PEOPLE ·
+  CHECK-IN 3 OF 12 · STILL FORMING · 2 OF 4 ANSWERED" and "Miriam (you) · Answered". The round page
+  no longer says "It never quotes anyone.", which is not true (decisions, rule 4).
+- **While a report is forming, it says when it last changed:** "Last updated on Wednesday 23
+  September at 6pm. It only changes when something new comes in, such as a check-in, a document or a
+  number from another system." The time is the report's own, and opening the page rebuilds nothing.
+- **Your report and the team's report.** On a session's page, the private half is "Your report" with
+  "Only you", the shared half is "The team’s report", and the correction reads "Something here isn’t
+  right", as in the prototype. The server opens this page only for the person who wrote the check-in.
+- **Asked of the engine (request 9):** the report's own parts ("In short", what each person did,
+  where people see it differently, what it cannot tell you, why the numbers don't match, one
+  question to answer, how much it can rely on), what last changed it, the own report's three parts,
+  and the weekly report. Decisions for you are in item 20.
+
+**Tested:** `the-judgement-reads-as-sentences` (the lead's judgement, and nothing for a
+participant), `every-session-as-the-lead-reads-it` (every line of the list),
+`one-session-as-each-reader-reads-it` (the top of a session's report as the lead and as a
+participant receive it, and the "Last updated" line only while it forms) and
+`your-report-as-each-reader-reads-it` (the session page as its owner). Ten tests changed, each
+because it checked the old words while guarding the same rule: `a-round-everybody-answered-is-not-forming`,
+`the-report-tab-shows-the-reports`, `a-forming-report-does-not-claim-to-be-finished`,
+`one-door-per-place`, `GroundAdminPage.boardTab`, `the-reveal-row-names-who-you-are-waiting-on`,
+`two-reports-two-names`, `a-panel-with-nothing-to-say-is-a-line`,
+`the-report-you-saw-is-the-one-that-opens` and `a-report-you-cannot-argue-with`. No server code
+changed; no privacy rule changed. Only the tests for the changed files, the tests that scan whole
+folders, and the screens' type check were run, as you asked. **No screen could be checked signed in**
+(item 14), so the screens were checked only by rendering them in tests. **Not ticked,** because no
+review can sign in.
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
@@ -1193,13 +1291,8 @@ is request 8 to the engine workspace. **Not ticked,** because no review can sign
 - **The sidebar's touch-screen layout was not seen in the running app.** On a touch screen the pin
   and pencil sit in the row and the badge moves under the name. The browser's phone mode hides the
   sidebar below 768px wide, so only the tests check this layout.
-- **The judgement card joins pieces with a colon** (found by the engine workspace). In
-  `client/src/components/gw/TheJudgement.tsx`, lines 102 and 121, "What this cannot tell you" reads
-  "**The renewals target**: nobody said who set it.", and "What the check-ins did not get to" joins
-  "…: 2 conversations never reached it" the same way. The engine will make each part a full sentence;
-  the screen must then show them as sentences, not joined by a colon. The "See the counts behind
-  this" part is now dead, because the engine no longer sends the table to anyone. To fix in U.9 and
-  U.10.
+- **The judgement card joined pieces with a colon** (found by the engine workspace). Fixed in U.9,
+  and the dead "See the counts behind this" part is removed.
 - **What the engine no longer sends to a participant** (from `docs/answers-from-engine.md`): a
   participant's report and board no longer carry the judgement, the table, the differences between
   people, or the raw direction, and a participant sees only their own finding. Screens must not
