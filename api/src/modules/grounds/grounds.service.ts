@@ -1,7 +1,7 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
-import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
+import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -4127,10 +4127,21 @@ export class GroundsService {
 
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
     /* A colleague picked by id (U.4): their address is looked up here, never sent to the page. */
+    /**
+     * THEIR REAL NAME, CARRIED FORWARD WITH THE ADDRESS (U.8 re-review).
+     *
+     * Picking somebody from the colleague list is not a cold, typed-email invite - the id already
+     * names a real account. Keeping only the address and dropping the name left the row as bare as
+     * a stranger's typed email, so every screen that shows this person before they accept fell back
+     * to guessing a name from the address ("Amani U8" for an account named Amani Wekesa). `userId`
+     * still stays null until they actually accept - this only fills in what to call them meanwhile.
+     */
+    let colleagueName: string | null = null;
     if (dto.colleagueId) {
-      const address = await theAddressOfAColleague(this.prisma as any, organizationId, dto.colleagueId);
-      if (!address) throw new BadRequestException(NOT_SOMEONE_HERE);
-      dto = { ...dto, email: address };
+      const found = await theColleaguePickedById(this.prisma as any, organizationId, dto.colleagueId);
+      if (!found) throw new BadRequestException(NOT_SOMEONE_HERE);
+      dto = { ...dto, email: found.email };
+      colleagueName = found.name;
     }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the
@@ -4389,6 +4400,10 @@ export class GroundsService {
           email: dto.email.toLowerCase(),
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
+          /* Their real account name, when they were picked from the colleague list rather than
+             typed in cold. Every reader already prefers this to a guess from the address the
+             moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
+          ...(colleagueName ? { nameGiven: colleagueName } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,

@@ -2007,6 +2007,18 @@ export function GroundAdminPage() {
                           {labelInASentence(p) !== p.email && (
                             <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
                           )}
+                          {/*
+                            A BARE NAME SAYS NOTHING ABOUT WHERE THEY ARE (U.8 re-review).
+                            WhoIsStillOut already says this as a full sentence ("Amani has not
+                            joined yet."); this roster printed the name on its own with nothing
+                            after it, so somebody who has never opened the invite looked identical
+                            to somebody mid-session. Same fact, same words, here too.
+                          */}
+                          {!p.userId && (
+                            <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>
+                              {atTheStart(labelInASentence(p))} has not joined yet.
+                            </div>
+                          )}
                           {editingRoleId === p.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <input

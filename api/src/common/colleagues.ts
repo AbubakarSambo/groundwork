@@ -105,11 +105,38 @@ export async function theAddressOfAColleague(
   organizationId: string,
   userId: string,
 ): Promise<string | null> {
+  const found = await theColleaguePickedById(db, organizationId, userId);
+  return found?.email ?? null;
+}
+
+/**
+ * THE COLLEAGUE PICKED BY ID, ADDRESS AND NAME BOTH (U.8 re-review).
+ *
+ * Adding somebody from the colleague list is not a cold, typed-email invite: the id sent here is
+ * their real account, so their real name is already known, before they have accepted anything. The
+ * add path used to keep only the address and throw the id away, so the participant row was created
+ * exactly as bare as a stranger's typed email would be - and every screen that reads a participant's
+ * name falls back to guessing one from the address when nothing else is there. That produced "Amani
+ * U8" for somebody whose account is named Amani Wekesa, picked by the lead from her own list.
+ *
+ * `nameGiven` is the field every reader already treats as the name to show before `user.firstName`
+ * is available (see `theirName` in client/src/lib/utils.ts, and the engine's own `party-labels.ts`),
+ * so writing the colleague's real name there at add-time fixes every one of those readers at once,
+ * without changing when a participant is treated as having actually joined - `userId` still stays
+ * null until they accept, exactly as before.
+ */
+export async function theColleaguePickedById(
+  db: { organizationMembership: { findFirst: (a: any) => Promise<any> } },
+  organizationId: string,
+  userId: string,
+): Promise<{ email: string; name: string | null } | null> {
   const m = await db.organizationMembership.findFirst({
     where: { organizationId, userId, user: { deletedAt: null, isActive: true } },
-    select: { user: { select: { email: true } } },
+    select: { user: { select: { email: true, firstName: true, lastName: true } } },
   });
-  return m?.user?.email ?? null;
+  if (!m?.user?.email) return null;
+  const name = [m.user.firstName, m.user.lastName].filter(Boolean).join(' ').trim();
+  return { email: m.user.email, name: name || null };
 }
 
 export const NOT_SOMEONE_HERE = 'That person is not in this organisation. Add them by their email address instead.';
