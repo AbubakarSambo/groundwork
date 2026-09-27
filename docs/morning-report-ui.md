@@ -14,11 +14,11 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board), U.13 (suggestions from verdicts, and appeals) and U.14 (Ask Groundwork). Each passed the full
-screen and API suites; the few failures each run found came from that module and were fixed. The
-latest full run, after U.14, passed all 9,427 API tests and every screen test apart from one missing
-style, now added. **None could be ticked, because the reviewer can no longer sign in as anyone** (item
-14). That is the most important thing for you to unblock.
+board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork) and U.15 (the Company
+page). Each passed the full screen and API suites; the few failures each run found came from that
+module and were fixed. The latest full run, after U.15, passed everything with no failures (2,818
+screen tests and 9,438 API tests). **None could be ticked, because the reviewer can no longer sign in
+as anyone** (item 14). That is the most important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -53,7 +53,7 @@ memory must keep working exactly as now, so I have not changed it without you (i
     in from an organisation's own systems today.
 12. The rest of items 13, 15 to 26 are smaller, each with a recommendation.
 
-**Just built, not ticked:** U.15 (the Company page), which still needs its full API run. Company is in the sidebar between Today and You,
+**Just finished, not ticked:** U.15 (the Company page), which passed its full run. Company is in the sidebar between Today and You,
 in "Jump to", on More, and on the phone's bar in place of Start for somebody who may not start a
 check-in. `#/company` shows the organisation's priorities, who owns each and which check-ins feed
 them, and `#/company/context` shows the priorities with what success looks like (admins only) and
@@ -2055,6 +2055,9 @@ checks. On the screens side, a mistake in my command ran the whole screen suite 
 the guards: all 2,818 tests passed. No screen could be checked signed in (item 14), so the pages were
 checked by rendering tests only. No database change. **Not ticked,** because no review can sign in
 (item 14), and the full API run is still to do.
+
+**The full run passed with no failures:** 2,818 screen tests, 9,438 API tests, and the build. **Not
+ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
