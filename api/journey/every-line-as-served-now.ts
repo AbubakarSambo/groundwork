@@ -16,7 +16,8 @@
  * `--rebuild-over-time` also rebuilds the record over time from the database the way the next
  * synthesis will store it, because a stored row keeps the wording it was written with.
  * `--check` also runs the check before a report is kept (every-line-is-read-before-it-is-kept) with
- * no model: every line it would have sent for a rewrite is listed, and nothing is changed.
+ * no model: every line it would have sent for a rewrite is listed, with how long the check took and
+ * how many model calls it would have made, and nothing is changed.
  *
  * Local only. It refuses any database that is not on this machine.
  *
@@ -50,6 +51,9 @@ async function main() {
   svc.logger = { log: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined };
   fs.mkdirSync(to, { recursive: true });
   let flagged = 0;
+  let calls = 0;
+  let lines = 0;
+  let totalMs = 0;
 
   try {
     for (const file of fs.readdirSync(from).filter((f) => f.endsWith('.json')).sort()) {
@@ -90,12 +94,19 @@ async function main() {
       const asOther: AReader | null = other ? { participantId: other.id, isLead: false } : null;
 
       if (dryCheck) {
+        const started = Date.now();
+        const callsBefore = calls;
         const fields = ['sharedPicture', 'theOpening', 'agreements', 'divergences', 'centralQuestion', 'findings', 'theJudgement', 'overTime', 'inferences'];
         const { done } = await everyLineIsReadBeforeItIsKept({
           report: Object.fromEntries(fields.map((f) => [f, report[f]])),
           readers: [asLead, ...ground.participants.filter((p: any) => p.partyType !== PartyType.INITIATOR).map((p: any) => ({ participantId: p.id, isLead: false }))],
-          named, served, fields, rewrite: async () => null, mostRewrites: 0,
+          named, served, fields,
+          /* No model: every line is handed back as it was, so the re-reading runs in full and is timed. */
+          rewriteAll: async (asks) => { calls += 1; lines += asks.length; return Object.fromEntries(asks.map((a) => [a.id, a.sentence])); },
         });
+        const took = Date.now() - started;
+        totalMs += took;
+        console.log(`  ${file}: the check took ${took} ms without the model, ${done.length} line(s), ${calls - callsBefore} model call(s).`);
         flagged += done.length;
         for (const d of done) console.log(`  ${file} ${d.path}: ${d.problems.join('; ')} -> would be ${d.outcome === 'dropped' ? 'rewritten, else dropped' : 'rewritten, else left'}: "${d.was.slice(0, 160)}"`);
       }
@@ -125,7 +136,7 @@ async function main() {
   } finally {
     await prisma.$disconnect();
   }
-  if (dryCheck) console.log(`${flagged} line(s) the check would have acted on.`);
+  if (dryCheck) console.log(`${flagged} line(s) the check would have acted on, sent in ${calls} model call(s) (${lines} line(s)); the check itself took ${totalMs} ms in all.`);
 }
 
 main().catch((err) => {

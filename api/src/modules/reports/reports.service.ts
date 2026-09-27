@@ -73,7 +73,7 @@ import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from '.
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
-import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_ONE_LINE, theLineToRewrite } from './every-line-is-read-before-it-is-kept';
+import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
@@ -4547,13 +4547,19 @@ happened, and what is in the way.`;
       named,
       served,
       fields: Object.keys(candidate),
-      rewrite: (ask) => this.anthropic.respond(REWRITE_ONE_LINE, [{ role: 'user', content: theLineToRewrite(ask) }] as any),
+      /* One structured call for every failing line of the report. See every-line-is-read-before-it-is-kept. */
+      rewriteAll: async (asks) => {
+        const started = Date.now();
+        const answer = await this.anthropic.extract<any>(REWRITE_THE_LINES, [{ role: 'user', content: theLinesToRewrite(asks) }] as any, THE_LINES_REWRITTEN as any);
+        this.logger.log(`Report for ground ${groundId}: ${asks.length} line(s) sent for a rewrite in one call, ${Date.now() - started} ms.`);
+        return theRewritesById(answer);
+      },
     });
     /* One line each, so the rate of each fault can be read off the log before anything is tuned. */
     for (const d of done) {
       this.logger.warn(`Report for ground ${groundId}: ${d.outcome} at ${d.path} (${d.problems.join('; ')}). Was: "${d.was.slice(0, 200)}"${d.now ? ` Now: "${d.now.slice(0, 200)}"` : ''}`);
     }
-    return done.length ? report : null;
+    return done.length ? (report as R) : null;
   }
 
   private applyNames<T extends Record<string, any>>(

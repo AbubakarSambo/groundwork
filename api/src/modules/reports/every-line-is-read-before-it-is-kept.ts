@@ -15,8 +15,9 @@
  * (`asItWasShared` and the per-reader filters), passed in, so what is checked is what is served.
  *
  * WHAT HAPPENS TO A LINE THAT FAILS:
- *   1. The model is asked, once, to rewrite THAT sentence, in its stored form, with the labels kept,
- *      told what is wrong with it and how one reader reads it.
+ *   1. The model is asked to rewrite THAT sentence, in its stored form, with the labels kept, told
+ *      what is wrong with it and how one reader reads it - every failing line of the report in one
+ *      call, each by id.
  *   2. The rewrite is kept only if every quotation in the original is still in it character for
  *      character, and it passes every test for every reader who reads it.
  *   3. Otherwise the sentence is dropped, under the same no-blank rules as a-quote-is-what-they-said:
@@ -36,6 +37,9 @@ export interface AReader {
   participantId: string | null;
   isLead: boolean;
 }
+
+/** One line sent for a rewrite. */
+export interface AnAsk { id: string; sentence: string; problems: string[]; asRead: string }
 
 export interface WhatWasDone {
   path: string;
@@ -57,11 +61,11 @@ export interface TheCheck<R extends Record<string, any>> {
   named: (report: R, reader: AReader) => Record<string, any>;
   /** What this reader is actually served, for deciding which lines they read at all. */
   served: (report: R, reader: AReader) => Record<string, any>;
-  /** One model call: the stored sentence rewritten, or null. */
-  rewrite: (ask: { sentence: string; problems: string[]; asRead: string }) => Promise<string | null>;
+  /** ONE model call for the whole report: every failing line, by id, each rewritten; any may be missing. */
+  rewriteAll: (asks: AnAsk[]) => Promise<Record<string, string>>;
   /** The top-level fields to read. */
   fields: string[];
-  /** At most this many model calls, so one bad report cannot hold the synthesis for minutes. */
+  /** At most this many lines in the one call; the rest are handled as not rewritten. */
   mostRewrites?: number;
 }
 
@@ -194,12 +198,18 @@ export async function everyLineIsReadBeforeItIsKept<R extends Record<string, any
   }
   if (!found.size) return { report: check.report, done };
 
-  /* 2. Each one rewritten once, the same sentence the same way wherever it appears. */
-  const rewrites = new Map<string, string | null>();
-  let calls = 0;
-  const most = check.mostRewrites ?? 20;
+  /*
+   * 2. EVERY FAILING LINE, IN ONE MODEL CALL. One call per sentence doubled the time a report took
+   * (openread, 112 seconds to 223 and 253, with 53 separate rewrites across two runs), for a team whose
+   * report already took five minutes. So every unit is gathered first, the same sentence once wherever
+   * it appears, and all of them go in one request, each with an id. A line that does not come back,
+   * or comes back still wrong, is handled by the rules below exactly as a failed rewrite always was.
+   */
+  const most = check.mostRewrites ?? 60;
   const edits = new Map<string, { path: Path; pieces: string[]; drop: Set<number>; taken: Set<number> }>();
   let report: any = JSON.parse(JSON.stringify(check.report));
+  type AUnit = { f: Found; leaf: { path: Path; pieces: string[]; drop: Set<number>; taken: Set<number> }; units: number[]; sentence: string; leading: string; trailing: string; problems: string[] };
+  const gathered: AUnit[] = [];
   /* In the order the text runs, so a unit already taken into the one before it is not asked twice. */
   const inOrder = [...found.values()].sort((a, b) => (show(a.path) < show(b.path) ? -1 : show(a.path) > show(b.path) ? 1 : a.index - b.index));
   for (const f of inOrder) {
@@ -208,41 +218,50 @@ export async function everyLineIsReadBeforeItIsKept<R extends Record<string, any
     edits.set(key, leaf);
     if (leaf.taken.has(f.index)) continue;
     const unit = leaf.pieces.slice(f.index, f.index + f.span).join('');
-    const sentence = unit.trim();
-    const trailing = unit.slice(unit.trimEnd().length);
-    const leading = unit.slice(0, unit.length - unit.trimStart().length);
-    const problems = [...f.problems.keys()];
     const units = Array.from({ length: f.span }, (_x, k) => f.index + k);
     units.forEach((i) => leaf.taken.add(i));
+    gathered.push({
+      f, leaf, units,
+      sentence: unit.trim(),
+      trailing: unit.slice(unit.trimEnd().length),
+      leading: unit.slice(0, unit.length - unit.trimStart().length),
+      problems: [...f.problems.keys()],
+    });
+  }
+  const asks: AnAsk[] = [];
+  const idOf = new Map<string, string>();
+  for (const g of gathered) {
+    if (idOf.has(g.sentence) || asks.length >= most) continue;
+    const id = `l${asks.length + 1}`;
+    idOf.set(g.sentence, id);
+    asks.push({ id, sentence: g.sentence, problems: g.problems, asRead: g.f.asRead });
+  }
+  const answered = asks.length ? await check.rewriteAll(asks).catch(() => ({} as Record<string, string>)) : {};
 
-    let candidate: string | null;
-    if (rewrites.has(sentence)) candidate = rewrites.get(sentence)!;
-    else if (calls >= most) candidate = null;
-    else {
-      calls += 1;
-      candidate = mayStand(sentence, await check.rewrite({ sentence, problems, asRead: f.asRead }).catch(() => null));
-      rewrites.set(sentence, candidate);
-    }
-
+  for (const g of gathered) {
+    const id = idOf.get(g.sentence);
+    const candidate = id ? mayStand(g.sentence, (answered as Record<string, string>)[id] ?? null) : null;
     /*
      * 3. The rewrite is read again, on its own, as everybody who reads this line. On its own, so the
-     * check does not depend on where the sentences around it now fall.
+     * check does not depend on where the sentences around it now fall; and with only the field it
+     * sits in, so reading it again costs one small render per reader rather than the whole report.
      */
     const clean = !!candidate && /^[^a-z]/.test(candidate) && check.readers.every((reader) => {
-      const alone: any = JSON.parse(JSON.stringify(report));
-      setAt(alone, f.path, candidate);
-      const asNamed = get(check.named(alone, reader), f.path);
+      const field = String(g.f.path[0]);
+      const alone: any = { [field]: JSON.parse(JSON.stringify(report[field])) };
+      setAt(alone, g.f.path, candidate);
+      const asNamed = get(check.named(alone, reader), g.f.path);
       return typeof asNamed !== 'string' || !whatIsWrongWith(asNamed).length;
     });
     if (candidate && clean) {
-      leaf.pieces[f.index] = `${leading}${candidate}${trailing}`;
-      for (const i of units.slice(1)) leaf.pieces[i] = '';
-      done.push({ path: show(f.path), was: sentence, problems, now: candidate, outcome: 'rewritten' });
-    } else if ([...f.problems.values()].some((h) => h.dropIfUnfixed)) {
-      units.forEach((i) => leaf.drop.add(i));
-      done.push({ path: show(f.path), was: sentence, problems, now: null, outcome: 'dropped' });
+      g.leaf.pieces[g.f.index] = `${g.leading}${candidate}${g.trailing}`;
+      for (const i of g.units.slice(1)) g.leaf.pieces[i] = '';
+      done.push({ path: show(g.f.path), was: g.sentence, problems: g.problems, now: candidate, outcome: 'rewritten' });
+    } else if ([...g.f.problems.values()].some((h) => h.dropIfUnfixed)) {
+      g.units.forEach((i) => g.leaf.drop.add(i));
+      done.push({ path: show(g.f.path), was: g.sentence, problems: g.problems, now: null, outcome: 'dropped' });
     } else {
-      done.push({ path: show(f.path), was: sentence, problems, now: null, outcome: 'left, it could not be fixed and may not be dropped' });
+      done.push({ path: show(g.f.path), was: g.sentence, problems: g.problems, now: null, outcome: 'left, it could not be fixed and may not be dropped' });
     }
   }
 
@@ -299,22 +318,50 @@ function withoutRemoved(v: any): any {
  * In the code, not in `PromptVersion`: it is not the synthesis prompt and nothing overrides it, so the
  * version that runs is this one. Short on purpose - one sentence in, one sentence out.
  */
-export const REWRITE_ONE_LINE = `You fix one sentence from a report before anybody reads it.
+export const REWRITE_THE_LINES = `You fix sentences from a report before anybody reads them. Each one is given with an id, and each is fixed on its own.
 
-The sentence is written the way the report is stored. People in it are labels: "the initiator", "Participant A", "Participant B" and so on. When somebody reads the report, the product puts in each person's name, or "you" for the reader. So:
-- Keep every label exactly as it is written. Never replace a label with a name, a role, "you", "the lead" or "the person who set this up". Where the sentence says "the person who set this up" or "the lead", write "the initiator".
+Each sentence is written the way the report is stored. People in it are labels: "the initiator", "Participant A", "Participant B" and so on. When somebody reads the report, the product puts in each person's name, or "you" for the reader. So:
+- Keep every label exactly as it is written. Never replace a label with a name, a role, "you", "the lead" or "the person who set this up". Where a sentence says "the person who set this up" or "the lead", write "the initiator".
 - Never write he, she, him, her, they, their or them about a person. Say the label again instead.
-- Keep everything inside quotation marks exactly as it is, marks included. Those are a person's own words.
+- Every verb has its subject in front of it. Not "Participant A expects the initiator to lead, but has not said so": write "but Participant A has not said so".
+- Keep everything inside quotation marks exactly as it is, marks included. Those are a person's own words. Never put quotation marks round anything that is not already inside them.
 
-Write ONE plain, full sentence in everyday English that says the same thing. Add no fact, name, number or date that is not in it already. Start with a capital letter. Do not join pieces with a colon. Do not cut a word short.
+For each id, write ONE plain, full sentence in everyday English that says the same thing. Add no fact, name, number or date that is not in it already. Start with a capital letter. Do not join pieces with a colon. Do not cut a word short.`;
 
-Reply with the sentence and nothing else.`;
+/** The request: every line, by id. */
+export function theLinesToRewrite(asks: AnAsk[]): string {
+  return asks.map((a) => [
+    `id: ${a.id}`,
+    `  as stored: ${a.sentence}`,
+    `  how one reader reads it: ${a.asRead}`,
+    `  what is wrong with it: ${a.problems.join('; ')}.`,
+  ].join('\n')).join('\n\n');
+}
 
-/** The message that goes with it. */
-export function theLineToRewrite(ask: { sentence: string; problems: string[]; asRead: string }): string {
-  return [
-    `The sentence, as stored: ${ask.sentence}`,
-    `How one reader reads it: ${ask.asRead}`,
-    `What is wrong with it: ${ask.problems.join('; ')}.`,
-  ].join('\n');
+/** The answer's shape: one entry per id. */
+export const THE_LINES_REWRITTEN = {
+  name: 'the_lines_rewritten',
+  description: 'Each sentence, fixed, by the id it was given.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      lines: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { id: { type: 'string' }, sentence: { type: 'string' } },
+          required: ['id', 'sentence'],
+        },
+      },
+    },
+    required: ['lines'],
+  },
+} as const;
+
+/** The answer as a map from id to sentence, whatever shape the model actually returned. */
+export function theRewritesById(answer: unknown): Record<string, string> {
+  const lines = Array.isArray((answer as any)?.lines) ? (answer as any).lines : [];
+  const out: Record<string, string> = {};
+  for (const l of lines) if (l && typeof l.id === 'string' && typeof l.sentence === 'string') out[l.id] = l.sentence;
+  return out;
 }

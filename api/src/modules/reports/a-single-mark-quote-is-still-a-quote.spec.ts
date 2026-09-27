@@ -52,7 +52,7 @@ describe('and a rewrite can never introduce or promote a quote', () => {
     const promoted = 'The initiator says the initiator is "dealing with a lot of pressure" from "incredibly tight timelines" to deliver features.';
     const out = await everyLineIsReadBeforeItIsKept({
       report, readers, named, served: named, fields: ['theJudgement'],
-      rewrite: async () => promoted,
+      rewriteAll: async (asks) => Object.fromEntries(asks.map((a) => [a.id, promoted])),
     });
     expect(JSON.stringify(out.report)).not.toContain('"incredibly tight timelines"');
     expect(JSON.stringify(out.report)).not.toContain('\\"incredibly tight timelines\\"');
@@ -63,7 +63,7 @@ describe('and a rewrite can never introduce or promote a quote', () => {
     const good = "The initiator says the initiator is 'dealing with a lot of pressure' from incredibly tight timelines to deliver features.";
     const out = await everyLineIsReadBeforeItIsKept({
       report, readers, named, served: named, fields: ['theJudgement'],
-      rewrite: async () => good,
+      rewriteAll: async (asks) => Object.fromEntries(asks.map((a) => [a.id, good])),
     });
     expect(out.done[0].outcome).toBe('rewritten');
     expect(out.report.theJudgement.whatTheNumbersSay[0].says).toBe(good);

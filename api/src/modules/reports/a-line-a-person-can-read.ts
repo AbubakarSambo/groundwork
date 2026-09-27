@@ -53,10 +53,28 @@ export const WHAT_THE_TASK_ADDS: AProblem[] = [
   { what: 'doubled quote marks', pattern: /""|“”|””|““|"“|”"|"”|“"/g, dropIfUnfixed: true },
   {
     what: 'a pronoun that disagrees with the reader',
-    /* "You say their goal", "You say they expect", "You ..., but also says": the reader is "you"
-       and the rest of the clause still talks about them in the third person. A client or a team
-       can be "they" too, so this is only ever rewritten, never dropped. */
-    pattern: /\bYou (?:say|said|believe|expect|think|report|describe|want|feel|told|mention(?:ed)?)\b[^.?!;]*?\b(?:they|their|them|theirs|themselves)\b|\bYou\b[^.?!]*?\b(?:but|and) (?:also )?(?:says|believes|thinks|expects|reports|wants|feels)\b/g,
+    /* "You say their goal", "You say they expect": the reader is "you" and the rest of the clause
+       still talks about them in the third person. A client or a team can be "they" too, so this is
+       only ever rewritten, never dropped. */
+    pattern: /\bYou (?:say|said|believe|expect|think|report|describe|want|feel|told|mention(?:ed)?)\b[^.?!;]*?\b(?:they|their|them|theirs|themselves)\b/g,
+    dropIfUnfixed: false,
+  },
+  {
+    what: 'a verb that disagrees with the reader',
+    /*
+     * Two shapes, both read by a lead on check-1 and check-2:
+     *   "You also believes the credit committee is the only delay" - one or two adverbs between "you"
+     *     and a verb still in the third person (the serve step now fixes the common ones; this is the
+     *     catch for any it does not know);
+     *   "You expect Tobi Adewale to take on the renewals, but has not communicated this" - a second
+     *     verb after "but" or "and" with no subject, in the third person, where the only subject in
+     *     the sentence is the reader.
+     * NOT FIXED AT THE SERVE STEP, because it cannot be done safely there: in "You say the office move
+     * is going well, and is on schedule" the second verb belongs to the office move. A rewrite that
+     * knows the sentence can tell; a regular expression cannot. So these go to the one batched
+     * rewrite, and are never dropped.
+     */
+    pattern: /(?<!\b(?:for|to|with|on|at|from|of|about|by|than|like)\s)\b[Yy]ou (?:(?:also|still|only|now|already|never|just|really|even|often|always|usually|actually|then) ){0,2}(?:is|was|has|does|says|believes|thinks|expects|wants|feels|needs|knows|agrees|plans|sees|reports|describes)\b|\bYou\b[^.?!]*?,? (?:but|and) (?:(?:also|still|only|now|already|never|just) )?(?:has|is|was|does|says|believes|thinks|expects|reports|wants|feels|needs|plans|knows|agrees|sees)\b/g,
     dropIfUnfixed: false,
   },
 ];

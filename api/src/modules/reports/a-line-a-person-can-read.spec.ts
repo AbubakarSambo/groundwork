@@ -41,9 +41,19 @@ describe('a line a person can read: the same tests as the scorer', () => {
     ['text cut mid-word', 'the "why" behind certain decisions that aren\'t e....'],
     ['doubled quote marks', 'You said ""the date was Friday"" last time.'],
     ['a pronoun that disagrees with the reader', 'You say their goal is to exceed the targets they are given.'],
-    ['a pronoun that disagrees with the reader', 'You say the target was eight, but also says this was not stated.'],
+    ['a verb that disagrees with the reader', 'You say the target was eight, but also says this was not stated.'],
+    /* The three a lead read on check-1 and check-2 (the elided middles filled in plainly). */
+    ['a verb that disagrees with the reader', 'You also believes the credit committee is the only delay.'],
+    ['a verb that disagrees with the reader', 'You expect Tobi Adewale to take on the renewals, but has not communicated this.'],
+    ['a verb that disagrees with the reader', 'You expect Tobi Adewale to take on the renewals, and is waiting for Tobi to do something about it.'],
   ])('catches %s', (what, line) => {
     expect(caught(line)).toContain(what);
+  });
+
+  it('does not flag "you" as the object of a preposition, or a verb that already agrees', () => {
+    expect(caught('A key worry for you is that the date moved.')).not.toContain('a verb that disagrees with the reader');
+    expect(caught('You also believe the credit committee is the only delay.')).toEqual([]);
+    expect(caught('You expect Tobi to take on the renewals, but you have not said so.')).toEqual([]);
   });
 
   it('leaves a plain line alone', () => {

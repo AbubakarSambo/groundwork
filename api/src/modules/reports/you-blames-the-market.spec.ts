@@ -103,3 +103,28 @@ describe('and "You agrees", read by the lead about their own account', () => {
     expect(asTheLead('What matters for the initiator agrees with the plan.')).toBe('What matters for you agrees with the plan.');
   });
 });
+
+describe('and one or two adverbs between "you" and the verb', () => {
+  const asTheLead = (text: string) =>
+    withNames(text, namesVisibleTo('p-lead', PARTIES), LABELS, { viewerLabel: 'the initiator' });
+
+  it('"You also believes the credit committee is the only delay" reads "You also believe"', () => {
+    /* check-1 and check-2, the lead's judgement, theGap. */
+    expect(asTheLead('The initiator also believes the credit committee is the only delay.'))
+      .toBe('You also believe the credit committee is the only delay.');
+    expect(asTheLead('The initiator still has not said so.')).toBe('You still have not said so.');
+    expect(asTheLead('The initiator already is behind, and the initiator now wants help.')).toBe('You already are behind, and you now want help.');
+  });
+
+  it('still not where "you" is the object of a preposition', () => {
+    expect(asTheLead('A key worry for the initiator also is the date.')).toBe('A key worry for you also is the date.');
+  });
+
+  it('and a second verb after "but" or "and" is left for the rewrite, because its subject may be somebody else', () => {
+    /* No serve-time fix: in the second line the verb belongs to the office move, not to the reader. */
+    expect(asTheLead('The initiator expects Tobi Adewale to take on the renewals, but has not communicated this.'))
+      .toBe('You expect Tobi Adewale to take on the renewals, but has not communicated this.');
+    expect(asTheLead('The initiator says the office move is going well, and is on schedule.'))
+      .toBe('You say the office move is going well, and is on schedule.');
+  });
+});

@@ -1,4 +1,4 @@
-import { REWRITE_ONE_LINE } from './every-line-is-read-before-it-is-kept';
+import { THE_LINES_REWRITTEN } from './every-line-is-read-before-it-is-kept';
 import { ReportsService } from './reports.service';
 import { THE_PICTURE_SCHEMA } from './the-picture-in-plain-sentences';
 import { THE_JUDGEMENT_SCHEMA, THE_ROOM_JUDGEMENT_SCHEMA } from './the-judgement-over-the-answers';
@@ -113,14 +113,19 @@ function harness() {
 
   /* A stand-in for each model, writing what the models write once they read labels. */
   const anthropic: any = {
-    respond: jest.fn(async (s: string, h: any[]) => {
-      /* The check before the report is kept asks for one line at a time: the unquoted judgement line
-         below reads "Whether The three partnerships ... began. is still true.", which is a
-         lower-case start the check finds and has rewritten. See every-line-is-read-before-it-is-kept. */
-      if (s === REWRITE_ONE_LINE) return 'Whether the three partnerships have had no progress since the sales work began is still true.';
-      return String(h?.[0]?.content ?? '');
-    }),
+    respond: jest.fn(async (_s: string, h: any[]) => String(h?.[0]?.content ?? '')),
     extract: jest.fn(async (_system: string, history: any[], schema: any) => {
+      /* The check before the report is kept sends every failing line in one call: the unquoted
+         judgement line below reads "Whether The three partnerships ... began. is still true.", a
+         lower-case start the check finds and has rewritten. See every-line-is-read-before-it-is-kept. */
+      if (schema === THE_LINES_REWRITTEN) {
+        const blocks = [...String(history?.[0]?.content ?? '').matchAll(/^id: (\S+)\n  as stored: (.*)$/gm)];
+        return {
+          lines: blocks
+            .filter((m) => m[2].includes('is still true'))
+            .map((m) => ({ id: m[1], sentence: 'Whether the three partnerships have had no progress since the sales work began is still true.' })),
+        };
+      }
       const corpus = String(history?.[0]?.content ?? '');
       corpora.push(corpus);
       if (schema === THE_PICTURE_SCHEMA) {

@@ -1,4 +1,4 @@
-import { everyLineIsReadBeforeItIsKept, AReader } from './every-line-is-read-before-it-is-kept';
+import { everyLineIsReadBeforeItIsKept, AReader, AnAsk, theRewritesById, theLinesToRewrite } from './every-line-is-read-before-it-is-kept';
 import { ReportsService } from './reports.service';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { GroundScenario, PartyType } from '@prisma/client';
@@ -24,11 +24,18 @@ const served = (report: any, r: AReader) => (r.isLead ? named(report, r) : whatA
 const FIELDS = ['sharedPicture', 'theOpening', 'agreements', 'divergences', 'centralQuestion', 'findings', 'theJudgement', 'overTime'];
 
 function run(report: any, answer: (s: string) => string | null) {
-  const asked: { sentence: string; problems: string[]; asRead: string }[] = [];
+  const asked: AnAsk[] = [];
+  let calls = 0;
   return everyLineIsReadBeforeItIsKept({
     report, readers: READERS, named, served, fields: FIELDS,
-    rewrite: async (ask) => { asked.push(ask); return answer(ask.sentence); },
-  }).then((out) => ({ ...out, asked }));
+    rewriteAll: async (asks) => {
+      calls += 1;
+      asked.push(...asks);
+      const out: Record<string, string> = {};
+      for (const a of asks) { const r = answer(a.sentence); if (r !== null) out[a.id] = r; }
+      return out;
+    },
+  }).then((out) => ({ ...out, asked, calls }));
 }
 
 describe('every line is read, as each person reads it, before the report is kept', () => {
@@ -117,5 +124,30 @@ describe('every line is read, as each person reads it, before the report is kept
     expect(named(out.report, READERS[0]).theJudgement.theGap).toBe('You counted the open applications, and the officers counted 64.');
     /* And the participant, who is never served the judgement, cost nothing and changed nothing. */
     expect(served(out.report, READERS[1]).theJudgement).toBeUndefined();
+  });
+
+  it('sends every failing line of the report in ONE model call, each by id, and drops a line that does not come back', async () => {
+    const report = {
+      sharedPicture: 'Both people have answered. 1 people said the date was Friday.',
+      agreements: ['1 people agree on the target.', 'Both of you agree the target is eight.'],
+      findings: [{ text: 'Participant A says their goal is to exceed the targets they are given.', label: 'Participant A', hasGap: false, participantId: 'p-nathan' }],
+    };
+    const out = await run(report, (s) => (s.startsWith('Participant A says') ? "Participant A says Participant A's goal is to exceed the targets Participant A is given." : null));
+    expect(out.calls).toBe(1);
+    expect(out.asked.map((a) => a.id)).toEqual(['l1', 'l2', 'l3']);
+    expect(out.report.sharedPicture).toBe('Both people have answered.');
+    expect(out.report.agreements).toEqual(['Both of you agree the target is eight.']);
+    expect(served(out.report, READERS[1]).findings[0].text).toBe('You say your goal is to exceed the targets you are given.');
+  });
+
+  it('a report with nothing wrong makes no call at all', async () => {
+    const out = await run({ sharedPicture: 'Both people have answered.' }, () => 'never');
+    expect(out.calls).toBe(0);
+  });
+
+  it('reads the model\'s answer by id, whatever order it comes back in, and ignores what it cannot use', () => {
+    expect(theRewritesById({ lines: [{ id: 'l2', sentence: 'B.' }, { id: 'l1', sentence: 'A.' }, { id: 3, sentence: 'x' }, null] })).toEqual({ l1: 'A.', l2: 'B.' });
+    expect(theRewritesById('not json')).toEqual({});
+    expect(theLinesToRewrite([{ id: 'l1', sentence: 'S.', problems: ['p'], asRead: 'R.' }])).toContain('id: l1');
   });
 });
