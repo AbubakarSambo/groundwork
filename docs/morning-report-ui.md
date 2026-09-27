@@ -1758,6 +1758,27 @@ you said an admin is named only after a real invitation.
 **Still to confirm:** the invitation's "You see your own report straight away." and "About two
 minutes." come from the prototype, and the builder could not check that they are always true.
 
+**Found in the U.3 review, left as you decided, for you to look at.** The new admin's welcome card
+uses the prototype's wording, as you decided, so its door descriptions stay as the prototype's code
+has them: "Invite people, set roles and teams, let guests in", "Your numbers, your own address" and
+"Seats, the card and invoices". They are clipped phrases, not sentences, and "your own address"
+promises something that is not built (item 16, point 1). **My recommendation:** full sentences, for
+example "Invite people, choose what each can do, and let guests in." Tell me if you want them changed.
+
+**Wording written in the U.3 review fixes, where no screen has any:**
+- The invitation, with no end date: "A check-in at Coamana."; with no organisation: "It runs until 30
+  September."
+- "Your name is optional. If you add it, the others will see it on the shared report." and "You never
+  have to take part. If you would rather not, you can close this page. Nothing is shared, and saying
+  no is never held against you."
+- The sidebar's reason: "You are in Coamana because anyone with an @coamana.com email can join it."
+  and "You are in Coamana because you joined through its invite link."
+- "An admin has let you in. You can open your check-ins now."
+- "You are in. You have no check-ins yet. When someone adds you to one, you will see it here." and
+  "Open one to take part." (was "Open one to start contributing.").
+- "That invite link is not open any more. Ask whoever sent it for the new one." on "Where do you
+  work?" when the link someone signed up from was turned off before they confirmed their email.
+
 ### Decisions I made on my own
 
 - **The fonts are hosted inside the app,** not loaded from Google each time a page opens. That way
@@ -2021,6 +2042,60 @@ by domain or link; and the invitation page had a fragment ("Coamana.") and two s
 dashes. The server's privacy rules all held: a member was refused every change to the organisation,
 the fresh-link reply was the same for every address, and outsiders saw no head count. These are being
 fixed now, then the review runs again.
+
+#### U.3 review fixes (27 September)
+
+One commit for each finding, with tests of what a person reads and what the server does. Only the
+tests for the files changed were run, with the type check; the full run is the tester's.
+
+1. **Joining by invite link or by email domain makes no organisation** (`214ec5ff`). On the server,
+   when the email is confirmed:
+   - From an organisation's invite link that is still open and has a seat: they join it as "Takes
+     part" and go to Today. No organisation of their own is made, even if a name was typed.
+   - With an address whose domain an organisation lets join, or from a link that has since been
+     turned off or is full: nothing is made yet. The confirmation shows "Where do you work?", the
+     same card as `/welcome`, with "Join" for the organisation that was offered and "Create a new
+     organisation". The server only lets them join an organisation it offered.
+   - **Left empty, with no link and no domain match (today's behaviour, kept):** the person gets
+     their own organisation named "<first name>'s workspace", for example "Ama's workspace", and is
+     its admin. With a name typed, it is called that. "Create a new organisation" on "Where do you
+     work?" does the same, with the name they typed at sign-up if they typed one.
+   - The sign-up reached from `/j/…` no longer shows "Your organisation (optional)" or suggests a
+     name, and sends none.
+   - **Not changed:** signing up with Google still makes the person's own organisation, even from an
+     invite link or with a matching domain. That is `findOrCreateGoogleUser`, and needs the same
+     change; I have not made it here.
+2. **The invite link keeps its place after the email is confirmed** (`f72c41f0`, `5920f2a3`). The
+   place they were going is kept on the server with the waiting sign-up or the sign-in link, and comes
+   back when the link opens. Only a path inside the app is ever kept or followed. The second commit
+   only renames what an old code test looks for.
+3. **The sidebar and "More" use the People page's words** (`37fb91f3`): "Admin", "Can open
+   check-ins", "Takes part", "Guest". "Member" and "Lead" are gone.
+4. **"You are in … because …" only when the server knows** (`b9b1e582`): "…because your email
+   address was on its list of people." (their staff record there is linked to them), "…because anyone
+   with an @coamana.com email can join it.", "…because you joined through its invite link." With no
+   known reason there is no sentence. Invitations are not recorded yet, so someone an admin invited
+   gets no sentence.
+5. **The invitation page** (`a2440dbb`): the full sentences above; "By joining, you agree that your
+   contribution record belongs to you." is removed, because it is not on the prototype and nothing
+   records it as a consent; and the prototype's look (the cream page, the small mark, one narrow
+   column, the serif heading, the beige note, no "GROUNDWORK" band). The held parts of conflict A are
+   untouched.
+6. **Smaller** (`259707bb`, `983bbfd6`, `df79cb51`): "The invite link for Pwani Test Foods";
+   `/join/waiting` sends someone who never waited to Today, and tells someone who was let in "An
+   admin has let you in. You can open your check-ins now."; "You are in." says only what is true;
+   each row on "Choose an organisation" has a full-sentence name, such as "Open Kilimo Traders’
+   Association. You are a guest there. 1 new thing needs you." On "Create an organisation" the boxes
+   were already tied to their labels in the code; a new test proves a screen reader says
+   "Organisation name", not the placeholder.
+7. **The welcome card's door descriptions** are left as the prototype has them, as you decided, and
+   listed for you in item 13.
+
+**For U.2, not changed here:** the greeting, as asked.
+
+**Two new database columns**, both empty for existing rows: where someone was going when they asked
+for a link (`next_path`, on waiting sign-ups and sign-in links), and how someone joined an
+organisation (`joined_how`). Applied to the local database only.
 
 ### U.4 People, roles and access: built and tested, not yet reviewed
 
