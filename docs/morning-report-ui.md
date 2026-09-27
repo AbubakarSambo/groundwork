@@ -96,7 +96,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
-| U.3 Organisations and joining | Yes | Waiting |
+| U.3 Organisations and joining | Yes | Sent back on 27 September; being fixed |
 | U.4 People, roles and access | Yes | Waiting |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
@@ -2010,6 +2010,17 @@ review can run, it should also confirm that the rewritten waiting check really p
 still waiting never reaches the check-in. Two older copies of the dashed sentence "That did not go
 through. Nothing has changed - try again." remain, on the People page (fixed in U.4) and in "What you
 are carrying forward".
+
+**The first real review, on 27 September, sent U.3 back.** The reviewer signed up its own
+`@example.test` accounts through the browser, as you decided, and nothing was refused. It found:
+joining by email domain or by the organisation's invite link also made the person admin of a new,
+empty organisation, named from their email address; the invite link lost its place once the person
+confirmed their email; the sidebar called people "Member" where the People page says "Takes part";
+the sentence "because your email address was on its list of people" was false for people who joined
+by domain or link; and the invitation page had a fragment ("Coamana.") and two sentences joined by
+dashes. The server's privacy rules all held: a member was refused every change to the organisation,
+the fresh-link reply was the same for every address, and outsiders saw no head count. These are being
+fixed now, then the review runs again.
 
 ### U.4 People, roles and access: built and tested, not yet reviewed
 
