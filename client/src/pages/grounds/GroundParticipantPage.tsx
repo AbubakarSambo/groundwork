@@ -387,7 +387,17 @@ export function GroundParticipantPage() {
    * against a period that has not happened.
    */
   const openAvailableFrom = (openCheckIn as any)?.availableFrom ?? null
-  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now()
+  /*
+   * NOTHING ABOUT "NEXT" WHILE THE CURRENT ONE IS STILL OPENING (U.8 third review).
+   *
+   * The auto-open handoff above (`?open=1`, from the ground page's own "Check in" button) calls
+   * `probeSession.mutate()` the moment this page mounts, and that request can take up to a minute
+   * (ConversationService.open). The lead landed here mid-open and read "Your next check-in opens
+   * 12 October" while her FIRST one had not even finished opening - a promise about the session
+   * after this one, before this one exists. Excluded here rather than only where it is shown, so
+   * every reader of `opensLater` (the header line and the composer's own line) agrees.
+   */
+  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !probeSession.isPending
   const dueNow = !!openCheckIn && !opensLater
 
 

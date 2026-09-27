@@ -8,6 +8,7 @@ import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /**
  * A GROUND, READ AS A CONVERSATION.
@@ -391,6 +392,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [text, setText] = useState('')
+  const openingIsSlow = useAfterAWhile(!!openPending)
 
   const { data: notes = [] } = useQuery({
     queryKey: ['my-notes', groundId],
@@ -458,6 +460,18 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               ? `Check in for session ${openSessionNumber}${totalSessions && openSessionNumber <= totalSessions ? ` of ${totalSessions}` : ''} →`
               : 'Check in now →'}
         </button>
+        {/*
+          THE SAME WAIT, THE SAME SENTENCE (U.8 third review). Opening a session runs several
+          model calls and can take up to a minute; only /checkin said so, so a lead's first open
+          FROM THIS PAGE sat on "Opening…" for over 70 seconds with nothing else on screen. One
+          shared piece (`opening-is-slow.ts`), so the two screens cannot say two different things
+          or one of them forget to say anything.
+        */}
+        {openingIsSlow && (
+          <div role="status" style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 8 }}>
+            {GETTING_YOUR_FIRST_QUESTION_READY}
+          </div>
+        )}
       </div>
     )
   }

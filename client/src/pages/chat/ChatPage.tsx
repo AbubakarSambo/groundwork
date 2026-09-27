@@ -13,6 +13,7 @@ import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFini
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
@@ -197,8 +198,6 @@ export function ChatPage() {
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
   const [waitedAWhile, setWaitedAWhile] = useState(false)
-  /* True once opening the session has been outstanding long enough to say so. See the effect below. */
-  const [openingIsSlow, setOpeningIsSlow] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -329,11 +328,7 @@ export function ChatPage() {
    * as the reply wait above, is where somebody starts wondering if anything is happening.
    */
   const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
-  useEffect(() => {
-    if (!openingNow) { setOpeningIsSlow(false); return }
-    const t = setTimeout(() => setOpeningIsSlow(true), 4000)
-    return () => clearTimeout(t)
-  }, [openingNow])
+  const openingIsSlow = useAfterAWhile(openingNow)
 
 
   const decline = useMutation({
@@ -946,7 +941,7 @@ export function ChatPage() {
                   session runs several model calls and can take up to a minute with nothing else on
                   screen, which read as a hang. */}
               {openingIsSlow && (
-                <div style={{ marginTop: 6 }}>Getting your first question ready. This can take up to a minute.</div>
+                <div style={{ marginTop: 6 }}>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
               )}
             </div>
           )}
