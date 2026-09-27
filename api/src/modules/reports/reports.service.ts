@@ -73,6 +73,7 @@ import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from '.
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
+import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -4562,6 +4563,15 @@ happened, and what is in the way.`;
     return done.length ? (report as R) : null;
   }
 
+  /** A line built at the read, made to read right or not shown, with a line in the log for each. */
+  private readAsItWillBeRead<T>(value: T, groundId: string, what: string): T {
+    if (value == null) return value;
+    const dropped: string[] = [];
+    const out = linesBuiltAtTheRead(value, dropped);
+    if (dropped.length) this.logger.warn(`Report for ground ${groundId}: ${dropped.length} line(s) of ${what} not shown, because they still failed a test after the read's repairs. First: "${dropped[0].slice(0, 160)}"`);
+    return out;
+  }
+
   private applyNames<T extends Record<string, any>>(
     reportIn: T,
     parties: any[],
@@ -5851,7 +5861,7 @@ happened, and what is in the way.`;
         (ground.report as any)?.builtFromAnswers ?? null,
       ),
       postReportGuide,
-      coaching,
+      coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note'),
       /* Only a discovery session has one; everything else gets null and renders nothing. */
       theDirection: await this.theDirectionFrom(
         ground,
@@ -5875,7 +5885,9 @@ happened, and what is in the way.`;
        * than by this caller remembering to ask - a lead-only surface guarded at the call site is
        * one refactor away from not being lead-only.
        */
-      probes,
+      /* Built at the read with the reader's "you" already in, so held to the same tests here. See
+         a-line-built-at-the-read-is-read-too. */
+      probes: this.readAsItWillBeRead(probes, groundId, 'the probe list'),
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not
