@@ -36,16 +36,23 @@ describe('one route for patterns', () => {
     expect(SERVICE).toMatch(/const patternNotice = '';/);
   });
 
-  it('the session report reads surfaced detections as its own field', () => {
-    /* Computed once above the return, so the section and the picture draft read the same rows. */
-    const at = SERVICE.indexOf('const patternsForPage = (await this.prisma.patternDetection.findMany(');
+  /*
+   * THROUGH THE ONE RULE SINCE 28 SEPTEMBER 2026. The section used to read SURFACED rows with the
+   * library's signal; SURFACED is not decision 8 (good news is SURFACED after one period) and the
+   * signal is not the plain name decision 19 asks for. So it reads every row and serves what
+   * patterns/who-reads-a-pattern lets this reader read, and the filters are pinned there.
+   */
+  it('the session report reads patterns as its own field, through the one rule', () => {
+    const at = SERVICE.indexOf('const patternRowsForPage = PATTERNS_ARE_SERVED');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 1200);
-    expect(block).toContain('PatternStatus.SURFACED');
-    expect(block).not.toContain('CANDIDATE');
-    expect(block).toContain('ALIGNMENT_FEED_ONLY_CODES.has(r.code)');
-    /* The library's own wording, not the code and not a paraphrase. */
-    expect(block).toContain('signal: lib.signal');
+    expect(block).toContain('const patternsForPage = servedPatterns(');
+    expect(block).toContain('runsIt: viewerIsLead');
+    const RULES = strip(readFileSync(join(__dirname, '../patterns/who-reads-a-pattern.ts'), 'utf8'));
+    expect(RULES).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');
+    expect(RULES).toContain('hasBeenSeenInThreePeriods(row)');
+    /* The plain name, not the code, the internal name or the library's signal. */
+    expect(RULES).toContain('heading: plain.name');
   });
 
   it('and the board renders it as a section with the count that makes it a pattern', () => {

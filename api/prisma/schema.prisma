@@ -2271,6 +2271,17 @@ model PatternDetection {
   accuracyRating   Boolean?      @map("accuracy_rating") // true = accurate, false = inaccurate, null = not yet rated
   ratedAt          DateTime?     @map("rated_at")
   ratedBy          String?       @map("rated_by") // userId of rater
+  /// When it had been seen in three periods, which is when the person it is about may first read it.
+  /// Set once by the detector and never moved, so the clock for the lead cannot be pushed back by
+  /// a fourth sighting. See patterns/who-reads-a-pattern.
+  readyAt          DateTime?     @map("ready_at")
+  /// When the person it is about was first served it on their own page. The lead reads it only
+  /// after this (and their answer, or three days), or a week after readyAt if they never open it.
+  shownToPersonAt  DateTime?     @map("shown_to_person_at")
+  /// What the person said is behind it, in their own words ("Say what's behind it"). Read by the
+  /// person and, beside the pattern, by whoever runs the check-in. Never by a colleague.
+  personAnswer     String?       @map("person_answer") @db.Text
+  personAnsweredAt DateTime?     @map("person_answered_at")
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -5110,6 +5121,13 @@ model GroundContextItem {
   authorUserId  String?         @map("author_user_id")
   /// When it stopped being live - a decision made, a rule dropped. Kept rather than deleted.
   closedAt      DateTime?       @map("closed_at")
+  /// QUESTION_FOR_PERSON only. The question exactly as Groundwork will ask it, word for word: a
+  /// draft until the lead confirms it, and the lead's own wording where they changed it. Decision
+  /// 34, 28 September 2026: the lead sees the exact question before it goes, and confirms it.
+  exactQuestion String?         @map("exact_question") @db.Text
+  /// When the lead confirmed `exactQuestion`. Null means it is not asked - never, by anybody - and
+  /// the lead is shown it as waiting for them. Every line written before 28 September starts here.
+  questionConfirmedAt DateTime? @map("question_confirmed_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

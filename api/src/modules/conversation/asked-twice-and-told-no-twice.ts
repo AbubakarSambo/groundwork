@@ -300,6 +300,48 @@ export function asksItAgainAfterTheAnswer(lastAsk: string | null | undefined, re
   return shared / Math.min(a.size, b.size) >= 0.8;
 }
 
+/**
+ * AND THE SAME QUESTION BACK AFTER AN ANSWER FURTHER UP, NOT ONLY THE LAST ONE.
+ *
+ * asksItAgainAfterTheAnswer reads the last ask only. Hana, shock scenario, run 9 (27 Sep 2026):
+ *
+ *   "Meridian gave notice on Friday. What just happened with Meridian, as you understand it?"
+ *   "Meridian gave notice. I understand this means they are cancelling their contract with us."
+ *   "Understood. When did you first learn about Meridian giving notice, and from whom?"
+ *   "I learned about Meridian giving notice this morning, from this check-in."
+ *   "That means nobody told you directly before this. What just happened with Meridian, as you understand it?"
+ *
+ * Word for word, two turns after she answered it. Not the last ask, so the straight-back check let
+ * it by; asked twice, not three times, so alreadyAskedTwice did too.
+ *
+ * THE LAST ASK AT FOUR FIFTHS, AN EARLIER ONE WORD FOR WORD. Read over every Groundwork turn in runs
+ * 8, 9 and 10 (2,163 of them): four fifths on any earlier question found 17 more, and five of those
+ * were a real follow-up ("who else saw your work on the onboarding flow" after "what part of the
+ * onboarding flow did you work on"). The same question sentence, word for word, found seven, and
+ * every one was the same question sent again after an answer.
+ *
+ * @param turns this session's turns, oldest first, the person's latest answer last
+ * @param answered whether a person's reply was a real answer (not declined, not pushing back)
+ */
+export function anAnsweredQuestionAskedAgain(
+  turns: { role: 'AI' | 'PERSON'; content: string }[],
+  reply: string,
+  answered: (theySaid: string) => boolean,
+): { ask: string; answer: string } | null {
+  let theLastAsk = true;
+  for (let i = turns.length - 2; i >= 0; i -= 1) {
+    const ask = turns[i];
+    const next = turns[i + 1];
+    if (ask.role !== 'AI' || next.role !== 'PERSON') continue;
+    const isTheLast = theLastAsk;
+    theLastAsk = false;
+    if (!/\?/.test(ask.content ?? '') || !answered(next.content ?? '')) continue;
+    const again = isTheLast ? asksItAgainAfterTheAnswer(ask.content, reply) : repeatsTheLastAskWordForWord(reply, ask.content);
+    if (again) return { ask: ask.content, answer: next.content };
+  }
+  return null;
+}
+
 function asksMuchTheSameThing(earlier: string, now: string): boolean {
   const a = subjectWords(earlier);
   const b = subjectWords(now);

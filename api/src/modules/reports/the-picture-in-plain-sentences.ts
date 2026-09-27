@@ -22,7 +22,7 @@
  * the one thing that fallback is not allowed to do is glue slot names - see `plainlyWithoutAModel`.
  */
 import type { PersonFacts } from './the-facts-about-a-person';
-import { PLAIN_WORDS_WITH_EXAMPLES, WRITTEN_ONCE_FOR_SEVERAL_READERS } from '../conversation/plain-words';
+import { PLAIN_WORDS_WITH_EXAMPLES, WRITTEN_ONCE_FOR_SEVERAL_READERS, EVERY_VERB_KEEPS_ITS_SUBJECT } from '../conversation/plain-words';
 
 export interface ThePicture {
   /** What is true across everybody, in one or two sentences. Never a fixed sentence. */
@@ -56,6 +56,8 @@ facts say it was never written down. The person this is about will read this.`
   return `${PLAIN_WORDS_WITH_EXAMPLES}
 
 ${WRITTEN_ONCE_FOR_SEVERAL_READERS}
+
+${EVERY_VERB_KEEPS_ITS_SUBJECT}
 
 WHAT YOU ARE WRITING
 

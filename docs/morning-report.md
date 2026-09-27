@@ -6,6 +6,150 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
+
+*This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
+
+**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
+
+**Run-11 does not count, and the product was not at fault.** I started it at about midnight, before tonight's five hours began, from a separate copy of the code, so that the builders' work could not change it halfway through. But the runner starts the model itself, to play the simulated people, and that copy did not have the model's credentials file, which is kept out of git. So every simulated person's answer failed. No check-in could finish, and no report was written: all 25 reports were empty. I found it by reading the log, stopped it, and started run-12 from the main folder, where the credentials are.
+
+**What still blocks it:**
+1. Run-11 must show that task 1.6 and the blocker fixes hold across all 24 scenarios: nothing worse than the baseline, every quote from the record, and none of a lead's private words reaching anyone.
+2. The steps before release in `docs/ready-to-deploy.md`, which need Abubakar and Hafsah: the migrations with a backup, the one-off script that marks which record lines are people's own words, merging with the screens branch, and full tests on the combined code.
+
+**What I finished tonight** (the list grows as I go):
+- Item 2, the evidence for verdicts, requests through chat and being away, was done last night. It is in the section "The three capabilities I rated missing" below, and in `docs/capability-check.md`.
+- Item 3, `docs/weekly-plan.md`, was done last night.
+- **Item 5, the lead confirms the exact question (decision 34), is built on the engine side** (`5f30dde3`, `be5e9d78`, `d6d00a44`, `f1eb3fb2`).
+  - **What the lead sees:** when the lead sets a question for a person, Groundwork writes it once, exactly as it will ask it. The lead reads, for example, `Groundwork will ask Ngozi: "Have you sent the Client B proposal?"`, and confirms it, changes its words or leaves it out, one question at a time.
+  - **Only a confirmed question reaches the person's session, and it is asked word for word.** If the model rewords it, the product puts the confirmed words back before the turn is saved.
+  - **What the question is written from:** only the person's first name and the lead's question, never the lead's private notes or their description of the person. Code checks the draft, and falls back to the lead's own words if the draft fails.
+  - **Old questions:** questions set before today are not asked until the lead confirms them. They are shown to the lead as waiting.
+  - **The new database column** is a migration applied only to the local test database.
+  - **Proven by 29 tests**, not by a scenario run: no scenario sets a question through the context chat.
+  - **For the screens workspace:** what it needs is written in `docs/answers-from-engine.md`, including the card with Confirm, Edit and Not now.
+- **Item 6, guests use Ask Groundwork within their own check-in (decision 36), is built** (`d2a97ffe`).
+  - **What a guest can ask:** what was agreed, what is stuck, what they said they would do, when their next check-in is, and what the report says. The answers are built only from reads that already show that guest just their own check-in, with a second list of allowed fields in code.
+  - **What it never does:** it is never added to the host's list of people, never reads another check-in, the lead's judgement or a colleague's report, and never writes anything in the host organisation.
+  - **The replies are written by rules, not by the model.** Anything else gets a plain refusal.
+  - **For Hafsah:** an older piece of code matches check-in answers to the host's list of people by email. If a guest's email is also on an unclaimed entry in the host's list, their check-in words could be credited to that entry. That was true before tonight, and it is not fixed yet.
+- **Item 7, week 1 of the weekly plan, is built, and not yet measured** (`020260e4`, `3fb7edf9`).
+  - **The check-in now asks for what someone left out.** When a person speaks to only part of a set the lead named, the model is told, as context for its next question, which ones they left out. For example: "Grace named three: Equity, KCB and Co-op Bank. Peter has spoken about Equity only. Ask directly about the other two…". The same goes when a person describes something that happened without saying when.
+  - **It asks each only once**, and takes "I can't" as an answer.
+  - **It never asks again a question the person already answered**, not only the last one. Across three past runs this would have caught seven real repeats.
+  - **No stored prompt changed.** It is context built in code.
+  - **For Hafsah:** to find the set, a participant's session may now use the item names from the lead's own check-in words, such as the three bank names. It never uses the lead's sentence, and never people's names. It is used only on shared check-ins where people see each other. This rests on decision 4, but it is new, and the gate is one line if you want it narrower.
+  - **Measuring it:** advisor and shock, twice each, after run-12.
+- Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
+
+**What needs Hafsah:**
+- **Approve the 49 plain pattern names** in `docs/pattern-names.md`, and settle B5's name. Patterns stay switched off until then. Also approve the three-day and one-week windows before a lead sees a person's pattern.
+- **Replace `docs/decisions.md` with `docs/decisions-merged.md`.** The file is protected; the step is below.
+- **The thresholds for verdicts, and who counts as a person's lead for approvals.** Decision 33 says these are decided when that work starts: weeks 10, 11 and 21 of the weekly plan.
+- **The questions for Abubakar**, in `docs/ready-to-deploy.md`:
+  - How is the API hosted and released?
+  - How do migrations reach staging and live, and is a backup taken first?
+  - Four of the 45 migrations change or remove existing data. The document lists each one.
+  - Hafsah's earlier pull request should be merged first.
+  - Who runs the one-off script that marks people's own words, and when?
+
+## The three capabilities I rated "missing": the evidence, for Hafsah to decide
+
+**Nothing is hidden.** For each one, this is what the prototype shows it doing, exactly what was tried live on the local test database on 27 September, what happened, where the code is, and which parts already work. The full detail is in `docs/capability-check.md`, sections 4, 10 and 11.
+
+**In short, "missing" is not the right word for all of it.** In all three, most of the parts are built. What is missing is the step that connects them to what a person actually does. In verdicts, nothing ever creates a suggestion. In requests, nothing takes a request from chat. In being away, nothing tells the engine who is away.
+
+### Verdicts, suggestions and appeals
+
+**What the prototype shows.** On Daniel's board, the lead reads "Groundwork suggests a performance plan for Daniel". Then: "Why: In the last 4 weeks, Daniel kept 11 of his 20 commitments", "What would change this: Keeping 8 in 10…", Daniel's own answer, and "This is only a suggestion. You decide, and Daniel sees your reasons", with Agree and Choose something else (`C3-suggestions-and-appeals/suggestion-daniel.txt`). Daniel's own page says "Where you stand… Wairimu has not decided anything yet… Add my side" (`what-daniel-sees.txt`). The ending page suggests "keeping Kwame on" (`suggestion-kwame.txt`). A review suggests recognising Aisha's work (`suggestion-aisha-in-review.txt`).
+
+**What was tried, and what happened:**
+- As the lead, Tunde, opening the suggestions for his check-in (`GET /grounds/…/suggestions`) returned an empty list.
+- As Ngozi, a participant, the same route returned the same empty list.
+- As Tunde, opening the appeals was refused: "Only an admin of this organisation decides an appeal." That is right.
+- As an admin, the appeals list was empty.
+- As Ngozi, her You page (`GET /you`) had no "Where you stand".
+- The `suggestions` table has 0 rows.
+- All 1,040 recorded commitments have the status "unknown". So "kept 11 of 20" cannot be counted for anybody.
+- The performance reviews suite is off, and when on, its list of reviews due can only be filled by an outside system.
+
+**Where the code is.** `api/src/modules/suggestions/` holds the service, the controller and `a-suggestion-told-like-a-signal.ts`. These were built by the screens workspace. The reviews are in `api/src/modules/suites/the-reviews.service.ts`. The ending page is in `api/src/modules/resolution/`.
+
+**What works:**
+- A suggestion, once one exists, is shown to each reader in the right shape. The lead gets the headline, why, what would change it, the person's answer and the choices. The person gets the facts and the decision, and can add their side and appeal. An admin decides appeals.
+- The verdict word itself, such as "plan", is never shown to anyone. Labels such as "PIP" and "at risk" are refused when the text is stored.
+- The ending page works: the lead chooses how it ends and gives a reason, and the person reads it.
+- The lead's judgement, which is not the same thing as a verdict, works and is often right. For the performance-plan scenario it says the target was never written down, which is the right answer.
+
+**What does not work yet:**
+- Nothing in the engine ever creates a suggestion.
+- Nothing marks a commitment as kept or missed, so the number a verdict would rest on does not exist.
+- There are no thresholds yet. Hafsah has decided those come later, when this work starts.
+
+### Requests through chat: leave, spending and hours
+
+**What the prototype shows.** "I need next Thursday and Friday off." Groundwork answers: "You have 16 days left and nobody else in Sales is off then. Shall I send it to Wairimu?" (`E-suites/suite-leave.txt`). "Can I spend KES 18,000 on fuel…" is checked against the budget and the rules and sent to the right approver (`suite-spend.txt`). "I spent 3 hours at Naivas Ngong Road today…" becomes "Written down: 3 hours on Naivas Ngong Road, 1 hour on Lakeside. Is that right?" (`suite-time.txt`). "Nobody fills in a form."
+
+**What was tried, and what happened**, in Ask Groundwork as Ngozi:
+- "I need leave from 12 to 16 October", "Can I spend 45,000 on a laptop?", "Log 6 hours on Atlas today" and "Book me off Monday" all got "I cannot answer that one yet". Nothing was written.
+- "I will be on holiday next week so I cannot check in" was offered as "Shall I note that down". After a yes, it became an open commitment, a promise to be followed up in her next check-in as if it were work.
+- In the check-in, Tunde wrote "Also, I need leave from 12 to 16 October, and can I spend 45,000 on a laptop? I did 6 hours on Atlas today." The reply ignored all three and asked about something else.
+
+**Where the code is.** `api/src/modules/suites/`: the leave board, spending and time sheets services, and `who-approves.ts`. The functions that would record a request are there: `LeaveBoardService.ask`, `SpendingService.check` and `.ask`, and `TimeSheetsService.record`. The screens workspace built them, and asked the engine to connect them in its requests 21, 22 and 26, which are still open.
+
+**What works, tried live through the suite's own service:**
+- A leave request for Yemi was recorded, waited on the admin's board, and showed under "who is off" once approved.
+- Her days left were worked out correctly from the approved days: 10 of 20.
+- The approval rules, who else is off, the budgets, the privacy walls for each reader, and hours kept for billing only all work.
+
+**What does not work yet:**
+- Nothing in chat, the check-in or WhatsApp creates a request.
+- Nobody is told a request is waiting.
+- Only the organisation role LEAD can approve, which most organisations do not use.
+
+### Being away
+
+**What the prototype shows.** People on leave appear under "who is off" on the leave board, and a person's days left are shown to them (`E-suites/suite-leave.txt`). Hafsah's decision 31 says the engine may know the dates of approved leave, dates only. The engine's own rule says time on leave is paused and never counted against anyone.
+
+**What was tried, and what happened:**
+- I approved leave for Yemi covering today, and read the lead's board and Today before and after.
+- The board still listed her first as "Yemi Adeyinka has not checked in for this round yet".
+- Today still counted her among "6 people haven't yet".
+- Her leave dates on the check-in were still empty.
+- From the code, not run: the "your next check-in is open" email, the reminders on day 3, 7 and 14, the "you have missed 3 check-ins" email, and the lead's email naming who has not started all go to someone on leave.
+
+**Where the code is:**
+- `api/src/modules/conversation/participation-timeline.ts` holds the rule for leave: paused, never counted. It is tested in `absence-is-not-a-signal.spec.ts`.
+- The dates have a place, `ground_participants.leave_periods`.
+- Approved leave lives in the leave suite (`api/src/modules/suites/the-leave-board.service.ts`).
+
+**What works:**
+- The rule is written and tested.
+- Coaching already uses it, and does not coach someone who is on leave.
+- The leave suite records and approves leave correctly.
+- Patterns and the judgement are not affected by a missed round, because they read what people said, not missed rounds.
+
+**What does not work yet:**
+- Nothing writes the leave dates where the engine reads them. A test today stops anything outside the suites from reading leave requests, and decision 31 now allows the dates to be copied across.
+- So the board, the round count, the reminders and the emails still treat someone on leave as missing.
+
+
+## 27 SEPTEMBER, NIGHT: THE CAPABILITY CHECK AND THE DEPLOY BLOCKERS
+
+- **The capability check is in `docs/capability-check.md`.** Eleven capabilities were tried live. Eight partly work and three are missing. The work is after deployment, except for the blockers below.
+- **Seven deploy blockers, all being fixed, one builder after another.** The full list, and whether each is fixed, is in `docs/ready-to-deploy.md`. Blockers 1 to 3 are the patterns, which are being switched off on every board for every reader. Blocker 4 is bank details. Blocker 5 is a lead's private notes in a person's own session. Blocker 6 is Ask Groundwork, which you decided must work before deployment. Blocker 7 is the board crash for a participant when colleagues are hidden.
+- **Hafsah's three new decisions are added to `docs/decisions-merged.md`** as decisions 31 to 33:
+  - the engine may know the dates of approved leave, dates only;
+  - a lead's private notes never reach the model in that person's own session;
+  - who counts as a person's lead for approvals, and the thresholds for verdicts, are decided when that work starts.
+- **Ask Groundwork in the live code.** The live code (`be8b48d9`) has no Ask Groundwork for signed-in users at all. The assistant is reached only through a customer's embedded panel or WhatsApp, and only for people on the organisation's connected list. The fix being built changes one file. It finds, claims or creates the person's entry when they ask. Claiming matches only on a confirmed email address, and never across organisations. If a switched-off entry exists, it refuses.
+- **All seven blockers are fixed in code, with tests** (`b959934a`, `e12cf225`, `6feccb79`, `c6721519`, `75174e28`, `8e940c9c`). A further privacy gap, colleagues' names on a board where people are hidden from each other, was found and closed along the way. Every API test passes: 10,220 of 10,220. Ask Groundwork was tried live: a user with no entry on the list got a real answer, and exactly one entry was made for him. That try left one new entry, and his question and answer, in the local test database. None of this is proven on a full scenario run yet. That is tomorrow's first run.
+- **The checkers' test data is cleaned up,** in one transaction, in the local test database only.
+  - 149 rows were deleted, all in the Meridian test organisation, in the window the checkers worked.
+  - Two sessions the checkers had started, which existed before them, were put back to "not started".
+  - The three test users have their original seed passwords back, not "test", and their saved sign-in tokens are cancelled. Signing in with "test" is refused for all three.
+
 ## 27 SEPTEMBER, EVENING: THE AIM IS NOW DEPLOYMENT
 
 **Your change of direction, recorded.** The aim now is deployment, not reaching task 1.5's bar. I have stopped working on the judgements to reach it. These are the only things left before deployment:
@@ -56,6 +200,14 @@ Everything else, phase 2 included, waits until after deployment.
   - **A quote nobody said.** The model wrote 'incredibly tight timelines' in single quotation marks, which the quote check does not treat as a quote. The check's pronoun rewrite then turned them into double quotation marks. Sofia never said those words. The quote checker caught it: 162 of 164 quotes were right, and 2 were not. The fix: single quotation marks count as quotation marks, and the quote check runs again after any rewrite.
   - **It made reports slower.** For openread, the time from the last check-in to the finished report went from 112 seconds to 223 and 253 seconds. The check was calling the model once per sentence, and there were 53 rewrites in these runs, mostly pronoun fixes. For a team of nine, whose report already took five to six minutes, that would be worse. The fix: one model call per report for all its rewrites.
 - **Two grammar slips still reach the lead:** "You also believes…", and "…but has not communicated this", with no subject. Both are added to the check.
+
+**The rule "every verb keeps its subject" is in the stored prompt, as you decided (`33c1694a`, `ff318f1e`).** It was appended in code after the stored prompt, so no report's `promptVersionId` showed it. It is now part of the stored `report_synthesis` prompt, and the copy added in code is removed. On restart the product created and activated **`report_synthesis` version 7**. I tested sales, seniorhire and openread once each:
+- every report records version 7;
+- every problem count in the scorer is 0;
+- 260 of 260 quotes are word for word in the record;
+- the judgements read as before.
+
+One old example in the rules the code adds after the stored prompt had the same fault ("…and has completed six", with no subject). It contradicted the new rule, so I corrected that example only, and added no rule text there.
 
 **What it does not cover yet:**
 - The board's own sentences, which are built when the board is opened, not stored. The check sees the report text the board uses, but not those.

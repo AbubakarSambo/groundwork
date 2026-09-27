@@ -728,102 +728,7 @@ function withNamesOutsideTheQuotes(
         .replace(new RegExp(`\\bthe ${hesc}'s\\b`, 'gi'), 'your')
         .replace(new RegExp(`\\bthe ${hesc}\\b`, 'gi'), 'you');
     }
-    text = text
-      /**
-       * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
-       *
-       * The model writes about every party in the third person, so a label swapped for "you"
-       * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
-       * which becomes "you described their role" - fixing the name and keeping the wrongness.
-       *
-       * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
-       * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
-       * broadening it to any word changed no test result, which is how the overstatement showed up.
-       *
-       * These are verbs of ACCOUNTING - giving your version of something. After one of them,
-       * "their" can only be the speaker's own. After an ordinary verb it usually is not:
-       * "you emailed their manager" is about somebody else's manager and is already correct.
-       */
-      .replace(
-        /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
-        (_m, verb) => `you ${verb} your`,
-      )
-      /**
-       * AND THE VERB AGREES WITH "YOU".
-       *
-       * The model writes about every party in the third person, so a label swapped for "you" leaves
-       * the conjugation behind. Seen in a live report a moment after this was driven: "You is
-       * concerned this sign-off will drift" and "You referenced an offer letter" sitting in the same
-       * paragraph. The first reads as broken software, on the one screen whose whole claim is that
-       * it holds what people said carefully.
-       *
-       * A CLOSED LIST, not `\w+s`. "You" followed by a bare noun is ungrammatical, so a general
-       * rule would usually be right and would occasionally mangle a real sentence - and there is no
-       * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
-       * a report of this kind actually uses.
-       *
-       * THE LIST GREW BY FOUR, FOUND BY LOOKING RATHER THAN BY GUESSING. Every `you <word>s` across
-       * all twenty-four scenarios' served reports and boards was read, and four were genuine verbs
-       * left in the third person: "you blames the market", "this is work you owes Dele", "while you
-       * points to collecting customer bank statements", "Dr is leading the client meetings while
-       * you observes".
-       *
-       * AND FOUR IN THE SAME SEARCH WERE CORRECT ENGLISH, which is the argument for the closed list
-       * standing up in the open: "Grace's own plan for you calls for two signed distribution
-       * agreements" and "which for you means the supplier acknowledging tickets within four hours".
-       * The subject is the plan and the agreement; "you" is the object of "for". A general rule
-       * would have broken both.
-       */
-      /**
-       * AND NOT WHERE "YOU" IS THE OBJECT OF A PREPOSITION, WHICH THE SAME SEARCH TURNED UP AS A
-       * LIVE BUG IN THE RULES BELOW. On a real lead's report:
-       *
-       *   "A key worry for you is that you didn't see this coming."
-       *
-       * `\byou is\b` would make that "A key worry for you are that...". The subject is "a key
-       * worry"; "for you" is where the worry lands. One signal separates this from every case the
-       * rules are for - a preposition immediately before "you" - and it is checkable rather than
-       * guessed, so it guards all of them rather than only the new verbs.
-       */
-      /*
-       * AND ONE OR TWO ADVERBS MAY SIT BETWEEN THEM. "You also believes the credit committee is the only
-       * delay" reached a lead (check-1, check-2): the rules below looked for the verb straight after
-       * "you". An adverb between them changes nothing about whose verb it is, so these few are allowed.
-       */
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}is\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}are`)
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}was\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}were`)
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}has\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}have`)
-      .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}does\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}do`)
-      .replace(
-        new RegExp(
-          `${NOT_THE_OBJECT_OF}(you )${ADVERBS}(` +
-            [
-              'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
-              'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
-              'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
-              'appears', 'remains', 'intends', 'accepts', 'refers',
-              /* The four the twenty-four-scenario search actually produced. */
-              'blames', 'observes', 'owes', 'points',
-              /* And "The initiator agrees" read by the initiator as "You agrees" (27 September 2026,
-                 found while fixing the title in a name). Verbs of accounting again, all regular. */
-              'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
-              'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
-            ].join('|') +
-            ')\\b',
-          'gi',
-        ),
-        (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${String(verb).replace(/s$/, '')}`,
-      );
-
-    /**
-     * AND A SENTENCE STILL STARTS WITH A CAPITAL.
-     *
-     * "The sales lead described..." becomes "you described..." because the label was lowercase
-     * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
-     * the whole sentence rather than just that the name was gone - checking only for the absence
-     * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
-     */
-    text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+    text = theVerbAgreesWithYouIn(text);
 
     /**
      * AND THE NEXT SENTENCE, WHICH IS STILL ABOUT THEM.
@@ -1065,4 +970,119 @@ export function eachSideGetsSomebody<T extends { participantLabel?: string | nul
     const next = spare.shift();
     return next ? { ...side, participantLabel: next } : side;
   });
+}
+
+/**
+ * THE VERB AGREES WITH "YOU", AND A SENTENCE THAT STARTS WITH IT HAS ITS CAPITAL.
+ *
+ * Out of `withNames`, so text the product builds with the reader's "you" already in it gets the same
+ * treatment as text that had a label swapped. Seniorhire, check-3, the lead's report, a probe built
+ * as `${who} is waiting on them for ...` with `who` already "you": "you is waiting on them for the
+ * initiation of commercial discussions." That text never went through `withNames`, so none of the
+ * rules below reached it. Nothing in here knows who anybody is; it only makes "you" read as "you".
+ */
+export function theVerbAgreesWithYouIn(input: string): string {
+  let text = input;
+  text = text
+    /**
+     * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
+     *
+     * The model writes about every party in the third person, so a label swapped for "you"
+     * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
+     * which becomes "you described their role" - fixing the name and keeping the wrongness.
+     *
+     * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
+     * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
+     * broadening it to any word changed no test result, which is how the overstatement showed up.
+     *
+     * These are verbs of ACCOUNTING - giving your version of something. After one of them,
+     * "their" can only be the speaker's own. After an ordinary verb it usually is not:
+     * "you emailed their manager" is about somebody else's manager and is already correct.
+     */
+    .replace(
+      /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
+      (_m, verb) => `you ${verb} your`,
+    )
+    /**
+     * AND THE VERB AGREES WITH "YOU".
+     *
+     * The model writes about every party in the third person, so a label swapped for "you" leaves
+     * the conjugation behind. Seen in a live report a moment after this was driven: "You is
+     * concerned this sign-off will drift" and "You referenced an offer letter" sitting in the same
+     * paragraph. The first reads as broken software, on the one screen whose whole claim is that
+     * it holds what people said carefully.
+     *
+     * A CLOSED LIST, not `\w+s`. "You" followed by a bare noun is ungrammatical, so a general
+     * rule would usually be right and would occasionally mangle a real sentence - and there is no
+     * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
+     * a report of this kind actually uses.
+     *
+     * THE LIST GREW BY FOUR, FOUND BY LOOKING RATHER THAN BY GUESSING. Every `you <word>s` across
+     * all twenty-four scenarios' served reports and boards was read, and four were genuine verbs
+     * left in the third person: "you blames the market", "this is work you owes Dele", "while you
+     * points to collecting customer bank statements", "Dr is leading the client meetings while
+     * you observes".
+     *
+     * AND FOUR IN THE SAME SEARCH WERE CORRECT ENGLISH, which is the argument for the closed list
+     * standing up in the open: "Grace's own plan for you calls for two signed distribution
+     * agreements" and "which for you means the supplier acknowledging tickets within four hours".
+     * The subject is the plan and the agreement; "you" is the object of "for". A general rule
+     * would have broken both.
+     */
+    /**
+     * AND NOT WHERE "YOU" IS THE OBJECT OF A PREPOSITION, WHICH THE SAME SEARCH TURNED UP AS A
+     * LIVE BUG IN THE RULES BELOW. On a real lead's report:
+     *
+     *   "A key worry for you is that you didn't see this coming."
+     *
+     * `\byou is\b` would make that "A key worry for you are that...". The subject is "a key
+     * worry"; "for you" is where the worry lands. One signal separates this from every case the
+     * rules are for - a preposition immediately before "you" - and it is checkable rather than
+     * guessed, so it guards all of them rather than only the new verbs.
+     */
+    /*
+     * AND ONE OR TWO ADVERBS MAY SIT BETWEEN THEM. "You also believes the credit committee is the only
+     * delay" reached a lead (check-1, check-2): the rules below looked for the verb straight after
+     * "you". An adverb between them changes nothing about whose verb it is, so these few are allowed.
+     */
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}is\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}are`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}was\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}were`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}has\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}have`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}does\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}do`)
+    .replace(
+      new RegExp(
+        `${NOT_THE_OBJECT_OF}(you )${ADVERBS}(` +
+          [
+            'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
+            'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
+            'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
+            'appears', 'remains', 'intends', 'accepts', 'refers',
+            /* The four the twenty-four-scenario search actually produced. */
+            'blames', 'observes', 'owes', 'points',
+            /* And "The initiator agrees" read by the initiator as "You agrees" (27 September 2026,
+               found while fixing the title in a name). Verbs of accounting again, all regular. */
+            'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
+            'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
+          ].join('|') +
+          ')\\b',
+        'gi',
+      ),
+      (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${String(verb).replace(/s$/, '')}`,
+    );
+
+  /**
+   * AND A SENTENCE STILL STARTS WITH A CAPITAL.
+   *
+   * "The sales lead described..." becomes "you described..." because the label was lowercase
+   * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
+   * the whole sentence rather than just that the name was gone - checking only for the absence
+   * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
+   */
+  text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+  return text;
+}
+
+/** The same, with somebody's own words in quotation marks left exactly as they are. */
+export function theVerbAgreesWithYou(text: string): string {
+  return text ? theQuotesKept(text, theVerbAgreesWithYouIn) : text;
 }

@@ -52,7 +52,9 @@ import {
   whatThePlaceIsWaitingOn,
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
-import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson } from '../patterns/who-reads-a-pattern';
+import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -290,7 +292,13 @@ export class BoardService {
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
-    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
+    /*
+     * NO PATTERN SECTION WHILE PATTERNS ARE NOT SERVED. The family still lists it, so turning the
+     * switch on brings it back where it was; off, the board neither builds it nor tells the page it
+     * has one. See patterns-are-served.
+     */
+    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
+      .filter((s) => PATTERNS_ARE_SERVED || s !== 'patterns');
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -403,11 +411,28 @@ export class BoardService {
      * "A colleague" (see plainWordsByPerson).
      */
     /* Somebody with no name, in the same plain words every surface uses: "A colleague", "Another colleague". */
-    const noName = plainWordsByPerson(ground.participants as any);
+    /*
+     * AND WHERE PEOPLE SEE ONLY THEMSELVES, NOBODY BUT THE READER AND THE LEAD IS NAMED TO THEM.
+     *
+     * Found 27 September 2026: the wall below took other people's rows off a participant's board,
+     * and every name still came through the one place names come from - the list of people, both
+     * ends of a handoff (screens request 19), who picked a time in the poll. So the wall is here,
+     * in the name itself: on such a check-in a participant reads their own name, the lead's, and
+     * "one colleague", "another colleague" for everybody else, in the same words the reports use,
+     * because the names they may see are worked out by the same rule (namesVisibleTo). The lead
+     * and admins are never walled, and read everybody.
+     */
+    const noName = plainWordsByPerson(
+      ground.participants as any,
+      whoMaySee.peersHidden ? namesVisibleTo(me?.id ?? null, ground.participants as any, false) : undefined,
+    );
     const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
+    const theLeadsRow = ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id ?? null;
+    const hiddenFromThisReader = (pid: string) => whoMaySee.peersHidden && pid !== me?.id && pid !== theLeadsRow;
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
+      if (hiddenFromThisReader(pid)) return aColleague(pid);
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
@@ -558,7 +583,8 @@ export class BoardService {
        * something, and because three of these were empty in the report on the one engagement that
        * was entirely about them. See what-the-record-shows-over-time.
        */
-      overTime: isInitiator ? ((ground as any).report?.overTime ?? null) : null,
+      /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
+      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
@@ -1217,40 +1243,26 @@ export class BoardService {
     }
 
     if (has('patterns')) {
-      // WORK patterns only. Patterns that judge a PERSON - arc concentration
-      // and collusion risk - are computed but stay in the private report for the
-      // lead. Putting a collusion flag on a surface everyone reads would be
-      // public accusation. Non-negotiable.
+      /*
+       * WHAT KEEPS COMING UP, UNDER HAFSAH'S RULES AND NO OTHER. See patterns/who-reads-a-pattern.
+       *
+       * This section used to serve every SURFACED row on the ground to every reader, with its
+       * internal name as `label` and the library's question as `askThem`: "Blame Shifting" beside
+       * Ngozi's work on Femi's own board, and "Named Collaborator" on the lead's after one session.
+       * Now the reader's own patterns, or everybody's for whoever runs the check-in, after three
+       * periods, in plain words, and nothing else. The person-judging codes (collusion, arc
+       * concentration, E4, F5) have no plain name, so they never reach it.
+       */
       const detections = await this.prisma.patternDetection.findMany({
-        where: { groundId, status: 'SURFACED' },
-        select: { code: true, observationText: true, periodsObserved: true },
-        orderBy: { createdAt: 'desc' },
-        take: 12,
+        where: { groundId },
+        select: PATTERN_ROW_SELECT,
+        orderBy: { lastSeenAt: 'desc' },
+        take: 60,
       });
-      out.patterns = detections
-        .filter((d) => !PERSON_JUDGING_CODES.has(d.code))
-        .map((d) => ({
-          code: d.code,
-          // Only label a code this library actually knows. The model sometimes
-          // invents codes ("k5"), and a raw key on a shared board reads like a
-          // system leak - the observation text carries the meaning anyway.
-          label: PATTERN_NAME_BY_CODE.get(d.code) ?? null,
-          text: d.observationText,
-          periods: d.periodsObserved,
-          /*
-           * AND WHAT TO DO ABOUT IT, which the board was leaving in the library.
-           *
-           * "i would expect a coaching line or an assessment after, what do i do with this" - about
-           * "Direct questions about deliverables were met with unrelated statements about needs and
-           * blockers." Every pattern has carried a `probe` since the library was written: the
-           * question to put to somebody once the pattern has been seen, which is the entire reason
-           * a pattern is worth naming. It just never left the file.
-           *
-           * A question, not a verdict. A pattern is something the record has noticed more than
-           * once; the next move is asking the person about it.
-           */
-          askThem: whatToAskAbout(d.code),
-        }));
+      const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
+      out.patterns = servedPatterns(detections as any, patternReader, whoIsWhoIn(ground.participants as any, ground.initiatorId));
+      /* The person reading their own for the first time starts the clock on when the lead may read it. */
+      await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(detections as any, out.patterns as any));
     }
 
     if (has('poll')) {
@@ -1276,10 +1288,19 @@ export class BoardService {
      */
     if (whoMaySee.peersHidden) {
       out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
-      out.coverage = onlyWhatThisReaderMaySee(out.coverage as any, whoMaySee);
+      /*
+       * COVERAGE IS NOT A LIST. It is `{ scope, reads }`, and handing the whole object to a filter
+       * for lists threw "rows.filter is not a function", so a participant on a delivery check-in
+       * where people see only themselves got an error instead of a board. The rows are the reads;
+       * the wall goes round those and the shape the page draws stays as it is.
+       */
+      if (out.coverage) {
+        out.coverage = { ...(out.coverage as any), reads: onlyWhatThisReaderMaySee((out.coverage as any).reads, whoMaySee) ?? [] };
+      }
       out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
       out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
-      out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
+      /* servedPatterns already serves a participant only their own; the wall stays round it as well. */
+      if (out.patterns) out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
       out.dependencies = onlyHandoffsTheyAreIn(out.dependencies as any, whoMaySee);
       if (out.checkInGrid) {
         out.checkInGrid = {
@@ -2008,13 +2029,3 @@ export class BoardService {
 
 }
 
-/**
- * Codes that judge a PERSON rather than the work. Computed, kept in the private
- * report for the lead, NEVER rendered on the shared board. Same principle as the
- * existing arc-signals lead-only gate.
- */
-const PERSON_JUDGING_CODES = new Set([
-  'COLLUSION_RISK',
-  'F5', 'E4', 'LOW_SPEC_MULTI_DIM',
-  'ARC_CONCENTRATED_FINISH',
-]);

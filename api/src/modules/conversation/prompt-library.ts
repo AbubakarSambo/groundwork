@@ -11,7 +11,7 @@ import { whereInTheRun } from './where-in-the-run';
  * the half that says to write "you"; REPORT_SYNTHESIS is written once in labels and rendered for
  * several readers, so it gets the rules without it and the label rule arrives with SYNTHESIS_RULES.
  */
-import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from './plain-words';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER, EVERY_VERB_KEEPS_ITS_SUBJECT } from './plain-words';
 
 /**
  * THE MOAT - exact Part 3 wording.
@@ -1636,7 +1636,9 @@ Do not use a thin or absent record to imply evasion. Note it factually.
 
 ═══════════════════════════════════════════════════════════
 
-${PLAIN_WORDS}`;
+${PLAIN_WORDS}
+
+${EVERY_VERB_KEEPS_ITS_SUBJECT}`;
 
 // ---------------------------------------------------------------------------
 // Record extraction - pulls structured entries from one party's transcript.

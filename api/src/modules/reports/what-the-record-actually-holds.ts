@@ -1,3 +1,5 @@
+import { HIDDEN } from '../documents/bank-details-are-never-kept';
+
 /**
  * THE ARITHMETIC BEHIND G10, G31 AND G34, KEPT AWAY FROM THE SERVICE.
  *
@@ -254,7 +256,10 @@ const A_MACHINE_MARKER = /\s*\[[A-Z][A-Z_]{2,}(?::|\s)[^\]]*\]/g;
  * Lower-case or mixed-case inside the brackets, deliberately: the SHOUTING form above is machinery
  * and already handled, and telling them apart is what stops this eating "[Q3]" or "[draft]".
  */
-const AN_EDITORIAL_INSERTION = /\s*\[(?=[^\]]*[a-z])[^\]]{6,}\]/g;
+/* Never the product's own "[account number hidden]": that is what stands where they typed a bank or
+   card number (decision 35), and a quote of the line has to say a number was hidden. */
+const A_HIDDEN_NUMBER = Object.values(HIDDEN).map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+const AN_EDITORIAL_INSERTION = new RegExp(`\\s*(?!${A_HIDDEN_NUMBER})\\[(?=[^\\]]*[a-z])[^\\]]{6,}\\]`, 'g');
 /* And a one-word insertion - "not [given] a specific date" (a participant's report, 20 Sep 2026) - is
    too short for the rule above, so the brackets come off and the word stays: it reads as theirs either
    way, and "not a specific date" is the worse sentence. */

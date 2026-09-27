@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard } from './your-board';
@@ -72,7 +73,7 @@ export class YourBoardService {
             select: { participantId: true, currentStep: true, updatedAt: true },
           })
         : none,
-      this.myTodos(reader.organizationId, reader.email),
+      this.myTodos(reader.organizationId, reader.email, reader.userId),
       /* Everything asked of you (D3, U.16): open handoffs on your own place in your own check-ins. */
       participantIds.length
         ? this.prisma.groundDependency.findMany({
@@ -131,8 +132,10 @@ export class YourBoardService {
    * organisation, matched by your email the same way your own data export matches it. Somebody with
    * no directory record has no list, which is a real answer.
    */
-  private async myTodos(organizationId: string, email: string) {
+  private async myTodos(organizationId: string, email: string, userId?: string) {
     if (!email) return [];
+    /* A guest here has no record on this list, even when an entry shares their address. See a-guest-is-never-somebody-on-the-hosts-list. */
+    if (await isAGuestIn(this.prisma, organizationId, { userId, email })) return [];
     const person = await this.prisma.person.findFirst({
       where: { organizationId, email: { equals: email, mode: 'insensitive' } },
       select: { externalId: true },

@@ -30,13 +30,15 @@ describe('a room is not a population', () => {
   /* The run this came from: four salespeople, three of them "blocked" for three different reasons. */
   it('gives the model one block per person, not a count', () => {
     const out = theRoom([
-      person('Femi', { role: 'Relationship officer, Lagos', finding: '31 applications, none submitted.', patterns: [{ code: 'K5', name: 'Activity Without Outcome Logic', observation: 'Calls, not documents.', seenInSessions: [1, 2, 3] }] }),
+      person('Femi', { role: 'Relationship officer, Lagos', finding: '31 applications, none submitted.', patterns: [{ name: 'Tasks are described without saying what they are for', observation: 'Calls, not documents.', seenInSessions: [1, 2, 3] }] }),
       person('Ngozi', { finding: 'Eleven files at credit committee, escalated once.' }),
     ], [], 3);
     expect(out).toContain('2 people, 3 sessions.');
     expect(out).toContain('--- Femi');
     expect(out).toContain('31 applications, none submitted.');
-    expect(out).toContain('seen in sessions 1, 2, 3 [K5 Activity Without Outcome Logic]');
+    /* The plain name, never the code or the internal name: the lead reads what the model writes from this. */
+    expect(out).toContain('seen in sessions 1, 2, 3 (Tasks are described without saying what they are for)');
+    expect(out).not.toMatch(/K5|Activity Without Outcome Logic/);
     expect(out).toContain('--- Ngozi');
   });
 

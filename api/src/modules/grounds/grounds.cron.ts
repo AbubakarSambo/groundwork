@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
@@ -669,13 +670,14 @@ export class GroundsCron {
         groundId: true,
         participantId: true,
         sessionNumber: true,
-        participant: { select: { email: true, ground: { select: { organizationId: true } } } },
+        participant: { select: { email: true, userId: true, ground: { select: { organizationId: true } } } },
       },
       take: 200,
     });
     for (const ci of opened) {
       try {
-        const person = ci.participant.email
+        /* A guest's check-in is announced as nobody's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+        const person = ci.participant.email && !(await isAGuestIn(this.prisma, ci.participant.ground.organizationId, ci.participant))
           ? await this.prisma.person.findFirst({
               where: { organizationId: ci.participant.ground.organizationId, email: ci.participant.email, active: true },
               select: { externalId: true },

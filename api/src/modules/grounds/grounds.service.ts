@@ -2,7 +2,9 @@ import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
-import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -69,6 +71,7 @@ import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-thi
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
@@ -1520,9 +1523,9 @@ export class GroundsService {
          */
         resolution: { select: RESOLUTION_ON_THE_GROUND },
         patternDetections: {
-          select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
+          select: PATTERN_ROW_SELECT,
+          orderBy: { lastSeenAt: 'desc' },
+          take: 60,
         },
       },
     });
@@ -1565,9 +1568,9 @@ export class GroundsService {
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
             resolution: { select: RESOLUTION_ON_THE_GROUND },
             patternDetections: {
-              select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
-              orderBy: { createdAt: 'desc' },
-              take: 10,
+              select: PATTERN_ROW_SELECT,
+              orderBy: { lastSeenAt: 'desc' },
+              take: 60,
             },
           },
         });
@@ -1622,36 +1625,24 @@ export class GroundsService {
     const rawBrief = (ground as any).brief ?? null;
     const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
-    /* The board's alignment feed. Codes on ALIGNMENT_FEED_ONLY_CODES are the engine talking to
-       itself ("Session 2 will use a different approach") and never reach a person; only SURFACED
-       detections do, the same rule as the report. */
-    /* NOT A TEXT. The feed used to print the model's own observation sentence, which is how "the
-       individual" reached a shared board. It prints the pattern library's fixed sentence for the code,
-       the same words every time the same pattern appears, plus how many sessions it was seen across,
-       which is the fact that makes it a pattern. The model's sentence stays on the row for admin. */
-    const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
-    const signals = (ground.patternDetections ?? [])
-      .filter((pd) => !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE' && catalogue.has(pd.code))
-      .map((pd) => ({
-        id: pd.id,
-        groundId: id,
-        code: pd.code,
-        sessionNum: pd.periodsObserved,
-        periodsObserved: pd.periodsObserved,
-        /*
-         * THREE ANSWERS, BECAUSE THERE ARE THREE KINDS. A code saying somebody is carrying what
-         * nobody else picked up is not a good sign and is not a pattern in them; badged as either
-         * it says something untrue. See WHAT_A_CARRYING_CODE_IS_CALLED.
-         */
-        type: (isPositiveCode(pd.code)
-          ? 'Good sign'
-          : isCarryingCode(pd.code)
-            ? WHAT_A_CARRYING_CODE_IS_CALLED
-            : 'Pattern') as 'Good sign' | 'Pattern' | 'Carrying',
-        text: catalogue.get(pd.code)!.signal,
-        confidenceDelta: null,
-        createdAt: pd.createdAt.toISOString(),
-      }));
+    /*
+     * WHAT KEEPS COMING UP, ON THE CHECK-IN'S OWN PAGE, UNDER THE SAME RULES AS THE BOARD.
+     *
+     * This feed served the ten latest SURFACED rows on the ground to every reader of the page, with
+     * the code and a "Pattern" badge, so a participant read a colleague's pattern and anybody read
+     * good news seen once. It is now the reader's own patterns, or everybody's for whoever runs the
+     * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
+     * at all while patterns are not served, and then not even the reader lookup is made.
+     */
+    const signals = PATTERNS_ARE_SERVED
+      ? servedPatterns(
+          ground.patternDetections as any,
+          await this.patternReaderOf(ground as any, requestingUserId),
+          whoIsWhoIn(ground.participants as any, ground.initiatorId),
+        ).map((p) => ({ ...p, groundId: id }))
+      : [];
+    /* The person reading their own for the first time starts the clock on when the lead may read it. */
+    await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(ground.patternDetections as any, signals));
 
     // Extract context notes from groundAuditLog (stored under key contextNotes).
     const rawLog = (ground as any).groundAuditLog;
@@ -2061,10 +2052,12 @@ export class GroundsService {
      */
     const contextLines = await (this.prisma.groundContextItem?.findMany?.({
       where: { groundId: id },
-      select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true },
+      select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const contextItems = theLinesFor(contextLines as any, { isTheLead: isInitiatorViewer || viewerAdminsThisOrg });
+    /* The lead's questions for people, one card each: never built for anybody else. See questionsForPeople. */
+    const questionsForPeople = (isInitiatorViewer || viewerAdminsThisOrg) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
     /*
      * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT A TARGET, BESIDE THE TARGET.
      *
@@ -2138,6 +2131,8 @@ export class GroundsService {
       commitments,
       /* The buckets. Already filtered above: a participant is never sent a line about anybody. */
       contextItems,
+      /* The lead's alone, and absent - not empty - for everybody else. */
+      ...(questionsForPeople ? { questionsForPeople } : {}),
       /* What each person is still to show, keyed by participant. Everybody may see these: a promise
          to hand something over was made out loud, and the page is where it is kept. */
       asks,
@@ -2374,6 +2369,9 @@ export class GroundsService {
     requestingUserId: string,
     history: { role: 'user' | 'assistant'; content: string }[],
   ) {
+    /* A pasted invoice or price list keeps no bank details, before the model reads it or any of it
+       is kept. See documents/bank-details-are-never-kept. */
+    history = withoutBankDetailsInEachTurn(history);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -2701,7 +2699,26 @@ export class GroundsService {
       gaps: gaps.map((g: { key: string }) => g.key),
       done: gaps.length === 0,
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
-      proposal: proposal.kind === 'none' ? null : { gap: proposal.kind, say: forHumans(proposal.say) },
+      proposal: proposal.kind === 'none' ? null : {
+        gap: proposal.kind,
+        say: forHumans(proposal.say),
+        /*
+         * EACH QUESTION FOR A PERSON, AS IT WILL BE ASKED. Not written yet, so no id: the yes to this
+         * list keeps them, and each one is then confirmed, changed or left out on its own through
+         * questionsForPeople. The exact sentence is not passed through forHumans - it is what the
+         * lead will confirm, and the person will read it word for word.
+         */
+        ...((proposal.kind as string) === 'everything' && fromAPaste?.questionsForPeople?.length ? {
+          questionsForPeople: fromAPaste.questionsForPeople.map((q) => ({
+            id: null,
+            participantId: q.participantId,
+            who: q.who,
+            exactQuestion: q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who),
+            says: whatGroundworkWillAsk(q.who, q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who)),
+            status: 'not yet kept',
+          })),
+        } : {}),
+      },
     };
   }
 
@@ -2833,7 +2850,7 @@ export class GroundsService {
       }).catch(() => [] as any[]),
       this.prisma.groundContextItem?.findMany?.({
         where: { groundId, closedAt: null },
-        select: { kind: true, text: true, aboutParticipantId: true },
+        select: { kind: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
         orderBy: { createdAt: 'asc' },
       })?.catch(() => [] as any[]) ?? Promise.resolve([] as any[]),
       this.prisma.groundCommitment?.findMany?.({
@@ -2873,7 +2890,7 @@ export class GroundsService {
         heading: 'Your own read of people and the questions you want asked (never quoted to them)',
         lines: [
           ...(lines as any[]).filter((l) => l.kind === 'ABOUT_A_PERSON').slice(0, 10).map((l) => `${who(l.aboutParticipantId) ?? 'somebody'}: ${l.text}`),
-          ...(lines as any[]).filter((l) => l.kind === 'QUESTION_FOR_PERSON').slice(0, 10).map((l) => `ask ${who(l.aboutParticipantId) ?? 'somebody'}: ${l.text}`),
+          ...(lines as any[]).filter((l) => l.kind === 'QUESTION_FOR_PERSON').slice(0, 10).map((l) => `${l.questionConfirmedAt && l.exactQuestion ? 'confirmed, and asked word for word' : 'waiting for you to confirm it, and not asked until you do'}. ${whatGroundworkWillAsk(who(l.aboutParticipantId) ?? 'somebody', (l.exactQuestion ?? '').trim() || plainQuestionFrom(l.text, who(l.aboutParticipantId)))}`),
           ...(lines as any[]).filter((l) => l.kind === 'BETWEEN_PEOPLE').slice(0, 6).map((l) => l.text as string),
         ],
       },
@@ -2966,7 +2983,8 @@ export class GroundsService {
       if (intent === 'drop' || intent === 'settle') {
         await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { closedAt: new Date() } });
       } else if (intent === 'reword' && change.newText?.trim()) {
-        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { text: change.newText.trim().slice(0, 400) } });
+        const text = change.newText.trim().slice(0, 400);
+        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { text, ...(thing.kind === ContextItemKind.QUESTION_FOR_PERSON ? aQuestionReworded(text) : {}) } });
       }
       return;
     }
@@ -2989,6 +3007,53 @@ export class GroundsService {
     } else if (intent === 'reword' && change.newText?.trim()) {
       await this.prisma.groundObjective.update({ where: { id: thing.id }, data: { name: change.newText.trim().slice(0, 120) } });
     }
+  }
+
+  /*
+   * The last few drafts, so the list the lead is shown and the line that is written from their yes a
+   * minute later carry the same sentence where the paste read gave the same question twice.
+   */
+  private _draftedQuestions?: Map<string, string>;
+  private get draftedQuestions(): Map<string, string> {
+    if (!this._draftedQuestions) this._draftedQuestions = new Map();
+    return this._draftedQuestions;
+  }
+
+  /** What the lead has written privately about this person: their notes and their read of them. */
+  private async theLeadsOwnWordsAbout(groundId: string, participantId: string): Promise<string[]> {
+    const [notes, lines] = await Promise.all([
+      (this.prisma.leadContextNote?.findMany?.({ where: { groundId, participantId }, select: { text: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+      (this.prisma.groundContextItem?.findMany?.({ where: { groundId, aboutParticipantId: participantId, kind: { in: ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE'] as any } }, select: { text: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+    ]);
+    return [...(notes as any[]), ...(lines as any[])].map((r) => (r?.text ?? '') as string).filter(Boolean);
+  }
+
+  /**
+   * THE QUESTION AS GROUNDWORK WILL ASK IT, drafted by the model from the lead's words and the
+   * person's first name only, checked in code, and the lead's own words made a sentence where the
+   * draft fails. Still only a proposal: nothing reads it into a session until the lead confirms it.
+   */
+  private async theExactQuestionFor(
+    participantId: string,
+    person: { nameGiven?: string | null; email?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null } | null,
+    leadQuestion: string,
+    privateWords: (string | null | undefined)[],
+  ): Promise<string> {
+    const key = `${participantId}::${leadQuestion.replace(/\s+/g, ' ').trim().toLowerCase()}`;
+    const held = this.draftedQuestions.get(key);
+    if (held) return held;
+    const name = (person?.user?.firstName ?? person?.nameGiven ?? '').trim().split(' ')[0] || 'them';
+    const drafted = await this.anthropic.extract<{ question?: string }>(
+      THE_EXACT_QUESTION_PROMPT(name),
+      [{ role: 'user' as const, content: `The question as the person running the check-in wrote it: "${leadQuestion}"` }],
+      THE_EXACT_QUESTION_TOOL as any,
+      { fast: true },
+    ).catch((err: any) => { this.logger.warn(`Drafting a question for ${participantId} failed: ${err?.message}`); return null; });
+    const out = theExactQuestion(drafted?.question, { leadQuestion, name, privateWords });
+    if (!out.fromTheDraft) this.logger.warn(`A drafted question for ${participantId} did not hold, so the lead's own words were used.`);
+    if (this.draftedQuestions.size > 200) this.draftedQuestions.clear();
+    this.draftedQuestions.set(key, out.exactQuestion);
+    return out.exactQuestion;
   }
 
   private async whatAPasteGives(groundId: string, pasted: string): Promise<WhatAPasteGives | null> {
@@ -3049,6 +3114,20 @@ export class GroundsService {
       const who = whoThisNameIs(r.personName, people as any);
       if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
       questionsForPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, question: r.question.trim().slice(0, 400) });
+    }
+    /*
+     * EACH ONE WRITTEN ONCE, AS IT WILL BE ASKED. Decision 34. The lead's own read of that person - in
+     * this paste, in their description of them, in their notes - goes to the check, never to the
+     * drafter. See a-question-asked-word-for-word.
+     */
+    for (const q of questionsForPeople) {
+      const person = people.find((p) => p.id === q.participantId) as any;
+      const privateWords = [
+        person?.roleAsDescribed,
+        ...(read.aboutPeople ?? []).filter((a) => whoThisNameIs(a?.personName ?? '', people as any)?.id === q.participantId).map((a) => a.observation),
+        ...(await this.theLeadsOwnWordsAbout(groundId, q.participantId)),
+      ];
+      q.exactQuestion = await this.theExactQuestionFor(q.participantId, person, q.question, privateWords);
     }
     /* Both people have to be on the check-in, or it is not a pair this product can hold. */
     const betweenPeople: WhatAPasteGives['betweenPeople'] = [];
@@ -3123,6 +3202,8 @@ export class GroundsService {
      */
     dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
   ) {
+    /* The same words the chat was given, so no bank details are kept on a yes either. */
+    dto = { ...dto, said: withoutBankDetails(dto?.said) as string, ...(dto?.history ? { history: withoutBankDetailsInEachTurn(dto.history) } : {}) };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3268,13 +3349,16 @@ export class GroundsService {
         const left = [...leaves.teamTargets, ...leaves.people, ...leaves.commitments];
         const wroteSome = await this.writeWhatThePasteGave(groundId, got);
         const say = `${whatWeTookFromThat(got) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
-        return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say };
+        const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
+        return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say, ...(questionsForPeople ? { questionsForPeople } : {}) };
       }
       if (got) {
         const wrote = await this.writeWhatThePasteGave(groundId, got);
         /* Only a whole yes marks the paste as taken: a partial one leaves the rest still to take. */
         await (this.prisma.groundPaste?.create?.({ data: { groundId, hash } }) ?? Promise.resolve(null)).catch(() => null);
-        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got) ?? 'Recorded.' };
+        /* And the questions it kept, each waiting for its own yes. See confirmQuestionForPerson. */
+        const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
+        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
         /* Nothing new to write means it is already on the record, which is not a failure to report as
            one: saying yes twice to the same list used to fall through to one-gap-at-a-time. */
         return { changed: 'nothing new', say: 'That is already on the record. Nothing was written twice.' };
@@ -3555,7 +3639,7 @@ export class GroundsService {
         select: { id: true, kind: true, text: true, aboutParticipantId: true },
       }).catch(() => [] as { id: string; kind: string; text: string; aboutParticipantId: string | null }[]);
       /* The same line said at a different length is the same line - see theSameMeasure. */
-      const line = async (kind: ContextItemKind, text: string, opts?: { about?: string | null; saidAs?: string | null }) => {
+      const line = async (kind: ContextItemKind, text: string, opts?: { about?: string | null; saidAs?: string | null; exactQuestion?: string | null }) => {
         const clean = (text ?? '').trim();
         if (!clean) return;
         const about = opts?.about ?? null;
@@ -3572,6 +3656,8 @@ export class GroundsService {
             aboutParticipantId: about,
             source: 'PASTE',
             authorUserId: author,
+            /* Never confirmed here: `questionConfirmedAt` is only ever set by the lead's own yes to it. */
+            ...(kind === ContextItemKind.QUESTION_FOR_PERSON && opts?.exactQuestion ? { exactQuestion: opts.exactQuestion.slice(0, 400) } : {}),
           },
         }).catch((err: any) => this.logger.warn(`Could not keep a context line on ${groundId}: ${err?.message}`));
         wrote = true;
@@ -3582,7 +3668,21 @@ export class GroundsService {
       for (const t of got.notSettled) await line(ContextItemKind.UNSETTLED, t);
       for (const t of got.notes) await line(ContextItemKind.NOTE, t);
       for (const a of got.aboutPeople) await line(ContextItemKind.ABOUT_A_PERSON, a.observation, { about: a.participantId });
-      for (const q of got.questionsForPeople) await line(ContextItemKind.QUESTION_FOR_PERSON, q.question, { about: q.participantId });
+      /*
+       * A QUESTION IS KEPT WITH ITS EXACT SENTENCE, AND NOT CONFIRMED. The yes to the paste keeps it;
+       * only the lead's yes to that one sentence lets it be asked. See confirmQuestionForPerson. An
+       * older line with the same question and no sentence is given the draft, and still waits.
+       */
+      for (const q of got.questionsForPeople) {
+        const exact = q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who);
+        const older = held.find((h) => h.kind === ContextItemKind.QUESTION_FOR_PERSON && (h.aboutParticipantId ?? null) === q.participantId && theSameMeasure(h.text ?? '', q.question));
+        if (older && older.id !== 'new') {
+          await this.prisma.groundContextItem.updateMany({ where: { id: older.id, exactQuestion: null }, data: { exactQuestion: exact } })
+            .catch((err: any) => this.logger.warn(`Could not draft an older question on ${groundId}: ${err?.message}`));
+          continue;
+        }
+        await line(ContextItemKind.QUESTION_FOR_PERSON, q.question, { about: q.participantId, exactQuestion: exact });
+      }
       for (const b of got.betweenPeople) await line(ContextItemKind.BETWEEN_PEOPLE, `${b.who.join(' and ')}: ${b.issue}`);
     }
 
@@ -3719,6 +3819,7 @@ export class GroundsService {
     requestingUserId: string,
     line: { kind: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' },
   ) {
+    line = { ...line, text: withoutBankDetails(line?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, status: true, endState: true },
@@ -3766,6 +3867,7 @@ export class GroundsService {
     itemId: string,
     change: { text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean },
   ) {
+    if (typeof change?.text === 'string') change = { ...change, text: withoutBankDetails(change.text) };
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const viewer = await this.prisma.user.findUnique({
@@ -3777,6 +3879,7 @@ export class GroundsService {
     }
     const line = await this.prisma.groundContextItem.findFirst({ where: { id: itemId, groundId }, select: { id: true, kind: true } });
     if (!line) throw new NotFoundException('That line is not on this check-in');
+    const aQuestion = line.kind === ContextItemKind.QUESTION_FOR_PERSON;
     /* A line about a person can never be shared, whoever asks - see what-this-check-in-knows. */
     if (change.audience === 'EVERYONE' && !mayBeShared(line.kind)) {
       throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
@@ -3788,12 +3891,132 @@ export class GroundsService {
         ...(text ? { text: text.slice(0, 400) } : {}),
         ...(change.audience ? { audience: change.audience === 'EVERYONE' ? ContextNoteAudience.EVERYONE : ContextNoteAudience.LEAD_ONLY } : {}),
         ...(change.closed === undefined ? {} : { closedAt: change.closed ? new Date() : null }),
+        /* A question reworded, or opened again, waits for the lead's yes to its sentence once more. */
+        ...(aQuestion && text ? aQuestionReworded(text) : {}),
+        ...(aQuestion && change.closed !== undefined ? { questionConfirmedAt: null } : {}),
       },
       select: { id: true, kind: true, text: true, audience: true, aboutParticipantId: true, closedAt: true },
     });
   }
 
+  /**
+   * THE LEAD'S QUESTIONS FOR PEOPLE, ONE CARD EACH, WITH THE EXACT SENTENCE ON IT. Decision 34.
+   *
+   * Waiting ones first: those are what the lead has to do something about. A line kept before 28
+   * September has no sentence, so it is shown its own words made one, marked as written before, and
+   * - like every waiting one - is read into nobody's session until the lead confirms it. Retired and
+   * left-out ones are not listed. Only ever built for the lead or an admin in their organisation;
+   * every caller checks that first.
+   */
+  async theQuestionsForPeople(groundId: string): Promise<AQuestionForAPerson[]> {
+    const [lines, people] = await Promise.all([
+      (this.prisma.groundContextItem?.findMany?.({
+        where: { groundId, kind: ContextItemKind.QUESTION_FOR_PERSON, closedAt: null },
+        select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
+        orderBy: { createdAt: 'asc' },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+      this.prisma.groundParticipant.findMany({
+        where: { groundId },
+        select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+      }).catch(() => [] as any[]),
+    ]);
+    const nameOf = (pid: string | null | undefined) => {
+      const p = (people as any[]).find((x) => x.id === pid);
+      return p ? theNameWeUseFor(p as any) : 'somebody';
+    };
+    const cards = (lines as any[]).filter((l) => (l.text ?? '').trim()).map((l) => aQuestionAsTheLeadReadsIt(l, nameOf(l.aboutParticipantId)));
+    return [...cards.filter((c) => c.status === 'waiting'), ...cards.filter((c) => c.status === 'confirmed')];
+  }
+
+  /** The lead's own questions, read by the lead or an admin in their organisation. */
+  async questionsForPeople(groundId: string, requestingUserId: string): Promise<AQuestionForAPerson[]> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException('The questions for people on this check-in are the lead\'s.');
+    }
+    return this.theQuestionsForPeople(groundId);
+  }
+
+  /**
+   * THE LEAD'S YES TO ONE QUESTION, IN THE WORDS THEY READ OR THE WORDS THEY CHANGED IT TO.
+   *
+   * With no `exactQuestion`, the sentence on the card is what is confirmed - the stored one, or for a
+   * line from before 28 September its own words made a sentence, which is exactly what the card
+   * showed. With one, their wording becomes the question, word for word; it is theirs, so nothing
+   * here rewrites it, and only a bank or card number is hidden, as everywhere a person types.
+   *
+   * The lead's alone, like the context chat's confirmation: an admin covering for them can read the
+   * questions, and the yes that puts a question to somebody stays with the person who runs it.
+   */
+  async confirmQuestionForPerson(
+    groundId: string,
+    requestingUserId: string,
+    itemId: string,
+    dto: { exactQuestion?: string | null } = {},
+  ): Promise<AQuestionForAPerson & { say: string }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the person who runs this check-in can confirm a question for somebody on it.');
+    }
+    /* The same door every other writer goes through: ended, held or out of time refuses alike. */
+    const refused = whyItRefuses(ground.status, ground.endState, 'the lead');
+    if (refused) throw new BadRequestException(refused);
+    const line = await this.prisma.groundContextItem.findFirst({
+      where: { id: itemId, groundId, kind: ContextItemKind.QUESTION_FOR_PERSON },
+      select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, closedAt: true },
+    });
+    if (!line) throw new NotFoundException('That question is not on this check-in.');
+    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context page first if you want it asked.');
+    if (!line.aboutParticipantId) throw new BadRequestException('This question is not for anybody on this check-in, so there is nobody to ask it.');
+    const edited = typeof dto?.exactQuestion === 'string' ? (withoutBankDetails(dto.exactQuestion) as string).replace(/\s+/g, ' ').trim() : '';
+    if (typeof dto?.exactQuestion === 'string' && !edited) throw new BadRequestException('Write the question as you want it asked first.');
+    if (edited.length > 400) throw new BadRequestException('That is too long to ask as one question. Keep it to one or two sentences.');
+    const people = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    const person = people.find((p) => p.id === line.aboutParticipantId);
+    const who = person ? theNameWeUseFor(person as any) : 'somebody';
+    const exactQuestion = edited || (line.exactQuestion ?? '').trim() || plainQuestionFrom(line.text, who);
+    if (!exactQuestion) throw new BadRequestException('Write the question as you want it asked first.');
+    const saved = await this.prisma.groundContextItem.update({
+      where: { id: line.id },
+      data: { exactQuestion, questionConfirmedAt: new Date() },
+      select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
+    });
+    this.logger.log(`Ground ${groundId}: the lead confirmed a question for somebody${edited ? ', in their own changed words' : ''}.`);
+    const card = aQuestionAsTheLeadReadsIt(saved as any, who);
+    return { ...card, say: `Confirmed. Groundwork will ask ${who} "${exactQuestion}" in their next check-in, word for word.` };
+  }
+
+  /** Not now: the question is left out, and is asked of nobody. Kept rather than deleted, like every line. */
+  async declineQuestionForPerson(groundId: string, requestingUserId: string, itemId: string): Promise<{ id: string; status: 'left out'; say: string }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== requestingUserId) {
+      throw new ForbiddenException('Only the person who runs this check-in can leave out a question for somebody on it.');
+    }
+    const line = await this.prisma.groundContextItem.findFirst({
+      where: { id: itemId, groundId, kind: ContextItemKind.QUESTION_FOR_PERSON },
+      select: { id: true, aboutParticipantId: true },
+    });
+    if (!line) throw new NotFoundException('That question is not on this check-in.');
+    await this.prisma.groundContextItem.update({ where: { id: line.id }, data: { closedAt: new Date(), questionConfirmedAt: null } });
+    const person = line.aboutParticipantId
+      ? await this.prisma.groundParticipant.findFirst({ where: { id: line.aboutParticipantId, groundId }, select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }).catch(() => null)
+      : null;
+    const who = person ? theNameWeUseFor(person as any) : 'anybody';
+    return { id: line.id, status: 'left out', say: `Left out. Groundwork will not ask ${who} this question.` };
+  }
+
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) {
+    dto = { ...dto, text: withoutBankDetails(dto?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true },
@@ -4914,6 +5137,24 @@ export class GroundsService {
    * answers it: NotFound rather than Forbidden, so a stranger cannot tell a real id from a guess.
    */
   /** The one rule (who-may-read-this-check-in.ts), asked with the viewer's and the lead's departments resolved. */
+  /**
+   * WHO THIS READER IS, FOR A PATTERN. Their own row when they take part, and whether they run the
+   * check-in: its lead, whoever set it up, or an admin of the organisation it belongs to. A lead of
+   * a department who may open the check-in does not run it, and reads no pattern about anybody.
+   */
+  private async patternReaderOf(
+    ground: { organizationId: string; initiatorId: string | null; createdByUserId?: string | null; participants?: { id: string; userId: string | null }[] },
+    userId: string | undefined,
+  ): Promise<APatternReader> {
+    if (!userId) return { participantId: null, runsIt: false };
+    const mine = (ground.participants ?? []).find((p) => p.userId === userId) ?? null;
+    if (ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId)) {
+      return { participantId: mine?.id ?? null, runsIt: true };
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+    return { participantId: mine?.id ?? null, runsIt: adminsThisOrg(user as any, ground) };
+  }
+
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -5597,6 +5838,7 @@ export class GroundsService {
   }
 
   async addMyNote(groundId: string, userId: string, text: string) {
+    text = withoutBankDetails(text) as string;
     const trimmed = (text ?? '').trim();
     if (!trimmed) throw new BadRequestException('A note needs some words in it.');
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -5779,6 +6021,7 @@ export class GroundsService {
     userId: string,
     dto: { text: string; evidence?: string | null; objectiveId?: string | null },
   ) {
+    dto = { ...dto, text: withoutBankDetails(dto?.text) as string, evidence: withoutBankDetails(dto?.evidence) ?? null };
     const text = (dto.text ?? '').trim();
     if (!text) throw new BadRequestException('Say what you did.');
     const me = await this.prisma.groundParticipant.findFirst({
@@ -6445,7 +6688,7 @@ export class GroundsService {
     sessions: { sessionNumber: number; completedAt: Date | null; status: string }[];
     specificity: { scores: number[]; avg: number; label: string } | null;
     confidence: { score: number; label: string; description: string } | null;
-    patterns: { observation: string; sessionNumber: number | null }[] | null;
+    patterns: AServedPattern[] | null;
     insightsLocked: boolean;
   }> {
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -6454,10 +6697,11 @@ export class GroundsService {
         id: true,
         specificityHistory: true,
         patternDetections: {
-          where: { status: 'SURFACED' },
-          select: { observationText: true, lastPeriodNumber: true, code: true },
+          select: PATTERN_ROW_SELECT,
           orderBy: { lastSeenAt: 'desc' },
         },
+        /* For the one sentence that says who else reads it: the lead's first name. */
+        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },
@@ -6496,21 +6740,17 @@ export class GroundsService {
         : 'Your record is just beginning. One more session will start to show the full picture.';
 
     /*
-     * Diplomatic pattern observations - never name the code, never frame as a verdict.
-     *
-     * This held its own `new Set(['R3'])`, shadowing the imported POSITIVE_CODES, so it was a
-     * second answer to "which codes are good news" that could not follow the first. It did not
-     * matter while R3 was the only one; the moment seven more arrived it would have run every one
-     * of them through the softening meant for bad news, which is how a compliment ends up
-     * phrased as a concern.
+     * THEIR OWN PATTERNS, AND NOBODY ELSE'S, after three periods and in plain words. See
+     * patterns/who-reads-a-pattern. This page wrapped the engine's sentence in "Your record across
+     * sessions shows something worth noticing", served every SURFACED row including good news seen
+     * once, and gave no way to answer. None at all while patterns are not served.
      */
-    const patterns = (participant.patternDetections ?? []).map(d => ({
-      /* Carrying is not bad news about them either, so it is not softened as though it were. */
-      observation: isPositiveCode(d.code) || isCarryingCode(d.code)
-        ? d.observationText ?? ''
-        : diplomaticObservation(d.observationText ?? ''),
-      sessionNumber: d.lastPeriodNumber,
-    })).filter(p => p.observation.length > 0);
+    const patterns = servedPatterns(
+      participant.patternDetections as any,
+      { participantId: participant.id, runsIt: false },
+      whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId),
+    );
+    await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(participant.patternDetections as any, patterns));
 
     return {
       sessions,
@@ -6605,18 +6845,6 @@ export class GroundsService {
    * stamped, so the shared report surfaces it as a flagged update rather than
    * silently blending it in as if it had always been there. No undo in v1.
    */
-}
-
-/**
- * Rewrites a raw pattern observation into a diplomatic first-person reflection.
- * The original observation describes a behaviour; this wraps it so the contributor
- * reads it as something worth noticing in their own record - not a verdict.
- */
-function diplomaticObservation(raw: string): string {
-  if (!raw.trim()) return '';
-  // Strip any period tags from the three-period rule bookkeeping
-  const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
-  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as the record builds.`;
 }
 
 /**

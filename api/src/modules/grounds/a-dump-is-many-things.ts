@@ -25,6 +25,8 @@
  * product writes the list, so a number can be checked before it is agreed to.
  */
 
+import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT, THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
+
 export interface ADumpRead {
   /** What doing well looks like, in the lead's own words. */
   success?: string | null;
@@ -197,8 +199,12 @@ export interface WhatAPasteGives {
   aboutPeople: { who: string; participantId: string; observation: string }[];
   /** Actions. `participantId` is null where the paste named no owner, which is left as it is. */
   commitments: { who: string | null; participantId: string | null; action: string; outcome: string | null; when: string | null; theySaidIt: boolean }[];
-  /** A question the lead wants put to one person, in their own check-in. */
-  questionsForPeople: { who: string; participantId: string; question: string }[];
+  /**
+   * A question the lead wants put to one person, in their own check-in. `question` is the lead's own
+   * shorthand; `exactQuestion` is the sentence Groundwork will ask, word for word, once the lead has
+   * confirmed it. See a-question-asked-word-for-word.
+   */
+  questionsForPeople: { who: string; participantId: string; question: string; exactQuestion?: string | null }[];
   /** Something between two of them, which is neither person's alone. */
   betweenPeople: { who: string[]; participantIds: string[]; issue: string }[];
 }
@@ -272,9 +278,16 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
       for (const c of nobodys) lines.push(`- ${c.action}${c.when ? ` (${c.when})` : ''}`);
     }
   }
+  /*
+   * EACH QUESTION AS IT WILL BE ASKED, WORD FOR WORD, AND CONFIRMED ON ITS OWN. Decision 34: this list
+   * used to say "asked in their own words", and nobody had read what the person would actually be
+   * asked. The yes to this list keeps them; it does not send them.
+   */
   if (got.questionsForPeople?.length) {
-    lines.push('', 'Questions you want asked. Each one goes into that person\'s own check-in, asked in their own words:');
-    for (const q of got.questionsForPeople) lines.push(`- ${q.who}: ${q.question}`);
+    const one = got.questionsForPeople.length === 1;
+    lines.push('', one ? 'A question you want asked, exactly as Groundwork will ask it:' : 'Questions you want asked, each one exactly as Groundwork will ask it:');
+    for (const q of got.questionsForPeople) lines.push(`- ${whatGroundworkWillAsk(q.who, q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who))}`);
+    lines.push(one ? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT : NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
   }
   if (got.betweenPeople?.length) {
     lines.push('', 'Between two people, so it sits with neither of them alone. Kept for you, never quoted to either:');

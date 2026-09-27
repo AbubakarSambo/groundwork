@@ -73,7 +73,10 @@ export class DetectorsController {
   @ApiOperation({ summary: 'Findings held for this organisation, evidence only' })
   async findings(@Req() req: { machine: MachineCaller }) {
     const all = await this.prisma.detectorResult.findMany({
-      where: { organizationId: req.machine.organizationId, resolvedAt: null },
+      /* A pattern mirrored from a check-in is a finding about a named person, mirrored after one
+         session under its code, before the person has read it. It never reaches the developer API,
+         with patterns served or not: people read patterns only through patterns/who-reads-a-pattern. */
+      where: { organizationId: req.machine.organizationId, resolvedAt: null, sourcePatternDetectionId: null },
       orderBy: [{ severity: 'desc' }, { lastSeenAt: 'desc' }],
       take: 200,
     });
