@@ -40,17 +40,19 @@ On the combined code at `5413a8ee`:
 
 ## The deploy blockers, and whether each is fixed
 
-These came out of the capability check (`docs/capability-check.md`). Each one breaks one of Hafsah's rules as the product stands, or is something the screens show that does not work. **Nothing is deployed until all of them are fixed and proven.**
+These came out of the capability check (`docs/capability-check.md`). Each one breaks one of Hafsah's rules as the product stands, or is something the screens show that does not work. **Nothing is deployed until all of them are fixed and proven.** All seven are fixed in code, with tests. None is yet proven on a full scenario run, which is tomorrow.
 
 | # | Blocker | Fixed? |
 | --- | --- | --- |
-| 1 | Internal pattern names, such as "Blame Shifting", appear beside people's names on the lead's and the participant's board. | Being fixed. Patterns will be switched off on every board, for every reader, until they are done properly. The code stays, and a test will prove no board carries a pattern. |
-| 2 | A participant can read a colleague's pattern. | Being fixed, by the same switch. |
-| 3 | The lead sees a pattern before the person it is about, after one session instead of three, and the person cannot answer it. | Being fixed, by the same switch. |
-| 4 | Bank account numbers, card numbers and similar in a document are stored and sent to the model. | Being fixed. They will be hidden before any document is stored or sent to a model, and a test will prove it. |
-| 5 | A lead's private notes about a person reach the model in that person's own check-in, kept back only by an instruction. | Being fixed. They will be left out of what that person's session is given, and a test will prove it. |
-| 6 | Ask Groundwork refuses almost everyone. Only people on an organisation's connected list of people can use it: 64 of 3,162 users in the test database. | Being fixed. See below. |
-| 7 | The board crashes for a participant when colleagues are hidden from each other. | Being fixed, with a test that opens every board as every kind of reader and proves none of them errors. |
+| 1 | Internal pattern names, such as "Blame Shifting", appear beside people's names on the lead's and the participant's board. | **Fixed (`b959934a`).** One switch, `PATTERNS_ARE_SERVED = false`, takes patterns off every board, report, record, coaching note and developer API read, for every reader. The served reports were showing them too. Detection keeps running and storing. A test opens the board as the lead, two participants and an admin, and finds no pattern anywhere; with the switch turned on, the same test finds them. The conversation still uses a pattern to choose a question, and nothing is shown. |
+| 2 | A participant can read a colleague's pattern. | **Fixed**, by the same switch. |
+| 3 | The lead sees a pattern before the person it is about, after one session instead of three, and the person cannot answer it. | **Fixed**, by the same switch. Patterns come back only when all four things in the switch's note are true: three periods, the person sees theirs first and can answer, the plain names are approved, and a pattern never appears beside a name. |
+| 4 | Bank account numbers, card numbers and similar in a document are stored and sent to the model. | **Fixed (`e12cf225`).** They are hidden before any document is stored or sent to a model, on every way a document arrives: the product, the invite link, the developer API, WhatsApp, and photos and scans read by the vision model. The same goes for the context chat. A person reads, for example, "account number [account number hidden]". Amounts, dates, phone numbers and receipt numbers are left alone. A test runs a real upload of a text file and of a photo, and finds neither number in any database write or model input. **Not covered:** numbers a person types into the setup chat or into a check-in message. |
+| 5 | A lead's private notes about a person reach the model in that person's own check-in, kept back only by an instruction. | **Fixed (`6feccb79`).** The notes are left out when the session is built. The instructions that told the model not to say them are deleted. A test runs a real turn for Ngozi, with "Ngozi may leave after Q4" in every place a lead's note can be, and no prompt contains it or any four words of it in a row. **For Hafsah to decide:** a question the lead wants asked of the person still reaches that person's session, because being asked is what it is for. Those lines are also marked as the lead's. |
+| 6 | Ask Groundwork refuses almost everyone. Only people on an organisation's connected list of people can use it: 64 of 3,162 users in the test database. | **Fixed (`75174e28`).** See below. Not yet tried live. |
+| 7 | The board crashes for a participant when colleagues are hidden from each other. | **Fixed (`c6721519`).** On a delivery check-in with colleagues hidden, the privacy filter was handed a section that is not a list, so every participant got an error. The live code (`be8b48d9`) has the same crash. A new test opens the board in every situation, as every kind of reader, and nothing errors. |
+
+**One more privacy gap, found while fixing blocker 7, and fixed (`8e940c9c`).** On a board where colleagues are hidden from each other, a participant could still read colleagues' names in three places: the list of people, both ends of a handoff, and who picked a time in a poll. They now read "one colleague", "another colleague" and so on. The lead and admins still see every name. A test searches the whole board served to a participant, in every situation where colleagues are hidden. It finds no colleague's name, email, role or organisation. This also answers the screens workspace's request 19.
 
 ### Ask Groundwork: what the live code does, and the fix
 
@@ -60,6 +62,12 @@ These came out of the capability check (`docs/capability-check.md`). Each one br
   - **Claiming** an unclaimed entry matches only on an email address the person has confirmed, and never across organisations.
   - **A switched-off entry means a refusal**, so a person the staff directory has switched off cannot get back in.
   - **Opening the page writes nothing.** Only asking a question creates or claims the entry.
+- **Built (`75174e28`).**
+  - An address nobody has confirmed is refused rather than used to create an entry, because creating one from it would be the same claim by another route. Only 3 of the 3,162 test users are unconfirmed.
+  - What a person reads when refused:
+    - "Your organisation has switched off your place on its list of people, so Ask Groundwork cannot answer you. Ask an admin in your organisation to switch it back on."
+    - "Confirm your email address first, and then Ask Groundwork can answer you. Groundwork sent you a link to confirm it when you signed up."
+  - **A side effect:** people who ask will now appear on the company's list of people, and in the suites' people lists.
 - **One thing to know for later.** If an organisation connects its staff directory after people have used Ask Groundwork, the directory may add a second entry for the same person. Sign-in will not merge the two. This is a follow-up, not a blocker.
 
 ## Known problems that remain, and why it is safe to deploy with them
