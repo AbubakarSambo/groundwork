@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { InvitationExpired } from './InvitationExpired'
+import { AuthCard } from '@/pages/auth/auth-kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
@@ -54,7 +55,9 @@ export function InvitePage() {
   })
   /* An expired invitation opens "This link has expired" (U.3), which carries nothing but the lead's first name. */
   const expired = answer && answer.expired === true ? answer : null
-  const preview: InvitePreview | undefined = answer && answer.expired !== true ? answer : undefined
+  /* Held for a seat (U.4 third review): the page is the refusal, with no button to answer. */
+  const held = answer && (answer as any).heldForASeat === true ? (answer as { saying: string }) : null
+  const preview: InvitePreview | undefined = answer && answer.expired !== true && !held ? (answer as InvitePreview) : undefined
 
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
@@ -244,6 +247,7 @@ export function InvitePage() {
   if (!token) return <InviteShell><ErrorCard msg="This invite link is missing its token." /></InviteShell>
   if (isLoading) return <InviteShell><LoadingCard /></InviteShell>
   if (expired) return <InvitationExpired token={token} leadFirstName={expired.leadFirstName} />
+  if (held) return <AuthCard title={held.saying} />
   if (isError || !preview) return (
     <InviteShell>
       <ErrorCard msg="We do not recognise this link. If you have already joined, sign in with your email - and if you have not, ask whoever added you to send a new invite." />

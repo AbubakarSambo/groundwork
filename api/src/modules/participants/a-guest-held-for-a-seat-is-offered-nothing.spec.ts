@@ -78,3 +78,14 @@ describe('a held guest is offered no check-in', () => {
     expect(grounds).toMatch(/where: \{ organizationId, heldForASeat: true, user: \{ email: w\.email\.toLowerCase\(\) \} \},\s*data: \{ heldForASeat: false \},/);
   });
 });
+
+describe('the invitation page of a held guest (U.4 third review)', () => {
+  it('the lookup says they are held, and carries nothing else: no inviter, no part, no check-in', async () => {
+    const prisma: any = {
+      groundParticipant: { findUnique: async () => ({ id: 'p1', groundId: 'sales', email: 'baraka@ouma.co', userId: null, awaitingSeat: true, roleAsDescribed: 'Agent, Mombasa', inviteToken: 't', inviteTokenExpiresAt: new Date(Date.now() + 86_400_000) }) },
+      ground: { findUnique: async () => { throw new Error('the check-in must not be read for a held guest'); } },
+    };
+    const answer = await new ParticipantsService(prisma, {} as any, {} as any).preview('t');
+    expect(answer).toEqual({ heldForASeat: true, saying: HELD_FOR_A_SEAT });
+  });
+});

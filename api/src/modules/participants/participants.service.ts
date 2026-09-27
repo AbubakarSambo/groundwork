@@ -49,6 +49,13 @@ export class ParticipantsService {
       const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true } } } });
       return { expired: true as const, leadFirstName: (g?.initiator?.firstName ?? '').trim() || null };
     }
+    /*
+     * HELD FOR A SEAT (U.4 third review): the page opens straight on the refusal, carrying nothing
+     * else - not who invited them, not their part, not the check-in - because the admin's card says
+     * "They have not been told any of this", and a button that is refused after it is pressed is not
+     * an answer.
+     */
+    if (row?.awaitingSeat) return { heldForASeat: true as const, saying: HELD_FOR_A_SEAT };
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
       where: { id: participant.groundId },
