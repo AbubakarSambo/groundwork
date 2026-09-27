@@ -7,6 +7,7 @@ import { ResolutionService } from '../resolution/resolution.service';
 import { endStatesFor } from '../resolution/end-states';
 import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, type LabelParty } from './party-labels';
 import { whatToCallThem } from '../conversation/a-colleague-in-an-interview-has-a-name';
+import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 
 /**
  * A PERSON'S LABEL IS THEIR NAME OR A NEUTRAL WORD, NEVER THE LEAD'S DESCRIPTION OF THEM.
@@ -106,6 +107,9 @@ const GROUND: any = {
     releasedAt: new Date('2026-09-23T17:00:00Z'), sharedAs: null, theOpening: null, networkPicture: null,
     sharedPicture: 'Both have checked in.', agreements: [], divergences: [], centralQuestion: null,
     engagement: {}, findings: [],
+    /* Route 4: the room judgement is handed "taken on for: <roleAsDescribed>", so what it writes can
+       carry the lead's words. It is stored here as the worst case, quoting them. */
+    theJudgement: { whatToDo: 'Start with Daniel, taken on as your sales manager, who is not meeting his agreed targets.' },
     createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
   },
   objectives: [
@@ -205,6 +209,37 @@ describe('the board, as each reader is served it', () => {
     for (const who of ['u-noname', 'u-aisha']) {
       const row = ((await boardFor(who)).participants ?? []).find((p: any) => p.id === 'p-noname');
       expect(row.role).toBeNull();
+    }
+  });
+});
+
+/* ---- Route 4: the report's people[].role reaches only the judgement, which is the lead's. ---- */
+
+describe('the role handed to the judgement reaches only the lead', () => {
+  it('is used for nothing but the room judgement\'s material', () => {
+    const src = withoutComments('reports/reports.service.ts');
+    /* `role:` built from the row appears in the room's people, and that list is read only by theRoom. */
+    expect(src.match(/role: \(p\.remitAsGiven \?\? p\.roleAsDescribed \?\? null\)/g) ?? []).toHaveLength(1);
+    expect(src.match(/role: p\.role,/g) ?? []).toHaveLength(1);
+    const body = theBodyOf(src, 'material = theRoom(', 'instruction = theJudgementOverARoom(');
+    expect(body).toContain('role: p.role,');
+  });
+
+  it('a participant\'s report read drops the judgement', () => {
+    const report = { sharedPicture: 'Both have checked in.', theJudgement: { whatToDo: DESCRIPTION } };
+    for (const participantId of ['p-noname', 'p-aisha']) {
+      const read = whatAParticipantMayRead(report, { isLead: false, participantId });
+      expect(JSON.stringify(read)).not.toMatch(/not meeting|sales manager/);
+    }
+    expect(whatAParticipantMayRead(report, { isLead: true, participantId: 'p-lead' }).theJudgement).toEqual({ whatToDo: DESCRIPTION });
+  });
+
+  it('on the served board, the lead reads the judgement and the person and a peer do not', async () => {
+    expect(JSON.stringify((await boardFor('u-wairimu')).theJudgement)).toMatch(/not meeting his agreed targets/);
+    for (const who of ['u-noname', 'u-aisha']) {
+      const b = await boardFor(who);
+      expect(b.theJudgement ?? null).toBeNull();
+      /* The whole served board, searched in the test above, holds none of it either. */
     }
   });
 });
