@@ -29,7 +29,7 @@
  * sold a guarantee the product cannot keep.
  */
 
-import { eachQuoteDecided, readsAsAPlainStatement, theQuotesKept } from './a-quote-is-what-they-said';
+import { eachQuoteDecided, isSuggestedWording, readsAsAPlainStatement, theQuotesKept } from './a-quote-is-what-they-said';
 
 export type HowItWasShared = 'NAMED' | 'ANONYMOUS';
 
@@ -102,11 +102,15 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
    * sentence that has just said "in your words"), the sentence goes, the same rule as the report's.
    * A quote with nobody in it keeps its marks and its words.
    */
-  const decided = eachQuoteDecided(text, (q) => {
+  const decide = (mayDrop: boolean) => eachQuoteDecided(text, (q) => {
     const without = scrub(q.inner);
     if (without === q.inner) return { keep: q.inner };
-    return readsAsAPlainStatement(text, q, without) ? 'unquote' : 'drop';
+    if (isSuggestedWording(text, q)) return 'suggested';
+    return readsAsAPlainStatement(text, q, without) || !mayDrop ? 'unquote' : 'drop';
   });
+  let decided = decide(true);
+  /* Never blank where there was a sentence: the whole text going means it stays, unquoted. */
+  if (text.trim() && !decided.text.trim()) decided = decide(false);
   return theQuotesKept(decided.text, scrub);
 }
 

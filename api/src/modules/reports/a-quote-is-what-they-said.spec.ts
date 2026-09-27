@@ -77,6 +77,52 @@ describe('a quote is what they said, restored before the report is stored', () =
     expect(r.value).toEqual({ evidence: ['The handover was late.'] });
   });
 
+  it('suggested wording is nobody\'s quote: it keeps its words, as the writer\'s own, without the marks', () => {
+    expect(whatTheySaidInQuotes('Change the regular check-in to ask "What are you waiting for?"', RECORD).text)
+      .toBe('Change the regular check-in to ask: What are you waiting for?');
+    expect(whatTheySaidInQuotes('Try saying "we can pick this up on Monday" when it comes up.', RECORD).text)
+      .toBe('Try saying we can pick this up on Monday when it comes up.');
+    /* "asked" puts the words in somebody's mouth, so it is not a suggestion and the rule for a quote holds. */
+    expect(whatTheySaidInQuotes('First. Zainab asked "What are you waiting for?" Last.', RECORD).text).toBe('First. Last.');
+  });
+
+  it('a field whose only sentence is dropped takes its item out of the list, never leaving it blank', () => {
+    const r = everyQuoteFromTheRecord({
+      whatToDo: [
+        { move: 'Speak to her.', because: 'She said "I will do it by Friday" and has not.' },
+        { move: 'Keep the partnerships on the agenda.', because: 'The handover was late.' },
+      ],
+    }, RECORD);
+    expect(r.value).toEqual({ whatToDo: [{ move: 'Keep the partnerships on the agenda.', because: 'The handover was late.' }] });
+  });
+
+  it('and where there is no list to take it out of, the sentence stays, unquoted, rather than blank', () => {
+    const r = everyQuoteFromTheRecord({ theGap: 'She said "I will do it by Friday".', sharedPicture: 'She said "I will do it by Friday".' }, RECORD);
+    expect(r.value).toEqual({ theGap: 'She said I will do it by Friday.', sharedPicture: 'She said I will do it by Friday.' });
+    expect(everyQuoteFromTheRecord('She said "I will do it by Friday".', RECORD).value).toBe('She said I will do it by Friday.');
+  });
+
+  it('no string that had words in it before the pass is blank after it, anywhere in a report', () => {
+    const report = {
+      sharedPicture: 'She said "I will do it by Friday". The handover was late.',
+      divergences: [{ topic: 'Friday', positions: [{ participantLabel: 'the initiator', view: '"We never agreed Friday"' }, { participantLabel: 'Participant A', view: 'Friday was agreed.' }], evidence: ['"my notes say Friday"'] }],
+      theJudgement: { theGap: 'In her words, "I was never told".', whatToDo: [{ move: 'Ask "Who told you Friday?"', because: 'She said "I was never told".' }] },
+    };
+    const blanks: string[] = [];
+    const look = (v: any) => {
+      if (typeof v === 'string') { if (!v.trim()) blanks.push(v); return; }
+      if (Array.isArray(v)) v.forEach(look);
+      else if (v && typeof v === 'object') Object.values(v).forEach(look);
+    };
+    const r = everyQuoteFromTheRecord(report, RECORD);
+    look(r.value);
+    expect(blanks).toEqual([]);
+    expect((r.value as any).theJudgement.theGap).toBe('In her words, I was never told.');
+    expect((r.value as any).theJudgement.whatToDo).toEqual([]);
+    expect((r.value as any).divergences[0].positions.map((p: any) => p.participantLabel)).toEqual(['Participant A']);
+    expect((r.value as any).divergences[0].evidence).toEqual([]);
+  });
+
   it('a "US" in capitals is the country, not the speaker', () => {
     expect(whatTheySaidInQuotes('They sell to "the US market" now.', RECORD).text).toBe('They sell to the US market now.');
   });

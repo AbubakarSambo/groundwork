@@ -210,10 +210,21 @@ describe('the quote a person reads is what they said', () => {
     expect(stored.findings.find((f: any) => f.participantId === 'pid-2').text).toContain(
       `"Since March 11th, I've been almost entirely focused on inbound sales support as requested by Nadia"`,
     );
-    const zainabsSide = stored.divergences[0].positions.find((p: any) => p.participantLabel === ZAINABS_LABEL).view;
     /* "Participant A says I have mostly been doing sales support at the initiator's request" would be
-       served to Nadia as Zainab saying "your". The sentence goes instead. */
-    expect(zainabsSide).toBe('');
+       served to Nadia as Zainab saying "your". The sentence goes, and it was the whole of that side of
+       the difference, so the side goes rather than being stored blank. */
+    expect(stored.divergences[0].positions.map((p: any) => p.participantLabel)).toEqual(['the initiator']);
+  });
+
+  it('nothing the pass touched is stored blank where the model wrote a sentence', () => {
+    const blanks: string[] = [];
+    const look = (v: any, at: string) => {
+      if (typeof v === 'string') { if (!v.trim()) blanks.push(at); return; }
+      if (Array.isArray(v)) v.forEach((x, i) => look(x, `${at}[${i}]`));
+      else if (v && typeof v === 'object' && !(v instanceof Date)) for (const [k, x] of Object.entries(v)) look(x, `${at}.${k}`);
+    };
+    for (const f of ['sharedPicture', 'theOpening', 'findings', 'agreements', 'divergences', 'centralQuestion', 'theJudgement', 'inferences']) look(stored[f], f);
+    expect(blanks).toEqual([]);
   });
 
   for (const who of ['lead', 'zainab', 'anonymous'] as const) {

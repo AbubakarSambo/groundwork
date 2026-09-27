@@ -249,6 +249,21 @@ export function readsAsAPlainStatement(text: string, q: AQuotation, words: strin
 
 const DROP = '\uE010';
 
+/*
+ * WORDS SUGGESTED TO THE READER ARE NOBODY'S QUOTE. "Change the regular check-in to ask "What are
+ * you waiting for?"" is the report offering a question, not saying anybody asked it. It keeps its
+ * words, as the writer's own, and loses only the marks. Recognised by the verb just before it -
+ * asking, saying, telling, writing, trying, calling or putting it - in the present or as an
+ * instruction, never "said" or "asked", which attribute the words to somebody.
+ */
+const A_VERB_OF_SUGGESTING =
+  /\b(?:ask|asking|say|saying|tell (?:them|him|her|the team|everyone)|write|writing|try|trying|try saying|call it|put it as|phrase it as|use the words|start with|open with|lead with)\s*[:,]?\s*$/i;
+
+export function isSuggestedWording(text: string, q: AQuotation): boolean {
+  const lead = text.slice(sentenceStart(text, q.start), q.start);
+  return A_VERB_OF_SUGGESTING.test(lead);
+}
+
 /** Every sentence holding the marker, taken out; what is left joined up as it was. */
 function withoutTheSentencesMarked(text: string, dropped: string[]): string {
   const pieces: string[] = [];
@@ -280,7 +295,7 @@ function withoutTheSentencesMarked(text: string, dropped: string[]): string {
  */
 export function eachQuoteDecided(
   text: string,
-  decide: (q: AQuotation) => { keep: string } | 'unquote' | 'drop',
+  decide: (q: AQuotation) => { keep: string } | 'unquote' | 'drop' | 'suggested',
 ): { text: string; kept: number; unquoted: string[]; dropped: string[] } {
   const found = quotationsIn(text);
   if (!found.length) return { text, kept: 0, unquoted: [], dropped: [] };
@@ -294,10 +309,17 @@ export function eachQuoteDecided(
     const d = decide(q);
     if (d === 'drop') {
       /* The marker stays inside the marks, so the sentence around it is still found whole. */
-      out += `${q.open}${DROP}${q.close}`;
+      /* With the quote's own full stop or question mark, which may be what ends its sentence. */
+      out += `${q.open}${DROP}${(q.inner.trimEnd().match(/[.!?]+$/) ?? [''])[0]}${q.close}`;
       droppedQuotes.push(q);
     } else if (d === 'unquote') {
       out += q.inner;
+      unquoted.push(q.inner);
+    } else if (d === 'suggested') {
+      /* Suggested wording, told to the reader, as the writer's own words: "to ask: What are you
+         waiting for?". A colon only where the words open with a capital and none is there yet. */
+      const needsAColon = /^\p{Lu}/u.test(q.inner.trimStart()) && !/:\s*$/.test(out);
+      out = needsAColon ? `${out.replace(/\s+$/, '')}: ${q.inner.trimStart()}` : `${out}${q.inner}`;
       unquoted.push(q.inner);
     } else {
       out += `${q.open}${d.keep}${q.close}`;
@@ -316,7 +338,14 @@ export function eachQuoteDecided(
     let n = 0;
     dropped = raw.map((sentence) => sentence
       .replace(HELD, (_m, i) => held[Number(i)] ?? '')
-      .replace(new RegExp(DROP, 'g'), () => { const q = droppedQuotes[n++]; return q ? `${q.open}${q.inner}${q.close}` : ''; }));
+      .split(DROP)
+      .reduce((acc, rest, k) => {
+        if (k === 0) return rest;
+        const q = droppedQuotes[n++];
+        /* The quote's own end mark was kept beside the marker; it goes back inside the marks. */
+        const own = q ? (q.inner.trimEnd().match(/[.!?]+$/) ?? [''])[0] : '';
+        return `${acc}${q ? `${q.open}${q.inner}${q.close}` : ''}${rest.startsWith(own) ? rest.slice(own.length) : rest}`;
+      }, ''));
   }
   return { text: out, kept, unquoted, dropped };
 }
@@ -325,7 +354,8 @@ export function eachQuoteDecided(
 function theQuotesKeptExcept(text: string, rewrite: (s: string) => string, held: string[] = []): string {
   const masked = text.replace(QUOTATION, (m: string, a?: string, b?: string) => {
     const inner = a ?? b ?? '';
-    if (!inner.trim() || inner === DROP) return inner === DROP ? DROP : m;
+    if (inner.startsWith(DROP)) return inner;
+    if (!inner.trim()) return m;
     held.push(inner);
     return `${m[0]}\uE000${held.length - 1}\uE001${m[m.length - 1]}`;
   });
@@ -339,11 +369,19 @@ function theQuotesKeptExcept(text: string, rewrite: (s: string) => string, held:
  * `record` is every line the report may quote, plus the lead's own set-up words; `people` is each
  * person's label beside their name, so a label inside a quote can be found as the name.
  */
-export function whatTheySaidInQuotes(text: string, record: string[], people: ALabelAndAName[] = []): WhatTheQuotesBecame {
+export function whatTheySaidInQuotes(
+  text: string,
+  record: string[],
+  people: ALabelAndAName[] = [],
+  /** False where the text must not come out empty: a quote that cannot stand is unquoted instead. */
+  mayDropASentence = true,
+): WhatTheQuotesBecame {
   const r = eachQuoteDecided(text, (q) => {
     const theirs = theRecordsWordsFor(q.inner, record, people);
     if (theirs !== null) return { keep: theirs };
-    return readsAsAPlainStatement(text, q) ? 'unquote' : 'drop';
+    if (isSuggestedWording(text, q)) return 'suggested';
+    if (readsAsAPlainStatement(text, q)) return 'unquote';
+    return mayDropASentence ? 'drop' : 'unquote';
   });
   return { text: r.text, restored: r.kept, unquoted: r.unquoted, dropped: r.dropped };
 }
@@ -368,30 +406,61 @@ export function everyQuoteFromTheRecord<T>(
   const dropped: string[] = [];
   /* A label with a quotation mark in it is held aside in the prose too, so no quote is found inside it. */
   const quotedLabels = people.map((p) => (p.label ?? '').trim()).filter((l) => /["“”]/.test(l)).sort((a, b) => b.length - a.length);
-  const one = (s: string): string => {
+  const one = (s: string, mayDropASentence: boolean) => {
     const held: string[] = [];
     let masked = s;
     for (const l of quotedLabels) {
-      masked = masked.split(l).join(`${held.push(l) - 1}`);
+      masked = masked.split(l).join(`\uE002${held.push(l) - 1}\uE003`);
     }
-    const r = whatTheySaidInQuotes(masked, record, people);
+    const r = whatTheySaidInQuotes(masked, record, people, mayDropASentence);
+    return { ...r, text: r.text.replace(/\uE002(\d+)\uE003/g, (_m, i) => held[Number(i)]) };
+  };
+  const count = (r: WhatTheQuotesBecame) => {
     restored += r.restored;
     unquoted.push(...r.unquoted);
     dropped.push(...r.dropped);
-    return r.text.replace(/(\d+)/g, (_m, i) => held[Number(i)]);
+    return r.text;
   };
-  const walk = (v: any): any => {
-    if (typeof v === 'string') return one(v);
-    /* A line of a list whose only sentence was dropped is not left as an empty line. */
-    if (Array.isArray(v)) return v.map((x) => [x, walk(x)]).filter(([x, y]) => !(typeof x === 'string' && x.trim() && y === '')).map(([, y]) => y);
+  /*
+   * NOTHING IS LEFT BLANK. A sentence dropped from a line of a list takes the line with it, and a
+   * dropped sentence that was the whole of a field takes the item it belongs to out of its list (a
+   * move, a side of a difference). Where there is no list to take it out of - the picture itself, a
+   * field on its own - the sentence stays, unquoted, because a blank where a sentence was is worse.
+   */
+  const REMOVE = Symbol('remove');
+  const walk = (v: any, inAList: boolean): any => {
+    if (typeof v === 'string') {
+      const r = one(v, true);
+      if (v.trim() && !r.text.trim()) {
+        if (inAList) { count(r); return REMOVE; }
+        return count(one(v, false));
+      }
+      return count(r);
+    }
+    if (Array.isArray(v)) return v.map((x) => walk(x, true)).filter((y) => y !== REMOVE);
     if (v && typeof v === 'object' && !(v instanceof Date)) {
       const out: Record<string, any> = {};
-      for (const [k, val] of Object.entries(v)) out[k] = NOT_PROSE.test(k) ? val : walk(val);
-      return out;
+      let emptied = false;
+      for (const [k, val] of Object.entries(v)) {
+        if (NOT_PROSE.test(k)) { out[k] = val; continue; }
+        if (typeof val === 'string') {
+          const r = one(val, true);
+          if (val.trim() && !r.text.trim()) {
+            if (inAList) { emptied = true; count(r); continue; }
+            out[k] = count(one(val, false));
+            continue;
+          }
+          out[k] = count(r);
+          continue;
+        }
+        out[k] = walk(val, false);
+      }
+      return emptied ? REMOVE : out;
     }
     return v;
   };
-  return { value: walk(value) as T, restored, unquoted, dropped };
+  const walked = walk(value, false);
+  return { value: walked as T, restored, unquoted, dropped };
 }
 
 /* The record reader's note of what a word referred to. It is the reader's, never the person's. */
