@@ -6,6 +6,45 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## THE NIGHT IN SHORT, 27 September, about 03:30
+
+**How many judgements are clearly right: 16 of 24 on the last full run (run-8). The bar is 20, so task 1.5 is not ticked, and I did not start task 1.6.** The three full runs I measured scored 17 (run-6), 14 (run-7) and 16 (run-8). Most of that movement comes from what the simulated people happen to say in each run, not from the code. The scenarios I worked on tonight did get steadier. Handover was right in every clean run after the first fix, and recognition and updates were right on run-8.
+
+**Run-8 passes the checker.** Nothing is worse than the baseline. Jargon in reports and boards is 124, back under 1.4's bar of 128. Jargon in Groundwork's own turns fell from 41 to 15. Curt turns are 0. Every report matched the database, and every one was written by `report_synthesis` version 6.
+
+**The eight that are not clearly right, and why:**
+
+- **drift is wrong.** Zainab says she was moved to sales support "as requested by Nadia", and Nadia is the lead. The judgement only knows people by labels, so it takes "Nadia" to be someone else, "another leader". This is the one decision I need from you, below.
+- **pulse is wrong.** On run-8 it wrote about a module nobody mentioned. In a test run the day before it was right, and in another it mistook "Ahmed's manager" for Ahmed, the lead. That is the same names problem as drift.
+- **sales is wrong.** It praises Kwame for "exceeding" his target. In fact he is counting applications, not approvals.
+- **advisor is close.** It misses that Peter has no relationship at two of the three banks.
+- **loans is close.** It sets apart the one borrower who never received his machine. But it does not say that five borrowers share one cause, repayments that started before their businesses could earn. In one test run it said exactly that, but that report was incomplete.
+- **project is close.** It does not put the reconciliation scope first.
+- **shock is close.** It joins two of the three warning signs, and gives no timeline.
+- **snapshot is close.** It mentions Ravi's signature only in an action.
+
+**What I changed tonight (13 commits of code, each with its own tests):**
+
+1. Each person's finding now keeps what they say about how the work really runs. These lines were stored and never read.
+2. The record now keeps what a person says somebody else did, with that person's name. This is what put Victor into recognition.
+3. The date question is asked once, only about a real deadline, and in a full sentence. It had asked Patience "Year-end - so 31 December 2026?" seven times in a row.
+4. A reply that repeats our own hidden instruction is never sent. Jide was once sent one word for word.
+5. Every judgement action is now something the reader does, not "Tell you to…".
+6. A name at the start of a sentence, or used as a possessive, now counts in the check for a name two people mentioned.
+7. A close is never cut down to "Speak soon.", and no guard can send a fragment such as "Before we close,".
+8. "What is in their way" now keeps the worry that has the detail in it.
+9. Two of my own specs were fixed for the screens workspace.
+
+I tried two other changes and undid them. One gave the judgement people's names, and it began writing those names into the stored report. The other swapped names for labels inside people's words, which would change their words on screen, so it waits for you.
+
+**What needs you:**
+
+1. **Names inside people's words (the main one).** If "as requested by Nadia" becomes "as requested by the initiator" before the model reads it, drift and pulse stop mistaking the lead for someone else. The cost is that a quote would reach Nadia as "as requested by you". The full version is ready in `8feedc64`. There is also a middle way, which keeps the words inside quotation marks. Both are described below.
+2. **The situation names** the screens workspace asked about (their request 5). Two of the prototype's names narrow the meaning: "recognition" and "contract" drop out.
+3. **The older open questions** are unchanged: B5's plain name, the 50 scenario packs and `the-real-gate`.
+
+**The first thing for the next session** is the screens workspace's privacy request 8. The board tells a lead that a person said "nothing checkable", and that rests on how their answers were rated.
+
 ## TONIGHT, 26 to 27 September: where I am now
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
@@ -117,6 +156,16 @@ In handover, Patience names both things only she knows. Then Groundwork asks "Ye
 12. **`3a76beae`: no guard can now cut a reply down to a fragment.** A project run sent Ifeoma just "Before we close,", because a guard cut the question that followed. Every cutting guard now keeps the reply as it was when the cut would leave a fragment. The only exceptions are an invented promise or number, and on a closing turn those become the plain close.
 
 **Run-8, the second and last full run tonight, started at about 02:15 on `3a76beae`.**
+
+### Run-8: sound, passes the checker, 16 of 24 clearly right
+
+- **The run is sound.** All 24 scenarios finished. No report was incomplete, every captured report matches the database, and every one was written by version 6.
+- **The checker says nothing is worse than the baseline.** Jargon in reports and boards is 124, and in Groundwork's turns 15. Turns asking more than one question are down to 29. "Commitments recorded" is 64. "Blocker checked" fell to 38, against 46 on run-7, but is still above the baseline of 37.
+- **Clearly right:** board, cofounder, contractreview, crisis, discovery, handover, implementation, newmanager, openread, pip, realign, recognition, renewal, seniorhire, updates and workplan. Openread found the Friday freeze from both engineers. Recognition put Victor's script in the gap as "the single most important contribution". Updates found that Daniel's blocker is with Priti.
+- **Close:** advisor, loans, project, shock and snapshot.
+- **Wrong:** drift, pulse and sales. See the summary at the top.
+
+Both full runs allowed tonight are now used, so I stopped measuring there. After run-8 I merged the screens workspace, fixed the two requests that were about my own specs, and ran every test.
 
 ### Where each changed scenario stands, across the clean re-runs
 
