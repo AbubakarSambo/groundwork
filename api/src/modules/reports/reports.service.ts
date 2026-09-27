@@ -73,6 +73,7 @@ import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from '.
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
+import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_ONE_LINE, theLineToRewrite } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
@@ -2343,6 +2344,43 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
 
+    /*
+     * AND EVERY LINE, READ AS EACH PERSON WILL READ IT, BEFORE ANYTHING IS STORED.
+     *
+     * Task 1.6. The quote pass above makes every quotation the record's words; this renders every
+     * line through the same door the reads use - names in, the reader's own "you", each reader's
+     * filters - and runs the run scorer's own tests on it. A line that fails is rewritten once by the
+     * model, in its stored form; a rewrite that still fails, or that touches a quotation, is not
+     * kept, and the sentence goes under the no-blank rules. See every-line-is-read-before-it-is-kept.
+     * Best effort, like the reads above: a report is never lost to its own check.
+     */
+    try {
+      const checked = await this.everyLineReadAsItWillBe(groundId, ground as any, {
+        sharedPicture: (result as any).sharedPicture,
+        theOpening: (result as any).theOpening,
+        agreements: (result as any).agreements,
+        divergences: (result as any).divergences,
+        centralQuestion: (result as any).centralQuestion,
+        findings,
+        theJudgement: theJudgement ? theJudgement.judgement : undefined,
+        overTime,
+        inferences,
+      });
+      if (checked) {
+        (result as any).sharedPicture = checked.sharedPicture;
+        (result as any).theOpening = checked.theOpening;
+        (result as any).agreements = checked.agreements;
+        (result as any).divergences = checked.divergences;
+        (result as any).centralQuestion = checked.centralQuestion;
+        findings.splice(0, findings.length, ...((checked.findings as any[]) ?? []));
+        if (theJudgement && checked.theJudgement) theJudgement.judgement = checked.theJudgement;
+        overTime = checked.overTime as any;
+        inferences = checked.inferences as any;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Report for ground ${groundId}: the check of every line as it will be read did not run (${err?.message}). The report is kept as written.`);
+    }
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -4457,6 +4495,57 @@ happened, and what is in the way.`;
    * This is access control, not wording, so it lives here in code rather than in
    * an instruction to a model.
    */
+  /**
+   * THE CHECK BEFORE THE REPORT IS KEPT, WITH THE PRODUCT'S OWN DOOR AS THE RENDER.
+   *
+   * The lead reads the report named (`asItWasShared`); a participant reads it through the same door
+   * and then their own filters, with the longitudinal read narrowed to them - exactly the three
+   * steps `get()` takes. Returns the checked fields, or null when nothing needed changing.
+   */
+  private async everyLineReadAsItWillBe<R extends Record<string, any>>(groundId: string, ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }, candidate: R): Promise<R | null> {
+    const [participants, stored] = await Promise.all([
+      this.prisma.groundParticipant.findMany({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, userId: true, email: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
+      }),
+      this.prisma.report.findUnique({ where: { groundId }, select: { sharedAs: true } }).catch(() => null),
+    ]);
+    const lead = (participants as any[]).find((p) => p.partyType === PartyType.INITIATOR);
+    const readers: AReader[] = [
+      { participantId: lead?.id ?? null, isLead: true },
+      ...(participants as any[]).filter((p) => p.partyType !== PartyType.INITIATOR).map((p) => ({ participantId: p.id as string, isLead: false })),
+    ];
+    const labels = labelsForParties(participants as any);
+    const asGround = (report: any) => ({ scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, participants, report: { ...report, sharedAs: (stored as any)?.sharedAs ?? null } });
+    const named = (report: R, r: AReader) => this.asItWasShared(asGround(report) as any, r.participantId, r.isLead) as any;
+    const served = (report: R, r: AReader) => {
+      if (r.isLead) return named(report, r);
+      const viewer = { isLead: false, participantId: r.participantId };
+      return {
+        ...whatAParticipantMayRead(withoutOtherPeoplesReads(named(report, r), {
+          viewerLabel: r.participantId ? (labels.get(r.participantId) ?? null) : null,
+          viewerParticipantId: r.participantId,
+          viewerIsLead: false,
+        }), viewer),
+        overTime: (this.asItWasShared(asGround({ overTime: overTimeForThisReader((report as any).overTime, viewer) }) as any, r.participantId, false) as any).overTime,
+      };
+    };
+    const { report, done } = await everyLineIsReadBeforeItIsKept({
+      report: candidate,
+      readers,
+      named,
+      served,
+      fields: Object.keys(candidate),
+      rewrite: (ask) => this.anthropic.respond(REWRITE_ONE_LINE, [{ role: 'user', content: theLineToRewrite(ask) }] as any),
+    });
+    /* One line each, so the rate of each fault can be read off the log before anything is tuned. */
+    for (const d of done) {
+      this.logger.warn(`Report for ground ${groundId}: ${d.outcome} at ${d.path} (${d.problems.join('; ')}). Was: "${d.was.slice(0, 200)}"${d.now ? ` Now: "${d.now.slice(0, 200)}"` : ''}`);
+    }
+    return done.length ? report : null;
+  }
+
   private applyNames<T extends Record<string, any>>(
     reportIn: T,
     parties: any[],
