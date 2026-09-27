@@ -98,8 +98,10 @@ describe('a hedge stays a hedge', () => {
       expect(join).toContain(name);
     }
     expect(join).not.toContain('placeToLook');
-    /* The three things stay last; the hedge sits with the other right-now blocks in front of them. */
-    expect(join).toMatch(/theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    /* The three things stay last; the hedge sits with the other right-now blocks in front of them.
+       `heldBack` (what they have not said yet, week 1 of the weekly plan, 3fb7edf9) is one more
+       right-now block and belongs in the same place, after the hole and before the three that stay last. */
+    expect(join).toMatch(/theirHedge, theHole, heldBack, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
     /* The lead's read of a person is never read into a check-in, and what sits between two people
        only into the lead's own - at the query, not by an instruction. The unowned list is the lead's alone. */
     expect(src).toContain("kind: { notIn: (isTheLead ? ['ABOUT_A_PERSON'] : ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE']) as any }");
