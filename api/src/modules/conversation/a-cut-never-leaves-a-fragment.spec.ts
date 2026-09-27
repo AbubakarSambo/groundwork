@@ -61,7 +61,7 @@ describe('no guard\'s cut ever leaves a fragment to send', () => {
   });
 
   it('every cut site in the reply path goes through the net', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/!aCutThatLeavesAFragment\(screened\.text, withoutIt\)/g)).toHaveLength(3);
     expect(src).toMatch(/if \(trimmed && !aCutThatLeavesAFragment\(better\.text, trimmed\)\)/);
     expect(src).toMatch(/afterTheCut\(screened\.text, noHomework\.text, \{ closing: closingNow, mayRestore: true \}\)/);
