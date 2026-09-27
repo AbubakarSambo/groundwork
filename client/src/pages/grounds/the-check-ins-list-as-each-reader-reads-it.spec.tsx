@@ -137,6 +137,14 @@ describe('the check-ins list, as an admin reads it', () => {
     const table = await screen.findByRole('table', { name: 'Other check-ins in Coamana' })
     expect(rowsOf(table)).toEqual([['Warehouse, Q3Run by Peter Otieno. Weekly.', 'Keep a read on live work', '', 'Just started']])
     expect(screen.queryByRole('table', { name: 'You run' })).toBeNull()
+    /* U.5 review: and says first that none of these are theirs. */
+    expect(screen.getByText('You do not run any check-ins, and you are not in any yet.')).toBeTruthy()
+  })
+
+  it('an admin who also runs one is not told they run none', async () => {
+    open(ADMIN, [SOMEONE_ELSES, { ...SOMEONE_ELSES, id: 'g-mine', label: 'Mine', initiatorId: 'u-g' }])
+    await screen.findByRole('table', { name: 'You run' })
+    expect(screen.queryByText(/You do not run any check-ins/)).toBeNull()
   })
 
   it('an empty organisation says how to start, and a failed load says it failed', async () => {

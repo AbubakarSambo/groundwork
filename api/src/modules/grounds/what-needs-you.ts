@@ -265,13 +265,13 @@ export function whatNeedsYou(
       if (future) {
         comingUp.push({
           at: new Date(time(future.availableFrom)!).toISOString(),
-          what: `${g.label}, session ${future.sessionNumber} opens`,
+          what: `Session ${future.sessionNumber} of ${g.label} opens.`,
           to: `/grounds/${g.id}`,
         });
       }
       const ends = time(g.endsAt);
       if ((iRunIt || me) && ends !== null && ends > at && ends <= at + AHEAD) {
-        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends`, to: `/grounds/${g.id}` });
+        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}` });
       }
     }
   }

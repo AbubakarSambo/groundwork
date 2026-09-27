@@ -244,6 +244,10 @@ export function GroundsListPage() {
           <p className="gw-t-small gw-ci-note">You see these boards as a participant: the team’s picture once it’s shared, and your own part in full.</p>
         </Section>
       )}
+      {/* An admin or a lead who runs none and is in none: said, so the list does not open on someone else's heading (U.5 review). */}
+      {others.length > 0 && youRun.length === 0 && youreIn.length === 0 && (
+        <p className="gw-t-body gw-ci-quiet">You do not run any check-ins, and you are not in any yet.</p>
+      )}
       {others.length > 0 && (
         <Section title={`Other check-ins in ${orgName}`} count={others.length}>
           <CheckInsTable label={`Other check-ins in ${orgName}`} rows={others} />

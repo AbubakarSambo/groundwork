@@ -28,8 +28,8 @@ const LEAD_READ = {
     { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
   ],
   comingUp: [
-    { at: tomorrowAt4, what: 'Sales team, Q3, session 39 opens', to: '/grounds/s' },
-    { at: friday, what: 'Kwame, first 90 days ends', to: '/grounds/k' },
+    { at: tomorrowAt4, what: 'Session 39 of Sales team, Q3 opens.', to: '/grounds/s' },
+    { at: friday, what: 'Kwame, first 90 days ends.', to: '/grounds/k' },
   ],
 }
 
@@ -92,10 +92,10 @@ describe('Today, as the lead', () => {
     open(WAIRIMU, LEAD_READ)
     const aside = await screen.findByRole('complementary', { name: 'Coming up' })
     expect([...aside.querySelectorAll('li')].map(li => li.textContent)).toEqual([
-      'Tomorrow, 4pmSales team, Q3, session 39 opens',
-      'FridayKwame, first 90 days ends',
+      'Tomorrow, 4pmSession 39 of Sales team, Q3 opens.',
+      'FridayKwame, first 90 days ends.',
     ])
-    expect(within(aside).getByRole('link', { name: 'Sales team, Q3, session 39 opens' })).toHaveAttribute('href', '/grounds/s')
+    expect(within(aside).getByRole('link', { name: 'Session 39 of Sales team, Q3 opens.' })).toHaveAttribute('href', '/grounds/s')
   })
 
   it('a member never sees the admin’s welcome card or checklist', async () => {

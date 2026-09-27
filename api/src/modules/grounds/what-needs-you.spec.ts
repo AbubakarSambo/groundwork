@@ -89,7 +89,7 @@ describe('Today, as the lead who runs the sales team', () => {
   });
 
   it('says what is coming up, as moments the screen puts in her own time', () => {
-    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'Sales team, Q3, session 3 opens', to: '/grounds/g-sales' }]);
+    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'Session 3 of Sales team, Q3 opens.', to: '/grounds/g-sales' }]);
   });
 });
 
