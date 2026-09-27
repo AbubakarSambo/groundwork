@@ -129,3 +129,14 @@ describe('the rest of the page, as the participant reads it (U.3 review)', () =>
     expect(document.querySelector('.gw-invite-note')?.textContent).toMatch(/^\s*The people in this check-in, including your manager, can see what you say in it\./)
   })
 })
+
+describe('what the lead wrote about the person is not on their invitation (U.6 review)', () => {
+  it('Daniel does not read the lead\'s sentence about him, even if a server sent it', async () => {
+    open({ ...PREVIEW, roleAsDescribed: 'Daniel - Your sales manager, who you said is not meeting his agreed targets for pipeline building and coaching.' })
+    await screen.findByText('Who sees your answers')
+    const text = document.body.textContent ?? ''
+    expect(text).not.toContain('Your part in this')
+    expect(text).not.toContain('sales manager')
+  })
+})
+

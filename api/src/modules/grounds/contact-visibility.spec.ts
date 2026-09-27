@@ -67,7 +67,9 @@ describe('GW-PRIVACY-CONTACT: participant-to-participant email visibility on get
     const b = res.participants.find((p: any) => p.id === 'pB');
     expect(b.user).toEqual({ firstName: 'Blair', lastName: 'Kane' }); // NAME still visible
     expect(b.user.email).toBeUndefined();                  // and no email leaks via the user object
-    expect(b.roleAsDescribed).toBe('Designer');            // role still visible
+    /* U.6 review: stricter than before, not weaker. The role on a row is the lead's sentence about
+       that person, which a participant never reads (the-leads-words-about-someone.ts). */
+    expect(b.roleAsDescribed).toBeNull();
     expect(b.partyType).toBe('PARTICIPANT');               // presence still visible
     // self always sees own
     expect(emailOf(res, 'pA')).toBe('ada@example.com');

@@ -304,12 +304,8 @@ export function InvitePage() {
           Groundwork stay private.
         </div>
 
-        {preview.roleAsDescribed && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            {/* Attributed, because somebody else wrote it about them. */}
-            Your part in this: <strong>{preview.roleAsDescribed}</strong>
-          </div>
-        )}
+        {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
+            was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
 
         <div className="gw-invite-facts">
           {preview.schedule && (

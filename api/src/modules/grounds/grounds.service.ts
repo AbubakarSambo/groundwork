@@ -62,6 +62,7 @@ import {
 } from './what-the-lead-wants-changed';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
+import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1406,6 +1407,9 @@ export class GroundsService {
           .map((p) => ({
             ...p,
             email: hideContact && !isInitiator && !isMe(p) ? null : p.email,
+            /* U.6 review: what the lead wrote about a person is for whoever runs the check-in only.
+               See the-leads-words-about-someone.ts. */
+            roleAsDescribed: theLeadsWordsAbout(p, runsIt),
           }));
         const shown = new Set(participants.map((p: any) => p.id));
         const checkInsShown = hidePeers
@@ -1847,6 +1851,8 @@ export class GroundsService {
       return {
         ...p,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
+        /* U.6 review: the lead's words about a person never reach a participant. */
+        roleAsDescribed: theLeadsWordsAbout(p, viewerRunsThisGround),
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw

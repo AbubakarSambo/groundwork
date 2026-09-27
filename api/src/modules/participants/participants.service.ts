@@ -81,7 +81,8 @@ export class ParticipantsService {
       groundLabel: ground.label,
       scenario: ground.scenario,
       initiatorName: `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim(),
-      roleAsDescribed: participant.roleAsDescribed,
+      /* U.6 review: no "Your part in this". What is stored there is the lead's sentence about this
+         person (the-leads-words-about-someone.ts), and this page is read by that person. */
       email: participant.email,
       alreadyAccepted: !!participant.userId,
       /* Somebody who answered through an open link has no sign-in yet, and has already done the thing

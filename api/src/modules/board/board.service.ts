@@ -58,6 +58,7 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
@@ -582,7 +583,8 @@ export class BoardService {
       participants: ground.participants.map((p) => ({
         id: p.id,
         name: nameOf(p.id),
-        role: p.roleAsDescribed ?? (p.managingOnly ? 'Managing only' : null),
+        /* U.6 review: the lead's words about a person are for whoever runs the check-in only. */
+        role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
       })),
@@ -928,7 +930,7 @@ export class BoardService {
         rows: ground.participants.map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: p.roleAsDescribed ?? (p.managingOnly ? 'Managing only' : null),
+          role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
           // A managing-only lead has no account of their own and is not counted
           // in readiness, so their row is dashes, not "overdue".
           managingOnly: p.managingOnly,
@@ -958,7 +960,7 @@ export class BoardService {
         .map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: p.roleAsDescribed ?? null,
+          role: theLeadsWordsAbout(p, runsThisGround),
           /*
            * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
            * carries the engine's own markers - a live board showed
