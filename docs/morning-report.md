@@ -29,6 +29,33 @@ Everything else, phase 2 included, waits until after deployment.
 - **The live test caught the check being too eager, fixed in `2d1610ec`.** It had held back statements of goals, such as "Participant B is working to achieve 14 approved facilities" and "The initiator's goal is 40 approved facilities". It had also held back one true sentence, "Participant C has three approvals". A goal is not a claim, and a figure the record supports is never held back. On the two new runs it now holds back nothing, and on run-8 it holds back only the three Kwame lines.
 - **Not yet run live on `2d1610ec` itself.** That happens with task 1.6's test runs, so that one build carries both.
 
+### Task 1.6: the automatic check on the text each reader sees
+
+**Built, and not yet proven on a full run.** Today's two full runs were used before it was finished. The first full run tomorrow is its test.
+
+**The fixes at the source, one commit each:**
+- **`eb997d7a`: labels.** Each finding carried a raw field, `"label": "the initiator"` or `"label": "Participant A"`. That was 113 of the 114 "internal labels shown". No screen displays it, so it is no longer served, but it stays in storage.
+- **`2ebe9127`: "the person who set this up".** Groundwork had said to Mei, "Mei, the person who set this up wants to understand…". The conversation now uses the lead's first name, or "your lead" when there is none.
+- **`1edbc3e9`: the clipped line built from the lead's description of a person.** "Ngozi Eze was taken on for: Relationship officer, Ikeja. … What the record holds about it: …" was all 36 of "role description used as a name". It is now in full sentences, and it is still the lead's alone.
+- **`aae42a6e`: sentences starting in lower case.** Both were in Groundwork's conversation turns, and they are now caught before a turn is saved.
+- **`12555e10`: titles.** A person's short name is now their first name, not their title. Dr, Prof, Eng., Engr., Hon., Mr, Mrs, Ms, Miss, Sir, Dame, Chief, Alhaji, Alhaja, Rev, Pastor, Barr., Arc. and Justice are all handled, with or without a full stop. "Dr Amina Bello" becomes Amina. "Dr Bello" and "Mrs Okafor" stay whole. A person actually named "Hon" stays "Hon".
+- **`d89628ae`: "You agrees".** "The initiator agrees" had reached the lead as "You agrees". It now reads "You agree".
+- **`9c662ad7`: "All two people have answered".** It now reads "Both people have answered."
+
+**The check itself (`3d346e4e`).** Before a report is stored, every line is rendered as the lead and as each participant would read it. The scorer's own problem patterns run over each version. A spec reads `tools/score_run.py`, so the two cannot drift apart. The check also looks for doubled quote marks, and for a verb that does not agree with "you".
+- A line that fails is rewritten once by the model. The rewrite is kept only if it reads clean for every reader and every quotation is unchanged.
+- Otherwise the sentence is dropped, without leaving any field blank.
+- Every rewrite and every drop is logged.
+
+**On run-10's stored reports, served again through the new code:** every problem count is 0, except six old sales lines already in storage. Those change when the report is next written.
+
+**What it does not cover yet:**
+- The board's own sentences, which are built when the board is opened, not stored. The check sees the report text the board uses, but not those.
+- The pronoun check in conversation turns.
+- Two counts that mix a word and a figure, such as "Two of the 5 people have answered so far".
+
+**The praise check reads the lead's description of each person, to find their target (`e4c2b18b`).** For Kwame, the target of 14 approved facilities is written only there. The check only takes sentences out, never adds any, and calls no model. A test proves none of the description's words reach its output. It is the one internal read of the lead's words that decision 30 allows in practice, and I have written it down so it is not a surprise.
+
 ### Hafsah's decision on the bar for task 1.5
 
 **Task 1.5 is met when, in two full runs in a row, at least 20 of the 24 scenarios can be tested, and at least 90% of those are clearly right.**
