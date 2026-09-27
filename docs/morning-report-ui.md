@@ -3462,15 +3462,35 @@ and nobody already on the free plan is cut off.
   address, only "You need admin access to manage billing for your organisation.", and nothing is
   fetched. The server refuses every billing action to them, and serves a guest nothing about billing.
 
-**Tests changed, and why:** the seat test modelled no memberships; it now does, with three new cases.
-Two tests pinned the old where clause or the direct free-limit call; they now pin the one shared
-reader. The cancel test finds the buttons by the prototype's "Pause" and "Cancel". Two tests pinned
-the old stat tiles; they now pin the prototype's rows, still checking that the numbers show before
-anybody pays and that the state is said once. The thank-you test reads the prototype's words, still
-only after the server confirms. The People page test's helper takes the billing answer, for one new
-case. New: the trial granted only while on (10 tests), billing as each reader is served it (13), the
-switch for the free plan (14), the published plans (1), Plan and billing as each reader sees it (15),
-and the pricing page as each reader sees it (8).
+**Tests changed, and why:**
+- `a-seat-is-a-seat-on-both-screens.spec.ts` (API): its fake table had no memberships, so it could
+  not count a seat the new way. It now models memberships, and has three new cases: a guest holds no
+  seat, somebody looking at another organisation keeps theirs, and an account with no membership row
+  is still counted. Its source check also accepts the new shared reader, `seatsIn`.
+- `the-subscription-belongs-to-the-org.spec.ts` (API): it pinned the old where clause, and then the
+  direct call for the free people limit. It now pins the one shared reader that both the invite gate
+  and Plan and billing use, so the two still cannot say different numbers.
+- `stopping-early-is-a-pause-not-a-refund.spec.tsx` (screens): it looked for the buttons "Cancel
+  subscription" and "Pause subscription". They now read "Pause" and "Cancel", as the prototype has
+  them. What they do, and every check on what they say, is unchanged.
+- `the-numbers-that-decide-it.spec.ts` (screens): it pinned the old stat tiles. It now pins the
+  prototype's rows, still checking that the plan line is not hidden behind having a subscription and
+  that what the account has done is shown. That the free plan's people against its cap are shown to
+  an organisation with no subscription ("3 of 5 people, including you.") is now checked on the
+  rendered page, in `plan-and-billing-as-each-reader-sees-it.spec.tsx`, and inside the trial ("12
+  of 20 people.").
+- `one-vocabulary.spec.ts` (screens): it pinned the stat tiles too. It now checks the prototype's
+  rows, and that the plan line is said once.
+- `the-thank-you-page-does-not-promise-what-it-has-not-read.spec.tsx` (screens): it looked for "You
+  are on the … plan." It now reads the prototype's "Done. Baridi Appliances is on Growth.", still only
+  after the server reports the plan active, and has a new case for coming back without paying.
+- `OrgMembersPage.spec.tsx` (screens): its helper now takes the billing answer as an argument, for
+  one new case (a free run's plan is named).
+
+New: the trial granted only while on (10 tests), billing as each reader is served it (13), the
+switch for the free plan (14), the published plans (1, reading the migrations with their comments
+stripped), Plan and billing as each reader sees it (15), and the pricing page as each reader sees it
+(8).
 
 **Checked:** the tests for every file I changed, both type checks, and the existing Stripe tests
 (checkout, webhooks, invoices, the care fee, pausing, cancelling, the paywall), which all pass. **Not
