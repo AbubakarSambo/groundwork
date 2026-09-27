@@ -9,6 +9,8 @@ import { TodayController } from './today.controller';
 import { WhatNeedsYouService } from './what-needs-you.service';
 import { YouController } from './you.controller';
 import { YourBoardService } from './your-board.service';
+import { CheckInLinksController } from './check-in-links.controller';
+import { CheckInLinksService } from './check-in-links.service';
 import { CompanyController } from './company.controller';
 import { CompanyService } from './company.service';
 import { BillingModule } from '../billing';
@@ -28,8 +30,8 @@ import { SuggestionsModule } from '../suggestions/suggestions.module';
    * starting the thing finds it.
    */
   imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule],
-  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController],
-  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService],
+  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, CheckInLinksController],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CheckInLinksService],
   exports: [GroundsService],
 })
 export class GroundsModule {}

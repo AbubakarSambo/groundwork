@@ -1943,6 +1943,16 @@ model GroundDependency {
   triedSaid       String?          @map("tried_said") @db.Text
   escalatedAt     DateTime?        @map("escalated_at")
   sourceCheckInId String?          @map("source_check_in_id")
+  /// THE OTHER CHECK-IN THIS HANDOFF WAITS ON (D3, U.16), when it waits on another team's check-in.
+  ///
+  /// Written by the engine, which is the one that can tell that "Finance" in Miriam's check-in is
+  /// the Finance check-in (docs/requests-to-engine.md, request 18). Null is the ordinary state: most
+  /// handoffs wait on somebody in the same check-in, or on something outside the organisation.
+  ///
+  /// Read by `CheckInLinksService` only, which shows each reader a link only from a check-in they
+  /// may already open. A plain id, not a relation: a second relation to Ground would rename the
+  /// existing one, and a check-in that is gone simply stops being one anybody may open.
+  waitingOnGroundId String?        @map("waiting_on_ground_id")
   clearedAt       DateTime?        @map("cleared_at")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
@@ -1956,6 +1966,8 @@ model GroundDependency {
   /// well as created in SQL - an index Prisma does not know about is one the next generated
   /// migration drops.
   @@index([status, escalatedAt, createdAt])
+  /// "Asked of this check-in by other teams" reads by the check-in being waited on.
+  @@index([waitingOnGroundId])
   @@map("ground_dependencies")
 }
 
