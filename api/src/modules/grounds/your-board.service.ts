@@ -1,8 +1,10 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard } from './your-board';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { SuggestionsService } from '../suggestions/suggestions.service';
+import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 
 /** Said to anybody who asks for a You board that is not their own. */
 export const NOT_YOURS = 'Only the person whose page this is can read it.';
@@ -17,12 +19,17 @@ export const NOT_YOURS = 'Only the person whose page this is can read it.';
  */
 @Injectable()
 export class YourBoardService {
-  constructor(private prisma: PrismaService, private grounds: GroundsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private grounds: GroundsService,
+    /** "Where you stand" from Groundwork's suggestions about you (C3, U.13), as you may read them. */
+    @Optional() private suggestions?: SuggestionsService,
+  ) {}
 
   async forReader(
     reader: { userId: string; email: string; organizationId: string; role: string },
     askedFor?: string | null,
-  ): Promise<YourBoard> {
+  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[] }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
@@ -66,13 +73,18 @@ export class YourBoardService {
       this.myTodos(reader.organizationId, reader.email),
     ]);
 
-    return yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
+    /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
+       the decision with its reasons, never the verdict). Left off when there are none. */
+    const aboutYou = this.suggestions ? await this.suggestions.aboutYou({ userId: reader.userId, organizationId: reader.organizationId }) : [];
+
+    const board = yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
       objectives: objectives as any,
       ownedTargets: this.onlyYours(ownedTargets as any[], participantIds),
       commitments: commitments as any,
       coaching: coaching as any,
       todos: todos as any,
     });
+    return aboutYou.length ? { ...board, suggestionsAboutYou: aboutYou } : board;
   }
 
   /**

@@ -772,6 +772,18 @@ export class UsersService {
       select: { id: true, label: true, scenario: true, status: true },
     });
 
+    /**
+     * WHAT YOU WROTE BACK TO A SUGGESTION ABOUT YOU (C3, U.13): your side and your appeal, in your
+     * own words. Only what you wrote: never the suggestion's verdict, and nothing the lead wrote.
+     */
+    const suggestionsAboutYou = participantIds.length
+      ? await this.prisma.suggestion.findMany({
+          where: { aboutParticipantId: { in: participantIds }, OR: [{ theirSide: { not: null } }, { appeal: { not: null } }] },
+          select: { theirSide: true, theirSideAt: true, appeal: true, appealedAt: true, ground: { select: { label: true } } },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
     return {
       userId: user.id,
       email: user.email,
@@ -786,6 +798,13 @@ export class UsersService {
         groundLabel: c.ground.label,
       })),
       grounds,
+      yourSidesAndAppeals: suggestionsAboutYou.map((x) => ({
+        groundLabel: x.ground.label,
+        yourSide: x.theirSide,
+        yourSideAt: x.theirSideAt,
+        yourAppeal: x.appeal,
+        appealedAt: x.appealedAt,
+      })),
     };
   }
 

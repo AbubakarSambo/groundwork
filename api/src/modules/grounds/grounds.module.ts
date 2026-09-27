@@ -13,6 +13,7 @@ import { BillingModule } from '../billing';
 import { PatternsModule } from '../patterns/patterns.module';
 import { UsageModule } from '../usage/usage.module';
 import { ConversationModule } from '../conversation/conversation.module';
+import { SuggestionsModule } from '../suggestions/suggestions.module';
 
 @Module({
   /**
@@ -24,7 +25,7 @@ import { ConversationModule } from '../conversation/conversation.module';
    * invisible to tsc and to unit tests that construct services by hand - only
    * starting the thing finds it.
    */
-  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule],
+  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule],
   controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController],
   providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService],
   exports: [GroundsService],

@@ -209,3 +209,31 @@ describe('the door: GET /you and GET /you/:userId', () => {
     await expect(door.mine(as(who), 'u-miriam')).rejects.toThrow(NOT_YOURS);
   });
 });
+
+describe('Groundwork’s suggestions about you, on your own You board (C3, U.13)', () => {
+  const aboutMiriam = {
+    id: 's-1', checkIn: { id: 'g-sales', label: 'Sales team, Q3' }, leadName: 'Wairimu',
+    facts: 'In the last 4 weeks, you kept 14 of your 16 commitments.', whatWouldChangeIt: null,
+    decision: null, yourSide: null, yourAppeal: null, appealDecision: null, mayAppeal: false,
+  };
+
+  it('Miriam’s board carries the suggestions about her, as the person it is about reads them', async () => {
+    const { prisma, grounds } = setup();
+    const suggestions: any = { aboutYou: jest.fn(async (r: any) => (r.userId === 'u-miriam' ? [aboutMiriam] : [])) };
+    const svc = new YourBoardService(prisma, grounds, suggestions);
+    const b = await svc.forReader({ ...people.miriam, organizationId: ORG });
+    expect(b.suggestionsAboutYou).toEqual([aboutMiriam]);
+    expect(suggestions.aboutYou).toHaveBeenCalledWith({ userId: 'u-miriam', organizationId: ORG });
+  });
+
+  it('nobody else’s board carries them, and a board with none has no such part', async () => {
+    const { prisma, grounds } = setup();
+    const suggestions: any = { aboutYou: jest.fn(async (r: any) => (r.userId === 'u-miriam' ? [aboutMiriam] : [])) };
+    const svc = new YourBoardService(prisma, grounds, suggestions);
+    for (const who of ['wairimu', 'grace', 'brian'] as const) {
+      const b = await svc.forReader({ ...people[who], organizationId: ORG });
+      expect(b).not.toHaveProperty('suggestionsAboutYou');
+      await expect(svc.forReader({ ...people[who], organizationId: ORG }, 'u-miriam')).rejects.toThrow(NOT_YOURS);
+    }
+  });
+});
