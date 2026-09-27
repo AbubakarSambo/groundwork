@@ -14,10 +14,10 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in) and U.12 (the You
-board). U.3 to U.11 each passed the full screen and API suites; U.12 has had only the tests for its
-own files and the folder-wide checks so far, and its full run comes next. The engine workspace has since fixed the two failures in its own files; I
-checked those with a targeted run, and the next full run will confirm the whole suite. **None could be ticked, because the reviewer can no longer
-sign in as anyone** (item 14). That is the most important thing for you to unblock.
+board). Each passed the full screen and API suites. The latest full run, after U.12, passed
+everything with no failures at all (2,765 screen tests and 9,391 API tests). **None could be ticked,
+because the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for
+you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -38,7 +38,7 @@ asks the engine to change the rule itself).
 8. Item 23.1: may anyone but the person read their You board? (a privacy question)
 9. The rest of items 13, 15 to 23 are smaller, each with a recommendation.
 
-**In progress:** U.12's full test run, then U.13 (suggestions from verdicts, and appeals). In U.12 each person has their
+**In progress:** U.13 (suggestions from verdicts, and appeals) is next. In U.12 each person got their
 own You board, which the server serves to them alone; the engine's own text for it is request 14.
 
 ## Needs Hafsah
@@ -1632,6 +1632,10 @@ page exists; what they guard is unchanged. Only the tests for the changed files,
 whole folders on both sides, and both type checks were run, as you asked. No screen could be checked
 signed in (item 14), so the page was checked by rendering tests only. No migration. **Not ticked,**
 because no review can sign in (item 14).
+
+**The full run passed with no failures at all:** 2,765 screen tests, 9,391 API tests, and the build.
+That run also confirmed U.11's fixes, the faster check-in test, and the engine workspace's fixes to its
+own files. **Not ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 

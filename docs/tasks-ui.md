@@ -36,7 +36,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [ ] **U.9** B4 Reports and sharing *(Built and tested on 27 September, apart from the engine's text (request 9) and whether the lead holds the report (item 20). Not ticked: the review could not sign in; see item 14.)* (the screens; request any report changes)
 - [ ] **U.10** B5 The board *(Built and tested on 27 September, apart from the engine's text (request 11) and what waits for Hafsah (item 21). Not ticked: the review could not sign in; see item 14.)*, including the switchboard's sections (every section's data comes from the record, the latest report, or another system, and none may go stale between reports)
 - [ ] **U.11** B6 Ending a check-in, the probation review, handover *(Built and tested on 27 September, apart from the engine's parts (request 13) and what waits for Hafsah (item 22). Not ticked: the review could not sign in; see item 14.)*
-- [ ] **U.12** C2 The You board
+- [ ] **U.12** C2 The You board *(Built and tested on 27 September, apart from the engine's parts (request 14) and what waits for Hafsah (item 23). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.13** C3 Suggestions from verdicts, and appeals (a new backend part, outside the engine's text; request the engine's suggestion text)
 - [ ] **U.14** D1 Ask Groundwork (the panel and its requests confirmed first; request engine changes for claims and thinking it through)
 - [ ] **U.15** D2 The Company page
