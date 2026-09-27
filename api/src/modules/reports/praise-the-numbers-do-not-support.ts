@@ -28,6 +28,13 @@
  * target, the praise is held back. A figure in a different unit never meets a target in another:
  * twenty-two applications are not fourteen approvals.
  *
+ * AND A FIGURE CALLED A SUCCESS THE RECORD DOES NOT CALL ONE. "Participant C's 22 successful
+ * applications", "22 approved facilities": his record holds 22 applications and three approvals.
+ * Where the product's own sentence gives a figure a success word the record's own figures contradict,
+ * it is held back too, in every section of the judgement, and in the findings, the opening and the
+ * picture, which the board reads. Words in quotation marks are theirs and are never judged, and a
+ * plain report of what somebody said stays.
+ *
  * WHAT IT NEVER DOES. It writes nothing. Praise the numbers support stays exactly as it is, a person
  * with no target in their record is left alone, and nothing is put where the praise was: no new
  * charge against the person and no label. Held back means removed, by the same no-blank rules as
@@ -144,21 +151,50 @@ const ATTAINMENT = /\b(?:exceed(?:s|ed|ing)?|surpass(?:es|ed|ing)?|outperform(?:
 const NOT_PRAISE = /\b(?:not|never|no longer|isn't|hasn't|haven't|aren't|won't|whether|if|but|however|although|though|whereas|yet|only|believes?|thinks?|claims?|feels?)\b|n't\b/i;
 
 const sentencesOf = (t: string): string[] => (t ?? '').split(/(?<=[.!?])\s+(?=["“A-Z])/).filter((s) => s.trim());
+/* Their own words, in quotation marks, are theirs: only the product's own sentence is judged. */
+const withoutTheirWords = (t: string): string => (t ?? '').replace(/["“][^"”]*["”]/g, ' ');
+
+/*
+ * A FIGURE CALLED A SUCCESS. "The details of Participant C's 22 successful applications": the record
+ * holds 22 applications and three approvals, so nothing in it calls the 22 a success. A stage word
+ * ("approved", "disbursed", "completed") must be the record's own for that figure; a general one
+ * ("successful") must be matched by a figure the record itself gives a success word.
+ */
+const A_STAGE = /^(?:approved|approval|approvals|disbursed|signed|closed|won|delivered|converted|completed|complete|funded|paid)$/;
+const A_SUCCESS = /^(?:successful|successfully|succeeded|success)$/;
+const isASuccessWord = (w: string): boolean => A_STAGE.test(w) || A_SUCCESS.test(w);
+const sameFigure = (a: number, b: number): boolean => Math.abs(a - b) < Math.max(1e-9, b * 0.005);
+
+function aSuccessTheRecordDoesNotGive(f: AFigure, reached: AFigure[]): boolean {
+  const stage = f.unit.find((w) => A_STAGE.test(w));
+  if (stage) {
+    const sameStage = (r: AFigure) => r.unit.some((u) => stem(u) === stem(stage));
+    if (reached.some((r) => sameFigure(r.value, f.value) && sameStage(r))) return false;
+    return reached.some((r) => sameStage(r) && !sameFigure(r.value, f.value))
+      || reached.some((r) => sameFigure(r.value, f.value) && !r.unit.some(isASuccessWord));
+  }
+  if (!f.unit.some((w) => A_SUCCESS.test(w))) return false;
+  if (reached.some((r) => sameFigure(r.value, f.value) && r.unit.some(isASuccessWord))) return false;
+  return reached.some((r) => sameFigure(r.value, f.value) && !r.unit.some(isASuccessWord))
+    || reached.some((r) => r.unit.some(isASuccessWord));
+}
 
 /** Is this sentence a claim about what this person reached, and do their numbers fail to support it? */
 function praiseTheirNumbersDoNotSupport(sentence: string, p: APersonThePraiseCouldBeAbout): boolean {
+  const theProducts = withoutTheirWords(sentence);
+  if (NOT_PRAISE.test(theProducts)) return false;
+  const inTheSentence = figuresIn(theProducts).filter((f) => !isATargetFigure(f));
+  const reached = whatTheyReached(p);
+  if (inTheSentence.some((f) => aSuccessTheRecordDoesNotGive(f, reached))) return true;
   const targets = theirTargets(p);
   if (!targets.length) return false;
-  if (NOT_PRAISE.test(sentence)) return false;
-  const inTheSentence = figuresIn(sentence).filter((f) => !isATargetFigure(f));
   const saysTheyReachedIt = targets.some((t) => inTheSentence.some((f) => sameUnit(t.unit, f.unit) && f.value >= t.value));
-  const praises = ATTAINMENT.test(sentence) || (PRAISE_VERB.test(sentence) && inTheSentence.length > 0) || saysTheyReachedIt;
+  const praises = ATTAINMENT.test(theProducts) || (PRAISE_VERB.test(theProducts) && inTheSentence.length > 0) || saysTheyReachedIt;
   if (!praises) return false;
   /* The target the sentence is about, where it names one's unit; otherwise any of theirs. */
-  const words = wordsOf(sentence);
+  const words = wordsOf(theProducts);
   const named = targets.filter((t) => sameUnit(t.unit, words));
   const relevant = named.length ? named : targets;
-  const reached = whatTheyReached(p);
   const supported = relevant.some((t) => (t.soFar != null && t.soFar >= t.value)
     || reached.some((f) => sameUnit(t.unit, f.unit) && f.value >= t.value));
   return !supported;
@@ -181,59 +217,93 @@ function whoIsNamed(people: APersonThePraiseCouldBeAbout[]): (text: string) => A
   return (text) => tests.filter((x) => x.all.some((r) => r.test(text ?? ''))).map((x) => x.p);
 }
 
+/* The keys that say who an item is about, or are identifiers, never the product's prose. */
+const NOT_PROSE = /^(label|participantLabel|who|on|from|fieldId|startWith|code|status|type|band|tone)$|Id$|Ids$/;
+const WHO_KEYS = ['startWith', 'fieldId', 'participantLabel', 'who', 'label', 'on'];
+const REMOVE = Symbol('remove');
+
+function aCheck(people: APersonThePraiseCouldBeAbout[]) {
+  const named = whoIsNamed(people);
+  /* A sentence about nobody by name is about the person the item or paragraph is about, where known. */
+  return (sentence: string, fallback: string | null | undefined): boolean => {
+    let about = named(withoutTheirWords(sentence));
+    if (!about.length && fallback) about = named(fallback);
+    return about.some((p) => praiseTheirNumbersDoNotSupport(sentence, p));
+  };
+}
+
 /**
- * THE JUDGEMENT WITH THE PRAISE ITS NUMBERS DO NOT SUPPORT HELD BACK, and each sentence held back,
- * as it was written, for the log. Everything else is returned exactly as it came.
+ * THE JUDGEMENT WITH THE PRAISE ITS NUMBERS DO NOT SUPPORT HELD BACK, IN EVERY SECTION, and each
+ * sentence held back, as it was written, for the log. Everything else is returned exactly as it came.
+ *
+ * Every section, not a list of them: whatThisCannotTellYou carried "The details of Participant C's
+ * 22 successful applications" after the move and the line of numbers had gone. The rules are the
+ * same as a-quote-is-what-they-said's. An item of a list that holds such a sentence goes whole; a
+ * field on its own loses the sentence; a field left with nothing is removed rather than stored blank.
  */
 export function praiseTheNumbersDoNotSupport<J extends Record<string, any>>(
   judgement: J,
   people: APersonThePraiseCouldBeAbout[],
 ): { judgement: J; heldBack: string[] } {
   if (!judgement || !people?.length) return { judgement, heldBack: [] };
-  const named = whoIsNamed(people);
+  const offends = aCheck(people);
   const heldBack: string[] = [];
 
-  /* A sentence about nobody by name is about the person the item is about, where it says. */
-  const offends = (sentence: string, fallback: string | null | undefined): boolean => {
-    let about = named(sentence);
-    if (!about.length && fallback) about = named(fallback);
-    return about.some((p) => praiseTheirNumbersDoNotSupport(sentence, p));
-  };
-  const anItemThatOffends = (texts: unknown[], fallback: unknown): string | null => {
-    for (const t of texts) {
-      if (typeof t !== 'string') continue;
-      const s = sentencesOf(t).find((x) => offends(x, typeof fallback === 'string' ? fallback : null));
-      if (s) return s;
+  const walk = (v: any, fallback: string | null, inAList: boolean): any => {
+    if (typeof v === 'string') {
+      const sentences = sentencesOf(v);
+      const bad = sentences.filter((s) => offends(s, fallback));
+      if (!bad.length) return v;
+      heldBack.push(...bad);
+      if (inAList) return REMOVE;
+      const kept = sentences.filter((s) => !bad.includes(s));
+      return kept.length ? kept.join(' ') : REMOVE;
     }
-    return null;
+    if (Array.isArray(v)) return v.map((x) => walk(x, fallback, true)).filter((x) => x !== REMOVE);
+    if (v && typeof v === 'object' && !(v instanceof Date)) {
+      const who = WHO_KEYS.map((k) => v[k]).find((x) => typeof x === 'string' && x.trim()) ?? fallback;
+      if (inAList) {
+        for (const [k, val] of Object.entries(v)) {
+          if (NOT_PROSE.test(k) || typeof val !== 'string') continue;
+          const bad = sentencesOf(val).find((s) => offends(s, who));
+          if (bad) { heldBack.push(bad); return REMOVE; }
+        }
+      }
+      const out: Record<string, any> = {};
+      for (const [k, val] of Object.entries(v)) {
+        if (NOT_PROSE.test(k)) { out[k] = val; continue; }
+        const r = walk(val, who, false);
+        if (r !== REMOVE) out[k] = r;
+      }
+      return out;
+    }
+    return v;
   };
+  const walked = walk(judgement, null, false);
+  return { judgement: (walked === REMOVE ? {} : walked) as J, heldBack };
+}
 
-  const out: Record<string, any> = { ...judgement };
-  if (Array.isArray(judgement.whatToDo)) {
-    out.whatToDo = judgement.whatToDo.filter((x: any) => {
-      const s = anItemThatOffends([x?.move, x?.because], x?.startWith);
-      if (s) heldBack.push(s);
-      return !s;
-    });
-  }
-  if (Array.isArray(judgement.whatTheNumbersSay)) {
-    out.whatTheNumbersSay = judgement.whatTheNumbersSay.filter((x: any) => {
-      const s = anItemThatOffends([x?.says, x?.soWhat], x?.fieldId);
-      if (s) heldBack.push(s);
-      return !s;
-    });
-  }
-  if (typeof judgement.theGap === 'string' && judgement.theGap.trim()) {
-    const sentences = sentencesOf(judgement.theGap);
-    const kept = sentences.filter((s) => {
-      const bad = offends(s, null);
-      if (bad) heldBack.push(s);
-      return !bad;
-    });
-    if (kept.length !== sentences.length) {
-      if (kept.length) out.theGap = kept.join(' ');
-      else delete out.theGap;
-    }
-  }
-  return { judgement: out as J, heldBack };
+/**
+ * THE SAME CHECK OVER ONE PARAGRAPH OF THE PRODUCT'S OWN: a person's finding, the opening, the
+ * picture. `about` is whose paragraph it is, so "He has exceeded his target" is read as theirs.
+ * Only the offending sentences go, and what they quoted in their own words is never judged.
+ */
+export function sentencesTheNumbersDoNotSupport(
+  text: string,
+  people: APersonThePraiseCouldBeAbout[],
+  about: string | null = null,
+): { text: string; heldBack: string[] } {
+  if (!text?.trim() || !people?.length) return { text, heldBack: [] };
+  const offends = aCheck(people);
+  const paragraphs = text.split(/(\n\s*\n)/);
+  const heldBack: string[] = [];
+  const out = paragraphs.map((para) => {
+    if (/^\n\s*\n$/.test(para)) return para;
+    const sentences = sentencesOf(para);
+    const bad = sentences.filter((s) => offends(s, about));
+    if (!bad.length) return para;
+    heldBack.push(...bad);
+    return sentences.filter((s) => !bad.includes(s)).join(' ');
+  }).join('').replace(/\n{3,}/g, '\n\n').trim();
+  return { text: heldBack.length ? out : text, heldBack };
 }

@@ -69,7 +69,7 @@ import {
 } from '../conversation/the-window-for-correcting-a-record';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, plainWordsByPerson, atTheStart, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
-import { praiseTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
+import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -2164,12 +2164,29 @@ Close the report by framing - neutrally, without recommending one - the choice n
       aboutOnePerson: familyFor((ground as any).scenario) === BoardFamily.EVALUATION,
     });
 
+    /*
+     * AND THE PRODUCT'S OWN SENTENCES ARE HELD TO THE RECORD'S NUMBERS, the same as the judgement's.
+     * The board reads these findings and the opening, so a "22 successful applications" written here
+     * would reach it whatever the judgement did. What a person said in their own words is theirs and
+     * is never judged. See praise-the-numbers-do-not-support.
+     */
+    const whoThePraiseCouldBeAbout = theFacts.map((f) => {
+      const party = (parties as any[]).find((p) => p.id === f.participantId);
+      return { who: f.label, role: ((party?.remitAsGiven ?? party?.roleAsDescribed ?? null) as string | null), facts: f };
+    });
+    const praiseHeldBack: string[] = [];
+    const heldToTheNumbers = (text: string, about: string | null): string => {
+      const r = sentencesTheNumbersDoNotSupport(text, whoThePraiseCouldBeAbout, about);
+      praiseHeldBack.push(...r.heldBack);
+      return r.text;
+    };
+    picture.opening = heldToTheNumbers(picture.opening, null);
     const findings = theFacts.map((f) => {
       const written = picture.perPerson.find((x) => x.participantId === f.participantId);
       return {
         participantId: f.participantId,
         label: f.label,
-        text: written?.text ?? '',
+        text: heldToTheNumbers(written?.text ?? '', f.label),
         hasGap: f.hasGap,
         headline: written?.headline ?? null,
       };
@@ -2177,8 +2194,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const productHalf = [picture.opening, ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
     if (productHalf) {
-      const modelHalf = String((result as any).sharedPicture ?? '').trim();
+      const modelHalf = heldToTheNumbers(String((result as any).sharedPicture ?? '').trim(), null);
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
+    }
+    if (praiseHeldBack.length) {
+      this.logger.warn(`Report for ground ${groundId}: held back ${praiseHeldBack.length} sentence(s) of the picture that call a figure a success the record does not support: ${praiseHeldBack.map((x) => `"${x}"`).join(', ')}`);
     }
     /* THE BOARD READS THIS, NOT THE FIRST PARAGRAPH OF THE REPORT. See how-a-check-in-is-going. */
     (result as any).theOpening = picture.opening || null;

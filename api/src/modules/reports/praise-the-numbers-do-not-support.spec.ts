@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { praiseTheNumbersDoNotSupport, type APersonThePraiseCouldBeAbout } from './praise-the-numbers-do-not-support';
+import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport, type APersonThePraiseCouldBeAbout } from './praise-the-numbers-do-not-support';
 import { factsAbout } from './the-facts-about-a-person';
 
 /*
@@ -139,6 +139,72 @@ describe('a judgement never praises a claim the record\'s own numbers contradict
   it('does not touch praise of conduct rather than of a figure', () => {
     const j = { whatToDo: [{ move: 'Thank Participant B for escalating the files in writing.', because: 'Participant B is the only one who has escalated anything.', startWith: 'Participant B' }] };
     expect(praiseTheNumbersDoNotSupport(j, [lead, ngozi, kwame]).judgement).toEqual(j);
+  });
+
+  /*
+   * EVERY SECTION, NOT ONLY THE MOVES. After the move and the line of numbers went, run 8's stored
+   * judgement still told the lead, under what this cannot tell you, about "Participant C's 22
+   * successful applications". Nothing in his record calls the 22 a success.
+   */
+  it('holds back the stored run-8 line in whatThisCannotTellYou, and keeps the one beside it', () => {
+    const cannot = [
+      { why: 'The record only shows that Participant B has escalated four times without a reply.', about: 'Why the Head of Credit has not responded to Participant B.', toKnow: 'The initiator would need to speak with the Head of Credit directly.' },
+      { why: 'Participant C only stated that "All 22 facilities were pretty smooth".', about: "The details of Participant C's 22 successful applications.", toKnow: 'The initiator would need to ask Participant C for a breakdown of that work.' },
+    ];
+    const r = praiseTheNumbersDoNotSupport({ theGap: 'You blame the credit committee.', whatToDo: [A_GOOD_MOVE], whatThisCannotTellYou: cannot }, [lead, ngozi, kwame]);
+    expect(r.judgement.whatThisCannotTellYou).toEqual([cannot[0]]);
+    expect(r.heldBack).toEqual(["The details of Participant C's 22 successful applications."]);
+  });
+
+  it('holds back a figure called approved or completed that the record does not call so, in any section', () => {
+    const r = praiseTheNumbersDoNotSupport({
+      whatToDo: [A_GOOD_MOVE],
+      whatWeFailedToAsk: [
+        { about: 'How Participant C closed 22 approved facilities so quickly.', howManyMissedIt: 1 },
+        { about: 'The monetary value of each person\'s applications.', howManyMissedIt: 3 },
+      ],
+      somethingAddedLater: [{ says: 'Participant C has 22 completed applications.' }],
+    }, [lead, ngozi, kwame]);
+    expect(r.judgement.whatWeFailedToAsk).toEqual([{ about: 'The monetary value of each person\'s applications.', howManyMissedIt: 3 }]);
+    expect(r.judgement.somethingAddedLater).toEqual([]);
+    expect(r.judgement.whatToDo).toEqual([A_GOOD_MOVE]);
+  });
+
+  it('keeps a figure called approved or complete where the record says so itself', () => {
+    const j = {
+      whatToDo: [{ move: 'Take the 11 complete files from Participant B to the credit committee.', because: 'Participant B has six approved and 11 complete files waiting.', startWith: 'Participant B' }],
+      whatTheNumbersSay: [{ says: 'Participant C has three approved facilities and 22 applications.', soWhat: 'Participant C is 11 short.', fieldId: 'Participant C' }],
+    };
+    expect(praiseTheNumbersDoNotSupport(j, [lead, ngozi, kwame]).judgement).toEqual(j);
+  });
+
+  /*
+   * THE FINDINGS AND THE OPENING, WHICH THE BOARD READS. His own words, and a plain report of what he
+   * said, stay; only the product's own sentence calling the figure a success goes.
+   */
+  it('in a finding, keeps his own words and a plain report of them, and holds back the product\'s claim', () => {
+    const finding = 'Participant C said "All 22 facilities were pretty smooth". He has three approved facilities against a target of 14. '
+      + 'He has 22 successful applications and is ahead of his target.';
+    const r = sentencesTheNumbersDoNotSupport(finding, [lead, ngozi, kwame], 'Participant C');
+    expect(r.text).toBe('Participant C said "All 22 facilities were pretty smooth". He has three approved facilities against a target of 14.');
+    expect(r.heldBack).toEqual(['He has 22 successful applications and is ahead of his target.']);
+    const plain = 'Participant C says all 22 of his facilities went smoothly. He has three approved facilities.';
+    expect(sentencesTheNumbersDoNotSupport(plain, [lead, ngozi, kwame], 'Participant C').text).toBe(plain);
+  });
+
+  it('in the opening, holds back the sentence and keeps the paragraphs around it', () => {
+    const opening = 'Three people have answered.\n\nParticipant C has 22 approved facilities. Participant B has 11 files at credit committee.';
+    const r = sentencesTheNumbersDoNotSupport(opening, [lead, ngozi, kwame]);
+    expect(r.text).toBe('Three people have answered.\n\nParticipant B has 11 files at credit committee.');
+  });
+
+  it('the findings, the opening and the picture are held to the numbers before the board can read them', () => {
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const src = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));
+    expect(src).toMatch(/picture\.opening = heldToTheNumbers\(picture\.opening/);
+    expect(src).toMatch(/text: heldToTheNumbers\(written\?\.text/);
+    expect(src).toMatch(/const modelHalf = heldToTheNumbers\(/);
+    expect(src.indexOf('text: heldToTheNumbers(')).toBeLessThan(src.indexOf('const productHalf'));
   });
 
   it('runs where the judgement is stored, after the move is worded for the reader, and logs what it held back', () => {
