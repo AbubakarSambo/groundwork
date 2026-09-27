@@ -162,7 +162,14 @@ export function TheDonePage({
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
                 <span>
                   {f.there ? f.met : f.missing}
-                  <span className="gw-sr-only">{f.there ? '. This was there.' : '. This was not there yet.'}</span>
+                  {/*
+                    NEVER A FACT ABOUT ABSENCE. Groundwork reads a session for these five things; it
+                    does not read everything a person actually said. "This was not there yet." said
+                    it was missing even when the person had given dates, a number and a document -
+                    read back, an untrue claim about their own words. What is true is only that this
+                    read did not pick it up this time.
+                  */}
+                  <span className="gw-sr-only">{f.there ? '. Groundwork found this.' : '. Groundwork did not pick this up this time.'}</span>
                 </span>
               </li>
             ))}
