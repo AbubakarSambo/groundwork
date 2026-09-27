@@ -164,18 +164,27 @@ export class WhoIsWaitingAtTheDoorService {
       where: { awaitingSeat: true, ground: { organizationId } },
       orderBy: { createdAt: 'asc' },
       select: {
-        id: true, email: true, createdAt: true,
+        id: true, email: true, createdAt: true, addedByUserId: true,
         ground: { select: { label: true, initiator: { select: { firstName: true, lastName: true, email: true } } } },
       },
     });
+    /*
+     * WHO ADDED THEM (U.4 re-review): the person recorded on their row, who may be the admin who set
+     * the check-in up, not the lead who runs it. Older rows record nobody and fall back to the lead.
+     */
+    const adderIds = [...new Set(rows.map((r) => r.addedByUserId).filter((x): x is string => !!x))];
+    const adders = adderIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: adderIds } }, select: { id: true, firstName: true, lastName: true, email: true } })
+      : [];
+    const nameOf = (u: { firstName: string | null; lastName: string | null; email: string } | null | undefined) =>
+      u ? ([u.firstName, u.lastName].filter(Boolean).join(' ') || u.email) : null;
+    const adderById = new Map(adders.map((a) => [a.id, a]));
     return rows.map((r) => ({
       id: r.id,
       email: r.email,
       name: null,
       waitingSince: r.createdAt,
-      addedBy: r.ground?.initiator
-        ? ([r.ground.initiator.firstName, r.ground.initiator.lastName].filter(Boolean).join(' ') || r.ground.initiator.email)
-        : null,
+      addedBy: (r.addedByUserId ? nameOf(adderById.get(r.addedByUserId)) : null) ?? nameOf(r.ground?.initiator),
       forCheckIn: r.ground?.label ?? null,
       kind: 'SEAT' as const,
       /* The one line an admin needs to know what pressing the button does. */

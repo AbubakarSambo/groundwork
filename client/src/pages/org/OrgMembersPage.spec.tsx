@@ -219,3 +219,25 @@ describe('the head count keeps up', () => {
     expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
   })
 })
+
+describe('the people with no seat say who added them', () => {
+  it('one person added them all: their name', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Nadia Owino' }]))
+      .toBe('Nadia Owino added them and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+  })
+  it('several people, or nobody recorded: a sentence true of all of them, never "A lead"', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Wairimu Kamau' }])).toMatch(/^Someone on your team added them/)
+    expect(whoAddedThem([{ addedBy: null }])).toMatch(/^Someone on your team added them/)
+  })
+  it('on the page, with each person\'s line', async () => {
+    open()
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText(/^Nadia Owino added them and your plan is full/)).toBeTruthy()
+    expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
+    expect(screen.queryByText(/A lead added them/)).toBeNull()
+  })
+})
