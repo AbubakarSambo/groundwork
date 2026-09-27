@@ -5,7 +5,7 @@ import { BoardService } from '../board/board.service';
 import { ReportsService } from './reports.service';
 import { ResolutionService } from '../resolution/resolution.service';
 import { endStatesFor } from '../resolution/end-states';
-import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, plainWordsByPerson, atTheStart, type LabelParty } from './party-labels';
+import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, plainWordsByPerson, atTheStart, withNames, theSameOneAgain, type LabelParty } from './party-labels';
 import { whatToCallThem } from '../conversation/a-colleague-in-an-interview-has-a-name';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { whatToWorkOnNext } from './what-to-work-on-next';
@@ -99,21 +99,59 @@ describe('the plain word is "a colleague", numbered the same way everywhere', ()
     expect(plainWordsByPerson(PARTIES).has('p-aisha')).toBe(false);
   });
 
-  it('two are "a colleague" and "another colleague", in the order the report gives them', () => {
+  it('two are "one colleague" and "another colleague", in the order the report gives them', () => {
     const second = { ...NO_NAME, id: 'p-noname-2', userId: 'u-noname-2', email: 'x2@baridi.test', createdAt: new Date('2026-09-01T12:00:00Z') };
     const words = plainWordsByPerson([...PARTIES, second as any]);
-    expect(words.get('p-noname')).toBe('a colleague');
+    expect(words.get('p-noname')).toBe('one colleague');
     expect(words.get('p-noname-2')).toBe('another colleague');
   });
 
-  it('three are "a colleague", "another colleague" and "a third colleague"', () => {
+  it('three are "one colleague", "another colleague" and "a third colleague"', () => {
     const more = [2, 3].map((n) => ({ ...NO_NAME, id: `p-noname-${n}`, userId: `u-noname-${n}`, email: `x${n}@baridi.test`, createdAt: new Date(`2026-09-01T1${n}:00:00Z`) }));
     const words = plainWordsByPerson([...PARTIES, ...(more as any[])]);
-    expect(['p-noname', 'p-noname-2', 'p-noname-3'].map((id) => words.get(id))).toEqual(['a colleague', 'another colleague', 'a third colleague']);
+    expect(['p-noname', 'p-noname-2', 'p-noname-3'].map((id) => words.get(id))).toEqual(['one colleague', 'another colleague', 'a third colleague']);
   });
 
   it('a capital only at the start', () => {
     expect(atTheStart('another colleague')).toBe('Another colleague');
+  });
+});
+
+describe('a second mention of the same person says it is the same one', () => {
+  const lead = new Map([['the initiator', 'Wairimu Kamau']]);
+
+  it('one person with no name: "a colleague", then "the same colleague"', () => {
+    const known = ['the initiator', 'Participant A'];
+    expect(withNames('Participant A built the front end. Participant A says the tests were slow.', lead, known))
+      .toBe('A colleague built the front end. The same colleague says the tests were slow.');
+  });
+
+  it('two: the sentence that read as two more people no longer happens', () => {
+    const known = ['the initiator', 'Participant A', 'Participant B'];
+    const out = withNames(
+      'Participant A built the front end. Participant B wrote the tests. Participant B says the tests were the slow part, and Participant A agrees.',
+      lead, known,
+    );
+    expect(out).toBe('One colleague built the front end. Another colleague wrote the tests. The second colleague says the tests were the slow part, and the first colleague agrees.');
+    expect(out).not.toContain('and a colleague agrees');
+  });
+
+  it('three: each keeps its number, and a repeat before the second is introduced is "the same colleague"', () => {
+    const known = ['the initiator', 'Participant A', 'Participant B', 'Participant C'];
+    const out = withNames(
+      'Participant C raised the budget. Participant C raised it again. Participant A disagreed, and Participant B sided with Participant C. Wairimu asked Participant A why.',
+      lead, known,
+    );
+    expect(out).toBe('A third colleague raised the budget. The same colleague raised it again. One colleague disagreed, and another colleague sided with the third colleague. Wairimu asked the first colleague why.');
+  });
+
+  it('the lead stays the lead', () => {
+    expect(theSameOneAgain({ firstMention: 'your lead', index: -1, introducedSoFar: 2 })).toBe('your lead');
+  });
+
+  it('a board line or a single sentence takes the first-mention words', () => {
+    const known = ['the initiator', 'Participant A', 'Participant B'];
+    expect(withNames('Participant B has not checked in.', lead, known)).toBe('Another colleague has not checked in.');
   });
 });
 

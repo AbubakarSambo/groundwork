@@ -133,7 +133,9 @@ describe('what the person being reviewed reads about a colleague they may not na
       'All three people have checked in. They disagree on the main reason for the successful launch.\n\n'
       + 'Laura Whitfield reports deciding on the final design of the onboarding flow.\n\n'
       + 'You say the launch went smoothly because a migration script moved 60,000 users.\n\n'
-      + 'A colleague built the front end for the project. A colleague says the hardest part of '
+      /* The second mention says it is the same person (Hafsah, 27 September 2026). It read "A
+         colleague says", which could be somebody else. */
+      + 'A colleague built the front end for the project. The same colleague says the hardest part of '
       + "the work was Victor's script.",
     );
   });
@@ -182,8 +184,9 @@ describe('what the person being reviewed reads about a colleague they may not na
 
 describe('and where there are several of them', () => {
   /*
-   * Hafsah's words for more than one: "a colleague", "another colleague", "a third colleague"
-   * (27 September 2026; on 26 September the first was "one colleague"). Which person is
+   * Hafsah's words for more than one: "one colleague", "another colleague", "a third colleague",
+   * and a later mention in the same text says which one it is: "the first colleague", "the second
+   * colleague" (27 September 2026). Which person is
    * which comes from the order the parties were added to the check-in, not from the order a
    * sentence happens to mention them - so the second paragraph below, which names them the other
    * way round, still calls the same person the same thing.
@@ -214,14 +217,17 @@ describe('and where there are several of them', () => {
       { isLead: false, participantId: 'p-amara' },
     );
 
-  it('reads "a colleague" and "another colleague", and keeps each person on the same one', () => {
+  it('reads "one colleague" and "another colleague", and a second mention says which one it is', () => {
+    /* It read "Another colleague says the tests were the slow part, and a colleague agrees.", which
+       reads as two more people. */
     expect(served().sharedPicture).toBe(
-      'A colleague built the front end. Another colleague wrote the tests.\n\n'
-      + 'Another colleague says the tests were the slow part, and a colleague agrees.',
+      'One colleague built the front end. Another colleague wrote the tests.\n\n'
+      + 'The second colleague says the tests were the slow part, and the first colleague agrees.',
     );
-    expect(served().agreements[0]).toBe('A colleague and another colleague both describe a high-quality user experience.');
+    /* A single sentence takes the first-mention words. */
+    expect(served().agreements[0]).toBe('One colleague and another colleague both describe a high-quality user experience.');
     expect(served().engagement.parties.map((p: any) => p.who)).toEqual([
-      'Laura Whitfield', 'Amara Diallo', 'a colleague', 'another colleague',
+      'Laura Whitfield', 'Amara Diallo', 'one colleague', 'another colleague',
     ]);
   });
 
