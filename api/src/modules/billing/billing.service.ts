@@ -842,6 +842,8 @@ export class BillingService {
     usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
+    /** Admin only: the subscription payments recorded from Stripe, newest first, for "Invoices". */
+    invoices?: Array<{ paidOn: Date; amountCents: number; currency: string }>;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
@@ -892,6 +894,19 @@ export class BillingService {
       where: { organizationId, status: GroundStatus.ACTIVE },
       select: { id: true, label: true, billingActivatedAt: true, sessionsBalance: true },
     });
+
+    /*
+     * INVOICES (U.19), from what the webhook already records once per paid Stripe invoice. Read only
+     * for an admin. Optional-chained like the other models a test double may not carry.
+     */
+    const invoices = includeUsage
+      ? await (this.prisma.billingEvent?.findMany?.({
+        where: { organizationId, type: BillingEventType.SUBSCRIPTION_FEE, status: BillingEventStatus.PAID },
+        orderBy: { periodStart: 'desc' },
+        take: 12,
+        select: { periodStart: true, amountCents: true, currency: true },
+      }) ?? Promise.resolve([])).catch(() => [])
+      : [];
 
     let card: { brand: string; last4: string } | null = null;
     if (org.stripeCustomerId && org.defaultPaymentMethodId) {
@@ -951,6 +966,9 @@ export class BillingService {
         sessionsBalance: g.sessionsBalance,
       })),
       card,
+      invoices: includeUsage
+        ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
+        : undefined,
     };
   }
 

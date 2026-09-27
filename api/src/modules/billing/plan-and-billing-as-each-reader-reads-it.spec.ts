@@ -95,3 +95,45 @@ describe('what GET /billing/status serves each reader', () => {
     expect(theStatusAsTheyMayReadIt(FULL, 'GUEST')).toEqual({});
   });
 });
+
+describe('the invoices on Plan and billing', () => {
+  function billing() {
+    const asked: any[] = [];
+    const prisma: any = {
+      organization: {
+        findUnique: async () => ({
+          stripeCustomerId: null, defaultPaymentMethodId: null, subscriptionPlan: 'GROWTH', subscriptionStatus: 'active',
+          subscriptionPeriodEnd: new Date('2026-10-01'), subscriptionEndsAt: null, freeExtensionUsed: false,
+          freeUntil: null, freePlan: null, freeTrialStartedAt: null,
+        }),
+      },
+      user: { count: async () => 27 },
+      ground: { count: async () => 0, findMany: async () => [] },
+      report: { count: async () => 0 },
+      groundParticipant: { findMany: async () => [] },
+      billingEvent: {
+        findMany: jest.fn(async (q: any) => {
+          asked.push(q);
+          return [{ periodStart: new Date('2026-09-01'), amountCents: 40000, currency: 'USD' }];
+        }),
+      },
+    };
+    const pricing: any = { memberCapFor: async () => 100, getFreeMemberLimit: async () => 5 };
+    const { BillingService } = require('./billing.service');
+    return { svc: new BillingService(prisma, { stripe: {} } as any, pricing, {} as any, {} as any, {} as any), asked };
+  }
+
+  it('Grace, an admin, reads this organisation’s paid subscription invoices, newest first', async () => {
+    const { svc, asked } = billing();
+    const status = await svc.getStatus('org-baridi', true);
+    expect(status.invoices).toEqual([{ paidOn: new Date('2026-09-01'), amountCents: 40000, currency: 'USD' }]);
+    expect(asked[0].where).toEqual({ organizationId: 'org-baridi', type: 'SUBSCRIPTION_FEE', status: 'PAID' });
+  });
+
+  it('nobody else is even looked up for', async () => {
+    const { svc, asked } = billing();
+    const status = await svc.getStatus('org-baridi', false);
+    expect(status.invoices).toBeUndefined();
+    expect(asked).toEqual([]);
+  });
+});
