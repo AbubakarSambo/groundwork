@@ -748,10 +748,9 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
    "Where you are" as the name of the "Check-ins / New check-in" line for screen readers. Under "For
    example" in the "You picked" panel, the examples are the product's own, not the prototype's.
    Also, in the setup: "Not set yet. This will run every 2 weeks unless you pick one." (today's
-   sentence, reworded), "On which day?" and "On which day of the month?" with "Any day" (today's
-   labels, kept so the day a check-in lands on can still be chosen), "Tomorrow, Wednesday 1 July."
+   sentence, reworded), "Tomorrow, Wednesday 1 July."
    without "from 4pm", "The check-in opens on Wednesday 1 July." for a single check-in, "From 1 July"
-   when only the start is set, "1 you mentioned: Daniel." before anyone is added, "Copied." after
+   when only the start is set, "You mentioned Daniel." before anyone is added, "Copied." after
    "Copy", and "Download the QR code" saves the picture as check-in-qr-code.png.
 8. **The setup screen (#/new/setup): what is left out, and why.** "Opens at" and "Closes at":
    nothing on the server keeps an opening time. Guests from another organisation: not built (item
@@ -772,6 +771,38 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
 12. **The panel that fills in as you talk** has no "Change" buttons, and does not say "Add their
     emails in the chat", because addresses are added on the save card. **My recommendation:** keep it
     this way until adding people in the chat is built.
+
+13. **The lead's first check-in on /start is not kept. A decision is needed.** Read live: the lead
+    answered her first check-in on /start (four answers and her own report), saved, and the check-in
+    read "0 of 2 checked in", "Nothing on record yet", her row "Not started". This is not from U.6. On
+    15 September you decided "The setup does not count as a lead's first check-in. The lead has to
+    always do a first check-in." (commit 2cd80f22), and since then the save treats what the page sends
+    as the setup conversation and leaves session 1 open. But what the page sends is the check-in she
+    did after setup, on the step called "Your check-in", not the setup (the setup never travels). So
+    she answers twice, and her first answers and her own report are thrown away, while the same save
+    already schedules session 2 and announces session 1 as finished. I made the fix (keep those
+    answers as her session 1) and took it back out, because it reverses what three tests record as
+    your decision. **Choose one:** (a) keep the /start check-in as her session 1, which I recommend,
+    since it is her check-in and not the setup; or (b) keep today's rule and stop asking for a
+    check-in on /start, so her first check-in opens only after saving.
+14. **Nobody can read their own "Your part in this" any more.** The field that held it is mostly the
+    lead's sentence about the person, and nothing records who wrote it, so it is now given only to
+    whoever runs the check-in. A participant who typed their own part no longer sees it on their
+    page. **My recommendation:** record who wrote it, and show a person their own words.
+15. **What the review asked that I did differently:** the prototype's second line under "Help someone
+    get back on track" ("Neither of you sees the other’s answers until you both have answered.") is
+    left out, because nothing on the server holds answers back that way. "Start over" stays on the
+    setup conversation although start-chat.txt does not show it, because it is the way out.
+16. **Two numbers can still differ a little.** With a chosen end, the check-in's "N days" is the
+    number of check-ins times the rhythm (weekly until 6 November reads "42 days, 6 sessions"), so the
+    session count and the end date agree; the days figure is a few days longer than the calendar.
+    And the save does not pass the length said in the conversation ("six weeks") to the server, so a
+    check-in with no end chosen still runs the situation's usual length. **My recommendation:** send
+    that length with the save.
+17. **Wording I wrote in the review fixes:** the plain "For example" sentences for every situation but
+    one (in `client/src/pages/enter/the-way-in.ts`), "People check in when the lead chooses." on the
+    admin's approval card, and the names made by `aNameForIt` ("Daniel, the next six weeks", "Daniel,
+    until 6 November", the person alone, or the lead's first words).
 
 ### 18. Context (U.7): what needs you
 
@@ -3886,6 +3917,20 @@ the switch, and one seat count).
 test read the migration files without removing comments first, and the comment guard caught it. It now
 removes both kinds of SQL comment. The existing Stripe, care-fee, webhook and paywall tests all passed,
 none of them changed. **Not ticked,** until its review.
+
+**U.6 review fixes (27 September).** The review ran one real setup with Gemini, signed out and then in, and sent U.6 back. Fixed, one commit each:
+- **Privacy:** Daniel's invitation read "Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets for pipeline building and coaching." That was the lead's own sentence about him. The server now gives what the lead wrote about a person only to whoever runs the check-in (the lead or an admin): not on the invitation, the check-in, the check-ins list or the board. The invitation has no "Your part in this" (request 6 asks the engine for a line written from the person's side).
+- **The date count** was one short with "Now". It counts days, not times.
+- **One day picker** on the setup ("On which days"), as on the check-in's own Setup. "On which day?" is gone.
+- **The start is asked once.** The old "One thing this check-in still needs / When does this start?" block is gone, and "Now" counts as a start in "Still to set".
+- **The chosen end sets how long it runs**, so the header, Setup, the number of check-ins and the invitation agree (weekly until 6 November: 6 check-ins, ending 6 November).
+- **Signed out, the setup survives the link and "Where do you work?"**: the check-in is saved and its invitation sent, as the save card promises.
+- **A name, never a type:** a check-in about Daniel is named "Daniel, the next six weeks" or "Daniel, until 6 November", not "Drift". Request 7 asks the engine about the classifier switching the lead's choice to DRIFT.
+- **Plain examples** in "You picked", with the prototype's two for "Help someone get back on track", and its line "You put their side and yours written down before you talk."
+- **"You mentioned Daniel."** in the panel.
+- **The setup conversation** reads "Set up a check-in", "This sounds like …" and "It’s something else", without the old name box, "Getting started", the arrow steps or the chickens example; "N sessions planned" follows how often it runs.
+- **One set of names for how often** everywhere: Once, Every day, Every week, Every 2 weeks, Every month, When I choose.
+- **Not fixed, waiting on you:** the lead's first check-in on /start is not kept as her session 1 (item 17, point 13).
 
 ## Found on the way, for later tasks
 
