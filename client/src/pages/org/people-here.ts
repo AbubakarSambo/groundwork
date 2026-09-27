@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client'
+import { roleWord as theRoleWord } from '@/components/gw/your-organisations'
 
 /**
  * THE PEOPLE IN THIS ORGANISATION, AS AN ADMIN READS THEM (U.4, A4 people.txt and one-person.txt).
@@ -65,10 +66,7 @@ export function initialsOf(name: string): string {
 /** Role, in the prototype's words. The owner is one field, not a role, and reads as "Owner". */
 export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | null): string {
   if (ownerId && m.id === ownerId) return 'Owner'
-  if (m.role === 'ADMIN') return 'Admin'
-  if (m.role === 'LEAD') return 'Can open check-ins'
-  if (m.role === 'GUEST') return 'Guest'
-  return 'Takes part'
+  return theRoleWord(m.role)
 }
 
 /**

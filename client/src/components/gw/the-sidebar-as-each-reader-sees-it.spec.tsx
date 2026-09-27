@@ -78,8 +78,23 @@ describe('the sidebar, as a lead reads it', () => {
     const card = (rail.querySelector('.gw-rl-org') as HTMLElement)
     expect(card).toHaveTextContent('CO')
     expect(card).toHaveTextContent('Coamana')
-    expect(card).toHaveTextContent('Member')
+    /* U.3 review: the People page's words, "Takes part", not "Member". */
+    expect(card).toHaveTextContent('Takes part')
+    expect(card).not.toHaveTextContent('Member')
     expect(card).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('every role reads in the People page\'s words, on the card and in the menu (U.3 review)', () => {
+    const { rail } = shell({ ...LEAD, role: 'LEAD' }, [
+      { id: 'o1', name: 'Coamana', role: 'LEAD', active: true },
+      { id: 'o2', name: 'Kilimo Traders', role: 'GUEST', active: false },
+      { id: 'o3', name: 'Baridi', role: 'MEMBER', active: false },
+    ])
+    expect(rail.querySelector('.gw-rl-org') as HTMLElement).toHaveTextContent('Can open check-ins')
+    fireEvent.click((rail.querySelector('.gw-rl-org') as HTMLElement))
+    const menu = [...rail.querySelectorAll('.gw-rl-menu-item')].map(el => (el.textContent ?? '').replace('✓', '').trim())
+    expect(menu).toEqual(expect.arrayContaining(['COCoamanaCan open check-ins', 'KTKilimo TradersGuest', 'BABaridiTakes part']))
+    expect(rail).not.toHaveTextContent(/\bMember\b|\bLead\b/)
   })
 
   it('the card opens the organisation menu, with the one you are in ticked', () => {

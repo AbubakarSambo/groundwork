@@ -64,11 +64,15 @@ export function initialsOf(name: string | null | undefined): string {
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
-/** What the person is in this organisation, in one ordinary word. */
+/**
+ * What the person is in this organisation, in the People page's words (A4, U.3 review): "Admin",
+ * "Can open check-ins", "Takes part" or "Guest". The sidebar and "More" said "Lead" and "Member",
+ * words the People page never uses. One definition: people-here's roleWord adds "Owner" on top.
+ */
 export function roleWord(role: string | null | undefined): string {
   const r = (role ?? '').toUpperCase()
   if (r === 'ADMIN') return 'Admin'
-  if (r === 'LEAD') return 'Lead'
+  if (r === 'LEAD') return 'Can open check-ins'
   if (r === 'GUEST') return 'Guest'
-  return 'Member'
+  return 'Takes part'
 }

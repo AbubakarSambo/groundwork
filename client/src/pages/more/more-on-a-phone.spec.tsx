@@ -212,3 +212,15 @@ describe('"More" offers You (C2, U.12), since the phone\'s bar has no room for i
     expect(hrefOf(main(), 'You')).toEqual(['/you'])
   })
 })
+
+describe('"More" names each role in the People page\'s words (U.3 review)', () => {
+  it('somebody who takes part reads "Takes part", never "Member"', () => {
+    mount(PARTICIPANT, [
+      { id: 'o1', name: 'Coamana', slug: 'coamana', role: 'MEMBER', active: true },
+      { id: 'o2', name: 'Baridi', slug: 'baridi', role: 'LEAD', active: false },
+    ])
+    expect(main()).toHaveTextContent('CoamanaTakes part')
+    expect(main()).toHaveTextContent('BaridiCan open check-ins')
+    expect(main()).not.toHaveTextContent(/\bMember\b/)
+  })
+})
