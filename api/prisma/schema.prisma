@@ -519,6 +519,11 @@ model Organization {
   /// of the three - paid, on the house, or the free tier - applies today. It expires by arithmetic.
   freeUntil DateTime?         @map("free_until")
   freePlan  SubscriptionPlan? @map("free_plan")
+  /// THE FREE TRIAL (U.19, Hafsah's decision of 26 September): when this organisation was given its
+  /// free months for being a team under the trial's size. Set once, so an organisation gets the
+  /// trial once. The months themselves are `freeUntil` and `freePlan`, like any free run. Empty
+  /// while the trial setting (`pricing.freeTrial`) is off, which it is by default.
+  freeTrialStartedAt DateTime? @map("free_trial_started_at")
 
   companyStage CompanyStage? @map("company_stage")
 

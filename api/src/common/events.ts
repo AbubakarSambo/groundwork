@@ -9,6 +9,9 @@ export const GroundworkEvents = {
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
   ORG_SIGNED_UP: 'org.signedUp',
+  /* WHAT SOMEBODY SAID ABOUT THEIR TEAM'S SIZE on "Create an organisation" (U.3), asked only while the
+     free trial is on. Billing listens, and grants the trial to a team under its size (U.19). */
+  ORG_SIZE_SAID: 'org.sizeSaid',
   API_ACCESS_ASKED: 'apiAccess.asked',
   CALL_ASKED: 'call.asked',
   /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
@@ -103,6 +106,13 @@ export interface BlockerEvent {
 /* A plain constant for the one file that may not carry the product's name (see
    nobody-connects-without-being-let-in.spec: no exemption for us anywhere in the access gate). */
 export const API_ACCESS_ASKED_EVENT = 'apiAccess.asked';
+
+export interface OrgSizeSaidEvent {
+  organizationId: string;
+  said: 'fewer' | 'more';
+  /** The team size they were shown, which is the trial's size at the moment they answered. */
+  line: number;
+}
 
 export interface OrgSignedUpEvent {
   organizationId: string;

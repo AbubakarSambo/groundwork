@@ -58,10 +58,10 @@ export const MAX_FREE_MEMBER_LIMIT = 1000;
  * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR 3 MONTHS. Hafsah's decision of 26 September.
  *
  * The numbers live here, in the database, and every screen builds its sentence from them, so no
- * screen can say a different number. Nothing here GRANTS the trial: billing does not do that yet
- * (U.19). So it is off by default, and the screens say nothing about a trial until it is switched
- * on, which must wait until billing really gives it. A promise on a screen that billing does not
- * keep is the thing this exists to prevent.
+ * screen can say a different number. The same setting decides whether billing GRANTS the trial
+ * (the-free-trial.service.ts, U.19), so the sentence and the grant are switched on and off together.
+ * It is off by default. A promise on a screen that billing does not keep is the thing this exists to
+ * prevent.
  */
 export const FREE_TRIAL_KEY = 'pricing.freeTrial';
 export interface FreeTrial { on: boolean; teamsUnder: number; months: number }

@@ -836,7 +836,7 @@ export class BillingService {
      * Set while an organisation is inside a free run we gave them, so the page can say it plainly:
      * what it covers and the day it ends. Null when they are paying or on the free tier.
      */
-    onTheHouse: { plan: SubscriptionPlan; until: Date } | null;
+    onTheHouse: { plan: SubscriptionPlan; until: Date; freeTrial: boolean } | null;
     /** Counts only. See the comment where these are assembled. */
     /** Admin only. Absent for anybody else - see the controller. */
     usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
@@ -855,6 +855,7 @@ export class BillingService {
         freeExtensionUsed: true,
         freeUntil: true,
         freePlan: true,
+        freeTrialStartedAt: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
@@ -921,7 +922,8 @@ export class BillingService {
       people: { count: peopleCount, cap: peopleCap },
       /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
       onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan
-        ? { plan: org.freePlan, until: covers.until }
+        /* `freeTrial` says these are the free trial's months (U.19), not a free run we gave by hand. */
+        ? { plan: org.freePlan, until: covers.until, freeTrial: !!org.freeTrialStartedAt }
         : null,
       /*
        * WHAT THIS ACCOUNT HAS ACTUALLY DONE, which is what makes a renewal defensible.

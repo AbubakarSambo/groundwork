@@ -3,7 +3,7 @@ import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictExce
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, CallAskedEvent } from '../../common/events';
+import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -884,6 +884,12 @@ export class UsersService {
       },
       select: { id: true, name: true },
     });
+    /* Billing hears the answer, for the free trial (U.19). Best-effort: a rename never fails on it. */
+    if (more.teamSize) {
+      try {
+        this.events.emit(GroundworkEvents.ORG_SIZE_SAID, { organizationId: org.id, said: more.teamSize.said, line: more.teamSize.line } satisfies OrgSizeSaidEvent);
+      } catch { /* the trial is granted by a listener that logs its own failures */ }
+    }
     return org;
   }
 

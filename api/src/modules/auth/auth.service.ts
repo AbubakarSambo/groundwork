@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, OrgSignedUpEvent } from '../../common/events';
+import { GroundworkEvents, OrgSignedUpEvent, OrgSizeSaidEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -100,6 +100,15 @@ export class AuthService {
     private billing: BillingService,
     private events: EventEmitter2,
   ) {}
+
+  /** Billing hears what somebody said about their team's size, for the free trial (U.19). Best-effort. */
+  private sizeSaid(organizationId: string, teamSize: { said: 'fewer' | 'more'; line: number }) {
+    try {
+      this.events.emit(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: teamSize.said, line: teamSize.line } satisfies OrgSizeSaidEvent);
+    } catch (err: any) {
+      this.logger.warn(`org.sizeSaid did not emit for ${organizationId}: ${err?.message}`);
+    }
+  }
 
   /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
   private signedUp(org: { id: string; name: string }, adminEmail: string) {
@@ -1506,6 +1515,7 @@ export class AuthService {
     });
 
     this.logger?.log?.(`${user.email} started their own workspace, and keeps the one they were listed in.`);
+    if (what.teamSize) this.sizeSaid(org.id, what.teamSize);
     return this.switchOrganization(userId, org.id);
   }
 
