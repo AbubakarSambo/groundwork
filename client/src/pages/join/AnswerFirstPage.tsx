@@ -21,6 +21,16 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
  */
 type Turn = { who: 'them' | 'it'; text: string }
 
+/**
+ * WHAT "DONE" WAITS FOR, SAID (U.6 review). The button stayed greyed out until the name, the
+ * organisation and the email were all there, and nothing said so. What is required is unchanged.
+ */
+export function whatIsStillNeeded(name: string, org: string, email: string): string {
+  const missing = [!name.trim() && 'your name', !org.trim() && 'your organisation', !email.trim() && 'your email'].filter(Boolean) as string[]
+  const list = missing.length <= 1 ? missing.join('') : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`
+  return `Add ${list} to finish.`
+}
+
 export function AnswerFirstPage() {
   const [params] = useSearchParams()
   const token = params.get('t') ?? ''
@@ -362,6 +372,10 @@ export function AnswerFirstPage() {
                 placeholder="you@work.com" style={field} />
             </div>
             {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
+            {/* U.6 review: "Done" waits for all three, and now it says so. The same three are needed. */}
+            {(!email.trim() || !name.trim() || !org.trim()) && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
+            )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
               <button onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
                 style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() || !name.trim() || !org.trim() ? .5 : 1 }}>
