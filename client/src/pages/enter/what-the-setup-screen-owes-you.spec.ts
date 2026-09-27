@@ -13,8 +13,10 @@ describe('what the setup screen owes you', () => {
   it('says which situation it chose, because it chooses one', () => {
     /* It classified her description, changed the plan to six sessions, put "Pick a different
        situation" on screen, and never said which situation it had picked. */
-    expect(PAGE).toContain('Set up as')
-    const at = PAGE.indexOf('Set up as')
+    /* U.6 review: said in start-chat.txt's words now, "This sounds like", with "It’s something else". */
+    expect(PAGE).toContain('This sounds like')
+    expect(PAGE).toContain('It’s something else')
+    const at = PAGE.indexOf('This sounds like <span')
     expect(PAGE.slice(at - 900, at)).toMatch(/classifiedScenario/)
   })
 

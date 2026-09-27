@@ -37,7 +37,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
-import { whatIsSetAndWhatIsNot } from '@/components/gw/when-the-check-ins-land'
+import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 
 /*
@@ -2492,6 +2492,23 @@ export function EntryChatPage() {
    * AT THE DOOR: nothing has been said and nothing picked. The prototype's first screen has no name,
    * no plan and no steps on it, because there is nothing yet to name, plan or step through.
    */
+  /*
+   * HOW MANY ARE PLANNED, FROM WHAT IS SET NOW (U.6 review). The header said "1 session planned" while
+   * "How often" said every week: the number was the conversation's first guess and never followed a
+   * later choice. It follows the rhythm and the chosen end now, the way the server will count them.
+   */
+  const plannedNow = (() => {
+    if (cadence === 'ONE_TIME') return 1
+    if (cadence === 'SEQUENTIAL') return sessions
+    if (lastCheckInBy) {
+      const all = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
+      const n = all.filter((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` <= lastCheckInBy).length
+      return Math.max(1, n)
+    }
+    const days = plannedFrom?.timelineDays
+    const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadence]
+    return days && gap ? Math.max(1, Math.floor(days / gap)) : sessions
+  })()
   const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
@@ -2567,7 +2584,8 @@ export function EntryChatPage() {
     <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)', position: 'relative', overflow: 'hidden' }}>
 
       {/* Session header */}
-      {!atTheDoor && (
+      {/* U.6 review: not on the setup conversation, which start-chat.txt draws without a name, a plan or steps. */}
+      {!atTheDoor && phase !== 'onboarding' && (
       <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
         {user && (
           <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
@@ -2656,9 +2674,9 @@ export function EntryChatPage() {
                 and traceable to them in the button's title.
               */}
               {/* The space is in the STRING: two spans separated by a margin read as "12sessions planned" in every text extraction. */}
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{plannedNow}</span>
               <span style={{ fontSize: 10, color: 'var(--gw-sub)' }}>
-                {' '}{sessions === 1 ? 'session planned' : 'sessions planned'}
+                {' '}{plannedNow === 1 ? 'session planned' : 'sessions planned'}
               </span>
             </button>
           )}
@@ -2668,9 +2686,9 @@ export function EntryChatPage() {
 
       {/* Phase stepper: makes which phase you are in legible at a glance.
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
-      {!atTheDoor && (() => {
+      {!atTheDoor && phase !== 'onboarding' && (() => {
         /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
-        const step = phase === 'onboarding' ? 1 : (closed || showSave ? 3 : 2)
+        const step = closed || showSave ? 3 : 2
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
@@ -2714,7 +2732,11 @@ export function EntryChatPage() {
         * a stray click.
         */}
       {!atTheDoor && (
-        <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+        <div style={{ padding: phase === 'onboarding' ? '12px 20px' : '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: phase === 'onboarding' ? 'space-between' : 'flex-end', gap: 12, flexWrap: 'wrap', flexShrink: 0 }}>
+          {/* U.6 review: the setup conversation's title, from start-chat.txt and new.txt. */}
+          {phase === 'onboarding' && (
+            <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 22, fontWeight: 500, color: 'var(--gw-text)', margin: 0 }}>Set up a check-in</h1>
+          )}
           {confirmClear ? (
             <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
               {closed
@@ -2757,19 +2779,20 @@ export function EntryChatPage() {
                 */}
               {phase === 'onboarding' && onboardingHistory.length > 1 && (() => {
                 const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
-                const label = chosen ? (SCENARIO_LABELS as Record<string, string>)[chosen] : null
+                const label = chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : null
                 return (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {/* U.6 review: start-chat.txt's words, "This sounds like" and "It’s something else". */}
                     {label && (
-                      <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-                        Set up as <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>
+                      <span style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                        This sounds like <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>.
                       </span>
                     )}
                     <button
                       onClick={pickADifferentSituation}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
-                      ← Pick a different situation
+                      It’s something else
                     </button>
                   </span>
                 )
@@ -2877,7 +2900,7 @@ export function EntryChatPage() {
                  * holds exactly one turn, and it is also the model's first turn once the
                  * conversation starts. Only the bubble goes, and only while the picker is up.
                  */
-                if (i === 0 && m.role === 'assistant' && onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding') return null
+                if (i === 0 && m.role === 'assistant' && phase === 'onboarding' && m.content === THE_OPENING_QUESTION) return null /* U.6 review: start-chat.txt opens on the lead's own words; the opener still goes to the model. */
                 /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
                    user turn so the model has a situation; drawing it as a navy bubble put words in
                    their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */
@@ -2928,7 +2951,7 @@ export function EntryChatPage() {
                       signedIn={!!user}
                       openerFor={(card) => whatThisCardSays(card.label)}
                       onSend={describeItInYourOwnWords}
-                      onDescribe={() => { setSeeingEverySituation(false); setPickedSituation('other'); setPickedScenario(null) }}
+                      onDescribe={() => setSeeingEverySituation(false) /* back to the one box: describing it is the first screen (U.6 review) */}
                       onStart={(card, opener) => {
                         setPickedSituation(card.label)
                         setPickedScenario(card.scenario)
