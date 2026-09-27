@@ -50,7 +50,7 @@ import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
 import {
-  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten,
+  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten, theCountSaidRight,
   type ThePicture,
 } from './the-picture-in-plain-sentences';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
@@ -4862,7 +4862,8 @@ happened, and what is in the way.`;
         this.logger.warn('The picture came back without an opening or without people; writing it plainly instead.');
         return fallback();
       }
-      return { opening: written.opening.trim(), perPerson };
+      /* The count is the product's own arithmetic, never the model's wording of it. See theCountSaidRight. */
+      return { opening: theCountSaidRight(written.opening.trim(), about.peopleAnswered, about.peopleExpected), perPerson };
     } catch (err: any) {
       this.logger.warn(`Writing the picture failed, so it is written plainly: ${err?.message}`);
       return fallback();

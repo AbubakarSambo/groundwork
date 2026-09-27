@@ -103,7 +103,7 @@ describe('and when the picture cannot be written, it says so and stops', () => {
    */
   it('says how many answered and that the rest is coming, and nothing else', () => {
     const out = whenThePictureCannotBeWritten(4, 4);
-    expect(out.opening).toBe('All four people have checked in. The full picture could not be written just now, and will appear here shortly.');
+    expect(out.opening).toBe('All four people have answered. The full picture could not be written just now, and will appear here shortly.');
     expect(out.perPerson).toEqual([]);
   });
 
@@ -135,7 +135,8 @@ describe('how many have answered, in words', () => {
   });
 
   it('says everybody is in when everybody is in', () => {
-    expect(howManyAnsweredInWords(4, 4)).toBe('All four people have checked in.');
+    expect(howManyAnsweredInWords(4, 4)).toBe('All four people have answered.');
+    expect(howManyAnsweredInWords(2, 2)).toBe('Both people have answered.');
   });
 
   it('and says so when nobody has', () => {

@@ -73,8 +73,8 @@ FOR ONE THING, or A NUMBER SET FOR SOMEBODY THEY HAVE NEVER MENTIONED, that is a
 reason people disagree, and leaving it out produces an opening that does not make sense. A picture
 saying the target was five, that they have done six, and that somebody says they are behind, is a
 picture with the explanation cut out of it. Say the other number, and say plainly that it was never
-written down or given to them. ${a.peopleAnswered} of ${a.peopleExpected} have
-answered. ${a.differenceTopics.length
+written down or given to them. Open with this sentence, exactly as it is: "${howManyAnsweredInWords(a.peopleAnswered, a.peopleExpected)}"
+${a.differenceTopics.length
     ? `They disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
     : 'Nothing in the record yet shows one account disagreeing with another, so say that plainly.'}
 
@@ -206,6 +206,24 @@ export function whenThePictureCannotBeWritten(peopleAnswered: number, peopleExpe
 }
 
 /**
+ * AND THE COUNT THE OPENING STARTS WITH IS THE PRODUCT'S, WHATEVER THE MODEL WROTE.
+ *
+ * The prompt gives the sentence to open with. A model may still write its own - "All two people have
+ * answered." reached a participant's report on seniorhire, run 10 - so a first sentence that is a
+ * count of who has answered or checked in is replaced with the product's count, which is arithmetic
+ * and always reads right: "One person has answered.", "Both people have answered.", "All three people
+ * have answered.", "Two of the five people have answered so far." An opening that does not start
+ * with a count is left exactly as it is.
+ */
+/* Only a sentence that is nothing but the count: "Both people have checked in, and they agree on the
+   target" says more than the count and is left alone. */
+const A_COUNT_SENTENCE = /^\s*(?:all|both|nobody|no one|one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?: (?:of (?:the |all )?)?(?:\w+ )?(?:people|person|of them|parties))? (?:have|has)(?: (?:now|all|both|already))? (?:answered|checked in|given (?:an |their )?accounts?|responded)(?: (?:so far|yet|now|this (?:check-in|round|session)))?(?:,? of (?:the )?\w+)?[.!?](?:\s+|$)/i;
+export function theCountSaidRight(opening: string, answered: number, expected: number): string {
+  if (!opening || !A_COUNT_SENTENCE.test(opening)) return opening;
+  return opening.replace(A_COUNT_SENTENCE, (m) => `${howManyAnsweredInWords(answered, expected)}${(m.match(/\s*$/) ?? [''])[0]}`);
+}
+
+/**
  * HOW MANY PEOPLE, IN WORDS, AND NEVER "1 people".
  *
  * Forty-two lines across seven scenarios read "1 people answered this check-in" or "1 of 1 people
@@ -217,7 +235,11 @@ export function howManyAnsweredInWords(answered: number, expected: number): stri
   const n = INWORDS[answered] ?? String(answered);
   if (answered === 0) return 'Nobody has answered yet.';
   if (expected > 0 && answered >= expected) {
-    return answered === 1 ? 'One person has answered.' : `All ${INWORDS[answered]?.toLowerCase() ?? answered} people have checked in.`;
+    /* "All two people have answered" was the model's, three times on seniorhire (run 10), from the
+       example "All four people have checked in". Two is "both", in English, always. */
+    if (answered === 1) return 'One person has answered.';
+    if (answered === 2) return 'Both people have answered.';
+    return `All ${INWORDS[answered]?.toLowerCase() ?? answered} people have answered.`;
   }
   return answered === 1
     ? `One person has answered so far, of ${expected}.`
