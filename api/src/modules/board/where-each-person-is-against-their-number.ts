@@ -1,4 +1,4 @@
-import { A_FORTNIGHT, HOW_HARD_THEY_TRIED, waysThrough, type Effort } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
+import { A_FORTNIGHT, waysThrough, type Effort } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 
 /**
  * THE ONE PAGE A MANAGER ACTUALLY OPENS.
@@ -187,16 +187,46 @@ export interface Ranked {
   ask: string | null;
 }
 
-/** The thing to ask for, drawn from the oldest unchased blocker, or nothing. */
-export function whatToAskFor(row: PersonRow): string | null {
-  if (!row.answeredThisRound) return 'Ask them to check in.';
+/**
+ * WHAT THEY HAVE SAID THEY TRIED, as the end of a sentence about them.
+ *
+ * `HOW_HARD_THEY_TRIED` next door says the same thing in the clipped form the conversation's own
+ * notes use ("asked once"), and this row is read by a person, so it is said in full here. The tiers
+ * are the same five; only escalated and went-around never reach this, because nothing is asked then.
+ */
+const WHAT_THEY_TRIED_SAID_IN_FULL: Record<Effort, string> = {
+  'nothing': 'nobody has said yet what was tried',
+  'asked-once': 'so far they have asked about it once',
+  'asked-again': 'so far they have asked about it more than once, the same way each time',
+  'escalated': 'it has been taken above the person it was with',
+  'went-around': 'they found another way through',
+};
+
+/**
+ * THE THING TO ASK FOR, drawn from the oldest unchased blocker, or nothing.
+ *
+ * It read "21 days on "the lease", asked once. Ask them to speak to Amina rather than write to
+ * them." on the board: pieces joined by commas, and "them" where the row has a name. Now it is full
+ * sentences with the name the row already resolves, the blocker quoted exactly as they said it,
+ * because those are their words.
+ *
+ * AND NOT TWICE. Where the row's `says` already tells the lead how long it has sat and what was
+ * tried (the row is there because of it), the ask carries only the ask. Pass `alreadySaid` then.
+ */
+export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null {
+  const start = subjectFor(row, true);
+  const them = subjectFor(row, false).replace(/^a teammate$/, 'this teammate');
+  if (!row.answeredThisRound) return `Ask ${them} to check in.`;
   const worst = [...row.inTheWay]
     .filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')
     .sort((a, b) => b.days - a.days)[0];
   if (!worst) return null;
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
   const first = waysThrough({ what: worst.what, owner: worst.owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];
-  return `${worst.days} days on "${worst.what}", ${HOW_HARD_THEY_TRIED[worst.tried]}. Ask them to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+  const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+  if (alreadySaid) return theAsk;
+  const days = `${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
+  return `${start} has been waiting ${days} on "${worst.what}", and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
 }
 
 export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | null): Ranked[] {
@@ -211,7 +241,8 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
         count: r.count,
         reason,
         says: whatHappened(r, reason, roundsPlanned),
-        ask: whatToAskFor(r),
+        /* The stuck row's `says` already names the days and what was tried; the ask does not repeat it. */
+        ask: whatToAskFor(r, reason === 'stuck and not chasing'),
       };
     })
     .sort((a, b) => {

@@ -13,14 +13,36 @@ describe('where each person is against their number', () => {
     const out = whereEachPersonIs([rep(), rep({ participantId: 'p2', who: 'Amina', answeredThisRound: false })], 12);
     expect(out[0].who).toBe('Amina');
     expect(out[0].reason).toBe('has not answered');
-    expect(out[0].ask).toBe('Ask them to check in.');
+    expect(out[0].ask).toBe('Ask Amina to check in.');
   });
 
   it('then somebody stuck a fortnight who has only asked', () => {
     const r = rep({ inTheWay: [{ what: 'the Sokoto lease', owner: null, days: 21, tried: 'asked-again' }] });
     expect(whyThisRow(r, 12)).toBe('stuck and not chasing');
-    expect(whatToAskFor(r)).toContain('21 days');
-    expect(whatToAskFor(r)).toContain('Ask them to');
+    /* Changed 27 Sep 2026: this pinned the clipped line "21 days on "...", asked more than once,
+       same channel. Ask them to ...". It is now full sentences with his name. */
+    expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on "the Sokoto lease", and so far they have asked about it more than once, the same way each time. Ask Musa to find out who owns this by name. Everything else needs that first.');
+  });
+
+  it('and on the board row, the ask does not repeat what the sentence above it already says', () => {
+    const [row] = whereEachPersonIs([rep({ inTheWay: [{ what: 'the lease', owner: 'Amina', days: 21, tried: 'asked-once' }] })], 12);
+    expect(row.says).toBe('Musa has had something in the way for 21 days, and so far it has only been asked about. Chasing it, or asking someone else, would move it.');
+    expect(row.ask).toBe('Ask Musa to speak to Amina rather than write to them.');
+    expect(row.ask).not.toMatch(/21 days|asked/);
+  });
+
+  it('carries the whole story where the row is there for another reason', () => {
+    /* Nothing tried and only five days: not the row's reason, so the ask says what it is about. */
+    const [row] = whereEachPersonIs([rep({ inTheWay: [{ what: 'the price list from Kofi', owner: 'Kofi', days: 5, tried: 'nothing' }] })], 12);
+    expect(row.reason).toBe('nothing to do');
+    expect(row.ask).toBe('Musa has been waiting 5 days on "the price list from Kofi", and nobody has said yet what was tried. Ask Musa to speak to Kofi rather than write to them.');
+  });
+
+  it('asks a role, or somebody nobody can name, in a sentence that still reads', () => {
+    expect(whatToAskFor(rep({ who: 'Head of Sales', nameIsTheirRole: true, answeredThisRound: false })))
+      .toBe('Ask the person listed as Head of Sales to check in.');
+    expect(whatToAskFor(rep({ who: 'A teammate', nameIsTheirRole: true, answeredThisRound: false })))
+      .toBe('Ask this teammate to check in.');
   });
 
   it('and says nothing about somebody who actually pushed', () => {
@@ -116,6 +138,6 @@ describe('where each person is against their number', () => {
   it('never says what somebody is, only what has happened and what to ask for', () => {
     const r = rep({ inTheWay: [{ what: 'the lease', owner: null, days: 21, tried: 'asked-once' }] });
     const line = `${whereEachPersonIs([r], 12)[0].says} ${whatToAskFor(r)}`;
-    expect(line).not.toMatch(/lazy|excuse|coasting|underperform|poor/i);
+    expect(line).not.toMatch(/lazy|excuse|coasting|underperform|poor|not chasing|behind/i);
   });
 });
