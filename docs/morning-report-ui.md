@@ -89,8 +89,8 @@ now does two things when you turn it on: teams under 20 get 3 months free, reall
 and new organisations stop getting the free plan and the free first session. While it is off,
 nothing about today's billing has changed. Nobody already on the free plan is cut off (item 30.1).
 
-**Next:** the 16 waiting reviews, U.3 first, one at a time. U.20 (small states and errors) starts only when all have passed, as you
-asked. U.19's review cannot sign in either (item 14).
+**Next:** the waiting reviews, one at a time, oldest first: the 16 you named (U.3 to U.18), then U.19's.
+U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Every module since U.2, and its review
 
