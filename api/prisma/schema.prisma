@@ -463,6 +463,9 @@ model Organization {
   timeAgreements     TimeAgreement[]
   /// Performance reviews, for the reviews suite (E4, U.17).
   performanceReviews PerformanceReview[]
+  /// When someone leaves: the checklist, and signs a team is under strain (E5, U.17).
+  leavingChecklists  LeavingChecklist[]
+  teamStrainSigns    TeamStrainSign[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2272,6 +2275,59 @@ model Resolution {
 /// person's own answer, and decides, giving a reason. The person reads the facts about their work
 /// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
 ///
+/// WHAT HAS TO HAPPEN WHEN SOMEBODY LEAVES (E5, the "when someone leaves" suite, U.17): one list for
+/// one person's last day, started by an admin, with its four steps in `LeavingStep`. It adds to the
+/// product's handover and departures and changes neither: the handover brief is never read here, and
+/// what the person said never travels. Admins only (suites/the-leaving-board.service.ts). Nothing
+/// here reaches a check-in or its report.
+model LeavingChecklist {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  personExternalId String   @map("person_external_id")
+  lastDay          DateTime @map("last_day") @db.Date
+  startedById      String   @map("started_by_id")
+  startedAt        DateTime @default(now()) @map("started_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  steps        LeavingStep[]
+
+  @@unique([organizationId, personExternalId, lastDay])
+  @@map("leaving_checklists")
+}
+
+/// One step of a leaving list: handover, equipment, access or pay. Who owns it, and when it was done
+/// and by whom. Undone again clears both.
+model LeavingStep {
+  id          String    @id @default(uuid())
+  checklistId String    @map("checklist_id")
+  step        String    @db.VarChar(16)
+  ownerUserId String?   @map("owner_user_id")
+  doneAt      DateTime? @map("done_at")
+  doneById    String?   @map("done_by_id")
+
+  checklist LeavingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@unique([checklistId, step])
+  @@map("leaving_steps")
+}
+
+/// A SIGN THAT A TEAM IS UNDER STRAIN (E5, U.17), written by the engine (docs/requests-to-engine.md,
+/// request 24) for a team, never for a named person, with the prompt version that ran. Admins only.
+/// A sign that names anybody is never served.
+model TeamStrainSign {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  team            String   @db.VarChar(120)
+  says            String   @db.Text
+  promptVersionId String?  @map("prompt_version_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("team_strain_signs")
+}
+
 /// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due
 /// (`EvaluationDue`, which the daily reminder already reads). Holds what people write: the manager's
 /// own words, the person's own view, and the manager's decision with its reasons. `noticed` is the

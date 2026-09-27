@@ -7,6 +7,7 @@ import { OnboardingBoardService } from './the-onboarding-board.service';
 import { LeaveBoardService } from './the-leave-board.service';
 import { TimeSheetsService } from './the-time-sheets.service';
 import { ReviewsService } from './the-reviews.service';
+import { LeavingBoardService } from './the-leaving-board.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -20,6 +21,16 @@ class WordsDto {
 class ReviewDecisionDto {
   @IsOptional() @IsString() @MaxLength(1000) decision?: string;
   @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
+}
+
+class StartLeavingDto {
+  @IsString() @MaxLength(200) personId!: string;
+  @IsString() @MaxLength(10) lastDay!: string;
+}
+
+class LeavingStepDto {
+  @IsOptional() @IsString() @MaxLength(200) ownerUserId?: string | null;
+  @IsOptional() @IsBoolean() done?: boolean;
 }
 
 class AgreementsDto {
@@ -40,6 +51,7 @@ export class SuitesController {
     private readonly leave: LeaveBoardService,
     private readonly time: TimeSheetsService,
     private readonly reviews: ReviewsService,
+    private readonly leaving: LeavingBoardService,
   ) {}
 
   @Get()
@@ -136,6 +148,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'The writer decides, with reasons, and the person reads both' })
   decideReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: ReviewDecisionDto) {
     return this.reviews.decide({ userId: user.id, organizationId: user.organizationId }, id, dto);
+  }
+
+  @Get('leaving/board')
+  @ApiOperation({ summary: 'When someone leaves: each list, its steps and owners. Admins only.' })
+  leavingBoard(@CurrentUser() user: CurrentUserData) {
+    return this.leaving.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('leaving/lists')
+  @ApiOperation({ summary: 'An admin starts the list for somebody’s last day' })
+  startLeaving(@CurrentUser() user: CurrentUserData, @Body() dto: StartLeavingDto) {
+    return this.leaving.start({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Put('leaving/lists/:id/steps/:step')
+  @ApiOperation({ summary: 'An admin names a step’s owner, or marks it done or not done' })
+  leavingStep(@Param('id') id: string, @Param('step') step: string, @CurrentUser() user: CurrentUserData, @Body() dto: LeavingStepDto) {
+    return this.leaving.step({ userId: user.id, organizationId: user.organizationId }, id, step, dto);
   }
 
   @Put(':key')
