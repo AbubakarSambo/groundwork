@@ -40,7 +40,7 @@ describe('the chosen end', () => {
   });
 
   it('is what both ways of creating a check-in use when nobody said a length', () => {
-    const src = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/timelineDays: howLongItRuns\(dto\),/g)).toHaveLength(2);
     expect(src).not.toContain('timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],');
     expect(src.match(/timelineStated: dto\.timelineDays != null \|\| !!dto\.endsAt,/g)).toHaveLength(2);
