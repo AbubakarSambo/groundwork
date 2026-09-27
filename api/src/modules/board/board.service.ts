@@ -59,6 +59,8 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { whereEachPersonIs } from './where-each-person-is-against-their-number';
+import { withoutTheRating } from './the-lead-never-reads-a-rating';
+import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
@@ -131,14 +133,25 @@ export class BoardService {
     try {
       const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
       if (!ground?.initiatorId) return;
-      await this.get(event.groundId, ground.initiatorId);
+      await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
       this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
     } catch (err: any) {
       this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
     }
   }
 
-  async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
+  /*
+   * OPENING THE BOARD NEVER REBUILDS IT (decision 7). Only the warm-up above, which runs when a
+   * check-in comes in, may ask the model to word a new line. Every other read - the lead opening it,
+   * a participant, an admin, the API - serves the lines already worded, and the engine's own words
+   * where a line has not been worded yet. See the-board-as-each-reader-reads-it.spec.
+   */
+  async get(
+    groundId: string,
+    requestingUserId: string,
+    variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT,
+    opts: { mayWordNewLines?: boolean } = {},
+  ) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {
@@ -540,7 +553,30 @@ export class BoardService {
       // board is otherwise read-only, so the client should not offer controls it
       // would only be rejected for using.
       canEditFrame: isInitiator,
-      readOnlyNote: 'Generated from the check-in. Only the meeting poll is editable.',
+      /* For a reader who only reads (an admin who neither runs nor takes part). See when-the-board-last-changed. */
+      readOnlyNote: whatAReaderWhoOnlyReadsIsTold(
+        { runsIt: isInitiator, takesPart: !!me, mayRead: true },
+        (() => {
+          const lead = ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId);
+          return lead ? nameOf(lead.id) : null;
+        })(),
+      ),
+      /*
+       * WHEN THE BOARD LAST CHANGED: the newest thing in the record it is built from. Read, never
+       * written, so opening the board cannot move it. See when-the-board-last-changed.
+       */
+      lastChangedAt: whenTheBoardLastChanged({
+        checkIns: ((ground as any).checkIns ?? []).filter((c: any) => !c.isSetup),
+        report: (ground as any).report ?? null,
+        objectives: (ground.objectives ?? []) as any[],
+        dependencies: ((ground as any).dependencies ?? []) as any[],
+        documentsEveryoneMayRead: await (this.prisma as any).groundDocument?.findMany?.({
+          where: { groundId, visibility: 'OPEN' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { createdAt: true },
+        })?.catch?.(() => []) ?? [],
+      }),
       participants: ground.participants.map((p) => ({
         id: p.id,
         name: nameOf(p.id),
@@ -657,6 +693,8 @@ export class BoardService {
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
+        /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
+        assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
         /*
          * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
          * team's, so a sheet of nine rows read as nine things everybody was held to (Hafsah, 22 Sep
@@ -857,6 +895,8 @@ export class BoardService {
           return { ...row, finding: text, hasGap: !!f.hasGap };
         });
       }
+      /* The rating of how checkable someone's answers were never reaches the lead. See the file. */
+      out.eachPerson = withoutTheRating(out.eachPerson as any[]);
     }
 
     if (has('checkInGrid')) {
@@ -1038,7 +1078,10 @@ export class BoardService {
         if (drafts.length) {
           const said = Object.fromEntries((await wordedByTheModel(
             drafts,
-            rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
+            rememberedCompose(this.prisma, opts.mayWordNewLines
+              ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+              /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+              : async () => null),
           )).map((d) => [d.key, d.text]));
           out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
           if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };
