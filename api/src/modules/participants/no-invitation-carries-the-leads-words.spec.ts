@@ -97,3 +97,26 @@ describe('no invitation carries the lead\'s words about the person', () => {
     expect(said[0]).toContain('Help someone get back on track');
   });
 });
+
+describe('and not through the check-in\'s name (U.6 review)', () => {
+  /* A lead who typed the private sentence as her first words and gave no name. The name used to fall
+     back to her first words, and the name is the invitation's subject. It falls back to the topic
+     now (fallbackGroundName in the client's EntryChatPage.tsx), so the check-in reaching the server is
+     named after the situation. Both are rendered here: the name, and the invitation made from it. */
+  it('the invitation subject and body carry none of her first words', async () => {
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const src = readFileSync(join(__dirname, '../../../../client/src/pages/enter/EntryChatPage.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    /* The fallback takes no words of hers at all. */
+    expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/);
+    const nameFromHerSetup = 'Get a project back on track'; /* what fallbackGroundName('DRIFT') gives */
+    const prisma = prismaStub();
+    const { email, sent } = anEmailService(prisma);
+    await email.sendTheInviteThisGroundSends({ ...ground, label: nameFromHerSetup, brief: null }, participant.email, 'Hafsah', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id });
+    expect(sent).toHaveLength(1);
+    expectNothingPrivateIn('subject', sent[0].subject);
+    expectNothingPrivateIn('body', sent[0].html);
+    expect(sent[0].subject).toBe('Hafsah would like your take on Get a project back on track');
+  });
+});

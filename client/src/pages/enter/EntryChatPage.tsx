@@ -1055,17 +1055,17 @@ export function itIsStillAskingSomething(reply: string): boolean {
 }
 
 /*
- * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC SHE CHOSE, IN PLAIN WORDS (U.6 review).
+ * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC, IN PLAIN WORDS, NEVER HER OWN WORDS (U.6 review).
  *
- * A check-in's label is the subject line of the invitation email ("{founder} invited you to check in
- * on: {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts.
- * The prototype names check-ins after the person ("Daniel, the next six weeks"); that disagreement is
- * Hafsah's to settle (item 17 of docs/morning-report-ui.md), and until then this rule stands.
+ * A check-in's label is the subject line of the invitation email ("{lead} would like your take on
+ * {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts. And an
+ * invitation never carries the lead's private words, not even reworded (Hafsah, 27 September): this
+ * used to fall back to the first thing she typed, so "Daniel isn't hitting his targets" would have gone
+ * to Daniel as the subject of his own invitation. Her words are never used now.
  *
- * Read live: a check-in the lead set up as "Help someone get back on track" was named "Drift", because
- * this was handed the CLASSIFIER's situation, which had switched it. It is handed the situation the
- * LEAD picked now (theSituationTheLeadPicked), and a known situation is said in its plain words from
- * the catalogue. The underscore rule below stays for a key the catalogue does not know.
+ * In order: the situation she picked, or else the one the conversation settled on, said in its plain
+ * card words from the catalogue ("Get a project back on track", never "DRIFT"); an unknown key is
+ * turned into words rather than printed; else "A check-in", with the organisation when it is known.
  */
 /**
  * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review). Only what it always does.
@@ -1080,22 +1080,17 @@ export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | n
   return ` - opening it saves your check-in, then shows who was invited and who has to wait${later}`
 }
 
-export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
-  const known = classifiedScenario ? (SCENARIO_LABELS as Record<string, string>)[classifiedScenario] : undefined
+export function fallbackGroundName(situation?: string, where?: string): string {
+  const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
   if (known) return sentenceCase(known)
-  const fromScenario = (classifiedScenario ?? '')
+  const fromScenario = (situation ?? '')
     .trim()
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase())
   if (fromScenario) return fromScenario
-
-  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
-  if (said) {
-    const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
-    return clipped.replace(/^\w/, (c) => c.toUpperCase())
-  }
-  return 'Untitled'
+  const at = (where ?? '').trim()
+  return at ? `A check-in at ${at}` : 'A check-in'
 }
 
 /**
@@ -2111,7 +2106,7 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -2393,7 +2388,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2528,7 +2523,7 @@ export function EntryChatPage() {
   /*
    * THE SITUATION THE LEAD PICKED, not the one the classifier moved it to (U.6 review): the card she
    * pressed, found again from its sentence after a reload, or a known ?scenario= she arrived with.
-   * Nothing when she described it herself, so the name falls back to her own words.
+   * Nothing when she described it herself; then the situation the conversation settled on is used.
    */
   function theSituationTheLeadPicked(): string | undefined {
     /* The card's own name where there is one, so "Connect goals across the team" is not named after

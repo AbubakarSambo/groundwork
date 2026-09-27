@@ -41,7 +41,9 @@ describe('a check-in is not named after a database value', () => {
     const chat = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(chat).toMatch(/export function fallbackGroundName\(/)
     /* Handed the situation the LEAD picked, never the classifier's (the "Drift" case). */
-    expect(chat).toMatch(/fallbackGroundName\(theSituationTheLeadPicked\(\), onboardingSelections\.initial\)/)
+    /* And never her own first words (U.6 review): an invitation never carries the lead's words. */
+    expect(chat).toMatch(/fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, orgName\.trim\(\) \|\| user\?\.organization\?\.name \|\| undefined\)/)
+    expect(chat).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
     /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
     expect(chat).toMatch(/\.replace\(\/_\/g, ' '\)/)
   })
