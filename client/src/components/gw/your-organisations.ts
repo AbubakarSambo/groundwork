@@ -14,7 +14,24 @@ import { useAuthStore } from '@/stores/auth'
  * (#/orgs), whose rows say the role you will have there, because the role change is the part nobody
  * expects. The one you are in is not offered.
  */
-export type YourOrganisation = { id: string; name: string; slug: string; role: string; active: boolean }
+/** `joinedHow`: why they are in it, where the server knows (U.3 review). Null or absent: no reason is given. */
+export type YourOrganisation = { id: string; name: string; slug: string; role: string; active: boolean; joinedHow?: 'list' | 'domain' | 'link' | null }
+
+/**
+ * "You are in Coamana because …", only with a reason the server gave (U.3 review). It used to say "your
+ * email address was on its list of people" to everybody, including people who joined by domain or link.
+ */
+export function whyYouAreIn(o: Pick<YourOrganisation, 'name' | 'joinedHow'>, email?: string | null): string | null {
+  if (o.joinedHow === 'list') return `You are in ${o.name} because your email address was on its list of people.`
+  if (o.joinedHow === 'link') return `You are in ${o.name} because you joined through its invite link.`
+  if (o.joinedHow === 'domain') {
+    const at = (email ?? '').lastIndexOf('@')
+    return at > 0
+      ? `You are in ${o.name} because anyone with an @${email!.slice(at + 1).toLowerCase()} email can join it.`
+      : `You are in ${o.name} because anyone with your email domain can join it.`
+  }
+  return null
+}
 
 export function useYourOrganisations() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)

@@ -441,7 +441,7 @@ export class AuthService {
                 },
                 include: { organization: true },
               });
-              await tx.organizationMembership.create({ data: { userId: u.id, organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any } });
+              await tx.organizationMembership.create({ data: { userId: u.id, organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: chosen.how } });
               if (pending.draftToken) {
                 await tx.entryDraft.create({
                   data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
@@ -1392,9 +1392,23 @@ export class AuthService {
 
     const memberships = await this.prisma.organizationMembership.findMany({
       where: { userId },
-      select: { organizationId: true, role: true, organization: { select: { id: true, name: true, slug: true } } },
+      select: { organizationId: true, role: true, joinedHow: true, organization: { select: { id: true, name: true, slug: true } } },
       orderBy: { createdAt: 'asc' },
     });
+
+    /*
+     * WHY THEY ARE IN EACH ONE, WHERE THE SERVER KNOWS (U.3 review). The sidebar said "because your
+     * email address was on its list of people" to everybody in one organisation they had not made,
+     * including people who joined by domain or by link. Now: "list" when their own staff record there
+     * is linked to them, "domain" or "link" as recorded when they joined, and null otherwise, when no
+     * reason is given. Their own facts only.
+     */
+    const listedIn = new Set(
+      (await this.prisma.person.findMany({ where: { linkedUserId: userId }, select: { organizationId: true } }).catch(() => []))
+        .map((p) => p.organizationId),
+    );
+    const why = (organizationId: string, recorded?: string | null): 'list' | 'domain' | 'link' | null =>
+      recorded === 'domain' || recorded === 'link' ? recorded : listedIn.has(organizationId) ? 'list' : null;
 
     const rows = memberships.map((m) => ({
       id: m.organization.id,
@@ -1402,6 +1416,7 @@ export class AuthService {
       slug: m.organization.slug,
       role: m.role,
       active: m.organizationId === user.organizationId,
+      joinedHow: why(m.organizationId, m.joinedHow),
     }));
 
     // Self-healing rather than silently wrong: a user whose active org has no
@@ -1412,7 +1427,7 @@ export class AuthService {
         where: { id: user.organizationId },
         select: { id: true, name: true, slug: true },
       });
-      if (own) rows.unshift({ ...own, role: user.role, active: true });
+      if (own) rows.unshift({ ...own, role: user.role, active: true, joinedHow: why(own.id) });
     }
     return rows;
   }
@@ -1553,7 +1568,7 @@ export class AuthService {
       if (!room.allowed) {
         throw new BadRequestException(`${org!.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`);
       }
-      await this.prisma.organizationMembership.create({ data: { userId, organizationId, role: ROLE_FOR_SOMEBODY_EXPECTED as any } });
+      await this.prisma.organizationMembership.create({ data: { userId, organizationId, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: 'domain' } });
     }
     return this.switchOrganization(userId, organizationId, via);
   }

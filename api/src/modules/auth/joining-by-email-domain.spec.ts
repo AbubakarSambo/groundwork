@@ -102,7 +102,8 @@ describe('the person who signs up with that domain', () => {
     const { auth, created, billing } = make();
     const res: any = await auth.joinByDomain('u1', 'baridi');
     expect(billing.canInviteMember).toHaveBeenCalledWith('baridi');
-    expect(created).toEqual([{ userId: 'u1', organizationId: 'baridi', role: 'MEMBER' }]);
+    /* U.3 review: the membership also records that they came by their email domain. */
+    expect(created).toEqual([{ userId: 'u1', organizationId: 'baridi', role: 'MEMBER', joinedHow: 'domain' }]);
     expect(res.accessToken).toBe('tok');
     expect(res.user.role).toBe('MEMBER');
   });

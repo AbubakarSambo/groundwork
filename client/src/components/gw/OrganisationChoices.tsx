@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
-import { useYourOrganisations, initialsOf, roleWord } from './your-organisations'
+import { useYourOrganisations, initialsOf, roleWord, whyYouAreIn } from './your-organisations'
 
 /**
  * THE LIST OF YOUR ORGANISATIONS, with the one you are in ticked: in the sidebar's organisation menu
@@ -38,7 +38,7 @@ export function OrganisationChoices() {
       <Link to="/welcome" className="gw-rl-menu-item gw-rl-menu-join">Join or create an organisation</Link>
       {onlyOneNotChosen && (
         <div className="gw-rl-menu-note">
-          <p>You are in {myOrgs[0].name} because your email address was on its list of people.</p>
+          {whyYouAreIn(myOrgs[0], user?.email) && <p>{whyYouAreIn(myOrgs[0], user?.email)}</p>}
           <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace}>
             Start my own workspace
           </button>

@@ -68,7 +68,7 @@ describe('from an organisation\'s invite link', () => {
     const res: any = await svc.verifyEmail({ token: 'link' } as any);
     expect(made.orgs).toHaveLength(0);
     expect(made.users[0]).toMatchObject({ organizationId: COAMANA.id, role: 'MEMBER' });
-    expect(made.memberships[0]).toMatchObject({ organizationId: COAMANA.id, role: 'MEMBER' });
+    expect(made.memberships[0]).toMatchObject({ organizationId: COAMANA.id, role: 'MEMBER', joinedHow: 'link' });
     expect(res.justCreated).toBe(true);
     /* On to Today, not back to the invite's "Join" button. */
     expect(res.next).toBe('/today');
@@ -115,6 +115,7 @@ describe('with an address whose domain an organisation lets join', () => {
     const { svc, made } = service({ pending, domainOrgs: [COAMANA] });
     const res: any = await svc.verifyEmail({ token: 'link', joinOrganizationId: COAMANA.id } as any);
     expect(made.orgs).toHaveLength(0);
+    expect(made.memberships[0]).toMatchObject({ organizationId: COAMANA.id, joinedHow: 'domain' });
     expect(made.users[0]).toMatchObject({ organizationId: COAMANA.id, role: 'MEMBER' });
     expect(res.accessToken).toBe('a-session');
   });

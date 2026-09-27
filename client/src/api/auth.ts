@@ -236,7 +236,7 @@ export const authApi = {
   /** The organisations this person belongs to, with the active one marked. */
   myOrganizations: () =>
     apiClient
-      .get<{ id: string; name: string; slug: string; role: string; active: boolean }[]>(
+      .get<{ id: string; name: string; slug: string; role: string; active: boolean; joinedHow?: 'list' | 'domain' | 'link' | null }[]>(
         '/auth/my-organizations',
         { skipForbiddenToast: true, skipNotFoundToast: true },
       )

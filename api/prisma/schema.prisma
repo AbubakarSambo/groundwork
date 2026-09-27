@@ -5620,6 +5620,10 @@ model OrganizationMembership {
   /// Who they report to here: another person's user id in this organisation. An id rather than a
   /// relation, so a person leaving never deletes the line above them; unresolved reads as nobody.
   reportsToUserId String?  @map("reports_to_user_id")
+  /// HOW THEY CAME TO BE HERE (U.3 review), so the sidebar can say why they are in it: "domain" (their
+  /// email domain may join), "link" (the organisation's invite link). Null where nothing recorded it,
+  /// and then no reason is given. "On its list of people" is read from the staff record instead.
+  joinedHow       String?  @map("joined_how") @db.VarChar(20)
   createdAt      DateTime @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

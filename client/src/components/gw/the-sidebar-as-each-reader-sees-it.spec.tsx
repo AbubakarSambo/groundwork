@@ -249,3 +249,33 @@ describe('Suites in the sidebar (E, U.17), as the prototype draws it for each re
     expect(within(rail).queryByRole('link', { name: 'Suites' })).toBeNull()
   })
 })
+
+describe('why you are in the one organisation you did not make (U.3 review)', () => {
+  const PERSON = { ...LEAD, email: 'ama@coamana.test' }
+  const note = (rail: HTMLElement) => {
+    fireEvent.click(rail.querySelector('.gw-rl-org') as HTMLElement)
+    return rail.querySelector('.gw-rl-menu-note') as HTMLElement | null
+  }
+  const reads = (el: HTMLElement | null) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+
+  it('on its list of people', () => {
+    const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'list' }])
+    expect(reads(note(rail))).toBe('You are in Coamana because your email address was on its list of people.Start my own workspace')
+  })
+
+  it('by email domain', () => {
+    const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'domain' }])
+    expect(reads(note(rail))).toBe('You are in Coamana because anyone with an @coamana.test email can join it.Start my own workspace')
+  })
+
+  it('by the invite link', () => {
+    const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'link' }])
+    expect(reads(note(rail))).toBe('You are in Coamana because you joined through its invite link.Start my own workspace')
+  })
+
+  it('with no reason from the server, no reason is given', () => {
+    const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: null }])
+    expect(reads(note(rail))).toBe('Start my own workspace')
+    expect(rail).not.toHaveTextContent(/because/)
+  })
+})
