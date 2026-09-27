@@ -357,6 +357,8 @@ export function ContextPage({
    * text is the lead's own and nobody else has changed it; the name of whoever changed it, where the
    * server knows who; Groundwork, where it wrote the text people read from the lead's words.
    */
+  const briefChangedBy = (ground as any).briefChangedBy as { isTheLead: boolean } | null | undefined
+  const theLeadWroteTheseWords = isTheLead && !(briefChangedBy && !briefChangedBy.isTheLead)
   const whoseWords: string | null = (() => {
     const changedBy = (ground as any).briefChangedBy as { firstName: string | null; isYou: boolean; isTheLead: boolean } | null | undefined
     const ownWords = (ground as any).briefIsTheLeadsOwnWords === true
@@ -457,7 +459,7 @@ export function ContextPage({
                 {/* The words it was written from, where they differ from what everyone reads. */}
                 {isLead && theBrief && theBrief !== whatEveryoneReads && (
                   <details style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{isTheLead && !((ground as any).briefChangedBy && !(ground as any).briefChangedBy.isTheLead) ? 'What you wrote' : 'The words this was written from'}</summary>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theLeadWroteTheseWords ? 'What you wrote' : 'The words this was written from'}</summary>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
                   </details>
                 )}
