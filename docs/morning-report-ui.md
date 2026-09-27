@@ -16,7 +16,7 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board and leave requests). Each up to U.16 passed the full screen and API suites; the
+the onboarding board, leave requests and time sheets). Each up to U.16 passed the full screen and API suites; the
 few failures each run found came from that module and were fixed. The U.17 parts have passed their
 own tests, and their full run is still to do. The latest full run, after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
@@ -64,17 +64,18 @@ that one is yours to decide (item 27.4).
 13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
-    nobody can ask for leave yet, and no screen shows a person their own.
+    nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
+    hours, and who says what each client agreed.
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** leave requests, the second suite (U.17). The lead who approves reads
-their team's requests waiting, each with the days left, who else in the team is off those days and
-who stands in, and approves or declines; an admin reads the whole organisation; each person is served
-only their own; a colleague and a guest are refused. Leave is kept in a new table and never reaches a
-check-in or its report. Nobody can ask for leave until the engine takes requests by talking
-(request 21; item 28.18). Before that: the onboarding board, and the Suites page itself.
+**Just finished, not ticked:** time sheets, the third suite (U.17). The approver reads their team's
+hours for the week by client, and approves; an admin reads everybody's, and the hours against what
+each client agreed; each person is served only their own; a colleague and a guest are refused. Hours
+are for billing only: a test fails if anything outside the suites reads them, so they never reach a
+check-in or its report. Nobody can give hours until the engine takes them by talking (request 22; item
+28.25). Before that: leave requests, the onboarding board, and the Suites page itself.
 
-**Next:** U.17 goes on with suite 3, time sheets. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 4, performance reviews. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1285,6 +1286,32 @@ reviewed" in this report.
     colon, because it is the prototype's own line.
 24. **Only annual leave.** It is the only kind the prototype shows. Sick leave would need its own
     privacy rules. **My recommendation:** decide those before adding any other kind.
+25. **Nobody can give hours yet.** No screen has a way to, because "there is no grid to fill in".
+    Until the engine takes them (request 22), the board fills only from there. "How people use it",
+    with its example chat, is left out, because the chat is sample data.
+26. **Where does a person read their own hours?** The server gives each person their own, week by
+    week, but no prototype screen shows them. **My recommendation:** the same place as their own leave
+    (item 28.19).
+27. **Who says what each client agreed?** The prototype shows the agreements, but no screen for
+    entering them. An admin can set them on the server (`PUT /suites/time/agreements`), and the part
+    shows once there are some. "(whole trial)" cannot be said: an agreement is for the whole job or for
+    each month. **My recommendation:** a short form on the board, for admins only.
+28. **Which weeks show.** This week always, and any of the last 8 weeks with hours still waiting,
+    headed "Hours still waiting for approval" (my words), so a week is not lost on Monday.
+29. **Only an admin reads the hours against what each client agreed,** because they are the whole
+    organisation's hours for that client. The prototype shows them to an admin only.
+    **My recommendation:** keep it.
+30. **Approve is one press, and "Approved" is a plain tag, not green,** since green means proven.
+    There is no way to send hours back. **My recommendation:** add "Ask about these hours" later,
+    which would go to the person in their next check-in.
+31. **Wording no screen shows, on this board:** "Hours still waiting for approval", "No hours have come
+    in this week.", "The board did not load.", "Approval" (read aloud as the last column's heading), and
+    the server's "The time sheets suite is not switched on.", "Only the person who approves these hours
+    can approve them.", "There are no hours to approve for that week.", "Only an admin can say what
+    each client agreed.", "That is not one of the clients or projects on the list.", "Give a day and
+    between a quarter of an hour and 24 hours for it." and "Each agreement needs a client on the list,
+    the work, the hours, and whether they are for the whole job or each month."
+
 
 
 
@@ -2449,6 +2476,58 @@ with a new test in `the-suites-page-as-each-reader-sees-it.spec.tsx`. **No exist
 Only the tests for the changed files, the tests that read whole folders, and both type checks were
 run. No screen could be checked signed in (item 14).
 
+#### Time sheets: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product kept no hours at all (`docs/backend-map.md`). There
+was nowhere to keep hours by client or project, a week's approval, or what each client agreed, no rule
+for who reads or approves them, and no board at `#/suite/time`. No screen shows a way to give hours
+("There is no grid to fill in."): people give them by talking to Groundwork, which is the engine's part
+(request 22).
+
+**New storage, on your computer only,** in the migration `20260927100000_time_sheets`: `time_entries`
+(who, which client or project, which day, how many minutes), `time_weeks` (one person's week approved,
+by whom, when, and the total they saw), and `time_agreements` (what a client agreed: the work, the
+hours, and whether they are for the whole job or each month). The clients are the list the admin gave
+when switching the suite on. It has not been run against any database.
+
+**What each person now reads:**
+- **Grace, an admin,** on the Suites page, "Open its board" on Time sheets. On the board: "Suites /
+  Time sheets", "Time sheets", "Hours spent on each client or project, ready for billing. People tell
+  Groundwork their hours in their check-in or in chat. There is no grid to fill in.", then a box: "Hours
+  are for billing only." and "They never appear in anyone’s check-in report, their signals or a review.
+  Being busy is not the same as making progress." Then "This week’s hours, waiting for approval", "Week
+  of 21 September", and a table: "Person", each client, "Total", with rows such as "Aisha Otieno", "14
+  h", "6 h", "2 h", "22 h" and "Approve", or "Approved". An earlier week that still waits comes after,
+  headed "Hours still waiting for approval". Then "Hours against what each client agreed", with rows
+  such as "Naivas Ngong Road: installing 12 freezers (whole job)" and "47 of 40 hours, over", and
+  "Naivas Ngong Road is 7 hours over the 40 the client agreed. Somebody should talk to them before more
+  work is done." With no hours yet: "No hours have come in this week."
+- **Wairimu, a lead,** the same for her own team only, with Approve on the weeks of the people she
+  manages, and nothing of what the clients agreed.
+- **Each person** is served their own hours, week by week (`GET /suites/time/mine`), and nobody else's.
+  No screen shows them yet (item 28.26).
+- **A colleague and a guest** are refused by the server: "Only an admin or a lead can open this board."
+- **Everybody, while the suite is off:** "The time sheets suite is not switched on."
+
+**Privacy and access, on the server:** a lead is given only their own team's hours, which is what they
+need to approve. Only the approver approves (the same rule as leave, now shared in `who-approves.ts`),
+and nobody approves their own. A week is approved with the total the approver saw; hours added later
+make it wait again. Only an admin says what each client agreed, and only an admin reads the hours
+against it. **Hours are for billing only (decisions rule 10):** a test scans the server's code and fails
+if anything outside the suites reads hours, so they can never reach a check-in, its record or its
+report. Nothing served ranks, averages or compares how much anybody works. No labels on people.
+
+**Commits:** `c3b2c46e` (the server), `f851915a` (the board), `60acea5d` (request 22).
+
+**Tested:** `api/src/modules/suites/the-time-sheets-as-each-reader-reads-them.spec.ts` (Grace, Wairimu,
+Aisha, Miriam and a guest, each read from what the server hands them; approving, and a week waiting
+again; recording hours; the scan) and `client/src/pages/suites/the-time-sheets-as-each-reader-see-them.spec.tsx`
+(what Grace, Wairimu and Miriam each read, word for word). **One test changed, and why:**
+`the-suites-page-as-each-reader-sees-it.spec.tsx` expected no "Open its board" on a lead's Time sheets
+card, because the board did not exist. It now expects the door there, and still none on To-dos. Only
+the tests for the changed files, the tests that read whole folders, and both type checks were run. No
+screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2458,9 +2537,10 @@ run. No screen could be checked signed in (item 14).
 2. **Leave requests** (`#/suite/leave`, admins and leads). **Built** (above). Still missing: a screen
    where a person reads their own requests, and "How people ask". The engine's part: taking a request
    by talking to Groundwork, said back and confirmed first (request 21).
-3. **Time sheets** (`#/suite/time`, admins and leads). Missing: hours by client or project, weekly
-   approval, and what each client agreed. The engine's part: taking hours from check-ins and chat.
-   Hours are for billing only and must never reach a report (decisions rule 10).
+3. **Time sheets** (`#/suite/time`, admins and leads). **Built** (above). Still missing: a screen
+   where a person reads their own hours, a screen to say what each client agreed, and "How people use
+   it". The engine's part: taking hours by talking to Groundwork, said back and confirmed first
+   (request 22). Hours are for billing only and never reach a report (decisions rule 10).
 4. **Performance reviews** (`#/suite/reviews`, admins and leads). A daily reminder of reviews exists.
    Missing: the review page. The engine's part: the review built from proof, with a suggestion told
    like a signal (decisions rule 6).
