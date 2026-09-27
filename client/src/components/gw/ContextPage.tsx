@@ -98,10 +98,23 @@ export function ContextPage({
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
-  const { data: docs = [] } = useQuery({
+  /*
+   * THE DOCUMENTS ARE THE PEOPLE IN THE CHECK-IN'S, SO NOBODY ELSE IS SENT TO ASK FOR THEM (U.7
+   * review). The server lets in the people in the check-in and its lead, and refuses anyone else,
+   * an admin of the organisation included. Otieno, an admin not in Wanjiru's check-in, opened this
+   * page and got "That one is not yours to open" twice (the request and its retry) right under a
+   * banner saying he could see everything. Now the page does not ask on his behalf, says why in the
+   * band, and a refusal that still comes is said there too, once, never as a toast.
+   */
+  const mayOpenDocuments = isTheLead || !!myParticipant
+  const docsQuery = useQuery({
     queryKey: ['docs', id],
     queryFn: () => documentsApi.list(id),
+    enabled: mayOpenDocuments,
+    retry: (n, e: any) => e?.response?.status !== 403 && n < 1,
   })
+  const docs: any[] = docsQuery.data ?? []
+  const documentsAreNotOpenToYou = !mayOpenDocuments || (docsQuery.error as any)?.response?.status === 403
 
   /*
    * A RECORD OF A CONVERSATION IS ASKED ABOUT BEFORE IT IS STORED.
@@ -673,6 +686,11 @@ export function ContextPage({
               The count is in the heading now and the box below it is one row.
             */}
             <Sec n={band()} title="Documents" />
+            {documentsAreNotOpenToYou && (
+              <div data-gw-documents-not-open style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxWidth: 620 }}>
+                Documents here are shared by the people in this check-in, so you cannot open them from here.
+              </div>
+            )}
 
             {/*
               AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
@@ -722,6 +740,7 @@ export function ContextPage({
                 onClose={() => setReviewing(null)}
               />
             )}
+            {!documentsAreNotOpenToYou && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
             {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
@@ -1006,6 +1025,7 @@ export function ContextPage({
                 }} />
             </div>
             </div>
+            )}
 
 
 

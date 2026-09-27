@@ -1,3 +1,4 @@
+import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
@@ -1689,8 +1690,13 @@ export function GroundAdminPage() {
                  */
                 const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
                 const first = (lead?.user?.firstName ?? '').trim()
-                const who = first || 'The lead here'
-                return `${who} runs this check-in. You can see everything here, which is the point of being an admin - but releasing the report and closing the check-in are theirs to decide, and nothing you do here is hidden from them.`
+                /* U.7 review: it said "You can see everything here", over a page that cannot open
+                   the documents or each person's share. See what-an-admin-here-can-see. */
+                return whatAnAdminHereCanSee({
+                  leadName: [first, (lead?.user?.lastName ?? '').trim()].filter(Boolean).join(' ') || null,
+                  leadFirstName: first || null,
+                  inIt: !!myParticipantId,
+                })
               })()}
             </div>
           </div>

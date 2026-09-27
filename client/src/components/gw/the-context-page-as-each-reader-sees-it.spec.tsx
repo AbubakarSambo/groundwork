@@ -3,6 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ContextPage } from './ContextPage'
 import { documentsApi } from '@/api/documents'
+import { toast } from 'sonner'
+import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 
 vi.mock('@/api/documents', () => ({
   documentsApi: { list: vi.fn(), upload: vi.fn(), setVisibility: vi.fn(), remove: vi.fn(), setNote: vi.fn() },
@@ -120,5 +122,47 @@ describe('an admin reading a check-in somebody else leads', () => {
     draw('admin', 'u-admin')
     expect(screen.getByText(/Wairimu’s words, from setup\./)).toBeTruthy()
     expect(screen.getByText('Rewrite')).toBeTruthy()
+  })
+})
+
+/*
+ * U.7 REVIEW: AN ADMIN WHO IS NOT IN THE CHECK-IN IS NOT SENT TO OPEN ITS DOCUMENTS. Otieno read the
+ * toast "That one is not yours to open" twice, under a banner saying he could see everything. The
+ * server still refuses him; the page does not ask, and says why in the documents band.
+ */
+describe('Otieno, an admin who is not in the check-in, and its documents', () => {
+  it('reads one plain sentence in the documents band, no toast, and the page never asks for them', async () => {
+    ;(documentsApi.list as any).mockRejectedValue({ response: { status: 403 } })
+    draw('admin', 'u-otieno')
+    expect(screen.getByText('Documents here are shared by the people in this check-in, so you cannot open them from here.')).toBeTruthy()
+    expect(documentsApi.list).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(screen.queryByText('Add a document')).toBeNull()
+  })
+
+  it('and Aisha, who is in it, still reads the documents and no such sentence', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(aishasDocs)
+    draw('party', 'u-aisha')
+    await screen.findByText('Freezer range brochure.pdf')
+    expect(screen.queryByText(/so you cannot open them from here/)).toBeNull()
+  })
+
+  it('a refusal that still comes is said in the band, not as a toast', async () => {
+    ;(documentsApi.list as any).mockRejectedValue({ response: { status: 403 } })
+    draw('party', 'u-aisha')
+    expect(await screen.findByText('Documents here are shared by the people in this check-in, so you cannot open them from here.')).toBeTruthy()
+    expect(documentsApi.list).toHaveBeenCalledTimes(1)
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('the banner an admin reads over a check-in somebody else leads', () => {
+  it('says what Otieno can and cannot see, not that he can see everything', () => {
+    expect(whatAnAdminHereCanSee({ leadName: 'Wanjiru Mwangi', leadFirstName: 'Wanjiru', inIt: false })).toBe(
+      'You can read this check-in’s board and reports. Wanjiru Mwangi runs it. You cannot see Wanjiru’s private notes, anyone’s share of a target, or the documents people add here. Sharing the report and ending the check-in are Wanjiru’s to decide, and nothing you do here is hidden from Wanjiru.',
+    )
+    expect(whatAnAdminHereCanSee({ leadName: 'Wanjiru Mwangi', leadFirstName: 'Wanjiru', inIt: true })).toBe(
+      'You can read this check-in’s board and reports. Wanjiru Mwangi runs it. You cannot see Wanjiru’s private notes, or anyone else’s share of a target. Sharing the report and ending the check-in are Wanjiru’s to decide, and nothing you do here is hidden from Wanjiru.',
+    )
   })
 })

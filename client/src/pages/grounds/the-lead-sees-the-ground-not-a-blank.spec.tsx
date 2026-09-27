@@ -3,6 +3,7 @@ import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { groundTabs } from './ground-tabs'
+import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 
 /**
  * THE LEAD'S SIDE OF THE GROUND. W8-66, W8-67.
@@ -104,9 +105,12 @@ describe('the four things mounting it exposed', () => {
     expect(CODE).not.toMatch(/lead\.email\.split/)
   })
 
+  /* U.7 review: the banner's sentence moved to what-an-admin-here-can-see, so the fallback is read
+     there, rendered, rather than looked for in this page's source. */
   it('and the fallback is a whole phrase, so the sentence still reads', () => {
-    expect(CODE).toMatch(/'The lead here'/)
     expect(CODE).not.toMatch(/'its lead'/)
+    const said = whatAnAdminHereCanSee({ leadName: null, leadFirstName: null, inIt: false })
+    expect(said).toBe('You can read this check-in\u2019s board and reports. You cannot see the lead\u2019s private notes, anyone\u2019s share of a target, or the documents people add here. Sharing the report and ending the check-in are the lead\u2019s to decide, and nothing you do here is hidden from them.')
   })
 
   /**
