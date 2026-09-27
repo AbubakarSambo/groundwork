@@ -46,6 +46,9 @@ export function onlyWhatThisReaderMaySee<T extends AboutOnePerson>(
 ): T[] | undefined {
   if (!rows) return rows;
   if (!who.peersHidden) return rows;
+  /* Something that is not a list cannot be walled row by row, so none of it goes, rather than an
+     error or all of it. A section with rows inside an object walls those rows itself. */
+  if (!Array.isArray(rows)) return [];
   return rows.filter((r) => !!r.participantId && r.participantId === who.meParticipantId);
 }
 

@@ -1285,7 +1285,15 @@ export class BoardService {
      */
     if (whoMaySee.peersHidden) {
       out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
-      out.coverage = onlyWhatThisReaderMaySee(out.coverage as any, whoMaySee);
+      /*
+       * COVERAGE IS NOT A LIST. It is `{ scope, reads }`, and handing the whole object to a filter
+       * for lists threw "rows.filter is not a function", so a participant on a delivery check-in
+       * where people see only themselves got an error instead of a board. The rows are the reads;
+       * the wall goes round those and the shape the page draws stays as it is.
+       */
+      if (out.coverage) {
+        out.coverage = { ...(out.coverage as any), reads: onlyWhatThisReaderMaySee((out.coverage as any).reads, whoMaySee) ?? [] };
+      }
       out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
       out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
       if (out.patterns) out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);

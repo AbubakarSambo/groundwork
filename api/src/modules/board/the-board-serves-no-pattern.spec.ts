@@ -139,13 +139,8 @@ const READERS: [string, string, string][] = [
 const GROUNDS: [string, { peersVisibleToEachOther: boolean; sharedAs: string | null; scenario?: GroundScenario }][] = [
   ['people see each other, report shared named', { peersVisibleToEachOther: true, sharedAs: null }],
   ['people see each other, report shared without names', { peersVisibleToEachOther: true, sharedAs: 'ANONYMOUS' }],
-  /*
-   * A cohort, which has a pattern section and no coverage section. A delivery board where people see
-   * only themselves cannot be built for a participant at all today: the wall hands the coverage
-   * object, which is not a list, to a filter for lists, and the board throws. That is a separate
-   * defect, flagged on its own, and not what this file is about.
-   */
-  ['people see only themselves', { peersVisibleToEachOther: false, sharedAs: null, scenario: GroundScenario.COHORT_CHECK }],
+  ['people see only themselves, on a delivery check-in', { peersVisibleToEachOther: false, sharedAs: null }],
+  ['people see only themselves, on a cohort', { peersVisibleToEachOther: false, sharedAs: null, scenario: GroundScenario.COHORT_CHECK }],
 ];
 
 const CATALOGUE = [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES];
