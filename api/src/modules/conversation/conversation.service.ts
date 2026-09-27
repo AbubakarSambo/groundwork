@@ -976,8 +976,11 @@ export class ConversationService {
     const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
     const firstSession = checkIn.sessionNumber === 1;
-    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre. */
-    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(checkIn.participant.roleAsDescribed);
+    /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre.
+       IN THEIR OWN WORDS ONLY (request 36). The model is no longer handed the lead's sentence about
+       an invited person, so a row that holds only that sentence says nothing the conversation can
+       use: they are asked, the same as somebody with no role at all. */
+    const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
     const reply = alreadyWritten
       ? alreadyWritten
       : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal

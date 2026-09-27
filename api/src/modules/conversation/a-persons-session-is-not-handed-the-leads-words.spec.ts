@@ -2,6 +2,7 @@ import { GroundScenario, PartyType, CheckInStatus } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
+import { WHO_ARE_YOU_IN_THIS } from './prompt-library';
 
 /**
  * A PERSON'S OWN SESSION IS NOT HANDED THE LEAD'S WORDS ABOUT THEM. Request 36, route 3.
@@ -46,7 +47,7 @@ const THE_COLLEAGUE = {
 };
 
 function aCheckInWhere(
-  { scenario, theyCalledThem }: { scenario: GroundScenario; theyCalledThem: string | null },
+  { scenario, theyCalledThem, sessionNumber = 2, status = CheckInStatus.IN_PROGRESS }: { scenario: GroundScenario; theyCalledThem: string | null; sessionNumber?: number; status?: CheckInStatus },
 ) {
   const ground = {
     id: 'g1', organizationId: 'org1', scenario, moment: null, label: 'The lending round',
@@ -60,8 +61,8 @@ function aCheckInWhere(
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
     checkIn: {
       findUnique: jest.fn(async () => ({
-        id: 'ci1', groundId: 'g1', participantId: 'p1', sessionNumber: 2,
-        status: CheckInStatus.IN_PROGRESS, isClarification: false, clarificationTarget: null,
+        id: 'ci1', groundId: 'g1', participantId: 'p1', sessionNumber,
+        status, isClarification: false, clarificationTarget: null,
         isSelfCorrection: false, selfCorrectionTargetSession: null, isFinal: false,
         participant: {
           id: 'p1', userId: 'user-1', groundId: 'g1', partyType: PartyType.PARTICIPANT,
@@ -171,5 +172,48 @@ describe('a role in their own words', () => {
   it('is nothing for anybody the lead invited, whose row holds the lead\'s words', () => {
     expect(aRoleInTheirOwnWords({ partyType: PartyType.PARTICIPANT, roleAsDescribed: THE_LEADS_WORDS })).toBeNull();
     expect(aRoleInTheirOwnWords(null)).toBeNull();
+  });
+});
+
+/*
+ * AND BECAUSE THE MODEL NO LONGER HAS THE LEAD'S SENTENCE, THE PERSON IS ASKED WHO THEY ARE.
+ *
+ * The first session's opener in a starting situation asks a non-lead "who are you in this" unless
+ * their row already says. It used to count the lead's sentence as the row saying, so an invited
+ * person with a lead-written role was never asked - and the model could no longer read the role
+ * either. Only their own words count now.
+ */
+describe('an invited person whose only role is the lead\'s description is asked who they are', () => {
+  async function theOpener(scenario: GroundScenario) {
+    const prisma: any = everythingElseAnswersEmpty(aCheckInWhere({ scenario, theyCalledThem: null, sessionNumber: 1, status: CheckInStatus.NOT_STARTED }));
+    prisma.conversationTurn.findFirst = jest.fn(async () => null);
+    const { anthropic, prompts } = anEngineThatSaysEverythingItWasTold();
+    const context = new ConversationContextService(prisma);
+    const promptStore: any = {
+      getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'SYS' : null)),
+      getActive: jest.fn(async () => ({ id: 'pv-1' })),
+    };
+    const nothing: any = { get: () => undefined, emit: jest.fn(() => Promise.resolve()) };
+    const billing: any = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: 5 })) };
+    const service = new ConversationService(
+      prisma, promptStore, anthropic, context, nothing, nothing, billing, nothing, nothing, nothing,
+    );
+    const composed: string[] = [];
+    const compose = (service as any).composeSystemPrompt.bind(service);
+    jest.spyOn(service as any, 'composeSystemPrompt').mockImplementation(async (...a: any[]) => {
+      const out = await compose(...a);
+      composed.push(out);
+      return out;
+    });
+    const out = await service.open('ci1', 'user-1');
+    return { reply: String(out.reply), prompts: [...prompts, ...composed] };
+  }
+
+  it('in session 1 of a new hire\'s check-in, the first line is the product\'s own question', async () => {
+    const { reply, prompts } = await theOpener(GroundScenario.NEW_HIRE);
+    expect(reply).toContain(WHO_ARE_YOU_IN_THIS);
+    expect(prompts.length).toBeGreaterThan(0);
+    for (const p of prompts) expect(PIECES.filter((x) => x.test(p)).map(String)).toEqual([]);
+    expect(PIECES.filter((x) => x.test(reply)).map(String)).toEqual([]);
   });
 });
