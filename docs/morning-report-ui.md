@@ -149,6 +149,7 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **28 September: deploy soon with what works, then improve the product every week.** The reviews, U.19 and U.20 carry on as planned. No screen is hidden yet: the engine workspace is checking whether some capabilities are really missing, and you will decide from its evidence. If something is to be hidden at release, the list comes in `docs/answers-from-engine.md`. When the screens are ready, I write `docs/ready-to-deploy-screens.md`: what is finished, every test result, every known problem and why it is safe.
 - **27 September: to go faster, a module gets a full review only in its first round; a re-review checks
   only what was found, plus one quick click-through of the main path. The builder fixes all findings in
   one round. One helper at a time, full suites once per module. The builder and tester run on Sonnet 5,
