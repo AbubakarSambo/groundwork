@@ -338,8 +338,6 @@ export function theirOwnSetupWords(history: { role: string; content: string }[])
 
 export function composeLeadBrief(
   sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string },
-  /** Who answered, by first name. Absent before they have one, and then "the person who set this up". */
-  whoAnswered?: string | null,
 ): string {
   /* Ends every fragment exactly once, whatever the person typed. */
   const sentence = (t?: string) => {
@@ -348,41 +346,39 @@ export function composeLeadBrief(
     return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
   }
   /*
-   * THE ANSWERS ARE QUOTED, NOT GLUED INTO A SENTENCE OF OURS (U.7 re-check).
+   * EACH ANSWER, AS GROUNDWORK UNDERSTOOD IT, AFTER THE QUESTION IT ANSWERED (U.7 third review).
    *
-   * First they were "Label:" pieces ("Why now: ...", "Focus: ..."). Then each was glued onto a fixed
-   * opening, and an ordinary answer made a non-sentence: "It matters now because whether to confirm
-   * him." and "The questions should focus on he is often late with the stock counts." An answer can
-   * be a clause, a noun, a single word or a question, and no opening fits all of them. Quoted after
-   * the question it answered, any answer reads as a sentence, and it says honestly that these are
-   * the answers somebody gave, not a paragraph they wrote.
-   *
-   * Third person, because this text is also what the people in the check-in may be shown (the
-   * short read is written from it, and its first sentences stand in when that read is missing).
-   * Nothing on the server reads these openings back out: the brief is stored and read as text.
+   * These answers are what setup drew out of the conversation, not anybody's exact words. So there
+   * are no quotation marks (the U.7 re-check quoted them as "Wanjiru said", which put words in her
+   * mouth), no name, and no fixed opening to glue them onto ("It matters now because whether to
+   * confirm him."). The question comes first, in a sentence that says what follows is a reading of
+   * the answer, and the answer stands as its own sentence: a clause, a noun, a single word or a
+   * question all read the same way. Nothing on the server reads these openings back out; the
+   * server cuts them off before anything is shown to the people in the check-in
+   * (what-someone-who-does-not-run-it-reads.ts).
    */
-  const who = (whoAnswered ?? '').trim() || 'the person who set this up'
-  const quoted = (t?: string) => {
-    const b = (t ?? '').trim().replace(/^["“”']+|["“”']+$/g, '').replace(/[“”]/g, '"').replace(/\.+$/, '').trim()
+  const itsOwnSentence = (t?: string) => {
+    const b = (t ?? '').trim().replace(/^["“”']+|["“”']+$/g, '').trim()
     if (!b) return ''
-    /* A question or an exclamation keeps its own mark, inside the quote, and needs no full stop after. */
-    return /[?!]$/.test(b) ? `\u201C${b}\u201D` : `\u201C${b}\u201D.`
+    return sentence(b[0].toUpperCase() + b.slice(1))
   }
-  const saidTo = (question: string, answer?: string) => {
-    const q = quoted(answer)
-    return q ? `Asked ${question}, ${who} said ${q}` : ''
+  const afterTheQuestion = (question: string, answer?: string) => {
+    const a = itsOwnSentence(answer)
+    return a ? `When asked ${question}, the answer was taken to mean this. ${a}` : ''
   }
-  const goals = (sels.goals ?? []).map((g) => quoted(g).replace(/\.$/, '')).filter(Boolean)
+  const goals = (sels.goals ?? []).map(itsOwnSentence).filter(Boolean)
   const goalLine = goals.length === 0
     ? ''
-    : `Asked what this is aiming at, ${who} said ${goals.length === 1 ? goals[0] : `${goals.slice(0, -1).join(', ')} and ${goals[goals.length - 1]}`}${/[?!]\u201D$/.test(goals[goals.length - 1]) ? '' : '.'}`
+    : goals.length === 1
+      ? `When asked what this is aiming at, the answer was taken to mean this. ${goals[0]}`
+      : `When asked what this is aiming at, the answer was taken to mean these ${goals.length} things. ${goals.join(' ')}`
   return [
     /* Unlabelled and first: the band above it already says what this is. */
     sentence(sels.initial),
-    saidTo('who is part of this', sels.whoInvolved),
-    saidTo('why this matters now', sels.decision),
+    afterTheQuestion('who is part of this', sels.whoInvolved),
+    afterTheQuestion('why this matters now', sels.decision),
     goalLine,
-    saidTo('what the questions should focus on', sels.brief),
+    afterTheQuestion('what the questions should focus on', sels.brief),
   ].filter(Boolean).join(' ')
 }
 
@@ -2274,8 +2270,8 @@ export function EntryChatPage() {
          * `composeLeadBrief` is their own answers, in their own words, and it always was - it was
          * simply not being sent unless they had opted out of checking in.
          */
-        ...(composeLeadBrief(onboardingSelections, user?.firstName)
-          ? { brief: composeLeadBrief(onboardingSelections, user?.firstName) }
+        ...(composeLeadBrief(onboardingSelections)
+          ? { brief: composeLeadBrief(onboardingSelections) }
           : {}),
         /*
          * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES (U.7 re-check). The brief above is put together

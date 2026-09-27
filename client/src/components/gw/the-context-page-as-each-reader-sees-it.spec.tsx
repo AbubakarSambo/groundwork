@@ -302,7 +302,7 @@ describe('the lines under each band', () => {
  */
 describe('Juma’s check-in: what the lead wrote, and what Groundwork put together', () => {
   const HER_WORDS = 'Juma joined our warehouse team in January and his probation ends in March. I need to decide whether to confirm him. He is often late with the stock counts.'
-  const PUT_TOGETHER = 'Juma’s performance during his probation with the warehouse team needs review. Asked who is part of this, Wairimu said “Juma and the warehouse team”. Asked why this matters now, Wairimu said “whether to confirm him”. Asked what the questions should focus on, Wairimu said “he is often late with the stock counts”.'
+  const PUT_TOGETHER = 'Juma’s performance during his probation with the warehouse team needs review. When asked who is part of this, the answer was taken to mean this. Juma and the warehouse team. When asked why this matters now, the answer was taken to mean this. Whether to confirm him. When asked what the questions should focus on, the answer was taken to mean this. He is often late with the stock counts.'
   const TOLD = 'This check-in looks at how Juma’s first months in the warehouse have gone.'
   const juma = { brief: PUT_TOGETHER, briefAsEveryoneReadsIt: TOLD, briefIsTheLeadsOwnWords: false, briefPutTogetherBySetup: true, briefChangedBy: null }
   const folds = () => [...document.querySelectorAll('[data-gw-brief-fold]')].map((d) => ({
@@ -315,10 +315,16 @@ describe('Juma’s check-in: what the lead wrote, and what Groundwork put togeth
     draw('lead', 'u-lead', { ...juma, leadsOwnSetupWords: HER_WORDS })
     expect(screen.getByText(`“${TOLD}”`)).toBeTruthy()
     expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
-    expect(folds()).toEqual([
-      { title: 'What you wrote', text: HER_WORDS },
-      { title: 'What Groundwork put together from your answers', text: PUT_TOGETHER },
-    ])
+    /* U.7 third review: her real words, and not a second version of them beside it. */
+    expect(folds()).toEqual([{ title: 'What you wrote', text: HER_WORDS }])
+    expect(document.body.textContent).not.toContain('taken to mean')
+  })
+
+  it('on an older check-in, where her own words were not kept, she reads what Groundwork put together, with nobody quoted', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('lead', 'u-lead', juma)
+    expect(folds()).toEqual([{ title: 'What Groundwork put together from your answers', text: PUT_TOGETHER }])
+    expect(folds()[0].text).not.toMatch(/[“”]|said/)
   })
 
   it('an admin reads no setup words of hers, and the brief headed as put together from Wairimu’s answers', async () => {

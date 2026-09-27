@@ -481,8 +481,11 @@ export function ContextPage({
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
                   </details>
                 )}
-                {/* The stored brief, where what everyone reads is Groundwork's short read of it. */}
-                {isLead && theBrief && !shownIsTheBrief && (
+                {/* The stored brief, where what everyone reads is Groundwork's short read of it. Not for
+                    the lead where her own words are kept: setup's reading of her answers beside her
+                    real words is a second version of what she said (U.7 third review). An admin keeps
+                    it, because he can rewrite it and has nothing else to go on. */}
+                {isLead && theBrief && !shownIsTheBrief && !(isTheLead && herSetupWords && theBriefIsSetups) && (
                   <details data-gw-brief-fold style={{ marginTop: 8 }}>
                     <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>

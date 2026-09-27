@@ -43,41 +43,36 @@ describe('composing the brief', () => {
       decision: 'Probation in March',
       goals: ['Contracts filed', 'An onboarding pack'],
       brief: 'The hiring handover',
-    }, 'Wanjiru')
-    /* U.7 re-check: each answer quoted after the question it answered, never glued onto an opening. */
-    expect(brief).toBe('She starts on the 15th. Asked who is part of this, Wanjiru said “Nadia and me”. Asked why this matters now, Wanjiru said “Probation in March”. Asked what this is aiming at, Wanjiru said “Contracts filed” and “An onboarding pack”. Asked what the questions should focus on, Wanjiru said “The hiring handover”.')
-    expect(brief).not.toMatch(/:|Who is part of this:|Why now|Focus/)
+    })
+    /* U.7 third review: no quotation marks and no name. These are Groundwork's reading of the
+       answers, not anybody's exact words; each follows the question it answered. */
+    expect(brief).toBe('She starts on the 15th. When asked who is part of this, the answer was taken to mean this. Nadia and me. When asked why this matters now, the answer was taken to mean this. Probation in March. When asked what this is aiming at, the answer was taken to mean these 2 things. Contracts filed. An onboarding pack. When asked what the questions should focus on, the answer was taken to mean this. The hiring handover.')
+    expect(brief).not.toMatch(/[:“”"]/)
   })
 
-  /* The reviewer's case: what the lead typed about Juma, and what setup drew out of it. */
-  it('reads as sentences for Juma’s check-in, whatever shape each answer has', () => {
+  /* The reviewer's case: Aisha's probation, and what setup drew out of Wanjiru's answers. */
+  it('reads as sentences for Aisha’s check-in, with nobody quoted', () => {
     const brief = composeLeadBrief({
-      initial: 'Juma’s performance during his probation with the warehouse team needs review.',
-      whoInvolved: 'Juma and the warehouse team',
-      decision: 'whether to confirm him',
-      brief: 'he is often late with the stock counts',
-    }, 'Wanjiru')
-    expect(brief).toBe('Juma’s performance during his probation with the warehouse team needs review. Asked who is part of this, Wanjiru said “Juma and the warehouse team”. Asked why this matters now, Wanjiru said “whether to confirm him”. Asked what the questions should focus on, Wanjiru said “he is often late with the stock counts”.')
-    expect(brief).not.toContain('because whether')
-    expect(brief).not.toContain('focus on he')
+      initial: 'Aisha’s probation in the warehouse team needs a decision.',
+      whoInvolved: 'Aisha and the warehouse team',
+      decision: 'Decide whether to confirm Aisha for her role in the warehouse team',
+      brief: 'she is often late with the stock counts',
+    })
+    expect(brief).toBe('Aisha’s probation in the warehouse team needs a decision. When asked who is part of this, the answer was taken to mean this. Aisha and the warehouse team. When asked why this matters now, the answer was taken to mean this. Decide whether to confirm Aisha for her role in the warehouse team. When asked what the questions should focus on, the answer was taken to mean this. She is often late with the stock counts.')
+    expect(brief).not.toMatch(/said|Wanjiru|[“”:]/)
   })
 
   it('an answer that is a question, a single word, or a sentence with its own full stop', () => {
-    expect(composeLeadBrief({ decision: 'Is he ready to be confirmed?' }, 'Wanjiru'))
-      .toBe('Asked why this matters now, Wanjiru said “Is he ready to be confirmed?”')
-    expect(composeLeadBrief({ brief: 'Punctuality' }, 'Wanjiru'))
-      .toBe('Asked what the questions should focus on, Wanjiru said “Punctuality”.')
-    expect(composeLeadBrief({ decision: 'His probation ends in March.' }, 'Wanjiru'))
-      .toBe('Asked why this matters now, Wanjiru said “His probation ends in March”.')
-    expect(composeLeadBrief({ goals: ['Are the counts on time?'] }, 'Wanjiru'))
-      .toBe('Asked what this is aiming at, Wanjiru said “Are the counts on time?”')
-    expect(composeLeadBrief({ brief: '"stock counts"' }, 'Wanjiru'))
-      .toBe('Asked what the questions should focus on, Wanjiru said “stock counts”.')
-  })
-
-  it('and without a name yet, says who answered in plain words', () => {
-    expect(composeLeadBrief({ decision: 'whether to confirm him' }))
-      .toBe('Asked why this matters now, the person who set this up said “whether to confirm him”.')
+    expect(composeLeadBrief({ decision: 'Is he ready to be confirmed?' }))
+      .toBe('When asked why this matters now, the answer was taken to mean this. Is he ready to be confirmed?')
+    expect(composeLeadBrief({ brief: 'punctuality' }))
+      .toBe('When asked what the questions should focus on, the answer was taken to mean this. Punctuality.')
+    expect(composeLeadBrief({ decision: 'His probation ends in March.' }))
+      .toBe('When asked why this matters now, the answer was taken to mean this. His probation ends in March.')
+    expect(composeLeadBrief({ goals: ['Are the counts on time?'] }))
+      .toBe('When asked what this is aiming at, the answer was taken to mean this. Are the counts on time?')
+    expect(composeLeadBrief({ brief: '"stock counts"' }))
+      .toBe('When asked what the questions should focus on, the answer was taken to mean this. Stock counts.')
   })
 
   it('what the person typed in setup is their own turns only', () => {
@@ -94,8 +89,8 @@ describe('composing the brief', () => {
   })
 
   it('and keeps a name its capital', () => {
-    expect(composeLeadBrief({ initial: 'Kwame joins the sales team.', whoInvolved: 'Kwame and Wairimu', decision: 'Kwame starts on Monday' }, 'Wairimu'))
-      .toBe('Kwame joins the sales team. Asked who is part of this, Wairimu said “Kwame and Wairimu”. Asked why this matters now, Wairimu said “Kwame starts on Monday”.')
+    expect(composeLeadBrief({ initial: 'Kwame joins the sales team.', whoInvolved: 'Kwame and Wairimu', decision: 'Kwame starts on Monday' }))
+      .toBe('Kwame joins the sales team. When asked who is part of this, the answer was taken to mean this. Kwame and Wairimu. When asked why this matters now, the answer was taken to mean this. Kwame starts on Monday.')
   })
 
   it('and says nothing when there is nothing', () => {
