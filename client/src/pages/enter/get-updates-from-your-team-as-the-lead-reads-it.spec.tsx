@@ -83,6 +83,9 @@ describe('your email', () => {
     expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true)
     expect(document.body.textContent).toContain('Add your own email, so the report has somewhere to go.')
     expect(document.body.textContent).toContain('Where the report goes. You do not have to sign in first. We will email you your way in.')
+    /* U.6 review: it read "Adds one line to the invite: we are trying this out…". */
+    expect(document.body.textContent).toContain('This adds one sentence to the invite. It reads “We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.”')
+    expect(document.body.textContent).not.toContain('invite:')
     fireEvent.change(box, { target: { value: 'amara@acme.com' } })
     const send = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement
     expect(send.disabled).toBe(false)

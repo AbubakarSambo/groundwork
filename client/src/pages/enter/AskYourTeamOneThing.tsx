@@ -189,8 +189,9 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
           <span>
             Say we are trying this out
             <span style={{ ...hint, marginTop: 2, display: 'block' }}>
-              Adds one line to the invite: we are trying this out to see if this new tool can help
-              us be aligned, and your answers go into one summary that gives us a shared picture.
+              {/* Two sentences, where it joined them with a colon (U.6 review). Her sentence is the
+                  one the invite carries, word for word, so it cannot drift from it. */}
+              This adds one sentence to the invite. It reads “{THE_TRIAL_LINE}”
             </span>
           </span>
         </label>
