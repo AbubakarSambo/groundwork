@@ -15,7 +15,7 @@ import { Button, Tag } from '@/components/gw/kit'
  *
  * "OPEN ITS BOARD" ONLY FOR A BOARD THAT EXISTS (docs/morning-report-ui.md, item 28): a door that
  * leads nowhere is worse than none, so each suite's board brings its own door, one at a time, in
- * BOARDS below. Onboarding came first, then leave requests, time sheets, performance reviews, when someone leaves and the role map.
+ * BOARDS below. Onboarding came first, then leave requests, time sheets, performance reviews, when someone leaves, the role map, and spending and budgets.
  *
  * WORDING NO SCREEN SHOWS, in the fewest plain words (item 28): "Off"; "Answer these first, and it
  * switches on."; "Choose somebody"; "Switch it on"; "Cancel"; "None are switched on yet."; and
@@ -41,6 +41,7 @@ export const BOARDS: Record<string, { to: string }> = {
   reviews: { to: '/suite/reviews' },
   leaving: { to: '/suite/leaving' },
   roles: { to: '/suite/roles' },
+  spend: { to: '/suite/spend' },
 }
 
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'

@@ -172,3 +172,33 @@ export interface RoleMap {
 export const roleMapApi = {
   get: async (): Promise<RoleMap> => (await apiClient.get('/suites/roles/board')).data,
 }
+
+/** Spending and budgets (GET /suites/spend/board): what waits for a yes or no, and each team's budget. */
+export type SpendApprover = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' }
+export interface SpendWaiting {
+  id: string
+  name: string
+  firstName: string
+  amount: number
+  what: string
+  team: string | null
+  left: number | null
+  over: boolean
+  approver: SpendApprover
+  mayDecide: boolean
+}
+export interface SpendBoard {
+  currency: string | null
+  limit: number | null
+  waiting: SpendWaiting[]
+  budgets: { team: string; budget: number; spent: number; left: number }[]
+  teams: string[]
+}
+
+export const spendApi = {
+  get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
+  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<SpendBoard> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`)).data,
+  setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
+    (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
+}
