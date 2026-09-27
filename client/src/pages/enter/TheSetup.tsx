@@ -64,7 +64,8 @@ export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; st
   }
   const end = a.endsOn ? fromIso(a.endsOn) : null
   const all = whenTheCheckInsLand({ cadence: a.cadence, anchorDay: a.anchorDay, startsAt, workingDays: a.workingDays, today: a.today, howMany: end ? 400 : 5 })
-  const inRange = end ? all.filter((d) => d <= end) : all
+  /* Compared as days, never as times: see whenTheCheckInsLand. */
+  const inRange = a.endsOn ? all.filter((d) => iso(d) <= a.endsOn) : all
   if (!inRange.length) return null
   const shown = inRange.slice(0, 5)
   const words = shown.map((d, i) => {

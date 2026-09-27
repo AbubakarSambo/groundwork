@@ -88,3 +88,20 @@ describe('the setup, as the lead reads it', () => {
     expect(whenTheyOpen({ cadence: 'SEQUENTIAL', anchorDay: null, startsOn: '', endsOn: '', workingDays: [], today: TODAY })).toBeNull()
   })
 })
+
+describe('counting the days (U.6 review)', () => {
+  /* Read live: "Now" gave one check-in fewer than the same range from a date, because "now" carried
+     the clock's time and the last day's check-in fell after that day's midnight. */
+  const afternoon = new Date(2026, 5, 30, 15, 30)
+  it('"Now" counts the same days as starting on today\'s date', () => {
+    const now = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '', endsOn: '2026-07-10', workingDays: [], today: afternoon })
+    const onTheDate = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '2026-06-30', endsOn: '2026-07-10', workingDays: [], today: afternoon })
+    expect(now).toBe(onTheDate)
+    expect(now).toMatch(/: 11 in all\.$/)
+  })
+  it('and a weekly run keeps its last day', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '', endsOn: '2026-07-21', workingDays: [], today: afternoon }))
+      .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21: 4 in all.')
+  })
+})
+
