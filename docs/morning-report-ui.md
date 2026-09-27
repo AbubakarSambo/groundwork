@@ -8,10 +8,10 @@ same file.
 
 *Kept up to date as the night goes on. The details are further down.*
 
-**Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help) and U.2 (signing
-in, with every decision you made).
+**Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
+in, with every decision you made) and U.3 (organisations and joining, passed on its third review).
 
-**Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
+**Built and tested, but not ticked:** U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
@@ -103,7 +103,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 | Module | Built and tested | Reviewer |
 | --- | --- | --- |
-| U.3 Organisations and joining | Yes | Sent back twice on 27 September; being fixed |
+| U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | Waiting |
 | U.5 Today and the check-ins list | Yes | Waiting |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
@@ -2058,6 +2058,17 @@ security fix: a password chosen at sign-up worked in the same browser, and was r
 confirmation was opened elsewhere, with the person offered "Choose a password" and nothing saying a
 password had been chosen. The crash is being fixed now, with a test that includes the database's own
 behaviour.
+
+**The third review passed U.3**, checked live against the real database with fresh accounts: from an
+invite link, the person lands in the organisation as "Takes part", with "You are in Kisima Test Works
+because you joined through its invite link."; by email domain, "Join" puts them in with "…because
+anyone with an @example.test email can join it."; "Create" lands them on Today as admin of their own
+new workspace; and a plain sign-up still makes their own organisation. **U.3 is ticked.** Not seen live,
+because they need a running check-in: "Almost in", "Out of time", and the expired invitation card. They
+are covered by tests. Two small notes go to U.20 (small states and errors): a workspace name made from
+a first name uses a straight apostrophe ("Faith Domainfour's workspace") where the rest of the page uses
+a curly one, and when the invite link page cannot load it says "This invite link is not open any more",
+which looks like a closed link to someone on a bad connection.
 
 #### U.3 review fixes (27 September)
 
