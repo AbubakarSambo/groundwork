@@ -85,6 +85,63 @@ stands behind them (item 29).
 
 **Next:** U.19 (billing, keeping Stripe exactly as it is). U.18's review cannot sign in (item 14).
 
+## Every module since U.2, and its review
+
+| Module | Built and tested | Reviewer |
+| --- | --- | --- |
+| U.3 Organisations and joining | Yes | Waiting |
+| U.4 People, roles and access | Yes | Waiting |
+| U.5 Today and the check-ins list | Yes | Waiting |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
+| U.7 Context | Yes | Waiting |
+| U.8 The check-in screens | Yes | Waiting |
+| U.9 Reports and sharing | Yes | Waiting |
+| U.10 The board | Yes | Waiting |
+| U.11 Ending a check-in, probation review, handover | Yes | Waiting |
+| U.12 The You board | Yes | Waiting |
+| U.13 Suggestions from verdicts, and appeals | Yes | Waiting |
+| U.14 Ask Groundwork | Yes | Waiting |
+| U.15 The Company page | Yes | Waiting |
+| U.16 Links between check-ins, and each person's load | Yes | Waiting |
+| U.17 The Suites page and all ten suites | Yes | Waiting |
+| U.18 Connections and channels | Yes | Waiting |
+| U.19 Billing | Being built | Not yet |
+
+**No module after U.2 has passed a review, because the reviewer cannot sign in** (item 14). Since
+26 September the auto-mode safety check refuses to let the reviewer read the local test password or
+the invitation tokens it needs to sign in as each person, and you asked me never to work around a
+block. So the reviews cannot be finished from here. **As you asked, I will not start U.20 while these
+reviews are waiting.** When U.19 is built and tested, I will stop and wait for you to unblock item 14.
+Then the reviews run one module at a time, oldest first, and U.20 starts after them.
+
+## Last night's items
+
+1. **Members and guests can no longer change the organisation through `/auth/me`.** Done in commit
+   `9742b552` (U.3, step 3b). `orgName`, `orgEmail`, `orgSlug` and `companyStage` were removed from
+   what `PATCH /auth/me` accepts, so it only changes the person's own profile. `PATCH
+   /users/organization`, for admins only, stays the one way to change the organisation. Before
+   removing them, every caller in `api/journey` and `client/` was checked: `orgName` and `orgEmail` were
+   used only by the old setup page, `orgSlug` by nothing, and `companyStage` only by the seed, so it
+   moved to the admin route. The test is `api/src/modules/auth/only-an-admin-changes-the-organisation.spec.ts`.
+   It proves a member, a lead and a guest are refused, and that an admin can still change the name,
+   email and stage through `/users/organization`. It passes, 11 of 11, today.
+2. **The two conflicts with your U.3 answers** are in item 11, "Conflict A" and "Conflict B", each with
+   the prototype's exact wording, the product's exact wording today, the admin rule quoted word for word
+   from `docs/decisions.md`, and my suggestion. In short:
+   - **Conflict A, the invitation.** The prototype says "The people in this check-in, including your
+     manager, can see what you say in it." and also "Nobody else reads your answers." and "Wairimu reads
+     the report, not your words." The product today says "Nobody you work with reads it. Not your
+     manager, not whoever set this up, not an admin." Rule 5 says admins see what people said. Today's
+     wording is kept until you decide.
+   - **Conflict B, the new admin's card.** The prototype says "You can see every board and report. They
+     never see anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes."
+     Rule 5 adds "and never a performance plan unless given access to that check-in". The sentence is
+     left out until you decide.
+3. **The round "?" button is not in the prototype.** It is not on the "Create an organisation" screen
+   (`org-new.jpg` and `org-new.txt`), and no prototype screen draws a floating "?". As you decided, it
+   was removed everywhere the prototype lacks it, with nothing in its place (commit `57426e7c`). Help is
+   in each person's own menu and on "More".
+
 ## Needs Hafsah
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
