@@ -287,7 +287,7 @@ export const entryApi = {
  */
 export const openLinkApi = {
   whatThisIs: (token: string) =>
-    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string }>(
+    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string; schedule?: string | null; endsAt?: string | null }>(
       '/entry/open', { params: { t: token } },
     ).then(r => r.data),
 

@@ -120,3 +120,26 @@ describe('and not through the check-in\'s name (U.6 review)', () => {
     expect(sent[0].subject).toBe('Hafsah would like your take on Get a project back on track');
   });
 });
+
+describe('and not through the open link (U.6 review)', () => {
+  /* Read live on /answer: "This check-in is about Grace, the new operations lead, starting her role
+     with..." - the lead's setup description, reworded, shown to anyone with the link. */
+  it('GET /entry/open serves the name and when it runs, and none of her description', async () => {
+    const { TheOpenLinkService } = await import('../entry/the-open-link.service');
+    const prisma: any = {
+      ground: {
+        findUnique: jest.fn(async () => ({
+          id: 'g1', label: 'Help a new hire get started', scenario: 'NEW_HIRE', status: 'OPEN',
+          brief: `Grace starts Monday. ${PRIVATE}`, toldToParticipants: `This check-in is about Grace. ${PRIVATE}`,
+          cadence: 'WEEKLY', cadenceAnchorDay: null, workingDays: [], endsAt: null, initiator: { firstName: 'Hafsah' },
+        })),
+      },
+    };
+    const said: any = await new TheOpenLinkService(prisma, {} as any).whatThisIs('j');
+    expectNothingPrivateIn('open link', JSON.stringify(said));
+    expect(JSON.stringify(said)).not.toContain('Grace');
+    expect(said.groundLabel).toBe('Help a new hire get started');
+    expect(said.theQuestion).toBeNull();
+    expect(typeof said.schedule).toBe('string');
+  });
+});

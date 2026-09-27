@@ -24,7 +24,7 @@ type Turn = { who: 'them' | 'it'; text: string }
 export function AnswerFirstPage() {
   const [params] = useSearchParams()
   const token = params.get('t') ?? ''
-  const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null } | null>(null)
+  const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; schedule?: string | null } | null>(null)
   const [problem, setProblem] = useState('')
   /*
    * THE KEY OUTLIVES THE TAB, BECAUSE THE ANSWER DOES.
@@ -200,15 +200,26 @@ export function AnswerFirstPage() {
         */}
         {phase === 'reading' ? (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
-              {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
-            </div>
-            <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
+            {/* U.6 review: the question only where the lead wrote it to be asked; otherwise the
+                check-in's name, as the invitation says it, and when it runs. Never her description. */}
+            {what.theQuestion ? (
+              <>
+                <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+                  {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
+                </div>
+                <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion}</h1>
+              </>
+            ) : (
+              <h1 style={{ fontSize: 20, margin: 0, lineHeight: 1.3 }}>
+                {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
+              </h1>
+            )}
+            {what.schedule && <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
           </div>
         ) : (
           <details style={{ marginBottom: 14 }}>
             <summary style={{ fontSize: 12.5, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
-              {what.askedBy ? `What ${what.askedBy} asked` : 'What you were asked'} &middot; tap to read it again
+              {what.theQuestion ? (what.askedBy ? `What ${what.askedBy} asked. Tap to read it again.` : 'What you were asked. Tap to read it again.') : `This is “${what.groundLabel}”. Tap to read it again.`}
             </summary>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
               {what.theQuestion || what.groundLabel}

@@ -29,7 +29,8 @@ describe('the brief does not eat the screen', () => {
 
   it('and folds to one line once they are answering', () => {
     expect(CODE).toMatch(/<details style=\{\{ marginBottom: 14 \}\}>/)
-    expect(CODE).toMatch(/tap to read it again/)
+    /* U.6 review: now a full sentence, "… Tap to read it again." */
+    expect(CODE).toMatch(/Tap to read it again\./)
   })
 })
 
