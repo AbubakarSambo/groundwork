@@ -1390,7 +1390,7 @@ export class GroundsService {
           /* No count of other people either, where they are not named to this reader: not how many
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
           glance: hidePeers
-            ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
+            ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [] }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
             : glance,
         };
       })

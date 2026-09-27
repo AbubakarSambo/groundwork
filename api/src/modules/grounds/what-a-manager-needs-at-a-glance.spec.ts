@@ -33,7 +33,8 @@ const NOW = new Date('2026-09-24');
 describe('progress', () => {
   it('says how far through the run and how much of this round is in', () => {
     const g = atAGlance(base as any, NOW);
-    expect(g.progress).toEqual({ roundsDone: 1, roundsPlanned: 3, answeredThisRound: 1, ofPeople: 2 });
+    /* U.5 review: it also says who is still waited on, so Today names the same people it counts. */
+    expect(g.progress).toEqual({ roundsDone: 1, roundsPlanned: 3, answeredThisRound: 1, ofPeople: 2, waitingOn: ['p2'] });
   });
 
   it('does not count a managing-only lead among the people who answer', () => {
@@ -48,7 +49,7 @@ describe('progress', () => {
    */
   it('counts a decline as an answer, because it is one', () => {
     const g = atAGlance({ ...base, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }, { participantId: 'p2', status: 'DECLINED' }] } as any, NOW);
-    expect(g.progress).toEqual({ roundsDone: 1, roundsPlanned: 3, answeredThisRound: 2, ofPeople: 2 });
+    expect(g.progress).toEqual({ roundsDone: 1, roundsPlanned: 3, answeredThisRound: 2, ofPeople: 2, waitingOn: [] });
   });
 
   it('and drops somebody whose invitation ran out without ever being opened', () => {

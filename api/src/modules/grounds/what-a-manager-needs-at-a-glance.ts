@@ -29,7 +29,12 @@ import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../bo
  */
 export interface AtAGlance {
   /** Rounds finished, and how many the run plans. Null where nobody has set a length. */
-  progress: { roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number };
+  progress: {
+    roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number;
+    /** Who, of the people counted in `ofPeople`, has not answered yet: participant ids. So Today's
+        sentence and the list's "2 of 3 answered" count the same people (U.5 review). */
+    waitingOn: string[];
+  };
   /** What is in the way, counted as the board counts it, with the longest-standing one named. */
   inTheWay: { count: number; oldest: string | null; daysWaiting: number | null };
 }
@@ -99,6 +104,7 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
       roundsPlanned: i.roundsPlanned,
       answeredThisRound: counted.answered,
       ofPeople: counted.expected,
+      waitingOn: counted.waitingOn,
     },
     inTheWay: {
       count: real.length,

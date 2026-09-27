@@ -71,7 +71,7 @@ export interface ListedCheckIn {
     completedAt?: string | Date | null;
     isSetup?: boolean | null;
   }[];
-  glance?: { progress?: { roundsDone?: number; roundsPlanned?: number | null } } | null;
+  glance?: { progress?: { roundsDone?: number; roundsPlanned?: number | null; answeredThisRound?: number; ofPeople?: number; waitingOn?: string[] } } | null;
 }
 
 export interface WaitingForApproval {
@@ -227,20 +227,28 @@ export function whatNeedsYou(
     if (!over && mayName) {
       const n = openSession(g, at);
       const rows = sessions.filter((c) => c.sessionNumber === n);
-      const answered = rows.filter((c) => c.status === 'COMPLETED').length;
-      if (n > 0 && rows.length > 1 && answered < rows.length && (!line || rows.length > line.people)) {
+      /*
+       * ONE COUNT (U.5 review). The list row says "1 of 2 answered" from the check-in's own rule for
+       * who is expected this session (someone whose invitation has lapsed, or who has not joined, is
+       * not waited on). This sentence counted every row and said "1 of 3". Where the list gives that
+       * count, it is used here, with the same people named.
+       */
+      const counted = g.glance?.progress;
+      const useCounted = !!counted && typeof counted.ofPeople === 'number' && Array.isArray(counted.waitingOn);
+      const total = useCounted ? counted!.ofPeople! : rows.length;
+      const answered = useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
+      const waitingIds = useCounted ? counted!.waitingOn! : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
+      if (n > 0 && total > 1 && answered < total && (!line || total > line.people)) {
         const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
-        const missing = rows
-          .filter((c) => c.status !== 'COMPLETED')
-          .map((c) => {
-            const p = byId.get(c.participantId);
-            return { name: p?.user?.firstName?.trim() || null, isMe: !!p?.userId && p.userId === reader.userId };
-          });
+        const missing = waitingIds.map((id) => {
+          const p = byId.get(id);
+          return { name: p?.user?.firstName?.trim() || null, isMe: !!p?.userId && p.userId === reader.userId };
+        });
         line = {
-          people: rows.length,
+          people: total,
           text: answered === 0
             ? `In ${g.label}, nobody has checked in for session ${n} yet.`
-            : `In ${g.label}, ${answered} of ${rows.length} have checked in for session ${n}; ${whoHasNotYet(missing)}.`,
+            : `In ${g.label}, ${answered} of ${total} have checked in for session ${n}; ${whoHasNotYet(missing)}.`,
         };
       }
     }

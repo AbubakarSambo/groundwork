@@ -146,6 +146,15 @@ describe('the second line on a turn of your own (U.5 review, today-lead.txt)', (
   });
 });
 
+describe('one count for one session (U.5 review)', () => {
+  it('uses the check-in\'s own count, the one the list row shows, and names the same people', () => {
+    /* Three rows, but Brian has not joined, so the check-in waits on two people: "1 of 2 answered". */
+    const g = { ...sales, glance: { progress: { roundsDone: 1, roundsPlanned: 12, answeredThisRound: 1, ofPeople: 2, waitingOn: ['p-o'] } } };
+    const r = whatNeedsYou([g], { userId: WAIRIMU, role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(r.line).toBe('In Sales team, Q3, 1 of 2 have checked in for session 2; Omar hasn’t yet.');
+  });
+});
+
 describe('small cases in the sentence about who has checked in', () => {
   const reader = { userId: WAIRIMU, role: 'MEMBER', organizationId: 'org' };
   it('says nobody, when nobody has', () => {
