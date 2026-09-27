@@ -106,7 +106,7 @@ export class AskService {
   async forReader(asker: Asker, askedFor: string | null) {
     this.refuseAnybodyElse(asker, askedFor);
     const [about, me] = await Promise.all([this.whatItMayBeAbout(asker), this.whoIsAsking(asker)]);
-    if (!me) return { canAsk: false as const, about, turns: [] as AskTurn[] };
+    if (!me) return { canAsk: false as const, why: NOT_ON_THE_LIST, about, turns: [] as AskTurn[] };
 
     const rows = await this.prisma.assistantTurn.findMany({
       where: { organizationId: asker.organizationId, personExternalId: me.externalId },

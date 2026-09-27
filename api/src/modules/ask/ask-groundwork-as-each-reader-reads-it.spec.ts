@@ -172,7 +172,7 @@ describe('somebody not on the organisation\'s list of people', () => {
   it('is told why Ask Groundwork cannot answer yet, and never gets somebody else\'s entry', async () => {
     const { controller, asUser, db } = fixture();
     const tom = await controller.mine(asUser(readers.tom));
-    expect(tom).toEqual({ canAsk: false, about: [], turns: [] });
+    expect(tom).toEqual({ canAsk: false, why: NOT_ON_THE_LIST, about: [], turns: [] });
     await expect(controller.question(asUser(readers.tom), { message: 'what am I on?' }))
       .rejects.toThrow(new ForbiddenException(NOT_ON_THE_LIST));
     expect(db.assistantTurn.filter((t) => t.personExternalId === 'x-other')).toEqual([]);
