@@ -16,6 +16,7 @@ import { groundTabs } from './ground-tabs'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
+import { whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
@@ -615,6 +616,14 @@ export function GroundParticipantPage() {
              * session 3 answers "is anybody else doing session 3", which is the question.
              */
             peersHidden={(ground as any).peersVisibleEffective === false}
+            /*
+              NAMES, NOT ROLES, AND NEVER SAID TO THE LEAD ABOUT HERSELF (U.8 third review).
+              `whoElseAnswers` already returns null when the viewer IS the lead, which is exactly
+              `isInitiatorHere` computed above - so the two agree by construction rather than by
+              two separate reads of the same fact.
+            */
+            leadName={whoElseAnswers(ground as any, user?.id)}
+            viewerIsTheLead={isInitiatorHere}
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {

@@ -115,7 +115,12 @@ describe('the roster on the check-in', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    expect(await screen.findByText(/check in without seeing each other/)).toBeTruthy()
+    /*
+     * U.8 third review: with no `leadName` given, this falls back to "Your lead" - the name-bearing
+     * case is pinned separately in who-is-in-this-when-peers-are-hidden.spec.tsx, along with the
+     * lead's own true sentence when she is the one reading it about herself.
+     */
+    expect(await screen.findByText(/Your lead knows who is here/)).toBeTruthy()
     // And it still never says what anybody wrote.
     expect(screen.getByText(/will not see the others or what they wrote/)).toBeTruthy()
   })

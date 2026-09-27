@@ -67,7 +67,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }: {
+function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty, leadName, viewerIsTheLead }: {
   /**
    * NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
    *
@@ -107,6 +107,15 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
    * of it happens to be true for her too.
    */
   viewerIsParty?: boolean
+  /**
+   * NAMES, NOT ROLES (U.8 third review). "Your lead knows who is here" was said to every party
+   * alike, in a word for a role rather than the person's own name - and it was also said, unedited,
+   * to the lead herself when she is a party in her own check-in, so she read a sentence describing
+   * her own role in the third person as if it were somebody else's.
+   */
+  leadName?: string | null
+  /** True when the reader IS the lead this sentence would otherwise describe. She gets her own true sentence instead. */
+  viewerIsTheLead?: boolean
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
@@ -150,8 +159,9 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
             Who is in this
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            On this check-in people check in without seeing each other. Your lead knows who is here;
-            you will not see the others or what they wrote, and they will not see you.
+            {viewerIsTheLead
+              ? 'People on this check-in answer without seeing each other. You can see who is here.'
+              : `${leadName ?? 'Your lead'} knows who is here. You will not see the others or what they wrote, and they will not see you.`}
           </div>
         </div>
       )}
@@ -536,7 +546,7 @@ export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, canChangeTheRhythm, onGoToSetup,
   onOpenSession, openPending,
   brief, signals,
-  viewerIsParty, history, parties, peersHidden,
+  viewerIsParty, history, parties, peersHidden, leadName, viewerIsTheLead,
 }: {
   groundId: string
   openCheckInId: string | null
@@ -591,6 +601,10 @@ export function GroundChat({
   parties?: { name: string; done: boolean; isSelf: boolean }[]
   /** The ground's peer rule, so an empty roster can say which kind of empty it is. W14-5. */
   peersHidden?: boolean
+  /** The lead's first name, for the peers-hidden sentence - a name, not the word "lead". */
+  leadName?: string | null
+  /** True when the reader IS the lead, so she gets her own true sentence instead. */
+  viewerIsTheLead?: boolean
 }) {
   const navigate = useNavigate()
   const isParty = viewerIsParty !== false
@@ -629,6 +643,8 @@ export function GroundChat({
           peersHidden={peersHidden}
           notOpenYet={!openCheckInId && !!nextOpensAt}
           viewerIsParty={isParty}
+          leadName={leadName}
+          viewerIsTheLead={viewerIsTheLead}
         />
 
         {/*
