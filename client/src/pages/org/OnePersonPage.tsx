@@ -13,8 +13,8 @@ import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWo
  * Where they sit, their role here, their team, their status and seat, their WhatsApp number when
  * WhatsApp is on, their check-ins here, and what an admin can see.
  *
- * Left out, each for a reason in the morning report: "Across check-ins" (their own You page is not
- * built yet), "Region" (no such field), "Free this seat" and "Remove from Baridi" (today's removal
+ * Left out, each for a reason in the morning report: "Across check-ins" (it says "they choose who
+ * else sees it" of their You page, and nothing lets anybody share it yet: U.12, D3), "Region" (no such field), "Free this seat" and "Remove from Baridi" (today's removal
  * erases the whole account in every organisation, and cannot be undone), and the clause "and what
  * someone writes in their own check-in stays theirs", which decisions.md rule 5 contradicts.
  */
