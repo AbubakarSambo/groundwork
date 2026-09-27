@@ -6,9 +6,79 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 27 SEPTEMBER, EVENING: THE AIM IS NOW DEPLOYMENT
+
+**Your change of direction, recorded.** The aim now is deployment, not reaching task 1.5's bar. I have stopped working on the judgements to reach it. These are the only things left before deployment:
+1. The four items below.
+2. In sales, a judgement must never praise a claim the material shows is wrong.
+3. Task 1.6, the automatic check on the text each reader sees, including titles such as "Dr".
+4. `docs/ready-to-deploy.md`.
+
+Everything else, phase 2 included, waits until after deployment.
+
+### Hafsah's decision on the bar for task 1.5
+
+**Task 1.5 is met when, in two full runs in a row, at least 20 of the 24 scenarios can be tested, and at least 90% of those are clearly right.**
+
+**Where it stands: not met.** Run-9 meets it on its own: 20 could be tested and 18 were right, exactly 90%. Run-10 does not, because only 18 could be tested. The table below is corrected for openread (see the note there). On it the runs score 17 of 22, 14 of 23, 16 of 22, 18 of 20 and 15 of 18.
+
+### Scenarios that couldn't be tested in two or more runs, and what their scripts say
+
+**Two scenarios: advisor (4 of 5 runs) and shock (4 of 5).** I had also listed openread, and that was my grading mistake: see the note on the table.
+
+- **advisor.** The key fact is in the simulated advisor's script. It says he "has never worked with KCB or Co-operative and could not open either door". But the script also says he "does not volunteer limits, but is honest about them when asked a direct question". So he only says it if Groundwork asks him directly which of the three banks he can actually open. In four runs of five it never did. **This is a gap in the conversation, not in the script.** The script does what the scenario is meant to test.
+- **shock.** All three warning signs are in the scripts. Tobi has both cancelled quarterly reviews, in June and September, and the champion leaving in July. Hana has the tickets going from 9 to 31 in August. Tobi's script says he is "defensive at first, then accurate", and "has the dates once he stops explaining". So the dates come out only if Groundwork keeps asking for them. In four runs of five it did not get all three. **This is also a gap in the conversation, not in the script.**
+
+**No script needs to be firmer, so I have written no improved versions.** Making the simulated people say these facts without being asked would stop the scenarios testing whether Groundwork asks. For both, the fix is in the conversation: asking a direct question about a stated limit, and asking for dates. That is phase 2 work, so it waits until after deployment.
+
+### Loans: why its report was incomplete, and a product problem
+
+**The product is slow for a team of nine, and that is a product problem.**
+- From the ninth person checking in to a report that includes all nine people took **4 minutes 41 seconds, 5 minutes 47 seconds, 5 minutes 55 seconds, 5 minutes 45 seconds and 5 minutes 30 seconds** in the five loans runs I can measure.
+- The report is written again after every check-in. For nine people, each rewrite takes 3 to 4 minutes. Reading the nine accounts together takes 48 to 60 seconds of that. The rest goes on writing the report and on retrying when a check fails, for example a quote copied word for word, or a sentence that counts people. The rewrites queue one after another.
+- **Until the last rewrite finishes, the lead reads a report that leaves some people out.** In run-10 it held 6 of the 9 findings for about six minutes.
+- The runner's five-minute wait was shorter than that, so loans was marked incomplete in almost every run, even when its judgement was right.
+
+**The runner now waits longer for a larger room (`8255ab04`, not yet used in a run).** It waits five minutes for up to four people, plus a minute for each person after that, up to fifteen minutes. For loans that is ten minutes.
+
+**The product problem itself is not fixed.** It is listed in `docs/ready-to-deploy.md` as a known problem.
+
+### Where the existing 16 decisions disagree with the new 14, or look out of date
+
+I have changed nothing. This is the list for Hafsah to read before she replaces `docs/decisions.md`.
+
+1. **Decision 4 against decision 17.** Decision 4 says what people say can be shown word for word to the people in that check-in. Decision 17 says colleagues who give views in an evaluation check-in are not named to the person being reviewed. Showing a colleague's words word for word can give them away, as surely as a name or a job title does: their way of putting things, a detail only they would know. Decision 4 does not say that evaluation check-ins are an exception.
+2. **Decision 4 against decision 30.** Decision 4 lists what stays private: questions to Ask Groundwork, each person's own report, a lead's private notes, and each person's load. Decision 30 adds a lead's private description of a person, but decision 4's list does not include it. It would be clearer if decision 4's list pointed to decision 30.
+3. **Decision 5 against decision 30.** Decision 5 says admins see every board and report. Decision 30 says a lead's private description of a person never reaches anyone else. The board now serves that description only to the person who runs the check-in, so an admin reading the same board does not see it. That follows decision 30, but decision 5 as written says admins see everything on every board.
+4. **Decision 9 against decision 28: two meanings of "setup".** Decision 9 means a new person getting set up in their job: onboarding problems never count against them. Decision 28 means the lead setting up a check-in: that is not the lead's first check-in. Both use the word "setup" for different things.
+5. **Decision 3 and decision 27, the word "role".** Decision 27 says a member sees colleagues' names, roles and teams. "Role" there has to mean the person's role in the organisation, not the sentence a lead typed about them, which decision 30 keeps private. Decision 3 also uses "role" for the role in the organisation. It would be safer if decision 27 said so.
+6. **Decision 21 has two sentences that seem to disagree.** It says "there are no free check-ins". It also says that while the trial setting is off, billing works exactly as it does today, and that switching the trial on removes the free first session and the free plan. So while the setting is off, which is the case today, there is a free first session. "No free check-ins" is true only once the trial is switched on.
+7. **Decision 17 against quotes shown word for word.** Since today, every quote a person reads is the original words from the record. In an evaluation check-in, the reviewed person may read a colleague's exact words. This is the same point as item 1, made sharper by today's work.
+8. **Decision 12 against decision 18.** Decision 12 says claims are "the person's word" until they are checked. Decision 18 says people's own words are never changed to improve a score. There is no conflict, but decision 12's "the person's word" means a claim not yet checked, and decision 18's "people's own words" means the text they wrote. The same phrase does two jobs.
+9. **Decision 6, the verdict names.** Decision 6 lists the verdicts as keep, reward, support, plan and exit. The screens workspace's new suggestions store the same five. Decision 17 names "a performance plan, a promotion, a renewal" as the evaluation check-ins. Those are not the same list, and nothing says how they relate. This is not a conflict, but it could be read two ways.
+
+Nothing among the existing 16 looks out of date apart from these.
+
 ## 27 SEPTEMBER, THE DAY SESSION: where I am now
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
+
+### Run-10, today's last full run: the lead's words stay with the lead, checked in the database
+
+Run-10 ran on everything up to `3f323d61`. It includes all the routes by which the lead's description leaked, and the new wording for unnamed colleagues.
+
+- **The run is sound except for loans.** Its report was incomplete again (6 findings for 9 people). Every other captured report matches the database.
+- **The lead's words no longer reach the person, checked in the database.** For every invited person whose record holds a description the lead typed, I looked for any run of five words from that description in two places: Groundwork's turns to that person, and what that person is served (their report and their board).
+  - **Run-9, before the fix:** 27 of 27 people had such runs of words.
+  - **Run-10:** 2 of 27. Both are the person's own words, not the lead's. Femi said "My goal is 12 approved facilities this quarter" himself. Tobi said he was to own "the relationships with our five largest clients", and the lead said the same in her own check-in. So there are no real leaks left.
+- **Invited people are asked who they are.** In run-9, no invited person was asked the question. In run-10, 11 were, all in the situations about starting something: advisor, cofounder, handover, newmanager, project, renewal and seniorhire. The others are in situations where that question is not used, and most of them are asked about their part anyway, for example "What did you understand your role in this to be?".
+- **Every quote is from the record.** 427 of 427 quotes are word for word what people typed.
+- **The checker says nothing is worse than the baseline.** "Blocker checked" is 54 now, well above its baseline of 37. It had been sliding.
+- **Two numbers rose since run-9, and neither is past the baseline.** Jargon in Groundwork's turns rose from 13 to 38, and in reports and boards from 84 to 138. Almost all of it is the word "pipeline" in the sales scenario, 108 times, and the simulated people used jargon twice as often this run (31 times against 15). It is the same pattern as run-6, and I see no link to today's changes.
+- **The judgements: 15 clearly right of the 17 that count, and 15 of all 24.**
+  - **Couldn't be tested (6):** advisor, drift, handover, openread, shock and workplan. Each time the simulated people left out a fact the answer depends on. That is more than in any other run, and I would not read this run's number as a step back.
+  - **Not right (2):** sales and realign. In sales it is Kwame's miscount again. In realign, the simulated Ruth called Omar the CEO, although Omar is the team lead, and the gap followed her and said two of the priorities "came from you". Its actions do name the CEO's dinner with Marco. I have graded it not right rather than untestable, because Marco's account of the CEO was clear.
+- **A small defect for the wording check.** "Success for Dr means…". The code took the title in "Dr Amina Bello" as her first name.
 
 ### Hafsah's decisions, merged into one file for her to put in place
 
@@ -121,58 +191,63 @@ These are the eight names the screens workspace asked about (their request 5), p
 If you agree, the table's names change in the engine, and the screens workspace changes its list in the same step so their parity test stays green.
 
 
-### How often each scenario was clearly right, across runs 6, 7, 8 and 9
+### How often each scenario was clearly right, across runs 6 to 10
 
-Graded against each scenario's right answer. Run-6 came before last night's changes, run-7 after the first seven, run-8 after all of them, and run-9 after today's.
+Graded against each scenario's right answer. Run-6 came before any of the changes of 26 September. Run-7 came after the first seven. Run-8 came after all of that night's. Run-9 came after the names and quotes work of 27 September. Run-10 came after the routes the lead's description leaked by were closed.
 
 **Two counts.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. It is marked "report incomplete" when the runner itself says the report is not usable. The first count leaves both out. The second counts all 24, as before.
 
-| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Right, of the runs that count | Right, of all four |
-| --- | --- | --- | --- | --- | --- | --- |
-| cofounder | right | right | right | right | 4 of 4 | 4 of 4 |
-| contractreview | right | right | right | right | 4 of 4 | 4 of 4 |
-| discovery | right | right | right | right | 4 of 4 | 4 of 4 |
-| implementation | right | right | right | right | 4 of 4 | 4 of 4 |
-| newmanager | right | right | right | right | 4 of 4 | 4 of 4 |
-| pip | right | right | right | right | 4 of 4 | 4 of 4 |
-| realign | right | right | right | right | 4 of 4 | 4 of 4 |
-| renewal | right | right | right | right | 4 of 4 | 4 of 4 |
-| seniorhire | right | right | right | right | 4 of 4 | 4 of 4 |
-| workplan | right | right | right | right | 4 of 4 | 4 of 4 |
-| board | couldn't be tested | right | right | right | 3 of 3 | 3 of 4 |
-| crisis | right | right | right | report incomplete | 3 of 3 | 3 of 4 |
-| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 4 |
-| openread | couldn't be tested | couldn't be tested | right | couldn't be tested | 1 of 1 | 1 of 4 |
-| handover | - | right | right | right | 3 of 4 | 3 of 4 |
-| project | right | right | - | right | 3 of 4 | 3 of 4 |
-| updates | right | - | right | right | 3 of 4 | 3 of 4 |
-| pulse | right | - | - | right | 2 of 4 | 2 of 4 |
-| recognition | - | - | right | right | 2 of 4 | 2 of 4 |
-| snapshot | right | - | - | right | 2 of 4 | 2 of 4 |
-| drift | - | - | - | right | 1 of 4 | 1 of 4 |
-| sales | right | - | - | - | 1 of 4 | 1 of 4 |
-| loans | - | - | - | report incomplete | 0 of 3 | 0 of 4 |
-| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 4 |
-| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | **18 of 19** | | |
+**Corrected on 27 September, evening: openread was never untestable.** I had marked four openread runs as couldn't be tested, because Kofi says the problem is not the freeze. His script is written that way on purpose. He is meant to raise the same thing from a different angle, Thursdays that are chaos and Fridays that are empty, and the right answer is to notice that he and Mei are describing the same freeze. So every openread run could be tested, and only run-8 got it right.
 
-**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8 and **18 on run-9**.
+| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Run-10 | Right, of the runs that count | Right, of all five |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| cofounder | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| contractreview | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| discovery | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| implementation | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| newmanager | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| pip | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| renewal | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| seniorhire | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| board | couldn't be tested | right | right | right | right | 4 of 4 | 4 of 5 |
+| crisis | right | right | right | report incomplete | right | 4 of 4 | 4 of 5 |
+| workplan | right | right | right | right | couldn't be tested | 4 of 4 | 4 of 5 |
+| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 5 |
+| project | right | right | - | right | right | 4 of 5 | 4 of 5 |
+| realign | right | right | right | right | - | 4 of 5 | 4 of 5 |
+| updates | right | - | right | right | right | 4 of 5 | 4 of 5 |
+| handover | - | right | right | right | couldn't be tested | 3 of 4 | 3 of 5 |
+| pulse | right | - | - | right | right | 3 of 5 | 3 of 5 |
+| recognition | - | - | right | right | right | 3 of 5 | 3 of 5 |
+| snapshot | right | - | - | right | right | 3 of 5 | 3 of 5 |
+| drift | - | - | - | right | couldn't be tested | 1 of 4 | 1 of 5 |
+| openread | - | - | right | - | - | 1 of 5 | 1 of 5 |
+| sales | right | - | - | - | - | 1 of 5 | 1 of 5 |
+| loans | - | - | - | report incomplete | report incomplete | 0 of 3 | 0 of 5 |
+| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 5 |
+| **Total** | **17 of 22** | **14 of 23** | **16 of 22** | **18 of 20** | **15 of 18** | | |
+
+**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8, 18 on run-9 and 15 on run-10.
 
 **The runs left out, and why:**
 
 - **advisor, run-7, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **advisor, run-8, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **advisor, run-9, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-10, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **board, run-6, couldn't be tested:** Wanjiru never gives a timeline for the licence, only that there is none yet.
 - **crisis, run-9, report incomplete:** 2 findings for 3 people.
+- **drift, run-10, couldn't be tested:** neither Nadia nor Zainab says who asked Zainab to move to sales support.
+- **handover, run-10, couldn't be tested:** Patience never mentions the year-end spreadsheet; the judgement finds the verbal supplier agreement, which she did mention.
 - **loans, run-9, report incomplete:** 8 findings for 9 people.
-- **openread, run-6, couldn't be tested:** Kofi says it is "not a freeze problem", so the two engineers never agree.
-- **openread, run-7, couldn't be tested:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
-- **openread, run-9, couldn't be tested:** Kofi says "I don't think it's about a freeze or anything like that".
+- **loans, run-10, report incomplete:** 6 findings for 9 people.
 - **shock, run-6, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
 - **shock, run-8, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
 - **shock, run-9, couldn't be tested:** nobody mentions the champion leaving; only the cancelled reviews and the tickets are said.
+- **shock, run-10, couldn't be tested:** nobody mentions the missed quarterly reviews; the champion leaving and the tickets are said, and the judgement's actions put those two in order.
+- **workplan, run-10, couldn't be tested:** Chidi never mentions Studio Lune, so there is no double booking in what was said.
 
-**A correction to last night's report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
+**A correction to an earlier report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
 
 
 ## THE NIGHT IN SHORT, 27 September, about 03:30

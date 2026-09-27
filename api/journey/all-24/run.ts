@@ -148,7 +148,19 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
     let released = false;
     const wanted = people.length;
     let written = 0;
-    for (let i = 0; i < 75; i++) {
+    /*
+     * AND A LARGER ROOM IS GIVEN LONGER, BECAUSE THE PRODUCT TAKES LONGER FOR IT.
+     *
+     * Measured on 27 September across five loans runs, nine people: from the last check-in to a
+     * report holding all nine findings took 281, 347, 355, 345 and 330 seconds. Only the first fit
+     * inside the five minutes this loop allowed, so loans was "incomplete" in almost every run while
+     * its judgement was often right. That is a product problem in its own right - a lead with nine
+     * people waits five to six minutes for a report that includes everybody - and it is written up
+     * as one. It is not a reason to score the scenario as unusable, so the wait is five minutes for
+     * up to four people and a minute more for each person after that, up to fifteen.
+     */
+    const probes = Math.min(225, 75 + Math.max(0, wanted - 4) * 15);
+    for (let i = 0; i < probes; i++) {
       await new Promise((r) => setTimeout(r, 4000));
       try {
         const probe = await http(`/grounds/${gid}/report`, { token: tokens[email(lead)] });
@@ -170,7 +182,7 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
      * used, and that has to be visible rather than inferred afterwards from the database.
      */
     if (written < wanted) {
-      log(`    *** REPORT INCOMPLETE: ${written} finding(s) for ${wanted} person/people after 300s. Report numbers from this scenario are not usable. ***`);
+      log(`    *** REPORT INCOMPLETE: ${written} finding(s) for ${wanted} person/people after ${probes * 4}s. Report numbers from this scenario are not usable. ***`);
     }
     const sess: any = { session: n, people, released };
     /* What the LEAD reads. */
