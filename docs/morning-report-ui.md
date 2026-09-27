@@ -599,6 +599,65 @@ reviewed" in this report.
    of what has happened, such as meeting notes, a transcript from Gemini or another notetaker, or a
    photo of what was agreed. It can also be the brief, plan or scope this work was set against."
 
+### 19. The check-in screens (U.8): what needs you
+
+1. **"About two minutes" is not under the heading.** The prototype's check-in says "About two
+   minutes" under its title. Nothing in the record says how long a check-in takes, and it would not
+   be true of a probation review. The line is left empty while someone answers, and reads
+   "That’s everything for today" once Groundwork has closed the conversation. **My recommendation:**
+   show a time only when it comes from this person's own past check-ins.
+2. **"Your team will see what you said today, and a short summary of what moved." is held.** It is
+   the last line of the prototype's end card. Whether the team sees a person's own words is the open
+   question in item 11 (conflict A), so I left it out rather than promise something the server may
+   not do. **My recommendation:** decide conflict A, then show the sentence the server's sharing
+   rules make true for that check-in.
+3. **The team's report says "once everyone has answered", not "once Wairimu shares it, usually by
+   7pm".** Today the team's report opens by itself when everyone in the round has answered
+   (`reports.listener.ts`), and there is no set time. The Done page says "Everyone’s check-ins
+   together. You’ll get it once everyone has answered." **My recommendation:** keep it until U.9
+   (reports and sharing) decides whether a lead holds and shares the report.
+4. **The heading says "Your check-in", not "Sales team check-in".** A check-in's name is often like
+   "Sales team, Q3" or "Kwame, first 90 days", and adding "check-in" after it reads badly. The way
+   back above the card carries the name, as the prototype does: "← Sales team, Q3". **My
+   recommendation:** keep "Your check-in", or give each check-in a short name for its team.
+5. **The "What you gave us" card no longer shows after finishing.** It gave a count ("3 of 5 things
+   you said can be checked…") and "One detail would make these usable" lines. The prototype's Done
+   page has "How checkable today’s check-in was" in that place, and that is what is shown now. The
+   five things and the most useful one are still in your own report ("Read yours"). **My
+   recommendation:** keep it this way. If you want the "one detail" lines back, I would add them to
+   the "How checkable" card as plain sentences.
+6. **The prototype's five checks are not the engine's five.** The Done page's list in the prototype
+   is Who, What, When, Proof and Next. The engine reads five other things (what you did, one date or
+   number or document, what you were waiting on, what went badly, what happens next). The screen
+   shows the engine's five, in the product's words, so nothing is shown that was not measured.
+   **My recommendation:** ask the engine workspace whether its five should become the prototype's.
+7. **The board still tells a lead that someone said "nothing checkable".** While making "Only you
+   see it" true on the Done page, I stopped the server sending anyone else how checkable a person's
+   check-ins were (the lead, admins, and the organisation roster). The board's text, which the
+   engine workspace owns, still reads the same measure to tell the lead "nothing checkable" about a
+   person (`where-each-person-is-against-their-number.ts`). **My recommendation:** say what is
+   missing from the record instead ("No date or number in this week's answers"), or drop that
+   reason. That is for the engine workspace and U.10.
+8. **Left out, and why.** The Done page's "3. Done" step label (it belongs to the answer-without-an-
+   account steps). The typing box's "Type, or hold to speak" (there is no speaking yet), so it still
+   says "Type your answer". The three fixed chips under the conversation ("What am I missing?", "Is
+   there a document?", "What do I carry forward?"), because the prototype puts the engine's suggested
+   answers there, and "What am I missing?" belongs between check-ins. The answer without an account,
+   between check-ins, correcting the record, my record, WhatsApp and the lead taking part are other
+   B3 screens that were not part of this task's list.
+9. **Wording no screen shows, which I wrote with the fewest words.** Under Pause: "Stop for now",
+   "Everything you have said is saved. You can come back to it any time.", "Skip this check-in" and
+   "You can say no. You will see what that means before anything is recorded." The fallback offer to
+   finish: "Finish my check-in now". The + menu: "Add a photo or a document" and "Paste text", with
+   the prototype's "It starts private to you. You choose who can read it."; its button is read aloud
+   as "Add a photo, a document or some text". After choosing a file: "What does it show? One line is
+   enough; you can skip it.", then "You added “quote.jpg”. Only you can open it." A closing session's
+   heading line: "Closing session 13. This is your final account." When the next one opens: "Your
+   next check-in opens today at 8:30pm.", "…tomorrow at 4pm.", "…on Monday 28 September at 9am." or
+   "Your next check-in is open now." On the Done page: "Done. Thank you." when there is no first
+   name, "One thing for next time:" in place of "One thing for tomorrow:", "Read it" once the team's
+   report is out, and "What changed" when the engine sends no title.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1054,6 +1113,54 @@ read a source file without removing comments first, and the comment guard caught
 After merging the engine workspace's latest, the only failure left is that same guard naming four of
 the engine's own test files, which I have asked them to fix (request 4). **Not ticked,** because no
 review can sign in (item 14).
+
+### U.8 The check-in screens: built and tested, not yet reviewed
+
+- **The header.** The check-in sits in the prototype's card. Above it, the way back names the
+  check-in: "← Sales team, Q3". The heading is "Your check-in", and "Pause" is on the right. Once
+  Groundwork closes the conversation, the line under the heading reads "That’s everything for
+  today". A correction still says "Correcting session 2".
+- **Pause.** It offers "Stop for now" (leave; every answer is already saved) and "Skip this
+  check-in", which opens the existing confirmation that says what declining means. The underlined
+  "I do not want to take part in this session" is gone from under the conversation.
+- **Suggested answers.** The engine's suggested answers show as buttons under the latest question,
+  and pressing one sends it as the answer. The engine does not send them yet (request 7), so today
+  nothing is drawn. The three fixed chips are gone.
+- **The + button.** It offers "Add a photo or a document" and "Paste text", and says "It starts
+  private to you. You choose who can read it." The upload is the real one, and the server keeps the
+  file private to whoever added it (`who-can-see-a-document.ts`). Two fixes on the way: iPhone photos
+  (HEIC) and WebP can now be chosen, and what the person types about the file now reaches the server
+  instead of being dropped.
+- **The end card.** Under Groundwork's last message: "What is now in your record" (when the engine
+  sends the lines, with their marks), "Why answering matters" (when the lead also answers, and never
+  to the lead), and "What happens next". Then "That’s right, finish" and "Change something". It
+  replaces "Complete session" and its confirm panel.
+- **The Done page.** "Done. Thanks, Miriam.", "Your check-in is saved." with when the next one
+  opens, "Two reports come from this" (your own with "Read yours", and the team's), what moved on
+  deals when the engine sends it, "That’s saved" with why answering matters and one thing for next
+  time, and "How checkable today’s check-in was", with "This is about the check-in. Only you see
+  it."
+- **Privacy, in the server.** "Only you see it" was not true: every check-in's read of how checkable
+  it was went to everyone who could open the check-in, and the organisation roster sent each
+  member's latest read to admins. Now each reader gets only their own
+  (`how-checkable-is-yours-alone.ts`, with its test).
+- **Asked of the engine (request 7):** suggested answers, the end card's lines with their marks,
+  and what moved through stages for the Done page. Decisions for you are in item 19.
+
+**Tested:** `the-check-in-as-a-person-reads-it.spec.tsx` renders the check-in as Miriam and as
+Wairimu, the lead, and checks the words each reads: the header, Pause, suggested answers, the +
+button and a real upload call, the end card with and without the engine's lines, and the Done page
+with and without the team's report, the carry sentence, the stages and the read of how checkable it
+was. `what-the-end-of-a-check-in-can-say.spec.ts` checks the next-opening sentence and who else
+answers. On the server, `how-checkable-is-yours-alone.spec.ts` checks what the lead, a participant
+and an admin each receive. Five tests changed, each because the old confirm step, its wording or the
+old header are gone, while checking the same rule: `one-arrival`, `ChatPage.endConfirm`,
+`ChatPage.alreadyComplete`, `ChatPage.offerOnlyWhatTheServerAccepts` and
+`two-things-called-check-ins`. Only the tests for the changed files, the tests that scan whole
+folders, and both type checks were run, as you asked. The API comment guard still names the engine
+workspace's four files (request 4); nothing of mine. **No screen could be checked signed in** (item
+14), so the screens were checked only by rendering them in tests. **Not ticked,** because no review
+can sign in.
 
 ## Found on the way, for later tasks
 
