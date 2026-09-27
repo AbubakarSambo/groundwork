@@ -152,6 +152,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     retry: false,
   })
 
+  /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
+     same answer (the-exit-belongs-at-the-exit). */
+  const { nearTheEnd, lastSessionDone } = whereTheRunIs(data, groundForSignals)
+
   const [newObjName, setNewObjName] = useState('')
   const [newObjTarget, setNewObjTarget] = useState('')
   const [pollQ, setPollQ] = useState('')
@@ -510,8 +514,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <ResolutionPanel
             groundId={id!}
             place="board-top"
-            nearTheEnd={whereTheRunIs(data, groundForSignals).nearTheEnd}
-            lastSessionDone={whereTheRunIs(data, groundForSignals).lastSessionDone}
+            nearTheEnd={nearTheEnd}
+            lastSessionDone={lastSessionDone}
           />
         </div>
 
@@ -1777,7 +1781,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             is the min-across-people rule. The other half of the gate - a decision already under
             way - is the panel's own, because only it knows whether anybody has picked.
           */
-          const { nearTheEnd } = whereTheRunIs(data, groundForSignals)
           return (
             <div style={{ marginTop: 14 }}>
               {/* U.11: for everyone except the lead while it is open. The lead decides on the
