@@ -834,6 +834,18 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
     check-ins are named after the topic the lead chose, in plain words. **My recommendation:** keep the
     topic in the email subject, and show the person's name only inside the product, to the lead.
 
+**Answered by you on 27 September:**
+- **The privacy leak comes first.** An invitation must never use the lead's private description, not
+  even softened or reworded. It says only what the prototype's invitation says: what the check-in is and
+  when it runs. A test proves no text from the lead's private description appears in any invitation:
+  email, WhatsApp or on screen.
+- **The save card's promise** must be true, and if it cannot be true every time, the sentence is not
+  shown.
+- **Point 13: the lead's first check-in carries over,** as the prototype says: "What you just answered
+  becomes your first check-in once your account is made." This replaces your rule of 15 September.
+- **Point 18: a check-in gets a real name the way the prototype does** (for example "Daniel, the next six
+  weeks"), never a type name such as "Drift". This replaces the earlier topic-only rule for the name.
+
 ### 18. Context (U.7): what needs you
 
 1. **A private document and everyone's questions.** Under "Only you", the prototype's "Add a
