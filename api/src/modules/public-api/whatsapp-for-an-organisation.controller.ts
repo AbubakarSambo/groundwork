@@ -189,7 +189,13 @@ export class WhatsAppForAnOrganisationController {
     @Res() res: Response,
   ): Promise<void> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { verifyToken: true } });
-    if (mode === 'subscribe' && own && token === own.verifyToken) { res.status(200).type('text/plain').send(challenge); return; }
+    if (mode === 'subscribe' && own && token === own.verifyToken) {
+      /* U.18: remembered, so step 3 of the setup page can say the address is proven. A failed write
+         must not fail the handshake, which is what actually connects the number. */
+      await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { webhookVerifiedAt: new Date() } }).catch(() => undefined);
+      res.status(200).type('text/plain').send(challenge);
+      return;
+    }
     /* The same answer for a wrong token and an unknown organisation, so this cannot be used to find out which exist. */
     res.status(403).type('text/plain').send('Verification failed');
   }

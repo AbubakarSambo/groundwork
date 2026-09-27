@@ -2844,6 +2844,10 @@ model WhatsAppConnection {
   connectedAt    DateTime  @default(now()) @map("connected_at")
   lastInboundAt  DateTime? @map("last_inbound_at")
   lastOutboundAt DateTime? @map("last_outbound_at")
+  /// WHEN META LAST CHECKED THE CALLBACK ADDRESS AND IT ANSWERED (U.18, #/settings/whatsapp, step 3).
+  /// Set by the subscribe handshake when the verify token matches. Null until then, and the setup
+  /// page says "Not proven yet" rather than guessing.
+  webhookVerifiedAt DateTime? @map("webhook_verified_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

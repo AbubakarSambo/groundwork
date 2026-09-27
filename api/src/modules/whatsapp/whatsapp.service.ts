@@ -395,6 +395,8 @@ export class WhatsAppService {
       connectedAt: c.connectedAt,
       lastInboundAt: c.lastInboundAt,
       lastOutboundAt: c.lastOutboundAt,
+      /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
+      webhookProvenAt: c.webhookVerifiedAt ?? c.lastInboundAt ?? null,
       tokenEndsWith: c.accessToken.slice(-4),
     };
   }
