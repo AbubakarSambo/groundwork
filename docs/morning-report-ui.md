@@ -926,6 +926,11 @@ and 2). Then, once that is in, build the screens' part (points 4 to 6), with "En
 time on an ongoing check-in. Until the engine's part exists, keep "When I end it" off the screen, as now,
 because the conversation would otherwise try to close the check-in every session.
 
+**Answered on 27 September: yes, bring "When I end it" back, the way recommended above.** The request to
+the engine workspace is request 37: an ongoing run that is never treated as the last session, no "how
+far through" in reports, and "End it" available at any time. The screens' part is built only after the
+engine answers. Until then, "When I end it" stays off the screen.
+
 ### 18. Context (U.7): what needs you
 
 1. **A private document and everyone's questions.** Under "Only you", the prototype's "Add a
