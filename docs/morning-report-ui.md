@@ -14,8 +14,8 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board) and U.11 (ending a check-in). Each passed the
-full screen and API suites. The engine workspace has since fixed the failures in its own files, so
-both suites are now clean. **None could be ticked, because the reviewer can no longer
+full screen and API suites. The engine workspace has since fixed the two failures in its own files; I
+checked those with a targeted run, and the next full run will confirm the whole suite. **None could be ticked, because the reviewer can no longer
 sign in as anyone** (item 14). That is the most important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
