@@ -14,11 +14,12 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company
-page) and U.16 (links between check-ins, and each person's load). Each up to U.15 passed the full screen and API suites (U.16's full run is still to do); the few failures each run found came from that
-module and were fixed. The latest full run, after U.15, passed everything with no failures (2,818
-screen tests and 9,438 API tests). **None could be ticked, because the reviewer can no longer sign in
-as anyone** (item 14). That is the most important thing for you to unblock.
+board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page)
+and U.16 (links between check-ins, and each person's load). Each passed the full screen and API
+suites; the few failures each run found came from that module and were fixed. The latest full run,
+after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
+be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
+important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -2170,6 +2171,9 @@ the tests that read whole folders (the schema and migration guards among them) a
 were run, as you asked. No screen could be checked signed in (item 14), so the pages were checked by
 rendering tests only. **Not ticked,** because no review can sign in (item 14), and the full run is
 still to do.
+
+**The full run passed with no failures:** 2,831 screen tests, 9,465 API tests, and the build. **Not
+ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
