@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { AssistantService } from '../assistant/assistant.service';
-import { AskService, Asker, ONLY_YOURS, NOT_IN_IT, NOTHING_WAITING, SWITCHED_OFF, CONFIRM_YOUR_EMAIL, MADE_BY_GROUNDWORK } from './ask.service';
+import { AskService, Asker, ONLY_YOURS, NOT_IN_IT, NOTHING_WAITING, SWITCHED_OFF, CONFIRM_YOUR_EMAIL, MADE_BY_GROUNDWORK, A_GUEST_ASKS_IN_THEIR_CHECK_IN } from './ask.service';
 import { AskController } from './ask.controller';
 
 /**
@@ -33,6 +33,9 @@ const readers: Record<string, Asker & { role: string; isPlatformAdmin?: boolean 
   /* Switched off by the directory: Sid's entry is linked to him, Sue's carries her address. */
   sid: { userId: 'u-sid', email: 'sid@baridi.test', organizationId: ORG, role: 'MEMBER' },
   sue: { userId: 'u-sue', email: 'sue@baridi.test', organizationId: ORG, role: 'MEMBER' },
+  /* Kofi works at Harbor Foods and is a guest here, on "Sales team, Q3" only. His address is also on an
+     unclaimed entry on this organisation's list, which must never become his. */
+  kofi: { userId: 'u-kofi', email: 'kofi@harborfoods.test', organizationId: ORG, role: 'GUEST' },
 };
 
 function fixture() {
@@ -47,13 +50,15 @@ function fixture() {
       { id: 'pe-olu-elsewhere', organizationId: 'org-elsewhere', externalId: 'x-olu', email: 'olu@baridi.test', linkedUserId: null, active: true },
       { id: 'pe-sid', organizationId: ORG, externalId: 'x-sid', email: 'sid@baridi.test', linkedUserId: 'u-sid', active: false },
       { id: 'pe-sue', organizationId: ORG, externalId: 'x-sue', email: 'SUE@baridi.test', linkedUserId: null, active: false },
+      { id: 'pe-kofi', organizationId: ORG, externalId: 'x-kofi', email: 'kofi@harborfoods.test', linkedUserId: null, active: true },
     ],
+    organizationMembership: Object.values(readers).map((r) => ({ userId: r.userId, organizationId: r.organizationId, role: r.role })),
     user: Object.values(readers).map((r) => ({
       id: r.userId, email: r.email, firstName: r.userId.slice(2, 3).toUpperCase() + r.userId.slice(3), lastName: 'Test',
       isEmailVerified: r.userId !== 'u-uma',
     })),
     ground: [
-      { id: 'g-sales', organizationId: ORG, label: 'Sales team, Q3', status: 'ACTIVE', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam'], createdAt: new Date(1) },
+      { id: 'g-sales', organizationId: ORG, label: 'Sales team, Q3', status: 'ACTIVE', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam', 'u-kofi'], createdAt: new Date(1) },
       { id: 'g-lead', organizationId: ORG, label: 'Leadership, Q3', status: 'ACTIVE', initiatorId: 'u-grace', participantUserIds: ['u-grace', 'u-wairimu'], createdAt: new Date(2) },
       { id: 'g-old', organizationId: ORG, label: 'Supplier review', status: 'CLOSED', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam'], createdAt: new Date(0) },
     ],
@@ -111,7 +116,9 @@ function fixture() {
       for (const r of hit) Object.assign(r, data);
       return { count: hit.length };
     }),
-    findUnique: jest.fn(async ({ where, select }: any) => pick(db[name].find((r) => r.id === where.id) ?? null, select)),
+    findUnique: jest.fn(async ({ where, select }: any) => pick(db[name].find((r) => (where.userId_organizationId
+      ? r.userId === where.userId_organizationId.userId && r.organizationId === where.userId_organizationId.organizationId
+      : r.id === where.id)) ?? null, select)),
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
@@ -385,5 +392,46 @@ describe('a bank or card number typed into a question', () => {
     const kept = JSON.stringify([db.assistantTurn, db.assistantProposal, db.todo]);
     expect(kept).not.toContain('0123456789');
     expect(kept).toContain('[account number hidden]');
+  });
+});
+
+/* Decision 36: a guest from another organisation is never added to the list, and Ask works only within their check-in. */
+describe('a guest from another organisation', () => {
+  const REQUEST = 'remind me to call Kariuki about the deposit';
+
+  it('is told plainly that Ask Groundwork does not answer them here, and offered only their own check-in', async () => {
+    const { controller, asUser } = fixture();
+    expect(await controller.mine(asUser(readers.kofi))).toEqual({
+      canAsk: false, why: A_GUEST_ASKS_IN_THEIR_CHECK_IN, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [],
+    });
+  });
+
+  it('asking never creates or claims an entry on this organisation\'s list, even one with their address', async () => {
+    const { controller, asUser, db, prisma } = fixture();
+    await expect(controller.question(asUser(readers.kofi), { message: REQUEST, groundId: 'g-sales' }))
+      .rejects.toThrow(new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN));
+    await expect(controller.question(asUser(readers.kofi), { message: REQUEST })).rejects.toThrow(ForbiddenException);
+    await expect(controller.answer(asUser(readers.kofi), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
+      .rejects.toThrow(new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN));
+    expect(prisma.person.create).not.toHaveBeenCalled();
+    expect(prisma.person.updateMany).not.toHaveBeenCalled();
+    expect(db.person.find((p) => p.id === 'pe-kofi')!.linkedUserId).toBeNull();
+  });
+
+  it('and reads nothing outside their own check-in through it: no entry, no earlier turns, no to-dos', async () => {
+    const { controller, asUser, db, prisma } = fixture();
+    db.assistantTurn.push({ organizationId: ORG, personExternalId: 'x-kofi', role: 'person', content: 'HOST-LIST: an entry that is not his', createdAt: new Date(20) });
+    const theirs = await controller.mine(asUser(readers.kofi));
+    expect(everything(theirs)).not.toContain('HOST-LIST');
+    expect((theirs.about as any[]).map((g) => g.id)).toEqual(['g-sales']);
+    await controller.question(asUser(readers.kofi), { message: 'what is everybody working on?' }).catch(() => null);
+    expect(prisma.person.findFirst).not.toHaveBeenCalled();
+    expect(db.todo).toEqual([]);
+  });
+
+  it('while a member of the organisation with no entry still gets one made, as before', async () => {
+    const { controller, asUser, db } = fixture();
+    await controller.question(asUser(readers.tom), { message: REQUEST });
+    expect(db.person.filter((p) => p.linkedUserId === 'u-tom')).toHaveLength(1);
   });
 });

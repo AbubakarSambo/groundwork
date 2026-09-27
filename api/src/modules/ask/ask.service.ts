@@ -32,6 +32,8 @@ export const NOT_IN_IT = 'You are not part of this check-in.';
 export const NOTHING_WAITING = 'There is nothing waiting for your yes. Ask again if you still want it done.';
 export const SWITCHED_OFF =
   'Your organisation has switched off your place on its list of people, so Ask Groundwork cannot answer you. Ask an admin in your organisation to switch it back on.';
+export const A_GUEST_ASKS_IN_THEIR_CHECK_IN =
+  'You are here as a guest from another organisation, so Ask Groundwork does not answer you here. Ask anything about your check-in in the check-in itself.';
 export const CONFIRM_YOUR_EMAIL =
   'Confirm your email address first, and then Ask Groundwork can answer you. Groundwork sent you a link to confirm it when you signed up.';
 
@@ -70,6 +72,13 @@ export class AskService {
    * up through the product almost everybody was refused: 64 of 3,162 people in the test database
    * had an entry. `standingOf` says which of five things is true, in this order:
    *
+   *   guest       they are a guest here, from another organisation (their membership here is
+   *               GUEST). Decision 36: a guest is never added to this organisation's list of people,
+   *               so nothing is claimed or made, and nothing on the list is read for them. The
+   *               assistant cannot answer without an entry on the list, and scoping every one of its
+   *               lanes to one check-in is a larger change than this, so a guest is told plainly
+   *               that their questions go into their check-in, where the conversation already works
+   *               only within that check-in. Checked first, before any entry is looked at;
    *   linked      an active entry already linked to this account, in this organisation;
    *   switchedOff an entry in this organisation that has been switched off, linked to this account
    *               or carrying this address. Whoever the directory switched off does not get back in
@@ -85,8 +94,14 @@ export class AskService {
    */
   private async standingOf(asker: Asker): Promise<
     | { is: 'linked' | 'claimable'; person: { id: string; externalId: string } }
-    | { is: 'switchedOff' | 'unconfirmed' | 'none' }
+    | { is: 'guest' | 'switchedOff' | 'unconfirmed' | 'none' }
   > {
+    const here = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId: asker.userId, organizationId: asker.organizationId } },
+      select: { role: true },
+    });
+    if (here?.role === 'GUEST') return { is: 'guest' };
+
     const linked = await this.prisma.person.findFirst({
       where: { organizationId: asker.organizationId, active: true, linkedUserId: asker.userId },
       select: { id: true, externalId: true },
@@ -131,6 +146,7 @@ export class AskService {
   private async whoIsAsking(asker: Asker): Promise<{ id: string; externalId: string }> {
     const standing = await this.standingOf(asker);
     if (standing.is === 'linked') return standing.person;
+    if (standing.is === 'guest') throw new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN);
     if (standing.is === 'switchedOff') throw new ForbiddenException(SWITCHED_OFF);
     if (standing.is === 'unconfirmed') throw new ForbiddenException(CONFIRM_YOUR_EMAIL);
 
@@ -208,6 +224,7 @@ export class AskService {
     const [about, standing] = await Promise.all([this.whatItMayBeAbout(asker), this.standingOf(asker)]);
     /* Opening the panel writes nothing. A person with no entry yet can ask, and the entry is made on
        the first question; somebody who could not get one is told why, now, before they type. */
+    if (standing.is === 'guest') return { canAsk: false as const, why: A_GUEST_ASKS_IN_THEIR_CHECK_IN, about, turns: [] as AskTurn[] };
     if (standing.is === 'switchedOff') return { canAsk: false as const, why: SWITCHED_OFF, about, turns: [] as AskTurn[] };
     if (standing.is === 'unconfirmed') return { canAsk: false as const, why: CONFIRM_YOUR_EMAIL, about, turns: [] as AskTurn[] };
     if (!('person' in standing)) return { canAsk: true as const, about, turns: [] as AskTurn[] };
