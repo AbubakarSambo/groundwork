@@ -35,6 +35,12 @@ I have asked the engine workspace (request 16(g)) and put it to you as item 25.2
 (`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
 memory must keep working exactly as now, so I have not changed it without you (item 26.7).
 
+**Two more found in U.16, left alone on purpose:** the engine's board names who is waiting on you even
+in check-ins where people are not named to each other (asked of the engine, request 19; item 27.3);
+and the developer API gives one person's handoffs across all their check-ins, which is their load, to
+whoever holds the organisation's developer key. The developer API must keep working exactly as now, so
+that one is yours to decide (item 27.4).
+
 **What needs you most, in order:**
 1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
 2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
