@@ -185,6 +185,29 @@ Then the reviews run one module at a time, oldest first, and U.20 starts after t
 
 ## Needs Hafsah
 
+### 0. The lead's private description of a person could reach that person's invitation, in the live product
+
+**Asked by you on 27 September. My plain answer: yes, at the start of this work.** Our branch started
+from `main` as it was on 25 September (commit `be8b48d9`). In that code, when a lead finished the setup
+conversation, the lead's private report listed "People mentioned", each with a line the model wrote
+about them (for example "Your sales manager, who you said is not meeting his agreed targets for pipeline
+building and coaching."). Pressing "+ Add them" saved "Daniel - Your sales manager, who you said…" as
+that person's description, and the invitation page showed it to them as "Your part in this: …"
+(`client/src/pages/invite/InvitePage.tsx`, lines 289 to 304, and `participants.service.ts` line 44,
+which sent it with the invitation's preview).
+
+**I could not read today's live `origin/main`:** this computer has no `origin` remote, only `mine`, and
+the rules do not let me add one. If the live product has not changed that code since 25 September, it
+can do this today. **My recommendation:** fix it on the live product now, separately from this work.
+
+**Whose code:** the words are the engine's (the model writes each person's line in the lead's private
+report). Copying them into the person's description and showing them on the invitation is the screens'
+own code, so it is fixed here (see U.6). I have not changed the engine's words. A second route is the
+engine's name handling: when a person has no name, their label falls back to that same description, so
+another participant could see it as the person's name. I have asked the engine workspace to stop that
+(request 36).
+
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
