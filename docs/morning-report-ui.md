@@ -16,7 +16,7 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests and time sheets). Each up to U.16 passed the full screen and API suites; the
+the onboarding board, leave requests, time sheets and performance reviews). Each up to U.16 passed the full screen and API suites; the
 few failures each run found came from that module and were fixed. The U.17 parts have passed their
 own tests, and their full run is still to do. The latest full run, after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
@@ -65,17 +65,21 @@ that one is yours to decide (item 27.4).
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
     nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
-    hours, and who says what each client agreed.
+    hours, and who says what each client agreed; 28.33: does a person read their manager's own words
+    in their review? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** time sheets, the third suite (U.17). The approver reads their team's
-hours for the week by client, and approves; an admin reads everybody's, and the hours against what
-each client agreed; each person is served only their own; a colleague and a guest are refused. Hours
-are for billing only: a test fails if anything outside the suites reads them, so they never reach a
-check-in or its report. Nobody can give hours until the engine takes them by talking (request 22; item
-28.25). Before that: leave requests, the onboarding board, and the Suites page itself.
+**Just finished, not ticked:** performance reviews, the fourth suite (U.17), on the review dates the
+daily reminder already reads. The manager starts each review, writes their own words and decides with
+reasons; the person reads the facts, their own view and the decision with its reasons, and writes their
+own view; an admin reads all; a lead only their team's; a colleague and a guest are refused. No reader
+is served a label, a verdict, a score or a rating, and a test scans for it. "What Groundwork noticed"
+and a suggestion for a review wait for the engine (request 23). Whether the person reads their
+manager's words is a privacy question (item 28.33). Before that: time sheets, leave requests, the
+onboarding board and the Suites page. The midway full run passed everything (2,892 screen tests and
+9,528 API tests).
 
-**Next:** U.17 goes on with suite 4, performance reviews. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 5, when someone leaves. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1311,6 +1315,37 @@ reviewed" in this report.
     each client agreed.", "That is not one of the clients or projects on the list.", "Give a day and
     between a quarter of an hour and 24 hours for it." and "Each agreement needs a client on the list,
     the work, the hours, and whether they are for the whole job or each month."
+32. **Which reviews show.** Only the ones the organisation's own system has said fall due (the same
+    dates the daily reminder emails about), from 90 days ago to a year ahead. Nothing works out "every
+    6 months" on its own, because nothing knows when each person's cycle started. A date for a
+    probation end shows here too, because the table does not say which kind is which in a fixed way.
+    **My recommendation:** let an admin add a review date on the board, and show only the kinds they
+    name as performance reviews.
+33. **Does the person read their manager's own words? This is a privacy question.** The prototype says
+    "Aisha sees it before the meeting", and shows "What Wairimu writes" on the review. The rules say a
+    participant never reads the lead's judgement. So Aisha reads the facts, her own view and the
+    decision with its reasons, and not Wairimu's words. **My recommendation:** let the manager choose
+    to share their words with the person before the meeting, with a clear note that they will.
+34. **Nothing links the person to their own review yet,** because no prototype screen shows where they
+    find it. **My recommendation:** a line on their own You page, "Your review with Wairimu is ready.",
+    and the existing reminder email to the manager unchanged.
+35. **Groundwork's suggestion for a review is not shown,** because a suggestion belongs to a check-in
+    today. Request 23 asks the engine where it should belong. **My recommendation:** an optional link
+    from a suggestion to a review, so the U.13 part is used as it is, with the person's side and appeal.
+36. **There is no appeal on a review's decision yet.** The person reads the decision with its reasons
+    and writes their own view. **My recommendation:** the same appeal as the U.13 suggestions, decided
+    by an admin.
+37. **Wording no screen shows, on reviews:** "Started.", "Decided.", "Open it" (the prototype's own
+    words elsewhere), "No reviews are due yet.", "Your review, March", "What you write", "Your own
+    view", "Groundwork has not written this part yet.", "… has not written anything yet.", "… has not
+    written their view yet.", "The decision", "The reasons", "… sees your decision and your reasons.",
+    "Save", "What you can do" (read aloud as the last column's heading), "The board did not load.",
+    "The review did not load.", and the server's refusals ("You cannot open this review.", "Only the
+    person who writes this review with them can do this.", "Only the person this review is about can
+    write their own view.", "This review has already been started.", "Write something first." and
+    "Say what you decided, and why, in a sentence or two."). The decision's own words are the U.13
+    suggestions part's.
+
 
 
 
@@ -2528,6 +2563,66 @@ card, because the board did not exist. It now expects the door there, and still 
 the tests for the changed files, the tests that read whole folders, and both type checks were run. No
 screen could be checked signed in (item 14).
 
+#### Performance reviews: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product knew when a review falls due (`evaluations_due`, set
+by the organisation's own system through the developer API) and the daily reminder emails each manager
+about them (`reviews-coming-up.cron.ts`). That is reused as it is, and the emails are unchanged. There
+was no review page, nowhere to keep the manager's words, the person's own view or the decision, and
+no rule for who reads a review. "What Groundwork noticed" and a suggestion for a review are the
+engine's (request 23).
+
+**New storage, on your computer only:** the table `performance_reviews`, in the migration
+`20260927110000_performance_reviews`: one row for each review started, with the manager's own words,
+the person's own view, the decision with its reasons and who made it when, and, once the engine writes
+it, what Groundwork noticed (each line proven or only said) with the prompt version that ran. No score
+and no verdict. It has not been run against any database.
+
+**What each person now reads:**
+- **Wairimu, the lead who writes her team's reviews,** on the board: "Suites / Performance reviews",
+  "Performance reviews", "A review every 6 months. It is built from what each person did and proved in
+  their check-ins, with their own view beside it. There are no scores." (the 6 follows the admin's
+  answer), then a box: "How a review is built" and "From proof in each person’s check-ins, their own
+  view of their work, and their manager’s view. A person decides, not Groundwork." Then "The next
+  reviews", "March 2027", and a table: "Person", "Written with", "Where it stands", with rows such as
+  "Aisha Otieno", "Wairimu Kamau", "Started." and "Open it", or "Miriam Wanjiku", "Wairimu Kamau",
+  "Ready to start." and "Start it". With none due: "No reviews are due yet."
+- **Wairimu, on Aisha's review:** "Aisha’s review, March", then three parts side by side: "What
+  Groundwork noticed", "Proof first. Anything only said is marked.", with each line and its mark;
+  "What you write", where she writes and saves her words; and "Aisha’s own view". Then "Your decision",
+  with "Your decision", "Your reasons, in a sentence or two" and "Save my decision"; once saved, "Your
+  decision", "Your reasons" and "Aisha sees your decision and your reasons." At the end: "No scores. You
+  and Aisha talk it through, and you decide."
+- **Grace, an admin, or a lead of the team who does not write it,** reads the same with "What Wairimu
+  writes" and quotes, and nothing to write. "No scores. Wairimu and Aisha talk it through, and Wairimu
+  decides."
+- **Aisha herself:** "Your review, March", "What Groundwork noticed" with its lines, "Your own view",
+  where she writes and saves hers, "The decision" and "The reasons" once Wairimu has decided, and "No
+  scores. You and Wairimu talk it through, and Wairimu decides." She does not read Wairimu's own words
+  (item 28.33). Nothing links her to the page yet (item 28.34).
+- **A colleague, a lead of another team and a guest** are refused: "You cannot open this review." The
+  board refuses members and guests: "Only an admin or a lead can open this board."
+- **Before the engine writes its part:** "Groundwork has not written this part yet."
+
+**Privacy and access, on the server (decisions rule 6):** an admin reads every review; a lead only
+their own team's; the person who writes it with them (the manager, or an admin, as the organisation
+answered) starts it, writes their words and decides with reasons; the person reads the facts, their
+own view and the decision with its reasons, and writes their own view. The engine's lines are served
+only with the two marks a person may read (proven, or only said); any other mark is dropped. A test
+scans what every reader is served, and fails on a label ("PIP", "exit", "at risk", "low performer"), a
+verdict, a score or a rating. Another checks the review code reads no hours and no leave (decisions
+rule 10), and the scans from leave and time sheets still pass.
+
+**Commits:** `30598a29` (the server), `6cab8a6c` (the board and each review), `055192aa` (request
+23).
+
+**Tested:** `api/src/modules/suites/the-reviews-as-each-reader-reads-them.spec.ts` (Grace, Wairimu,
+Kamau, Aisha, Miriam, a guest and another organisation, each read from what the server hands them;
+starting, writing, deciding; the scans) and `client/src/pages/suites/the-reviews-as-each-reader-see-them.spec.tsx`
+(what Grace, Wairimu and Aisha each read, word for word, and no label on any screen). **No existing
+test was changed.** Only the tests for the changed files, the tests that read whole folders, and both
+type checks were run. No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2541,9 +2636,10 @@ screen could be checked signed in (item 14).
    where a person reads their own hours, a screen to say what each client agreed, and "How people use
    it". The engine's part: taking hours by talking to Groundwork, said back and confirmed first
    (request 22). Hours are for billing only and never reach a report (decisions rule 10).
-4. **Performance reviews** (`#/suite/reviews`, admins and leads). A daily reminder of reviews exists.
-   Missing: the review page. The engine's part: the review built from proof, with a suggestion told
-   like a signal (decisions rule 6).
+4. **Performance reviews** (`#/suite/reviews`, admins and leads). **Built** (above), on the dates the
+   daily reminder already reads. Still missing: "What Groundwork noticed", a suggestion for a review,
+   and "What Aisha’s review will show", which are the engine's (request 23); and a way in for the
+   person (item 28.34).
 5. **When someone leaves** (`#/suite/leaving`, admins only). Handover and departures exist. Missing:
    the checklist with an owner for each step. The engine's part: "Signs a team is under strain", for
    a team, never a named person.
