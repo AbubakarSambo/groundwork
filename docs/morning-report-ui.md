@@ -4124,6 +4124,7 @@ none of them changed. **Not ticked,** until its review.
 ## Found on the way, for later tasks
 
 - **For U.8 (the check-in screens):** the check-in page reads "You · waiting" and "U6g · waiting", pieces joined with dots.
+- **Also for U.8:** an invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. Someone waiting that long may give up.
 - **For U.5 (Today):** "A decision for you." sits over a first check-in on Today, which is not a decision.
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
