@@ -44,16 +44,23 @@ I have asked the engine workspace (request 16(g)) and put it to you as item 25.2
 9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
 10. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
     25.1: most people cannot use Ask Groundwork yet.
-11. The rest of items 13, 15 to 25 are smaller, each with a recommendation.
+11. Item 26.1: may the Company page show what new people keep asking, when it is built from their
+    private questions to Ask Groundwork? (a privacy question), and 26.2: priorities can only come
+    in from an organisation's own systems today.
+12. The rest of items 13, 15 to 26 are smaller, each with a recommendation.
 
-**Just built, not ticked:** U.14 (Ask Groundwork). The speech bubble beside the Groundwork mark opens
-the panel, and "Chat" on a phone opens it as a page. Your questions are read only by you, and a
-request is done only after your own yes to it, both enforced on the server. But most people cannot
-use it yet, because it only answers people on a connected list of people (item 25.1), and the
-pattern detectors read everybody's questions (item 25.2, a privacy question). What it says, and
-checking claims and thinking it through, are the engine's (request 16).
+**Just built, not ticked:** U.15 (the Company page), which still needs its full API run. Company is in the sidebar between Today and You,
+in "Jump to", on More, and on the phone's bar in place of Start for somebody who may not start a
+check-in. `#/company` shows the organisation's priorities, who owns each and which check-ins feed
+them, and `#/company/context` shows the priorities with what success looks like (admins only) and
+the organisation's handbook and memory. The server decides what each reader gets, from their role and
+the check-ins they may open, never a title. A guest from another company is refused. Most of what
+the prototype's page says is the engine's to write (request 17), and "What new people keep asking"
+waits for you (item 26.1). Priorities only come in from an organisation's own systems today, so an
+organisation that signed up through the product sees "No priorities have come in from your
+organisation’s own systems yet." (item 26.2).
 
-**Next:** U.15 (the Company page).
+**Next:** U.16 (links between check-ins, and each person's load).
 
 ## Needs Hafsah
 
@@ -1049,6 +1056,74 @@ reviewed" in this report.
     fits. The prototype's phone shows "Company" in place of "Start" for somebody who may not start a
     check-in; that waits for the Company page (U.15).
 
+### 26. The Company page (U.15): what needs you
+
+1. **"What new people keep asking" is built from private questions. This is a privacy question.**
+   The prototype's Company page lists questions several new people asked Groundwork, such as "How
+   do I send an order for stock?", with "Asked by 3 new people since July", and says "Only the
+   question is shown. Nothing else from anyone’s private chats with Groundwork, and never who
+   asked." But questions to Ask Groundwork are private always, and this shows them, even without
+   names, to whoever reads the Company page. I left it out. **My recommendation:** allow it only
+   when at least three new people asked the same thing, show only the question as the engine
+   words it (never anybody's own words), never who asked or how many times each person asked, and
+   only to admins. Until you decide, it stays out, and I asked the engine not to build it (request
+   17(g)).
+2. **Priorities can only come in from an organisation's own systems.** The page's priorities are
+   the organisation's objectives sent through the developer API (a subject of type "objective"
+   that hangs under nothing). An organisation that signed up through the product has none, so its
+   page says "No priorities have come in from your organisation’s own systems yet." The prototype
+   has "Change this" and "Say who owns this" in company context, and picks priorities up from the
+   chief executive's check-in. **My recommendation:** let an admin write and change the
+   priorities in company context, kept as Groundwork's own record beside the imported ones, with
+   every change kept as a new version; picking them up from a check-in is the engine's (request
+   17(e)).
+3. **Who reads "What success looks like".** The prototype says "Everyone reads the priorities.
+   Targets and numbers are leadership only." Nothing in the product says who "leadership" is, so
+   the server gives the measure and the target to admins only. **My recommendation:** keep it to
+   admins until people have levels (item 15), then give it to the top level too.
+4. **The count of check-ins this week goes to admins only.** An admin reads every check-in, so
+   their count is the organisation's. A lead or a member reads only the check-ins they are in, so
+   the organisation's count would tell them about check-ins they may not open, and a count of
+   their own would read as the company's. So they read "2 teams, 5 people." without it. **My
+   recommendation:** keep it.
+5. **A check-in that feeds a priority is named only to somebody who may open it.** Somebody who
+   may open none of the check-ins under a priority reads neither "Fed by …" nor "No team feeds
+   it" on it. **My recommendation:** keep it.
+6. **Linked organisations are not built.** "What each level understood" (from the ministry down to
+   the officers, marking where the meaning changed) and "Questions for the ministry" need
+   organisations linked to each other, such as a ministry and its counties, where "Each county is
+   its own organisation. You see summaries, never officers’ own words." Nothing links two
+   organisations today, and deciding what one may read of the other is a privacy rule. **My
+   recommendation:** decide it as its own piece of work, with the engine writing the summaries
+   (request 17(f)).
+7. **A guest may be able to read an organisation's handbook.** A guest from another company holds
+   a membership, so that the check-in they were invited to is reachable. The existing read of how
+   the company does things (`GET /org/how-we-do-it`) is given to anybody whose current
+   organisation it is, and I could not find anything that keeps a guest out. The Company page and
+   company context refuse a guest, and company context never asks for the handbook for one, but
+   the read itself is unchanged, because organisation memory must keep working exactly as now.
+   **My recommendation:** refuse that read to a guest, with a test.
+8. **One Company page, not two.** The prototype has an older "Company board"
+   (`#/company/kijani/board`) and the newer Company page (`#/company`), saying much the same. I
+   built the newer one only. Its "Teams" and "History" tabs are left out, because no screen shows
+   what is in them and nothing keeps the strategy's history, and so is "Strategy v2, since 1
+   September." "Is the strategy moving?" is the page's heading instead of a tab. **My
+   recommendation:** keep one page.
+9. **Buttons left out until there is something to do.** "Decide", "Ask", "Make someone
+   responsible", "Read what each team said" and "Open" act on the engine's parts, which are not
+   written yet (request 17). "Ask about the whole organisation" and "Ask about the strategy" both
+   open Ask Groundwork, which cannot yet answer about the whole organisation, and still answers only
+   people on the organisation's list of people (item 25.1). Today does not show the chief
+   executive's priorities yet (U.5); it can, now the server serves them.
+10. **Wording no screen shows, which I wrote with the fewest words:** "No priorities have come in
+    from your organisation’s own systems yet.", "This was last updated on 28 August." (on a
+    priority not refreshed for two weeks), "Fed by Sales team, Q3" (the prototype names a team,
+    and the product has check-ins, so it names the check-in), "The company page did not load.",
+    "The company context did not load.", "Try again", "Nothing about how Baridi Appliances does
+    things has been added yet.", "Resources" as a heading on its own, and "Company" and "Where
+    you are" (read aloud for the way back from company context). **What the server says when it
+    refuses:** "Only people in this organisation can read its company page."
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1911,6 +1986,68 @@ and the full run is still to do.
 **The full run:** all 9,427 API tests and the build passed, and every screen test but one: a style used
 by the speech-bubble button had no definition. It now gives the button a pressed look while the panel
 is open. **Not ticked,** because no review can sign in (item 14).
+
+### U.15 The Company page: built and tested, not yet reviewed
+
+**What was missing, against the prototype (the gap list):** there was no Company page, no route, and
+no "Company" in the sidebar, "Jump to", More or the phone's bar. The pieces existed apart: the
+organisation's own objectives (subjects sent through the developer API, with owners and what they
+hang under), the link from a check-in to one of them, every check-in's board, and how the company
+does things (organisation memory and the handbook, readable by everybody in it, with no screen).
+Nothing kept the strategy's versions, a brief, principles or definitions at the organisation's
+level, nothing linked two organisations, and nothing wrote a company-wide picture: how each
+priority is moving, where the strategy is not reaching the work, what more than one team named,
+or what leadership says next to what the check-ins show. Those are the engine's (request 17).
+
+**What each person now reads** on `#/company`, in Baridi, where the organisation's own system has
+given three priorities ("Sales team, Q3" feeds the first, "Operations, Q3" feeds the second):
+- **Everyone in the organisation:** the organisation's name as the heading, "Ask about the whole
+  organisation", "Company context", "Ask about the strategy" (both ask buttons open Ask Groundwork),
+  "Is the strategy moving?", and a card for each priority: "Priority 1", "Grow revenue 50%,
+  enterprise first", "Fed by Sales team, Q3"; "Priority 3", "Nobody owns it yet", "Build a stronger
+  organisation", "No team feeds it". A priority not refreshed for two weeks also says "This was
+  last updated on 28 August."
+- **Grace, an admin:** "2 teams, 5 people, 3 check-ins this week.", and every check-in that feeds a
+  priority by name.
+- **Wairimu, a lead, and Miriam, a member:** "2 teams, 5 people." without a count of check-ins, and
+  "Fed by …" only for a check-in they may open: "Operations, Q3" is never named to them.
+- **Amani, the chief executive, who is a member:** what a member reads. Her title gives her nothing.
+- **Kofi, a guest from another company:** "Only people in this organisation can read its company
+  page.", and no Company in his sidebar.
+
+On `#/company/context`: "Company / Baridi Appliances" as the way back, "What the company is trying
+to do, and how it reaches every team", "Priorities", "Everyone reads the priorities. Targets and
+numbers are leadership only.", each priority with "Owner: Wairimu Kamau" or "Owner: No owner yet",
+and, for an admin only, "What success looks like" with "Leadership only" and the measure and target.
+Then how the company does things, which everybody in it already reads: "The staff handbook, short
+and simple" with "Ask Groundwork answers from this, and says so", "Resources", and "What Baridi
+Appliances has learned, promised and has to hand".
+
+**Privacy, on the server:** `GET /company` (`api/src/modules/grounds/company.service.ts` and
+`the-company-page.ts`) is built field by field, never by passing a row through. What a reader gets
+comes from their role and the check-ins they may open (through `GroundsService.list`, the one rule),
+never a title. It carries nobody's words, reports, questions to Ask Groundwork, private notes, load
+across check-ins, ratings or labels. The measure and target go to admins only. A guest is refused
+before anything is read. Organisation memory is read exactly as before (item 26.7).
+
+**Commits:** `f6f3e0a9` (the server read and its refusals), `c28e07da` (the two pages, and Company in
+the sidebar, "Jump to", More and the phone's bar), `216533c8` (request 17 to the engine).
+
+**Tested:** `api/src/modules/grounds/the-company-page-as-each-reader-reads-it.spec.ts` reads the page
+as Grace, Wairimu, Miriam, Amani and Kofi, and checks that nobody is served another company's
+check-in, anybody's words, ratings or labels. `client/src/pages/company/the-company-page-as-each-reader-sees-it.spec.tsx`
+reads both pages as Grace, Miriam and Kofi, the engine's parts once served, the empty pages, and the
+page when it fails to load. **Tests changed, and why:** `the-org-is-not-a-ground.spec.ts` and
+`jump-to.spec.tsx` list every door a person is offered, and now include Company after Today, because
+the page exists; the sidebar test finds You third, after Company; `more-on-a-phone.spec.tsx` expected
+nothing in Start's place for somebody who may not start a check-in, and the prototype puts Company
+there; `a-label-that-loses-its-start.spec.ts` reads the bar's words from the source, where Start and
+Company now both appear, though only one is ever drawn. What each guards is unchanged. The API tests
+for the changed files and every API test that reads whole folders passed, and so did both type
+checks. On the screens side, a mistake in my command ran the whole screen suite once instead of only
+the guards: all 2,818 tests passed. No screen could be checked signed in (item 14), so the pages were
+checked by rendering tests only. No database change. **Not ticked,** because no review can sign in
+(item 14), and the full API run is still to do.
 
 ## Found on the way, for later tasks
 
