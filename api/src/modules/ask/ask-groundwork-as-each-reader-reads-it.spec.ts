@@ -1,9 +1,15 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { AssistantService } from '../assistant/assistant.service';
-import { AskService, Asker, ONLY_YOURS, NOT_IN_IT, NOTHING_WAITING, SWITCHED_OFF, CONFIRM_YOUR_EMAIL, MADE_BY_GROUNDWORK, A_GUEST_ASKS_IN_THEIR_CHECK_IN } from './ask.service';
+import { AskService, Asker, ONLY_YOURS, NOT_IN_IT, NOTHING_WAITING, SWITCHED_OFF, CONFIRM_YOUR_EMAIL, MADE_BY_GROUNDWORK } from './ask.service';
 import { AskController } from './ask.controller';
+import { whatAParticipantMayRead } from '../reports/the-judgement-is-the-leads';
+import { overTimeForThisReader } from '../reports/what-the-record-shows-over-time';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import {
+  A_GUEST_CANNOT_ASK_FOR_THINGS, A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN, whatAGuestCanAsk,
+} from './a-guest-asks-only-about-their-own-check-in';
 
 /**
  * ASK GROUNDWORK, AS EACH PERSON IS SERVED IT (D1, U.14).
@@ -38,7 +44,53 @@ const readers: Record<string, Asker & { role: string; isPlatformAdmin?: boolean 
   kofi: { userId: 'u-kofi', email: 'kofi@harborfoods.test', organizationId: ORG, role: 'GUEST' },
 };
 
-function fixture() {
+/* The two check-ins' stored reports, as the lead's copy holds them. What a guest reads is cut from these by the served read. */
+const STORED_REPORTS: Record<string, any> = {
+  'g-sales': {
+    theOpening: 'Three people have checked in on the sales pipeline, and two deals are close.',
+    sharedPicture: 'SHARED-PICTURE: the long version.',
+    agreements: [{ topic: 'Green Mart buys in January' }, 'Deposits come before delivery'],
+    centralQuestion: 'Which deals close before 30 September?',
+    theJudgement: { theGap: 'LEAD-JUDGEMENT: Miriam is carrying the quarter on her own.' },
+    divergences: [{ topic: 'DIVERGENCE-SECRET: who owns Westgate Deli' }],
+    findings: [
+      { participantId: 'p-miriam', text: 'MIRIAM-FINDING: her own finding.' },
+      { participantId: 'p-kofi', text: 'KOFI-FINDING: his own finding.' },
+    ],
+    inferences: ['INFERENCE-SECRET: nobody said this.'],
+    overTime: {
+      sessions: 2,
+      commitments: [
+        { participantId: 'p-kofi', who: 'you', what: 'send the price list', when: 'Friday', statedInSession: 1, restatedIn: [], status: 'OPEN', theySaidIt: true,
+          say: 'You said in session 1 that you would send the Harbor Foods price list by Friday.' },
+        { participantId: 'p-miriam', who: 'Miriam', what: 'call Westgate Deli', when: null, statedInSession: 1, restatedIn: [], status: 'OPEN', theySaidIt: true,
+          say: 'MIRIAM-COMMITMENT: Miriam said she would call Westgate Deli.' },
+      ],
+      dependencies: [
+        { what: 'delivery dates', from: 'you', fromParticipantId: 'p-kofi', on: 'Miriam', onParticipantId: 'p-miriam', sessionsWaiting: 1, chased: false, status: 'OPEN',
+          say: 'You are waiting on Miriam for the delivery dates, since session 1.' },
+        { what: 'finance sign-off', from: 'Miriam', fromParticipantId: 'p-miriam', on: null, onParticipantId: null, sessionsWaiting: 2, chased: false, status: 'OPEN',
+          say: 'MIRIAM-WAIT: Miriam is waiting on finance.' },
+      ],
+      patterns: [{ participantId: 'p-miriam', say: 'PATTERN-SECRET: seen in three sessions.' }],
+      gaps: [],
+      stillOpen: ['LEAD-OPEN: the Westgate owner.'],
+      cannotTellYou: [],
+      toSettleFirst: ['SETTLE-SECRET: ask Miriam first.'],
+    },
+  },
+  'g-lead': {
+    theOpening: 'LEADERSHIP-ONLY: the leadership picture.',
+    agreements: ['LEADERSHIP-ONLY: an agreement'],
+    centralQuestion: 'LEADERSHIP-ONLY: a question?',
+    overTime: { sessions: 1, commitments: [], dependencies: [], patterns: [], gaps: [], stillOpen: [], cannotTellYou: [], toSettleFirst: [] },
+  },
+};
+
+/* Kofi's next check-in opens in three days. */
+const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
+
+function fixture(opts: { leakyReport?: boolean } = {}) {
   const db: Record<string, any[]> = {
     person: [
       { id: 'pe-wairimu', organizationId: ORG, externalId: 'x-wairimu', email: 'wairimu@baridi.test', linkedUserId: 'u-wairimu', active: true },
@@ -69,6 +121,15 @@ function fixture() {
     ],
     assistantProposal: [],
     todo: [],
+    groundParticipant: [
+      { id: 'p-miriam', groundId: 'g-sales', userId: 'u-miriam' },
+      { id: 'p-kofi', groundId: 'g-sales', userId: 'u-kofi' },
+      { id: 'p-wairimu-lead', groundId: 'g-lead', userId: 'u-wairimu' },
+    ],
+    checkIn: [
+      { participantId: 'p-kofi', sessionNumber: 1, status: 'COMPLETED', availableFrom: new Date(0) },
+      { participantId: 'p-kofi', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: KOFI_NEXT },
+    ],
   };
 
   const eq = (row: any, where: any): boolean =>
@@ -138,13 +199,43 @@ function fixture() {
     { sendRoundDigest: refuse('mail') } as any,
     { create: refuse('ground creation'), addParticipant: refuse('ground creation') } as any,
   );
-  const ask = new AskService(prisma, assistant);
+  /*
+   * THE TWO READS A GUEST'S ANSWERS ARE BUILT FROM, doubled with the real rule the real reads apply:
+   * a party who is not the lead gets the report with the lead's layer taken off and the record over
+   * time narrowed to themselves. With `leakyReport` the read hands back the lead's whole row instead,
+   * so the guest's own allowlist is tested as well as the read's.
+   */
+  const partyOf = (groundId: string, userId: string) => db.groundParticipant.find((p) => p.groundId === groundId && p.userId === userId) ?? null;
+  const reports = {
+    get: jest.fn(async (groundId: string, userId: string, _org?: string) => {
+      const ground = db.ground.find((g) => g.id === groundId);
+      const party = partyOf(groundId, userId);
+      const isLead = ground?.initiatorId === userId;
+      if (!ground || (!party && !isLead)) throw new ForbiddenException('You are not a participant in this check-in');
+      const row = STORED_REPORTS[groundId];
+      if (!row) throw new NotFoundException('Report not found');
+      if (opts.leakyReport) return row;
+      return {
+        ...whatAParticipantMayRead(row, { isLead, participantId: party?.id ?? null }),
+        overTime: overTimeForThisReader(row.overTime, { isLead, participantId: party?.id ?? null }),
+      };
+    }),
+  };
+  const grounds = {
+    getMyCheckinStatus: jest.fn(async (groundId: string, userId: string) => {
+      const party = partyOf(groundId, userId);
+      if (!party) throw new ForbiddenException('You are not a participant in this check-in');
+      const checkIns = db.checkIn.filter((c) => c.participantId === party.id);
+      return { participantId: party.id, partyType: null, checkIns, latestStatus: null, latestSessionNumber: null };
+    }),
+  };
+  const ask = new AskService(prisma, assistant, reports as any, grounds as any);
   const controller = new AskController(ask);
   const asUser = (r: typeof readers[string]) => ({
     id: r.userId, email: r.email, organizationId: r.organizationId, role: r.role,
     firstName: '', lastName: '', isPlatformAdmin: !!r.isPlatformAdmin,
   });
-  return { db, ask, controller, asUser, prisma };
+  return { db, ask, controller, asUser, prisma, reports, grounds };
 }
 
 const everything = (x: unknown) => JSON.stringify(x);
@@ -395,43 +486,156 @@ describe('a bank or card number typed into a question', () => {
   });
 });
 
-/* Decision 36: a guest from another organisation is never added to the list, and Ask works only within their check-in. */
+/*
+ * Decision 36: a guest from another organisation is never added to the list, and Ask works only
+ * within their check-in.
+ *
+ * CHANGED 28 SEPTEMBER 2026, AND WHY. This block used to pin a refusal: Kofi was told "You are here
+ * as a guest from another organisation, so Ask Groundwork does not answer you here", because the
+ * assistant needs an entry on the host's list. The decision says Ask Groundwork works for a guest
+ * within their own check-in, so he is now answered, only about "Sales team, Q3", from the reads that
+ * check-in already serves him. What the old block protected still holds, and is asserted below: no
+ * entry is made or claimed for him, and nothing outside his check-in reaches him.
+ */
 describe('a guest from another organisation', () => {
-  const REQUEST = 'remind me to call Kariuki about the deposit';
+  const kofiAsks = async (f: ReturnType<typeof fixture>, message: string, groundId?: string) => {
+    const reply: any = await f.controller.question(f.asUser(readers.kofi), { message, groundId });
+    return reply.blocks.map((b: any) => b.body).join('\n');
+  };
 
-  it('is told plainly that Ask Groundwork does not answer them here, and offered only their own check-in', async () => {
+  it('can ask, about his own check-in and nothing else', async () => {
     const { controller, asUser } = fixture();
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
-      canAsk: false, why: A_GUEST_ASKS_IN_THEIR_CHECK_IN, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [],
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [],
     });
   });
 
-  it('asking never creates or claims an entry on this organisation\'s list, even one with their address', async () => {
-    const { controller, asUser, db, prisma } = fixture();
-    await expect(controller.question(asUser(readers.kofi), { message: REQUEST, groundId: 'g-sales' }))
-      .rejects.toThrow(new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN));
-    await expect(controller.question(asUser(readers.kofi), { message: REQUEST })).rejects.toThrow(ForbiddenException);
-    await expect(controller.answer(asUser(readers.kofi), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
-      .rejects.toThrow(new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN));
-    expect(prisma.person.create).not.toHaveBeenCalled();
-    expect(prisma.person.updateMany).not.toHaveBeenCalled();
-    expect(db.person.find((p) => p.id === 'pe-kofi')!.linkedUserId).toBeNull();
+  it('gets real answers about his own check-in, in plain sentences', async () => {
+    const f = fixture();
+    expect(await kofiAsks(f, 'What did we agree?')).toBe(
+      'The report on Sales team, Q3 says you agree on these things.\nGreen Mart buys in January.\nDeposits come before delivery.',
+    );
+    expect(await kofiAsks(f, 'What did I commit to?')).toBe(
+      'This is what you said you would do in Sales team, Q3.\nYou said in session 1 that you would send the Harbor Foods price list by Friday.',
+    );
+    expect(await kofiAsks(f, 'What is stuck?')).toBe(
+      'This is what is waiting in Sales team, Q3, for you or on you.\nYou are waiting on Miriam for the delivery dates, since session 1.',
+    );
+    expect(await kofiAsks(f, 'When is my next check-in?')).toBe(
+      `Your next check-in on Sales team, Q3 opens on ${whenItWas(KOFI_NEXT, 'weekdayAndDay')}.`,
+    );
+    expect(await kofiAsks(f, 'What does the report say?')).toBe(
+      'This is what the report on Sales team, Q3 says.\nThree people have checked in on the sales pipeline, and two deals are close.\nThe question it leaves for everybody is this one. Which deals close before 30 September?',
+    );
+    expect(await kofiAsks(f, 'hello')).toBe(whatAGuestCanAsk('Sales team, Q3'));
   });
 
-  it('and reads nothing outside their own check-in through it: no entry, no earlier turns, no to-dos', async () => {
-    const { controller, asUser, db, prisma } = fixture();
-    db.assistantTurn.push({ organizationId: ORG, personExternalId: 'x-kofi', role: 'person', content: 'HOST-LIST: an entry that is not his', createdAt: new Date(20) });
-    const theirs = await controller.mine(asUser(readers.kofi));
-    expect(everything(theirs)).not.toContain('HOST-LIST');
-    expect((theirs.about as any[]).map((g) => g.id)).toEqual(['g-sales']);
-    await controller.question(asUser(readers.kofi), { message: 'what is everybody working on?' }).catch(() => null);
-    expect(prisma.person.findFirst).not.toHaveBeenCalled();
-    expect(db.todo).toEqual([]);
+  it('every answer is read as him, never as anybody else, and only about his check-in', async () => {
+    const f = fixture();
+    for (const q of ['What did we agree?', 'What did I commit to?', 'What is stuck?', 'What does the report say?', 'When is my next check-in?']) {
+      await kofiAsks(f, q, 'g-sales');
+    }
+    for (const [groundId, userId] of f.reports.get.mock.calls) expect([groundId, userId]).toEqual(['g-sales', 'u-kofi']);
+    for (const [groundId, userId] of f.grounds.getMyCheckinStatus.mock.calls) expect([groundId, userId]).toEqual(['g-sales', 'u-kofi']);
   });
 
-  it('while a member of the organisation with no entry still gets one made, as before', async () => {
-    const { controller, asUser, db } = fixture();
-    await controller.question(asUser(readers.tom), { message: REQUEST });
+  it('never reads the lead\'s judgement, a colleague\'s finding, commitment or wait, or the lead\'s own reads', async () => {
+    const SECRETS = /LEAD-|MIRIAM-|DIVERGENCE-|INFERENCE-|PATTERN-|SETTLE-|KOFI-FINDING|SHARED-PICTURE|LEADERSHIP-/;
+    for (const leakyReport of [false, true]) {
+      /* Leaky: the report read hands back the lead's whole row, and the guest's own answer still takes only its four fields. */
+      const f = fixture({ leakyReport });
+      const said: string[] = [];
+      for (const q of ['What did we agree?', 'What did I commit to?', 'What is stuck?', 'What does the report say?', 'How is Miriam doing?', 'What should I do next?']) {
+        said.push(await kofiAsks(f, q));
+      }
+      expect(said.join('\n')).not.toMatch(SECRETS);
+      expect(JSON.stringify(await f.controller.mine(f.asUser(readers.kofi)))).not.toMatch(SECRETS);
+    }
+  });
+
+  it('cannot ask about a check-in he is not in, and nothing of it is read', async () => {
+    const f = fixture();
+    await expect(f.controller.question(f.asUser(readers.kofi), { message: 'What did we agree?', groundId: 'g-lead' }))
+      .rejects.toThrow(new ForbiddenException(NOT_IN_IT));
+    expect(f.reports.get).not.toHaveBeenCalled();
+    expect(f.grounds.getMyCheckinStatus).not.toHaveBeenCalled();
+  });
+
+  it('is told plainly that he cannot ask about the organisation, its people or its other check-ins', async () => {
+    const f = fixture();
+    for (const q of ['Who works here?', 'What are the other check-ins about?', 'Show me the list of people', 'What is the company working on?']) {
+      expect(await kofiAsks(f, q)).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN);
+    }
+    expect(f.reports.get).not.toHaveBeenCalled();
+    expect(f.prisma.subject.findMany).not.toHaveBeenCalled();
+  });
+
+  it('cannot make anything happen on the host: no to-do, no request waiting for a yes, no objective', async () => {
+    const f = fixture();
+    for (const q of ['remind me to call Kariuki about the deposit', 'Add a to-do for my next check-in', 'Create an objective for Q4', 'Invite my colleague Ama']) {
+      expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS);
+    }
+    await expect(f.controller.answer(f.asUser(readers.kofi), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
+      .rejects.toThrow(new ConflictException(NOTHING_WAITING));
+    expect(f.db.todo).toEqual([]);
+    expect(f.db.assistantProposal).toEqual([]);
+    /* The only thing written is his own question and its answer, under his own key. */
+    expect(new Set(f.db.assistantTurn.slice(3).map((t) => t.personExternalId))).toEqual(new Set(['guest:u-kofi']));
+  });
+
+  it('never creates, claims or even looks up an entry on this organisation\'s list, even one with his address', async () => {
+    const f = fixture();
+    for (const q of ['What did we agree?', 'When is my next check-in?', 'remind me to call Kariuki', 'what is everybody working on?']) await kofiAsks(f, q);
+    await f.controller.mine(f.asUser(readers.kofi));
+    expect(f.prisma.person.create).not.toHaveBeenCalled();
+    expect(f.prisma.person.updateMany).not.toHaveBeenCalled();
+    expect(f.prisma.person.findFirst).not.toHaveBeenCalled();
+    expect(f.db.person.find((p) => p.id === 'pe-kofi')!.linkedUserId).toBeNull();
+    expect(f.db.person.filter((p) => p.linkedUserId === 'u-kofi')).toEqual([]);
+  });
+
+  it('reads back his own questions and answers, and nobody else does', async () => {
+    const f = fixture();
+    await kofiAsks(f, 'KOFI-ASKED what did we agree?');
+    const his = await f.controller.mine(f.asUser(readers.kofi));
+    expect(his.turns.map((t) => t.from)).toEqual(['you', 'groundwork']);
+    expect(his.turns[0].says).toBe('KOFI-ASKED what did we agree?');
+    expect(everything(his)).not.toMatch(/MIRIAM-|WAIRIMU-/);
+    for (const who of ['wairimu', 'miriam', 'grace', 'sam']) {
+      expect(everything(await f.controller.mine(f.asUser(readers[who])))).not.toContain('KOFI-ASKED');
+    }
+    await expect(f.controller.someone(f.asUser(readers.wairimu), 'u-kofi')).rejects.toThrow(new ForbiddenException(ONLY_YOURS));
+  });
+
+  it('and an entry somebody gave his key to reads none of it, and keeps nothing under it', async () => {
+    const f = fixture();
+    await kofiAsks(f, 'KOFI-ASKED what is stuck?');
+    /* Mallory is a member whose entry the directory gave the external id "guest:u-kofi". */
+    f.db.organizationMembership.push({ userId: 'u-mallory', organizationId: ORG, role: 'MEMBER' });
+    f.db.user.push({ id: 'u-mallory', email: 'mallory@baridi.test', firstName: 'Mallory', lastName: 'Test', isEmailVerified: true });
+    f.db.person.push({ id: 'pe-mallory', organizationId: ORG, externalId: 'guest:u-kofi', email: 'mallory@baridi.test', linkedUserId: 'u-mallory', active: true });
+    const mallory = { userId: 'u-mallory', email: 'mallory@baridi.test', organizationId: ORG, role: 'MEMBER' };
+    expect(everything(await f.controller.mine(f.asUser(mallory)))).not.toContain('KOFI-ASKED');
+    const before = f.db.assistantTurn.length;
+    await f.controller.question(f.asUser(mallory), { message: 'what did I say about the deposit' }).catch(() => null);
+    expect(f.db.assistantTurn.length).toBe(before);
+  });
+
+  it('while a member of the organisation with no entry still gets one made, and the assistant answers him, as before', async () => {
+    const { controller, asUser, db, reports } = fixture();
+    const reply: any = await controller.question(asUser(readers.tom), { message: 'remind me to call Kariuki about the deposit' });
+    expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(db.person.filter((p) => p.linkedUserId === 'u-tom')).toHaveLength(1);
+    expect(reports.get).not.toHaveBeenCalled();
+  });
+});
+
+/* The detectors read what people asked Ask Groundwork. A guest is not on the list, so theirs is left out. */
+describe('the detectors', () => {
+  it('leave a guest\'s questions out of what they read', () => {
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const src = strip(readFileSync(join(__dirname, '..', 'detectors', 'detectors.service.ts'), 'utf8'));
+    const read = src.match(/assistantTurn\.findMany\(\{[\s\S]*?where:\s*\{([^}]*\}[^}]*\}[^}]*)\}/);
+    expect(read?.[1]).toMatch(/NOT:\s*\{\s*personExternalId:\s*\{\s*startsWith:\s*A_GUESTS_KEY_BEGINS\s*\}/);
   });
 });

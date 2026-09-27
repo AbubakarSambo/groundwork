@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { A_GUESTS_KEY_BEGINS } from '../assistant/a-guests-questions-are-kept-apart';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
@@ -744,8 +745,9 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
+    /* Never a guest's questions: a guest is not on this organisation's list, and what they ask is theirs. See a-guests-questions-are-kept-apart. */
     const assistantTurns = await this.prisma.assistantTurn.findMany({
-      where: { organizationId, role: 'person' },
+      where: { organizationId, role: 'person', NOT: { personExternalId: { startsWith: A_GUESTS_KEY_BEGINS } } },
       select: { personExternalId: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 2_000,

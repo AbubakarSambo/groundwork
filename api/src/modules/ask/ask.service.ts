@@ -1,7 +1,15 @@
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
+import { ReportsService } from '../reports/reports.service';
+import { GroundsService } from '../grounds/grounds.service';
+import { aGuestsOwnKey, isAGuestsKey } from '../assistant/a-guests-questions-are-kept-apart';
+import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import {
+  A_GUEST_IN_MORE_THAN_ONE, A_GUEST_WITH_NO_CHECK_IN, NEEDS_THE_REPORT, TheReportAsServed,
+  answerAGuest, fromTheServedReport, whichQuestion,
+} from './a-guest-asks-only-about-their-own-check-in';
 
 /**
  * ASK GROUNDWORK, IN THE PRODUCT (D1, U.14).
@@ -25,6 +33,9 @@ import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
  *   4. WHICH CHECK-IN IT IS ABOUT. Only one the person runs or takes part in, and not one that has
  *      ended. The assistant answers with the whole organisation in view (backend map, disagreement
  *      5); the check-in chosen is checked here, and is not yet read by the assistant (request 16).
+ *   5. A GUEST FROM ANOTHER ORGANISATION (decision 36). Never handed to the assistant, never put on
+ *      the list, and answered only about their own check-in, from the reads that check-in already
+ *      serves them. See a-guest-asks-only-about-their-own-check-in.
  */
 
 export const ONLY_YOURS = 'Only the person who asked these questions can read them.';
@@ -32,8 +43,9 @@ export const NOT_IN_IT = 'You are not part of this check-in.';
 export const NOTHING_WAITING = 'There is nothing waiting for your yes. Ask again if you still want it done.';
 export const SWITCHED_OFF =
   'Your organisation has switched off your place on its list of people, so Ask Groundwork cannot answer you. Ask an admin in your organisation to switch it back on.';
+/* Only ever thrown now if the member path is reached by a guest, which the guest path stops first. */
 export const A_GUEST_ASKS_IN_THEIR_CHECK_IN =
-  'You are here as a guest from another organisation, so Ask Groundwork does not answer you here. Ask anything about your check-in in the check-in itself.';
+  'You are a guest here from another organisation, so Ask Groundwork answers you only about your own check-in.';
 export const CONFIRM_YOUR_EMAIL =
   'Confirm your email address first, and then Ask Groundwork can answer you. Groundwork sent you a link to confirm it when you signed up.';
 
@@ -62,6 +74,9 @@ export class AskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly assistant: AssistantService,
+    /* Only a guest's answers read these, and only as that guest: see answerTheGuest. */
+    private readonly reports: ReportsService,
+    private readonly grounds: GroundsService,
   ) {}
 
   /**
@@ -74,11 +89,9 @@ export class AskService {
    *
    *   guest       they are a guest here, from another organisation (their membership here is
    *               GUEST). Decision 36: a guest is never added to this organisation's list of people,
-   *               so nothing is claimed or made, and nothing on the list is read for them. The
-   *               assistant cannot answer without an entry on the list, and scoping every one of its
-   *               lanes to one check-in is a larger change than this, so a guest is told plainly
-   *               that their questions go into their check-in, where the conversation already works
-   *               only within that check-in. Checked first, before any entry is looked at;
+   *               so nothing is claimed or made, and nothing on the list is read for them. They are
+   *               answered by answerTheGuest, only about their own check-in, and never by the
+   *               assistant. Checked first, before any entry is looked at;
    *   linked      an active entry already linked to this account, in this organisation;
    *   switchedOff an entry in this organisation that has been switched off, linked to this account
    *               or carrying this address. Whoever the directory switched off does not get back in
@@ -224,23 +237,89 @@ export class AskService {
     const [about, standing] = await Promise.all([this.whatItMayBeAbout(asker), this.standingOf(asker)]);
     /* Opening the panel writes nothing. A person with no entry yet can ask, and the entry is made on
        the first question; somebody who could not get one is told why, now, before they type. */
-    if (standing.is === 'guest') return { canAsk: false as const, why: A_GUEST_ASKS_IN_THEIR_CHECK_IN, about, turns: [] as AskTurn[] };
+    /* A guest asks, about their own check-ins only, and reads back their own questions only. */
+    if (standing.is === 'guest') return { canAsk: true as const, about, turns: await this.turnsKeptUnder(asker.organizationId, aGuestsOwnKey(asker.userId)) };
     if (standing.is === 'switchedOff') return { canAsk: false as const, why: SWITCHED_OFF, about, turns: [] as AskTurn[] };
     if (standing.is === 'unconfirmed') return { canAsk: false as const, why: CONFIRM_YOUR_EMAIL, about, turns: [] as AskTurn[] };
     if (!('person' in standing)) return { canAsk: true as const, about, turns: [] as AskTurn[] };
     const me = standing.person;
+    /* An entry whose external id is a guest's key reads nothing under it. See a-guests-questions-are-kept-apart. */
+    if (isAGuestsKey(me.externalId)) return { canAsk: true as const, about, turns: [] as AskTurn[] };
+    return { canAsk: true as const, about, turns: await this.turnsKeptUnder(asker.organizationId, me.externalId) };
+  }
 
+  /** The questions and answers kept under one key, oldest first. The caller decides whose key it is. */
+  private async turnsKeptUnder(organizationId: string, key: string): Promise<AskTurn[]> {
     const rows = await this.prisma.assistantTurn.findMany({
-      where: { organizationId: asker.organizationId, personExternalId: me.externalId },
+      where: { organizationId, personExternalId: key },
       select: { role: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: TURNS_SHOWN,
     });
-    const turns: AskTurn[] = rows
+    return rows
       .reverse()
       .filter((r) => (r.content ?? '').trim())
       .map((r) => ({ from: r.role === 'person' ? 'you' : 'groundwork', says: r.content, at: r.createdAt }));
-    return { canAsk: true as const, about, turns };
+  }
+
+  private async isAGuest(asker: Asker): Promise<boolean> {
+    const here = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId: asker.userId, organizationId: asker.organizationId } },
+      select: { role: true },
+    });
+    return here?.role === 'GUEST';
+  }
+
+  /**
+   * A GUEST'S QUESTION, ANSWERED ONLY ABOUT THEIR OWN CHECK-IN (decision 36).
+   *
+   * Which check-in: the one chosen under About, which checkTheCheckIn has already held to one they
+   * are in; or, if none was chosen, the only one they are in. The answer is built from two reads the
+   * product already serves this guest, each called as this guest and nobody else: the check-in's
+   * report as served to them, and their own check-ins on it. No entry on the list is looked up,
+   * claimed or made, nothing is written to the host but the guest's own question and answer, and
+   * those are kept under their own key, where only they read them back.
+   */
+  private async answerTheGuest(asker: Asker, input: { message: string; groundId?: string }) {
+    const message = withoutBankDetails(input.message);
+    const theirs = await this.whatItMayBeAbout(asker);
+    const ground = input.groundId
+      ? theirs.find((g) => g.id === input.groundId)
+      : theirs.length === 1 ? theirs[0] : undefined;
+    const question = whichQuestion(message);
+
+    let reply;
+    if (!ground) {
+      reply = { blocks: [{ type: 'text' as const, body: theirs.length ? A_GUEST_IN_MORE_THAN_ONE : A_GUEST_WITH_NO_CHECK_IN }], composedBy: 'rules' as const, lane: 'guest_which_check_in' };
+    } else if (question === 'next') {
+      const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
+      if (!mine) throw new ForbiddenException(NOT_IN_IT);
+      reply = answerAGuest(question, ground.label, { checkIns: mine.checkIns as any[] });
+    } else if (NEEDS_THE_REPORT[question]) {
+      const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
+      if (!mine) throw new ForbiddenException(NOT_IN_IT);
+      let report: TheReportAsServed | null = null;
+      try {
+        report = fromTheServedReport(await this.reports.get(ground.id, asker.userId, asker.organizationId), mine.participantId);
+      } catch (err) {
+        /* No report yet is an answer. Being refused the report is not, and nothing is said around it. */
+        if (err instanceof ForbiddenException) throw new ForbiddenException(NOT_IN_IT);
+        if (!(err instanceof NotFoundException)) throw err;
+      }
+      reply = answerAGuest(question, ground.label, { report });
+    } else {
+      reply = answerAGuest(question, ground.label, {});
+    }
+
+    const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
+    const key = aGuestsOwnKey(asker.userId);
+    await this.prisma.assistantTurn.createMany({
+      data: [
+        { organizationId: asker.organizationId, personExternalId: key, role: 'person', content: message },
+        { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy },
+      ],
+    }).catch(() => undefined);
+    return reply;
   }
 
   private async checkTheCheckIn(asker: Asker, groundId: string | undefined) {
@@ -252,6 +331,7 @@ export class AskService {
   /** A question. The answer is the assistant's own, for the asker alone. */
   async ask(asker: Asker, input: { message: string; groundId?: string }) {
     await this.checkTheCheckIn(asker, input.groundId);
+    if (await this.isAGuest(asker)) return this.answerTheGuest(asker, input);
     const me = await this.whoIsAsking(asker);
     return this.assistant.respond(asker.organizationId, me.id, input.message);
   }
@@ -264,6 +344,8 @@ export class AskService {
    * been answered or dropped, must not reach it.
    */
   async answer(asker: Asker, input: { proposalId: string; answer: 'yes' | 'no' }) {
+    /* Nothing is ever said back to a guest for a yes, so there is never anything waiting for one. */
+    if (await this.isAGuest(asker)) throw new ConflictException(NOTHING_WAITING);
     const me = await this.whoIsAsking(asker);
     const waiting = await this.prisma.assistantProposal.findFirst({
       where: { organizationId: asker.organizationId, personExternalId: me.externalId, state: 'PARKED' },

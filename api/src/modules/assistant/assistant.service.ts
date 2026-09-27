@@ -62,6 +62,7 @@ import {
 } from './a-suggestion-you-can-answer';
 import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -129,7 +130,8 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { externalId: true },
     });
-    const who = me?.externalId ?? null;
+    /* A guest's key is nobody's history, whichever entry carries it. See a-guests-questions-are-kept-apart. */
+    const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
 
     const reply = await this.answer(organizationId, personId, who, message);
 
