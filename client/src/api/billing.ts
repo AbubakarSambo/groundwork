@@ -32,6 +32,11 @@ export interface BillingStatus {
   onTheHouse?: { plan: SubscriptionPlan; until: string; freeTrial?: boolean } | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
+  /**
+   * U.19: false when nothing covers the organisation and the free plan has stopped for it (the free
+   * trial's switch is on and it is new). True, or absent from an older server, means the free plan.
+   */
+  onTheFreePlan?: boolean
   /** Admin only (U.19): the paid subscription invoices, newest first. */
   invoices?: { paidOn: string; amountCents: number; currency: string }[]
   /** Admin only: counts of what the organisation has done. */
@@ -52,6 +57,8 @@ export interface CanCreateGroundResult {
   freeReason?: string
   codeId?: string
   groundsUsed?: number
+  /** U.19: refused because the organisation has no plan and the free plan has stopped for it. */
+  noPlan?: boolean
 }
 
 /**

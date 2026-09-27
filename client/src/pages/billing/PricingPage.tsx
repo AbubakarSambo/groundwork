@@ -132,8 +132,12 @@ export function PricingPage() {
           </div>
         )}
 
-        {/* Free tier */}
-        <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
+        {/*
+          THE FREE PLAN, ONLY WHILE THE SWITCH IS OFF (Hafsah, 27 September). One switch, the free
+          trial's: while it is off the free plan is offered as today; once it is on, the trial above is
+          the only free period and new organisations pay, so the free plan is not offered to anybody.
+        */}
+        {!trialSentence && <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -179,7 +183,7 @@ export function PricingPage() {
               </div>}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Subscription plans */}
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>

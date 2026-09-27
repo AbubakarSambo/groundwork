@@ -134,6 +134,25 @@ describe('Grace, on the free plan', () => {
   })
 })
 
+describe('a new organisation once the switch is on, with no plan yet (U.19)', () => {
+  it('reads that it has no plan, and nothing about a free plan', async () => {
+    m.pricing = { ...m.pricing, trial: TRIAL_ON }
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 1, cap: 1 }, onTheFreePlan: false, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('No plan yet. Choose one below to open check-ins and add people.'))
+    expect(text()).toContain('Nothing is charged until you choose a plan.')
+    expect(text()).not.toMatch(/free plan|check-ins are free/i)
+    expect(screen.getAllByText('Move to this')).toHaveLength(5)
+  })
+
+  it('an organisation already on the free plan still reads it, after the switch', async () => {
+    m.pricing = { ...m.pricing, trial: TRIAL_ON }
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 3, cap: 5 }, onTheFreePlan: true, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('The free plan, for up to 10 check-ins. 3 of 5 people, including you.'))
+  })
+})
+
 describe('Grace, inside the free trial’s months', () => {
   const inDays = (d: number) => new Date(Date.now() + d * 24 * 3600 * 1000).toISOString()
 

@@ -844,6 +844,8 @@ export function CreateGroundPage() {
   /* True when the check itself failed, which is neither allowed nor refused. */
   const [billingUnknown, setBillingUnknown] = useState(false)
   const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
+  /* U.19: the server's refusal when the organisation has no plan and the free plan has stopped for it. */
+  const [noPlan, setNoPlan] = useState<string | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
@@ -889,6 +891,7 @@ export function CreateGroundPage() {
         setBillingChecked(true)
         setBillingLoading(false)
         if (res.groundsUsed != null) setGroundsUsed(res.groundsUsed)
+        setNoPlan(res.noPlan ? (res.reason ?? null) : null)
         if (res.allowed) {
           setBillingFree(true)
         } else {
@@ -1183,7 +1186,8 @@ export function CreateGroundPage() {
             {canCreate.data && !canCreate.data.allowed && (
               <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                  You have used all {freeLimit} of your free check-ins
+                  {/* U.19: once the free trial's switch is on, a new organisation has no free check-ins at all. */}
+                  {canCreate.data.noPlan ? 'No plan yet' : `You have used all ${freeLimit} of your free check-ins`}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                   {canCreate.data.reason ?? 'Subscribe to open more.'} You can still look
@@ -1681,9 +1685,9 @@ export function CreateGroundPage() {
             {!billingLoading && billingChecked && !billingFree && !billingUnknown && (
               <div>
                 <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>{noPlan ? 'No plan yet' : 'Subscribe to create more'}</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-                    Your free plan includes {freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.
+                    {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.`}
                   </div>
                   <a
                     href="/pricing"

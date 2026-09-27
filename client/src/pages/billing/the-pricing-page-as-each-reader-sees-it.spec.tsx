@@ -69,6 +69,20 @@ describe('a visitor who is not signed in', () => {
     expect(text()).not.toMatch(/no trial that expires|No proration surprises/)
   })
 
+  it('while the switch is off, reads the free plan as today, but never as theirs', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('$410/mo'))
+    expect(text()).toContain('forever')
+    expect(text()).not.toContain('Your current plan')
+  })
+
+  it('once the switch is on, the free plan is not offered at all (Hafsah, 27 September)', async () => {
+    m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 3 } }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('3 months free'))
+    expect(text()).not.toMatch(/forever|Start free with|Your current plan|Included with every plan/)
+  })
+
   it('reads the one shared sentence and the trial’s card once it is switched on', async () => {
     m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 3 } }
     renderIt()

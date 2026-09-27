@@ -29,13 +29,15 @@ function people(count: number, cap: number | null | undefined, includingYou = fa
   return `${count} of ${cap} people${includingYou ? ', including you' : ''}.`
 }
 
-export type WhatCovers = 'paid' | 'paused' | 'on the house' | 'free'
+export type WhatCovers = 'paid' | 'paused' | 'on the house' | 'free' | 'no plan'
 
 export function whatCoversThem(status: BillingStatus | undefined): WhatCovers {
   const sub = status?.subscription
   if (sub?.plan && sub.status === 'active') return 'paid'
   if (sub?.plan && sub.status === 'paused') return 'paused'
   if (status?.onTheHouse) return 'on the house'
+  /* Only once the free trial's switch is on, for an organisation created after it (U.19). */
+  if (status?.onTheFreePlan === false) return 'no plan'
   return 'free'
 }
 
@@ -53,6 +55,7 @@ export function thePlanLine(status: BillingStatus | undefined, pricing: LivePric
     const free = status!.onTheHouse!
     return `${nameOf(free.plan)}, free until ${whenItWas(free.until, 'full')}. ${people(count, cap)}`
   }
+  if (covers === 'no plan') return 'No plan yet. Choose one below to open check-ins and add people.'
   /* The free plan's people include the person who signed up, and every message says so. */
   return `The free plan, for up to ${freeGrounds} check-ins. ${people(count, cap, true)}`
 }
