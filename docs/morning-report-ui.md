@@ -50,6 +50,11 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
 
+**Two more privacy leaks, found by the U.5 review and being fixed:** the check-ins list named, to a
+participant, the other people on a check-in whose own page hides them from each other; and the check-in's
+own read gave a participant the team's report, with the lead's whole account in it, before it had been
+shared.
+
 **A serious bug, older than this work, found during the U.4 review:** "Leave <organisation>" in Settings
 promises "You will lose access to Kilima Test Estates immediately.", but the server switches off the
 person's whole account (`leaveOrg` in `api/src/modules/users/users.service.ts`, around line 708). So
@@ -120,7 +125,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
-| U.5 Today and the check-ins list | Yes | Waiting |
+| U.5 Today and the check-ins list | Yes | Sent back on 27 September, for two privacy leaks among other things; being fixed |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
