@@ -41,6 +41,8 @@ import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
 import { TimeSheetsPage } from '@/pages/suites/TimeSheetsPage'
+import { ReviewsBoardPage } from '@/pages/suites/ReviewsBoardPage'
+import { ReviewPage } from '@/pages/suites/ReviewPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
@@ -464,6 +466,8 @@ export default function App() {
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
+            <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/reviews/:id" element={<RequireOrgSetup><ReviewPage /></RequireOrgSetup>} />
             {/* Ask Groundwork as its own page (D1, #/chat), which is how a phone opens it. */}
             <Route path="/chat" element={<RequireOrgSetup><AskPage /></RequireOrgSetup>} />
             {/*

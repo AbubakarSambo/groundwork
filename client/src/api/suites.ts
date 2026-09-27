@@ -86,3 +86,51 @@ export const timeSheetsApi = {
   approve: async (weekOf: string, personId: string): Promise<TimeBoard> =>
     (await apiClient.post(`/suites/time/weeks/${weekOf}/people/${personId}/approve`)).data,
 }
+
+/** Performance reviews (GET /suites/reviews/board and /suites/reviews/:id). */
+export interface NextReview {
+  dueId: string
+  name: string
+  writtenWith: string | null
+  dueOn: string
+  stands: 'ready' | 'started' | 'decided'
+  reviewId: string | null
+  mayStart: boolean
+}
+export interface ReviewsBoard { every: string | null; next: NextReview[] }
+export interface Noticed { says: string; mark: 'proven' | 'said' }
+export interface ReviewForTheWriter {
+  reader: 'writer' | 'lead' | 'admin'
+  id: string
+  name: string
+  firstName: string
+  writtenWith: string | null
+  writtenWithFirstName: string | null
+  dueOn: string
+  noticed: Noticed[]
+  managersWords: string | null
+  theirView: string | null
+  decision: { says: string; reasons: string } | null
+  mayWrite: boolean
+}
+export interface ReviewForThePerson {
+  reader: 'person'
+  id: string
+  firstName: string
+  writtenWithFirstName: string | null
+  dueOn: string
+  noticed: Noticed[]
+  theirView: string | null
+  decision: { says: string; reasons: string } | null
+}
+export type AReview = ReviewForTheWriter | ReviewForThePerson
+
+export const reviewsApi = {
+  board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board')).data,
+  start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
+  one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`)).data,
+  words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
+  view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
+    (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
+}

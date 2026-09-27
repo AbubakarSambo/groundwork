@@ -1997,3 +1997,10 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 @media (max-width: 767px) {
   .gw-time-agreed li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+/* Performance reviews (U.17, E suite-reviews.txt). */
+.gw-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 20px 0 16px; }
+.gw-review-grid .gw-you-card { margin-bottom: 0; }
+.gw-review-noticed { list-style: none; margin: 8px 0 0; padding: 0; }
+.gw-review-noticed li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
+.gw-review-said { font-family: var(--gw-font-name); font-size: 16px; line-height: 1.5; }
+@media (max-width: 1023px) { .gw-review-grid { grid-template-columns: minmax(0, 1fr); } }
