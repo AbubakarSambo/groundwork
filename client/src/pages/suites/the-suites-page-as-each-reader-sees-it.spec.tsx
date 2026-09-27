@@ -107,12 +107,12 @@ describe('Grace, an admin, reads the Suites page', () => {
   })
 
   it('never offers a door to a board that is not built yet', async () => {
-    /* U.17, to-dos: its board now exists, so this checks customers and deals, still to build. */
-    open(GRACE, withOn('customers'))
+    /* U.17, to-dos and customers: their boards now exist, so this checks equipment, still to build. */
+    open(GRACE, withOn('equipment', { keeper: 'u-k' }))
     await screen.findByRole('heading', { level: 2, name: 'People' })
-    expect(card('Customers and deals').textContent).toContain('On')
+    expect(card('Equipment').textContent).toContain('On')
     expect(screen.queryByText('Open its board')).toBeNull()
-    expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/customers')
+    expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/equipment')
   })
 
   it('"Open its board" is on the onboarding suite once it is on, and goes to its board', async () => {

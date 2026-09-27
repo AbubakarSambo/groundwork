@@ -47,6 +47,7 @@ import { LeavingBoardPage } from '@/pages/suites/LeavingBoardPage'
 import { RoleMapPage } from '@/pages/suites/RoleMapPage'
 import { SpendingPage } from '@/pages/suites/SpendingPage'
 import { TodosPage } from '@/pages/suites/TodosPage'
+import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
@@ -476,6 +477,7 @@ export default function App() {
             <Route path="/suite/roles" element={<RequireOrgSetup><RoleMapPage /></RequireOrgSetup>} />
             <Route path="/suite/spend" element={<RequireOrgSetup><SpendingPage /></RequireOrgSetup>} />
             <Route path="/suite/todos" element={<RequireOrgSetup><TodosPage /></RequireOrgSetup>} />
+            <Route path="/suite/customers" element={<RequireOrgSetup><CustomersPage /></RequireOrgSetup>} />
             {/* Ask Groundwork as its own page (D1, #/chat), which is how a phone opens it. */}
             <Route path="/chat" element={<RequireOrgSetup><AskPage /></RequireOrgSetup>} />
             {/*

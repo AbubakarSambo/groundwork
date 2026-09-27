@@ -211,3 +211,12 @@ export interface TodoList {
 export const todosApi = {
   get: async (): Promise<TodoList> => (await apiClient.get('/suites/todos/board')).data,
 }
+
+/** Customers and deals (GET /suites/customers/board). */
+export interface CustomerList {
+  customers: { id: string; name: string; standing: string | null; owner: string | null; lastContact: string | null }[]
+}
+
+export const customersApi = {
+  get: async (): Promise<CustomerList> => (await apiClient.get('/suites/customers/board')).data,
+}
