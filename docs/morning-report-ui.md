@@ -876,6 +876,56 @@ said in a check-in be shown to the people in it. **My recommendation:** for a ch
 show that person the brief only after the lead has read it back and chosen to share it, or show them a
 version written for them; and show the brief as it is to everyone else. I have not changed it.
 
+**What it would take to bring back "When I end it" (a check-in with no end), found by reading the code
+on 27 September; nothing was built.**
+
+Today every check-in has a length. The column `timelineDays` cannot be empty, and when the lead says
+nothing, the situation's usual length is filled in (for example 90 days for a performance plan). About
+twenty files read it. What assumes an end, and whose code it is:
+
+1. **The conversation, which is the engine's.** `positionInRun` in
+   `api/src/modules/conversation/where-in-the-run.ts` decides whether a session is the first, a middle
+   one or the last, and the conversation changes its questions for the last one. With no planned total,
+   it counts the total as 1, so every session after the first would be treated as the last: Groundwork
+   would try to wrap up the check-in every time. The prompts also fall back to "4 sessions"
+   (`prompt-library.ts`). Both are the engine's code, so the engine workspace would have to add an
+   "ongoing" state that is never "last" until the lead ends it.
+2. **Reports, which are the engine's.** The report and the synthesis are told how many sessions are
+   planned (`reports.service.ts`), for lines such as how far through the run it is. With no end, those
+   lines must be left out, not guessed. Engine work.
+3. **The board's sections.** Which sections a check-in's board shows depends partly on how long the run
+   is (`sectionsForARunOf` in the board module, which is shared ground). It already copes with "not
+   known", but that should be checked for an ongoing check-in.
+4. **Out of time, and the daily sweep.** Every morning, a check-in past its length is marked "out of
+   time" (STALLED) by `grounds.cron.ts`, which also stops its charges. An open-ended check-in would never
+   be swept. That is correct, but it means it runs, and is billed, until the lead ends it. This is the
+   screens' code, and small to change.
+5. **Ending it.** The board offers "Decide how it ends" only near the last planned session (U.11). With
+   no end, that offer never appears, so the lead needs a way to end it at any time, and perhaps a gentle
+   nudge after a long quiet spell. This is the screens' work.
+6. **Counts on screen.** "Session 3 of 12", "12 in all" and "Ends 26 Dec" appear on the setup, the
+   board, Today and the check-ins list. Each already handles an unknown total in places, but each would
+   need a plain wording for an ongoing check-in, such as "Session 3. It runs until you end it." Screens'
+   work.
+7. **Billing.** The published plans are flat monthly prices, so an ongoing check-in costs nothing
+   extra. The older per-check-in charge stops when the sweep in point 4 marks a check-in out of time, so
+   with no end it would stop only when the lead ends it. That is a billing rule to confirm.
+8. **Patterns after three periods** (decisions rule 8) count periods, not the end, so they are not
+   affected.
+9. **Reminders** follow the rhythm, not the end, so they are not affected.
+10. **The developer API** takes a length when a check-in is made from outside
+    (`a-check-in-a-customer-can-run.service.ts`). Making it optional would be an addition, so existing
+    callers would keep working.
+
+**The database change** is small: allow `timelineDays` to be empty, or add an "ongoing" flag, with a
+migration.
+
+**My recommendation:** bring it back in two steps. First, ask the engine workspace for an ongoing run
+that is never "last" until the lead ends it, and that leaves "how far through" out of reports (points 1
+and 2). Then, once that is in, build the screens' part (points 4 to 6), with "End it" available at any
+time on an ongoing check-in. Until the engine's part exists, keep "When I end it" off the screen, as now,
+because the conversation would otherwise try to close the check-in every session.
+
 ### 18. Context (U.7): what needs you
 
 1. **A private document and everyone's questions.** Under "Only you", the prototype's "Add a
