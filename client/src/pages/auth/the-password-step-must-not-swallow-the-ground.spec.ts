@@ -91,8 +91,9 @@ describe('the password step keeps hold of where the person was going', () => {
 
   it('an explicit destination is preserved through the detour', () => {
     /** An invite or report link must still land there after the password, not on a generic list. */
-    /* U.2: wrapped in confirmFirst, as above. */
-    expect(CODE).toMatch(/return confirmFirst\(passwordStep\(fromParam\) \?\? \{ kind: 'redirect', to: fromParam \}\)/)
+    /* U.2: wrapped in confirmFirst, as above. U.3 review: the destination is `goingTo`, the one on the
+       URL or, when the emailed link has none, the one the server kept with the link. */
+    expect(CODE).toMatch(/return confirmFirst\(passwordStep\(goingTo\) \?\? \{ kind: 'redirect', to: goingTo \}\)/)
   })
 
   it('and a commit FAILURE stays on this screen instead', () => {
