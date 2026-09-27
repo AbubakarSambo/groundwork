@@ -567,6 +567,32 @@ sign in.
 Until then I keep building the next modules, with their tests, and leave each one "built, not
 reviewed" in this report.
 
+**What changed since U.2, found on 27 September (you asked).**
+
+- **Nothing in the product and nothing in the kit's safety rules changed.** The last change under
+  `.claude/` was your kit update 7, which came before the U.2 reviews, and those reviews signed in fine.
+- **What refuses is Claude Code's own auto-mode safety check,** which judges each action a helper
+  takes, separately from the kit's rules. During U.2, the reviewer read the journey's test password and
+  typed it into the sign-in page in the browser. During the U.3 review, which ran in a new session
+  after the Mac froze, the reviewer tried to copy that password into a scratch file so it could sign in
+  from the command line. The check called that "Credential Materialization" and refused it. It then
+  also refused the reviewer's follow-up commands, and opening the invitation page with a test token,
+  as the same kind of action. So the difference is how the reviewer tried to use the password, judged
+  afresh in a new session. The check applies only to my helpers' actions on this computer.
+- **A real person is not blocked from signing in.** The check never runs for someone using the product.
+  To be sure the product's sign-in still works after all the changes since U.2, I ran every sign-in
+  test (241 of 241 pass, including the one proving existing passwords still sign in under the new
+  rules). I also started the API briefly and sent a sign-in for a made-up address. It answered normally
+  with the product's one answer at the door: "If that address has an account here, we have emailed you
+  a way in, so check your inbox. If you have a password and it did not work, check it and try again."
+  No real password was read or used for this.
+- **I changed no safety setting,** and the helpers did not try to get round the refusal.
+
+**What would let the reviews run:** the same three choices as above. Option 1, allowing a helper to
+read the local test password for local reviews, can only be given by you. A simpler version of option
+2 may also work: you ask in chat for the reviewer to make throwaway local accounts with an
+`@example.test` address and sign in through the browser, as the U.2 reviews did.
+
 ### 15. People, roles and access (U.4): what needs you
 
 1. **Admins and performance plans. A privacy question.** Today the backend lets every admin read and
