@@ -12,6 +12,7 @@ import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
+import { EquipmentService } from './the-equipment.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -42,6 +43,15 @@ class BudgetDto {
   @IsNumber() amount!: number;
 }
 
+class EquipmentChangeDto {
+  @IsOptional() @IsString() @MaxLength(200) holderId?: string | null;
+  @IsOptional() @IsString() @MaxLength(300) condition?: string | null;
+}
+
+class EquipmentItemDto extends EquipmentChangeDto {
+  @IsString() @MaxLength(120) name!: string;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -65,6 +75,7 @@ export class SuitesController {
     private readonly spend: SpendingService,
     private readonly todos: TodosService,
     private readonly customers: CustomersService,
+    private readonly equipment: EquipmentService,
   ) {}
 
   @Get()
@@ -221,6 +232,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'Customers and deals, while the suite is on, for an admin or the lead of the team' })
   customersBoard(@CurrentUser() user: CurrentUserData) {
     return this.customers.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('equipment/board')
+  @ApiOperation({ summary: 'Equipment: who has what, and how it is. Admins only.' })
+  equipmentBoard(@CurrentUser() user: CurrentUserData) {
+    return this.equipment.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('equipment/items')
+  @ApiOperation({ summary: 'An admin adds an item, with who has it and how it is' })
+  addEquipment(@CurrentUser() user: CurrentUserData, @Body() dto: EquipmentItemDto) {
+    return this.equipment.add({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Put('equipment/items/:id')
+  @ApiOperation({ summary: 'An admin changes who has an item, or how it is' })
+  changeEquipment(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: EquipmentChangeDto) {
+    return this.equipment.change({ userId: user.id, organizationId: user.organizationId }, id, dto);
   }
 
   @Put(':key')

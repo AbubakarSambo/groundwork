@@ -474,6 +474,8 @@ model Organization {
   teamBudgets        TeamBudget[]
   /// Customers and deals: where each customer stands, as the engine writes it (E9, U.17).
   customerStandings  CustomerStanding[]
+  /// Equipment: who has which laptop, phone or demo freezer, and how it is (E10, U.17).
+  equipmentItems     EquipmentItem[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2432,6 +2434,27 @@ model CustomerStanding {
 
   @@index([organizationId, counterpartyExternalId, createdAt])
   @@map("customer_standings")
+}
+
+/// ONE PIECE OF EQUIPMENT (E10, the equipment suite, U.17): its name, such as "Laptop 07", who has it
+/// (a person in the staff directory, or nobody), and how it is, in their own words, such as "Broken
+/// screen." An admin adds and changes it; people will also update it by telling Groundwork, said back
+/// and confirmed first (docs/requests-to-engine.md, request 29). Admins only
+/// (suites/the-equipment.service.ts). Never evidence about how anybody works.
+model EquipmentItem {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  name             String   @db.VarChar(120)
+  holderExternalId String?  @map("holder_external_id")
+  condition        String?  @db.VarChar(300)
+  updatedById      String   @map("updated_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name])
+  @@map("equipment_items")
 }
 
 /// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due
