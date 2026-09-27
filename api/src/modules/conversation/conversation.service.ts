@@ -1,3 +1,4 @@
+import { theLeadByName } from './the-lead-has-a-name';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -1016,7 +1017,7 @@ export class ConversationService {
     ].filter(Boolean).join(' ').trim() || null;
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
-    const opening = quoted.text;
+    const opening = await this.withTheLeadByName(checkIn as any, quoted.text);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -1034,6 +1035,24 @@ export class ConversationService {
     return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
   }
 
+
+  /**
+   * "THE PERSON WHO SET THIS UP" BECOMES THEIR NAME BEFORE A TURN IS SAVED. See the-lead-has-a-name.
+   *
+   * Looked up only when the phrase is there, so an ordinary turn costs nothing. Not for the lead's
+   * own conversation: the phrase there would be about the reader, and the setup block already tells
+   * the model to say "you".
+   */
+  private async withTheLeadByName(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, text: string): Promise<string> {
+    if (!text || !/\bperson who set this up\b/i.test(text)) return text;
+    if (checkIn?.participant?.partyType === PartyType.INITIATOR || !checkIn?.groundId) return text;
+    const lead = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true } } } }) ?? Promise.resolve(null))
+      .then((g: any) => (g?.initiator?.firstName ?? '').trim() || null)
+      .catch(() => null);
+    const named = theLeadByName(text, lead);
+    if (named.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: "the person who set this up" was put back as the lead's name.`);
+    return named.text;
+  }
 
   /**
    * A DOCUMENT'S NUMBERS WAIT FOR A YES, AND THIS IS THE YES.
@@ -2135,6 +2154,7 @@ export class ConversationService {
         );
       }
       hadCloseMarker = stripped.hadMarker;
+      reply = await this.withTheLeadByName(checkIn as any, reply);
       aiTurn = await this.prisma.conversationTurn.create({
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
@@ -2669,6 +2689,7 @@ export class ConversationService {
       const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\n\n');
       if (ourOwnWords) reply = `${ourOwnWords}\n\n${reply}`;
 
+      reply = await this.withTheLeadByName(checkIn as any, reply);
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
@@ -3405,6 +3426,9 @@ export class ConversationService {
       partyType: checkIn.participant.partyType,
       /* Who is answering, by first name where they have one. See TALKING_TO in the block. */
       readerName: ((checkIn.participant as any)?.user?.firstName ?? '').trim() || null,
+      /* Whoever set it up, by first name, so the setup block never says "the person who set this up".
+         A lead is named to everybody in their own check-in, so this is no wider than the report. */
+      setUpBy: (((ground.participants ?? []).find((p) => p.partyType === PartyType.INITIATOR) as any)?.user?.firstName ?? '').trim() || null,
       sessionNumber: checkIn.sessionNumber,
       /**
        * HOW LONG THIS RUN IS, WHICH THE PROMPT WAS GUESSING AT.
