@@ -5,12 +5,18 @@
  * open. Now it says only what is true: with check-ins, open one; with none, one will appear here when
  * somebody adds you; while the list is not known yet, neither.
  */
-export function YouAreIn({ checkIns }: { checkIns: number | null }) {
+export function YouAreIn({ checkIns, mayStart = false }: {
+  checkIns: number | null
+  /** Whether this person may open check-ins themselves; then the line with none says they can start one (U.5 review). */
+  mayStart?: boolean
+}) {
   const then = checkIns === null
     ? 'You will see your check-ins and reports here.'
     : checkIns > 0
       ? 'You will see your check-ins and reports here. Open one to take part.'
-      : 'You have no check-ins yet. When someone adds you to one, you will see it here.'
+      : mayStart
+        ? 'You have no check-ins yet. Start one, or when someone adds you to one, you will see it here.'
+        : 'You have no check-ins yet. When someone adds you to one, you will see it here.'
   return (
     <div className="gw-today-in" role="status">
       <b>You are in.</b> {then}

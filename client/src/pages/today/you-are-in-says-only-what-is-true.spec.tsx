@@ -18,11 +18,11 @@ import { groundsApi } from '@/api/grounds'
 
 const AMA = { id: 'u-a', firstName: 'Ama', role: 'MEMBER', organizationName: 'Coamana' }
 
-function open(grounds: any[]) {
+function open(grounds: any[], user: any = AMA) {
   ;(todayApi.get as any).mockResolvedValue({ count: 0, line: null, needs: [], comingUp: [] })
   ;(groundsApi.list as any).mockResolvedValue(grounds)
   vi.spyOn(apiClient, 'get').mockResolvedValue({ data: {} } as any)
-  useAuthStore.setState({ user: AMA, token: 't', isAuthenticated: true } as any)
+  useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today?welcome=1']}><TodayPage /></MemoryRouter></QueryClientProvider>)
 }
@@ -35,6 +35,11 @@ describe('"You are in." on Today', () => {
     open([])
     await vi.waitFor(async () => expect(await said()).toBe('You are in. You have no check-ins yet. When someone adds you to one, you will see it here.'))
     expect(document.body.textContent).not.toMatch(/Open one|start contributing/)
+  })
+
+  it('to someone who may open check-ins, with none yet, says they can start one (U.5 review)', async () => {
+    open([], { ...AMA, role: 'LEAD', mayOpenCheckIns: true })
+    await vi.waitFor(async () => expect(await said()).toBe('You are in. You have no check-ins yet. Start one, or when someone adds you to one, you will see it here.'))
   })
 
   it('with a check-in, says to open one', async () => {
