@@ -1037,8 +1037,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
       .map((r) => ({ ...r, text: aNameInTheirWordsIsTheLabel(r.text, namesInThisCheckIn) }));
     /* THE LINES A QUOTE IN THIS REPORT MAY COME FROM: this same read, before anything is added to it,
        and the lead's own words at set-up. See a-quote-is-what-they-said. */
+    /* And what they said they would do, and when, where each is their own words (the commitment row is
+       stamped as it is written), because "what the record shows over time" quotes them. */
+    const theirPromises = await (this.prisma.groundCommitment?.findMany?.({
+      where: { groundId },
+      select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const whatAQuoteMayBe = theLinesAQuoteMayComeFrom(
-      theRecordAsItIs as any[],
+      [
+        ...(theRecordAsItIs as any[]),
+        ...(theirPromises as any[]).map((c) => ({ text: c.text, saidWordForWord: c.saidWordForWord === true })),
+        ...(theirPromises as any[]).map((c) => ({ text: c.whenSaid, saidWordForWord: c.whenSaidWordForWord === true })),
+      ],
       [(ground as any).brief, ...(parties as any[]).flatMap((p) => [p.remitAsGiven, p.roleAsDescribed])],
     );
 

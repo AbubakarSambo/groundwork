@@ -208,7 +208,7 @@ describe('the report pass runs once, on everything stored', () => {
 
   it('from the same record read the report is written from, and never from a transcript', () => {
     expect(src).toMatch(/const records = theRecordAsItIs\.map\(withTheDisputeAttached\)/);
-    expect(src).toMatch(/theLinesAQuoteMayComeFrom\(\s*theRecordAsItIs/);
+    expect(src).toMatch(/theLinesAQuoteMayComeFrom\(\s*\[\s*\.\.\.\(theRecordAsItIs as any\[\]\)/);
     expect(src).not.toMatch(/conversationTurn\./);
   });
 
@@ -241,5 +241,37 @@ describe('whether a record line is their own words, stamped when it is written',
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(src).toMatch(/const whatTheyTyped = theirs\.map\(/);
     expect(src).toMatch(/saidWordForWord: saidWordForWord\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
+  });
+});
+
+describe('what they said they would do is quoted only where it is their words too', () => {
+  const strip = (f: string) => fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const conversation = strip(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'));
+  const grounds = strip(path.join(__dirname, '..', 'grounds', 'grounds.service.ts'));
+  const reports = strip(path.join(__dirname, 'reports.service.ts'));
+
+  it('a commitment from a check-in is stamped against what the person typed in that session', () => {
+    expect(conversation).toMatch(/saidWordForWord: saidWordForWord\(c\.action\.slice\(0, 400\), said\)/);
+    expect(conversation).toMatch(/whenSaidWordForWord: c\.when \? saidWordForWord\(c\.when, said\) : false/);
+  });
+
+  it('a lead editing its words makes it no longer theirs', () => {
+    expect(grounds).toMatch(/groundCommitment\.update\(\{ where: \{ id: thing\.id \}, data: \{ text: change\.newText\.trim\(\)\.slice\(0, 400\), saidWordForWord: false \} \}\)/);
+  });
+
+  it('and the report may quote a commitment, or its "when", only where it is stamped', () => {
+    expect(reports).toMatch(/\(theirPromises as any\[\]\)\.map\(\(c\) => \(\{ text: c\.text, saidWordForWord: c\.saidWordForWord === true \}\)\)/);
+    expect(reports).toMatch(/\(theirPromises as any\[\]\)\.map\(\(c\) => \(\{ text: c\.whenSaid, saidWordForWord: c\.whenSaidWordForWord === true \}\)\)/);
+  });
+
+  it('so a commitment line keeps its quote where the words were theirs, and loses the line where they were not', () => {
+    const lines = theLinesAQuoteMayComeFrom([
+      { text: 'I will keep calling them', saidWordForWord: true },
+      { text: 'this week', saidWordForWord: true },
+      { text: 'I will escalate to the head of credit', saidWordForWord: false },
+    ]);
+    expect(whatTheySaidInQuotes('Participant A: "I will keep calling them" - said in session 3; by their own timing, "this week"; nobody has said whether it happened.', lines).text)
+      .toBe('Participant A: "I will keep calling them" - said in session 3; by their own timing, "this week"; nobody has said whether it happened.');
+    expect(whatTheySaidInQuotes('Participant A: "I will escalate to the head of credit" - said in session 3.', lines).text).toBe('');
   });
 });

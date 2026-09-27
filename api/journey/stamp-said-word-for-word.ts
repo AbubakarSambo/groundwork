@@ -35,6 +35,27 @@ async function main() {
       yes += theirs.length;
       no += notTheirs.length;
     }
+    /* And each commitment, against what its person typed in the session they said it in. */
+    let promised = 0;
+    let promisedTheirs = 0;
+    const promises = await prisma.groundCommitment.findMany({
+      where: { source: 'CHECK_IN', statedInSession: { not: null }, participantId: { not: null } },
+      select: { id: true, text: true, whenSaid: true, participantId: true, statedInSession: true },
+    });
+    for (const c of promises) {
+      const typed = (await prisma.conversationTurn.findMany({
+        where: { role: 'PERSON', checkIn: { participantId: c.participantId!, sessionNumber: c.statedInSession! } },
+        select: { content: true },
+      })).map((t) => t.content);
+      const theirs = saidWordForWord(c.text, typed);
+      await prisma.groundCommitment.update({
+        where: { id: c.id },
+        data: { saidWordForWord: theirs, whenSaidWordForWord: c.whenSaid ? saidWordForWord(c.whenSaid, typed) : false },
+      });
+      promised += 1;
+      if (theirs) promisedTheirs += 1;
+    }
+    console.log(`${promised} commitments stamped: ${promisedTheirs} in the person's own words.`);
   } finally {
     await prisma.$disconnect();
   }

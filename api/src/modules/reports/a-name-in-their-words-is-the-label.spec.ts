@@ -111,7 +111,7 @@ describe('a name in their words is the label', () => {
     const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(src).toMatch(/const records = theRecordAsItIs\.map\(withTheDisputeAttached\)\s*\.map\(\(r\) => \(\{ \.\.\.r, text: aNameInTheirWordsIsTheLabel\(r\.text, namesInThisCheckIn\) \}\)\)/);
     /* And the quotes are put back from the record as it is, never from the labelled copy. */
-    expect(src).toMatch(/theLinesAQuoteMayComeFrom\(\s*theRecordAsItIs/);
+    expect(src).toMatch(/theLinesAQuoteMayComeFrom\(\s*\[\s*\.\.\.\(theRecordAsItIs as any\[\]\)/);
     expect(src).toContain('.map((r) => theirWords(String(r.text ??');
     expect(src).toContain('.map((c) => theirWords(String(c.text)))');
     expect(src).toMatch(/leadName: \(parties as any\[\]\)[^\n]*\n\s*namesInThisCheckIn,/);

@@ -6426,6 +6426,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           status: 'UNKNOWN',
           source: 'CHECK_IN',
           statedInSession: row.sessionNumber,
+          /* Whether the action and its "when" are their own words, from what they typed in this
+             session. Only then may a report quote them. See reports/a-quote-is-what-they-said. */
+          saidWordForWord: saidWordForWord(c.action.slice(0, 400), said),
+          whenSaidWordForWord: c.when ? saidWordForWord(c.when, said) : false,
         },
       }).then(() => { written += 1; })
         .catch((err: any) => this.logger.warn(`Could not write a commitment from ${checkInId}: ${err?.message}`));

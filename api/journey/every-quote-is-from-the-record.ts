@@ -64,8 +64,11 @@ async function main() {
       }
       /* Only the lines that are the person's own words, as the report may quote them. */
       const lines = await prisma.recordEntry.findMany({ where: { participant: { groundId: run.groundId }, saidWordForWord: true }, select: { text: true } });
+      const promises = await prisma.groundCommitment.findMany({ where: { groundId: run.groundId }, select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true } });
       const record = [
         ...lines.map((l) => l.text.replace(/\s*\[INFERRED:[^\]]*\]/gi, '')),
+        ...promises.filter((c) => c.saidWordForWord).map((c) => c.text),
+        ...promises.filter((c) => c.whenSaidWordForWord && c.whenSaid).map((c) => c.whenSaid!),
         ground.brief ?? '',
         ...ground.participants.flatMap((p) => [p.roleAsDescribed ?? '', p.remitAsGiven ?? '']),
       ].filter(Boolean).map((t) => t.normalize('NFC'));
