@@ -161,7 +161,15 @@ export function whatNeedsYou(
           key: `turn-${g.id}`,
           kind: 'decide',
           title: next.sessionNumber === 1 ? `Your first check-in for ${g.label}` : `Your own check-in for ${g.label}`,
-          detail: days > A_WHILE ? `It opened ${days} days ago.` : null,
+          /*
+           * The prototype's second line (today-lead.txt). "Everyone else's answers are read against
+           * yours" is true only of the lead's own first check-in, so only they are told it. Nothing
+           * in the product holds a closing time, so "It closes at 6pm" is never said.
+           */
+          detail: [
+            next.sessionNumber === 1 && iRunIt ? 'About two minutes. Everyone else’s answers are read against yours.' : 'About two minutes.',
+            days > A_WHILE ? `It opened ${days} days ago.` : null,
+          ].filter(Boolean).join(' '),
           action: { label: 'Start it', to: `/checkin/${next.id}` },
           ...base,
         };

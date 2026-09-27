@@ -77,9 +77,9 @@ describe('Today, as the lead who runs the sales team', () => {
       'Your own check-in for Leadership, Q3',
     ]);
     expect(r.needs.map((n) => [n.detail, n.action.label, n.action.to])).toEqual([
-      [null, 'Start it', '/checkin/f1'],
+      ['About two minutes. Everyone else’s answers are read against yours.', 'Start it', '/checkin/f1'],
       ['The last session is done.', 'Decide', '/grounds/g-kwame'],
-      [null, 'Start it', '/checkin/l2'],
+      ['About two minutes.', 'Start it', '/checkin/l2'],
     ]);
     expect(r.count).toBe(3);
   });
@@ -116,7 +116,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
     open.checkIns = open.checkIns.filter((c) => c.id !== 'c4');
     const mine = whatNeedsYou([open], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(mine.line).toBe('Your check-in for Sales team, Q3 is open.');
-    expect(mine.needs[0]).toMatchObject({ title: 'Your own check-in for Sales team, Q3', detail: 'It opened 9 days ago.' });
+    expect(mine.needs[0]).toMatchObject({ title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes. It opened 9 days ago.' });
   });
 });
 
@@ -135,6 +135,14 @@ describe('Today, as an admin of the organisation', () => {
 
   it('sees who has checked in, as the check-in’s own page shows an admin', () => {
     expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for session 2; Omar hasn’t yet.');
+  });
+});
+
+describe('the second line on a turn of your own (U.5 review, today-lead.txt)', () => {
+  it('a participant\'s first check-in is "About two minutes." only, since nobody is read against theirs', () => {
+    const first = { ...sales, checkIns: [{ id: 'm1', participantId: 'p-m', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: ago(1) }] };
+    const r = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(r.needs[0]).toMatchObject({ title: 'Your first check-in for Sales team, Q3', detail: 'About two minutes.' });
   });
 });
 
