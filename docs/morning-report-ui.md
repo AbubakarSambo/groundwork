@@ -10,10 +10,11 @@ same file.
 
 **Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
 in, with every decision you made), U.3 (organisations and joining, passed on its third review), U.4
-(people, roles and access, passed on its fifth) and U.5 (Today and the check-ins list, passed on its
-third).
+(people, roles and access, passed on its fifth), U.5 (Today and the check-ins list, passed on its
+third) and U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
+for you, in item 17).
 
-**Built and tested, but not ticked:** U.6 (starting a check-in), U.7 (context), U.8 (the check-in
+**Built and tested, but not ticked:** U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
@@ -51,12 +52,12 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
 
-**And one more, found by the fifth U.6 review and being fixed:** the first screen of a check-in's open
+**And one more, found by the fifth U.6 review and now fixed:** the first screen of a check-in's open
 link showed anyone with the link the lead's setup description, reworded ("This check-in is about Grace,
 the new operations lead…"). For a check-in about one person, a stranger with the link could read what
 the lead thinks of them.
 
-**One more privacy leak, found by the U.6 review and being fixed:** when a lead named someone in the
+**One more privacy leak, found by the U.6 review and now fixed:** when a lead named someone in the
 setup conversation, the lead's private description of that person reached them on their invitation:
 "Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets…".
 
@@ -155,7 +156,7 @@ to find.
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
-| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back five times on 27 September, each for new things; fixing the open link's first screen (privacy) |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
@@ -2650,7 +2651,7 @@ you forecasts 2", which is the engine's grammar when the reader is the person na
   waiting by that count); and nothing confirms an approval after "Approve" on the check-in page beyond
   a short toast.
 
-### U.6 Starting a check-in: built and tested except one card, not yet reviewed
+### U.6 Starting a check-in: passed its seventh review, except one card that waits for you
 
 - **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
   track?", "A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.",
@@ -4116,6 +4117,8 @@ none of them changed. **Not ticked,** until its review.
 - **"Get updates from your team" is named with the whole question.** "What moved this week, and what is stuck?" was named "What moved this week, and what". A question longer than 80 characters is named "Get updates from your team", never cut off, and a second one with the same name still gets ", from 27 September". One test that expected the clipped name was changed, because the clipped name was the fault.
 - **The open link says who asked, in a sentence.** Over the question it read "U6G ASKED" in capitals. It now reads "Amara asked you this.", with the lead's name as given, or "You have been asked this." with no name.
 - **Signed in, "Get updates from your team" says where the report goes.** The email box showed the lead's address while "Send" stayed greyed with "Add your own email, so the report has somewhere to go." Signed in there is no box now. The page reads "The report goes to you at amara@acme.com.", and "Send" is ready once the other fields are. Signed out, the hint now reads "Where the report goes. You do not have to sign in first. We will email you your way in."
+- **After the seventh review, two last wording fixes.** A second check-in named with the same question now reads "What moved this week, and what is stuck? From 27 September.", where it read "…stuck?, from 27 September". Ordinary names keep ", from 27 September". Under "Say we are trying this out" the hint now reads "This adds one sentence to the invite. It reads “We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.”", where it joined the two with a colon.
+- **U.6 passed its seventh review on 27 September and is ticked.** The lead's first check-in card still waits for you (item 17).
 - **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
 
 ## Found on the way, for later tasks
