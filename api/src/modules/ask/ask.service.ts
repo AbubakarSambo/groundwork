@@ -14,8 +14,9 @@ import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
  * WHAT THIS FILE DECIDES, AND NOTHING ELSE:
  *
  *   1. WHO IS ASKING. Always the signed-in person, matched to their own entry on the organisation's
- *      list of people. No route here takes anybody else's id to act for, and naming anybody else
- *      is refused before anything is read.
+ *      list of people: the one linked to them, or one with their confirmed address that nobody has
+ *      claimed, or a new one made for them on their first question. No route here takes anybody
+ *      else's id to act for, and naming anybody else is refused before anything is read.
  *   2. WHO MAY READ THE QUESTIONS. Only the person who asked them. Not a lead, not an admin, not
  *      Groundwork's own staff. The questions and answers are never part of a check-in or a report.
  *   3. WHAT A YES MAY CONFIRM. The assistant already says a request back and waits for a yes before
@@ -28,9 +29,14 @@ import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 
 export const ONLY_YOURS = 'Only the person who asked these questions can read them.';
 export const NOT_IN_IT = 'You are not part of this check-in.';
-export const NOT_ON_THE_LIST =
-  'Ask Groundwork can answer you once your organisation has connected its list of people to Groundwork.';
 export const NOTHING_WAITING = 'There is nothing waiting for your yes. Ask again if you still want it done.';
+export const SWITCHED_OFF =
+  'Your organisation has switched off your place on its list of people, so Ask Groundwork cannot answer you. Ask an admin in your organisation to switch it back on.';
+export const CONFIRM_YOUR_EMAIL =
+  'Confirm your email address first, and then Ask Groundwork can answer you. Groundwork sent you a link to confirm it when you signed up.';
+
+/** The source a Person made here is filed under, beside the directory's and the panel's. */
+export const MADE_BY_GROUNDWORK = 'groundwork';
 
 /** The signed-in reader, as the controller hands them over. */
 export interface Asker {
@@ -57,28 +63,122 @@ export class AskService {
   ) {}
 
   /**
-   * The asker's own entry on the organisation's list of people, or null.
+   * WHERE THE ASKER STANDS ON THE ORGANISATION'S LIST OF PEOPLE. Read only; nothing is written here.
    *
-   * The entry linked to their account first. Failing that, an entry with their email that nobody
-   * has claimed yet, the same match sign-in makes when it links them. An entry with their email
-   * that is linked to a different account is somebody else's, and is never used.
+   * Ask Groundwork answers one person on the organisation's list at a time, and only the directory
+   * (SCIM) and the developer API's panel ever put anybody on it, so in an organisation that signed
+   * up through the product almost everybody was refused: 64 of 3,162 people in the test database
+   * had an entry. `standingOf` says which of five things is true, in this order:
+   *
+   *   linked      an active entry already linked to this account, in this organisation;
+   *   switchedOff an entry in this organisation that has been switched off, linked to this account
+   *               or carrying this address. Whoever the directory switched off does not get back in
+   *               by asking, and no new entry is made for them;
+   *   unconfirmed the address on this account has not been confirmed, so it cannot prove it owns an
+   *               entry with that address. It never claims one, and nothing is made either: an
+   *               entry made from an address nobody confirmed is the same claim by another route;
+   *   claimable   an active entry in this organisation with this address that nobody has claimed;
+   *   none        nothing yet, and one will be made.
+   *
+   * ONLY EVER THIS ORGANISATION. Every read carries `organizationId`, so an entry with the same
+   * address in another organisation is never read, let alone claimed.
    */
-  private async whoIsAsking(asker: Asker): Promise<{ id: string; externalId: string } | null> {
+  private async standingOf(asker: Asker): Promise<
+    | { is: 'linked' | 'claimable'; person: { id: string; externalId: string } }
+    | { is: 'switchedOff' | 'unconfirmed' | 'none' }
+  > {
     const linked = await this.prisma.person.findFirst({
       where: { organizationId: asker.organizationId, active: true, linkedUserId: asker.userId },
       select: { id: true, externalId: true },
     });
-    if (linked) return linked;
-    if (!asker.email) return null;
-    return this.prisma.person.findFirst({
-      where: {
-        organizationId: asker.organizationId,
-        active: true,
-        linkedUserId: null,
-        email: { equals: asker.email, mode: 'insensitive' },
-      },
+    if (linked) return { is: 'linked', person: linked };
+
+    const byAddress = asker.email ? [{ email: { equals: asker.email, mode: 'insensitive' as const } }] : [];
+    const switchedOff = await this.prisma.person.findFirst({
+      where: { organizationId: asker.organizationId, active: false, OR: [{ linkedUserId: asker.userId }, ...byAddress] },
+      select: { id: true },
+    });
+    if (switchedOff) return { is: 'switchedOff' };
+
+    const user = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { isEmailVerified: true } });
+    if (!user?.isEmailVerified) return { is: 'unconfirmed' };
+
+    if (asker.email) {
+      const unclaimed = await this.prisma.person.findFirst({
+        where: { organizationId: asker.organizationId, active: true, linkedUserId: null, ...byAddress[0] },
+        select: { id: true, externalId: true },
+      });
+      if (unclaimed) return { is: 'claimable', person: unclaimed };
+    }
+    return { is: 'none' };
+  }
+
+  /**
+   * THE ASKER'S OWN ENTRY, CLAIMED OR MADE IF IT HAS TO BE. Only for a question or an answer; opening
+   * the panel never writes (see forReader).
+   *
+   * A CLAIM IS CONDITIONAL. It links the entry only where it is still unclaimed, in one statement, so
+   * two tabs asking at once cannot both take it; the one that loses reads back whichever entry is now
+   * linked to this account.
+   *
+   * A NEW ENTRY is filed under Groundwork's own source with the account's id as its external id, never
+   * the address: the embed looks people up by external id, and the panel uses addresses as external
+   * ids, so an address here could collide with somebody the panel already knows. It carries the name
+   * and address from the account and nothing else - no department, no manager. Two tabs making one at
+   * once meet the unique key on (organisation, source, external id), and the second reads back the
+   * first's.
+   */
+  private async whoIsAsking(asker: Asker): Promise<{ id: string; externalId: string }> {
+    const standing = await this.standingOf(asker);
+    if (standing.is === 'linked') return standing.person;
+    if (standing.is === 'switchedOff') throw new ForbiddenException(SWITCHED_OFF);
+    if (standing.is === 'unconfirmed') throw new ForbiddenException(CONFIRM_YOUR_EMAIL);
+
+    const nowLinked = () => this.prisma.person.findFirst({
+      where: { organizationId: asker.organizationId, active: true, linkedUserId: asker.userId },
       select: { id: true, externalId: true },
     });
+
+    if (standing.is === 'claimable') {
+      const took = await this.prisma.person.updateMany({
+        where: { id: standing.person.id, organizationId: asker.organizationId, active: true, linkedUserId: null },
+        data: { linkedUserId: asker.userId },
+      });
+      if (took.count === 1) return standing.person;
+      const mine = await nowLinked();
+      if (mine) return mine;
+      /* Claimed by somebody else between the read and the write. Theirs now; a new entry is made below. */
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: asker.userId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const givenName = user?.firstName?.trim() || null;
+    const familyName = user?.lastName?.trim() || null;
+    const email = user?.email ?? asker.email ?? null;
+    try {
+      return await this.prisma.person.create({
+        data: {
+          organizationId: asker.organizationId,
+          sourceSystem: MADE_BY_GROUNDWORK,
+          externalId: asker.userId,
+          userName: email ?? asker.userId,
+          displayName: [givenName, familyName].filter(Boolean).join(' ') || null,
+          givenName,
+          familyName,
+          email,
+          linkedUserId: asker.userId,
+          active: true,
+        },
+        select: { id: true, externalId: true },
+      });
+    } catch (err: any) {
+      /* P2002: the other tab made it first. Read theirs back rather than make a second. */
+      const mine = await nowLinked();
+      if (mine) return mine;
+      throw err;
+    }
   }
 
   /** The check-ins Ask Groundwork may be about for this person: ones they run or take part in. */
@@ -105,8 +205,13 @@ export class AskService {
    */
   async forReader(asker: Asker, askedFor: string | null) {
     this.refuseAnybodyElse(asker, askedFor);
-    const [about, me] = await Promise.all([this.whatItMayBeAbout(asker), this.whoIsAsking(asker)]);
-    if (!me) return { canAsk: false as const, why: NOT_ON_THE_LIST, about, turns: [] as AskTurn[] };
+    const [about, standing] = await Promise.all([this.whatItMayBeAbout(asker), this.standingOf(asker)]);
+    /* Opening the panel writes nothing. A person with no entry yet can ask, and the entry is made on
+       the first question; somebody who could not get one is told why, now, before they type. */
+    if (standing.is === 'switchedOff') return { canAsk: false as const, why: SWITCHED_OFF, about, turns: [] as AskTurn[] };
+    if (standing.is === 'unconfirmed') return { canAsk: false as const, why: CONFIRM_YOUR_EMAIL, about, turns: [] as AskTurn[] };
+    if (!('person' in standing)) return { canAsk: true as const, about, turns: [] as AskTurn[] };
+    const me = standing.person;
 
     const rows = await this.prisma.assistantTurn.findMany({
       where: { organizationId: asker.organizationId, personExternalId: me.externalId },
@@ -131,7 +236,6 @@ export class AskService {
   async ask(asker: Asker, input: { message: string; groundId?: string }) {
     await this.checkTheCheckIn(asker, input.groundId);
     const me = await this.whoIsAsking(asker);
-    if (!me) throw new ForbiddenException(NOT_ON_THE_LIST);
     return this.assistant.respond(asker.organizationId, me.id, input.message);
   }
 
@@ -144,7 +248,6 @@ export class AskService {
    */
   async answer(asker: Asker, input: { proposalId: string; answer: 'yes' | 'no' }) {
     const me = await this.whoIsAsking(asker);
-    if (!me) throw new ForbiddenException(NOT_ON_THE_LIST);
     const waiting = await this.prisma.assistantProposal.findFirst({
       where: { organizationId: asker.organizationId, personExternalId: me.externalId, state: 'PARKED' },
       orderBy: { createdAt: 'desc' },
