@@ -31,6 +31,10 @@ asks the engine to change the rule itself).
 everybody's questions to Ask Groundwork, which are meant to be private always. That is engine code, so
 I have asked the engine workspace (request 16(g)) and put it to you as item 25.2.
 
+**A possible leak found in U.15, left alone on purpose:** the organisation's handbook and memory
+(`GET /org/how-we-do-it`) seem to be readable by a guest from another organisation. Organisation
+memory must keep working exactly as now, so I have not changed it without you (item 26.7).
+
 **What needs you most, in order:**
 1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
 2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
@@ -1131,6 +1135,9 @@ reviewed" in this report.
 - The full API and screen suites once at the end of each module, one after the other, with at most
   2 test workers (`--maxWorkers=2`).
 - The local API and screens servers only while a screen is being checked, then stopped.
+- **Broken once, on 27 September:** while building U.15, a command meant to run a few screen tests
+  ran the whole screen suite by mistake (a search pattern in the shell came out empty). It passed, and
+  nothing else was running at the time.
 
 ### 13. U.3: wording the prototype does not have, and one line changed
 
