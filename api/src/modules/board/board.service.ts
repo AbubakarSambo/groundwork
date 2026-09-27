@@ -924,10 +924,16 @@ export class BoardService {
       const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
       if (findings.length) {
         const byId = new Map(findings.map((f) => [f.participantId, f]));
+        /* The served finding carries no label any more (see a-finding-is-served-without-its-label),
+           so the one this row strips off the front is derived the way the report was written. */
+        const labelOf = labelsForParties(ground.participants as any);
         out.eachPerson = (out.eachPerson as any[]).map((row) => {
           const f = byId.get(row.participantId);
           if (!f) return row;
-          const text = String(f.text ?? '').replace(new RegExp(`^${String(f.label ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They');
+          const label = String(labelOf.get(row.participantId) ?? '');
+          const text = label
+            ? String(f.text ?? '').replace(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They')
+            : String(f.text ?? '');
           return { ...row, finding: text, hasGap: !!f.hasGap };
         });
       }

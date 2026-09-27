@@ -71,6 +71,7 @@ import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLa
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
 import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
 import { withoutOtherPeoplesReads } from './own-reads-only';
+import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
@@ -4687,7 +4688,9 @@ happened, and what is in the way.`;
     /* AND THE MACHINE'S TABLE NEVER LEAVES THE MACHINE, for any reader, lead included. Stripped
        here because this is the door every report read goes through, the board's included. See
        the-table-is-for-the-engine. */
-    const withNames = this.applyNames(theTableStaysWithTheEngine(ground.report as any), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* And a finding's positional label stays on the stored row: nothing renders it, and it was 113
+       of the 114 labels anybody was handed. See a-finding-is-served-without-its-label. */
+    const withNames = this.applyNames(findingsWithoutTheirLabels(theTableStaysWithTheEngine(ground.report as any)), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
     return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
