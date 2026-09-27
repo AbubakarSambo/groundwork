@@ -453,6 +453,8 @@ enum WorkspaceKind {
 
 model Organization {
   membershipRequests MembershipRequest[]
+  /// Which suites an admin has switched on, with their answers (E, U.17).
+  suites             OrganizationSuite[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2262,6 +2264,25 @@ model Resolution {
 /// person's own answer, and decides, giving a reason. The person reads the facts about their work
 /// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
 ///
+/// THE SUITES AN ORGANISATION HAS SWITCHED ON (E, U.17). One row per suite an admin has ever switched,
+/// with the answers they gave to its first questions. No row means off. Only an admin switches one,
+/// and a lead is told only which are on (suites.service.ts). `answers` is keyed by question id; a
+/// "person" answer holds a user id, never a name. Nothing here is about how well anybody works.
+model OrganizationSuite {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  suite          String   @db.VarChar(24)
+  isOn           Boolean  @default(false) @map("is_on")
+  answers        Json     @default("{}")
+  changedById    String?  @map("changed_by_id")
+  changedAt      DateTime @default(now()) @updatedAt @map("changed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, suite])
+  @@map("organization_suites")
+}
+
 /// The engine's text is written by the engine (docs/requests-to-engine.md, request 15), stored in
 /// labels like a report, and named for each reader only when served. Who reads which column is
 /// decided in suggestions.service.ts, never on the screen. `verdict` is served to nobody.
