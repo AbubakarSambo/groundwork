@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { resolutionApi } from '@/api/resolution'
 import { toast } from 'sonner'
 import { Confirm } from './a-second-press-before-it-is-gone'
@@ -33,8 +34,8 @@ import { Confirm } from './a-second-press-before-it-is-gone'
 export type WhereThePanelSits = 'board-top' | 'board-bottom'
 
 const possessive = (name: string) => `${name}’s`
-const onTheDay = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+/* "30 September", through the one date formatter (one-date-format-everywhere). */
+const onTheDay = (iso: string) => whenItWas(iso, 'dayAndMonthLong')
 
 export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }: {
   groundId: string
