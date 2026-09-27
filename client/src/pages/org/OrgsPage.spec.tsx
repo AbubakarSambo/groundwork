@@ -104,3 +104,13 @@ describe('being asked once after signing in', () => {
     expect(takeJustSignedIn()).toBe(false)
   })
 })
+
+describe('each row has a name a screen reader says in full sentences (U.3 review)', () => {
+  it('names the organisation, your role there, and what is new', async () => {
+    ;(authApi.myOrganizations as any).mockResolvedValue(TWO)
+    ;(todayApi.everywhere as any).mockResolvedValue([{ organizationId: 'o2', count: 1 }])
+    open()
+    expect(await screen.findByRole('button', { name: 'Baridi Appliances. You are in it now. You are an admin there.' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Open Kilimo Traders’ Association. You are a guest there. 1 new thing needs you.' })).toBeTruthy()
+  })
+})

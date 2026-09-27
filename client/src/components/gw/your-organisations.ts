@@ -93,3 +93,18 @@ export function roleWord(role: string | null | undefined): string {
   if (r === 'GUEST') return 'Guest'
   return 'Takes part'
 }
+
+/**
+ * What a row on "Choose an organisation" says to a screen reader, in full sentences (U.3 review):
+ * "Open Baridi Appliances. You are an admin there. 3 new things need you." The one you are in says so.
+ */
+export function aRowSays(o: Pick<YourOrganisation, 'name' | 'role' | 'active'>, newCount = 0): string {
+  const r = (o.role ?? '').toUpperCase()
+  const there = r === 'ADMIN' ? 'You are an admin there.'
+    : r === 'LEAD' ? 'You can open check-ins there.'
+      : r === 'GUEST' ? 'You are a guest there.'
+        : 'You take part there.'
+  const first = o.active ? `${o.name}. You are in it now.` : `Open ${o.name}.`
+  const news = newCount === 1 ? ' 1 new thing needs you.' : newCount > 1 ? ` ${newCount} new things need you.` : ''
+  return `${first} ${there}${news}`
+}
