@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { composeLeadBrief } from './EntryChatPage'
+import { composeLeadBrief, theirOwnSetupWords, SITUATION_CARDS } from './EntryChatPage'
 
 /**
  * THE BRIEF EVERY PARTICIPANT READS WAS THE SETUP Q&A GLUED TOGETHER.
@@ -43,15 +43,59 @@ describe('composing the brief', () => {
       decision: 'Probation in March',
       goals: ['Contracts filed', 'An onboarding pack'],
       brief: 'The hiring handover',
-    })
-    /* U.7 review: plain sentences, no "Label:" pieces, the person's words inside each. */
-    expect(brief).toBe('She starts on the 15th. The people in it are Nadia and me. It matters now because probation in March. It is aiming at contracts filed and an onboarding pack. The questions should focus on the hiring handover.')
-    expect(brief).not.toMatch(/Who is part of this:|Why now:|What it is aiming at:|Focus:/)
+    }, 'Wanjiru')
+    /* U.7 re-check: each answer quoted after the question it answered, never glued onto an opening. */
+    expect(brief).toBe('She starts on the 15th. Asked who is part of this, Wanjiru said “Nadia and me”. Asked why this matters now, Wanjiru said “Probation in March”. Asked what this is aiming at, Wanjiru said “Contracts filed” and “An onboarding pack”. Asked what the questions should focus on, Wanjiru said “The hiring handover”.')
+    expect(brief).not.toMatch(/:|Who is part of this:|Why now|Focus/)
+  })
+
+  /* The reviewer's case: what the lead typed about Juma, and what setup drew out of it. */
+  it('reads as sentences for Juma’s check-in, whatever shape each answer has', () => {
+    const brief = composeLeadBrief({
+      initial: 'Juma’s performance during his probation with the warehouse team needs review.',
+      whoInvolved: 'Juma and the warehouse team',
+      decision: 'whether to confirm him',
+      brief: 'he is often late with the stock counts',
+    }, 'Wanjiru')
+    expect(brief).toBe('Juma’s performance during his probation with the warehouse team needs review. Asked who is part of this, Wanjiru said “Juma and the warehouse team”. Asked why this matters now, Wanjiru said “whether to confirm him”. Asked what the questions should focus on, Wanjiru said “he is often late with the stock counts”.')
+    expect(brief).not.toContain('because whether')
+    expect(brief).not.toContain('focus on he')
+  })
+
+  it('an answer that is a question, a single word, or a sentence with its own full stop', () => {
+    expect(composeLeadBrief({ decision: 'Is he ready to be confirmed?' }, 'Wanjiru'))
+      .toBe('Asked why this matters now, Wanjiru said “Is he ready to be confirmed?”')
+    expect(composeLeadBrief({ brief: 'Punctuality' }, 'Wanjiru'))
+      .toBe('Asked what the questions should focus on, Wanjiru said “Punctuality”.')
+    expect(composeLeadBrief({ decision: 'His probation ends in March.' }, 'Wanjiru'))
+      .toBe('Asked why this matters now, Wanjiru said “His probation ends in March”.')
+    expect(composeLeadBrief({ goals: ['Are the counts on time?'] }, 'Wanjiru'))
+      .toBe('Asked what this is aiming at, Wanjiru said “Are the counts on time?”')
+    expect(composeLeadBrief({ brief: '"stock counts"' }, 'Wanjiru'))
+      .toBe('Asked what the questions should focus on, Wanjiru said “stock counts”.')
+  })
+
+  it('and without a name yet, says who answered in plain words', () => {
+    expect(composeLeadBrief({ decision: 'whether to confirm him' }))
+      .toBe('Asked why this matters now, the person who set this up said “whether to confirm him”.')
+  })
+
+  it('what the person typed in setup is their own turns only', () => {
+    expect(theirOwnSetupWords([
+      { role: 'assistant', content: 'What is going on?' },
+      { role: 'user', content: SITUATION_CARDS[0].message },
+      { role: 'user', content: 'Juma joined our warehouse team in January and his probation ends in March.' },
+      { role: 'user', content: '[Document: "rota.pdf"]\nsome text' },
+      { role: 'user', content: 'He is often late with the stock counts.' },
+    ])).toEqual([
+      'Juma joined our warehouse team in January and his probation ends in March.',
+      'He is often late with the stock counts.',
+    ])
   })
 
   it('and keeps a name its capital', () => {
-    expect(composeLeadBrief({ initial: 'Kwame joins the sales team.', whoInvolved: 'Kwame and Wairimu', decision: 'Kwame starts on Monday' }))
-      .toBe('Kwame joins the sales team. The people in it are Kwame and Wairimu. It matters now because Kwame starts on Monday.')
+    expect(composeLeadBrief({ initial: 'Kwame joins the sales team.', whoInvolved: 'Kwame and Wairimu', decision: 'Kwame starts on Monday' }, 'Wairimu'))
+      .toBe('Kwame joins the sales team. Asked who is part of this, Wairimu said “Kwame and Wairimu”. Asked why this matters now, Wairimu said “Kwame starts on Monday”.')
   })
 
   it('and says nothing when there is nothing', () => {

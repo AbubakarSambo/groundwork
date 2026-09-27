@@ -23,11 +23,11 @@ describe('composeLeadBrief', () => {
       brief: 'watch the deadline',
     })
     expect(brief).toContain('Q3 checkout rebuild')
-    /* U.7 review: each field is a plain sentence now, not a "Label:" piece. */
-    expect(brief).toContain('The people in it are Priya (lead), Dana (engineer).')
-    expect(brief).toContain('It matters now because ownership is unclear.')
-    expect(brief).toContain('It is aiming at clear scope and one owner.')
-    expect(brief).toContain('The questions should focus on watch the deadline.')
+    /* U.7 re-check: each answer is quoted after the question it answered. */
+    expect(brief).toContain('Asked who is part of this, the person who set this up said “Priya (lead), Dana (engineer)”.')
+    expect(brief).toContain('Asked why this matters now, the person who set this up said “ownership is unclear”.')
+    expect(brief).toContain('Asked what this is aiming at, the person who set this up said “clear scope” and “one owner”.')
+    expect(brief).toContain('Asked what the questions should focus on, the person who set this up said “watch the deadline”.')
   })
 
   it('omits missing fields without leaving separators behind', () => {

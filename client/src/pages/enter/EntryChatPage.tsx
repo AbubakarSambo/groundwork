@@ -324,7 +324,23 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
  * still travels - on the coordinator path this is the only context a lead inherits, and dropping it
  * would lose the handover - but as sentences rather than a form, and punctuated once.
  */
-export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+/**
+ * WHAT THE PERSON TYPED IN SETUP, AND NOTHING ELSE (U.7 re-check). Their own turns, without the
+ * sentence a situation card posts for them, and without a document folded into the chat.
+ */
+export function theirOwnSetupWords(history: { role: string; content: string }[]): string[] {
+  const cards = new Set(SITUATION_CARDS.map((c) => c.message))
+  return history
+    .filter((t) => t.role === 'user')
+    .map((t) => (t.content ?? '').trim())
+    .filter((t) => t && !cards.has(t) && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+}
+
+export function composeLeadBrief(
+  sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string },
+  /** Who answered, by first name. Absent before they have one, and then "the person who set this up". */
+  whoAnswered?: string | null,
+): string {
   /* Ends every fragment exactly once, whatever the person typed. */
   const sentence = (t?: string) => {
     const trimmed = (t ?? '').trim()
@@ -332,30 +348,41 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
     return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
   }
   /*
-   * AND NO "LABEL:" PIECES EITHER (U.7 review). The rest read "Who is part of this: ... Why now: ...
-   * What it is aiming at: ... Focus: ...", a form printed as a paragraph, on the Context page under
-   * "What this check-in is for". Each is a plain sentence now, with the person's words inside it.
-   * Nothing on the server reads these labels back out: the brief is stored and read as text.
+   * THE ANSWERS ARE QUOTED, NOT GLUED INTO A SENTENCE OF OURS (U.7 re-check).
+   *
+   * First they were "Label:" pieces ("Why now: ...", "Focus: ..."). Then each was glued onto a fixed
+   * opening, and an ordinary answer made a non-sentence: "It matters now because whether to confirm
+   * him." and "The questions should focus on he is often late with the stock counts." An answer can
+   * be a clause, a noun, a single word or a question, and no opening fits all of them. Quoted after
+   * the question it answered, any answer reads as a sentence, and it says honestly that these are
+   * the answers somebody gave, not a paragraph they wrote.
+   *
+   * Third person, because this text is also what the people in the check-in may be shown (the
+   * short read is written from it, and its first sentences stand in when that read is missing).
+   * Nothing on the server reads these openings back out: the brief is stored and read as text.
    */
-  const bare = (t?: string) => (t ?? '').trim().replace(/[.!?]+$/, '')
-  /* "Probation in March" inside a sentence reads "probation in March"; a name or "I" keeps its capital. */
-  const inside = (t?: string) => {
-    const b = bare(t)
-    const first = b.split(/\s/)[0] ?? ''
-    const aName = first === 'I' || (sels.whoInvolved ?? '').includes(first) || !/^[A-Z][a-z]+$/.test(first.replace(/[^A-Za-z]/g, ''))
-    return aName ? b : b[0].toLowerCase() + b.slice(1)
+  const who = (whoAnswered ?? '').trim() || 'the person who set this up'
+  const quoted = (t?: string) => {
+    const b = (t ?? '').trim().replace(/^["“”']+|["“”']+$/g, '').replace(/[“”]/g, '"').replace(/\.+$/, '').trim()
+    if (!b) return ''
+    /* A question or an exclamation keeps its own mark, inside the quote, and needs no full stop after. */
+    return /[?!]$/.test(b) ? `\u201C${b}\u201D` : `\u201C${b}\u201D.`
   }
-  const aList = (xs: string[]) => {
-    const items = xs.map(inside).filter(Boolean)
-    return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+  const saidTo = (question: string, answer?: string) => {
+    const q = quoted(answer)
+    return q ? `Asked ${question}, ${who} said ${q}` : ''
   }
+  const goals = (sels.goals ?? []).map((g) => quoted(g).replace(/\.$/, '')).filter(Boolean)
+  const goalLine = goals.length === 0
+    ? ''
+    : `Asked what this is aiming at, ${who} said ${goals.length === 1 ? goals[0] : `${goals.slice(0, -1).join(', ')} and ${goals[goals.length - 1]}`}${/[?!]\u201D$/.test(goals[goals.length - 1]) ? '' : '.'}`
   return [
     /* Unlabelled and first: the band above it already says what this is. */
     sentence(sels.initial),
-    bare(sels.whoInvolved) ? sentence(`The people in it are ${bare(sels.whoInvolved)}`) : '',
-    bare(sels.decision) ? sentence(`It matters now because ${inside(sels.decision)}`) : '',
-    sels.goals?.length && aList(sels.goals) ? sentence(`It is aiming at ${aList(sels.goals)}`) : '',
-    bare(sels.brief) ? sentence(`The questions should focus on ${inside(sels.brief)}`) : '',
+    saidTo('who is part of this', sels.whoInvolved),
+    saidTo('why this matters now', sels.decision),
+    goalLine,
+    saidTo('what the questions should focus on', sels.brief),
   ].filter(Boolean).join(' ')
 }
 
@@ -2247,9 +2274,16 @@ export function EntryChatPage() {
          * `composeLeadBrief` is their own answers, in their own words, and it always was - it was
          * simply not being sent unless they had opted out of checking in.
          */
-        ...(composeLeadBrief(onboardingSelections)
-          ? { brief: composeLeadBrief(onboardingSelections) }
+        ...(composeLeadBrief(onboardingSelections, user?.firstName)
+          ? { brief: composeLeadBrief(onboardingSelections, user?.firstName) }
           : {}),
+        /*
+         * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES (U.7 re-check). The brief above is put together
+         * from their answers; these are the words themselves, kept for the Context page's "What you
+         * wrote" and shown to nobody else. A picked situation card and a folded-in document are not
+         * things they typed.
+         */
+        leadsOwnWords: theirOwnSetupWords(onboardingHistory),
         ...(flowPath === 'lead' ? { managingOnly: true } : {}),
       }
   }
