@@ -197,6 +197,8 @@ export function ChatPage() {
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
   const [waitedAWhile, setWaitedAWhile] = useState(false)
+  /* True once opening the session has been outstanding long enough to say so. See the effect below. */
+  const [openingIsSlow, setOpeningIsSlow] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -318,6 +320,20 @@ export function ChatPage() {
       setOpenFailed(true)
     },
   })
+
+  /*
+   * OPENING A SESSION RUNS SEVERAL MODEL CALLS (ConversationService.open) BEFORE IT ANSWERS, and
+   * that is 14 to 60 seconds of "Opening your session…" with nothing else said. Measured against
+   * the booted API for the closing wait (SlowStep's own note) and found the same shape here: a
+   * silence long enough to read as a hang unless it explains itself. Four seconds, same threshold
+   * as the reply wait above, is where somebody starts wondering if anything is happening.
+   */
+  const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
+  useEffect(() => {
+    if (!openingNow) { setOpeningIsSlow(false); return }
+    const t = setTimeout(() => setOpeningIsSlow(true), 4000)
+    return () => clearTimeout(t)
+  }, [openingNow])
 
 
   const decline = useMutation({
@@ -897,8 +913,16 @@ export function ChatPage() {
           {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
-          {(openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)) && (
-            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          {openingNow && (
+            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>
+              Opening your session…
+              {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
+                  session runs several model calls and can take up to a minute with nothing else on
+                  screen, which read as a hang. */}
+              {openingIsSlow && (
+                <div style={{ marginTop: 6 }}>Getting your first question ready. This can take up to a minute.</div>
+              )}
+            </div>
           )}
 
           {/*

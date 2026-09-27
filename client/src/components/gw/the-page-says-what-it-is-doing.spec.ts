@@ -42,7 +42,11 @@ describe('waits are statuses', () => {
       ['pages/invite/InvitePage.tsx', /<div role="status"[^>]*>Loading invite…<\/div>/],
       ['pages/report/SessionReportPage.tsx', /<div role="status" aria-live="polite"[^>]*>Getting your report\.\.\.<\/div>/],
       ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Loading the board…<\/div>/],
-      ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>Opening your session…<\/div>/],
+      /* U.8 review: opening a session can take up to a minute, and after four seconds of silence
+         the status now also says so ("Getting your first question ready. This can take up to a
+         minute."), nested inside the same status element rather than a second live region - so
+         the pin no longer requires the div's only child to be the opening sentence. */
+      ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>\s*Opening your session…/],
       ['pages/report/ReportPage.tsx', /<div role="status" aria-live="polite" style=\{\{ background: 'var\(--gw-amber-bg\)'/],
     ]
     for (const [rel, re] of pins) expect(strip(readFileSync(path.join(SRC, rel), 'utf8'))).toMatch(re)
