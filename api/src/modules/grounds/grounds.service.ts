@@ -3,7 +3,7 @@ import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -1522,7 +1522,7 @@ export class GroundsService {
          */
         resolution: { select: RESOLUTION_ON_THE_GROUND },
         patternDetections: {
-          select: { id: true, participantId: true, code: true, periodsObserved: true, seenInSessions: true, status: true, observationText: true, createdAt: true },
+          select: PATTERN_ROW_SELECT,
           orderBy: { lastSeenAt: 'desc' },
           take: 60,
         },
@@ -1567,7 +1567,7 @@ export class GroundsService {
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
             resolution: { select: RESOLUTION_ON_THE_GROUND },
             patternDetections: {
-              select: { id: true, participantId: true, code: true, periodsObserved: true, seenInSessions: true, status: true, observationText: true, createdAt: true },
+              select: PATTERN_ROW_SELECT,
               orderBy: { lastSeenAt: 'desc' },
               take: 60,
             },
@@ -1634,9 +1634,14 @@ export class GroundsService {
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
     const signals = PATTERNS_ARE_SERVED
-      ? servedPatterns(ground.patternDetections as any, await this.patternReaderOf(ground as any, requestingUserId))
-          .map((p) => ({ ...p, groundId: id }))
+      ? servedPatterns(
+          ground.patternDetections as any,
+          await this.patternReaderOf(ground as any, requestingUserId),
+          whoIsWhoIn(ground.participants as any, ground.initiatorId),
+        ).map((p) => ({ ...p, groundId: id }))
       : [];
+    /* The person reading their own for the first time starts the clock on when the lead may read it. */
+    await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(ground.patternDetections as any, signals));
 
     // Extract context notes from groundAuditLog (stored under key contextNotes).
     const rawLog = (ground as any).groundAuditLog;
@@ -6427,9 +6432,11 @@ export class GroundsService {
         id: true,
         specificityHistory: true,
         patternDetections: {
-          select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+          select: PATTERN_ROW_SELECT,
           orderBy: { lastSeenAt: 'desc' },
         },
+        /* For the one sentence that says who else reads it: the lead's first name. */
+        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },
@@ -6473,7 +6480,12 @@ export class GroundsService {
      * sessions shows something worth noticing", served every SURFACED row including good news seen
      * once, and gave no way to answer. None at all while patterns are not served.
      */
-    const patterns = servedPatterns(participant.patternDetections as any, { participantId: participant.id, runsIt: false });
+    const patterns = servedPatterns(
+      participant.patternDetections as any,
+      { participantId: participant.id, runsIt: false },
+      whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId),
+    );
+    await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(participant.patternDetections as any, patterns));
 
     return {
       sessions,

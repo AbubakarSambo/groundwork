@@ -49,8 +49,8 @@ const FEMI_SAID = 'Femi described the Harbor Foods deal as his own although Ngoz
 const CANDIDATE_SAID = 'Named the new analyst as the reason the forecast was late in the second session.';
 
 const DETECTIONS = [
-  { id: 'pd1', participantId: 'p-ngozi', code: 'B11', status: 'SURFACED', observationText: NGOZI_SAID, periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, createdAt: new Date('2026-09-04T09:00:00Z'), lastSeenAt: new Date('2026-09-04T09:00:00Z') },
-  { id: 'pd2', participantId: 'p-femi', code: 'B3', status: 'SURFACED', observationText: FEMI_SAID, periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, createdAt: new Date('2026-09-04T09:00:00Z'), lastSeenAt: new Date('2026-09-04T09:00:00Z') },
+  { id: 'pd1', participantId: 'p-ngozi', code: 'B11', status: 'SURFACED', observationText: NGOZI_SAID, periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, createdAt: new Date('2026-09-04T09:00:00Z'), lastSeenAt: new Date('2026-09-04T09:00:00Z'), readyAt: new Date('2026-09-04T09:00:00Z') },
+  { id: 'pd2', participantId: 'p-femi', code: 'B3', status: 'SURFACED', observationText: FEMI_SAID, periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, createdAt: new Date('2026-09-04T09:00:00Z'), lastSeenAt: new Date('2026-09-04T09:00:00Z'), readyAt: new Date('2026-09-04T09:00:00Z') },
   { id: 'pd3', participantId: 'p-femi', code: 'R3', status: 'SURFACED', observationText: 'Femi credited Ngozi by name for the pricing sheet.', periodsObserved: 1, seenInSessions: [2], lastPeriodNumber: 2, createdAt: new Date('2026-09-03T09:00:00Z'), lastSeenAt: new Date('2026-09-03T09:00:00Z') },
   { id: 'pd4', participantId: 'p-ngozi', code: 'E1', status: 'CANDIDATE', observationText: CANDIDATE_SAID, periodsObserved: 1, seenInSessions: [2], lastPeriodNumber: 2, createdAt: new Date('2026-09-03T09:00:00Z'), lastSeenAt: new Date('2026-09-03T09:00:00Z') },
 ];

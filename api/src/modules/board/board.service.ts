@@ -53,7 +53,7 @@ import {
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
@@ -1255,11 +1255,14 @@ export class BoardService {
        */
       const detections = await this.prisma.patternDetection.findMany({
         where: { groundId },
-        select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+        select: PATTERN_ROW_SELECT,
         orderBy: { lastSeenAt: 'desc' },
         take: 60,
       });
-      out.patterns = servedPatterns(detections as any, { participantId: me?.id ?? null, runsIt: runsThisGround });
+      const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
+      out.patterns = servedPatterns(detections as any, patternReader, whoIsWhoIn(ground.participants as any, ground.initiatorId));
+      /* The person reading their own for the first time starts the clock on when the lead may read it. */
+      await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(detections as any, out.patterns as any));
     }
 
     if (has('poll')) {

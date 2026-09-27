@@ -2271,6 +2271,17 @@ model PatternDetection {
   accuracyRating   Boolean?      @map("accuracy_rating") // true = accurate, false = inaccurate, null = not yet rated
   ratedAt          DateTime?     @map("rated_at")
   ratedBy          String?       @map("rated_by") // userId of rater
+  /// When it had been seen in three periods, which is when the person it is about may first read it.
+  /// Set once by the detector and never moved, so the clock for the lead cannot be pushed back by
+  /// a fourth sighting. See patterns/who-reads-a-pattern.
+  readyAt          DateTime?     @map("ready_at")
+  /// When the person it is about was first served it on their own page. The lead reads it only
+  /// after this (and their answer, or three days), or a week after readyAt if they never open it.
+  shownToPersonAt  DateTime?     @map("shown_to_person_at")
+  /// What the person said is behind it, in their own words ("Say what's behind it"). Read by the
+  /// person and, beside the pattern, by whoever runs the check-in. Never by a colleague.
+  personAnswer     String?       @map("person_answer") @db.Text
+  personAnsweredAt DateTime?     @map("person_answered_at")
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")

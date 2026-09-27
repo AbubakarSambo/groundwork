@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PatternsService } from './patterns.service';
 import { CurrentUser } from '../../common';
@@ -40,5 +40,20 @@ export class PatternsController {
   ) {
     await this.patterns.rateAccuracy(id, body.accurate, userId);
     return { rated: true };
+  }
+
+  /**
+   * THE PERSON A PATTERN IS ABOUT SAYS WHAT IS BEHIND IT. Any signed-in person may call it; the
+   * service answers "not found" unless the pattern is theirs and they may already read it.
+   */
+  @Post(':id/answer')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The person a pattern is about says what is behind it' })
+  async answer(
+    @Param('id') id: string,
+    @Body() body: { text?: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.patterns.answerAsThePerson(id, userId, String(body?.text ?? ''));
   }
 }

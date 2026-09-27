@@ -43,10 +43,10 @@ describe('one route for patterns', () => {
    * patterns/who-reads-a-pattern lets this reader read, and the filters are pinned there.
    */
   it('the session report reads patterns as its own field, through the one rule', () => {
-    const at = SERVICE.indexOf('const patternsForPage = PATTERNS_ARE_SERVED');
+    const at = SERVICE.indexOf('const patternRowsForPage = PATTERNS_ARE_SERVED');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 1200);
-    expect(block).toContain('servedPatterns(');
+    expect(block).toContain('const patternsForPage = servedPatterns(');
     expect(block).toContain('runsIt: viewerIsLead');
     const RULES = strip(readFileSync(join(__dirname, '../patterns/who-reads-a-pattern.ts'), 'utf8'));
     expect(RULES).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');

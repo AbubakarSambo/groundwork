@@ -1,10 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
+import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, type AServedPattern } from './who-reads-a-pattern';
+import { PATTERNS_ARE_SERVED } from './patterns-are-served';
+import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
 import { saysSomethingCheckable } from '../board/reads';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
@@ -315,6 +318,8 @@ export class PatternsService {
         lastSeenAt: new Date(),
         observationText,
         status: enough || existing.status === PatternStatus.SURFACED ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
+        /* The moment the person it is about may first read it. Set once, never moved. See who-reads-a-pattern. */
+        ...(!existing.readyAt && seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });
   }
@@ -343,6 +348,7 @@ export class PatternsService {
           observationText,
           periodsObserved: 1,
           lastPeriodNumber: periodNumber,
+          seenInSessions: [periodNumber],
           // Positive signals surface immediately.
           status: PatternStatus.SURFACED,
         },
@@ -351,14 +357,23 @@ export class PatternsService {
 
     if (periodNumber <= (existing.lastPeriodNumber ?? 0)) return existing;
 
+    /*
+     * Every period it was seen in, as the bad ones keep it. Good news surfaces at once in the
+     * detector, but a person reads it only after three periods like any other pattern (decision 8),
+     * and that is counted from this list. See who-reads-a-pattern.
+     */
+    const seenInSessions = [...new Set([...(existing.seenInSessions ?? []), periodNumber])].sort((a, b) => a - b);
+    const periodsObserved = existing.periodsObserved + 1;
     return this.prisma.patternDetection.update({
       where: { id: existing.id },
       data: {
-        periodsObserved: existing.periodsObserved + 1,
+        periodsObserved,
+        seenInSessions,
         lastPeriodNumber: periodNumber,
         lastSeenAt: new Date(),
         observationText,
         status: PatternStatus.SURFACED,
+        ...(!existing.readyAt && Math.max(seenInSessions.length, periodsObserved) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });
   }
@@ -757,6 +772,50 @@ export class PatternsService {
 
   private markAnalyzed(checkInId: string) {
     return this.prisma.checkIn.update({ where: { id: checkInId }, data: { patternsAnalyzedAt: new Date() } });
+  }
+
+  /**
+   * "SAY WHAT'S BEHIND IT." The person a pattern is about answers it, in their own words.
+   *
+   * Only that person, and only a pattern they may already read (three periods, a plain name, the
+   * switch on): anything else is "not found", so nobody can learn from this route that a pattern
+   * exists about somebody else. The answer is kept beside the pattern and read by the person and by
+   * whoever runs the check-in, never by a colleague; answering is also what lets the lead read it
+   * at once rather than after three days. They can change it later. Bank and card numbers are
+   * hidden before it is stored, as in a check-in message (decision 35).
+   */
+  async answerAsThePerson(detectionId: string, userId: string, text: string): Promise<AServedPattern> {
+    const nothingHere = () => new NotFoundException('There is nothing here for you to answer.');
+    if (!PATTERNS_ARE_SERVED) throw nothingHere();
+    const row = await this.prisma.patternDetection.findUnique({
+      where: { id: detectionId },
+      select: {
+        ...PATTERN_ROW_SELECT,
+        participant: {
+          select: {
+            userId: true,
+            ground: { select: { initiatorId: true, participants: { select: { userId: true, user: { select: { firstName: true } } } } } },
+          },
+        },
+      },
+    });
+    if (!row || !row.participant?.userId || row.participant.userId !== userId) throw nothingHere();
+    const reader = { participantId: row.participantId, runsIt: false };
+    if (!patternRowsThisReaderMayRead([row], reader).length) throw nothingHere();
+
+    const words = withoutBankDetails(String(text ?? '').trim());
+    if (!words) throw new BadRequestException('Write what is behind it in a sentence or two.');
+    if (words.length > 2000) throw new BadRequestException('That is longer than 2,000 characters. Say what is behind it in a few sentences.');
+
+    const now = new Date();
+    const saved = await this.prisma.patternDetection.update({
+      where: { id: row.id },
+      data: { personAnswer: words, personAnsweredAt: now, ...(row.shownToPersonAt ? {} : { shownToPersonAt: now }) },
+      select: PATTERN_ROW_SELECT,
+    });
+    const ground = row.participant.ground;
+    const lead = ground?.participants?.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId);
+    return servedPatterns([saved], reader, { now, leadName: lead?.user?.firstName ?? null })[0];
   }
 
   /**

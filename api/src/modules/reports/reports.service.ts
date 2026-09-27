@@ -123,7 +123,7 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
@@ -3125,16 +3125,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * after three periods, in plain words; and the picture carries none, because it is shared and a
      * pattern never is. Nothing at all while patterns are not served, and then not even the read.
      */
-    const patternsForPage = PATTERNS_ARE_SERVED
-      ? servedPatterns(
-          await this.prisma.patternDetection.findMany({
-            where: { groundId },
-            orderBy: [{ lastSeenAt: 'desc' }],
-            select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
-          }) as any,
-          { participantId: me?.id ?? null, runsIt: viewerIsLead },
-        )
+    const patternRowsForPage = PATTERNS_ARE_SERVED
+      ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
+    const patternsForPage = servedPatterns(
+      patternRowsForPage as any,
+      { participantId: me?.id ?? null, runsIt: viewerIsLead },
+      whoIsWhoIn(ground.participants as any, ground.initiatorId),
+    );
+    /* The person reading their own for the first time starts the clock on when the lead may read it. */
+    await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
     const started = <T,>(f: () => Promise<T>, fallback: T): Promise<T> => Promise.resolve().then(f).catch(() => fallback);
     const [mentionRows, depRows] = await Promise.all([
@@ -4133,7 +4133,7 @@ happened, and what is in the way.`;
       const seen = PATTERNS_ARE_SERVED
         ? servedPatterns(await (this.prisma.patternDetection?.findMany?.({
           where: { groundId },
-          select: { id: true, code: true, observationText: true, seenInSessions: true, periodsObserved: true, participantId: true },
+          select: PATTERN_ROW_SELECT,
         }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]) as any, { participantId: null, runsIt: true })
         : [];
       const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
@@ -4958,9 +4958,9 @@ happened, and what is in the way.`;
         ? this.prisma.patternDetection.findMany({
           where: { groundId },
           orderBy: { lastSeenAt: 'desc' },
-          select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+          select: PATTERN_ROW_SELECT,
         })
-        : Promise.resolve([] as { id: string; participantId: string; code: string; observationText: string | null; periodsObserved: number; seenInSessions: number[] }[]),
+        : Promise.resolve([] as APatternRow[]),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
