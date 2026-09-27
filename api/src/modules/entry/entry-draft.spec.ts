@@ -362,3 +362,30 @@ describe('the commit says why an invitation waits (U.6 review)', () => {
     expect(res.contributors[2].waitingBecause).toBeUndefined();
   });
 });
+
+describe('a future start holds the invitations from the commit too (U.6 review)', () => {
+  /* Read live: start 5 October, and the invitation went the moment the confirmation link was opened
+     on 27 September. addParticipant holds an invitation only when it is handed the start (see
+     an-invite-waits-for-the-first-day.spec.ts, and the on-the-day cron that sends it); the commit
+     never handed it one. */
+  it('hands each person the check-in\'s start, so nothing is sent before it', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant.mockResolvedValue({ invitedAt: null, notInvitedBecause: 'starts_later' });
+    const res: any = await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP', checkInBy: '2026-10-05',
+      contributors: [{ email: 'daniel@x.test' }],
+    } as any);
+    expect(grounds.addParticipant.mock.calls[0][3]).toMatchObject({ email: 'daniel@x.test', startsAt: '2026-10-05' });
+    expect(res.contributors[0]).toMatchObject({ waiting: true, waitingBecause: 'starts_later' });
+  });
+
+  it('and with "Now", hands no start, so it goes at once', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant.mockResolvedValue({ invitedAt: new Date() });
+    await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP',
+      contributors: [{ email: 'daniel@x.test' }],
+    } as any);
+    expect(grounds.addParticipant.mock.calls[0][3].startsAt).toBeUndefined();
+  });
+});

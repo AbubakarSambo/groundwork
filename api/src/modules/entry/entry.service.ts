@@ -2296,6 +2296,10 @@ from finishing at all.`;
           email: c.email,
           roleAsDescribed: c.context,
           note: c.note,
+          /* U.6 review: the check-in's start, so a future start holds the invitation until the
+             morning it starts (the on-the-day cron sends it), as adding someone on the check-in's
+             own page does. Without it the invitation went the moment the link was opened. */
+          ...(dto.checkInBy ? { startsAt: dto.checkInBy } : {}),
         });
         /*
          * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
