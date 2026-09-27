@@ -42,7 +42,9 @@ describe('the setup, as the lead reads it', () => {
     expect(within(days).getAllByRole('button').map((b) => b.textContent)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Weekdays only', 'Any day is fine'])
     const ends = screen.getByRole('region', { name: 'When it ends' })
     expect(within(ends).getByText('You can give it more time later.')).toBeTruthy()
-    expect(within(ends).getAllByRole('button').map((b) => b.textContent)).toEqual(['On a date', 'When I end it'])
+    /* U.6 review: one date, set to when it really ends; "When I end it" is not offered (nothing runs without an end). */
+    expect(within(ends).queryAllByRole('button')).toHaveLength(0)
+    expect(ends.querySelector('input[type="date"]')).toBeTruthy()
     for (const notBuilt of ['Opens at', 'Closes at', 'Do you check in too?', 'WhatsApp', 'Guest']) {
       expect(document.body.textContent, notBuilt).not.toContain(notBuilt)
     }
@@ -73,10 +75,15 @@ describe('the setup, as the lead reads it', () => {
     expect(saved().wd).toEqual([])
   })
 
-  it('“When I end it” clears the end date', () => {
+  it('the end is a date the lead can change', () => {
     render(<Harness start="2026-07-01" end="2026-09-30" cadence="WEEKLY" chosen />)
-    fireEvent.click(screen.getByRole('button', { name: 'When I end it' }))
-    expect(saved().e).toBe('')
+    fireEvent.change(document.querySelector('section[aria-label="When it ends"] input[type="date"]')!, { target: { value: '2026-08-31' } })
+    expect(saved().e).toBe('2026-08-31')
+  })
+
+  it('an unpicked rhythm names the one it will really run at', () => {
+    render(<Harness cadence="WEEKLY" />)
+    expect(screen.getByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
   })
 
   it('once, and when I choose, have no days to pick and no end', () => {

@@ -62,3 +62,21 @@ describe('the setup conversation', () => {
     expect(document.body.textContent).not.toContain('1 session planned')
   })
 })
+
+describe('the setup shows what will be saved (U.6 review)', () => {
+  /* Read live: "This will run every 2 weeks" and fortnightly dates, saved as weekly for 90 days. */
+  it('an unpicked rhythm is the situation’s own, and its dates run to its usual end', async () => {
+    localStorage.clear()
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: '', closed: true, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'user', content: 'He has missed three deadlines.' }, { role: 'assistant', content: 'Noted.' }],
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
+    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save. */
+    await waitFor(() => expect(document.body.textContent).toMatch(/: 12 in all\./))
+    expect(document.body.textContent).not.toContain('every 2 weeks unless')
+  })
+})

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
  *
@@ -1435,6 +1435,35 @@ export function EntryChatPage() {
     setGroundName('')
     setSessions(1)
   }, [])
+
+  /*
+   * WHAT THE SETUP SHOWS IS WHAT IS SAVED (U.6 review). Read live: the setup said "Not set yet. This
+   * will run every 2 weeks unless you pick one." and listed fortnightly dates, and the check-in was
+   * saved weekly for 90 days ("Session 1 of 12", "Ends 3 Jan 2027"). An unpicked rhythm is not sent as
+   * a choice, so the server takes the situation's own rhythm and length; the page showed its own
+   * default instead. It shows the server's now: the situation the save will carry (the same expression
+   * as the payload), its recommended rhythm while none is picked, and its usual end while none is set,
+   * which then goes with the save as the end, so the dates listed are the dates used.
+   */
+  const theSituationSaved = (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || '') as ScenarioKey
+  const [endChosen, setEndChosen] = useState(false)
+  useEffect(() => {
+    const facts = SCENARIO_FACTS[theSituationSaved]
+    if (!facts) return
+    if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
+    if (!endChosen && facts.cadence !== 'One time') {
+      const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
+      /* The length said in the conversation first ("six weeks"), else the situation's usual one. */
+      const days = plannedFrom?.timelineDays ?? facts.timelineDays
+      /* The end is the day of the last check-in, as many as that length holds at this rhythm. */
+      const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadenceChosen ? cadence : CADENCE_VALUE[facts.cadence]] ?? 1
+      const n = Math.max(1, Math.floor(days / gap))
+      const end = gap === 30
+        ? new Date(from.getFullYear(), from.getMonth() + (n - 1), from.getDate())
+        : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
+      setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
+    }
+  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
 
   // Load or start session
   useEffect(() => {
@@ -3778,7 +3807,7 @@ export function EntryChatPage() {
                 startsOn={checkInBy}
                 onStartsOn={setCheckInBy}
                 endsOn={lastCheckInBy}
-                onEndsOn={setLastCheckInBy}
+                onEndsOn={(d) => { setEndChosen(true); setLastCheckInBy(d) }}
               />
 
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
