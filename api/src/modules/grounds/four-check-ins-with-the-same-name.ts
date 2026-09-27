@@ -40,7 +40,12 @@ export function aLabelTheyCanTellApart(label: string, taken: string[], when: Dat
   if (!clash) return wanted;
   /* A plain phrase, not a dot and a clipped date (U.6 review): "Help a new hire get started, from 27
      September". Still the topic, never the person: it is the invitation email's subject. */
-  const withDay = `${wanted}, from ${theDay(when)}`;
+  /* A name that is already a sentence (a question from "Get updates from your team") takes the day
+     as a sentence of its own: "What moved this week, and what is stuck? From 27 September." A comma
+     after "?" does not read as a sentence (U.6 review). */
+  const withDay = /[?!.]$/.test(wanted)
+    ? `${wanted} From ${theDay(when)}.`
+    : `${wanted}, from ${theDay(when)}`;
   /* Two on the same day. The second gets the day too, and the rail then shows them in the order
      they were opened - which is the only thing left that distinguishes them honestly. */
   return withDay;

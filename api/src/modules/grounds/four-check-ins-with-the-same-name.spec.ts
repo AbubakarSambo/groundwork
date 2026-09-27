@@ -34,4 +34,14 @@ describe('a label they can tell apart', () => {
     expect(aLabelTheyCanTellApart('Help a new hire get started', ['Help a new hire get started'], new Date('2026-09-27T10:00:00Z')))
       .toBe('Help a new hire get started, from 27 September');
   });
+
+  /* Read live: "What moved this week, and what is stuck?, from 27 September". */
+  it('gives a name that ends like a sentence the day as a sentence of its own (U.6 review)', () => {
+    const on = new Date('2026-09-27T10:00:00Z');
+    const q = 'What moved this week, and what is stuck?';
+    expect(aLabelTheyCanTellApart(q, [q], on)).toBe('What moved this week, and what is stuck? From 27 September.');
+    expect(aLabelTheyCanTellApart('Tell us one win!', ['Tell us one win!'], on)).toBe('Tell us one win! From 27 September.');
+    expect(aLabelTheyCanTellApart('Share your update.', ['Share your update.'], on)).toBe('Share your update. From 27 September.');
+    expect(aLabelTheyCanTellApart(q, [q], on)).not.toContain('?,');
+  });
 });
