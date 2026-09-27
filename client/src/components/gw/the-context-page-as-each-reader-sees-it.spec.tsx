@@ -211,3 +211,51 @@ describe('the banner an admin reads over a check-in somebody else leads', () => 
     )
   })
 })
+
+/*
+ * U.7 REVIEW: THE DOCUMENT CARD IS THE PROTOTYPE'S. The file, what it is for, and who can read it
+ * ("Everyone" or "Only you"); what Groundwork took from it is folded under the card, not printed on
+ * its face in pieces joined with colons.
+ */
+describe('a document card, as each reader sees it', () => {
+  const read = {
+    assessment: { suggests: ['It sets the lowest price for each freezer.'], willDo: [] },
+    theContextWeHave: 'Here is the context we have from Q3 price list.pdf.\n\nFor the whole check-in:\n- Lowest price for the 600L: 76,000',
+    holds: { forEverybody: [{ what: 'Lowest price for the 600L', target: 76000 }], forOnePerson: [], dates: [], unmatched: [] },
+  }
+  const face = (id: string) => {
+    const el = document.querySelector(`[data-gw-document="${id}"]`) as HTMLElement
+    const fold = el.querySelector('[data-gw-document-took]')
+    return (el.textContent ?? '').replace(fold?.textContent ?? '', '')
+  }
+
+  it('Wairimu reads the name, what it is for, and "Only you", with what was taken folded away', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([{ ...leadsDocs[1], ...read }])
+    draw('lead', 'u-lead')
+    await screen.findByText('Q3 price list.pdf')
+    expect(face('d2')).toContain('Q3 price list.pdf')
+    expect(face('d2')).toContain('Checks price objections')
+    expect((screen.getByLabelText('Who can read Q3 price list.pdf') as HTMLSelectElement).selectedOptions[0].textContent).toBe('Only you')
+    expect(face('d2')).not.toMatch(/Read from it|For the whole check-in|Lowest price/)
+    expect(screen.getByText('What Groundwork took from it')).toBeTruthy()
+    expect(card('d2')).toContain('It sets the lowest price for each freezer.')
+    expect(document.body.textContent).not.toContain('Only me')
+  })
+
+  it('and the note on her first document says each choice in a full sentence', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([leadsDocs[1]])
+    draw('lead', 'u-lead')
+    await screen.findByText('Q3 price list.pdf')
+    expect(document.body.textContent).toContain('Everything you add starts private to you. If you choose Everyone, everyone in this check-in can read it. If you choose Only you, nobody else can open it. If you choose Whoever runs this check-in, the person running it can read it, so it stays readable if someone else takes the check-in over from you.')
+  })
+
+  it('Aisha reads her own file as "Only you", with a button to share it', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([{ id: 'd5', name: 'My visits.pdf', uploadedAt: '2026-09-22T10:00:00Z', visibility: 'OWN', mine: true }])
+    draw('party', 'u-aisha')
+    await screen.findByText('My visits.pdf')
+    expect(face('d5')).toContain('Only you')
+    expect(document.body.textContent).toContain('If you choose Only you, nobody else can open it.')
+    expect(document.body.textContent).not.toContain('Whoever runs this check-in')
+  })
+})
+

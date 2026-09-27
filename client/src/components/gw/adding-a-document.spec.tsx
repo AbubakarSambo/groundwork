@@ -86,7 +86,8 @@ describe('who can read it, and keeping it', () => {
     await screen.findByText('What it took from the document')
     expect(screen.getByText('Who can read it')).toBeTruthy()
     expect((screen.getByRole('radio', { name: /Only you/ }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText('Only you can see this. It supports your own account and nobody else can open it.')).toBeTruthy()
+    /* U.7 review: plainer, and says what the document does for its uploader. */
+    expect(screen.getByText('Only you can open it. It shapes the questions in your own check-in.')).toBeTruthy()
     expect(screen.getByText('Everyone in this check-in')).toBeTruthy()
     expect(screen.getByText('They can open it from Context.')).toBeTruthy()
     /* The prototype's sentence is not true today: a private document shapes only its uploader's questions. */

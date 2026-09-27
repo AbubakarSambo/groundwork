@@ -754,8 +754,8 @@ export function ContextPage({
                   reader was taught did not appear anywhere they could click. And the lead now has a
                   third answer, which a sentence naming two would quietly contradict.
                 */}
-                Everything you add starts private to you. <b>Everyone</b> means everyone in this check-in can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
-                {isLead && <> <b>Whoever runs this check-in</b> keeps it to that person, so it stays readable if somebody takes the check-in over from you.</>}
+                Everything you add starts private to you. If you choose <b>Everyone</b>, everyone in this check-in can read it. If you choose <b>Only you</b>, nobody else can open it.
+                {isTheLead && <> If you choose <b>Whoever runs this check-in</b>, the person running it can read it, so it stays readable if someone else takes the check-in over from you.</>}
               </div>
             )}
             {/*
@@ -809,45 +809,38 @@ export function ContextPage({
                   {doc.usedFor && (
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{doc.usedFor}</div>
                   )}
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>{whenItWas(doc.uploadedAt, 'day')}</div>
                   {/*
-                    WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
+                    WHAT GROUNDWORK TOOK FROM IT, FOLDED UNDER THE CARD (U.7 review).
 
-                    Every upload is read and assessed - two to four things the document suggests,
-                    and what will be done with it - and the result has been stored on the row and
-                    rendered by nothing since it was built. So the card was a filename, a date and
-                    two controls: a file locker, which is not what this is. A person cannot tell
-                    that the thing they uploaded was read at all, let alone that it is read against
-                    what they say in the chat.
-
-                    Two lines, not the whole assessment: the point is to show the document landed
-                    and was understood, not to reprint it. The rest reaches them in the check-in,
-                    which is where it can actually be compared with what they said.
+                    The card is the prototype's: the file, what it is for, and who can read it. What
+                    the read found ("Read from it", the numbers and dates it holds) was printed on the
+                    card's face in pieces joined with colons and dashes. It is still here, one click
+                    away, because a card that says a file was read and not what it gave is a file
+                    locker. The words of the second part are the engine's (what-a-document-holds.ts);
+                    asked to be full sentences in request 40.
                   */}
-                  {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
-                      <span style={{ color: 'var(--gw-muted)' }}>Read from it: </span>
-                      {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
-                    </div>
-                  )}
-                  {/*
-                    AND THE NUMBERS IT HOLDS, WHOSE THEY ARE, AND THE DATES - the same words the chat
-                    says, from the same read (the API's what-a-document-holds). Hafsah, 22 Sep 2026:
-                    "context tab as well as the reports and board. It can pull the targets." A card
-                    that says a file was read and not what it gave is the locker this page is not.
-                  */}
-                  {doc.theContextWeHave && (
-                    <div style={{ marginTop: 8, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '9px 11px' }}>
-                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--gw-navy)', fontWeight: 700 }}>The context we have from it</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 4 }}>
-                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
-                      </div>
-                      {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                          These are on the board and in the report, against the people who hold them.
+                  {((Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0) || doc.theContextWeHave) && (
+                    <details data-gw-document-took style={{ marginTop: 6 }}>
+                      <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What Groundwork took from it</summary>
+                      {doc.uploadedAt && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>Added on {whenItWas(doc.uploadedAt, 'day')}.</div>
+                      )}
+                      {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
+                          {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
                         </div>
-                      ) : null}
-                    </div>
+                      )}
+                      {doc.theContextWeHave && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                          {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                          {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
+                            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                              These are on the board and in the report, against the people who hold them.
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </details>
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -896,7 +889,7 @@ export function ContextPage({
                       }}
                     >
                       <option value="OPEN">Everyone</option>
-                      <option value="OWN">Only me</option>
+                      <option value="OWN">Only you</option>
                       {/* Named by who reads it, not by how private it feels, because "the person
                           running this check-in" is a chair rather than a person: it stays readable
                           if the lead changes or an org admin steps in. That is the whole of the
@@ -934,7 +927,7 @@ export function ContextPage({
                           are what a person is choosing between; an icon or a switch makes them
                           guess, and this is the one control on the page whose mistake cannot be
                           undone. CLOSED is the lead's own material and is not settable here. */}
-                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : 'Only me'}
+                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : 'Only you'}
                     </button>
                   ))}
                   {/* Same rule as the visibility control above it, and the same defect until now:
