@@ -1353,7 +1353,7 @@ export function EntryChatPage() {
     queryFn: () => authApi.methods(),
     staleTime: 5 * 60 * 1000,
   })
-  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  const [cadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   /* Which days this team works. Empty means nobody said, which is not the same as every day - and
      it is never pre-set to Monday-Friday, because that is one region's office week rather than a
      fact about anybody's. */
@@ -3719,8 +3719,7 @@ export function EntryChatPage() {
                 cadence={cadence}
                 cadenceChosen={cadenceChosen}
                 onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
-                anchorDay={cadenceAnchorDay}
-                onAnchorDay={setCadenceAnchorDay}
+                anchorDay={null}
                 workingDays={workingDays}
                 daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
                 startsOn={checkInBy}

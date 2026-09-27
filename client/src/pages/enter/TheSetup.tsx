@@ -38,8 +38,6 @@ export const HOW_OFTEN: [Cadence, string][] = [
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-/** Monday first, as the prototype draws the week. */
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const fromIso = (s: string) => new Date(`${s}T00:00:00`)
@@ -114,7 +112,6 @@ export function TheSetup(p: {
   cadenceChosen: boolean
   onCadence: (c: Cadence) => void
   anchorDay: number | null
-  onAnchorDay: (d: number | null) => void
   workingDays: number[]
   startsOn: string
   onStartsOn: (s: string) => void
@@ -154,24 +151,9 @@ export function TheSetup(p: {
             <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => p.onCadence(c)}>{label}</Choice>
           ))}
         </div>
-        {(p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && (
-          <label style={{ display: 'block', ...note }}>
-            {'On which day? '}
-            <select value={p.anchorDay ?? ''} onChange={(e) => p.onAnchorDay(e.target.value === '' ? null : Number(e.target.value))} style={dateInput}>
-              <option value="">Any day</option>
-              {WEEK_ORDER.map((d) => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
-            </select>
-          </label>
-        )}
-        {p.cadence === 'MONTHLY' && (
-          <label style={{ display: 'block', ...note }}>
-            {'On which day of the month? '}
-            <select value={p.anchorDay ?? ''} onChange={(e) => p.onAnchorDay(e.target.value === '' ? null : Number(e.target.value))} style={dateInput}>
-              <option value="">Any day</option>
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-        )}
+        {/* One day picker only (U.6 review): a second "On which day?" for a weekly rhythm could say
+            Saturday while the days said weekdays only, and the two together turned weekly into
+            fortnightly. The start date sets the weekday, as on the check-in's own Setup. */}
       </Section>
 
       {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the

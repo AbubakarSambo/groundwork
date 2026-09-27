@@ -15,13 +15,12 @@ const TODAY = new Date(2026, 5, 30)
 function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[] }) {
   const [c, setC] = useState<Cadence>(cadence)
   const [picked, setPicked] = useState(chosen)
-  const [anchor, setAnchor] = useState<number | null>(null)
   const [wd, setWd] = useState<number[]>(days)
   const [s, setS] = useState(start)
   const [e, setE] = useState(end)
   return (
     <>
-      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={anchor} onAnchorDay={setAnchor}
+      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={null}
         workingDays={wd} daysPicker={<WhichDaysTheyWork value={wd} onChange={setWd} />} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
       <output data-testid="saved">{JSON.stringify({ c, s, e, wd })}</output>
     </>
@@ -102,6 +101,22 @@ describe('counting the days (U.6 review)', () => {
   it('and a weekly run keeps its last day', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '', endsOn: '2026-07-21', workingDays: [], today: afternoon }))
       .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21: 4 in all.')
+  })
+})
+
+describe('one day picker (U.6 review)', () => {
+  /* Read live: "On which day?" said Saturday, "On which days" said weekdays only, and weekly came
+     out fortnightly. There is one picker now, the same as on the check-in's own Setup. */
+  it('a weekly rhythm offers "On which days" and nothing else about days', () => {
+    render(<Harness cadence="WEEKLY" chosen />)
+    expect(screen.getAllByRole('region', { name: 'On which days' })).toHaveLength(1)
+    expect(document.body.textContent).not.toContain('On which day?')
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+  it('and so does a monthly one', () => {
+    render(<Harness cadence="MONTHLY" chosen />)
+    expect(document.body.textContent).not.toContain('On which day of the month?')
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 })
 
