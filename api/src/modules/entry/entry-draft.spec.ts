@@ -389,3 +389,51 @@ describe('a future start holds the invitations from the commit too (U.6 review)'
     expect(grounds.addParticipant.mock.calls[0][3].startsAt).toBeUndefined();
   });
 });
+
+describe('a second setup is a second check-in, by its key, never by its name (U.6 review)', () => {
+  /* Read live: Daniel's check-in, then Grace's a few minutes later, both "Help someone get back on
+     track"; the second save handed back Daniel's check-in and Grace's was never made. */
+  function withAStatefulDraft(start: any) {
+    const made = makeService();
+    let row: any = start ? { ...start } : null;
+    let n = 0;
+    made.grounds.create.mockImplementation(async () => ({ id: `g-${++n}` }));
+    made.prisma.entryDraft.findUnique = jest.fn(async () => (row ? { ...row } : null));
+    made.prisma.entryDraft.create = jest.fn(async ({ data }: any) => { if (row) throw new Error('unique'); row = { id: 'd1', updatedAt: new Date(), groundId: null, ...data }; return row; });
+    made.prisma.entryDraft.updateMany = jest.fn(async ({ where, data }: any) => {
+      if (!row || where.id !== row.id) return { count: 0 };
+      if ('consumedAt' in where && where.consumedAt === null && row.consumedAt) return { count: 0 };
+      if (where.updatedAt && row.updatedAt.getTime() !== new Date(where.updatedAt).getTime()) return { count: 0 };
+      if ('groundId' in where && where.groundId === null && row.groundId) return { count: 0 };
+      row = { ...row, ...data, updatedAt: new Date(row.updatedAt.getTime() + 1) };
+      return { count: 1 };
+    });
+    made.prisma.ground.findUnique = jest.fn(async ({ where }: any) => ({ id: where.id, joinToken: `jt-${where.id}`, participants: [] }));
+    return { ...made, row: () => row };
+  }
+  const body = (setupKey: string) => ({ setupKey, groundLabel: 'Help someone get back on track', scenario: 'PIP', history: HISTORY, contributors: [] });
+
+  it('two different setups a minute apart, with the same topic name, make two check-ins', async () => {
+    const s = withAStatefulDraft({ id: 'd1', userId: 'u1', consumedAt: new Date(Date.now() - 60_000), groundId: 'g-daniel', updatedAt: new Date(), payload: { setupKey: 'daniel' }, history: [] });
+    const grace: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(grace.groundId).toBe('g-1');
+    expect(grace.groundId).not.toBe('g-daniel');
+  });
+
+  it('the same save retried makes one check-in', async () => {
+    const s = withAStatefulDraft(null);
+    const first: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    const again: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(again.groundId).toBe(first.groundId);
+  });
+
+  it('and with no key, a different check-in soon after is still made, not handed the old one', async () => {
+    const s = withAStatefulDraft({ id: 'd1', userId: 'u1', consumedAt: new Date(Date.now() - 60_000), groundId: 'g-daniel', updatedAt: new Date(), payload: {}, history: [] });
+    s.prisma.ground.findUnique = jest.fn(async ({ where }: any) => ({ id: where.id, label: 'Daniel, first weeks', joinToken: 'jt', participants: [] }));
+    const res: any = await s.service.commit('org1', 'u1', { ...body(''), setupKey: undefined, groundLabel: 'Grace, first weeks' } as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(res.groundId).toBe('g-1');
+  });
+});

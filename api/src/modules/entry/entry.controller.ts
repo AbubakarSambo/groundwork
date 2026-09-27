@@ -330,6 +330,12 @@ export class EntryDocumentDto {
 
 export class EntryCommitDto {
   @IsString() groundLabel: string;
+  /**
+   * WHICH SETUP THIS IS (U.6 review). A fresh key for every new setup, the same one when the same save
+   * is retried. A replay is recognised by this, never by the check-in's name: topic names ("Help
+   * someone get back on track") are the same for many check-ins. See a-second-setup-is-a-second-check-in.
+   */
+  @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;

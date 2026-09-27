@@ -236,6 +236,7 @@ export const entryApi = {
 
   commit: (payload: {
     groundLabel: string
+    setupKey?: string
     orgName?: string
     scenario?: string
     /* The four-field card sends these directly rather than through an interview - see

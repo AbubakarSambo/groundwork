@@ -31,7 +31,7 @@ import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
-import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { clearEntryHandover, theSetupKey, SETUP_KEY } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
@@ -130,7 +130,7 @@ function loadSession(): EntrySession | null {
   return null
 }
 export function clearEntrySession() {
-  try { localStorage.removeItem(STORAGE_KEY) } catch { /* */ }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETUP_KEY) } catch { /* */ }
 }
 
 /** Which branch the load-or-start effect takes. Pure so it can be pinned by
@@ -2121,6 +2121,8 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
+        /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
+        setupKey: theSetupKey(),
         groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.

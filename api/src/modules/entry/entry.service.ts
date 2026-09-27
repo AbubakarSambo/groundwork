@@ -1740,6 +1740,8 @@ from finishing at all.`;
     initiatorId: string,
     dto: {
       groundLabel: string;
+      /** Which setup this is: see EntryCommitDto.setupKey. */
+      setupKey?: string;
       orgName?: string;
       scenario?: string;
       cadence?: string;
@@ -1783,6 +1785,15 @@ from finishing at all.`;
      * The protection this gives is real and stays: two requests seconds apart must not make two
      * grounds. See a-second-setup-is-a-second-check-in for what separates the two.
      */
+    /*
+     * BY IDENTITY, NEVER BY NAME (U.6 review). Read live: the same lead set up a check-in about Grace a
+     * few minutes after Daniel's, both named "Help someone get back on track", pressed save, and was
+     * handed Daniel's check-in; Grace's was never made. The client now sends a key per setup, and the
+     * key decides: the same key is the same save retried, a different key is a new check-in.
+     */
+    const key = dto.setupKey?.trim() || null;
+    if (key) return this.commitBySetupKey(organizationId, initiatorId, dto, draft, key);
+
     if (draft?.consumedAt) {
       const itMade = draft.groundId
         ? await this.prisma.ground.findUnique({ where: { id: draft.groundId }, select: { label: true } }).catch(() => null)
@@ -1795,6 +1806,10 @@ from finishing at all.`;
         return this.awaitConsumedDraftGround(initiatorId);
       }
       this.logger.log(`Entry commit for ${initiatorId}: the draft was consumed on ${new Date(draft.consumedAt).toISOString()} by ${JSON.stringify(itMade?.label ?? null)}, and this is a new check-in. Setting it up fresh.`);
+      /* A NEW CHECK-IN IS SET UP FRESH, AS THE LINE ABOVE SAYS (U.6 review). It fell through to the
+         claim below, which only claims an unconsumed draft, so it "lost the race" to itself and was
+         handed the old check-in anyway, whatever it was called. */
+      return this.commitInner(organizationId, initiatorId, dto);
     }
     if (draft) {
       const claimed = await this.prisma.entryDraft.updateMany({
@@ -1823,6 +1838,67 @@ from finishing at all.`;
       }
     }
     return this.commitInner(organizationId, initiatorId, dto);
+  }
+
+  /**
+   * ONE SETUP, ONE CHECK-IN, BY ITS KEY (U.6 review).
+   *
+   * The lead's draft row remembers which setup it last made a check-in for (`payload.setupKey`), so:
+   * - the same key, already made or being made: the same save retried; its check-in is returned.
+   * - the setup the draft itself holds, not made yet (signed out, opening the link): claimed and made
+   *   from the draft, as before.
+   * - any other key: a new check-in, made from this request alone, never the old draft's content.
+   * Claiming is one conditional write, so two requests with one key make one check-in.
+   */
+  private async commitBySetupKey(organizationId: string, initiatorId: string, dto: any, draft: any, key: string) {
+    const draftKey = (draft?.payload as any)?.setupKey ?? null;
+    if (draft && draftKey === key && draft.consumedAt) return this.awaitConsumedDraftGround(initiatorId);
+
+    if (draft && !draft.consumedAt && (draftKey === key || draftKey === null)) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, consumedAt: null },
+        data: { consumedAt: new Date(), payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      const body = overlayDraftOntoBody(draft, dto);
+      try {
+        const result = await this.commitInner(organizationId, initiatorId, body);
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id }, data: { groundId: result.groundId } });
+        return result;
+      } catch (err) {
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id, groundId: null }, data: { consumedAt: null } }).catch(() => undefined);
+        throw err;
+      }
+    }
+
+    /* A new setup. The row is taken over for this key in one conditional write. */
+    let claimedId: string;
+    if (draft) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, updatedAt: draft.updatedAt },
+        data: { consumedAt: new Date(), groundId: null, payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      claimedId = draft.id;
+    } else {
+      try {
+        const made = await this.prisma.entryDraft.create({
+          data: { userId: initiatorId, draftToken: crypto.randomBytes(24).toString('hex'), payload: { setupKey: key } as any, history: [] as any, consumedAt: new Date() },
+        });
+        claimedId = made.id;
+      } catch {
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+    }
+    try {
+      const result = await this.commitInner(organizationId, initiatorId, dto);
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId }, data: { groundId: result.groundId } });
+      return result;
+    } catch (err) {
+      /* Nothing was made: the key is let go, so the same save retried can make it. */
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId, groundId: null }, data: { payload: { ...((draft?.payload as object) ?? {}), setupKey: null } as any } }).catch(() => undefined);
+      throw err;
+    }
   }
 
   /** A consumed draft means a commit already ran (or is mid-flight). Return
