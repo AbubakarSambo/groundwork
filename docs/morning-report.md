@@ -16,9 +16,25 @@ This section is kept up to date as I go. If it stops partway, that is where I go
 
 **Fixed the simple way, as you said (`a75b13ac`).** A person's label is now their name. With no name it is "A teammate", the neutral word the board and the report's list of who answered already use. Nine places built a label from the description. All nine are changed: the board, what the board tells the model the room is about, the end-state email, the interview's name for a colleague, and four places in the conversation. The end-state email also no longer falls back to an email address. A new test runs every one of these, including the served board as the lead, as the person and as a colleague, and proves no part of the description appears as anyone's label. Six of its tests fail with the old code put back. The answer is in `docs/answers-from-engine.md` (`d062243a`).
 
-**The same leak by other routes, being closed now.**
-- **The board's `remit` field.** It served the lead's full description to every reader, and I confirmed Daniel and a colleague both received it. It will reach only the person who runs the check-in.
-- **Two routes being checked.** The report's `people[].role`, and the person's own check-in instruction, which hands the model the lead's description of them.
+**Every route I found, and what closed it.** All of these are about the sentence the lead typed about a person when inviting them. It can hold the lead's private words, such as "Daniel - Your sales manager, who you said is not meeting his agreed targets".
+
+1. **The person's label.** When a person had no name, nine places used the lead's sentence as their name: the board, what the board tells the model the room is about, the end-state email, the interview's name for a colleague, and four places in the conversation. So the person, and their colleagues, could read the lead's words as a name. The end-state email also fell back to an email address, which a colleague may not see. Closed in `a75b13ac`.
+2. **The board's `remit` field.** The board served the lead's whole sentence about each person to every reader. I confirmed that Daniel and a colleague both received "Daniel - Your sales manager, who you said is not meeting his agreed targets". It now reaches only the person who runs the check-in. Closed in `c28dbc97`.
+3. **The person's own check-in.** In a person's own session, the model was given the lead's sentence about them three times, so it could say it back to them. It is now never given it. Closed in `feea6104`.
+4. **The person's own coaching note.** It began "your work as" followed by the start of the lead's sentence, which gave "your work as daniel". It now says "this work" unless the words are the person's own. Closed in `7b2a876c`.
+5. **The report's role line (`people[].role`).** I checked this, and it was not leaking. It only reaches the judgement, which only the lead reads. The tests now prove that, in `7586775d`.
+6. **A side effect of route 3, also fixed.** Once the model could not see the lead's sentence, an invited person was never asked who they are, because the product thought their record already said so. Now a person whose only role text is the lead's is asked in their first session, "are you the person this check-in is about, or somebody working alongside them?" That is the same question as for somebody with no role. Fixed in `f2c99afc`.
+
+**The wording, as you asked.** A person with no name is now "a colleague". When several appear in the same text, they are "a colleague", "another colleague" and "a third colleague", with a capital only at the start of a sentence. The board, the reports, the interview, the email and the conversation all take the words from one place, so the same person is called the same thing everywhere (`731f889c`, `c39d7fca`). One sentence reads less well now: when the first person comes up again later, "and a colleague agrees" can sound like somebody new. I kept your exact words. **I could not find your decision 17.** `docs/decisions.md` has 20 lines and does not mention "colleague". The prototype's only use of the word is "Invite a colleague".
+
+**The tests.**
+- A new label test (29 tests) checks every label builder. It searches the whole served board as the person and as a colleague for any part of the lead's sentence, and confirms the lead still reads it.
+- A session test runs real check-in turns and checks every instruction the model is handed.
+- Both fail when the old code is put back.
+
+**For the screens workspace.** The client still shows "a teammate", and its own `participantLabel` still falls back to the lead's sentence. One of their tests reads my server code for the old words. All of that is in `docs/answers-from-engine.md`.
+
+**Before this can be counted as proven,** the scenario run and the checker need to see it, because routes 3 and 6 change what the conversation says in a first session.
 
 ### Your decisions at midday
 
