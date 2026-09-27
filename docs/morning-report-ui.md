@@ -32,9 +32,12 @@ asks the engine to change the rule itself).
 4. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
 5. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
 6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
-7. The rest of items 13, 15 to 21 are smaller, each with a recommendation.
+7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
+   different things (a privacy question).
+8. The rest of items 13, 15 to 22 are smaller, each with a recommendation.
 
-**In progress:** U.11 (ending a check-in, the probation review, handover) is next.
+**Built, not yet tested or reviewed:** U.11 (ending a check-in). The lead now ends a check-in with a
+reason, and the person it is about reads the decision with that reason. Item 22 lists what needs you.
 
 ## Needs Hafsah
 
@@ -791,6 +794,65 @@ reviewed" in this report.
    number reads "What Sales assumes" (the target's name). A side of a difference whose label nobody
    could resolve reads "A colleague".
 
+### 22. Ending a check-in (U.11): what needs you
+
+1. **The handover page is not built, because the prototype and the product mean different things by
+   it. This is partly a privacy question.** The prototype's page belongs to one check-in: Leila moves
+   to another matter, and the page gives Amos "The strategy", "The key fact", "Still open", "The client
+   expects", and the dates, promises and decisions, then "Leila checks this page before she moves.
+   Amos confirms he has read it." The product's handover belongs to the organisation: when a role
+   ends through the developer API, the successor gets a brief of what is outstanding (open
+   commitments, what each side is waiting on, and subjects that were live), and it never carries what
+   the person leaving said, on purpose, so that nobody's honest answers travel because they left. No
+   screen shows that brief today. **My recommendation:** a handover page on the check-in where the
+   person leaving writes the handover in their own words, sees it before it goes, and the person
+   taking over confirms they have read it, with the product's brief of what is outstanding beside it.
+   Nothing the leaver said in check-ins should be copied into it without them.
+2. **Who reads the lead's reason.** I served it, once the check-in has ended, to everyone in the
+   check-in and to an admin, and to nobody else. On a team check-in that means every participant
+   reads the lead's reason. **My recommendation:** keep it that way. It follows rule 6 (the person
+   sees the decision with its reasons) and an admin needs it to decide an appeal.
+3. **"Where this is heading" is held.** The prototype's board shows the possible outcomes, "wairimu
+   decides." and "Groundwork lays out the outcomes and the proof. It doesn't choose." from the start.
+   The product has an earlier rule of yours that the outcomes appear only near the last session, so
+   nobody sees "Stop the project" on a check-in that started yesterday. I kept your rule. **My
+   recommendation:** show "Where this is heading" to the lead only, from the start, as a list with no
+   buttons, and keep the person's view of the outcomes for near the end.
+4. **"Send the final report to everyone" is not built, and the closing email is unchanged.** The
+   prototype lets the lead add readers such as HR, and says the person "gets an email and his final
+   report". Today everyone in the check-in gets the same closing email, which does not include the
+   reason. You asked for emails to keep working exactly as now. **My recommendation:** add the reason
+   to the closing email for the people in the check-in, and leave adding outside readers until the
+   suites decide who HR is (U.17).
+5. **The second press stays.** The prototype ends a check-in on one press of "Save the outcome and
+   end it". The product has a rule that nothing irreversible happens on one press, so a second press
+   asks "End it as "Keep the hire"? As the lead, your answer closes this check-in. Nobody can add to
+   it after that." with "Yes, end it" and "Not yet". **My recommendation:** keep it.
+6. **The outcome's words for a new hire are the engine's.** The person reads the outcome, for
+   example "Let them go", because rule 6 says they see the decision. The prototype's words are
+   gentler ("Keep Kwame on", "Extend the settling-in period", "Change the role", "Part ways"). The
+   label is stored and read by the prompts, so I asked the engine workspace (request 13, part d).
+   **My recommendation:** agree to the prototype's words.
+7. **Not built, and why.** Groundwork's suggestion ("Groundwork suggests keeping Kwame on", with why,
+   what would change it, and the person's own answer), the probation review's parts (where things
+   stand, signals, week by week, why things went wrong and what went well, what colleagues saw,
+   support given, questions to help decide), and the day 30 and day 60 pictures are the engine's
+   text (request 13, parts a to c). The suggestion's screens, "add their side" and appeals are U.13.
+   Pausing, restarting, cancelling and giving more time are not built in this pass. The check-in's
+   own header and tabs wait for item 21.3.
+8. **Wording no screen shows, which I wrote with the fewest words.** "How this ended" (kept from
+   before). "You decided this on 30 September." and "Wairimu decided this on 30 September." "Your
+   reason" and "Wairimu’s reason". "Your account is kept, and you can still correct it." (for the
+   person, after it has ended). For an admin who only reads: "These are the outcomes this check-in
+   can reach. Wairimu decides which one it is." Where there are several other people: "Everyone in
+   the check-in reads this with the outcome.", "What everyone else sees now" and "Ending means nobody
+   can add to it. Everyone keeps their own history, and can still correct their own account." The
+   prototype's "his account" reads "their account". "Back to the board" on the ending page. The
+   second press, in item 5. When saving fails: "That did not save. Your outcome and reason are still
+   here, so you can try again." When the server is asked to end a check-in with no reason: "Say why,
+   in a sentence or two. The people in this check-in read it with the outcome." After it ends: "This
+   check-in has ended. Everyone in it can read the outcome and your reason."
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1410,6 +1472,61 @@ module serves the board, though no engine text was touched: opening the board ne
 anything now, and a lead is never shown the checkability rating. Because the board module is shared
 ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
 **Not ticked,** because no review can sign in (item 14).
+
+### U.11 Ending a check-in, the probation review, handover: built, not yet tested or reviewed
+
+**What was missing, against the prototype (the gap list):** a decision with its reason (the lead
+could end a check-in on an outcome alone, and nobody could read why); the ending page, "How does this
+end?", with the prototype's words; the board's "The last session is done" and how it ended at the top;
+the closed panel said "Everyone in this check-in chose the same outcome.", which is false now that the
+lead decides; the report printed "Closed: KEEP"; and the check-in's own read passed the whole
+resolution row to every reader. Groundwork's suggestion, the probation review's parts, and the day 30
+and day 60 pictures are the engine's text (request 13). The handover page needs a decision (item 22.1).
+
+**What each person now reads** (Wairimu runs "Kwame, first 90 days", Kwame is in it, Grace is an admin
+who is not):
+- **Wairimu, on the board near the end:** "The last session is done" (only once it is), "It’s yours
+  to decide how this ends." and the button "Decide how it ends".
+- **Wairimu, on the ending page:** "How does this end?", "This one is yours to decide. Kwame can see
+  the possible outcomes and where things stand, and what each of you shared stays whichever way you
+  go.", "The outcome" with the outcomes to choose from, "Why, in a sentence or two", "Kwame reads this
+  with the outcome.", "Save the outcome and end it", "Ending means nobody can add to it. Both of you
+  keep your own history, and Kwame can still correct their account.", and "What Kwame sees now" with
+  what Kwame reads, word for word. The button waits until there is an outcome and a reason, and the
+  server refuses an ending without a reason too.
+- **Kwame, while it is open:** "These are the outcomes this check-in can reach. Wairimu decides which
+  one it is. Your account is kept either way, and you can still correct or add to it.", and the
+  outcomes as a list, never as buttons.
+- **Grace, while it is open:** "These are the outcomes this check-in can reach. Wairimu decides which
+  one it is." She is not told about an account she does not have.
+- **Everyone, once it has ended, at the top of the board and on the ending page:** "How this ended",
+  the outcome, "Wairimu decided this on 30 September." (Wairimu reads "You decided this on 30
+  September."), "Wairimu’s reason" (or "Your reason") and the reason. Kwame also reads "Your account is
+  kept, and you can still correct it." On the report, the outcome by its name, "Decided by the lead.
+  Every account stays on the record." and the reason.
+
+**Privacy, on the server:** the reason is served only once the check-in has ended, only through the
+resolution read, and only to the people in the check-in and an admin; anyone else is refused. The
+check-in's own read no longer carries the whole resolution row, so the reason cannot leave that way.
+The board's "Last updated" time now counts the decision as something new coming in. No label is shown
+on a person anywhere; each reader's test checks the page for "PIP", "at risk" and "exit".
+
+**Commits:** `dc6dbe93` (the server: the reason, who reads it, the narrower check-in read, the board's
+time), `942ad34e` (the ending page, the panel's words, the board's top and foot), `68d958f5` (the
+report's line), `bdd2f61a` (request 13 to the engine).
+
+**Tested:** new tests read what each person is served and sees, as Wairimu, Kwame and Grace:
+`api/src/modules/resolution/the-decision-and-its-reason-as-each-reader-reads-it.spec.ts`,
+`client/src/components/gw/the-ending-as-each-reader-reads-it.spec.tsx` and
+`client/src/pages/report/how-it-ended-on-the-report.spec.tsx`. **Tests changed, and why:**
+`resolution.service.spec.ts` ended check-ins with no reason, and now gives one because the server
+requires it; `ResolutionPanel.spec.tsx` and `ResolutionPanel.leadDecides.spec.tsx` checked the old
+words ("This is my answer", "Whoever runs it decides which one it is", "what each person shared") and
+now check the prototype's. What they protect is unchanged: the person is never asked to choose, the
+second press, and the tally only where everyone answers. Only the tests for the changed files, the
+guards that read those files, and both type checks were run, as you asked. No screen could be checked
+signed in (item 14), so the screens were checked by rendering tests only. The migration
+(`20260927050000_the_reason_for_a_decision`) adds one empty column and was not applied to any database.
 
 ## Found on the way, for later tasks
 
