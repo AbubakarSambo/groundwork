@@ -377,19 +377,19 @@ export function ContextPage({
     return null
   })()
   /*
-   * THE FOLDS UNDER IT, HEADED FOR WHAT THEY ARE (U.7 re-check). "What you wrote" held the brief that
-   * setup put together from her answers ("It matters now because whether to confirm him."), which
-   * was not what she wrote. Now:
-   *   - "What you wrote" is her own messages from setup, which the server sends to her alone;
-   *   - the brief is "What Groundwork put together from your answers" while it is still setup's, and
-   *     "What you wrote" (or whoever wrote it) once somebody has rewritten it.
+   * THE FOLDS UNDER IT, AND ONLY WORDS SOMEBODY WROTE (U.7, fourth check).
+   *   - "What you wrote" is the lead's own messages from setup, which the server sends to her alone.
+   *   - Once somebody has rewritten the brief, it is theirs: "What you wrote" or "What Otieno wrote".
+   *   - The text setup put together from her answers is shown to nobody. It was "What Groundwork put
+   *     together from your answers" for three reviews, and no template makes any answer a sentence:
+   *     Otieno read fragments standing as sentences, and Wanjiru's "I" as if it were his. It stays
+   *     only as what the engine reads. Rewriting starts from the text everyone reads.
    */
   const herSetupWords: string = ((ground as any).leadsOwnSetupWords ?? '').trim()
   const theBriefIsSetups = (ground as any).briefPutTogetherBySetup === true && !changedBy
   const theBriefFoldTitle: string = (() => {
     if (changedBy?.isYou) return 'What you wrote'
     if (changedBy && !changedBy.isTheLead) return changedBy.firstName ? `What ${changedBy.firstName} wrote` : 'What someone else wrote'
-    if (theBriefIsSetups) return isTheLead ? 'What Groundwork put together from your answers' : `What Groundwork put together from ${theLeadMidSentence}\u2019s answers`
     return isTheLead ? 'What you wrote' : `What ${theLeadMidSentence} wrote`
   })()
   const objectives: any[] = (ground as any).objectives ?? []
@@ -467,7 +467,7 @@ export function ContextPage({
                   </span>
                   {isLead && briefDraft === null && (
                     <button
-                      onClick={() => setBriefDraft(theBrief || whatEveryoneReads)}
+                      onClick={() => setBriefDraft(theBriefIsSetups ? whatEveryoneReads : (theBrief || whatEveryoneReads))}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Rewrite
@@ -481,11 +481,9 @@ export function ContextPage({
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
                   </details>
                 )}
-                {/* The stored brief, where what everyone reads is Groundwork's short read of it. Not for
-                    the lead where her own words are kept: setup's reading of her answers beside her
-                    real words is a second version of what she said (U.7 third review). An admin keeps
-                    it, because he can rewrite it and has nothing else to go on. */}
-                {isLead && theBrief && !shownIsTheBrief && !(isTheLead && herSetupWords && theBriefIsSetups) && (
+                {/* The stored brief, where what everyone reads is Groundwork's short read of it, and
+                    only when somebody wrote it: never the text setup put together (see above). */}
+                {isLead && theBrief && !shownIsTheBrief && !theBriefIsSetups && (
                   <details data-gw-brief-fold style={{ marginTop: 8 }}>
                     <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>

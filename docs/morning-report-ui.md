@@ -2022,6 +2022,14 @@ engine answers. Until then, "When I end it" stays off the screen.
    at one probation check-in as the person it is about, and decide whether the decision itself
    should be named to them.
 
+5. **A decision about a person, set as a target that person reads.** On a probation check-in, the
+   engine created the team target "Decide whether to confirm Aisha in her role". Team targets are
+   sent to everyone in the check-in, so Aisha is sent it, and her Context page shows it (it is the
+   first of the targets, `objectives[0].name`). The target is the engine's, so I have not changed it,
+   and I asked the engine to consider the same question (request 42). **Please decide:** may a
+   decision about a person be a target that person reads? My recommendation is no. The decision
+   stays with the lead, and the person reads what they are expected to do.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2870,6 +2878,15 @@ Now:
 - **The lead's own words.** When her own words from setup are kept, the lead reads only those, under
   "What you wrote". "What Groundwork put together from your answers" appears only on older check-ins
   without them, and for an admin, who can rewrite it.
+
+**After the fourth check (27 September).** Participants' privacy and Wanjiru's view passed. Otieno's
+fold "What Groundwork put together from Wanjiru’s answers" failed: its sentences were fragments, and
+he read Wanjiru's "I" as though it were his own. No template can make every answer a sentence, so the
+text setup puts together is no longer shown to anyone on the Context page. It stays only as what the
+engine reads. Wanjiru keeps "What you wrote" where her own words are stored. An admin who rewrites
+the brief starts from the text everyone reads. The line "Groundwork wrote this from Wanjiru’s words."
+(or "from your words." for the lead) stays, and is still true. A question about a target set on a
+person is item 31.5.
 
 **The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
 read a source file without removing comments first, and the comment guard caught it; that is fixed.

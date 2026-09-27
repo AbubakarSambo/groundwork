@@ -320,17 +320,22 @@ describe('Juma’s check-in: what the lead wrote, and what Groundwork put togeth
     expect(document.body.textContent).not.toContain('taken to mean')
   })
 
-  it('on an older check-in, where her own words were not kept, she reads what Groundwork put together, with nobody quoted', async () => {
+  /* U.7 fourth check: the text setup put together is shown to nobody, on any check-in. */
+  it('on an older check-in, where her own words were not kept, she reads what everyone reads and no put-together text', async () => {
     ;(documentsApi.list as any).mockResolvedValue([])
     draw('lead', 'u-lead', juma)
-    expect(folds()).toEqual([{ title: 'What Groundwork put together from your answers', text: PUT_TOGETHER }])
-    expect(folds()[0].text).not.toMatch(/[“”]|said/)
+    expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
+    expect(folds()).toEqual([])
+    expect(document.body.textContent).not.toMatch(/taken to mean|put together/)
   })
 
-  it('an admin reads no setup words of hers, and the brief headed as put together from Wairimu’s answers', async () => {
+  it('an admin reads what everyone reads, no setup words of hers and no put-together text, and rewrites from what everyone reads', async () => {
     draw('admin', 'u-otieno', juma)
-    expect(folds()).toEqual([{ title: 'What Groundwork put together from Wairimu’s answers', text: PUT_TOGETHER }])
+    expect(folds()).toEqual([])
     expect(whose()).toEqual(['Groundwork wrote this from Wairimu’s words. This is what everyone in this check-in reads before they answer.'])
+    expect(document.body.textContent).not.toMatch(/taken to mean|put together|Juma joined our warehouse/)
+    fireEvent.click(screen.getByText('Rewrite'))
+    expect((document.querySelector('textarea') as HTMLTextAreaElement).value).toBe(TOLD)
   })
 
   it('an admin who rewrote it, where Groundwork wrote what everyone reads from his words, is told so', async () => {
