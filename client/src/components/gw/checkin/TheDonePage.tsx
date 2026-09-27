@@ -24,6 +24,13 @@ import { howManyAnswer, whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-t
  * - "One thing for next time" is the sentence the session itself wrote (`whatToCarry`), which
  *   arrives a little after the check-in closes.
  */
+/**
+ * Off until request 45 (docs/requests-to-engine.md) is answered: the "n of 5" count and its bar
+ * are a score built from a read of the session that is known to miss real content. Flip this back
+ * on once the engine workspace has looked at why.
+ */
+const SHOW_THE_COUNT = false
+
 export interface WhatChanged {
   title?: string | null
   items: { name: string; says?: string | null; stages: { name: string; mark?: string | null }[] }[]
@@ -149,27 +156,42 @@ export function TheDonePage({
 
       {five && (
         <section style={card} aria-label="How checkable today’s check-in was">
-          <div style={rowHead}>
-            <h2 style={h3}>How checkable today’s check-in was</h2>
-            <span style={{ fontSize: 14, color: 'var(--gw-text)' }}>{five.filter(f => f.there).length} of 5</span>
-          </div>
-          <div aria-hidden style={{ height: 8, borderRadius: 4, background: 'var(--gw-paper-2)', margin: '10px 0 12px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${(five.filter(f => f.there).length / 5) * 100}%`, background: 'var(--gw-green-t)' }} />
-          </div>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+          <h2 style={h3}>How checkable today’s check-in was</h2>
+          {/*
+            THE COUNT AND THE BAR ARE GONE, ON PURPOSE, NOT ONLY VISUALLY.
+
+            "1 of 5" and a progress bar are a score, and request 45 to the engine workspace asks why
+            the read itself misses real things a person said - a real check-in with dates, a number,
+            a document and a named person waited on still came back "missing" on two dimensions. A
+            score built on a read that is known to undercount is not honest to show, so it stays out
+            until request 45 is answered. `SHOW_THE_COUNT` is the one line to flip back on; nothing
+            else about this section depends on it.
+          */}
+          {SHOW_THE_COUNT && (
+            <div style={rowHead}>
+              <span />
+              <span style={{ fontSize: 14, color: 'var(--gw-text)' }}>{five.filter(f => f.there).length} of 5</span>
+            </div>
+          )}
+          <p style={{ ...p, marginTop: 8 }}>
+            Groundwork looked for these five things. It may have missed some of what you said.
+          </p>
+          <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
             {five.map(f => (
               <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
+                {/*
+                  NEVER A FACT ABOUT ABSENCE, BUT SAID OUT LOUD, NOT ONLY TO A SCREEN READER.
+
+                  A sighted reader used to see only the icon and the same noun phrase either way -
+                  "What you did, not just what was happening" - with the one word that actually
+                  distinguished found from missing ("Groundwork found this." / "Groundwork did not
+                  pick this up this time.") hidden in a screen-reader-only span. So the only visible
+                  difference between "found" and "missing" was a filled or empty circle. Both readers
+                  now get the same plain sentence.
+                */}
                 <span>
-                  {f.there ? f.met : f.missing}
-                  {/*
-                    NEVER A FACT ABOUT ABSENCE. Groundwork reads a session for these five things; it
-                    does not read everything a person actually said. "This was not there yet." said
-                    it was missing even when the person had given dates, a number and a document -
-                    read back, an untrue claim about their own words. What is true is only that this
-                    read did not pick it up this time.
-                  */}
-                  <span className="gw-sr-only">{f.there ? '. Groundwork found this.' : '. Groundwork did not pick this up this time.'}</span>
+                  {f.there ? f.met : f.missing}. {f.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
                 </span>
               </li>
             ))}

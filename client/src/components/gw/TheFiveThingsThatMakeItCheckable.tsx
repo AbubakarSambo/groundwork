@@ -132,6 +132,18 @@ export function TheFiveThingsThatMakeItCheckable({
             reader can check" - account means their account of what happened and reads as a login. */}
         Five things make a check-in something a reader can check. Add one or two next time.
       </div>
+      {/*
+        SAID OUT LOUD, NOT LEFT TO A TICK MARK.
+
+        The row below used to print the same noun phrase either way - "What you did, not just what
+        was happening" - whether or not the engine had found it, so the only thing that told found
+        from missing was a filled or empty circle. Somebody who cannot see the circle's colour, or
+        who is not looking closely, reads five identical lines. And a reader is also entitled to be
+        told, in words, that this read can miss real things they said.
+      */}
+      <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
+        Groundwork looked for these five things. It may have missed some of what you said.
+      </p>
 
       <div style={{ display: 'grid', gap: 7 }}>
         {rows.map(r => (
@@ -161,7 +173,7 @@ export function TheFiveThingsThatMakeItCheckable({
               color: r.there ? 'var(--gw-text)' : r.mostUseful ? 'var(--gw-text)' : 'var(--gw-sub)',
               fontWeight: r.mostUseful ? 700 : 400,
             }}>
-              {r.there ? r.met : r.missing}
+              {r.there ? r.met : r.missing}. {r.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
               {r.mostUseful && (
                 <span style={{
                   marginLeft: 7, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',

@@ -337,8 +337,19 @@ describe('the Done page, after “That’s right, finish”', () => {
     const saved = screen.getByRole('heading', { name: 'That’s saved' }).parentElement!
     expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
     const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
-    expect(within(checkable).getByText('4 of 5')).toBeTruthy()
-    expect(within(checkable).getByText('One date, number or document')).toBeTruthy()
+    /**
+     * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
+     * built from a read of the session that is known to miss real content, so it stays off until
+     * that is answered. What a sighted reader gets instead is the same plain sentence a screen
+     * reader always got - "Groundwork found this." or "Groundwork did not pick this up this time." -
+     * for every one of the five, not only the icon.
+     */
+    expect(within(checkable).queryByText('4 of 5')).toBeNull()
+    expect(within(checkable).getByText(
+      'Groundwork looked for these five things. It may have missed some of what you said.',
+    )).toBeTruthy()
+    expect(within(checkable).getByText(/One date, number or document\. Groundwork did not pick this up this time\./)).toBeTruthy()
+    expect(within(checkable).getByText(/What you did, not just what was happening\. Groundwork found this\./)).toBeTruthy()
     expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
   })
 
