@@ -86,3 +86,20 @@ describe('and none of that loosens the rules that were already there', () => {
     expect(render('The initiator blames the market.')).toBe('Grace Obi blames the market.');
   });
 });
+
+describe('and "You agrees", read by the lead about their own account', () => {
+  /* "Success for the initiator means ... The initiator agrees." rendered for the initiator. */
+  const asTheLead = (text: string) =>
+    withNames(text, namesVisibleTo('p-lead', PARTIES), LABELS, { viewerLabel: 'the initiator' });
+
+  it('agrees, disagrees, confirms and the rest take the verb that goes with "you"', () => {
+    expect(asTheLead('The initiator agrees.')).toBe('You agree.');
+    expect(asTheLead('The initiator disagrees with the date.')).toBe('You disagree with the date.');
+    expect(asTheLead('The initiator confirms the target is eight.')).toBe('You confirm the target is eight.');
+    expect(asTheLead('The initiator mentions the renewals.')).toBe('You mention the renewals.');
+  });
+
+  it('but not where "you" is the object of "for"', () => {
+    expect(asTheLead('What matters for the initiator agrees with the plan.')).toBe('What matters for you agrees with the plan.');
+  });
+});

@@ -796,6 +796,10 @@ function withNamesOutsideTheQuotes(
               'appears', 'remains', 'intends', 'accepts', 'refers',
               /* The four the twenty-four-scenario search actually produced. */
               'blames', 'observes', 'owes', 'points',
+              /* And "The initiator agrees" read by the initiator as "You agrees" (27 September 2026,
+                 found while fixing the title in a name). Verbs of accounting again, all regular. */
+              'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
+              'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
             ].join('|') +
             ')\\b',
           'gi',
