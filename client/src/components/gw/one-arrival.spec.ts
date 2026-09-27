@@ -134,7 +134,10 @@ describe('the check-in is not a trap', () => {
     const i = CHAT.indexOf('title="Leave this session')
     expect(i).toBeGreaterThan(0)
     const header = CHAT.slice(i - 600, i + 900)
-    expect(header.indexOf('gw-back')).toBeLessThan(header.indexOf('gw-logo'))
+    /* Since U.8 the header is the prototype's card header (TheCheckInHeader), and the way back
+       sits above the card, on the left, as "← Sales team, Q3" does in check-in-start.jpg. */
+    expect(header).toContain('gw-back')
+    expect(CHAT.indexOf('className="gw-back"')).toBeLessThan(CHAT.indexOf('<TheCheckInHeader'))
   })
 
   it('and it returns you to the check-in, not to the list of every ground', () => {

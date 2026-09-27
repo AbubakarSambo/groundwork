@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { groundsApi } from '@/api/grounds'
 import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
@@ -12,6 +13,7 @@ import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFini
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
+import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { toast } from 'sonner'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -132,6 +134,18 @@ export function ChatPage() {
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
   const [showAllPrior, setShowAllPrior] = useState(false)
+  /*
+   * THE CHECK-IN ITSELF, for its name on the way back ("← Sales team, Q3") and, at the end, for who
+   * else answers it. Read from the server rather than from how somebody got here: a check-in opened
+   * from an email carries no navigation state, and the way back said "Back" with no name.
+   */
+  const ground = useQuery({
+    queryKey: ['ground', groundId],
+    queryFn: () => groundsApi.get(groundId!),
+    enabled: !!groundId,
+    retry: false,
+  })
+  const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /*
    * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
@@ -680,6 +694,11 @@ export function ChatPage() {
     uploadDoc.mutate({ file, ctx: '' })
   }
 
+  /** Leave the check-in for its own page. Nothing is sent: every answer is saved as it is given. */
+  function leave() {
+    navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')
+  }
+
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : correctingSession != null
@@ -753,47 +772,52 @@ export function ChatPage() {
     /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
        height had just subtracted. See --gw-bottom-nav in AppShell. */
     <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
-      {/* Header */}
+      {/*
+        THE PROTOTYPE'S SHAPE: the way back above one card, and the whole check-in inside the card
+        (check-in-start.jpg). On a phone the card fills the screen.
+      */}
+      <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 600, margin: '0 auto', padding: 'clamp(0px, 3vw, 20px) clamp(0px, 2vw, 16px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
       {/**
-        * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.
+        * THE WAY OUT, ON THE LEFT, AND POINTED AT THE GROUND.
         *
-        * There has always been a `← Grounds` button here, on the right of the header. It was
-        * invisible: the feedback pill is `position: fixed` and `AppShell` moves it to `top: 12,
-        * right: 16` on chat pages specifically, which is the same place. Measured on the running
-        * page - back button x 1180 to 1264, pill x 1159 to 1264. Every pixel of it was underneath.
-        *
-        * So the check-in had no way out at all, which is what Hafsah asked about. Two changes:
-        * the exit sits on the left, where the ground page already puts it and where nothing floats
-        * over it, and it goes back to THE GROUND rather than the list of all grounds - leaving a
-        * session should not cost you your place.
+        * It has to sit where nothing floats over it (the feedback pill once covered every pixel of
+        * the old one), and it goes back to THE GROUND rather than the list of all grounds - leaving
+        * a session should not cost you your place. Named after the check-in, as the prototype's
+        * "← Sales team, Q3".
         */}
-      <div className="gw-hdr">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          {/* Not in the bare frame: somebody answering one question from their mail has no use for
-              a ground page, and the only control on the screen should not lead out of the thing
-              they came to do. See the-link-opens-on-the-question. */}
-          {!bareFrame && (
-            <button
-              className="gw-back"
-              onClick={() => navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')}
-              title="Leave this session. Everything you have said is already saved."
-            >
-              ← Back
-            </button>
-          )}
-          <div style={{ minWidth: 0 }}>
-            <div className="gw-logo" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundLabel || user?.firstName || 'Your session'}</div>
-            <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
-              {isFinalSession
-                ? `Closing session ${sessionNumber} · your final account`
-                : correctingSession != null
-                  ? `Correcting session ${correctingSession}`
-                  : `Session ${sessionNumber}`}
-            </div>
-          </div>
+      {/* Not in the bare frame: somebody answering one question from their mail has no use for
+          a ground page, and the only control on the screen should not lead out of the thing
+          they came to do. See the-link-opens-on-the-question. */}
+      {!bareFrame && (
+        <div style={{ padding: '8px 12px 10px' }}>
+          <button
+            className="gw-back"
+            onClick={leave}
+            title="Leave this session. Everything you have said is already saved."
+            style={{ fontWeight: 700, color: 'var(--gw-navy)' }}
+          >
+            ← {checkInName || 'Back'}
+          </button>
         </div>
-      </div>
-
+      )}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 14, overflow: 'hidden' }}>
+      <TheCheckInHeader
+        title="Your check-in"
+        underTitle={
+          done && !completed && !declined
+            ? 'That’s everything for today'
+            : correctingSession != null
+              ? `Correcting session ${correctingSession}`
+              : isFinalSession
+                ? `Closing session ${sessionNumber}. This is your final account.`
+                : null
+        }
+        mayPause={opened && !completed && !declined}
+        /* Not in the bare frame: the only control on that screen should not lead out of the thing
+           they came to do. See the-link-opens-on-the-question. Skipping is still offered. */
+        onStopForNow={bareFrame ? undefined : leave}
+        onSkip={() => setConfirmingDecline(true)}
+      />
       {/* Clarification session banner */}
       {isClarificationSession && (
         <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
@@ -1171,21 +1195,8 @@ export function ChatPage() {
             </div>
           )}
 
-          {/*
-            The way to say no, kept quiet and kept present. Not in the toolbar beside Upload and Paste:
-            those are for contributing and this is the opposite, and a final action does not belong one
-            mis-tap from the things people press often.
-          */}
-          {!done && !completed && !declined && !confirmingDecline && opened && (
-            <div style={{ textAlign: 'center', padding: '2px 0 14px' }}>
-              <button
-                onClick={() => setConfirmingDecline(true)}
-                style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
-              >
-                I do not want to take part in this session
-              </button>
-            </div>
-          )}
+          {/* The way to say no is under Pause now, in the header (check-in-start.txt), where it is
+              present on every turn and still one step from final: the confirm above spells it out. */}
 
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
@@ -1423,6 +1434,9 @@ export function ChatPage() {
             </div>
           )}
         </div>
+      </div>
+
+      </div>
       </div>
 
       {/* Paste text overlay */}
