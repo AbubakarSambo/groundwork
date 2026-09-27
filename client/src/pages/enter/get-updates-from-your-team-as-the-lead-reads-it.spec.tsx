@@ -53,3 +53,41 @@ describe('the name the check-in is given', () => {
     expect(commit.mock.calls[0][0].groundLabel).toBe('Get updates from your team')
   })
 })
+
+describe('your email', () => {
+  beforeEach(() => { commit.mockClear(); entrySave.mockClear() })
+
+  /*
+   * Read live, signed in: the box showed the lead's address, "Send" stayed greyed with "Add your own
+   * email, so the report has somewhere to go.", and typing it again made two addresses in one box.
+   */
+  it('signed in, says where the report goes, and Send counts that address without asking for it', async () => {
+    who = { isAuthenticated: true, user: { email: 'amara@acme.com' } }
+    await openIt()
+    expect(document.body.textContent).toContain('The report goes to you at amara@acme.com.')
+    expect(screen.queryByPlaceholderText('you@work.com')).toBeNull()
+    fillIn('What moved this week, and what is stuck?')
+    const send = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement
+    expect(send.disabled).toBe(false)
+    expect(document.body.textContent).not.toContain('Add your own email')
+    fireEvent.click(send)
+    await waitFor(() => expect(commit).toHaveBeenCalled())
+  })
+
+  it('signed out, is a box the lead fills in, and Send waits for it', async () => {
+    who = { isAuthenticated: false, user: null }
+    await openIt()
+    fillIn('What moved this week, and what is stuck?')
+    const box = screen.getByPlaceholderText('you@work.com') as HTMLInputElement
+    expect(box.value).toBe('')
+    expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(document.body.textContent).toContain('Add your own email, so the report has somewhere to go.')
+    expect(document.body.textContent).toContain('Where the report goes. You do not have to sign in first. We will email you your way in.')
+    fireEvent.change(box, { target: { value: 'amara@acme.com' } })
+    const send = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement
+    expect(send.disabled).toBe(false)
+    fireEvent.click(send)
+    await waitFor(() => expect(entrySave).toHaveBeenCalled())
+    expect(entrySave.mock.calls[0][0]).toBe('amara@acme.com')
+  })
+})

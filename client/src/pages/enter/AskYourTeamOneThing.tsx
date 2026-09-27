@@ -37,8 +37,18 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
   const signedIn = useAuthStore(s => s.isAuthenticated)
   const me = useAuthStore(s => s.user)
   const trap = useTheTrap()
-  /* Somebody signed in has answered this already; asking again is a fifth field for nothing. */
-  const [yourEmail, setYourEmail] = useState(me?.email ?? '')
+  /*
+   * SOMEBODY SIGNED IN HAS ANSWERED THIS ALREADY (U.6 review).
+   *
+   * It was a box filled from their account at first paint, holding its own copy of the address. The
+   * box and the copy could disagree - the browser filled the box with an address the form never
+   * held, "Send" stayed greyed with "Add your own email", and typing it again made it two addresses
+   * in one box. Signed in, the report goes to their account whatever the box said, so there is no
+   * box: the page says where it goes, and the account's address is the one the form counts.
+   */
+  const theirAccountEmail = signedIn ? (me?.email ?? '').trim() : ''
+  const [typedEmail, setYourEmail] = useState('')
+  const yourEmail = theirAccountEmail || typedEmail
 
   const emails = theEmailsIn(pasted)
   const notEmails = whatIsNotAnEmail(pasted)
@@ -192,15 +202,21 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         */}
         <div>
           <div style={legend}>Your email</div>
-          <input
-            id="your-email" type="email" value={yourEmail} onChange={e => setYourEmail(e.target.value)}
-            placeholder="you@work.com" autoComplete="email" style={field}
-          />
-          <div style={hint}>
-            {signedIn
-              ? 'Where the report goes.'
-              : 'Where the report goes. You do not have to sign in first: we will email you your way in.'}
-          </div>
+          {theirAccountEmail ? (
+            <div id="your-email" style={{ fontSize: 15 }}>The report goes to you at <strong>{theirAccountEmail}</strong>.</div>
+          ) : (
+            <>
+              <input
+                id="your-email" type="email" value={typedEmail} onChange={e => setYourEmail(e.target.value)}
+                placeholder="you@work.com" autoComplete="email" style={field}
+              />
+              <div style={hint}>
+                {signedIn
+                  ? 'Where the report goes.'
+                  : 'Where the report goes. You do not have to sign in first. We will email you your way in.'}
+              </div>
+            </>
+          )}
         </div>
         {trap.field}
 
