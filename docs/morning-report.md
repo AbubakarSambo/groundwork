@@ -10,7 +10,9 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
 
-**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. That run, run-11, is going now on `319bf855`. This line is updated when it has finished.
+**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
+
+**Run-11 does not count, and the product was not at fault.** I started it at about midnight, before tonight's five hours began, from a separate copy of the code, so that the builders' work could not change it halfway through. But the runner starts the model itself, to play the simulated people, and that copy did not have the model's credentials file, which is kept out of git. So every simulated person's answer failed. No check-in could finish, and no report was written: all 25 reports were empty. I found it by reading the log, stopped it, and started run-12 from the main folder, where the credentials are.
 
 **What still blocks it:**
 1. Run-11 must show that task 1.6 and the blocker fixes hold across all 24 scenarios: nothing worse than the baseline, every quote from the record, and none of a lead's private words reaching anyone.
