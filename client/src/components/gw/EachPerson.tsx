@@ -170,7 +170,9 @@ export function EachPerson({
                 transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
               }}>&#9654;</span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : atTheStart(labelOf(p))}</span>
-              {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
+              {/* The lead's own note, beside the name and never as it. The server sends it only to whoever
+                  runs the check-in; this card shows it only to the lead as well. */}
+              {isLead && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
               <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{isOpen ? 'Hide' : 'Open'}</span>

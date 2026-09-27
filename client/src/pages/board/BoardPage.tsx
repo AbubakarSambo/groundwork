@@ -29,6 +29,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
+import { theLeadsNote } from '@/lib/the-leads-note'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -1223,7 +1224,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       with no account yet reads "Engineer" over "Engineer".
                     */}
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, p.participantId, p.name)}</div>
-                    {p.role && p.role !== p.name && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{p.role}</div>}
+                    {p.role && p.role !== p.name && <div data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{theLeadsNote(p.role)}</div>}
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
@@ -1327,7 +1328,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, r.participantId, r.name)}</span></td>
                         {anyRoleToShow && (
                           <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? r.role : r.managingOnly ? 'Managing only' : ' - '}
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : ' - '}
                           </td>
                         )}
                         {b.checkInGrid!.sessions.map((s) => {
@@ -1400,7 +1401,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, c.participantId, c.name)}</span>
                     {c.remitDefined
-                      ? <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{c.remit}</span>
+                      ? <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(c.remit)}</span>
                       : <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>role not clearly defined</span>}
 
                   </div>

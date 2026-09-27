@@ -441,7 +441,8 @@ export function GroundAdminPage() {
         answered: parties.filter((p) => answeredIds.has(p.id)).length,
         total: parties.length,
         closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
-        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => labelInASentence(p)),
+        /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
+        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === user?.id ? 'you' : labelInASentence(p))),
         /* When this session opened, for the row's "Wed, 23 Sept" (U.9). The earliest opening, or
            the first answer when no opening time was kept. */
         opened: (() => {
@@ -2017,7 +2018,7 @@ export function GroundAdminPage() {
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                              {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
+                              {p.roleAsDescribed && <span data-leads-note style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
                               {/* What someone is answerable for is the lead's to
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be
