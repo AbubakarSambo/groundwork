@@ -18,7 +18,8 @@ import { InvitePage, theInvitation, whereAndUntil } from './InvitePage'
  */
 const participantsApi = vi.hoisted(() => ({ preview: vi.fn(), accept: vi.fn() }))
 vi.mock('@/api', () => ({ participantsApi }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
+const authState = vi.hoisted(() => ({ isAuthenticated: false }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn(), isAuthenticated: authState.isAuthenticated }) }))
 
 const PREVIEW = {
   groundLabel: 'Sales team, Q3',
@@ -137,6 +138,35 @@ describe('what the lead wrote about the person is not on their invitation (U.6 r
     const text = document.body.textContent ?? ''
     expect(text).not.toContain('Your part in this')
     expect(text).not.toContain('sales manager')
+  })
+})
+
+
+describe('a check-in that opens later (U.6 review)', () => {
+  /* Read live: "Answer today’s check-in now / About two minutes. You make your account afterwards."
+     on an invitation to a check-in that opens on 5 October. */
+  it('says when the first check-in opens, and offers nothing to answer now', async () => {
+    open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
+    expect(await screen.findByText('Your first check-in opens on Monday 5 October.')).toBeTruthy()
+    const text = document.body.textContent ?? ''
+    expect(text).not.toContain('Answer today’s check-in now')
+    expect(text).not.toContain('You make your account afterwards')
+  })
+
+  it('and one that is open offers to answer now, as before', async () => {
+    open({ ...PREVIEW, opensOn: null })
+    expect(await screen.findByText('Answer today’s check-in now')).toBeTruthy()
+    expect(document.body.textContent).toContain('About two minutes. You make your account afterwards.')
+  })
+})
+
+describe('"You make your account afterwards" (U.6 review)', () => {
+  it('is not said to someone already signed in', async () => {
+    authState.isAuthenticated = true
+    open({ ...PREVIEW, opensOn: null })
+    expect(await screen.findByText('About two minutes.')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('You make your account afterwards')
+    authState.isAuthenticated = false
   })
 })
 

@@ -15,6 +15,8 @@ export interface InvitePreview {
   organisationName?: string | null
   leadFirstName?: string | null
   endsAt?: string | null
+  /** When their first check-in opens, only when that is later than now (U.6 review). */
+  opensOn?: string | null
   schedule?: string
   /** An expired invitation carries only this and the lead's first name. */
   expired?: false
