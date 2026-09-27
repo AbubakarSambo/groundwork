@@ -13,8 +13,9 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens), U.9 (reports and sharing), U.10 (the board) and U.11 (ending a check-in). Each passed the
-full screen and API suites. The engine workspace has since fixed the two failures in its own files; I
+screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in) and U.12 (the You
+board). U.3 to U.11 each passed the full screen and API suites; U.12 has had only the tests for its
+own files and the folder-wide checks so far, and its full run comes next. The engine workspace has since fixed the two failures in its own files; I
 checked those with a targeted run, and the next full run will confirm the whole suite. **None could be ticked, because the reviewer can no longer
 sign in as anyone** (item 14). That is the most important thing for you to unblock.
 
@@ -34,10 +35,11 @@ asks the engine to change the rule itself).
 6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
 7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
-8. The rest of items 13, 15 to 22 are smaller, each with a recommendation.
+8. Item 23.1: may anyone but the person read their You board? (a privacy question)
+9. The rest of items 13, 15 to 23 are smaller, each with a recommendation.
 
-**In progress:** U.12 (the You board) is next. In U.11 the lead now ends a check-in with a reason, and
-the person it is about reads the decision with that reason.
+**In progress:** U.12's full test run, then U.13 (suggestions from verdicts, and appeals). In U.12 each person has their
+own You board, which the server serves to them alone; the engine's own text for it is request 14.
 
 ## Needs Hafsah
 
@@ -853,6 +855,51 @@ reviewed" in this report.
    in a sentence or two. The people in this check-in read it with the outcome." After it ends: "This
    check-in has ended. Everyone in it can read the outcome and your reason."
 
+### 23. The You board (U.12): what needs you
+
+1. **Who may read someone's You board. This is a privacy question.** The prototype's page says both
+   "Only you see this page." and, under "Your board", "Only you, and the people who run your
+   check-ins, see it."; `docs/modules.md` says the second. I built the first: the server serves the
+   board to the person alone and refuses a lead, an admin and a colleague. The page leaves out the
+   second sentence, because it would not be true (your to-dos, for one, are never seen by anyone
+   else). **My recommendation:** keep it yours alone. Whoever runs a check-in already reads your part
+   in it on that check-in's own pages, and your load across check-ins stays private unless you share it.
+2. **"Where you stand" is not shown.** The prototype says "14 of 16 kept, in the last 4 weeks." The
+   product keeps promises in three places, and nothing says what "kept in the last 4 weeks" counts:
+   what was marked done, what fell due, or what was said in those weeks. I did not invent a rule, and
+   asked the engine to write this part (request 14). For Daniel and Kwame it is Groundwork's
+   suggestion, which is U.13. **My recommendation:** count what the person themselves marked done,
+   out of the promises that fell due in the last 4 weeks, and say so on the page.
+3. **"Everything asked of you this week" and "Share with your lead" are not built.** That list is
+   your load across check-ins, which is private unless you share it. Nothing in the product holds
+   requests from one person to another, or a choice to share them. **My recommendation:** build it
+   with each person's load (D3, U.16), with sharing that you switch on for one lead at a time.
+4. **"Add my side", "Say what’s behind it" and "Stop sharing automatically" are not built.** They
+   need somewhere to keep your side and a way for the lead to read it (C3, U.13).
+5. **"Your work in each" says sessions, not check-ins.** The prototype says "Sales team, Q3" and "38
+   check-ins". That counts sessions as check-ins, which is the open question in item 11.8. The page
+   says "You have finished 38 sessions.", and "You run this check-in." for one you run.
+   **My recommendation:** decide item 11.8, and I will use the word you choose.
+6. **"One thing for this week:" is the prototype's wording,** before the coaching step. A check-in
+   that meets every month still says "this week". **My recommendation:** keep it for now, and say
+   "for now" or "before your next check-in" if monthly check-ins are common.
+7. **Promises made to Ask Groundwork or through the developer API are not on the board.** "What you
+   said you’d do" says "From every check-in", so it lists only what is in your check-ins. **My
+   recommendation:** add the others later, each saying where it was said.
+8. **The heading line is the shorter one.** Miriam's and Wairimu's pages say "...what you said you’d
+   do, your own reports, and what keeps coming up about your part."; Daniel's and Kwame's say
+   "What’s yours, across your check-ins. Only you see this page." I used the shorter one, because
+   "what keeps coming up" is not on the page until the engine writes it.
+9. **One person's page still leaves out "Across check-ins"** (item 15.7). Its sentence says "they
+   choose who else sees it" of the You page, and nothing lets anybody share it yet.
+10. **Wording no screen shows, which I wrote with the fewest words.** "You are not in any check-in
+    yet." "Loading…" "Your board did not load. Nothing you have written is affected." with "Try
+    again". "Your file did not download. Try again." "You have not finished a session yet.", "You
+    have finished 1 session.", "You have finished 38 sessions." and "You run this check-in." A target
+    with your name on it: "Sales closed. You have 3 of 4." The tag "Not done", for something you
+    marked not done. When anybody asks for someone else's board, the server says "Only the person
+    whose page this is can read it."
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1536,6 +1583,55 @@ does so without a reason, so handover, disputes and the developer API are unaffe
 the engine workspace's latest, all the engine and guard tests passed (3,562): the engine workspace
 fixed its comment-guard specs and the judgement spec (requests 4 and 10), so those known failures are
 gone. **Not ticked,** because no review can sign in (item 14).
+
+### U.12 The You board: built and tested, not yet reviewed
+
+**What was missing, against the prototype (the gap list):** there was no You page, no server read
+for it, and no "You" in the sidebar, on the phone's More page or in "Jump to". The pieces existed
+apart: what is expected of each person (Context), what they are down as doing (the check-in's page),
+their coaching step (Ask Groundwork), their own reports (one per session), their to-do list, and the
+download of their data (Settings). The engine's own parts (where you stand, worth knowing now, what
+Groundwork noticed, coaching followed over time, what you contributed, what keeps coming up) have no
+text yet (request 14). "Everything asked of you this week" and its sharing, and "Add my side", need
+other modules (item 23).
+
+**What each person now reads** on `#/you`, their own only:
+- **Everyone:** "You", "What’s yours, across your check-ins. Only you see this page.", "Your board",
+  and at the foot "Everything you’ve written, in every check-in, as one file." with "Download it"
+  (the same file as "Download all of it" in Settings).
+- **Miriam, who takes part in "Sales team, Q3":** "Your goals" ("Close Westgate Deli and Lakeside
+  Supermarket this quarter.", and a target with her name on it as "Sales closed. You have 3 of 4."),
+  "Your to-dos", "Coaching" with "One thing for this week: Ask Westgate what would get the deposit paid
+  this week.", her turn ("Your own check-in for Sales team, Q3" with "Start it"), "What you said you’d
+  do" with "From every check-in" (each line with its check-in, when she said, and "Open", "Kept" or
+  "Not done"), "Your own reports" with "Read", and "Your work in each" ("Sales team, Q3", "You have
+  finished 38 sessions.", "Open").
+- **Wairimu, who runs "Sales team, Q3" and takes part in "Leadership, Q3":** the same parts, for her
+  own work only. The check-in she runs says "You run this check-in. You have finished 38 sessions."
+  Nothing of Miriam's reaches her board, though Wairimu's check-in list carries Miriam's place in it.
+- **Grace, an admin in no check-in:** "You are not in any check-in yet." and the download. An admin's
+  list carries every check-in in the organisation, but only the ones she is in are hers.
+
+**Privacy, on the server:** `GET /you` reads the signed-in person and nobody else. Naming anyone else,
+at `/you/:userId` or with `?userId=`, is refused with "Only the person whose page this is can read
+it." before anything is read, whoever asks: a lead, an admin or a colleague. The board is built only
+from what the person may already read, a target with a name on it goes through the one rule for whose
+number is whose, and nothing on it says how anybody's answers were rated or puts a label on anybody.
+
+**Commits:** `f102231b` (the server read and its refusals), `c3a6477a` (the page, and You in the
+sidebar, on More and in "Jump to"), `eb8dfba3` (request 14 to the engine).
+
+**Tested:** new tests read what each person is served and sees:
+`api/src/modules/grounds/the-you-board-as-each-reader-reads-it.spec.ts` (Miriam's board, and Wairimu,
+Grace and Brian each refused hers and given only their own) and
+`client/src/pages/you/the-you-board-as-each-reader-sees-it.spec.tsx` (the page as Miriam, Wairimu and
+Grace, the engine's parts once served, and the page when it fails to load). The sidebar and More tests
+gained a test each for "You". **Tests changed, and why:** `the-org-is-not-a-ground.spec.ts` and
+`jump-to.spec.tsx` list every door a person is offered, and now include "You" after "Today" because the
+page exists; what they guard is unchanged. Only the tests for the changed files, every test that scans
+whole folders on both sides, and both type checks were run, as you asked. No screen could be checked
+signed in (item 14), so the page was checked by rendering tests only. No migration. **Not ticked,**
+because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
