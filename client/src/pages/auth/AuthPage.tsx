@@ -160,7 +160,13 @@ export function AuthPage() {
   const [orgTouched, setOrgTouched] = useState(false)
   /* Asked of the server, which holds the one list of public mail domains (U.3). Only once the box
      holds an address, and a failed read suggests nothing, which is the safe direction. */
-  const typedAddress = view === 'create' && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
+  /*
+   * FROM AN ORGANISATION'S INVITE LINK, NO ORGANISATION IS ASKED FOR OR SUGGESTED (U.3 review). They
+   * are joining the one whose link they pressed; the server joins them to it on confirming, and makes
+   * none of their own.
+   */
+  const fromAnInviteLink = /^\/j\/[^/]+$/.test(nextPath ?? '')
+  const typedAddress = view === 'create' && !fromAnInviteLink && looksLikeAnAddress(email) ? email.trim().toLowerCase() : ''
   const { data: suggestion } = useQuery({
     queryKey: ['name-from-address', typedAddress],
     queryFn: () => authApi.nameFromAddress(typedAddress),
@@ -333,7 +339,7 @@ export function AuthPage() {
   function whatTheyTyped() {
     return {
       ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
-      ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
+      ...(orgName.trim() && !fromAnInviteLink ? { orgName: orgName.trim() } : {}),
     }
   }
   const createAccount = useMutation({
@@ -540,12 +546,16 @@ export function AuthPage() {
             ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
             because a person signing up to try it should not be stopped by a naming decision.
           */}
-          <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
-          <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
-            {!orgTouched && suggestedOrg && orgName === suggestedOrg
-              ? 'We suggested this from your email address. You can change it now or later.'
-              : 'What your organisation will be called. You can change it later.'}
-          </p>
+          {!fromAnInviteLink && (
+            <>
+              <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
+              <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
+                {!orgTouched && suggestedOrg && orgName === suggestedOrg
+                  ? 'We suggested this from your email address. You can change it now or later.'
+                  : 'What your organisation will be called. You can change it later.'}
+              </p>
+            </>
+          )}
 
           <fieldset className="gw-auth-choice">
             <legend className="gw-auth-label">How would you like to sign in?</legend>

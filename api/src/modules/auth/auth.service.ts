@@ -1,5 +1,5 @@
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
-import { aPathInThisApp } from '../../common/a-path-in-this-app';
+import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
@@ -399,6 +399,73 @@ export class AuthService {
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
         /* This link has just made the account (U.2): the client says "Your email is confirmed". */
         return goOnTo({ ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
+      }
+
+      /*
+       * AN INVITE LINK, OR AN ORGANISATION THAT LETS THEIR DOMAIN JOIN, MAKES NO ORGANISATION (U.3 review).
+       *
+       * Everybody who reached this line used to become the admin of a new organisation, named from
+       * what they typed or from their own name. So somebody who pressed "Join Coamana" on Coamana's
+       * invite link, or whose @coamana.com address Coamana lets join, got an empty organisation of
+       * their own as well, and landed in it. Now:
+       *   - From an invite link that is still open, with a seat: they join that organisation, as
+       *     "Takes part", on confirming. They pressed "Join" before signing up; that is the choice.
+       *   - Otherwise, if an organisation lets their confirmed domain join, or the link they came
+       *     from could not take them: nothing is made yet, and the answer asks "Where do you work?".
+       *     The next answer joins one that was offered, or creates their own (`createMyOwn`).
+       *   - Otherwise, as before: their own organisation, and they are its admin.
+       */
+      if (!dto.createMyOwn) {
+        const where = await this.whereAWaitingSignUpMayGo(pending.email, pending.next);
+        const chosen = dto.joinOrganizationId
+          ? where.offered.find((o) => o.id === dto.joinOrganizationId) ?? null
+          : where.byLink;
+        if (dto.joinOrganizationId && !chosen) {
+          throw new ForbiddenException('You cannot join that organisation with your email address. Ask somebody there to invite you.');
+        }
+        let problem: string | null = where.linkProblem;
+        if (chosen) {
+          const room = await this.billing.canInviteMember(chosen.id);
+          if (room.allowed) {
+            const joined = await this.prisma.$transaction(async (tx) => {
+              const u = await tx.user.create({
+                data: {
+                  organizationId: chosen.id,
+                  email: pending.email,
+                  firstName: pending.firstName,
+                  lastName: pending.lastName ?? '',
+                  passwordHash: pending.passwordHash,
+                  /* "Takes part". Never an admin: joining is not authority over the company. */
+                  role: ROLE_FOR_SOMEBODY_EXPECTED as any,
+                  isEmailVerified: true,
+                },
+                include: { organization: true },
+              });
+              await tx.organizationMembership.create({ data: { userId: u.id, organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any } });
+              if (pending.draftToken) {
+                await tx.entryDraft.create({
+                  data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
+                });
+              }
+              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null }, data: { userId: u.id } });
+              await tx.pendingSignup.delete({ where: { id: pending.id } });
+              return u;
+            });
+            this.logger.log(`${pending.email} joined ${chosen.name} ${chosen.how === 'link' ? 'by its invite link' : 'by email domain'} on confirming`);
+            /* Joined, so not back to the invite link's "Join" button: on to Today. */
+            return { ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true, next: '/today' };
+          }
+          problem = `${chosen.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`;
+        }
+        if (where.offered.length > 0 || where.cameByLink) {
+          /* Nothing is made, and this link stays good until they choose (or it runs out). */
+          return {
+            whereDoYouWork: {
+              byDomain: where.byDomain.map((o) => ({ id: o.id, name: o.name, domain: where.domain! })),
+              ...(problem ? { problem } : {}),
+            },
+          } as any;
+        }
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -1436,6 +1503,36 @@ export class AuthService {
       asAGuest: invitations
         .filter((i) => i.ground && !inIt.has(i.ground.organizationId))
         .map((i) => ({ organisationName: i.ground.organization?.name ?? '', checkInName: i.ground.label, invitePath: `/invite?token=${i.inviteToken}` })),
+    };
+  }
+
+  /**
+   * Where somebody whose sign-up is waiting may go, before any account exists (U.3 review): the
+   * organisation whose invite link they came from, if it is still open, and any organisation that
+   * lets their domain join (never a public mail domain). Only called once the link has proved the
+   * address, so it says no more than "Where do you work?" says to a signed-in person.
+   */
+  private async whereAWaitingSignUpMayGo(email: string, next: string | null | undefined) {
+    const code = theInviteLinkCodeIn(aPathInThisApp(next));
+    const linked = code
+      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true } })
+      : null;
+    const domain = theDomainOf(email);
+    const byDomain = domain && mayBeJoinedBy(domain)
+      ? await this.prisma.organization.findMany({ where: { joinDomain: domain }, select: { id: true, name: true } })
+      : [];
+    const byLink = linked ? { ...linked, how: 'link' as const } : null;
+    const offered = [
+      ...(byLink ? [byLink] : []),
+      ...byDomain.filter((o) => o.id !== byLink?.id).map((o) => ({ ...o, how: 'domain' as const })),
+    ];
+    return {
+      domain,
+      byLink,
+      byDomain,
+      offered,
+      cameByLink: !!code,
+      linkProblem: code && !linked ? 'That invite link is not open any more. Ask whoever sent it for the new one.' : null,
     };
   }
 

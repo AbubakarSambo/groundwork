@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { queryClient } from '@/lib/queryClient'
-import { authApi } from '@/api/auth'
+import { authApi, type VerifyEmailResponse, type WhereDoYouWorkFirst } from '@/api/auth'
+import { WhereDoYouWork } from '@/pages/org/WhereDoYouWork'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
@@ -33,6 +34,9 @@ type VerifyOutcome =
   | { kind: 'deadLink'; what: 'expired' | 'resent'; sentence: string }
   /* The link has just created the account: say so first, then carry on to `then`. */
   | { kind: 'confirmed'; email: string | null; then: VerifyOutcome }
+  /* The address is proved, nothing is made yet, and "Where do you work?" comes first (U.3 review). */
+  | { kind: 'whereDoYouWork'; token: string; offers: WhereDoYouWorkFirst['whereDoYouWork'] }
+type SignedIn = VerifyEmailResponse
 // SINGLE-FLIGHT per token: the remount can happen while the first mount's
 // verify+commit is still in flight, so caching only finished outcomes is not
 // enough - both mounts must await the SAME promise.
@@ -50,6 +54,8 @@ export function MagicVerifyPage() {
   const [error, setError] = useState('')
   const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent'; sentence: string } | null>(null)
   const [confirmed, setConfirmed] = useState<{ email: string | null; then: VerifyOutcome } | null>(null)
+  const [choosing, setChoosing] = useState<{ token: string; offers: WhereDoYouWorkFirst['whereDoYouWork'] } | null>(null)
+  const [chooseBusy, setChooseBusy] = useState(false)
   const [commitError, setCommitError] = useState(false)
   /* The server's own sentence for a refused commit - the plan limit, the seat limit, "not named as able
      to open check-ins" - which all used to arrive as one generic line. */
@@ -105,7 +111,10 @@ export function MagicVerifyPage() {
     } else if (outcome.kind === 'deadLink') {
       setDeadLink({ what: outcome.what, sentence: outcome.sentence })
     } else if (outcome.kind === 'confirmed') {
+      setChoosing(null)
       setConfirmed({ email: outcome.email, then: outcome.then })
+    } else if (outcome.kind === 'whereDoYouWork') {
+      setChoosing({ token: outcome.token, offers: outcome.offers })
     }
   }
 
@@ -178,6 +187,97 @@ export function MagicVerifyPage() {
 
 
 
+  /** Everything after the link has made or opened the account: the password step, the confirmation, the commit. */
+  async function afterVerify(res: SignedIn, token: string, fromParam: string | null): Promise<VerifyOutcome> {
+    setAuth(res.user, res.accessToken)
+
+    /**
+     * THE PASSWORD STEP THE COPY PROMISES - AND WHY IT MUST NOT COME FIRST.
+     *
+     * Signup says it twice, on the wait page as step 2 of 3 and in the activation email, and
+     * until now it never happened: this landed people straight in the app with no password. That
+     * looks harmless on day one and is severe later, because a passwordless account can ONLY be
+     * re-entered by requesting a fresh emailed link, every single time. In an eighteen-ground run
+     * that was the fault that stopped grounds ever reaching a report - the last person to check
+     * in could not sign back in to finish.
+     *
+     * THE FIRST VERSION OF THIS FIX PUT THE REDIRECT HERE, ABOVE THE COMMIT, and reasoned that
+     * as a virtue: "so it applies to every arrival". It applied to every arrival by RETURNING
+     * before the commit ever ran - so somebody arriving from the anonymous entry chat set a
+     * password, landed on an empty grounds list, and the ground they had just described was
+     * never created. That is the vanishing-ground bug this product already fixed once (R1), put
+     * back by a change that had nothing to do with grounds.
+     *
+     * Caught by the persona suite, whose suite_v exists for precisely this and is named after
+     * it. Nothing in the unit tests or the typecheck had an opinion.
+     *
+     * So the order is now: commit first, THEN the password. `passwordStep` below wraps whatever
+     * destination the arrival was heading for, so the detour cannot swallow it again.
+     */
+    const passwordStep = (destination: string): VerifyOutcome | null =>
+      res.needsPassword && res.passwordSetupToken
+        ? {
+            kind: 'redirect',
+            to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(destination)}`,
+          }
+        : null
+
+    /*
+     * "YOUR EMAIL IS CONFIRMED" (A2, #/verify-email), ONLY FOR AN ACCOUNT THIS LINK HAS JUST MADE.
+     *
+     * Shown when the server says `justCreated`, and only in front of an outcome that goes on
+     * (a redirect, or the first check-in's welcome). A failure is never hidden behind it. Its
+     * "Continue" leads to exactly where the page would have gone without it, through the
+     * password step when the account has no password yet. Without `justCreated`, which the
+     * server does not send yet, nothing changes.
+     */
+    const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
+      if (!res.justCreated) return o
+      if (o.kind === 'redirect') {
+        const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
+        return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
+      }
+      if (o.kind === 'success') return { kind: 'confirmed', email: res.user?.email ?? null, then: o }
+      return o
+    }
+
+    /*
+     * THE EMAILED LINK CARRIES NO `next`, SO THE SERVER KEEPS IT (U.3 review). Somebody who pressed
+     * "Join Coamana" on an invite link, signed up, and opened the link from their mailbox used to
+     * land on "Where do you work?". The place they were going now comes back with the answer, and
+     * is checked here too: only a path inside this app.
+     */
+    const goingTo = [fromParam, res.next].find(p => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\'))
+    if (goingTo) {
+      return confirmFirst(passwordStep(goingTo) ?? { kind: 'redirect', to: goingTo })
+    }
+    // ALWAYS attempt the commit. The server merges whatever this browser
+    // has over the server-side draft written at entry-save, so the commit
+    // works even when this browser has nothing (magic link opened in a
+    // different browser/device). Whether there is anything to commit is
+    // the SERVER's decision now - the old client-side branch here silently
+    // skipped the commit and stranded people on /setup.
+    const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
+    const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
+    lastAttempt.current = { token, payload, user: res.user }
+    const outcome = await commitFlow(payload, hadEntryIntent)
+
+    /**
+     * Only a SUCCESSFUL commit hands over to the password step, and it hands over pointing at
+     * the ground that now exists - so the reassurance the interstitial used to give ("your
+     * ground is set up") is given by the ground itself.
+     *
+     * A commit ERROR must stay on this screen. It has a "Try again" that re-attempts, and
+     * sending somebody to set a password mid-failure loses the retry and the explanation both.
+     * They will still be asked for a password the next time they arrive.
+     */
+    if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
+      /** Shown, not skipped. The button out of the confirmation goes via the password step. */
+      return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
+    }
+    return confirmFirst(outcome)
+  }
+
   useEffect(() => {
     const token = params.get('token')
     if (!token) { setError('This link has no token.'); return }
@@ -211,93 +311,9 @@ export function MagicVerifyPage() {
           if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
           return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
         }
-        setAuth(res.user, res.accessToken)
-
-        /**
-         * THE PASSWORD STEP THE COPY PROMISES - AND WHY IT MUST NOT COME FIRST.
-         *
-         * Signup says it twice, on the wait page as step 2 of 3 and in the activation email, and
-         * until now it never happened: this landed people straight in the app with no password. That
-         * looks harmless on day one and is severe later, because a passwordless account can ONLY be
-         * re-entered by requesting a fresh emailed link, every single time. In an eighteen-ground run
-         * that was the fault that stopped grounds ever reaching a report - the last person to check
-         * in could not sign back in to finish.
-         *
-         * THE FIRST VERSION OF THIS FIX PUT THE REDIRECT HERE, ABOVE THE COMMIT, and reasoned that
-         * as a virtue: "so it applies to every arrival". It applied to every arrival by RETURNING
-         * before the commit ever ran - so somebody arriving from the anonymous entry chat set a
-         * password, landed on an empty grounds list, and the ground they had just described was
-         * never created. That is the vanishing-ground bug this product already fixed once (R1), put
-         * back by a change that had nothing to do with grounds.
-         *
-         * Caught by the persona suite, whose suite_v exists for precisely this and is named after
-         * it. Nothing in the unit tests or the typecheck had an opinion.
-         *
-         * So the order is now: commit first, THEN the password. `passwordStep` below wraps whatever
-         * destination the arrival was heading for, so the detour cannot swallow it again.
-         */
-        const passwordStep = (destination: string): VerifyOutcome | null =>
-          res.needsPassword && res.passwordSetupToken
-            ? {
-                kind: 'redirect',
-                to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(destination)}`,
-              }
-            : null
-
-        /*
-         * "YOUR EMAIL IS CONFIRMED" (A2, #/verify-email), ONLY FOR AN ACCOUNT THIS LINK HAS JUST MADE.
-         *
-         * Shown when the server says `justCreated`, and only in front of an outcome that goes on
-         * (a redirect, or the first check-in's welcome). A failure is never hidden behind it. Its
-         * "Continue" leads to exactly where the page would have gone without it, through the
-         * password step when the account has no password yet. Without `justCreated`, which the
-         * server does not send yet, nothing changes.
-         */
-        const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
-          if (!res.justCreated) return o
-          if (o.kind === 'redirect') {
-            const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
-            return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
-          }
-          if (o.kind === 'success') return { kind: 'confirmed', email: res.user?.email ?? null, then: o }
-          return o
-        }
-
-        /*
-         * THE EMAILED LINK CARRIES NO `next`, SO THE SERVER KEEPS IT (U.3 review). Somebody who pressed
-         * "Join Coamana" on an invite link, signed up, and opened the link from their mailbox used to
-         * land on "Where do you work?". The place they were going now comes back with the answer, and
-         * is checked here too: only a path inside this app.
-         */
-        const goingTo = [fromParam, res.next].find(p => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\'))
-        if (goingTo) {
-          return confirmFirst(passwordStep(goingTo) ?? { kind: 'redirect', to: goingTo })
-        }
-        // ALWAYS attempt the commit. The server merges whatever this browser
-        // has over the server-side draft written at entry-save, so the commit
-        // works even when this browser has nothing (magic link opened in a
-        // different browser/device). Whether there is anything to commit is
-        // the SERVER's decision now - the old client-side branch here silently
-        // skipped the commit and stranded people on /setup.
-        const payload = loadEntryHandover() ?? { groundLabel: '', history: [], contributors: [] }
-        const hadEntryIntent = !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token')
-        lastAttempt.current = { token, payload, user: res.user }
-        const outcome = await commitFlow(payload, hadEntryIntent)
-
-        /**
-         * Only a SUCCESSFUL commit hands over to the password step, and it hands over pointing at
-         * the ground that now exists - so the reassurance the interstitial used to give ("your
-         * ground is set up") is given by the ground itself.
-         *
-         * A commit ERROR must stay on this screen. It has a "Try again" that re-attempts, and
-         * sending somebody to set a password mid-failure loses the retry and the explanation both.
-         * They will still be asked for a password the next time they arrive.
-         */
-        if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
-          /** Shown, not skipped. The button out of the confirmation goes via the password step. */
-          return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
-        }
-        return confirmFirst(outcome)
+        /* "Where do you work?" first: nothing has been made yet (U.3 review). */
+        if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
+        return afterVerify(res as SignedIn, token, fromParam)
       })()
       verifyFlows.set(token, flow)
     }
@@ -363,6 +379,47 @@ export function MagicVerifyPage() {
    * So it is shown only when this really is the org's first ground. Anybody else
    * goes where they were going.
    */
+  /*
+   * "WHERE DO YOU WORK?", BEFORE THE ACCOUNT EXISTS (U.3 review). "Join" joins the organisation that
+   * was offered, as "Takes part"; "Create" makes their own. Either answer goes back to the server with
+   * the same link, and then on exactly as any new account does. The new flow replaces the old one for
+   * this token first, so the remount that signing in causes joins it rather than asking again.
+   */
+  function choose(choice: { joinOrganizationId: string } | { createMyOwn: true }) {
+    if (!choosing || chooseBusy) return
+    const { token, offers } = choosing
+    setChooseBusy(true)
+    const flow = (async (): Promise<VerifyOutcome> => {
+      try {
+        const res = await authApi.verifyEmail(token, choice)
+        if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
+        return afterVerify(res as SignedIn, token, null)
+      } catch (err: any) {
+        const said = err?.response?.data?.message
+        const what = whatTheLinkDid(said)
+        if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
+        return {
+          kind: 'whereDoYouWork', token,
+          offers: { ...offers, problem: typeof said === 'string' && said ? said : 'That did not go through, and nothing has changed. Try again.' },
+        }
+      }
+    })()
+    verifyFlows.set(token, flow)
+    flow.then(o => { setChooseBusy(false); applyOutcome(o) })
+  }
+
+  if (choosing && !confirmed) {
+    return (
+      <WhereDoYouWork
+        byDomain={choosing.offers.byDomain}
+        problem={choosing.offers.problem}
+        busy={chooseBusy}
+        onJoin={id => choose({ joinOrganizationId: id })}
+        create={{ onCreate: () => choose({ createMyOwn: true }) }}
+      />
+    )
+  }
+
   if (confirmed) {
     return <EmailConfirmed email={confirmed.email} onContinue={() => { const then = confirmed.then; setConfirmed(null); applyOutcome(then) }} />
   }

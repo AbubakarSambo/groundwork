@@ -67,3 +67,26 @@ describe('the place they were going goes with the link', () => {
     expect(authApi.entrySave).toHaveBeenCalledWith('ama@coamana.test', undefined, '')
   })
 })
+
+describe('the sign-up reached from an invite link asks for no organisation', () => {
+  const readable = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ').trim()
+
+  it('has no organisation box and suggests none, and sends no organisation name', async () => {
+    const { container } = renderAuth(FROM_THE_LINK)
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Ama' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ama@coamana.test' } })
+    expect(screen.queryByLabelText('Your organisation (optional)')).toBeNull()
+    expect(readable(container)).not.toMatch(/organisation will be called|suggested this from your email/)
+    expect(authApi.nameFromAddress).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    expect((authApi.entrySave as any).mock.calls[0][1]).toEqual({ payload: { firstName: 'Ama' } })
+  })
+
+  it('a plain sign-up still asks, and suggests the name from the address', async () => {
+    renderAuth('?mode=signup')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'ama@coamana.test' } })
+    await waitFor(() => expect((screen.getByLabelText('Your organisation (optional)') as HTMLInputElement).value).toBe('Coamana'))
+    expect(screen.getByText('We suggested this from your email address. You can change it now or later.')).toBeTruthy()
+  })
+})

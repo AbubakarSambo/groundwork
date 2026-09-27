@@ -21,6 +21,14 @@ export interface VerifyEmailResponse {
   /** Where they were going when they asked for this link, such as "/j/coamana-6rr7". Only a path in this app. */
   next?: string
 }
+/**
+ * THE LINK HAS PROVED THE ADDRESS, BUT NOTHING IS MADE YET (U.3 review). An organisation lets this
+ * address's domain join, or the invite link they came from could not take them, so "Where do you
+ * work?" comes first. Answering calls verify-email again with the choice.
+ */
+export interface WhereDoYouWorkFirst {
+  whereDoYouWork: { byDomain: { id: string; name: string; domain: string }[]; problem?: string }
+}
 /** `expired` is true only for a real, unused link of the asked kind that has run out. The server never
  *  sends `email` or `firstName` today: which address a link is for is a privacy decision for Hafsah. */
 export interface ValidateTokenResponse { valid: boolean; expired?: boolean; email?: string; firstName?: string }
@@ -66,8 +74,9 @@ export const authApi = {
   memberSignin: (email: string) =>
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
 
-  verifyEmail: (token: string) =>
-    apiClient.post<VerifyEmailResponse>('/auth/verify-email', { token }).then(r => r.data),
+  /* With a choice only on "Where do you work?" before the account exists (U.3 review). */
+  verifyEmail: (token: string, choice?: { joinOrganizationId: string } | { createMyOwn: true }) =>
+    apiClient.post<VerifyEmailResponse | WhereDoYouWorkFirst>('/auth/verify-email', { token, ...(choice ?? {}) }).then(r => r.data),
 
   setPassword: (token: string, password: string) =>
     apiClient.post<VerifyEmailResponse>('/auth/set-password', { token, password }).then(r => r.data),

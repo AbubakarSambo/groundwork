@@ -28,7 +28,8 @@ function service(opts: { pending?: any; existing?: any; listedAs?: any[]; tokenR
     pendingSignup: { findUnique: jest.fn(async () => opts.pending ?? null), delete: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => opts.existing ?? null) },
     person: { findMany: jest.fn(async () => opts.listedAs ?? []) },
-    organization: { findUnique: jest.fn(async () => null) },
+    /* No organisation lets this domain join, and no invite link: the lookup added in the U.3 review. */
+    organization: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     organizationMembership: { count: jest.fn(async () => 0) },
     emailVerificationToken: { findUnique: jest.fn(async () => opts.tokenRow ?? null), create: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})) },
     $transaction: jest.fn(async (fn: any) => fn(tx)),
