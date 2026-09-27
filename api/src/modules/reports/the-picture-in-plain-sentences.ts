@@ -104,6 +104,9 @@ AND KEEP HOW THEY SAY THE WORK REALLY RUNS. Where a person's facts include a lin
 work really runs, keep it in their paragraph with its names, dates and figures. It is often the
 whole finding.
 
+AND KEEP BOTH FIGURES. Where a person gave two different figures for the same work, keep both in
+their paragraph, because the difference is often the finding.
+
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
 
@@ -149,6 +152,8 @@ export function factsAsLines(f: PersonFacts, nameFor: (label: string) => string)
   const lines: string[] = [`PERSON id=${f.participantId} name=${who}${f.isLead ? ' (runs this check-in)' : ''}`];
   if (f.whatTheySaidItWasFor) lines.push(`  they said this was for, in their words: "${f.whatTheySaidItWasFor}"`);
   if (f.whereTheySayTheyAre) lines.push(`  the latest thing they reported, in their words: "${f.whereTheySayTheyAre}"`);
+  /* The figure they gave before, where it differs. Kwame's 22 handled and three approved. */
+  if (f.anEarlierFigureTheyGave) lines.push(`  earlier they reported, in their words: "${f.anEarlierFigureTheyGave}"`);
   if (f.whatTheySayIsInTheWay) lines.push(`  what they named as being in the way, in their words: "${f.whatTheySayIsInTheWay}"`);
   /* Why they are on this work rather than something else. See whyTheySayTheyAreOnIt: an INTENT
      line, read by nothing until 26 September, and on the realign scenario it is the whole answer. */

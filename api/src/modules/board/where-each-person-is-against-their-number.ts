@@ -1,4 +1,5 @@
 import { A_FORTNIGHT, waysThrough, type Effort } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
+import { carriesANumber } from '../reports/a-number-written-as-a-word-is-a-number';
 
 /**
  * THE ONE PAGE A MANAGER ACTUALLY OPENS.
@@ -82,9 +83,9 @@ const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind th
  * A fact about what was written down, and nothing about the person who said it. Numbers written as
  * words count ("forty tonnes a week" is a number: a rice miller's one fact per answer was lost the
  * last time this was read as a digit only). "May" counts only beside a day, because on its own it is
- * nearly always the verb.
+ * nearly always the verb. What counts as a number is the report's rule too, from one place: see
+ * a-number-written-as-a-word-is-a-number.
  */
-const NUMBER_WORDS = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|dozen|half)\b/i;
 const A_DATE = [
   /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
   /\b\d{1,2}(?:st|nd|rd|th)?\s+may\b|\bmay\s+\d{1,2}\b/i,
@@ -94,7 +95,7 @@ const A_DATE = [
 export function hasANumberADateOrADocument(line: { text?: string | null; anchoredDocumentId?: string | null; documentSays?: string | null }): boolean {
   if (line.anchoredDocumentId || (line.documentSays ?? '').trim()) return true;
   const text = line.text ?? '';
-  return /\d/.test(text) || NUMBER_WORDS.test(text) || A_DATE.some((r) => r.test(text));
+  return carriesANumber(text) || A_DATE.some((r) => r.test(text));
 }
 
 /**

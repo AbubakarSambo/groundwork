@@ -22,6 +22,7 @@
  */
 import { whatDoesNotAddUp, type AThingOnRecord, type ATargetTheyHold } from '../conversation/what-does-not-add-up';
 import { aDefinitionOfSuccessHolds } from '../grounds/a-dump-is-many-things';
+import { carriesANumber, theNumbersIn } from './a-number-written-as-a-word-is-a-number';
 
 export interface APersonToWriteUp {
   participantId: string;
@@ -54,8 +55,18 @@ export interface PersonFacts {
   isLead: boolean;
   /** Their earliest definition of success, in their own words. Null when they never gave one that holds. */
   whatTheySaidItWasFor: string | null;
-  /** The latest thing they reported, preferring one with a number in it. */
+  /** The latest thing they reported, preferring one with a number in it, digits or words. */
   whereTheySayTheyAre: string | null;
+  /**
+   * AN EARLIER FIGURE THEY GAVE, WHERE IT IS NOT THE ONE THEY GIVE NOW, in their own words.
+   *
+   * Kwame, run 8: "All 22 facilities were pretty smooth" in session 2, and "I have three approved
+   * facilities already" in session 3, against a target of 14 approved. Only one line reached the
+   * paragraph, so the difference between 22 handled and three approved, which is the whole finding,
+   * could not be written by anybody downstream. The latest progress line from an earlier session
+   * than `whereTheySayTheyAre`'s that carries a number the later one does not. Null otherwise.
+   */
+  anEarlierFigureTheyGave: string | null;
   /** The latest worry or tension they named, preferring one in that session with a detail in it. */
   whatTheySayIsInTheWay: string | null;
   /**
@@ -155,10 +166,16 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     .filter((s) => s.type === 'SUCCESS_DEFINITION' && aDefinitionOfSuccessHolds(s.text))
     .sort((a, b) => a.session - b.session)[0];
 
-  /* Where they say they stand: the latest progress line with a number in it, else the latest. */
+  /* Where they say they stand: the latest progress line with a number in it, else the latest.
+     A number written as a word counts: "three approved" lost to "22" on run 8 because it did not. */
   const progress = said.filter((s) => s.type === 'PROGRESS');
-  const withNumber = progress.filter((s) => /\d/.test(s.text));
+  const withNumber = progress.filter((s) => carriesANumber(s.text));
   const stand = latest(withNumber) ?? latest(progress);
+  /* And the figure they gave before it, where it differs. See the field's note. */
+  const nowSays = new Set(stand ? theNumbersIn(stand.text) : []);
+  const earlier = stand
+    ? latest(withNumber.filter((s) => s.session < stand.session && theNumbersIn(s.text).some((n) => !nowSays.has(n))))
+    : undefined;
 
   /*
    * "Named as in the way: you didnt even as me what i do, i dont get you saying that goes on the
@@ -244,6 +261,7 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     isLead: p.isLead,
     whatTheySaidItWasFor: purpose ? clean(purpose.text) : null,
     whereTheySayTheyAre: stand ? clean(stand.text) : null,
+    anEarlierFigureTheyGave: earlier ? clean(earlier.text) : null,
     whatTheySayIsInTheWay: worry ? clean(worry.text) : null,
     whyTheySayTheyAreOnIt: why ? clean(why.text) : null,
     howTheySayTheWorkReallyRuns: howItReallyRuns,
