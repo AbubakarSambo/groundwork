@@ -156,3 +156,49 @@ describe('what the model is shown', () => {
     expect(lines).not.toMatch(/said this was for:|Where they say they stand now:/);
   });
 });
+
+describe('a person who gave two different figures', () => {
+  /* Kwame's three lines, exactly as run 8 (sales) stored them. */
+  const kwame = factsAbout({
+    participantId: 'p-kwame', label: 'Kwame', isLead: false,
+    said: [
+      said('INTENT', "I'm aiming for 14 approved facilities this quarter.", 1),
+      said('PROGRESS', 'All 22 facilities were pretty smooth, most of them just needed a little nudge.', 2),
+      said('PROGRESS', 'I have three approved facilities already.', 3),
+    ],
+    targets: [],
+  }, 3)!;
+
+  it('takes "three approved" as where he stands, because a number written as a word is a number', () => {
+    expect(kwame.whereTheySayTheyAre).toBe('I have three approved facilities already');
+  });
+
+  it('keeps the 22 as the earlier figure he gave', () => {
+    expect(kwame.anEarlierFigureTheyGave).toBe('All 22 facilities were pretty smooth, most of them just needed a little nudge');
+  });
+
+  it('and both reach the writer word for word', () => {
+    const lines = factsAsLines(kwame, (l) => l);
+    expect(lines).toContain('  the latest thing they reported, in their words: "I have three approved facilities already"');
+    expect(lines).toContain('  earlier they reported, in their words: "All 22 facilities were pretty smooth, most of them just needed a little nudge"');
+  });
+
+  it('a person with one figure has no earlier one', () => {
+    const f = factsAbout({
+      participantId: 'p1', label: 'A', isLead: false,
+      said: [said('PROGRESS', 'Still getting started', 1), said('PROGRESS', 'I have 4 approved', 2)],
+      targets: [],
+    }, 2)!;
+    expect(f.anEarlierFigureTheyGave).toBeNull();
+    expect(factsAsLines(f, (l) => l)).not.toContain('earlier they reported');
+  });
+
+  it('and the same figure said twice is not two figures', () => {
+    const f = factsAbout({
+      participantId: 'p1', label: 'A', isLead: false,
+      said: [said('PROGRESS', 'Four approved so far', 1), said('PROGRESS', 'Still 4 approved', 2)],
+      targets: [],
+    }, 2)!;
+    expect(f.anEarlierFigureTheyGave).toBeNull();
+  });
+});

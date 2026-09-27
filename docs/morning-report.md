@@ -6,6 +6,75 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 27 SEPTEMBER, THE DAY SESSION: where I am now
+
+This section is kept up to date as I go. If it stops partway, that is where I got to.
+
+### Your decisions this morning, and what I am doing with them
+
+- **Names inside people's words:** you said no to `8feedc64` and yes to the middle way, on two conditions. Every quote a person sees must be the original words from the record, and a test must prove that every quote in a served report matches the original answer exactly. That is step 3 below. If it cannot meet both conditions, I will stop and tell you.
+- **Situation names:** the two names are side by side below, for you to decide.
+
+### Done so far today
+
+1. **In step with the screens workspace.** I merged `mine/wip/prototype-ui`, which brought 108 commits overnight and 18 more this morning. Both were clean fast-forwards and are pushed.
+2. **The test database is up to date.** I applied 22 migrations, not the nine I mentioned: the screens workspace added 13 more overnight. It is the local test database `gw_pw9_1786222102` on localhost. Prisma now reports "Database schema is up to date".
+3. **The board never reads how a person's answers were rated (`a1747927`).** This was their privacy request 8. "Nothing checkable" came from the hidden rating of how checkable someone's answers were. Now the board reads only the record: whether anything they said this round has a number, a date or a document with it. A new privacy test builds the lead's board twice, once with every check-in rated best and once rated worst, and proves the rows are identical. Every row now also carries a plain sentence that says what happened and what would change it, with no verdict word. For example: "Femi is at 2 of 14, and 6 of the 12 rounds have gone. At this pace, 14 would not be reached by the end." The screens workspace's stop-gap, which showed such a row as "nothing to do", is gone, because it was untrue. **The screen still needs one change from the screens workspace:** it still shows each reason as a coloured pill beside the name, and it should show the new sentence instead. I have asked them for it.
+4. **Sales, checked before changing anything.** The fact is there. In all three runs Kwame says his target is 14 approved facilities, and he counts his 22 applications towards it. On run-6 he said "All 22 of them, actually. I counted them all towards my target". The record also holds "I have three approved facilities already". But his finding kept only "22 facilities were processed smoothly". The code picks the latest progress line that contains a digit, and "three" is spelled out. So the one line that shows 3 approvals against 14 never reached the judgement, and the judgement praised him for exceeding his target. A fix is being built: number words count as numbers, and when someone gave two different figures, both reach the report.
+
+### The situation names, side by side, for you to decide
+
+These are the eight names the screens workspace asked about (their request 5), plus the goals card. The first column gives the prototype's name. The second gives the name I would use. The last says what the situation covers, in one sentence. Only the capitals differ in every other name, so I have left those out.
+
+| Situation | The prototype's name | The name I would use | What it covers |
+| --- | --- | --- | --- |
+| NEW_ADVISOR | Start an advisor or board relationship | Start an advisor or board relationship | Agreeing what an advisor or board member will actually contribute, and on what terms, before any equity or retainer is settled. |
+| WORKPLAN_BUDGET | Build a workplan and budget | Build a workplan and budget | Each person writes their own plan, and the plans are checked together against the budget and the people available. |
+| COHORT_CHECK | Check how the same role is going | Check how the same role is going | Several people in the same role are each checked on their own, so the lead can see where the role works and where it does not. |
+| CONTRACT_RENEWAL | Check in before a renewal | **Check in before a contract ends or renews** | When a contract or a term is ending, both sides say what was agreed, what happened and whether renewing makes sense. The prototype's name drops "contract", and many of these are contracts that may simply end. |
+| RECOGNITION | Support a raise or promotion | **Support a raise, promotion or recognition** | Building the evidence for a raise, equity, a promotion or simply credit for work, before the conversation happens. The prototype's name drops "recognition". Our recognition scenario is about credit for a contractor's work, not about pay. |
+| REALIGN_TEAM | See where people see things differently | See where people see things differently | A team working from different versions of the same thing, with each account kept and nobody framed as wrong. |
+| ACUTE_SHOCK | Make sense of something serious | **Make sense of something serious that happened** | After something serious has already happened, such as losing a big client or an outage, everyone involved gives their piece, so the real picture comes together fast. I would keep "that happened", because without it the name could read as a risk that has not happened yet. |
+| OKR_ALIGNMENT, the goals card | Connect goals across teams | Connect goals across teams | One goal at the top, and whether the goals of the teams under it add up to it. The prototype's "teams" is more accurate than today's "the team". |
+
+If you agree, the table's names change in the engine, and the screens workspace changes its list in the same step so their parity test stays green.
+
+
+### How often each scenario was clearly right, across runs 6, 7 and 8
+
+These are the three full runs I have, graded against each scenario's right answer. I started no new run for this. Run-6 came before any of last night's changes, run-7 came after the first seven, and run-8 came after all of them.
+
+| Scenario | Run-6 | Run-7 | Run-8 | Clearly right |
+| --- | --- | --- | --- | --- |
+| cofounder | right | right | right | 3 of 3 |
+| contractreview | right | right | right | 3 of 3 |
+| crisis | right | right | right | 3 of 3 |
+| discovery | right | right | right | 3 of 3 |
+| implementation | right | right | right | 3 of 3 |
+| newmanager | right | right | right | 3 of 3 |
+| pip | right | right | right | 3 of 3 |
+| realign | right | right | right | 3 of 3 |
+| renewal | right | right | right | 3 of 3 |
+| seniorhire | right | right | right | 3 of 3 |
+| workplan | right | right | right | 3 of 3 |
+| board | - | right | right | 2 of 3 |
+| handover | - | right | right | 2 of 3 |
+| project | right | right | - | 2 of 3 |
+| updates | right | - | right | 2 of 3 |
+| advisor | right | - | - | 1 of 3 |
+| openread | - | - | right | 1 of 3 |
+| pulse | right | - | - | 1 of 3 |
+| recognition | - | - | right | 1 of 3 |
+| sales | right | - | - | 1 of 3 |
+| snapshot | right | - | - | 1 of 3 |
+| drift | - | - | - | 0 of 3 |
+| loans | - | - | - | 0 of 3 |
+| shock | - | - | - | 0 of 3 |
+| **Total** | **17** | **14** | **16** | |
+
+**Right in all three runs (11):** cofounder, contractreview, crisis, discovery, implementation, newmanager, pip, realign, renewal, seniorhire and workplan. **Never right (3):** drift, loans and shock. Drift needs the names change. Loans and shock come close each time but miss one part of the right answer. **Right in one or two (10):** the rest. For most of these, whether the key fact comes up depends on what the simulated people happen to say in that run.
+
+
 ## THE NIGHT IN SHORT, 27 September, about 03:30
 
 **How many judgements are clearly right: 16 of 24 on the last full run (run-8). The bar is 20, so task 1.5 is not ticked, and I did not start task 1.6.** The three full runs I measured scored 17 (run-6), 14 (run-7) and 16 (run-8). Most of that movement comes from what the simulated people happen to say in each run, not from the code. The scenarios I worked on tonight did get steadier. Handover was right in every clean run after the first fix, and recognition and updates were right on run-8.

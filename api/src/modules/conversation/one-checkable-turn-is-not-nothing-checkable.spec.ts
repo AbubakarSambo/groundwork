@@ -31,8 +31,11 @@ describe('the session level and the board', () => {
     expect(service).toContain("checkable:  anyCheckable ? 'specific' : NOTHING_SAID,");
     expect(service).toMatch(/level: anyCheckable && mapSpecificityLevel\(avgSpecificity\) === NOTHING_SAID \? 'vague'/);
   });
-  it('and the board asks that fact before falling back to the level', () => {
-    expect(board).toContain("saidAnythingCheckable: ((thisRound as any)?.specificityDimensions as any)?.checkable === 'specific'");
-    expect(board).toMatch(/completedAt: true, specificityLevel: true, specificityDimensions: true,/);
+  it('and the board asks the record of the round, never the level, which is a rating a lead may not read', () => {
+    /* Changed 27 Sep 2026: the board read this fact off specificityDimensions and told the lead
+       "nothing checkable". It now reads the round's record entries for a number, a date or a
+       document; the rice miller's "Forty tonnes a week." still counts there. */
+    expect(board).toContain('thisRoundHasANumberADateOrADocument: !!thisRound && somethingToCount.has(thisRound.id)');
+    expect(board).not.toMatch(/specificityLevel: true|specificityDimensions: true/);
   });
 });

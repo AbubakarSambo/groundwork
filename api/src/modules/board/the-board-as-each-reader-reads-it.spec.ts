@@ -1,7 +1,6 @@
 import { BoardService } from './board.service';
 import { ReportsService } from '../reports/reports.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
-import { withoutTheRating } from './the-lead-never-reads-a-rating';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 
 /**
@@ -199,14 +198,12 @@ describe('the lead never reads how a person’s answers were rated', () => {
     expect(served).not.toMatch(/nothing checkable|specificity|vague/i);
   });
 
-  it('and the order cannot give it away: rows sort as if the reason had never been worked out', () => {
-    const rows = [
-      { who: 'Miriam', nameIsTheirRole: false, reason: 'nothing checkable' as const },
-      { who: 'Aisha', nameIsTheirRole: false, reason: 'nothing to do' as const },
-      { who: 'Brian', nameIsTheirRole: false, reason: 'behind the pace' as const },
-    ];
-    expect(withoutTheRating(rows).map((r) => `${r.who} ${r.reason}`)).toEqual([
-      'Brian behind the pace', 'Aisha nothing to do', 'Miriam nothing to do',
+  it('and the order cannot give it away: Miriam, rated vague, and Aisha, rated specific, are served alike', async () => {
+    /* Neither has anything on the record of this round, so both rows say so, in name order. The
+       rating, which differs, changes nothing. See the-board-never-reads-the-rating.spec.ts. */
+    const rows = (await boardFor('u-wairimu').board).eachPerson ?? [];
+    expect(rows.map((r: any) => `${r.who} ${r.reason}`)).toEqual([
+      'Aisha Otieno nothing to count yet', 'Miriam Wanjiku nothing to count yet',
     ]);
   });
 });
