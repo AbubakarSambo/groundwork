@@ -396,11 +396,26 @@ export class UsersService {
      * load across check-ins is private (decisions.md, rule 4); what this organisation's admin may know
      * is which of THIS organisation's check-ins they are on, which the admin can already open.
      */
+    /*
+     * AND THE CHECK-INS THEY HAVE BEEN ADDED TO BUT NOT YET OPENED (U.4 review). A participant row
+     * carries the account only once the invitation is accepted, so somebody picked by name read as
+     * "Signed in, not on a check-in" with the check-in missing. Rows not yet accepted are matched by
+     * the address they were sent to - the same heal the check-ins list does when that person opens
+     * it - without writing anything: accepting stays the step that links the row, so clicking the
+     * invitation still signs them straight in.
+     */
+    const idByEmail = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
-        where: { userId: { in: ids }, ground: { organizationId } },
+        where: {
+          ground: { organizationId },
+          OR: [
+            { userId: { in: ids } },
+            { userId: null, email: { in: [...idByEmail.keys()] } },
+          ],
+        },
         select: {
-          userId: true, createdAt: true, partyType: true,
+          userId: true, email: true, createdAt: true, partyType: true,
           ground: { select: { id: true, label: true } },
           checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 },
         },
@@ -408,14 +423,17 @@ export class UsersService {
       : [];
     const onCount = new Map<string, number>();
     const answeredCount = new Map<string, number>();
+    const notOpenedCount = new Map<string, number>();
     const theirCheckIns = new Map<string, { id: string; label: string | null; runsIt: boolean }[]>();
     for (const m of memberships) {
-      if (!m.userId) continue;
-      onCount.set(m.userId, (onCount.get(m.userId) ?? 0) + 1);
-      if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
-      const list = theirCheckIns.get(m.userId) ?? [];
+      const who = m.userId ?? idByEmail.get((m.email ?? '').toLowerCase());
+      if (!who) continue;
+      onCount.set(who, (onCount.get(who) ?? 0) + 1);
+      if (!m.userId) notOpenedCount.set(who, (notOpenedCount.get(who) ?? 0) + 1);
+      if (m.checkIns.length) answeredCount.set(who, (answeredCount.get(who) ?? 0) + 1);
+      const list = theirCheckIns.get(who) ?? [];
       if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
-      theirCheckIns.set(m.userId, list);
+      theirCheckIns.set(who, list);
     }
     const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
@@ -459,6 +477,8 @@ export class UsersService {
         /** How many check-ins they are on, and how many of those they have answered on. */
         checkInsOn: onCount.get(u.id) ?? 0,
         checkInsAnswered: answeredCount.get(u.id) ?? 0,
+        /** How many of those they were added to and have not opened the invitation for yet. */
+        checkInsNotOpened: notOpenedCount.get(u.id) ?? 0,
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),

@@ -20,6 +20,8 @@ export interface OrgMember {
   state?: 'invited' | 'signed in' | 'checked in'
   checkInsOn?: number
   checkInsAnswered?: number
+  /** Check-ins they were added to and have not opened the invitation for yet. */
+  checkInsNotOpened?: number
   arrivedThroughACheckIn?: boolean
   awaitingOrgApproval?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
@@ -78,6 +80,8 @@ export function statusWord(m: OrgMember): string {
   if (m.awaitingOrgApproval) return 'Waiting to be let in'
   if (m.state === 'invited') return 'Invited, not opened'
   if ((m.checkInsOn ?? 0) === 0) return 'Signed in, not on a check-in'
+  /* Added to a check-in, and has not opened the invitation yet (U.4 review). */
+  if ((m.checkInsAnswered ?? 0) === 0 && (m.checkInsNotOpened ?? 0) >= (m.checkInsOn ?? 0)) return 'Invited, not opened'
   if ((m.checkInsAnswered ?? 0) === 0) return 'Not answered yet'
   return 'Checking in'
 }
