@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
@@ -94,5 +94,22 @@ describe('coming back to /start with a setup unfinished (U.6 review)', () => {
     expect(await screen.findByRole('button', { name: 'Carry on with this one' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start a new one' })).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/scenario|Keep current session/i)
+  })
+
+  /* Read live: pressing it showed the empty first screen, and the setup came back only on reload. */
+  it('"Carry on with this one" puts the kept conversation back on the screen straight away', async () => {
+    localStorage.clear()
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: '', history: [], closed: false, onboardingStep: 1,
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+      onboardingHistory: [{ role: 'assistant', content: 'Opening.' }, { role: 'user', content: 'Someone is not delivering.' }, { role: 'assistant', content: 'Who is it?' }],
+    }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start?new=1']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Carry on with this one' }))
+    expect(await screen.findByText('Who is it?')).toBeTruthy()
+    expect(screen.getByText('Someone is not delivering.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Carry on with this one' })).toBeNull()
+    expect(document.body.textContent).not.toContain('Describe it in your own words')
   })
 })

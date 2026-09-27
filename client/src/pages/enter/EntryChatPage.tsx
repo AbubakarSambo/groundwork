@@ -1465,15 +1465,14 @@ export function EntryChatPage() {
     }
   }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
 
-  // Load or start session
-  useEffect(() => {
-    const saved = loadSession()
-    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
-    // Closed-but-unsaved sessions MUST restore too: they hold the report and
-    // the locked transcript. Excluding them made the fallback below DELETE an
-    // ended session on reload, right when it is most valuable.
-    if (saved && branch === 'restore') {
-      // Restore existing session
+  /*
+   * PUTS BACK THE SETUP THIS DEVICE KEPT.
+   *
+   * It used to live only inside the mount effect below, so the one other way in - "Carry on with
+   * this one" on the in-progress card - closed the card and left the empty first screen behind it.
+   * The setup only came back after reloading /start. Both ways in now use this.
+   */
+  function restoreTheSavedSetup(saved: EntrySession) {
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
       /* "Others check in, I read what comes back" survives a reload. There are no lead details to
@@ -1517,6 +1516,17 @@ export function EntryChatPage() {
           setOnboardingReady((saved as any).onboardingReady ?? false)
         }
       }
+  }
+
+  // Load or start session
+  useEffect(() => {
+    const saved = loadSession()
+    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
+    // Closed-but-unsaved sessions MUST restore too: they hold the report and
+    // the locked transcript. Excluding them made the fallback below DELETE an
+    // ended session on reload, right when it is most valuable.
+    if (saved && branch === 'restore') {
+      restoreTheSavedSetup(saved)
     } else if (saved && branch === 'conflict') {
       // Arriving with a new scenario while ANY session exists (open or closed):
       // ask, never silently discard. Show inline conflict modal instead of
@@ -4289,8 +4299,14 @@ export function EntryChatPage() {
               <button
                 onClick={() => {
                   setShowNewScenarioConflict(false); setPendingNewScenario(null)
-                  /* Came from the rail with a saved setup: keeping it means restoring it, which the plain address does. */
-                  if (wantsANewOne) navigate('/start', { replace: true })
+                  /*
+                   * Carrying on means the kept setup is on the screen now, not after a reload. The
+                   * address goes back to plain /start as well, so a reload restores it too rather
+                   * than asking again.
+                   */
+                  const saved = loadSession()
+                  if (saved) restoreTheSavedSetup(saved)
+                  if (wantsANewOne || scenario || urlInitial) navigate('/start', { replace: true })
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
