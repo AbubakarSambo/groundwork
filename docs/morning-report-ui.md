@@ -1235,6 +1235,8 @@ reviewed" in this report.
    could be asked first whether their question may go to the person whose job it is.
 10. **One new table, on your computer only** (`organization_suites`, migration
     `20260927080000_the_suites_an_organisation_has_on`). It has not been run against any database.
+11. Switching suites on or off is not offered through Ask Groundwork; only an admin does it on the
+    Suites page. Recommendation: keep it that way.
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
